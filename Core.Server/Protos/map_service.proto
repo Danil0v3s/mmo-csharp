@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+option csharp_namespace = "Core.Server.IPC";
+
+package map;
+
+service MapService {
+  rpc EnterMap (EnterMapRequest) returns (EnterMapResponse);
+  rpc LeaveMap (LeaveMapRequest) returns (LeaveMapResponse);
+  rpc GetMapInfo (MapInfoRequest) returns (MapInfoResponse);
+}
+
+message EnterMapRequest {
+  int64 character_id = 1;
+  int32 map_id = 2;
+  float position_x = 3;
+  float position_y = 4;
+  float position_z = 5;
+}
+
+message EnterMapResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message LeaveMapRequest {
+  int64 character_id = 1;
+  int32 map_id = 2;
+}
+
+message LeaveMapResponse {
+  bool success = 1;
+}
+
+message MapInfoRequest {
+  int32 map_id = 1;
+}
+
+message PlayerInfo {
+  int64 character_id = 1;
+  string name = 2;
+  float position_x = 3;
+  float position_y = 4;
+  float position_z = 5;
+}
+
+message MapInfoResponse {
+  int32 map_id = 1;
+  string map_name = 2;
+  repeated PlayerInfo players = 3;
+}
+

@@ -1,8 +1,24 @@
 {
   "version": 2,
-  "dgSpecHash": "o15Hb3w+K+c=",
+  "dgSpecHash": "4kAOynwf0ms=",
   "success": true,
   "projectFilePath": "/Volumes/1TB/Projetos/mmo-csharp/Core.Server/Core.Server.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "/Users/danilolemes/.nuget/packages/google.protobuf/3.25.1/google.protobuf.3.25.1.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/grpc.core.api/2.59.0/grpc.core.api.2.59.0.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/grpc.net.client/2.59.0/grpc.net.client.2.59.0.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/grpc.net.common/2.59.0/grpc.net.common.2.59.0.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/grpc.tools/2.59.0/grpc.tools.2.59.0.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/microsoft.extensions.configuration/9.0.0/microsoft.extensions.configuration.9.0.0.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/microsoft.extensions.configuration.abstractions/9.0.0/microsoft.extensions.configuration.abstractions.9.0.0.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/microsoft.extensions.configuration.fileextensions/9.0.0/microsoft.extensions.configuration.fileextensions.9.0.0.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/microsoft.extensions.configuration.json/9.0.0/microsoft.extensions.configuration.json.9.0.0.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/9.0.0/microsoft.extensions.dependencyinjection.abstractions.9.0.0.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/microsoft.extensions.fileproviders.abstractions/9.0.0/microsoft.extensions.fileproviders.abstractions.9.0.0.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/microsoft.extensions.fileproviders.physical/9.0.0/microsoft.extensions.fileproviders.physical.9.0.0.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/microsoft.extensions.filesystemglobbing/9.0.0/microsoft.extensions.filesystemglobbing.9.0.0.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/microsoft.extensions.logging.abstractions/9.0.0/microsoft.extensions.logging.abstractions.9.0.0.nupkg.sha512",
+    "/Users/danilolemes/.nuget/packages/microsoft.extensions.primitives/9.0.0/microsoft.extensions.primitives.9.0.0.nupkg.sha512"
+  ],
   "logs": []
 }

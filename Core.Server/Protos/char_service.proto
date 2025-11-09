@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+option csharp_namespace = "Core.Server.IPC";
+
+package character;
+
+service CharacterService {
+  rpc GetCharacterList (CharacterListRequest) returns (CharacterListResponse);
+  rpc CreateCharacter (CreateCharacterRequest) returns (CreateCharacterResponse);
+  rpc DeleteCharacter (DeleteCharacterRequest) returns (DeleteCharacterResponse);
+  rpc GetCharacterData (CharacterDataRequest) returns (CharacterDataResponse);
+}
+
+message CharacterListRequest {
+  int64 account_id = 1;
+}
+
+message CharacterInfo {
+  int64 character_id = 1;
+  string name = 2;
+  int32 level = 3;
+  int32 class_id = 4;
+  int64 created_at = 5;
+}
+
+message CharacterListResponse {
+  repeated CharacterInfo characters = 1;
+}
+
+message CreateCharacterRequest {
+  int64 account_id = 1;
+  string name = 2;
+  int32 class_id = 3;
+}
+
+message CreateCharacterResponse {
+  bool success = 1;
+  string error_message = 2;
+  CharacterInfo character = 3;
+}
+
+message DeleteCharacterRequest {
+  int64 character_id = 1;
+  int64 account_id = 2;
+}
+
+message DeleteCharacterResponse {
+  bool success = 1;
+}
+
+message CharacterDataRequest {
+  int64 character_id = 1;
+}
+
+message CharacterDataResponse {
+  CharacterInfo character = 1;
+  int32 map_id = 2;
+  float position_x = 3;
+  float position_y = 4;
+  float position_z = 5;
+}
+

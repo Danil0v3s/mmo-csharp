@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+option csharp_namespace = "Core.Server.IPC";
+
+package login;
+
+service LoginService {
+  rpc ValidateSession (ValidateSessionRequest) returns (ValidateSessionResponse);
+  rpc GetAccountInfo (AccountInfoRequest) returns (AccountInfoResponse);
+}
+
+message ValidateSessionRequest {
+  string session_token = 1;
+}
+
+message ValidateSessionResponse {
+  bool is_valid = 1;
+  int64 account_id = 2;
+  string username = 3;
+}
+
+message AccountInfoRequest {
+  int64 account_id = 1;
+}
+
+message AccountInfoResponse {
+  int64 account_id = 1;
+  string username = 2;
+  string email = 3;
+  int64 created_at = 4;
+}
+

@@ -6,4 +6,20 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+        <PackageReference Include="Grpc.Net.Client" Version="2.59.0" />
+        <PackageReference Include="Grpc.Tools" Version="2.59.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Google.Protobuf" Version="3.25.1" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Protobuf Include="Protos\*.proto" GrpcServices="Server,Client" />
+    </ItemGroup>
+
 </Project>
