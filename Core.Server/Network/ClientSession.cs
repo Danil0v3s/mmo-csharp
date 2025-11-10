@@ -210,6 +210,8 @@ public enum DisconnectReason
     HeartbeatTimeout,
     SocketError,
     ServerShutdown,
-    Kicked
+    Kicked,
+    UnhandledPacket,
+    PacketHandlerError
 }
 

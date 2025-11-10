@@ -4,30 +4,49 @@ using Microsoft.Extensions.Logging;
 namespace Core.Server.Network;
 
 /// <summary>
-/// Base class for handling packets from client sessions.
-/// Provides type-safe packet processing with automatic casting and error handling.
+/// Base class for handling packets from client sessions using the strategy pattern.
+/// Uses a registry to map packet headers to their concrete handler implementations.
 /// </summary>
 public abstract class PacketHandler
 {
     protected ILogger Logger { get; }
+    protected PacketHandlerRegistry Registry { get; }
 
     protected PacketHandler(ILogger logger)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        Registry = new PacketHandlerRegistry(logger);
+        RegisterHandlers();
     }
     
     protected PacketHandler(ILogger<PacketHandler> logger)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        Registry = new PacketHandlerRegistry(logger);
+        RegisterHandlers();
     }
 
     /// <summary>
-    /// Processes a single packet from a client session.
-    /// Override this to handle specific packet types.
+    /// Override this method to register packet handlers in derived classes.
+    /// </summary>
+    protected abstract void RegisterHandlers();
+
+    /// <summary>
+    /// Processes a single packet from a client session using the registered handlers.
     /// </summary>
     /// <param name="session">The session that sent the packet</param>
     /// <param name="packet">The incoming packet</param>
-    public abstract Task HandlePacketAsync(ClientSession session, IncomingPacket packet);
+    public async Task HandlePacketAsync(ClientSession session, IncomingPacket packet)
+    {
+        bool handled = await Registry.TryHandlePacketAsync(session, packet);
+        
+        if (!handled)
+        {
+            Logger.LogError("No handler registered for packet {PacketType} (Header: 0x{Header:X4}) from session {SessionId}. Disconnecting client.",
+                packet.GetType().Name, (short)packet.Header, session.SessionId);
+            session.Disconnect(DisconnectReason.UnhandledPacket);
+        }
+    }
 
     /// <summary>
     /// Processes all queued packets for a session.
@@ -42,8 +61,9 @@ public abstract class PacketHandler
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error handling packet {PacketType} from session {SessionId}",
+                Logger.LogError(ex, "Error handling packet {PacketType} from session {SessionId}. Disconnecting client.",
                     packet.GetType().Name, session.SessionId);
+                session.Disconnect(DisconnectReason.PacketHandlerError);
             }
         }
     }
@@ -51,35 +71,18 @@ public abstract class PacketHandler
     /// <summary>
     /// Helper method to send a packet to a session.
     /// </summary>
-    protected void SendPacket(ClientSession session, OutgoingPacket packet)
+    protected static void SendPacket(ClientSession session, OutgoingPacket packet)
     {
         session.EnqueuePacket(packet);
     }
 
     /// <summary>
-    /// Helper method to safely cast and handle a specific packet type.
+    /// Helper method to register a handler for a specific packet type.
     /// </summary>
-    protected bool TryHandlePacket<T>(IncomingPacket packet, Action<T> handler) where T : IncomingPacket
+    protected void RegisterHandler<TPacket>(PacketHeader header, IPacketHandler<TPacket> handler) 
+        where TPacket : IncomingPacket
     {
-        if (packet is T typedPacket)
-        {
-            handler(typedPacket);
-            return true;
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// Helper method to safely cast and handle a specific packet type asynchronously.
-    /// </summary>
-    protected async Task<bool> TryHandlePacketAsync<T>(IncomingPacket packet, Func<T, Task> handler) where T : IncomingPacket
-    {
-        if (packet is T typedPacket)
-        {
-            await handler(typedPacket);
-            return true;
-        }
-        return false;
+        Registry.RegisterHandler(header, handler);
     }
 }
 

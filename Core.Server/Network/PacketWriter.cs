@@ -92,13 +92,6 @@ public class PacketWriter : IDisposable
         }
     }
 
-    public static byte[] CreateHeartbeatPacket()
-    {
-        var packet = new byte[2];
-        BitConverter.TryWriteBytes(packet, PacketIds.Heartbeat);
-        return packet;
-    }
-
     public static byte[] CreatePacket(ushort packetId, Action<PacketWriter> writeBody)
     {
         using var writer = new PacketWriter();
