@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using Core.Server;
@@ -12,12 +13,56 @@ namespace Login.Server;
 public class LoginServerImpl : GameLoopServer
 {
     private Socket? _listenerSocket;
-    private readonly LoginPacketHandler _packetHandler;
+    private readonly ConcurrentDictionary<PacketHeader, Func<ClientSession, IncomingPacket, Task>> _packetHandlers;
 
     public LoginServerImpl(ServerConfiguration configuration, ILogger<LoginServerImpl> logger)
         : base("LoginServer", configuration, logger)
     {
-        _packetHandler = new LoginPacketHandler(logger as ILogger);
+        _packetHandlers = new ConcurrentDictionary<PacketHeader, Func<ClientSession, IncomingPacket, Task>>();
+        RegisterPacketHandlers();
+    }
+
+    private void RegisterPacketHandlers()
+    {
+        _packetHandlers[PacketHeader.CA_LOGIN] = async (session, packet) => 
+            await HandleLogin(session, (CA_LOGIN)packet);
+        
+        Logger.LogInformation("Registered {Count} packet handler(s) for Login Server", _packetHandlers.Count);
+    }
+
+    private async Task HandleLogin(ClientSession session, CA_LOGIN packet)
+    {
+        Logger.LogInformation("Login request from session {SessionId}: {Username}",
+            session.SessionId, packet.Username);
+
+        // TODO: Validate credentials against database
+        // For now, accept any non-empty credentials
+        bool success = !string.IsNullOrWhiteSpace(packet.Username) &&
+                      !string.IsNullOrWhiteSpace(packet.Password);
+
+        if (success)
+        {
+            var sessionToken = new Random().Next(100000, 999999);
+
+            var responsePacket = new AC_ACCEPT_LOGIN
+            {
+                SessionToken = sessionToken,
+                CharacterSlots = 9
+            };
+
+            session.EnqueuePacket(responsePacket);
+
+            Logger.LogInformation("Login successful for {Username}, token: {Token}",
+                packet.Username, sessionToken);
+        }
+        else
+        {
+            // TODO: Implement AC_REFUSE_LOGIN packet
+            Logger.LogWarning("Login failed for session {SessionId} - invalid credentials", session.SessionId);
+            session.Disconnect(DisconnectReason.Kicked);
+        }
+
+        await Task.CompletedTask;
     }
 
     protected override async Task StartTcpListenerAsync(CancellationToken cancellationToken)
@@ -71,7 +116,33 @@ public class LoginServerImpl : GameLoopServer
     {
         foreach (var session in SessionManager.GetAllSessions())
         {
-            await _packetHandler.ProcessSessionPacketsAsync(session);
+            await ProcessSessionPacketsAsync(session);
+        }
+    }
+
+    private async Task ProcessSessionPacketsAsync(ClientSession session)
+    {
+        while (session.IncomingPackets.TryDequeue(out var packet))
+        {
+            try
+            {
+                if (_packetHandlers.TryGetValue(packet.Header, out var handler))
+                {
+                    await handler(session, packet);
+                }
+                else
+                {
+                    Logger.LogError("No handler registered for packet {PacketType} (Header: 0x{Header:X4}) from session {SessionId}. Disconnecting client.",
+                        packet.GetType().Name, (short)packet.Header, session.SessionId);
+                    session.Disconnect(DisconnectReason.UnhandledPacket);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error handling packet {PacketType} from session {SessionId}. Disconnecting client.",
+                    packet.GetType().Name, session.SessionId);
+                session.Disconnect(DisconnectReason.PacketHandlerError);
+            }
         }
     }
 

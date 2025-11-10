@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using Core.Server;
@@ -13,12 +14,55 @@ namespace Char.Server;
 public class CharServerImpl : GameLoopServer
 {
     private Socket? _listenerSocket;
-    private readonly CharPacketHandler _packetHandler;
+    private readonly ConcurrentDictionary<PacketHeader, Func<ClientSession, IncomingPacket, Task>> _packetHandlers;
 
     public CharServerImpl(ServerConfiguration configuration, ILogger<CharServerImpl> logger)
         : base("CharServer", configuration, logger)
     {
-        _packetHandler = new CharPacketHandler(logger as ILogger);
+        _packetHandlers = new ConcurrentDictionary<PacketHeader, Func<ClientSession, IncomingPacket, Task>>();
+        RegisterPacketHandlers();
+    }
+
+    private void RegisterPacketHandlers()
+    {
+        _packetHandlers[PacketHeader.CH_CHARLIST_REQ] = async (session, packet) => 
+            await HandleCharacterListRequest(session, (CZ_HEARTBEAT)packet);
+        
+        Logger.LogInformation("Registered {Count} packet handler(s) for Char Server", _packetHandlers.Count);
+    }
+
+    private async Task HandleCharacterListRequest(ClientSession session, CZ_HEARTBEAT packet)
+    {
+        Logger.LogInformation("Character list request from session {SessionId}", session.SessionId);
+
+        // TODO: Query characters from database
+        // For now, return mock data using HC_CHARACTER_LIST
+        var responsePacket = new HC_CHARACTER_LIST
+        {
+            Characters = new[]
+            {
+                new Core.Server.Packets.ServerPackets.CharacterInfo
+                {
+                    CharId = 1001,
+                    Name = "Warrior123",
+                    Exp = 50000,
+                    Zeny = 10000,
+                    JobLevel = 50
+                },
+                new Core.Server.Packets.ServerPackets.CharacterInfo
+                {
+                    CharId = 1002,
+                    Name = "Mage456",
+                    Exp = 45000,
+                    Zeny = 8000,
+                    JobLevel = 45
+                }
+            }
+        };
+
+        session.EnqueuePacket(responsePacket);
+
+        await Task.CompletedTask;
     }
 
     protected override async Task StartTcpListenerAsync(CancellationToken cancellationToken)
@@ -72,7 +116,33 @@ public class CharServerImpl : GameLoopServer
     {
         foreach (var session in SessionManager.GetAllSessions())
         {
-            await _packetHandler.ProcessSessionPacketsAsync(session);
+            await ProcessSessionPacketsAsync(session);
+        }
+    }
+
+    private async Task ProcessSessionPacketsAsync(ClientSession session)
+    {
+        while (session.IncomingPackets.TryDequeue(out var packet))
+        {
+            try
+            {
+                if (_packetHandlers.TryGetValue(packet.Header, out var handler))
+                {
+                    await handler(session, packet);
+                }
+                else
+                {
+                    Logger.LogError("No handler registered for packet {PacketType} (Header: 0x{Header:X4}) from session {SessionId}. Disconnecting client.",
+                        packet.GetType().Name, (short)packet.Header, session.SessionId);
+                    session.Disconnect(DisconnectReason.UnhandledPacket);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error handling packet {PacketType} from session {SessionId}. Disconnecting client.",
+                    packet.GetType().Name, session.SessionId);
+                session.Disconnect(DisconnectReason.PacketHandlerError);
+            }
         }
     }
 
