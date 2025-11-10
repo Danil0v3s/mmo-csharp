@@ -1,5 +1,4 @@
 using Core.Server;
-using Microsoft.Extensions.Logging;
 using Serilog;
 
 namespace Web.Server;

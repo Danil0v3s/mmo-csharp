@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.Extensions.Configuration;
 
 namespace Core.Server.Packets;
@@ -43,7 +44,7 @@ public class PacketSystem
     /// </summary>
     public IncomingPacket? ReadPacket(Stream stream)
     {
-        using var reader = new BinaryReader(stream, System.Text.Encoding.ASCII, leaveOpen: true);
+        using var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true);
         return ReadPacket(reader);
     }
     
@@ -85,7 +86,7 @@ public class PacketSystem
     /// </summary>
     public void WritePacket(Stream stream, OutgoingPacket packet)
     {
-        using var writer = new BinaryWriter(stream, System.Text.Encoding.ASCII, leaveOpen: true);
+        using var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true);
         WritePacket(writer, packet);
     }
     

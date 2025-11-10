@@ -1,68 +1,28 @@
-using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using Core.Server;
 using Core.Server.Network;
-using Core.Server.Packets;
-using Core.Server.Packets.ClientPackets;
-using Core.Server.Packets.ServerPackets;
-using Microsoft.Extensions.Logging;
+using Login.Server.Handlers;
 
 namespace Login.Server;
 
 public class LoginServerImpl : GameLoopServer
 {
     private Socket? _listenerSocket;
-    private readonly ConcurrentDictionary<PacketHeader, Func<ClientSession, IncomingPacket, Task>> _packetHandlers;
+    private readonly PacketHandlerRegistry _handlerRegistry;
 
     public LoginServerImpl(ServerConfiguration configuration, ILogger<LoginServerImpl> logger)
         : base("LoginServer", configuration, logger)
     {
-        _packetHandlers = new ConcurrentDictionary<PacketHeader, Func<ClientSession, IncomingPacket, Task>>();
-        RegisterPacketHandlers();
-    }
+        // Create a temporary service provider for handler resolution
+        // TODO: This will be replaced with proper DI container later
+        var services = new ServiceCollection()
+            .AddSingleton<ILogger>(logger)
+            .AddTransient<LoginHandler>()
+            .BuildServiceProvider();
 
-    private void RegisterPacketHandlers()
-    {
-        _packetHandlers[PacketHeader.CA_LOGIN] = async (session, packet) => 
-            await HandleLogin(session, (CA_LOGIN)packet);
-        
-        Logger.LogInformation("Registered {Count} packet handler(s) for Login Server", _packetHandlers.Count);
-    }
-
-    private async Task HandleLogin(ClientSession session, CA_LOGIN packet)
-    {
-        Logger.LogInformation("Login request from session {SessionId}: {Username}",
-            session.SessionId, packet.Username);
-
-        // TODO: Validate credentials against database
-        // For now, accept any non-empty credentials
-        bool success = !string.IsNullOrWhiteSpace(packet.Username) &&
-                      !string.IsNullOrWhiteSpace(packet.Password);
-
-        if (success)
-        {
-            var sessionToken = new Random().Next(100000, 999999);
-
-            var responsePacket = new AC_ACCEPT_LOGIN
-            {
-                SessionToken = sessionToken,
-                CharacterSlots = 9
-            };
-
-            session.EnqueuePacket(responsePacket);
-
-            Logger.LogInformation("Login successful for {Username}, token: {Token}",
-                packet.Username, sessionToken);
-        }
-        else
-        {
-            // TODO: Implement AC_REFUSE_LOGIN packet
-            Logger.LogWarning("Login failed for session {SessionId} - invalid credentials", session.SessionId);
-            session.Disconnect(DisconnectReason.Kicked);
-        }
-
-        await Task.CompletedTask;
+        _handlerRegistry = new PacketHandlerRegistry(services, logger);
+        _handlerRegistry.DiscoverAndRegisterFromCallingAssembly();
     }
 
     protected override async Task StartTcpListenerAsync(CancellationToken cancellationToken)
@@ -116,33 +76,7 @@ public class LoginServerImpl : GameLoopServer
     {
         foreach (var session in SessionManager.GetAllSessions())
         {
-            await ProcessSessionPacketsAsync(session);
-        }
-    }
-
-    private async Task ProcessSessionPacketsAsync(ClientSession session)
-    {
-        while (session.IncomingPackets.TryDequeue(out var packet))
-        {
-            try
-            {
-                if (_packetHandlers.TryGetValue(packet.Header, out var handler))
-                {
-                    await handler(session, packet);
-                }
-                else
-                {
-                    Logger.LogError("No handler registered for packet {PacketType} (Header: 0x{Header:X4}) from session {SessionId}. Disconnecting client.",
-                        packet.GetType().Name, (short)packet.Header, session.SessionId);
-                    session.Disconnect(DisconnectReason.UnhandledPacket);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error handling packet {PacketType} from session {SessionId}. Disconnecting client.",
-                    packet.GetType().Name, session.SessionId);
-                session.Disconnect(DisconnectReason.PacketHandlerError);
-            }
+            await _handlerRegistry.ProcessSessionPacketsAsync(session, Logger);
         }
     }
 

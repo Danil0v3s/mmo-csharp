@@ -1,7 +1,5 @@
 ﻿using Core.Server;
 using Map.Server;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Serilog;
 
 // Setup configuration

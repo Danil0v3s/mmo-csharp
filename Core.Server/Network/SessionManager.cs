@@ -1,8 +1,7 @@
 using System.Collections.Concurrent;
-using System.Net;
 using System.Net.Sockets;
-using Microsoft.Extensions.Logging;
 using Core.Server.Packets;
+using Microsoft.Extensions.Logging;
 
 namespace Core.Server.Network;
 

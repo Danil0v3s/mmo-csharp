@@ -1,7 +1,5 @@
-﻿using Core.Server;
-using Char.Server;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+﻿using Char.Server;
+using Core.Server;
 using Serilog;
 
 // Setup configuration

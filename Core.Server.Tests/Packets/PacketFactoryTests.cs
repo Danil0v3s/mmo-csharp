@@ -1,6 +1,5 @@
 using Core.Server.Packets;
 using Core.Server.Packets.ClientPackets;
-using Xunit;
 
 namespace Core.Server.Tests.Packets;
 

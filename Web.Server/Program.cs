@@ -1,8 +1,6 @@
 ﻿using Core.Server;
-using Web.Server;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Serilog;
+using Web.Server;
 
 // Setup configuration
 var configuration = new ConfigurationBuilder()
