@@ -1,4 +1,5 @@
 using System.Buffers;
+using Core.Server.Packets;
 
 namespace Core.Server.Network;
 
@@ -7,12 +8,14 @@ public class PacketBuffer
     private byte[] _buffer;
     private int _writePosition;
     private int _readPosition;
+    private readonly IPacketSizeRegistry _sizeRegistry;
 
     public int Available => _writePosition - _readPosition;
     public int Capacity => _buffer.Length;
 
-    public PacketBuffer(int initialCapacity = 8192)
+    public PacketBuffer(IPacketSizeRegistry sizeRegistry, int initialCapacity = 8192)
     {
+        _sizeRegistry = sizeRegistry ?? throw new ArgumentNullException(nameof(sizeRegistry));
         _buffer = ArrayPool<byte>.Shared.Rent(initialCapacity);
         _writePosition = 0;
         _readPosition = 0;
@@ -25,39 +28,83 @@ public class PacketBuffer
         _writePosition += data.Length;
     }
 
-    public bool TryReadPacket(out ushort packetId, out Memory<byte> packetData)
+    public bool TryReadPacket(out PacketHeader header, out Memory<byte> packetData)
     {
-        packetId = 0;
+        header = default;
         packetData = Memory<byte>.Empty;
 
-        // Need at least 2 bytes for packet ID
+        // Need at least 2 bytes for packet header
         if (Available < 2)
             return false;
 
-        // Read packet ID
-        packetId = BitConverter.ToUInt16(_buffer, _readPosition);
-
-        // Check if it's a fixed-length packet (heartbeat)
-        if (packetId == PacketIds.Heartbeat)
+        // Read packet header
+        short headerValue = BitConverter.ToInt16(_buffer, _readPosition);
+        
+        // Validate header
+        if (!Enum.IsDefined(typeof(PacketHeader), headerValue))
         {
+            // Invalid packet header - skip this byte and try again
+            _readPosition++;
+            return false;
+        }
+        
+        header = (PacketHeader)headerValue;
+        
+        // Check if header is registered
+        if (!_sizeRegistry.IsRegistered(header))
+        {
+            // Unknown packet - skip header and continue
             _readPosition += 2;
-            return true;
+            return false;
         }
 
-        // Need 4 bytes total for variable-length packet header (ID + size)
+        // Check if it's a fixed-length packet
+        if (_sizeRegistry.IsFixedLength(header))
+        {
+            int? fixedSize = _sizeRegistry.GetFixedSize(header);
+            if (fixedSize.HasValue)
+            {
+                // Check if we have the complete fixed-length packet
+                if (Available < fixedSize.Value)
+                    return false;
+                
+                // Extract packet data (everything after header)
+                int bodySize = fixedSize.Value - 2; // Subtract header size
+                if (bodySize > 0)
+                {
+                    packetData = new Memory<byte>(_buffer, _readPosition + 2, bodySize);
+                }
+                _readPosition += fixedSize.Value;
+                return true;
+            }
+        }
+
+        // Variable-length packet: need 4 bytes total for header + size field
         if (Available < 4)
             return false;
 
-        // Read packet size
-        var packetSize = BitConverter.ToUInt16(_buffer, _readPosition + 2);
+        // Read packet size (total size including header and size field)
+        short packetSize = BitConverter.ToInt16(_buffer, _readPosition + 2);
+
+        // Validate packet size (note: MaxPacketSize is 32KB but we compare as int since size could be malformed)
+        if (packetSize < 4 || (int)packetSize > PacketValidator.MaxPacketSize)
+        {
+            // Invalid size - skip this packet
+            _readPosition += 4;
+            return false;
+        }
 
         // Check if we have the full packet
-        if (Available < 4 + packetSize)
+        if (Available < packetSize)
             return false;
 
-        // Extract packet data (excluding header)
-        packetData = new Memory<byte>(_buffer, _readPosition + 4, packetSize);
-        _readPosition += 4 + packetSize;
+        // Extract packet data (excluding header and size field)
+        int dataSize = packetSize - 4; // Subtract header (2) and size field (2)
+        if (dataSize > 0)
+        {
+            packetData = new Memory<byte>(_buffer, _readPosition + 4, dataSize);
+        }
+        _readPosition += packetSize;
 
         return true;
     }

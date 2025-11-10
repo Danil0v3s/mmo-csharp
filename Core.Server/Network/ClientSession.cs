@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
+using Core.Server.Packets;
 
 namespace Core.Server.Network;
 
@@ -13,6 +14,7 @@ public class ClientSession : IDisposable
     private readonly ConcurrentQueue<byte[]> _outgoingPackets;
     private readonly CancellationTokenSource _cts;
     private readonly Task _receiveTask;
+    private readonly IPacketFactory _packetFactory;
     
     public Guid SessionId { get; }
     public long LastHeartbeatTime { get; private set; }
@@ -20,21 +22,23 @@ public class ClientSession : IDisposable
     public bool IsAlive { get; private set; }
     public DisconnectReason? DisconnectReason { get; private set; }
     
-    public ConcurrentQueue<(ushort PacketId, Memory<byte> Data)> IncomingPackets { get; }
+    public ConcurrentQueue<IncomingPacket> IncomingPackets { get; }
 
-    public ClientSession(Socket socket, int heartbeatTimeout, ILogger logger)
+    public ClientSession(Socket socket, int heartbeatTimeout, IPacketFactory packetFactory, 
+        IPacketSizeRegistry sizeRegistry, ILogger logger)
     {
         _socket = socket;
         _logger = logger;
+        _packetFactory = packetFactory ?? throw new ArgumentNullException(nameof(packetFactory));
         HeartbeatTimeout = heartbeatTimeout;
         
         SessionId = Guid.NewGuid();
         LastHeartbeatTime = Stopwatch.GetTimestamp();
         IsAlive = true;
         
-        _incomingBuffer = new PacketBuffer();
+        _incomingBuffer = new PacketBuffer(sizeRegistry);
         _outgoingPackets = new ConcurrentQueue<byte[]>();
-        IncomingPackets = new ConcurrentQueue<(ushort, Memory<byte>)>();
+        IncomingPackets = new ConcurrentQueue<IncomingPacket>();
         
         _cts = new CancellationTokenSource();
         _receiveTask = Task.Run(() => ReceiveLoopAsync(_cts.Token));
@@ -60,6 +64,25 @@ public class ClientSession : IDisposable
             return;
 
         _outgoingPackets.Enqueue(packet);
+    }
+    
+    public void EnqueuePacket(OutgoingPacket packet)
+    {
+        if (!IsAlive)
+            return;
+
+        try
+        {
+            using var ms = new MemoryStream();
+            using var writer = new BinaryWriter(ms);
+            packet.Write(writer);
+            _outgoingPackets.Enqueue(ms.ToArray());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error serializing packet {PacketType} for session {SessionId}", 
+                packet.GetType().Name, SessionId);
+        }
     }
 
     public async Task FlushPacketsAsync()
@@ -100,18 +123,40 @@ public class ClientSession : IDisposable
                 _incomingBuffer.Write(buffer.AsSpan(0, received));
 
                 // Parse packets from buffer
-                while (_incomingBuffer.TryReadPacket(out var packetId, out var packetData))
+                while (_incomingBuffer.TryReadPacket(out var header, out var packetData))
                 {
-                    if (packetId == PacketIds.Heartbeat)
+                    try
                     {
-                        UpdateHeartbeat();
+                        // Handle heartbeat packets directly
+                        if (header == PacketHeader.CZ_HEARTBEAT)
+                        {
+                            UpdateHeartbeat();
+                            continue;
+                        }
+
+                        // Check if we can create this packet type
+                        if (!_packetFactory.CanCreatePacket(header))
+                        {
+                            _logger.LogWarning("No handler for packet {Header} (0x{HeaderHex:X4}) from session {SessionId}", 
+                                header, (short)header, SessionId);
+                            continue;
+                        }
+
+                        // Deserialize packet
+                        IncomingPacket packet;
+                        using (var ms = new MemoryStream(packetData.ToArray()))
+                        using (var reader = new BinaryReader(ms))
+                        {
+                            packet = _packetFactory.CreatePacket(header, reader);
+                        }
+
+                        // Enqueue packet for processing
+                        IncomingPackets.Enqueue(packet);
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        // Copy data to avoid buffer reuse issues
-                        var dataCopy = new byte[packetData.Length];
-                        packetData.CopyTo(dataCopy);
-                        IncomingPackets.Enqueue((packetId, dataCopy));
+                        _logger.LogError(ex, "Error deserializing packet {Header} from session {SessionId}", 
+                            header, SessionId);
                     }
                 }
 

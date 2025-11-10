@@ -2,6 +2,9 @@ using System.Net;
 using System.Net.Sockets;
 using Core.Server;
 using Core.Server.Network;
+using Core.Server.Packets;
+using Core.Server.Packets.ClientPackets;
+using Core.Server.Packets.ServerPackets;
 using Microsoft.Extensions.Logging;
 
 namespace Login.Server;
@@ -9,10 +12,12 @@ namespace Login.Server;
 public class LoginServerImpl : GameLoopServer
 {
     private Socket? _listenerSocket;
+    private readonly LoginPacketHandler _packetHandler;
 
     public LoginServerImpl(ServerConfiguration configuration, ILogger<LoginServerImpl> logger)
         : base("LoginServer", configuration, logger)
     {
+        _packetHandler = new LoginPacketHandler(logger as ILogger);
     }
 
     protected override async Task StartTcpListenerAsync(CancellationToken cancellationToken)
@@ -66,66 +71,8 @@ public class LoginServerImpl : GameLoopServer
     {
         foreach (var session in SessionManager.GetAllSessions())
         {
-            while (session.IncomingPackets.TryDequeue(out var packet))
-            {
-                try
-                {
-                    await HandlePacketAsync(session, packet.PacketId, packet.Data);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "Error handling packet {PacketId} from session {SessionId}",
-                        packet.PacketId, session.SessionId);
-                }
-            }
+            await _packetHandler.ProcessSessionPacketsAsync(session);
         }
-    }
-
-    private async Task HandlePacketAsync(ClientSession session, ushort packetId, Memory<byte> data)
-    {
-        switch (packetId)
-        {
-            case PacketIds.LoginRequest:
-                await HandleLoginRequestAsync(session, data);
-                break;
-            default:
-                Logger.LogWarning("Unknown packet ID: 0x{PacketId:X4}", packetId);
-                break;
-        }
-    }
-
-    private async Task HandleLoginRequestAsync(ClientSession session, Memory<byte> data)
-    {
-        var reader = new PacketReader(data.Span);
-        var username = reader.ReadString();
-        var password = reader.ReadString();
-
-        Logger.LogInformation("Login request from session {SessionId}: {Username}", 
-            session.SessionId, username);
-
-        // TODO: Validate credentials against database
-        // For now, accept any login
-        var success = true;
-        var accountId = (long)new Random().Next(1000, 9999);
-        var sessionToken = Guid.NewGuid().ToString();
-
-        var responsePacket = PacketWriter.CreatePacket(PacketIds.LoginResponse, writer =>
-        {
-            writer.WriteByte((byte)(success ? 1 : 0));
-            if (success)
-            {
-                writer.WriteInt64(accountId);
-                writer.WriteString(sessionToken);
-            }
-            else
-            {
-                writer.WriteString("Invalid credentials");
-            }
-        });
-
-        session.EnqueuePacket(responsePacket);
-
-        await Task.CompletedTask;
     }
 
     protected override async Task UpdateGameLogicAsync(double deltaTime, CancellationToken cancellationToken)

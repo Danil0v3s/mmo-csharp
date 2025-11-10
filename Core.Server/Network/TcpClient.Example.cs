@@ -1,25 +1,34 @@
 using System.Net.Sockets;
+using Core.Server.Packets;
+using Core.Server.Packets.ClientPackets;
+using Core.Server.Packets.ServerPackets;
 
 namespace Core.Server.Network;
 
 /// <summary>
 /// Example TCP client implementation for connecting to game servers.
-/// This demonstrates the proper packet protocol usage.
+/// This demonstrates the proper packet protocol usage with the new packet system.
 /// </summary>
 public class GameClient : IDisposable
 {
     private readonly Socket _socket;
     private readonly PacketBuffer _buffer;
+    private readonly PacketSystem _packetSystem;
     private readonly CancellationTokenSource _cts;
     private Task? _receiveTask;
 
-    public event Action<ushort, Memory<byte>>? PacketReceived;
+    public event Action<IncomingPacket>? PacketReceived;
     public event Action? Disconnected;
 
     public GameClient()
     {
         _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        _buffer = new PacketBuffer();
+        
+        // Initialize packet system for client-side deserialization
+        _packetSystem = new PacketSystem();
+        _packetSystem.Initialize();
+        
+        _buffer = new PacketBuffer(_packetSystem.Registry);
         _cts = new CancellationTokenSource();
     }
 
@@ -34,10 +43,18 @@ public class GameClient : IDisposable
         await _socket.SendAsync(packet, SocketFlags.None);
     }
 
+    public async Task SendPacketAsync(OutgoingPacket packet)
+    {
+        var data = _packetSystem.SerializePacket(packet);
+        await _socket.SendAsync(data, SocketFlags.None);
+    }
+
     public async Task SendHeartbeatAsync()
     {
-        var packet = PacketWriter.CreateHeartbeatPacket();
-        await SendPacketAsync(packet);
+        // Heartbeat is a fixed-length packet with just the header
+        var buffer = new byte[2];
+        BitConverter.TryWriteBytes(buffer, (short)PacketHeader.CZ_HEARTBEAT);
+        await _socket.SendAsync(buffer, SocketFlags.None);
     }
 
     private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
@@ -58,13 +75,24 @@ public class GameClient : IDisposable
 
                 _buffer.Write(buffer.AsSpan(0, received));
 
-                while (_buffer.TryReadPacket(out var packetId, out var packetData))
+                while (_buffer.TryReadPacket(out var header, out var packetData))
                 {
-                    if (packetId != PacketIds.Heartbeat)
+                    // Skip heartbeat responses (if server sends them)
+                    if (header == PacketHeader.CZ_HEARTBEAT)
+                        continue;
+
+                    try
                     {
-                        var dataCopy = new byte[packetData.Length];
-                        packetData.CopyTo(dataCopy);
-                        PacketReceived?.Invoke(packetId, dataCopy);
+                        // Deserialize packet
+                        using var ms = new MemoryStream(packetData.ToArray());
+                        using var reader = new BinaryReader(ms);
+                        var packet = _packetSystem.Factory.CreatePacket(header, reader);
+                        
+                        PacketReceived?.Invoke(packet);
+                    }
+                    catch (Exception)
+                    {
+                        // Invalid packet, continue
                     }
                 }
 
@@ -93,7 +121,7 @@ public class GameClient : IDisposable
 }
 
 /// <summary>
-/// Example usage demonstrating login flow
+/// Example usage demonstrating login flow with new packet system
 /// </summary>
 public static class GameClientExample
 {
@@ -104,49 +132,52 @@ public static class GameClientExample
         // Connect to LoginServer
         await client.ConnectAsync("localhost", 5001);
 
-        // Handle received packets
-        client.PacketReceived += (packetId, data) =>
+        // Handle received packets using pattern matching
+        client.PacketReceived += packet =>
         {
-            if (packetId == PacketIds.LoginResponse)
+            // Note: AC_ACCEPT_LOGIN is an OutgoingPacket (server-side), so client receives it as raw packet
+            // In a real implementation, you would create client-side packet classes that inherit from IncomingPacket
+            // or handle server packets differently
+            Console.WriteLine($"Received packet: {packet.Header} ({packet.GetType().Name})");
+            
+            // Example of handling specific packets
+            if (packet.Header == PacketHeader.AC_ACCEPT_LOGIN)
             {
-                var reader = new PacketReader(data.Span);
-                var success = reader.ReadByte() == 1;
-                
-                if (success)
-                {
-                    var accountId = reader.ReadInt64();
-                    var sessionToken = reader.ReadString();
-                    Console.WriteLine($"Login successful! Account ID: {accountId}, Token: {sessionToken}");
-                }
-                else
-                {
-                    var errorMessage = reader.ReadString();
-                    Console.WriteLine($"Login failed: {errorMessage}");
-                }
+                Console.WriteLine("Login accepted by server");
             }
         };
 
-        // Send login request
-        var loginPacket = PacketWriter.CreatePacket(PacketIds.LoginRequest, writer =>
-        {
-            writer.WriteString("testuser");
-            writer.WriteString("password123");
-        });
+        // Send login request using strongly-typed packet
+        // Note: CA_LOGIN can be constructed but setting properties requires internal visibility
+        // In practice, client would create the packet and manually serialize it
+        using var ms = new MemoryStream();
+        using var writer = new BinaryWriter(ms);
         
-        await client.SendPacketAsync(loginPacket);
+        // Write CA_LOGIN manually
+        writer.Write((short)PacketHeader.CA_LOGIN); // Header
+        writer.Write((short)53); // Size
+        writer.WriteFixedString("testuser", 24); // Username
+        writer.WriteFixedString("password123", 24); // Password
+        writer.Write((byte)1); // ClientType
+        
+        var loginPacketData = ms.ToArray();
+        
+        await client.SendPacketAsync(loginPacketData);
 
         // Start heartbeat task
+        using var heartbeatCts = new CancellationTokenSource();
         var heartbeatTask = Task.Run(async () =>
         {
-            while (true)
+            while (!heartbeatCts.Token.IsCancellationRequested)
             {
-                await Task.Delay(15000);
+                await Task.Delay(15000, heartbeatCts.Token);
                 await client.SendHeartbeatAsync();
             }
-        });
+        }, heartbeatCts.Token);
 
         // Keep connection alive
         await Task.Delay(60000);
+        heartbeatCts.Cancel();
     }
 }
 
