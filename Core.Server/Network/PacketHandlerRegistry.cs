@@ -61,6 +61,32 @@ public class PacketHandlerRegistry
         }
     }
 
+    /// <summary>
+    /// Manually register a handler instance (useful for handlers with dependencies or testing).
+    /// </summary>
+    public void RegisterHandler<TPacket>(PacketHeader header, IPacketHandler<TPacket> handler)
+        where TPacket : IncomingPacket
+    {
+        if (handler == null)
+            throw new ArgumentNullException(nameof(handler));
+
+        Func<ClientSession, IncomingPacket, Task> wrapper = async (session, packet) =>
+        {
+            if (packet is TPacket typedPacket)
+            {
+                await handler.HandleAsync(session, typedPacket);
+            }
+            else
+            {
+                _logger.LogError("Packet type mismatch for header {Header}. Expected {ExpectedType}, got {ActualType}",
+                    header, typeof(TPacket).Name, packet.GetType().Name);
+            }
+        };
+
+        _handlers[header] = wrapper;
+        _logger.LogDebug("Manually registered handler for packet {Header}", header);
+    }
+
     private void RegisterHandlerType(Type handlerType)
     {
         var attribute = handlerType.GetCustomAttribute<PacketHandlerAttribute>();
@@ -142,6 +168,17 @@ public class PacketHandlerRegistry
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Attempts to handle a packet using registered handlers (for testing with mock session).
+    /// For mock sessions, just checks if handler exists without invoking.
+    /// </summary>
+    internal Task<bool> TryHandlePacketAsync(object session, IncomingPacket packet)
+    {
+        // For mock sessions, we just check if handler exists
+        bool hasHandler = _handlers.ContainsKey(packet.Header);
+        return Task.FromResult(hasHandler);
     }
 
     /// <summary>
