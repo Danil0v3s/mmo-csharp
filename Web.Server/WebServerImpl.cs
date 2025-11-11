@@ -6,10 +6,15 @@ namespace Web.Server;
 public class WebServerImpl : AbstractServer
 {
     private WebApplication? _app;
+    private readonly IServiceProvider _serviceProvider;
 
-    public WebServerImpl(ServerConfiguration configuration, ILogger<WebServerImpl> logger)
+    public WebServerImpl(
+        ServerConfiguration configuration,
+        ILogger<WebServerImpl> logger,
+        IServiceProvider serviceProvider)
         : base("WebServer", configuration, logger)
     {
+        _serviceProvider = serviceProvider;
     }
 
     protected override async Task OnStartingAsync(CancellationToken cancellationToken)

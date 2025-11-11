@@ -11,17 +11,13 @@ public class LoginServerImpl : GameLoopServer
     private Socket? _listenerSocket;
     private readonly PacketHandlerRegistry _handlerRegistry;
 
-    public LoginServerImpl(ServerConfiguration configuration, ILogger<LoginServerImpl> logger)
+    public LoginServerImpl(
+        ServerConfiguration configuration,
+        ILogger<LoginServerImpl> logger,
+        IServiceProvider serviceProvider)
         : base("LoginServer", configuration, logger)
     {
-        // Create a temporary service provider for handler resolution
-        // TODO: This will be replaced with proper DI container later
-        var services = new ServiceCollection()
-            .AddSingleton<ILogger>(logger)
-            .AddTransient<LoginHandler>()
-            .BuildServiceProvider();
-
-        _handlerRegistry = new PacketHandlerRegistry(services, logger);
+        _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
         _handlerRegistry.DiscoverAndRegisterFromCallingAssembly();
     }
 

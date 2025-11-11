@@ -14,19 +14,23 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
-var loggerFactory = LoggerFactory.Create(builder =>
-{
-    builder.AddSerilog();
-});
-
-var logger = loggerFactory.CreateLogger<WebServerImpl>();
+// Setup DI container using simple ServiceCollection
+var services = new ServiceCollection();
 
 // Create server configuration
 var serverConfig = new ServerConfiguration();
 configuration.GetSection("Server").Bind(serverConfig);
 
+// Configure services
+services.AddSingleton(serverConfig);
+services.AddLogging(builder => builder.AddSerilog());
+services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
+services.AddSingleton<WebServerImpl>();
+
+var serviceProvider = services.BuildServiceProvider();
+
 // Create and start server
-var server = new WebServerImpl(serverConfig, logger);
+var server = serviceProvider.GetRequiredService<WebServerImpl>();
 
 // Setup graceful shutdown
 var cts = new CancellationTokenSource();

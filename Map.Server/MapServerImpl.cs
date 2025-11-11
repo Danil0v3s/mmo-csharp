@@ -14,23 +14,17 @@ public class MapServerImpl : GameLoopServer
     private readonly ConcurrentDictionary<Guid, long> _sessionToCharacter;
     private readonly PacketHandlerRegistry _handlerRegistry;
 
-    public MapServerImpl(ServerConfiguration configuration, ILogger<MapServerImpl> logger)
+    public MapServerImpl(
+        ServerConfiguration configuration,
+        ILogger<MapServerImpl> logger,
+        IServiceProvider serviceProvider,
+        ConcurrentDictionary<long, PlayerEntity> players,
+        ConcurrentDictionary<Guid, long> sessionToCharacter)
         : base("MapServer", configuration, logger)
     {
-        _players = new ConcurrentDictionary<long, PlayerEntity>();
-        _sessionToCharacter = new ConcurrentDictionary<Guid, long>();
-
-        // Create a temporary service provider for handler resolution
-        // TODO: This will be replaced with proper DI container later
-        var services = new ServiceCollection()
-            .AddSingleton<ILogger>(logger)
-            .AddSingleton(_players)
-            .AddSingleton(_sessionToCharacter)
-            .AddSingleton(SessionManager)
-            .AddTransient<EnterMapHandler>()
-            .BuildServiceProvider();
-
-        _handlerRegistry = new PacketHandlerRegistry(services, logger);
+        _players = players;
+        _sessionToCharacter = sessionToCharacter;
+        _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
         _handlerRegistry.DiscoverAndRegisterFromCallingAssembly();
     }
 

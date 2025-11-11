@@ -1,4 +1,7 @@
-﻿using Core.Server;
+﻿using System.Collections.Concurrent;
+using System.Reflection;
+using Core.Server;
+using Core.Server.Network;
 using Map.Server;
 using Serilog;
 
@@ -14,27 +17,44 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
-var loggerFactory = LoggerFactory.Create(builder =>
-{
-    builder.AddSerilog();
-});
-
-var logger = loggerFactory.CreateLogger<MapServerImpl>();
+// Setup gRPC and DI container
+var builder = WebApplication.CreateBuilder(args);
 
 // Create server configuration
 var serverConfig = new ServerConfiguration();
 configuration.GetSection("Server").Bind(serverConfig);
 
-// Create and start server
-var server = new MapServerImpl(serverConfig, logger);
+// Configure services
+builder.Services.AddSingleton(serverConfig);
+builder.Services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
+builder.Services.AddSingleton<ConcurrentDictionary<long, PlayerEntity>>();
+builder.Services.AddSingleton<ConcurrentDictionary<Guid, long>>();
+builder.Services.AddSingleton<SessionManager>();
+builder.Services.AddSingleton<MapServerImpl>();
 
-// Setup gRPC server
-var builder = WebApplication.CreateBuilder(args);
+// Auto-register all packet handlers from assembly
+var handlerTypes = typeof(MapServerImpl).Assembly.GetTypes()
+    .Where(t => t.IsClass && !t.IsAbstract)
+    .Where(t => t.GetCustomAttribute<PacketHandlerAttribute>() != null);
+
+foreach (var handlerType in handlerTypes)
+{
+    builder.Services.AddTransient(handlerType);
+}
+
+// Configure logging
+builder.Logging.ClearProviders();
+builder.Logging.AddSerilog();
+
+// Configure gRPC
 builder.Services.AddGrpc();
 builder.WebHost.UseUrls($"http://0.0.0.0:{serverConfig.GrpcPort}");
 
 var app = builder.Build();
 app.MapGrpcService<MapGrpcService>();
+
+// Get server instance from DI
+var server = app.Services.GetRequiredService<MapServerImpl>();
 
 // Start gRPC server in background
 _ = Task.Run(async () => await app.RunAsync());

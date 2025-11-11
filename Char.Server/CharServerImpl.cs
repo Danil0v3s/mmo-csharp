@@ -11,17 +11,13 @@ public class CharServerImpl : GameLoopServer
     private Socket? _listenerSocket;
     private readonly PacketHandlerRegistry _handlerRegistry;
 
-    public CharServerImpl(ServerConfiguration configuration, ILogger<CharServerImpl> logger)
+    public CharServerImpl(
+        ServerConfiguration configuration,
+        ILogger<CharServerImpl> logger,
+        IServiceProvider serviceProvider)
         : base("CharServer", configuration, logger)
     {
-        // Create a temporary service provider for handler resolution
-        // TODO: This will be replaced with proper DI container later
-        var services = new ServiceCollection()
-            .AddSingleton<ILogger>(logger)
-            .AddTransient<CharacterListRequestHandler>()
-            .BuildServiceProvider();
-
-        _handlerRegistry = new PacketHandlerRegistry(services, logger);
+        _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
         _handlerRegistry.DiscoverAndRegisterFromCallingAssembly();
     }
 
