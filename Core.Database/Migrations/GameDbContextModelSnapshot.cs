@@ -25,18 +25,34 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.AccRegNumEntity", b =>
                 {
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("account_id");
 
                     b.Property<string>("Key")
-                        .HasColumnType("varchar(255)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasDefaultValue("")
+                        .HasColumnName("key");
 
                     b.Property<uint>("Index")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("index");
 
                     b.Property<long>("Value")
-                        .HasColumnType("bigint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("value");
 
                     b.HasKey("AccountId", "Key", "Index");
+
+                    b.HasIndex("AccountId")
+                        .HasDatabaseName("account_id");
 
                     b.ToTable("acc_reg_num", (string)null);
                 });
@@ -44,19 +60,36 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.AccRegStrEntity", b =>
                 {
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("account_id");
 
                     b.Property<string>("Key")
-                        .HasColumnType("varchar(255)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasDefaultValue("")
+                        .HasColumnName("key");
 
                     b.Property<uint>("Index")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("index");
 
                     b.Property<string>("Value")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(254)
+                        .HasColumnType("varchar(254)")
+                        .HasDefaultValue("0")
+                        .HasColumnName("value");
 
                     b.HasKey("AccountId", "Key", "Index");
+
+                    b.HasIndex("AccountId")
+                        .HasDatabaseName("account_id");
 
                     b.ToTable("acc_reg_str", (string)null);
                 });
@@ -64,48 +97,87 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.AchievementEntity", b =>
                 {
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<long>("Id")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
 
                     b.Property<DateTime?>("Completed")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("completed");
 
                     b.Property<uint>("Count1")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("count1");
 
                     b.Property<uint>("Count10")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("count10");
 
                     b.Property<uint>("Count2")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("count2");
 
                     b.Property<uint>("Count3")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("count3");
 
                     b.Property<uint>("Count4")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("count4");
 
                     b.Property<uint>("Count5")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("count5");
 
                     b.Property<uint>("Count6")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("count6");
 
                     b.Property<uint>("Count7")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("count7");
 
                     b.Property<uint>("Count8")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("count8");
 
                     b.Property<uint>("Count9")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("count9");
 
                     b.Property<DateTime?>("Rewarded")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("rewarded");
 
                     b.HasKey("CharId", "Id");
+
+                    b.HasIndex("CharId")
+                        .HasDatabaseName("char_id");
 
                     b.ToTable("achievement", (string)null);
                 });
@@ -114,32 +186,56 @@ namespace Core.Database.Migrations
                 {
                     b.Property<uint>("AtCommandId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("atcommand_id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<uint>("AtCommandId"));
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("account_id");
 
                     b.Property<DateTime>("AtCommandDate")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("atcommand_date");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<string>("CharName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(25)
+                        .HasColumnType("varchar(25)")
+                        .HasDefaultValue("")
+                        .HasColumnName("char_name");
 
                     b.Property<string>("Command")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasDefaultValue("")
+                        .HasColumnName("command");
 
                     b.Property<string>("Map")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(11)
+                        .HasColumnType("varchar(11)")
+                        .HasDefaultValue("")
+                        .HasColumnName("map");
 
                     b.HasKey("AtCommandId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("CharId");
 
                     b.ToTable("atcommandlog", (string)null);
                 });
@@ -148,114 +244,220 @@ namespace Core.Database.Migrations
                 {
                     b.Property<long>("AuctionId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("auction_id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("AuctionId"));
 
                     b.Property<byte>("Attribute")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("attribute");
 
                     b.Property<int>("BuyerId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("buyer_id");
 
                     b.Property<string>("BuyerName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)")
+                        .HasDefaultValue("")
+                        .HasColumnName("buyer_name");
 
                     b.Property<uint>("Buynow")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("buynow");
 
                     b.Property<uint>("Card0")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card0");
 
                     b.Property<uint>("Card1")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card1");
 
                     b.Property<uint>("Card2")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card2");
 
                     b.Property<uint>("Card3")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card3");
 
                     b.Property<byte>("EnchantGrade")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("enchantgrade");
 
                     b.Property<short>("Hours")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("hours");
 
                     b.Property<string>("ItemName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasDefaultValue("")
+                        .HasColumnName("item_name");
 
                     b.Property<uint>("NameId")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("nameid");
 
                     b.Property<short>("OptionId0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id0");
 
                     b.Property<short>("OptionId1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id1");
 
                     b.Property<short>("OptionId2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id2");
 
                     b.Property<short>("OptionId3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id3");
 
                     b.Property<short>("OptionId4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id4");
 
                     b.Property<sbyte>("OptionParm0")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm0");
 
                     b.Property<sbyte>("OptionParm1")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm1");
 
                     b.Property<sbyte>("OptionParm2")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm2");
 
                     b.Property<sbyte>("OptionParm3")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm3");
 
                     b.Property<sbyte>("OptionParm4")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm4");
 
                     b.Property<short>("OptionVal0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val0");
 
                     b.Property<short>("OptionVal1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val1");
 
                     b.Property<short>("OptionVal2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val2");
 
                     b.Property<short>("OptionVal3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val3");
 
                     b.Property<short>("OptionVal4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val4");
 
                     b.Property<uint>("Price")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("price");
 
                     b.Property<byte>("Refine")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("refine");
 
                     b.Property<int>("SellerId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("seller_id");
 
                     b.Property<string>("SellerName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)")
+                        .HasDefaultValue("")
+                        .HasColumnName("seller_name");
 
                     b.Property<uint>("Timestamp")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("timestamp");
 
                     b.Property<short>("Type")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("type");
 
                     b.Property<ulong>("UniqueId")
-                        .HasColumnType("bigint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasDefaultValue(0ul)
+                        .HasColumnName("unique_id");
 
                     b.HasKey("AuctionId");
 
@@ -265,13 +467,19 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.BarterEntity", b =>
                 {
                     b.Property<string>("Name")
-                        .HasColumnType("varchar(255)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasDefaultValue("")
+                        .HasColumnName("name");
 
                     b.Property<ushort>("Index")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("index");
 
                     b.Property<ushort>("Amount")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("amount");
 
                     b.HasKey("Name", "Index");
 
@@ -281,33 +489,40 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.BonusScriptEntity", b =>
                 {
                     b.Property<int>("CharId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("CharId"));
-
-                    b.Property<int?>("CharacterCharId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     b.Property<ushort>("Flag")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("flag");
 
                     b.Property<short>("Icon")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)-1)
+                        .HasColumnName("icon");
 
                     b.Property<string>("Script")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("script");
 
                     b.Property<long>("Tick")
-                        .HasColumnType("bigint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("tick");
 
                     b.Property<byte>("Type")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("type");
 
-                    b.HasKey("CharId");
-
-                    b.HasIndex("CharacterCharId");
+                    b.HasIndex("CharId")
+                        .HasDatabaseName("char_id");
 
                     b.ToTable("bonus_script", (string)null);
                 });
@@ -316,28 +531,48 @@ namespace Core.Database.Migrations
                 {
                     b.Property<uint>("BranchId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("branch_id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<uint>("BranchId"));
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("account_id");
 
                     b.Property<DateTime>("BranchDate")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("branch_date");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<string>("CharName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(25)
+                        .HasColumnType("varchar(25)")
+                        .HasDefaultValue("")
+                        .HasColumnName("char_name");
 
                     b.Property<string>("Map")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(11)
+                        .HasColumnType("varchar(11)")
+                        .HasDefaultValue("")
+                        .HasColumnName("map");
 
                     b.HasKey("BranchId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("CharId");
 
                     b.ToTable("branchlog", (string)null);
                 });
@@ -346,51 +581,78 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("account_id");
 
                     b.Property<sbyte>("Autotrade")
-                        .HasColumnType("tinyint");
+                        .HasColumnType("tinyint")
+                        .HasColumnName("autotrade");
 
                     b.Property<string>("BodyDirection")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1)
+                        .HasColumnType("varchar(1)")
+                        .HasDefaultValue("4")
+                        .HasColumnName("body_direction");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     b.Property<string>("HeadDirection")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1)
+                        .HasColumnType("varchar(1)")
+                        .HasDefaultValue("0")
+                        .HasColumnName("head_direction");
 
                     b.Property<uint>("Limit")
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("limit");
 
                     b.Property<string>("Map")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("map");
 
                     b.Property<string>("Sex")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1)
+                        .HasColumnType("varchar(1)")
+                        .HasDefaultValue("M")
+                        .HasColumnName("sex");
 
                     b.Property<string>("Sit")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1)
+                        .HasColumnType("varchar(1)")
+                        .HasDefaultValue("1")
+                        .HasColumnName("sit");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)")
+                        .HasColumnName("title");
 
                     b.Property<ushort>("X")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("x");
 
                     b.Property<ushort>("Y")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("y");
 
                     b.HasKey("Id");
 
@@ -400,19 +662,24 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.BuyingStoreItemEntity", b =>
                 {
                     b.Property<int>("BuyingStoreId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("buyingstore_id");
 
                     b.Property<ushort>("Index")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("index");
 
                     b.Property<ushort>("Amount")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("amount");
 
                     b.Property<uint>("ItemId")
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("item_id");
 
                     b.Property<uint>("Price")
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("price");
 
                     b.HasKey("BuyingStoreId", "Index");
 
@@ -423,104 +690,198 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("Amount")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("amount");
 
                     b.Property<sbyte>("Attribute")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("attribute");
 
                     b.Property<byte>("Bound")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("bound");
 
                     b.Property<uint>("Card0")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card0");
 
                     b.Property<uint>("Card1")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card1");
 
                     b.Property<uint>("Card2")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card2");
 
                     b.Property<uint>("Card3")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card3");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<int?>("CharacterCharId")
                         .HasColumnType("int");
 
                     b.Property<byte>("EnchantGrade")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("enchantgrade");
 
                     b.Property<uint>("Equip")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("equip");
 
                     b.Property<uint>("ExpireTime")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("expire_time");
 
                     b.Property<short>("Identify")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("identify");
 
                     b.Property<uint>("NameId")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("nameid");
 
                     b.Property<short>("OptionId0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id0");
 
                     b.Property<short>("OptionId1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id1");
 
                     b.Property<short>("OptionId2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id2");
 
                     b.Property<short>("OptionId3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id3");
 
                     b.Property<short>("OptionId4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id4");
 
                     b.Property<sbyte>("OptionParm0")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm0");
 
                     b.Property<sbyte>("OptionParm1")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm1");
 
                     b.Property<sbyte>("OptionParm2")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm2");
 
                     b.Property<sbyte>("OptionParm3")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm3");
 
                     b.Property<sbyte>("OptionParm4")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm4");
 
                     b.Property<short>("OptionVal0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val0");
 
                     b.Property<short>("OptionVal1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val1");
 
                     b.Property<short>("OptionVal2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val2");
 
                     b.Property<short>("OptionVal3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val3");
 
                     b.Property<short>("OptionVal4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val4");
 
                     b.Property<byte>("Refine")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("refine");
 
                     b.Property<ulong>("UniqueId")
-                        .HasColumnType("bigint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasDefaultValue(0ul)
+                        .HasColumnName("unique_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CharId")
+                        .HasDatabaseName("char_id");
 
                     b.HasIndex("CharacterCharId");
 
@@ -531,32 +892,53 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("Amount")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("amount");
 
                     b.Property<string>("CashType")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("longtext")
+                        .HasDefaultValue("O")
+                        .HasColumnName("cash_type");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<string>("Map")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(11)
+                        .HasColumnType("varchar(11)")
+                        .HasDefaultValue("")
+                        .HasColumnName("map");
 
                     b.Property<DateTime>("Time")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("time");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("varchar(255)")
+                        .HasDefaultValue("S")
+                        .HasColumnName("type");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Type")
+                        .HasDatabaseName("type");
 
                     b.ToTable("cashlog", (string)null);
                 });
@@ -564,17 +946,25 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.CharConfigEntity", b =>
                 {
                     b.Property<string>("WorldName")
-                        .HasColumnType("varchar(255)");
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("world_name");
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("account_id");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     b.Property<string>("Data")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)")
+                        .HasDefaultValue("")
+                        .HasColumnName("data");
 
                     b.HasKey("WorldName", "AccountId", "CharId");
 
@@ -955,52 +1345,95 @@ namespace Core.Database.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("account_id");
 
                     b.Property<uint>("Agi")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("agi");
 
                     b.Property<string>("CharMsg")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasDefaultValue("char select")
+                        .HasColumnName("char_msg");
 
                     b.Property<byte>("CharNum")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("char_num");
 
                     b.Property<uint>("Dex")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("dex");
 
                     b.Property<sbyte>("Hair")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("hair");
 
                     b.Property<int>("HairColor")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("hair_color");
 
                     b.Property<uint>("Int")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("int");
 
                     b.Property<uint>("Luk")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("luk");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(23)
+                        .HasColumnType("varchar(23)")
+                        .HasDefaultValue("")
+                        .HasColumnName("name");
 
                     b.Property<uint>("Str")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("str");
 
                     b.Property<DateTime>("Time")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("time");
 
                     b.Property<uint>("Vit")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("vit");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AccountId")
+                        .HasDatabaseName("account_id");
 
                     b.ToTable("charlog", (string)null);
                 });
@@ -1008,18 +1441,34 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.CharRegNumEntity", b =>
                 {
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<string>("Key")
-                        .HasColumnType("varchar(255)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasDefaultValue("")
+                        .HasColumnName("key");
 
                     b.Property<uint>("Index")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("index");
 
                     b.Property<long>("Value")
-                        .HasColumnType("bigint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("value");
 
                     b.HasKey("CharId", "Key", "Index");
+
+                    b.HasIndex("CharId")
+                        .HasDatabaseName("char_id");
 
                     b.ToTable("char_reg_num", (string)null);
                 });
@@ -1027,19 +1476,36 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.CharRegStrEntity", b =>
                 {
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<string>("Key")
-                        .HasColumnType("varchar(255)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasDefaultValue("")
+                        .HasColumnName("key");
 
                     b.Property<uint>("Index")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("index");
 
                     b.Property<string>("Value")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(254)
+                        .HasColumnType("varchar(254)")
+                        .HasDefaultValue("0")
+                        .HasColumnName("value");
 
                     b.HasKey("CharId", "Key", "Index");
+
+                    b.HasIndex("CharId")
+                        .HasDatabaseName("char_id");
 
                     b.ToTable("char_reg_str", (string)null);
                 });
@@ -1048,45 +1514,81 @@ namespace Core.Database.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("DstCharName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(25)
+                        .HasColumnType("varchar(25)")
+                        .HasDefaultValue("")
+                        .HasColumnName("dst_charname");
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)")
+                        .HasDefaultValue("")
+                        .HasColumnName("message");
 
                     b.Property<int>("SrcAccountId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("src_accountid");
 
                     b.Property<int>("SrcCharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("src_charid");
 
                     b.Property<string>("SrcMap")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(11)
+                        .HasColumnType("varchar(11)")
+                        .HasDefaultValue("")
+                        .HasColumnName("src_map");
 
                     b.Property<short>("SrcMapX")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("src_map_x");
 
                     b.Property<short>("SrcMapY")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("src_map_y");
 
                     b.Property<DateTime>("Time")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("time");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("longtext")
+                        .HasDefaultValue("O")
+                        .HasColumnName("type");
 
                     b.Property<int>("TypeId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("type_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SrcAccountId");
+
+                    b.HasIndex("SrcCharId");
 
                     b.ToTable("chatlog", (string)null);
                 });
@@ -1096,10 +1598,6 @@ namespace Core.Database.Migrations
                     b.Property<int>("ClanId")
                         .HasColumnType("int")
                         .HasColumnName("clan_id");
-
-                    b.Property<int>("Opposition")
-                        .HasColumnType("int")
-                        .HasColumnName("opposition");
 
                     b.Property<int>("AllianceId")
                         .HasColumnType("int")
@@ -1111,7 +1609,11 @@ namespace Core.Database.Migrations
                         .HasColumnType("varchar(24)")
                         .HasColumnName("name");
 
-                    b.HasKey("ClanId", "Opposition", "AllianceId");
+                    b.Property<int>("Opposition")
+                        .HasColumnType("int")
+                        .HasColumnName("opposition");
+
+                    b.HasKey("ClanId", "AllianceId");
 
                     b.HasIndex("AllianceId")
                         .HasDatabaseName("alliance_id");
@@ -1130,24 +1632,32 @@ namespace Core.Database.Migrations
 
                     b.Property<string>("MapName")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(24)
                         .HasColumnType("varchar(24)")
+                        .HasDefaultValue("")
                         .HasColumnName("mapname");
 
                     b.Property<string>("Master")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(24)
                         .HasColumnType("varchar(24)")
+                        .HasDefaultValue("")
                         .HasColumnName("master");
 
                     b.Property<ushort>("MaxMember")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
                         .HasColumnName("max_member");
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(24)
                         .HasColumnType("varchar(24)")
+                        .HasDefaultValue("")
                         .HasColumnName("name");
 
                     b.HasKey("ClanId");
@@ -1159,21 +1669,29 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("Index")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Index"));
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("index");
 
                     b.Property<ushort>("Amount")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)1)
+                        .HasColumnName("amount");
 
                     b.Property<ushort>("Flag")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)1)
+                        .HasColumnName("flag");
 
                     b.Property<uint>("ItemId")
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("item_id");
 
                     b.Property<ushort>("Level")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("level");
 
                     b.HasKey("Index");
 
@@ -1184,57 +1702,104 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("EleId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("ele_id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("EleId"));
 
                     b.Property<ushort>("Aspd")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("aspd");
 
                     b.Property<uint>("Atk1")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("atk1");
 
                     b.Property<uint>("Atk2")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("atk2");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     b.Property<uint>("Class")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("class");
 
                     b.Property<ushort>("Def")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("def");
 
                     b.Property<ushort>("Flee")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("flee");
 
                     b.Property<ushort>("Hit")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("hit");
 
                     b.Property<uint>("Hp")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("hp");
 
                     b.Property<long>("LifeTime")
-                        .HasColumnType("bigint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("life_time");
 
                     b.Property<uint>("Matk")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("matk");
 
                     b.Property<uint>("MaxHp")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("max_hp");
 
                     b.Property<uint>("MaxSp")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("max_sp");
 
                     b.Property<ushort>("Mdef")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("mdef");
 
                     b.Property<uint>("Mode")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(1u)
+                        .HasColumnName("mode");
 
                     b.Property<uint>("Sp")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("sp");
 
                     b.HasKey("EleId");
 
@@ -1245,41 +1810,53 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     b.Property<uint>("Intimacy")
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("intimacy");
 
                     b.Property<uint>("ItemId")
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("item_id");
 
                     b.Property<string>("Map")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(11)
+                        .HasColumnType("varchar(11)")
+                        .HasColumnName("map");
 
                     b.Property<short>("TargetClass")
-                        .HasColumnType("smallint");
+                        .HasColumnType("smallint")
+                        .HasColumnName("target_class");
 
                     b.Property<int>("TargetId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("target_id");
 
                     b.Property<DateTime>("Time")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("time");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("type");
 
                     b.Property<ushort>("X")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("x");
 
                     b.Property<ushort>("Y")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("y");
 
                     b.HasKey("Id");
 
@@ -1289,10 +1866,16 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.FriendEntity", b =>
                 {
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<int>("FriendId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("friend_id");
 
                     b.Property<int?>("CharacterCharId")
                         .HasColumnType("int");
@@ -1307,18 +1890,34 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.GlobalAccRegNumEntity", b =>
                 {
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("account_id");
 
                     b.Property<string>("Key")
-                        .HasColumnType("varchar(255)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasDefaultValue("")
+                        .HasColumnName("key");
 
                     b.Property<uint>("Index")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("index");
 
                     b.Property<long>("Value")
-                        .HasColumnType("bigint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("value");
 
                     b.HasKey("AccountId", "Key", "Index");
+
+                    b.HasIndex("AccountId")
+                        .HasDatabaseName("account_id");
 
                     b.ToTable("global_acc_reg_num", (string)null);
                 });
@@ -1326,19 +1925,36 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.GlobalAccRegStrEntity", b =>
                 {
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("account_id");
 
                     b.Property<string>("Key")
-                        .HasColumnType("varchar(255)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasDefaultValue("")
+                        .HasColumnName("key");
 
                     b.Property<uint>("Index")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("index");
 
                     b.Property<string>("Value")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(254)
+                        .HasColumnType("varchar(254)")
+                        .HasDefaultValue("0")
+                        .HasColumnName("value");
 
                     b.HasKey("AccountId", "Key", "Index");
+
+                    b.HasIndex("AccountId")
+                        .HasDatabaseName("account_id");
 
                     b.ToTable("global_acc_reg_str", (string)null);
                 });
@@ -1346,19 +1962,35 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.GuildAllianceEntity", b =>
                 {
                     b.Property<int>("GuildId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("guild_id");
 
                     b.Property<int>("AllianceId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("alliance_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)")
+                        .HasDefaultValue("")
+                        .HasColumnName("name");
 
                     b.Property<int>("Opposition")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("opposition");
 
                     b.HasKey("GuildId", "AllianceId");
+
+                    b.HasIndex("AllianceId")
+                        .HasDatabaseName("alliance_id");
 
                     b.ToTable("guild_alliance", (string)null);
                 });
@@ -1367,62 +1999,116 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("CastleId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("CastleId"));
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("castle_id");
 
                     b.Property<uint>("CreateTime")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("createTime");
 
                     b.Property<uint>("Defense")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("defense");
 
                     b.Property<uint>("Economy")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("economy");
 
                     b.Property<int>("GuildId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("guild_id");
 
                     b.Property<uint>("NextTime")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("nextTime");
 
                     b.Property<uint>("PayTime")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("payTime");
 
                     b.Property<uint>("TriggerD")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("triggerD");
 
                     b.Property<uint>("TriggerE")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("triggerE");
 
                     b.Property<uint>("VisibleC")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("visibleC");
 
                     b.Property<uint>("VisibleG0")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("visibleG0");
 
                     b.Property<uint>("VisibleG1")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("visibleG1");
 
                     b.Property<uint>("VisibleG2")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("visibleG2");
 
                     b.Property<uint>("VisibleG3")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("visibleG3");
 
                     b.Property<uint>("VisibleG4")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("visibleG4");
 
                     b.Property<uint>("VisibleG5")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("visibleG5");
 
                     b.Property<uint>("VisibleG6")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("visibleG6");
 
                     b.Property<uint>("VisibleG7")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("visibleG7");
 
                     b.HasKey("CastleId");
+
+                    b.HasIndex("GuildId")
+                        .HasDatabaseName("guild_id");
 
                     b.ToTable("guild_castle", (string)null);
                 });
@@ -1430,20 +2116,29 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.GuildEmblemEntity", b =>
                 {
                     b.Property<string>("WorldName")
-                        .HasColumnType("varchar(255)");
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("world_name");
 
                     b.Property<int>("GuildId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("guild_id");
 
                     b.Property<byte[]>("FileData")
-                        .HasColumnType("longblob");
+                        .HasColumnType("longblob")
+                        .HasColumnName("file_data");
 
                     b.Property<string>("FileType")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("file_type");
 
                     b.Property<uint>("Version")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("version");
 
                     b.HasKey("WorldName", "GuildId");
 
@@ -1454,63 +2149,114 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("GuildId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("GuildId"));
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("guild_id");
 
                     b.Property<ushort>("AverageLv")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)1)
+                        .HasColumnName("average_lv");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<byte>("ConnectMember")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("connect_member");
 
                     b.Property<byte[]>("EmblemData")
-                        .HasColumnType("longblob");
+                        .HasColumnType("longblob")
+                        .HasColumnName("emblem_data");
 
                     b.Property<uint>("EmblemId")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("emblem_id");
 
                     b.Property<uint>("EmblemLen")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("emblem_len");
 
                     b.Property<ulong>("Exp")
-                        .HasColumnType("bigint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasDefaultValue(0ul)
+                        .HasColumnName("exp");
 
                     b.Property<byte>("GuildLv")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("guild_lv");
 
                     b.Property<DateTime?>("LastMasterChange")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("last_master_change");
 
                     b.Property<string>("Master")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)")
+                        .HasDefaultValue("")
+                        .HasColumnName("master");
 
                     b.Property<byte>("MaxMember")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("max_member");
 
                     b.Property<string>("Mes1")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)")
+                        .HasDefaultValue("")
+                        .HasColumnName("mes1");
 
                     b.Property<string>("Mes2")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)")
+                        .HasDefaultValue("")
+                        .HasColumnName("mes2");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)")
+                        .HasDefaultValue("")
+                        .HasColumnName("name");
 
                     b.Property<ulong>("NextExp")
-                        .HasColumnType("bigint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasDefaultValue(0ul)
+                        .HasColumnName("next_exp");
 
                     b.Property<byte>("SkillPoint")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("skill_point");
 
                     b.HasKey("GuildId");
+
+                    b.HasIndex("CharId")
+                        .HasDatabaseName("char_id");
 
                     b.ToTable("guild", (string)null);
                 });
@@ -1518,20 +2264,37 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.GuildExpulsionEntity", b =>
                 {
                     b.Property<int>("GuildId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("guild_id");
 
                     b.Property<string>("Name")
-                        .HasColumnType("varchar(255)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)")
+                        .HasDefaultValue("")
+                        .HasColumnName("name");
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("account_id");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<string>("Mes")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)")
+                        .HasDefaultValue("")
+                        .HasColumnName("mes");
 
                     b.HasKey("GuildId", "Name");
 
@@ -1541,18 +2304,33 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.GuildMemberEntity", b =>
                 {
                     b.Property<int>("GuildId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("guild_id");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<ulong>("Exp")
-                        .HasColumnType("bigint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasDefaultValue(0ul)
+                        .HasColumnName("exp");
 
                     b.Property<byte>("Position")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("position");
 
                     b.HasKey("GuildId", "CharId");
+
+                    b.HasIndex("CharId")
+                        .HasDatabaseName("char_id");
 
                     b.ToTable("guild_member", (string)null);
                 });
@@ -1560,20 +2338,36 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.GuildPositionEntity", b =>
                 {
                     b.Property<int>("GuildId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("guild_id");
 
                     b.Property<byte>("Position")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("position");
 
                     b.Property<byte>("ExpMode")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("exp_mode");
 
                     b.Property<ushort>("Mode")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("mode");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)")
+                        .HasDefaultValue("")
+                        .HasColumnName("name");
 
                     b.HasKey("GuildId", "Position");
 
@@ -1583,13 +2377,22 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.GuildSkillEntity", b =>
                 {
                     b.Property<int>("GuildId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("guild_id");
 
                     b.Property<ushort>("Id")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("id");
 
                     b.Property<byte>("Lv")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("lv");
 
                     b.HasKey("GuildId", "Id");
 
@@ -1600,103 +2403,195 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<uint>("Amount")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("amount");
 
                     b.Property<byte>("Attribute")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("attribute");
 
                     b.Property<byte>("Bound")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("bound");
 
                     b.Property<uint>("Card0")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card0");
 
                     b.Property<uint>("Card1")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card1");
 
                     b.Property<uint>("Card2")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card2");
 
                     b.Property<uint>("Card3")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card3");
 
                     b.Property<byte>("EnchantGrade")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("enchantgrade");
 
                     b.Property<uint>("Equip")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("equip");
 
                     b.Property<uint>("ExpireTime")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("expire_time");
 
                     b.Property<int>("GuildId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("guild_id");
 
                     b.Property<ushort>("Identify")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("identify");
 
                     b.Property<uint>("NameId")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("nameid");
 
                     b.Property<short>("OptionId0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id0");
 
                     b.Property<short>("OptionId1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id1");
 
                     b.Property<short>("OptionId2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id2");
 
                     b.Property<short>("OptionId3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id3");
 
                     b.Property<short>("OptionId4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id4");
 
                     b.Property<sbyte>("OptionParm0")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm0");
 
                     b.Property<sbyte>("OptionParm1")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm1");
 
                     b.Property<sbyte>("OptionParm2")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm2");
 
                     b.Property<sbyte>("OptionParm3")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm3");
 
                     b.Property<sbyte>("OptionParm4")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm4");
 
                     b.Property<short>("OptionVal0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val0");
 
                     b.Property<short>("OptionVal1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val1");
 
                     b.Property<short>("OptionVal2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val2");
 
                     b.Property<short>("OptionVal3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val3");
 
                     b.Property<short>("OptionVal4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val4");
 
                     b.Property<byte>("Refine")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("refine");
 
                     b.Property<ulong>("UniqueId")
-                        .HasColumnType("bigint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasDefaultValue(0ul)
+                        .HasColumnName("unique_id");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("GuildId");
+                    b.HasIndex("GuildId")
+                        .HasDatabaseName("guild_id");
 
                     b.ToTable("guild_storage", (string)null);
                 });
@@ -1705,108 +2600,206 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("Amount")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1)
+                        .HasColumnName("amount");
 
                     b.Property<byte>("Attribute")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("attribute");
 
                     b.Property<byte>("Bound")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("bound");
 
                     b.Property<uint>("Card0")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card0");
 
                     b.Property<uint>("Card1")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card1");
 
                     b.Property<uint>("Card2")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card2");
 
                     b.Property<uint>("Card3")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card3");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<byte>("EnchantGrade")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("enchantgrade");
 
                     b.Property<uint>("ExpireTime")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("expire_time");
 
                     b.Property<int>("GuildId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("guild_id");
 
                     b.Property<short>("Identify")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("identify");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)")
+                        .HasDefaultValue("")
+                        .HasColumnName("name");
 
                     b.Property<uint>("NameId")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("nameid");
 
                     b.Property<short>("OptionId0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id0");
 
                     b.Property<short>("OptionId1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id1");
 
                     b.Property<short>("OptionId2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id2");
 
                     b.Property<short>("OptionId3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id3");
 
                     b.Property<short>("OptionId4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id4");
 
                     b.Property<sbyte>("OptionParm0")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm0");
 
                     b.Property<sbyte>("OptionParm1")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm1");
 
                     b.Property<sbyte>("OptionParm2")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm2");
 
                     b.Property<sbyte>("OptionParm3")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm3");
 
                     b.Property<sbyte>("OptionParm4")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm4");
 
                     b.Property<short>("OptionVal0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val0");
 
                     b.Property<short>("OptionVal1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val1");
 
                     b.Property<short>("OptionVal2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val2");
 
                     b.Property<short>("OptionVal3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val3");
 
                     b.Property<short>("OptionVal4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val4");
 
                     b.Property<byte>("Refine")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("refine");
 
                     b.Property<DateTime>("Time")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("time");
 
                     b.Property<ulong>("UniqueId")
-                        .HasColumnType("bigint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasDefaultValue(0ul)
+                        .HasColumnName("unique_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("GuildId");
 
                     b.ToTable("guild_storage_log", (string)null);
                 });
@@ -1815,79 +2808,148 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("HomunId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("homun_id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("HomunId"));
 
                     b.Property<ushort>("Agi")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("agi");
 
                     b.Property<short>("Alive")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)1)
+                        .HasColumnName("alive");
 
                     b.Property<short>("Autofeed")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("autofeed");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     b.Property<uint>("Class")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("class");
 
                     b.Property<ushort>("Dex")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("dex");
 
                     b.Property<ulong>("Exp")
-                        .HasColumnType("bigint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasDefaultValue(0ul)
+                        .HasColumnName("exp");
 
                     b.Property<uint>("Hp")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("hp");
 
                     b.Property<short>("Hunger")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("hunger");
 
                     b.Property<ushort>("Int")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("int");
 
                     b.Property<int>("Intimacy")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("intimacy");
 
                     b.Property<short>("Level")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("level");
 
                     b.Property<ushort>("Luk")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("luk");
 
                     b.Property<uint>("MaxHp")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("max_hp");
 
                     b.Property<uint>("MaxSp")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("max_sp");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)")
+                        .HasDefaultValue("")
+                        .HasColumnName("name");
 
                     b.Property<int>("PrevClass")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("prev_class");
 
                     b.Property<short>("RenameFlag")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("rename_flag");
 
                     b.Property<ushort>("SkillPoint")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("skill_point");
 
                     b.Property<uint>("Sp")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("sp");
 
                     b.Property<ushort>("Str")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("str");
 
                     b.Property<short>("Vaporize")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("vaporize");
 
                     b.Property<ushort>("Vit")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("vit");
 
                     b.HasKey("HomunId");
 
@@ -1897,22 +2959,33 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.HotkeyEntity", b =>
                 {
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     b.Property<byte>("Hotkey")
-                        .HasColumnType("tinyint unsigned");
+                        .HasColumnType("tinyint unsigned")
+                        .HasColumnName("hotkey");
 
                     b.Property<int?>("CharacterCharId")
                         .HasColumnType("int");
 
                     b.Property<uint>("ItemSkillId")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("itemskill_id");
 
                     b.Property<byte>("SkillLvl")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("skill_lvl");
 
                     b.Property<byte>("Type")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("type");
 
                     b.HasKey("CharId", "Hotkey");
 
@@ -1925,18 +2998,27 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Log")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasDefaultValue("")
+                        .HasColumnName("log");
 
                     b.Property<DateTime>("Time")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("time");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Time")
+                        .HasDatabaseName("time");
 
                     b.ToTable("interlog", (string)null);
                 });
@@ -1945,110 +3027,210 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<uint>("Amount")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("amount");
 
                     b.Property<byte>("Attribute")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("attribute");
 
                     b.Property<byte>("Bound")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("bound");
 
                     b.Property<uint>("Card0")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card0");
 
                     b.Property<uint>("Card1")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card1");
 
                     b.Property<uint>("Card2")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card2");
 
                     b.Property<uint>("Card3")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card3");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<int?>("CharacterCharId")
                         .HasColumnType("int");
 
                     b.Property<byte>("EnchantGrade")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("enchantgrade");
 
                     b.Property<uint>("Equip")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("equip");
 
                     b.Property<uint>("EquipSwitch")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("equip_switch");
 
                     b.Property<uint>("ExpireTime")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("expire_time");
 
                     b.Property<byte>("Favorite")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("favorite");
 
                     b.Property<short>("Identify")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("identify");
 
                     b.Property<uint>("NameId")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("nameid");
 
                     b.Property<short>("OptionId0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id0");
 
                     b.Property<short>("OptionId1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id1");
 
                     b.Property<short>("OptionId2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id2");
 
                     b.Property<short>("OptionId3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id3");
 
                     b.Property<short>("OptionId4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id4");
 
                     b.Property<sbyte>("OptionParm0")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm0");
 
                     b.Property<sbyte>("OptionParm1")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm1");
 
                     b.Property<sbyte>("OptionParm2")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm2");
 
                     b.Property<sbyte>("OptionParm3")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm3");
 
                     b.Property<sbyte>("OptionParm4")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm4");
 
                     b.Property<short>("OptionVal0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val0");
 
                     b.Property<short>("OptionVal1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val1");
 
                     b.Property<short>("OptionVal2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val2");
 
                     b.Property<short>("OptionVal3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val3");
 
                     b.Property<short>("OptionVal4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val4");
 
                     b.Property<byte>("Refine")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("refine");
 
                     b.Property<ulong>("UniqueId")
-                        .HasColumnType("bigint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasDefaultValue(0ul)
+                        .HasColumnName("unique_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CharId")
+                        .HasDatabaseName("char_id");
 
                     b.HasIndex("CharacterCharId");
 
@@ -2058,17 +3240,27 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.IpBanListEntity", b =>
                 {
                     b.Property<string>("List")
-                        .HasColumnType("varchar(255)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(15)
+                        .HasColumnType("varchar(15)")
+                        .HasDefaultValue("")
+                        .HasColumnName("list");
 
                     b.Property<DateTime>("BTime")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("btime");
 
                     b.Property<DateTime>("RTime")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("rtime");
 
                     b.Property<string>("Reason")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasDefaultValue("")
+                        .HasColumnName("reason");
 
                     b.HasKey("List", "BTime");
 
@@ -2557,7 +3749,9 @@ namespace Core.Database.Migrations
                         .HasColumnName("birthdate");
 
                     b.Property<byte>("CharacterSlots")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
                         .HasColumnName("character_slots");
 
                     b.Property<string>("Email")
@@ -2567,17 +3761,23 @@ namespace Core.Database.Migrations
                         .HasColumnName("email");
 
                     b.Property<uint>("ExpirationTime")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
                         .HasColumnName("expiration_time");
 
                     b.Property<byte>("GroupId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
                         .HasColumnName("group_id");
 
                     b.Property<string>("LastIp")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)")
+                        .HasDefaultValue("0")
                         .HasColumnName("last_ip");
 
                     b.Property<DateTime?>("LastLogin")
@@ -2585,21 +3785,29 @@ namespace Core.Database.Migrations
                         .HasColumnName("lastlogin");
 
                     b.Property<uint>("LoginCount")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
                         .HasColumnName("logincount");
 
                     b.Property<byte>("OldGroup")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
                         .HasColumnName("old_group");
 
                     b.Property<string>("Pincode")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(4)
                         .HasColumnType("varchar(4)")
+                        .HasDefaultValue("0")
                         .HasColumnName("pincode");
 
                     b.Property<uint>("PincodeChange")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
                         .HasColumnName("pincode_change");
 
                     b.Property<string>("Sex")
@@ -2609,11 +3817,15 @@ namespace Core.Database.Migrations
                         .HasColumnName("sex");
 
                     b.Property<uint>("State")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
                         .HasColumnName("state");
 
                     b.Property<uint>("UnbanTime")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
                         .HasColumnName("unban_time");
 
                     b.Property<string>("UserId")
@@ -2629,16 +3841,22 @@ namespace Core.Database.Migrations
                         .HasColumnName("user_pass");
 
                     b.Property<uint>("VipTime")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
                         .HasColumnName("vip_time");
 
                     b.Property<string>("WebAuthToken")
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(17)
                         .HasColumnType("varchar(17)")
+                        .HasDefaultValue("0")
                         .HasColumnName("web_auth_token");
 
                     b.Property<short>("WebAuthTokenEnabled")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
                         .HasColumnName("web_auth_token_enabled");
 
                     b.HasKey("AccountId");
@@ -2655,23 +3873,41 @@ namespace Core.Database.Migrations
 
             modelBuilder.Entity("Core.Database.Entities.LoginLogEntity", b =>
                 {
-                    b.Property<DateTime>("Time")
-                        .HasColumnType("datetime(6)");
-
                     b.Property<string>("Ip")
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("User")
-                        .HasColumnType("varchar(255)");
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(15)
+                        .HasColumnType("varchar(15)")
+                        .HasDefaultValue("")
+                        .HasColumnName("ip");
 
                     b.Property<string>("Log")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasDefaultValue("")
+                        .HasColumnName("log");
 
                     b.Property<sbyte>("RCode")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("rcode");
 
-                    b.HasKey("Time", "Ip", "User");
+                    b.Property<DateTime>("Time")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("time");
+
+                    b.Property<string>("User")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(23)
+                        .HasColumnType("varchar(23)")
+                        .HasDefaultValue("")
+                        .HasColumnName("user");
+
+                    b.HasIndex("Ip");
 
                     b.ToTable("loginlog", (string)null);
                 });
@@ -2679,94 +3915,179 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.MailAttachmentEntity", b =>
                 {
                     b.Property<long>("Id")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
 
                     b.Property<ushort>("Index")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("index");
 
                     b.Property<uint>("Amount")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("amount");
 
                     b.Property<byte>("Attribute")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("attribute");
 
                     b.Property<byte>("Bound")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("bound");
 
                     b.Property<uint>("Card0")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card0");
 
                     b.Property<uint>("Card1")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card1");
 
                     b.Property<uint>("Card2")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card2");
 
                     b.Property<uint>("Card3")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card3");
 
                     b.Property<byte>("EnchantGrade")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("enchantgrade");
 
                     b.Property<short>("Identify")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("identify");
 
                     b.Property<long?>("MailId")
                         .HasColumnType("bigint");
 
                     b.Property<uint>("NameId")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("nameid");
 
                     b.Property<short>("OptionId0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id0");
 
                     b.Property<short>("OptionId1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id1");
 
                     b.Property<short>("OptionId2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id2");
 
                     b.Property<short>("OptionId3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id3");
 
                     b.Property<short>("OptionId4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id4");
 
                     b.Property<sbyte>("OptionParm0")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm0");
 
                     b.Property<sbyte>("OptionParm1")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm1");
 
                     b.Property<sbyte>("OptionParm2")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm2");
 
                     b.Property<sbyte>("OptionParm3")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm3");
 
                     b.Property<sbyte>("OptionParm4")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm4");
 
                     b.Property<short>("OptionVal0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val0");
 
                     b.Property<short>("OptionVal1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val1");
 
                     b.Property<short>("OptionVal2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val2");
 
                     b.Property<short>("OptionVal3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val3");
 
                     b.Property<short>("OptionVal4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val4");
 
                     b.Property<byte>("Refine")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("refine");
 
                     b.Property<ulong>("UniqueId")
-                        .HasColumnType("bigint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasDefaultValue(0ul)
+                        .HasColumnName("unique_id");
 
                     b.HasKey("Id", "Index");
 
@@ -2779,43 +4100,78 @@ namespace Core.Database.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<int>("DestId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("dest_id");
 
                     b.Property<string>("DestName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)")
+                        .HasDefaultValue("")
+                        .HasColumnName("dest_name");
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasDefaultValue("")
+                        .HasColumnName("message");
 
                     b.Property<int>("SendId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("send_id");
 
                     b.Property<string>("SendName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)")
+                        .HasDefaultValue("")
+                        .HasColumnName("send_name");
 
                     b.Property<short>("Status")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("status");
 
                     b.Property<uint>("Time")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("time");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(45)
+                        .HasColumnType("varchar(45)")
+                        .HasDefaultValue("")
+                        .HasColumnName("title");
 
                     b.Property<short>("Type")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("type");
 
                     b.Property<uint>("Zeny")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("zeny");
 
                     b.HasKey("Id");
 
@@ -2825,14 +4181,21 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.MapRegEntity", b =>
                 {
                     b.Property<string>("VarName")
-                        .HasColumnType("varchar(255)");
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("varname");
 
                     b.Property<uint>("Index")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("index");
 
                     b.Property<string>("Value")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("value");
 
                     b.HasKey("VarName", "Index");
 
@@ -2842,19 +4205,29 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.MarketEntity", b =>
                 {
                     b.Property<string>("Name")
-                        .HasColumnType("varchar(255)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasDefaultValue("")
+                        .HasColumnName("name");
 
                     b.Property<uint>("NameId")
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("nameid");
 
                     b.Property<int>("Amount")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("amount");
 
                     b.Property<byte>("Flag")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("flag");
 
                     b.Property<uint>("Price")
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("price");
 
                     b.HasKey("Name", "NameId");
 
@@ -2865,27 +4238,44 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("MemoId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("memo_id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("MemoId"));
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<int?>("CharacterCharId")
                         .HasColumnType("int");
 
                     b.Property<string>("Map")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(11)
+                        .HasColumnType("varchar(11)")
+                        .HasDefaultValue("")
+                        .HasColumnName("map");
 
                     b.Property<ushort>("X")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("x");
 
                     b.Property<ushort>("Y")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("y");
 
                     b.HasKey("MemoId");
+
+                    b.HasIndex("CharId")
+                        .HasDatabaseName("char_id");
 
                     b.HasIndex("CharacterCharId");
 
@@ -2896,27 +4286,42 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("MerId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("mer_id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("MerId"));
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     b.Property<uint>("Class")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("class");
 
                     b.Property<uint>("Hp")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("hp");
 
                     b.Property<int>("KillCounter")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("kill_counter");
 
                     b.Property<long>("LifeTime")
-                        .HasColumnType("bigint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("life_time");
 
                     b.Property<uint>("Sp")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("sp");
 
                     b.HasKey("MerId");
 
@@ -2927,30 +4332,52 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("CharId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("CharId"));
 
                     b.Property<int>("ArchCalls")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("arch_calls");
 
                     b.Property<int>("ArchFaith")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("arch_faith");
 
                     b.Property<int>("MercId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("merc_id");
 
                     b.Property<int>("SpearCalls")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("spear_calls");
 
                     b.Property<int>("SpearFaith")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("spear_faith");
 
                     b.Property<int>("SwordCalls")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sword_calls");
 
                     b.Property<int>("SwordFaith")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sword_faith");
 
                     b.HasKey("CharId");
 
@@ -2960,20 +4387,29 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.MerchantConfigEntity", b =>
                 {
                     b.Property<string>("WorldName")
-                        .HasColumnType("varchar(255)");
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("world_name");
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("account_id");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     b.Property<byte>("StoreType")
-                        .HasColumnType("tinyint unsigned");
+                        .HasColumnType("tinyint unsigned")
+                        .HasColumnName("store_type");
 
                     b.Property<string>("Data")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)")
+                        .HasDefaultValue("")
+                        .HasColumnName("data");
 
                     b.HasKey("WorldName", "AccountId", "CharId", "StoreType");
 
@@ -3703,28 +5139,46 @@ namespace Core.Database.Migrations
                 {
                     b.Property<uint>("MvpId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("mvp_id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<uint>("MvpId"));
 
                     b.Property<int>("KillCharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("kill_char_id");
 
                     b.Property<string>("Map")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(11)
+                        .HasColumnType("varchar(11)")
+                        .HasDefaultValue("")
+                        .HasColumnName("map");
 
                     b.Property<short>("MonsterId")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("monster_id");
 
                     b.Property<DateTime>("MvpDate")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("mvp_date");
 
                     b.Property<ulong>("MvpExp")
-                        .HasColumnType("bigint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasDefaultValue(0ul)
+                        .HasColumnName("mvpexp");
 
                     b.Property<uint>("Prize")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("prize");
 
                     b.HasKey("MvpId");
 
@@ -3735,32 +5189,56 @@ namespace Core.Database.Migrations
                 {
                     b.Property<uint>("NpcId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("npc_id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<uint>("NpcId"));
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("account_id");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<string>("CharName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(25)
+                        .HasColumnType("varchar(25)")
+                        .HasDefaultValue("")
+                        .HasColumnName("char_name");
 
                     b.Property<string>("Map")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(11)
+                        .HasColumnType("varchar(11)")
+                        .HasDefaultValue("")
+                        .HasColumnName("map");
 
                     b.Property<string>("Mes")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasDefaultValue("")
+                        .HasColumnName("mes");
 
                     b.Property<DateTime>("NpcDate")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("npc_date");
 
                     b.HasKey("NpcId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("CharId");
 
                     b.ToTable("npclog", (string)null);
                 });
@@ -3768,45 +5246,77 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.PartyBookingEntity", b =>
                 {
                     b.Property<string>("WorldName")
-                        .HasColumnType("varchar(255)");
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("world_name");
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("account_id");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     b.Property<byte>("Assist")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("assist");
 
                     b.Property<string>("CharName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)")
+                        .HasColumnName("char_name");
 
                     b.Property<string>("Comment")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasDefaultValue("")
+                        .HasColumnName("comment");
 
                     b.Property<DateTime>("Created")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created");
 
                     b.Property<byte>("DamageDealer")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("damagedealer");
 
                     b.Property<byte>("Healer")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("healer");
 
                     b.Property<ushort>("MaximumLevel")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("maximum_level");
 
                     b.Property<ushort>("MinimumLevel")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("minimum_level");
 
                     b.Property<ushort>("Purpose")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("purpose");
 
                     b.Property<byte>("Tanker")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("tanker");
 
                     b.HasKey("WorldName", "AccountId", "CharId");
 
@@ -3817,25 +5327,42 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("PartyId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("party_id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("PartyId"));
 
                     b.Property<byte>("Exp")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("exp");
 
                     b.Property<byte>("Item")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("item");
 
                     b.Property<int>("LeaderChar")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("leader_char");
 
                     b.Property<int>("LeaderId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("leader_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)")
+                        .HasDefaultValue("")
+                        .HasColumnName("name");
 
                     b.HasKey("PartyId");
 
@@ -3846,46 +5373,84 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("PetId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("pet_id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("PetId"));
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("account_id");
 
                     b.Property<short>("Autofeed")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("autofeed");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<uint>("Class")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("class");
 
                     b.Property<uint>("EggId")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("egg_id");
 
                     b.Property<uint>("Equip")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("equip");
 
                     b.Property<ushort>("Hungry")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("hungry");
 
                     b.Property<uint>("Incubate")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("incubate");
 
                     b.Property<ushort>("Intimate")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("intimate");
 
                     b.Property<ushort>("Level")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("level");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)")
+                        .HasDefaultValue("")
+                        .HasColumnName("name");
 
                     b.Property<byte>("RenameFlag")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("rename_flag");
 
                     b.HasKey("PetId");
 
@@ -3896,100 +5461,190 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("Amount")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1)
+                        .HasColumnName("amount");
 
                     b.Property<byte>("Bound")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("bound");
 
                     b.Property<uint>("Card0")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card0");
 
                     b.Property<uint>("Card1")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card1");
 
                     b.Property<uint>("Card2")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card2");
 
                     b.Property<uint>("Card3")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card3");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<byte>("EnchantGrade")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("enchantgrade");
 
                     b.Property<string>("Map")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(11)
+                        .HasColumnType("varchar(11)")
+                        .HasDefaultValue("")
+                        .HasColumnName("map");
 
                     b.Property<uint>("NameId")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("nameid");
 
                     b.Property<short>("OptionId0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id0");
 
                     b.Property<short>("OptionId1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id1");
 
                     b.Property<short>("OptionId2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id2");
 
                     b.Property<short>("OptionId3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id3");
 
                     b.Property<short>("OptionId4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id4");
 
                     b.Property<sbyte>("OptionParm0")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm0");
 
                     b.Property<sbyte>("OptionParm1")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm1");
 
                     b.Property<sbyte>("OptionParm2")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm2");
 
                     b.Property<sbyte>("OptionParm3")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm3");
 
                     b.Property<sbyte>("OptionParm4")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm4");
 
                     b.Property<short>("OptionVal0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val0");
 
                     b.Property<short>("OptionVal1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val1");
 
                     b.Property<short>("OptionVal2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val2");
 
                     b.Property<short>("OptionVal3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val3");
 
                     b.Property<short>("OptionVal4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val4");
 
                     b.Property<byte>("Refine")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("refine");
 
                     b.Property<DateTime>("Time")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("time");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("varchar(255)")
+                        .HasDefaultValue("P")
+                        .HasColumnName("type");
 
                     b.Property<ulong>("UniqueId")
-                        .HasColumnType("bigint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasDefaultValue(0ul)
+                        .HasColumnName("unique_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Type")
+                        .HasDatabaseName("type");
 
                     b.ToTable("picklog", (string)null);
                 });
@@ -3997,29 +5652,48 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.QuestEntity", b =>
                 {
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<uint>("QuestId")
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("quest_id");
 
                     b.Property<int?>("CharacterCharId")
                         .HasColumnType("int");
 
                     b.Property<uint>("Count1")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("count1");
 
                     b.Property<uint>("Count2")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("count2");
 
                     b.Property<uint>("Count3")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("count3");
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("longtext")
+                        .HasDefaultValue("0")
+                        .HasColumnName("state");
 
                     b.Property<uint>("Time")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("time");
 
                     b.HasKey("CharId", "QuestId");
 
@@ -4032,18 +5706,22 @@ namespace Core.Database.Migrations
                 {
                     b.Property<uint>("NameId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("nameid");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<uint>("NameId"));
 
                     b.Property<int>("Amount")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("amount");
 
                     b.Property<DateTime>("End")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("end");
 
                     b.Property<DateTime>("Start")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("start");
 
                     b.HasKey("NameId");
 
@@ -4053,28 +5731,44 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.ScDataEntity", b =>
                 {
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     b.Property<ushort>("Type")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("type");
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("account_id");
 
                     b.Property<long>("Tick")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("tick");
 
                     b.Property<int>("Val1")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("val1");
 
                     b.Property<int>("Val2")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("val2");
 
                     b.Property<int>("Val3")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("val3");
 
                     b.Property<int>("Val4")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("val4");
 
                     b.HasKey("CharId", "Type");
 
@@ -4084,16 +5778,22 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.SkillCooldownEntity", b =>
                 {
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     b.Property<ushort>("Skill")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("skill");
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("account_id");
 
                     b.Property<long>("Tick")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("tick");
 
                     b.HasKey("CharId", "Skill");
 
@@ -4103,13 +5803,18 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.SkillCooldownHomunculusEntity", b =>
                 {
                     b.Property<int>("HomunId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("homun_id");
 
                     b.Property<ushort>("Skill")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("skill");
 
                     b.Property<long>("Tick")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("tick");
 
                     b.HasKey("HomunId", "Skill");
 
@@ -4119,13 +5824,18 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.SkillCooldownMercenaryEntity", b =>
                 {
                     b.Property<int>("MerId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("mer_id");
 
                     b.Property<ushort>("Skill")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("skill");
 
                     b.Property<long>("Tick")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("tick");
 
                     b.HasKey("MerId", "Skill");
 
@@ -4135,16 +5845,28 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.SkillEntity", b =>
                 {
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<ushort>("Id")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("id");
 
                     b.Property<byte>("Flag")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("flag");
 
                     b.Property<byte>("Lv")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("lv");
 
                     b.HasKey("CharId", "Id");
 
@@ -4154,13 +5876,18 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.SkillHomunculusEntity", b =>
                 {
                     b.Property<int>("HomunId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("homun_id");
 
                     b.Property<int>("Id")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("id");
 
                     b.Property<short>("Lv")
-                        .HasColumnType("smallint");
+                        .HasColumnType("smallint")
+                        .HasColumnName("lv");
 
                     b.HasKey("HomunId", "Id");
 
@@ -4171,101 +5898,195 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("account_id");
 
                     b.Property<ushort>("Amount")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("amount");
 
                     b.Property<byte>("Attribute")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("attribute");
 
                     b.Property<byte>("Bound")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("bound");
 
                     b.Property<uint>("Card0")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card0");
 
                     b.Property<uint>("Card1")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card1");
 
                     b.Property<uint>("Card2")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card2");
 
                     b.Property<uint>("Card3")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("card3");
 
                     b.Property<byte>("EnchantGrade")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("enchantgrade");
 
                     b.Property<uint>("Equip")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("equip");
 
                     b.Property<uint>("ExpireTime")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("expire_time");
 
                     b.Property<ushort>("Identify")
-                        .HasColumnType("smallint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("identify");
 
                     b.Property<uint>("NameId")
-                        .HasColumnType("int unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int unsigned")
+                        .HasDefaultValue(0u)
+                        .HasColumnName("nameid");
 
                     b.Property<short>("OptionId0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id0");
 
                     b.Property<short>("OptionId1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id1");
 
                     b.Property<short>("OptionId2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id2");
 
                     b.Property<short>("OptionId3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id3");
 
                     b.Property<short>("OptionId4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_id4");
 
                     b.Property<sbyte>("OptionParm0")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm0");
 
                     b.Property<sbyte>("OptionParm1")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm1");
 
                     b.Property<sbyte>("OptionParm2")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm2");
 
                     b.Property<sbyte>("OptionParm3")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm3");
 
                     b.Property<sbyte>("OptionParm4")
-                        .HasColumnType("tinyint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint")
+                        .HasDefaultValue((sbyte)0)
+                        .HasColumnName("option_parm4");
 
                     b.Property<short>("OptionVal0")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val0");
 
                     b.Property<short>("OptionVal1")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val1");
 
                     b.Property<short>("OptionVal2")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val2");
 
                     b.Property<short>("OptionVal3")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val3");
 
                     b.Property<short>("OptionVal4")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)0)
+                        .HasColumnName("option_val4");
 
                     b.Property<byte>("Refine")
-                        .HasColumnType("tinyint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint unsigned")
+                        .HasDefaultValue((byte)0)
+                        .HasColumnName("refine");
 
                     b.Property<ulong>("UniqueId")
-                        .HasColumnType("bigint unsigned");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned")
+                        .HasDefaultValue(0ul)
+                        .HasColumnName("unique_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AccountId")
+                        .HasDatabaseName("account_id");
 
                     b.ToTable("storage", (string)null);
                 });
@@ -4273,14 +6094,21 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.UserConfigEntity", b =>
                 {
                     b.Property<string>("WorldName")
-                        .HasColumnType("varchar(255)");
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("world_name");
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("account_id");
 
                     b.Property<string>("Data")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)")
+                        .HasDefaultValue("")
+                        .HasColumnName("data");
 
                     b.HasKey("WorldName", "AccountId");
 
@@ -4291,48 +6119,74 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("AccountId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("account_id");
 
                     b.Property<sbyte>("Autotrade")
-                        .HasColumnType("tinyint");
+                        .HasColumnType("tinyint")
+                        .HasColumnName("autotrade");
 
                     b.Property<string>("BodyDirection")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1)
+                        .HasColumnType("varchar(1)")
+                        .HasDefaultValue("4")
+                        .HasColumnName("body_direction");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("char_id");
 
                     b.Property<string>("HeadDirection")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1)
+                        .HasColumnType("varchar(1)")
+                        .HasDefaultValue("0")
+                        .HasColumnName("head_direction");
 
                     b.Property<string>("Map")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("map");
 
                     b.Property<string>("Sex")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1)
+                        .HasColumnType("varchar(1)")
+                        .HasDefaultValue("M")
+                        .HasColumnName("sex");
 
                     b.Property<string>("Sit")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1)
+                        .HasColumnType("varchar(1)")
+                        .HasDefaultValue("1")
+                        .HasColumnName("sit");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)")
+                        .HasColumnName("title");
 
                     b.Property<ushort>("X")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("x");
 
                     b.Property<ushort>("Y")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("y");
 
                     b.HasKey("Id");
 
@@ -4342,19 +6196,24 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.VendingItemEntity", b =>
                 {
                     b.Property<int>("VendingId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("vending_id");
 
                     b.Property<ushort>("Index")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("index");
 
                     b.Property<ushort>("Amount")
-                        .HasColumnType("smallint unsigned");
+                        .HasColumnType("smallint unsigned")
+                        .HasColumnName("amount");
 
                     b.Property<int>("CartInventoryId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("cartinventory_id");
 
                     b.Property<uint>("Price")
-                        .HasColumnType("int unsigned");
+                        .HasColumnType("int unsigned")
+                        .HasColumnName("price");
 
                     b.HasKey("VendingId", "Index");
 
@@ -4365,31 +6224,52 @@ namespace Core.Database.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("Amount")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("amount");
 
                     b.Property<int>("CharId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("char_id");
 
                     b.Property<string>("Map")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(11)
+                        .HasColumnType("varchar(11)")
+                        .HasDefaultValue("")
+                        .HasColumnName("map");
 
                     b.Property<int>("SrcId")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0)
+                        .HasColumnName("src_id");
 
                     b.Property<DateTime>("Time")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("time");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("varchar(255)")
+                        .HasDefaultValue("S")
+                        .HasColumnName("type");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Type")
+                        .HasDatabaseName("type");
 
                     b.ToTable("zenylog", (string)null);
                 });
@@ -4401,15 +6281,6 @@ namespace Core.Database.Migrations
                         .HasForeignKey("CharId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Character");
-                });
-
-            modelBuilder.Entity("Core.Database.Entities.BonusScriptEntity", b =>
-                {
-                    b.HasOne("Core.Database.Entities.CharEntity", "Character")
-                        .WithMany("BonusScripts")
-                        .HasForeignKey("CharacterCharId");
 
                     b.Navigation("Character");
                 });
@@ -4630,8 +6501,6 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.CharEntity", b =>
                 {
                     b.Navigation("Achievements");
-
-                    b.Navigation("BonusScripts");
 
                     b.Navigation("CartInventories");
 

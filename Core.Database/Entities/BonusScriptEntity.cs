@@ -8,8 +8,5 @@ public class BonusScriptEntity
     public ushort Flag { get; set; }
     public byte Type { get; set; }
     public short Icon { get; set; } = -1;
-    
-    // Navigation properties
-    public CharEntity? Character { get; set; }
 }
 

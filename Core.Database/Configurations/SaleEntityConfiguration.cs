@@ -10,5 +10,10 @@ public class SaleEntityConfiguration : IEntityTypeConfiguration<SaleEntity>
     {
         builder.ToTable("sales");
         builder.HasKey(e => e.NameId);
+        
+        builder.Property(e => e.NameId).HasColumnName("nameid");
+        builder.Property(e => e.Start).HasColumnName("start");
+        builder.Property(e => e.End).HasColumnName("end");
+        builder.Property(e => e.Amount).HasColumnName("amount");
     }
 }

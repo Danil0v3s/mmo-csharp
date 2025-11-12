@@ -10,5 +10,9 @@ public class SkillCooldownMercenaryEntityConfiguration : IEntityTypeConfiguratio
     {
         builder.ToTable("skillcooldown_mercenary");
         builder.HasKey(e => new { e.MerId, e.Skill });
+        
+        builder.Property(e => e.MerId).HasColumnName("mer_id");
+        builder.Property(e => e.Skill).HasColumnName("skill").HasDefaultValue((ushort)0);
+        builder.Property(e => e.Tick).HasColumnName("tick");
     }
 }

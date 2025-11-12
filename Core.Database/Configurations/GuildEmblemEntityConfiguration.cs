@@ -10,5 +10,11 @@ public class GuildEmblemEntityConfiguration : IEntityTypeConfiguration<GuildEmbl
     {
         builder.ToTable("guild_emblems");
         builder.HasKey(e => new { e.WorldName, e.GuildId });
+        
+        builder.Property(e => e.WorldName).HasColumnName("world_name").HasMaxLength(32).IsRequired();
+        builder.Property(e => e.GuildId).HasColumnName("guild_id");
+        builder.Property(e => e.FileType).HasColumnName("file_type").HasMaxLength(255).IsRequired();
+        builder.Property(e => e.FileData).HasColumnName("file_data");
+        builder.Property(e => e.Version).HasColumnName("version").HasDefaultValue(0u);
     }
 }

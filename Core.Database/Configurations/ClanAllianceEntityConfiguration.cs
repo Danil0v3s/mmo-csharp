@@ -9,7 +9,7 @@ public class ClanAllianceEntityConfiguration : IEntityTypeConfiguration<ClanAlli
     public void Configure(EntityTypeBuilder<ClanAllianceEntity> builder)
     {
         builder.ToTable("clan_alliance");
-        builder.HasKey(e => new { e.ClanId, e.Opposition, e.AllianceId });
+        builder.HasKey(e => new { e.ClanId, e.AllianceId });
         
         builder.Property(e => e.ClanId).HasColumnName("clan_id");
         builder.Property(e => e.Opposition).HasColumnName("opposition");

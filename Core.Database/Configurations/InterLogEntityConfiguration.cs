@@ -10,5 +10,11 @@ public class InterLogEntityConfiguration : IEntityTypeConfiguration<InterLogEnti
     {
         builder.ToTable("interlog");
         builder.HasKey(e => e.Id);
+        
+        builder.Property(e => e.Id).HasColumnName("id");
+        builder.Property(e => e.Time).HasColumnName("time");
+        builder.Property(e => e.Log).HasColumnName("log").HasMaxLength(255).IsRequired().HasDefaultValue("");
+        
+        builder.HasIndex(e => e.Time).HasDatabaseName("time");
     }
 }

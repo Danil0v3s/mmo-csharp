@@ -10,5 +10,8 @@ public class FriendEntityConfiguration : IEntityTypeConfiguration<FriendEntity>
     {
         builder.ToTable("friends");
         builder.HasKey(e => new { e.CharId, e.FriendId });
+        
+        builder.Property(e => e.CharId).HasColumnName("char_id").HasDefaultValue(0u);
+        builder.Property(e => e.FriendId).HasColumnName("friend_id").HasDefaultValue(0u);
     }
 }

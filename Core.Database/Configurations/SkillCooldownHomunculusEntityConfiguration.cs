@@ -10,5 +10,9 @@ public class SkillCooldownHomunculusEntityConfiguration : IEntityTypeConfigurati
     {
         builder.ToTable("skillcooldown_homunculus");
         builder.HasKey(e => new { e.HomunId, e.Skill });
+        
+        builder.Property(e => e.HomunId).HasColumnName("homun_id");
+        builder.Property(e => e.Skill).HasColumnName("skill").HasDefaultValue((ushort)0);
+        builder.Property(e => e.Tick).HasColumnName("tick");
     }
 }

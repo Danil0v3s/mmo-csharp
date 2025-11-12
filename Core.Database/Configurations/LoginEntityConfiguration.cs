@@ -37,53 +37,68 @@ public class LoginEntityConfiguration : IEntityTypeConfiguration<LoginEntity>
             .IsRequired();
         
         builder.Property(e => e.GroupId)
+            .HasDefaultValue(0)
             .HasColumnName("group_id");
         
         builder.Property(e => e.State)
+            .HasDefaultValue(0)
             .HasColumnName("state");
         
         builder.Property(e => e.UnbanTime)
+            .HasDefaultValue(0)
             .HasColumnName("unban_time");
         
         builder.Property(e => e.ExpirationTime)
+            .HasDefaultValue(0)
             .HasColumnName("expiration_time");
         
         builder.Property(e => e.LoginCount)
+            .HasDefaultValue(0)
             .HasColumnName("logincount");
         
         builder.Property(e => e.LastLogin)
+            .HasDefaultValue(null)
             .HasColumnName("lastlogin");
         
         builder.Property(e => e.LastIp)
             .HasColumnName("last_ip")
             .HasMaxLength(100)
+            .HasDefaultValue(0)
             .IsRequired();
         
         builder.Property(e => e.Birthdate)
+            .HasDefaultValue(null)
             .HasColumnName("birthdate");
         
         builder.Property(e => e.CharacterSlots)
+            .HasDefaultValue(0)
             .HasColumnName("character_slots");
         
         builder.Property(e => e.Pincode)
             .HasColumnName("pincode")
             .HasMaxLength(4)
+            .HasDefaultValue(0)
             .IsRequired();
         
         builder.Property(e => e.PincodeChange)
+            .HasDefaultValue(0)
             .HasColumnName("pincode_change");
         
         builder.Property(e => e.VipTime)
+            .HasDefaultValue(0)
             .HasColumnName("vip_time");
         
         builder.Property(e => e.OldGroup)
+            .HasDefaultValue(0)
             .HasColumnName("old_group");
         
         builder.Property(e => e.WebAuthToken)
             .HasColumnName("web_auth_token")
+            .HasDefaultValue("0")
             .HasMaxLength(17);
         
         builder.Property(e => e.WebAuthTokenEnabled)
+            .HasDefaultValue("0")
             .HasColumnName("web_auth_token_enabled");
         
         builder.HasIndex(e => e.UserId)

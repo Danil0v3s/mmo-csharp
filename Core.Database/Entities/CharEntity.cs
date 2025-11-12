@@ -96,6 +96,5 @@ public class CharEntity
     public ICollection<FriendEntity> Friends { get; set; } = new List<FriendEntity>();
     public ICollection<HotkeyEntity> Hotkeys { get; set; } = new List<HotkeyEntity>();
     public ICollection<MemoEntity> Memos { get; set; } = new List<MemoEntity>();
-    public ICollection<BonusScriptEntity> BonusScripts { get; set; } = new List<BonusScriptEntity>();
 }
 

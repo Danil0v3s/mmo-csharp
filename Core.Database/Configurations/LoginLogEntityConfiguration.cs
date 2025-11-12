@@ -9,6 +9,14 @@ public class LoginLogEntityConfiguration : IEntityTypeConfiguration<LoginLogEnti
     public void Configure(EntityTypeBuilder<LoginLogEntity> builder)
     {
         builder.ToTable("loginlog");
-        builder.HasKey(e => new { e.Time, e.Ip, e.User });
+        builder.HasNoKey();
+        
+        builder.Property(e => e.Time).HasColumnName("time");
+        builder.Property(e => e.Ip).HasColumnName("ip").HasMaxLength(15).IsRequired().HasDefaultValue("");
+        builder.Property(e => e.User).HasColumnName("user").HasMaxLength(23).IsRequired().HasDefaultValue("");
+        builder.Property(e => e.RCode).HasColumnName("rcode").HasDefaultValue((sbyte)0);
+        builder.Property(e => e.Log).HasColumnName("log").HasMaxLength(255).IsRequired().HasDefaultValue("");
+        
+        builder.HasIndex(e => e.Ip);
     }
 }

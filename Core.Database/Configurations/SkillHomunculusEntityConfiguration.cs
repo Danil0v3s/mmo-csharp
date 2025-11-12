@@ -10,5 +10,9 @@ public class SkillHomunculusEntityConfiguration : IEntityTypeConfiguration<Skill
     {
         builder.ToTable("skill_homunculus");
         builder.HasKey(e => new { e.HomunId, e.Id });
+        
+        builder.Property(e => e.HomunId).HasColumnName("homun_id");
+        builder.Property(e => e.Id).HasColumnName("id").HasDefaultValue(0);
+        builder.Property(e => e.Lv).HasColumnName("lv");
     }
 }
