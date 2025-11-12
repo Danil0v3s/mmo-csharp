@@ -1,0 +1,6 @@
+# Ignore appsettings with credentials (keep appsettings.json as template)
+appsettings.Development.json
+appsettings.Production.json
+appsettings.*.json
+!appsettings.json
+

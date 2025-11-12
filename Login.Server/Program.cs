@@ -1,7 +1,11 @@
 ﻿using System.Reflection;
+using Core.Database;
+using Core.Database.Context;
+using Core.Database.Seeds;
 using Core.Server;
 using Core.Server.Network;
 using Login.Server;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 // Setup configuration
@@ -28,6 +32,11 @@ builder.Services.AddSingleton(serverConfig);
 builder.Services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
 builder.Services.AddSingleton<LoginServerImpl>();
 
+// Register database services
+var connectionString = configuration.GetConnectionString("GameDatabase") 
+    ?? throw new InvalidOperationException("Database connection string 'GameDatabase' not found in configuration");
+builder.Services.AddGameDatabase(connectionString);
+
 // Auto-register all packet handlers from assembly
 var handlerTypes = typeof(LoginServerImpl).Assembly.GetTypes()
     .Where(t => t.IsClass && !t.IsAbstract)
@@ -48,6 +57,35 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{serverConfig.GrpcPort}");
 
 var app = builder.Build();
 app.MapGrpcService<LoginGrpcService>();
+
+// Apply migrations and seed database
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    
+    try
+    {
+        Log.Information("Initializing database...");
+        
+        var context = services.GetRequiredService<GameDbContext>();
+        
+        // Apply any pending migrations
+        await context.Database.MigrateAsync();
+        Log.Information("Database migrations applied successfully");
+        
+        // Seed database from SQL scripts
+        var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+        var seeder = new DatabaseSeeder(context, loggerFactory.CreateLogger<DatabaseSeeder>());
+        await seeder.SeedAsync();
+        
+        Log.Information("Database initialization completed");
+    }
+    catch (Exception ex)
+    {
+        Log.Fatal(ex, "An error occurred while initializing the database");
+        throw;
+    }
+}
 
 // Get server instance from DI
 var server = app.Services.GetRequiredService<LoginServerImpl>();

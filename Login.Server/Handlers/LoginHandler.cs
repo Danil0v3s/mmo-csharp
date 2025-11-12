@@ -2,6 +2,9 @@ using Core.Server.Network;
 using Core.Server.Packets;
 using Core.Server.Packets.ClientPackets;
 using Core.Server.Packets.ServerPackets;
+using System.Security.Cryptography;
+using System.Text;
+using Core.Database.Repositories.Api;
 
 namespace Login.Server.Handlers;
 
@@ -12,10 +15,14 @@ namespace Login.Server.Handlers;
 public class LoginHandler : IPacketHandler<CA_LOGIN>
 {
     private readonly ILogger<LoginHandler> _logger;
+    private readonly ILoginRepository _loginRepository;
 
-    public LoginHandler(ILogger<LoginHandler> logger)
+    public LoginHandler(
+        ILogger<LoginHandler> logger,
+        ILoginRepository loginRepository)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _loginRepository = loginRepository ?? throw new ArgumentNullException(nameof(loginRepository));
     }
 
     public async Task HandleAsync(ClientSession session, CA_LOGIN packet)
@@ -23,34 +30,77 @@ public class LoginHandler : IPacketHandler<CA_LOGIN>
         _logger.LogInformation("Login request from session {SessionId}: {Username}",
             session.SessionId, packet.Username);
 
-        // TODO: Validate credentials against database
-        // For now, accept any non-empty credentials
-        bool success = !string.IsNullOrWhiteSpace(packet.Username) &&
-                      !string.IsNullOrWhiteSpace(packet.Password);
-
-        if (success)
+        try
         {
-            var sessionToken = new Random().Next(100000, 999999);
+            // Validate credentials against database
+            var account = await _loginRepository.GetByEmailAsync(packet.Username);
 
-            var responsePacket = new AC_ACCEPT_LOGIN
+            if (account == null)
             {
-                SessionToken = sessionToken,
-                CharacterSlots = 9
-            };
+                _logger.LogWarning("Login failed for {Username} - account not found", packet.Username);
+                session.Disconnect(DisconnectReason.Kicked);
+                return;
+            }
 
-            session.EnqueuePacket(responsePacket);
+            // Verify password (assuming plain text for now, should use hashing in production)
+            if (account.UserPass != packet.Password)
+            {
+                _logger.LogWarning("Login failed for {Username} - invalid password", packet.Username);
+                
+                // Update failed login attempts
+                // await _loginRepository.IncrementLoginAttemptsAsync(account.AccountId);
+                
+                session.Disconnect(DisconnectReason.Kicked);
+                return;
+            }
 
-            _logger.LogInformation("Login successful for {Username}, token: {Token}",
-                packet.Username, sessionToken);
+            // Check account state
+            if (account.State != 0)
+            {
+                _logger.LogWarning("Login failed for {Username} - account state {State}", 
+                    packet.Username, account.State);
+                session.Disconnect(DisconnectReason.Kicked);
+                return;
+            }
+
+            // Check if account is banned
+            // if (account.Unbantime.HasValue && account.Unbantime.Value > DateTime.UtcNow)
+            // {
+            //     _logger.LogWarning("Login failed for {Username} - account banned until {BanTime}", 
+            //         packet.Username, account.Unbantime.Value);
+            //     session.Disconnect(DisconnectReason.Kicked);
+            //     return;
+            // }
+
+            // Update last login info
+            // await _loginRepository.UpdateLastLoginAsync(
+            //     account.AccountId, 
+            //     session.RemoteEndPoint?.Address.ToString() ?? "unknown");
+
+            // Generate session token
+            var sessionToken = GenerateSessionToken();
+
+            // var responsePacket = new AC_ACCEPT_LOGIN
+            // {
+            //     SessionToken = sessionToken,
+            //     CharacterSlots = (byte)(account.CharacterSlots ?? 9)
+            // };
+            //
+            // session.EnqueuePacket(responsePacket);
+
+            _logger.LogInformation("Login successful for {Username} (AccountId: {AccountId}), token: {Token}",
+                packet.Username, account.AccountId, sessionToken);
         }
-        else
+        catch (Exception ex)
         {
-            // TODO: Implement AC_REFUSE_LOGIN packet
-            _logger.LogWarning("Login failed for session {SessionId} - invalid credentials", session.SessionId);
+            _logger.LogError(ex, "Error processing login for {Username}", packet.Username);
             session.Disconnect(DisconnectReason.Kicked);
         }
+    }
 
-        await Task.CompletedTask;
+    private static int GenerateSessionToken()
+    {
+        return Random.Shared.Next(100000, 999999);
     }
 }
 

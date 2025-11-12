@@ -1,0 +1,18 @@
+version: "3.7"
+
+services:
+  db:
+    image: "mariadb:bionic"
+    container_name: "rathena_db"
+    ports:
+      - "3306:3306" # allow DB connections from host
+    volumes:
+      - "rathenadb:/var/lib/mysql" # save database to local disk
+    environment:
+      MYSQL_ROOT_PASSWORD: ragnarok
+      MYSQL_DATABASE: ragnarok
+      MYSQL_USER: ragnarok
+      MYSQL_PASSWORD: ragnarok
+      
+volumes:
+  rathenadb:
