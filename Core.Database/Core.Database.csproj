@@ -32,7 +32,6 @@
     <ItemGroup>
         <!-- Exclude example files from compilation -->
         <Compile Remove="Seeds\EXAMPLE_USAGE_IN_SERVER.cs" />
-        <None Include="Seeds\EXAMPLE_USAGE_IN_SERVER.cs" />
     </ItemGroup>
 
     <ItemGroup>

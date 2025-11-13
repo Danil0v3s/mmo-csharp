@@ -37,12 +37,12 @@ public class DatabaseSeeder
 
             await _context.Database.ExecuteSqlRawAsync("START TRANSACTION;", ct);
 
-            await ExecuteSqlScriptAsync("Scripts/seed_initial_data.sql", ct);
-            await ExecuteSqlScriptAsync("Scripts/seed_roulette_default_data.sql", ct);
-            await ExecuteSqlScriptAsync("Scripts/seed_item_db_equip.sql", ct);
-            await ExecuteSqlScriptAsync("Scripts/seed_item_db_etc.sql", ct);
-            await ExecuteSqlScriptAsync("Scripts/seed_item_db_usable.sql", ct);
-            await ExecuteSqlScriptAsync("Scripts/seed_mob_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_initial_data.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_roulette_default_data.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_db_equip.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_db_etc.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_db_usable.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_mob_db.sql", ct);
 
             await _context.Database.ExecuteSqlRawAsync("COMMIT", ct);
 
