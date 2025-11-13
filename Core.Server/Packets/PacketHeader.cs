@@ -8,20 +8,23 @@ namespace Core.Server.Packets;
 /// </summary>
 public enum PacketHeader : short
 {
-    // === Auth Server <-> Client ===
-    // Auth -> Client (AC)
-    AC_ACCEPT_LOGIN = 0x0069,
-    AC_REFUSE_LOGIN = 0x006a,
-    AC_ACCEPT_MAKECHAR = 0x006d,
-    AC_REFUSE_MAKECHAR = 0x006e,
-    
-    // Client -> Auth (CA)
-    CA_LOGIN = 0x0064,
-    CA_CONNECT_INFO_CHANGED = 0x0200,
-    CA_SSO_LOGIN_REQ = 0x0825,
-    
-    // Auth -> Client (SC - alternative/specific)
-    SC_NOTIFY_BAN = 0x0081,
+    // Login
+    CA_LOGIN = 0x64,
+    AC_ACCEPT_LOGIN = 0xac4,
+    AC_REFUSE_LOGIN = 0x83e,
+    SC_NOTIFY_BAN = 0x81,
+    CA_REQ_HASH = 0x1db,
+    AC_ACK_HASH = 0x1dc,
+    CA_LOGIN2 = 0x1dd,
+    CA_LOGIN3 = 0x1fa,
+    CA_CONNECT_INFO_CHANGED = 0x200,
+    CA_EXE_HASHCHECK = 0x204,
+    CA_LOGIN_PCBANG = 0x277,
+    CA_LOGIN4 = 0x27c,
+    CA_LOGIN_CHANNEL = 0x2b0,
+    CA_SSO_LOGIN_REQ = 0x825,
+    CT_AUTH = 0xacf,
+    TC_RESULT = 0xae3,
     
     // === Char Server <-> Client ===
     // Char -> Client (HC)

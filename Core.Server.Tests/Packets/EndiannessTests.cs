@@ -1,3 +1,4 @@
+using Core.Server.Packets;
 using Core.Server.Packets.ServerPackets;
 
 namespace Core.Server.Tests.Packets;
@@ -82,10 +83,12 @@ public class EndiannessTests
     public void PacketHeader_WrittenAsLittleEndian()
     {
         // Arrange
-        var packet = new AC_ACCEPT_LOGIN
+        var packet = new HC_CHARACTER_LIST
         {
-            SessionToken = 0x11223344,
-            CharacterSlots = 5
+            Characters = new[]
+            {
+                new CharacterInfo { CharId = 0x11223344, Exp = 1000, Zeny = 500, JobLevel = 10, Name = "Test" }
+            }
         };
         
         // Act
@@ -97,15 +100,15 @@ public class EndiannessTests
             data = ms.ToArray();
         }
         
-        // Assert - Check header (0x0069) in little-endian
-        Assert.Equal(0x69, data[0]); // Low byte
+        // Assert - Check header (0x006b) in little-endian
+        Assert.Equal(0x6b, data[0]); // Low byte
         Assert.Equal(0x00, data[1]); // High byte
         
-        // Assert - Check SessionToken (0x11223344) in little-endian
-        Assert.Equal(0x44, data[2]); // Lowest byte
-        Assert.Equal(0x33, data[3]);
-        Assert.Equal(0x22, data[4]);
-        Assert.Equal(0x11, data[5]); // Highest byte
+        // Assert - Check CharId (0x11223344) in little-endian (after header, size, count)
+        Assert.Equal(0x44, data[5]); // Lowest byte
+        Assert.Equal(0x33, data[6]);
+        Assert.Equal(0x22, data[7]);
+        Assert.Equal(0x11, data[8]); // Highest byte
     }
     
     [Fact]

@@ -1,5 +1,6 @@
 using Core.Server.Packets;
 using Core.Server.Packets.ClientPackets;
+using Core.Server.Packets.In.CA;
 using Core.Server.Packets.ServerPackets;
 using Microsoft.Extensions.Configuration;
 
@@ -21,7 +22,7 @@ public class PacketSystemTests
         
         // Assert
         Assert.True(packetSystem.Factory.CanCreatePacket(PacketHeader.CA_LOGIN));
-        Assert.True(packetSystem.Registry.IsRegistered(PacketHeader.AC_ACCEPT_LOGIN));
+        Assert.True(packetSystem.Registry.IsRegistered(PacketHeader.CZ_HEARTBEAT));
     }
     
     [Fact]
@@ -54,17 +55,16 @@ public class PacketSystemTests
         var packetSystem = new PacketSystem();
         packetSystem.Initialize();
         
-        var packet = new AC_ACCEPT_LOGIN
+        var packet = new HC_CHARACTER_LIST
         {
-            SessionToken = 12345,
-            CharacterSlots = 9
+            Characters = Array.Empty<CharacterInfo>()
         };
         
         // Act
         byte[] data = packetSystem.SerializePacket(packet);
         
         // Assert
-        Assert.Equal(7, data.Length);
+        Assert.Equal(5, data.Length);
         Assert.Equal(packet.GetSize(), data.Length);
     }
     
@@ -97,7 +97,7 @@ public class PacketSystemTests
     }
     
     [Fact]
-    public void ReadPacket_VariableLengthPacket_ReadsCorrectly()
+    public void ReadPacket_FixedLengthLoginPacket_ReadsCorrectly()
     {
         // Arrange
         var packetSystem = new PacketSystem();
@@ -108,7 +108,7 @@ public class PacketSystemTests
         using (var writer = new BinaryWriter(ms))
         {
             writer.Write((short)PacketHeader.CA_LOGIN);
-            writer.Write((short)53); // Size
+            writer.Write((uint)1); // Version
             writer.WriteFixedString("TestUser", 24);
             writer.WriteFixedString("TestPass", 24);
             writer.Write((byte)2);
@@ -127,7 +127,7 @@ public class PacketSystemTests
         var loginPacket = Assert.IsType<CA_LOGIN>(packet);
         Assert.Equal("TestUser", loginPacket.Username);
         Assert.Equal("TestPass", loginPacket.Password);
-        Assert.Equal(2, loginPacket.ClientType);
+        Assert.Equal(2, loginPacket.Clienttype);
     }
     
     [Fact]

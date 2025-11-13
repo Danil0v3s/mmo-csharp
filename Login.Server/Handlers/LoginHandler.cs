@@ -5,6 +5,7 @@ using Core.Server.Packets.ServerPackets;
 using System.Security.Cryptography;
 using System.Text;
 using Core.Database.Repositories.Api;
+using Core.Server.Packets.In.CA;
 
 namespace Login.Server.Handlers;
 

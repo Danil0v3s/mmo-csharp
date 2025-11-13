@@ -1,5 +1,6 @@
 using Core.Server.Packets;
 using Core.Server.Packets.ClientPackets;
+using Core.Server.Packets.In.CA;
 using Core.Server.Packets.ServerPackets;
 
 namespace Core.Server.Tests.Packets;
@@ -14,33 +15,32 @@ public class PacketSerializationTests
     public void FixedLengthPacket_RoundTrip_PreservesData()
     {
         // Arrange
-        var original = new AC_ACCEPT_LOGIN
-        {
-            SessionToken = 12345678,
-            CharacterSlots = 9
-        };
+        var original = new CA_LOGIN();
         
-        // Act - Serialize
+        // Act - Serialize with manual write (since CA_LOGIN is incoming packet)
         byte[] data;
         using (var ms = new MemoryStream())
         using (var writer = new BinaryWriter(ms))
         {
-            original.Write(writer);
+            writer.Write((short)PacketHeader.CA_LOGIN);
+            writer.Write((uint)1); // Version
+            writer.WriteFixedString("testuser", 24);
+            writer.WriteFixedString("testpass", 24);
+            writer.Write((byte)5);
             data = ms.ToArray();
         }
         
         // Assert - Check size
-        Assert.Equal(7, data.Length);
-        Assert.Equal(7, original.GetSize());
+        Assert.Equal(55, data.Length);
+        Assert.Equal(55, original.GetSize());
         
         // Assert - Verify byte layout (little-endian)
-        Assert.Equal(0x69, data[0]); // Header low byte
+        Assert.Equal(0x64, data[0]); // Header low byte (0x64)
         Assert.Equal(0x00, data[1]); // Header high byte
-        Assert.Equal(0x4E, data[2]); // SessionToken byte 0
-        Assert.Equal(0x61, data[3]); // SessionToken byte 1
-        Assert.Equal(0xBC, data[4]); // SessionToken byte 2
-        Assert.Equal(0x00, data[5]); // SessionToken byte 3
-        Assert.Equal(9, data[6]);    // CharacterSlots
+        Assert.Equal(0x01, data[2]); // Version byte 0
+        Assert.Equal(0x00, data[3]); // Version byte 1
+        Assert.Equal(0x00, data[4]); // Version byte 2
+        Assert.Equal(0x00, data[5]); // Version byte 3
     }
     
     [Fact]
@@ -80,11 +80,19 @@ public class PacketSerializationTests
     public void VariableLengthPacket_RoundTrip_PreservesData()
     {
         // Arrange
-        var original = new CA_LOGIN
+        var original = new HC_CHARACTER_LIST
         {
-            Username = "TestUser",
-            Password = "SecretPass",
-            ClientType = 3
+            Characters = new[]
+            {
+                new CharacterInfo
+                {
+                    CharId = 1,
+                    Exp = 1000,
+                    Zeny = 500,
+                    JobLevel = 10,
+                    Name = "TestChar"
+                }
+            }
         };
         
         // Act - Serialize
@@ -92,17 +100,13 @@ public class PacketSerializationTests
         using (var ms = new MemoryStream())
         using (var writer = new BinaryWriter(ms))
         {
-            writer.Write((short)original.Header);
-            writer.Write((short)original.GetSize());
-            writer.WriteFixedString(original.Username, 24);
-            writer.WriteFixedString(original.Password, 24);
-            writer.Write(original.ClientType);
+            original.Write(writer);
             data = ms.ToArray();
         }
         
         // Assert - Check size
-        Assert.Equal(53, data.Length);
-        Assert.Equal(53, original.GetSize());
+        Assert.Equal(47, data.Length);
+        Assert.Equal(47, original.GetSize());
         Assert.False(original.IsFixedLength);
         
         // Deserialize
@@ -111,14 +115,15 @@ public class PacketSerializationTests
         {
             short header = reader.ReadInt16();
             short size = reader.ReadInt16();
+            byte count = reader.ReadByte();
             
-            Assert.Equal((short)PacketHeader.CA_LOGIN, header);
-            Assert.Equal(53, size);
+            Assert.Equal((short)PacketHeader.HC_CHARACTER_LIST, header);
+            Assert.Equal(47, size);
+            Assert.Equal(1, count);
             
-            var deserialized = CA_LOGIN.Create(reader);
-            Assert.Equal(original.Username, deserialized.Username);
-            Assert.Equal(original.Password, deserialized.Password);
-            Assert.Equal(original.ClientType, deserialized.ClientType);
+            var character = CharacterInfo.Read(reader);
+            Assert.Equal(original.Characters[0].CharId, character.CharId);
+            Assert.Equal(original.Characters[0].Name, character.Name);
         }
     }
     

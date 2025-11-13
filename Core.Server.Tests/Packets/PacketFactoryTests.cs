@@ -1,5 +1,6 @@
 using Core.Server.Packets;
 using Core.Server.Packets.ClientPackets;
+using Core.Server.Packets.In.CA;
 
 namespace Core.Server.Tests.Packets;
 
@@ -119,11 +120,12 @@ public class PacketFactoryTests
         var factory = new PacketFactory();
         factory.RegisterPacket<CA_LOGIN>(PacketHeader.CA_LOGIN, 1);
         
-        // Create test data
+        // Create test data (body only, no header)
         byte[] data;
         using (var ms = new MemoryStream())
         using (var writer = new BinaryWriter(ms))
         {
+            writer.Write((uint)1); // Version
             writer.WriteFixedString("TestUser", 24);
             writer.WriteFixedString("TestPass", 24);
             writer.Write((byte)5);
@@ -141,7 +143,7 @@ public class PacketFactoryTests
         // Assert
         Assert.Equal("TestUser", packet.Username);
         Assert.Equal("TestPass", packet.Password);
-        Assert.Equal(5, packet.ClientType);
+        Assert.Equal(5, packet.Clienttype);
     }
     
     [Fact]

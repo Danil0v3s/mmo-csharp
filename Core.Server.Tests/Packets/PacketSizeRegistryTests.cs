@@ -12,8 +12,8 @@ public class PacketSizeRegistryTests
     {
         // Arrange
         var registry = new PacketSizeRegistry();
-        var header = PacketHeader.AC_ACCEPT_LOGIN;
-        int size = 7;
+        var header = PacketHeader.CZ_HEARTBEAT;
+        int size = 2;
         
         // Act
         registry.RegisterFixedSize(header, size);
@@ -108,9 +108,9 @@ public class PacketSizeRegistryTests
         Assert.True(registry.IsFixedLength(PacketHeader.CZ_HEARTBEAT));
         Assert.Equal(2, registry.GetFixedSize(PacketHeader.CZ_HEARTBEAT));
         
-        // Assert - AC_ACCEPT_LOGIN should be fixed-length with size 7
-        Assert.True(registry.IsFixedLength(PacketHeader.AC_ACCEPT_LOGIN));
-        Assert.Equal(7, registry.GetFixedSize(PacketHeader.AC_ACCEPT_LOGIN));
+        // Assert - CA_LOGIN should be fixed-length with size 55
+        Assert.True(registry.IsFixedLength(PacketHeader.CA_LOGIN));
+        Assert.Equal(55, registry.GetFixedSize(PacketHeader.CA_LOGIN));
     }
     
     [Fact]
@@ -122,9 +122,9 @@ public class PacketSizeRegistryTests
         // Act
         registry.Initialize();
         
-        // Assert - CA_LOGIN should be variable-length
-        Assert.False(registry.IsFixedLength(PacketHeader.CA_LOGIN));
-        Assert.Null(registry.GetFixedSize(PacketHeader.CA_LOGIN));
+        // Assert - AC_ACCEPT_LOGIN should be variable-length
+        Assert.False(registry.IsFixedLength(PacketHeader.AC_ACCEPT_LOGIN));
+        Assert.Null(registry.GetFixedSize(PacketHeader.AC_ACCEPT_LOGIN));
         
         // Assert - HC_CHARACTER_LIST should be variable-length
         Assert.False(registry.IsFixedLength(PacketHeader.HC_CHARACTER_LIST));
@@ -139,11 +139,11 @@ public class PacketSizeRegistryTests
         
         // Act & Assert - Too small
         Assert.Throws<InvalidDataException>(() =>
-            registry.RegisterFixedSize(PacketHeader.AC_ACCEPT_LOGIN, 1));
+            registry.RegisterFixedSize(PacketHeader.CZ_HEARTBEAT, 1));
         
         // Act & Assert - Too large
         Assert.Throws<InvalidDataException>(() =>
-            registry.RegisterFixedSize(PacketHeader.AC_ACCEPT_LOGIN, 40000));
+            registry.RegisterFixedSize(PacketHeader.CZ_HEARTBEAT, 40000));
     }
     
     [Fact]
@@ -151,10 +151,10 @@ public class PacketSizeRegistryTests
     {
         // Arrange
         var registry = new PacketSizeRegistry();
-        registry.RegisterFixedSize(PacketHeader.AC_ACCEPT_LOGIN, 7);
+        registry.RegisterFixedSize(PacketHeader.CZ_HEARTBEAT, 2);
         
         // Act & Assert
-        Assert.True(registry.IsRegistered(PacketHeader.AC_ACCEPT_LOGIN));
+        Assert.True(registry.IsRegistered(PacketHeader.CZ_HEARTBEAT));
     }
     
     [Fact]
@@ -164,7 +164,7 @@ public class PacketSizeRegistryTests
         var registry = new PacketSizeRegistry();
         
         // Act & Assert
-        Assert.False(registry.IsRegistered(PacketHeader.AC_ACCEPT_LOGIN));
+        Assert.False(registry.IsRegistered(PacketHeader.SC_NOTIFY_BAN));
     }
 }
 

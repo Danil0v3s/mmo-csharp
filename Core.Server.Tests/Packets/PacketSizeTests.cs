@@ -1,5 +1,6 @@
 using Core.Server.Packets;
 using Core.Server.Packets.ClientPackets;
+using Core.Server.Packets.In.CA;
 using Core.Server.Packets.ServerPackets;
 
 namespace Core.Server.Tests.Packets;
@@ -13,17 +14,17 @@ public class PacketSizeTests
     public void FixedLengthPacket_GetSize_ReturnsCorrectSize()
     {
         // Arrange
-        var packet = new AC_ACCEPT_LOGIN
+        var packet = new CA_LOGIN
         {
-            SessionToken = 123,
-            CharacterSlots = 5
+            Username = "test",
+            Password = "pass"
         };
         
         // Act
         int size = packet.GetSize();
         
-        // Assert - Header (2) + SessionToken (4) + CharacterSlots (1) = 7
-        Assert.Equal(7, size);
+        // Assert - PacketType (2) + Version (4) + Username (24) + Password (24) + Clienttype (1) = 55
+        Assert.Equal(55, size);
         Assert.True(packet.IsFixedLength);
     }
     
@@ -45,18 +46,19 @@ public class PacketSizeTests
     public void VariableLengthPacket_GetSize_IncludesSizeField()
     {
         // Arrange
-        var packet = new CA_LOGIN
+        var packet = new HC_CHARACTER_LIST
         {
-            Username = "test",
-            Password = "pass",
-            ClientType = 1
+            Characters = new[]
+            {
+                new CharacterInfo { CharId = 1, Name = "Test", Exp = 1000, Zeny = 500, JobLevel = 10 }
+            }
         };
         
         // Act
         int size = packet.GetSize();
         
-        // Assert - Header (2) + Size field (2) + Username (24) + Password (24) + ClientType (1) = 53
-        Assert.Equal(53, size);
+        // Assert - Header (2) + Size field (2) + Count (1) + 1 Character (42) = 47
+        Assert.Equal(47, size);
         Assert.False(packet.IsFixedLength);
     }
     
@@ -124,7 +126,6 @@ public class PacketSizeTests
         // Test for all example packets
         var packets = new OutgoingPacket[]
         {
-            new AC_ACCEPT_LOGIN { SessionToken = 123, CharacterSlots = 5 },
             new HC_CHARACTER_LIST { Characters = Array.Empty<CharacterInfo>() },
             new ZC_ENTITY_LIST { Entities = Array.Empty<EntityInfo>() }
         };
