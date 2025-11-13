@@ -82,24 +82,47 @@ public class DatabaseSeeder
         _logger.LogInformation("Executing SQL script: {ScriptPath}", scriptPath);
 
         var sql = await File.ReadAllLinesAsync(scriptPath, ct);
-        foreach (var statement in sql)
+        
+        // Use raw database connection to avoid EF Core's SQL parsing
+        var connection = _context.Database.GetDbConnection();
+        var wasOpen = connection.State == System.Data.ConnectionState.Open;
+        
+        if (!wasOpen)
         {
-            var trimmedStatement = statement.Trim();
+            await connection.OpenAsync(ct);
+        }
 
-            // Skip empty lines, comments, and section headers
-            if (string.IsNullOrWhiteSpace(trimmedStatement) || trimmedStatement.StartsWith("--") || trimmedStatement.StartsWith("/*"))
+        try
+        {
+            foreach (var statement in sql)
             {
-                continue;
-            }
+                var trimmedStatement = statement.Trim();
 
-            try
-            {
-                await _context.Database.ExecuteSqlRawAsync(trimmedStatement, ct);
+                // Skip empty lines, comments, and section headers
+                if (string.IsNullOrWhiteSpace(trimmedStatement) || trimmedStatement.StartsWith("--") || trimmedStatement.StartsWith("/*"))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    using var command = connection.CreateCommand();
+                    command.CommandText = trimmedStatement;
+                    await command.ExecuteNonQueryAsync(ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to execute statement: {Statement}", 
+                        trimmedStatement.Length > 500 ? trimmedStatement[..500] + "..." : trimmedStatement);
+                    throw;
+                }
             }
-            catch (Exception ex)
+        }
+        finally
+        {
+            if (!wasOpen)
             {
-                _logger.LogError(ex, "Failed to execute statement: {Statement}", trimmedStatement);
-                throw;
+                await connection.CloseAsync();
             }
         }
     }
