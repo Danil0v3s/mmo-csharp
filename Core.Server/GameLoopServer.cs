@@ -44,7 +44,14 @@ public abstract class GameLoopServer : AbstractServer
         
         if (_gameLoopTask != null)
         {
-            await _gameLoopTask;
+            try
+            {
+                await _gameLoopTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected during shutdown
+            }
         }
         
         await StopTcpListenerAsync(cancellationToken);
@@ -93,7 +100,14 @@ public abstract class GameLoopServer : AbstractServer
 
             if (sleepTime > 0)
             {
-                await Task.Delay(sleepTime, cancellationToken);
+                try
+                {
+                    await Task.Delay(sleepTime, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
         }
 
