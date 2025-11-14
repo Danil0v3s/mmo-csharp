@@ -1,5 +1,6 @@
 using Core.Server.IPC;
 using Grpc.Core;
+using CharacterInfo = Core.Server.Packets.CharacterInfo;
 
 namespace Char.Server;
 

@@ -1,8 +1,10 @@
 using Core.Server.Packets;
 using Core.Server.Packets.ClientPackets;
 using Core.Server.Packets.In.CA;
+using Core.Server.Packets.Out.HC;
 using Core.Server.Packets.ServerPackets;
 using Microsoft.Extensions.Configuration;
+using CharacterInfo = Core.Server.Packets.CharacterInfo;
 
 namespace Core.Server.Tests.Packets;
 

@@ -1,4 +1,4 @@
-namespace Core.Server.Packets.ServerPackets;
+namespace Core.Server.Packets.Out.HC;
 
 /// <summary>
 /// Character information structure for character list packets.
