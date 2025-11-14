@@ -109,13 +109,14 @@ public class PacketSizeRegistry : IPacketSizeRegistry
                 return;
             
             var header = packet.Header;
+            bool isFixedLength = packet.Size != -1;
             
             // If already registered with the same settings, skip
             if (_registry.TryGetValue(header, out var existing))
             {
-                if (existing.IsFixedLength == packet.IsFixedLength)
+                if (existing.IsFixedLength == isFixedLength)
                 {
-                    if (!packet.IsFixedLength || existing.FixedSize == packet.GetSize())
+                    if (!isFixedLength || existing.FixedSize == packet.Size)
                     {
                         return; // Already registered correctly
                     }
@@ -127,9 +128,9 @@ public class PacketSizeRegistry : IPacketSizeRegistry
                     $"Type: {type.FullName}");
             }
             
-            if (packet.IsFixedLength)
+            if (isFixedLength)
             {
-                RegisterFixedSize(header, packet.GetSize());
+                RegisterFixedSize(header, packet.Size);
             }
             else
             {

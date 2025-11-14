@@ -14,7 +14,7 @@ public class CA_SSO_LOGIN_REQ : IncomingPacket
     public string Ip { get; internal set; } // 15 bytes
     public string Token { get; internal set; } // variable length
 
-    public CA_SSO_LOGIN_REQ() : base(PacketHeader.CA_SSO_LOGIN_REQ, isFixedLength: false)
+    public CA_SSO_LOGIN_REQ() : base(PacketHeader.CA_SSO_LOGIN_REQ, -1)
     {
     }
 
@@ -29,12 +29,5 @@ public class CA_SSO_LOGIN_REQ : IncomingPacket
         Ip = reader.ReadFixedString(15);
         int tokenLength = PacketLength - (2 + 2 + 4 + 1 + 24 + 27 + 17 + 15); // total - headers and fixed fields
         Token = Encoding.UTF8.GetString(reader.ReadBytes(tokenLength));
-    }
-    
-    public override int GetSize()
-    {
-        // header (2) + packetLength (2) + version (4) + clienttype (1) + username (24) + password (27) + mac (17) + ip (15) + token length
-        // For variable length packets, return the minimum size without the variable part
-        return 2 + 2 + 4 + 1 + 24 + 27 + 17 + 15; // Fixed part only
     }
 }

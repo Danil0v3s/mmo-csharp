@@ -5,7 +5,17 @@ public class HC_CHARLIST_NOTIFY : OutgoingPacket
     public int TotalPages { get; init; }
     public int CharSlots { get; init; }
 
-    public HC_CHARLIST_NOTIFY(PacketHeader header) : base(header, true) { }
+    public HC_CHARLIST_NOTIFY(PacketHeader header) : base(header, GetPacketSize(header)) { }
+    
+    private static int GetPacketSize(PacketHeader header)
+    {
+        int size = sizeof(short) + sizeof(int); // packetType + totalPages
+        if (header == PacketHeader.HC_CHARLIST_NOTIFY)
+        {
+            size += sizeof(int); // + charSlots
+        }
+        return size;
+    }
 
     public override void Write(BinaryWriter writer)
     {

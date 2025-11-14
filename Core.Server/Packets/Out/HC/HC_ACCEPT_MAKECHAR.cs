@@ -4,7 +4,7 @@ public class HC_ACCEPT_MAKECHAR : OutgoingPacket
 {
     public byte[] CharData { get; init; } = Array.Empty<byte>();
 
-    public HC_ACCEPT_MAKECHAR() : base(PacketHeader.HC_ACCEPT_MAKECHAR, false) { }
+    public HC_ACCEPT_MAKECHAR() : base(PacketHeader.HC_ACCEPT_MAKECHAR, -1) { }
 
     public override void Write(BinaryWriter writer)
     {

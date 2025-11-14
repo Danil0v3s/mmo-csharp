@@ -5,9 +5,11 @@ namespace Core.Server.Packets.ServerPackets;
 [PacketVersion(1)]
 public class SC_NOTIFY_BAN : OutgoingPacket
 {
+    private const int SIZE = 3; // Header (2) + result (1)
+    
     public byte Result { get; init; }
 
-    public SC_NOTIFY_BAN() : base(PacketHeader.SC_NOTIFY_BAN, isFixedLength: true)
+    public SC_NOTIFY_BAN() : base(PacketHeader.SC_NOTIFY_BAN, SIZE)
     {
     }
 
@@ -19,7 +21,6 @@ public class SC_NOTIFY_BAN : OutgoingPacket
 
     public override int GetSize()
     {
-        // Header (2) + result (1)
-        return 2 + 1;
+        return SIZE;
     }
 }

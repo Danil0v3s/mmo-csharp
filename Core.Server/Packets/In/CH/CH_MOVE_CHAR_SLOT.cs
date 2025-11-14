@@ -2,10 +2,12 @@ namespace Core.Server.Packets.In.CH;
 
 public class CH_MOVE_CHAR_SLOT : IncomingPacket
 {
+    private const int SIZE = 6; // packetType + from + to
+    
     public ushort From { get; internal set; }
     public ushort To { get; internal set; }
 
-    public CH_MOVE_CHAR_SLOT() : base(PacketHeader.CH_MOVE_CHAR_SLOT, true) { }
+    public CH_MOVE_CHAR_SLOT() : base(PacketHeader.CH_MOVE_CHAR_SLOT, SIZE) { }
 
     public override void Read(BinaryReader reader)
     {
@@ -13,10 +15,5 @@ public class CH_MOVE_CHAR_SLOT : IncomingPacket
         reader.ReadInt16(); // Skip packet type
         From = reader.ReadUInt16();
         To = reader.ReadUInt16();
-    }
-
-    public override int GetSize()
-    {
-        return sizeof(short) + sizeof(ushort) + sizeof(ushort); // packetType + from + to
     }
 }

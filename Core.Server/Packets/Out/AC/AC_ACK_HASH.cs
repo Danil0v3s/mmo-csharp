@@ -8,7 +8,7 @@ public class AC_ACK_HASH : OutgoingPacket
     public short PacketLength { get; init; }
     public string Salt { get; init; }
 
-    public AC_ACK_HASH() : base(PacketHeader.AC_ACK_HASH, isFixedLength: false)
+    public AC_ACK_HASH() : base(PacketHeader.AC_ACK_HASH, -1)
     {
     }
 

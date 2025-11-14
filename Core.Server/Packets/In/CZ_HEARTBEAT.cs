@@ -9,7 +9,9 @@ namespace Core.Server.Packets.ClientPackets;
 [PacketVersion(1)]
 public class CZ_HEARTBEAT : IncomingPacket
 {
-    public CZ_HEARTBEAT() : base(PacketHeader.CZ_HEARTBEAT, isFixedLength: true)
+    private const int SIZE = 2; // Just header
+    
+    public CZ_HEARTBEAT() : base(PacketHeader.CZ_HEARTBEAT, SIZE)
     {
     }
     
@@ -17,8 +19,6 @@ public class CZ_HEARTBEAT : IncomingPacket
     {
         // No body, header only
     }
-    
-    public override int GetSize() => 2; // Just header
     
     /// <summary>
     /// Static factory method for creating and reading this packet.

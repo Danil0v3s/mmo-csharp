@@ -58,7 +58,7 @@ public class ZC_ENTITY_LIST : OutgoingPacket
 {
     public EntityInfo[] Entities { get; init; } = Array.Empty<EntityInfo>();
     
-    public ZC_ENTITY_LIST() : base(PacketHeader.ZC_ENTITY_LIST, isFixedLength: false)
+    public ZC_ENTITY_LIST() : base(PacketHeader.ZC_ENTITY_LIST, -1)
     {
     }
     

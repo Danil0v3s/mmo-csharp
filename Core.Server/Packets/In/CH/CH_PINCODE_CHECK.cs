@@ -6,7 +6,9 @@ public class CH_PINCODE_CHECK : IncomingPacket
     public uint Seed { get; internal set; }
     public string PinCode { get; internal set; } = string.Empty;
 
-    public CH_PINCODE_CHECK() : base(PacketHeader.CH_PINCODE_CHECK, true)
+    private const int SIZE = 14; // packetType (2) + accountId (4) + seed (4) + pincode (4)
+    
+    public CH_PINCODE_CHECK() : base(PacketHeader.CH_PINCODE_CHECK, SIZE)
     {
         PinCode = new string('\0', 4); // Assuming PINCODE_LENGTH is 4 based on context
     }
@@ -20,10 +22,5 @@ public class CH_PINCODE_CHECK : IncomingPacket
 
         // Read PIN code (typically 4 characters)
         PinCode = reader.ReadFixedString(4);
-    }
-
-    public override int GetSize()
-    {
-        return sizeof(short) + sizeof(uint) + sizeof(uint) + 4; // packetType + accountId + seed + pincode[4]
     }
 }

@@ -6,8 +6,8 @@ namespace Core.Server.Packets;
 /// </summary>
 public abstract class IncomingPacket : Packet
 {
-    protected IncomingPacket(PacketHeader header, bool isFixedLength) 
-        : base(header, isFixedLength)
+    protected IncomingPacket(PacketHeader header, int size) 
+        : base(header, size)
     {
     }
     

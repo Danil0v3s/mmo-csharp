@@ -11,7 +11,7 @@ public class TC_RESULT : OutgoingPacket
     public string Unknown1 { get; init; } // 20 bytes
     public string Unknown2 { get; init; } // 6 bytes
 
-    public TC_RESULT() : base(PacketHeader.TC_RESULT, isFixedLength: false)
+    public TC_RESULT() : base(PacketHeader.TC_RESULT, -1)
     {
     }
 

@@ -6,7 +6,9 @@ public class CH_REQ_IS_VALID_CHARNAME : IncomingPacket
     public uint CharId { get; internal set; }
     public string NewName { get; internal set; } = string.Empty;
 
-    public CH_REQ_IS_VALID_CHARNAME() : base(PacketHeader.CH_REQ_IS_VALID_CHARNAME, true)
+    private const int SIZE = 34; // packetType (2) + accountId (4) + charId (4) + newName (24)
+    
+    public CH_REQ_IS_VALID_CHARNAME() : base(PacketHeader.CH_REQ_IS_VALID_CHARNAME, SIZE)
     {
         NewName = new string('\0', PacketConstants.NAME_LENGTH);
     }
@@ -18,10 +20,5 @@ public class CH_REQ_IS_VALID_CHARNAME : IncomingPacket
         AccountId = reader.ReadUInt32();
         CharId = reader.ReadUInt32();
         NewName = reader.ReadFixedString(PacketConstants.NAME_LENGTH);
-    }
-
-    public override int GetSize()
-    {
-        return sizeof(short) + sizeof(uint) + sizeof(uint) + PacketConstants.NAME_LENGTH; // packetType + accountId + charId + newName
     }
 }

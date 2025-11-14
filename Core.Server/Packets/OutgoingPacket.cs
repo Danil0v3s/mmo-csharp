@@ -6,8 +6,8 @@ namespace Core.Server.Packets;
 /// </summary>
 public abstract class OutgoingPacket : Packet
 {
-    protected OutgoingPacket(PacketHeader header, bool isFixedLength) 
-        : base(header, isFixedLength)
+    protected OutgoingPacket(PacketHeader header, int size) 
+        : base(header, size)
     {
     }
     
@@ -17,5 +17,12 @@ public abstract class OutgoingPacket : Packet
     /// </summary>
     /// <param name="writer">BinaryWriter to write the packet to</param>
     public abstract void Write(BinaryWriter writer);
+    
+    /// <summary>
+    /// Gets the actual size of this packet instance.
+    /// For fixed-length packets, returns Size.
+    /// For variable-length packets, calculates the actual size.
+    /// </summary>
+    public abstract int GetSize();
 }
 

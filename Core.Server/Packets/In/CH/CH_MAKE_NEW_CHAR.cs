@@ -17,8 +17,26 @@ public class CH_MAKE_NEW_CHAR : IncomingPacket
     public ushort StartingJob { get; internal set; }
     public byte Sex { get; internal set; }
 
-    public CH_MAKE_NEW_CHAR(int cmd) : base((PacketHeader)cmd, true) // cmd can be CH_MAKE_NEW_CHAR_V3 (0xa39), CH_MAKE_NEW_CHAR_V2 (0x970), or CH_MAKE_NEW_CHAR (0x67)
+    public CH_MAKE_NEW_CHAR(int cmd) : base((PacketHeader)cmd, GetPacketSize(cmd)) // cmd can be CH_MAKE_NEW_CHAR_V3 (0xa39), CH_MAKE_NEW_CHAR_V2 (0x970), or CH_MAKE_NEW_CHAR (0x67)
     {
+    }
+    
+    private static int GetPacketSize(int cmd)
+    {
+        int size = sizeof(short); // packetType
+        if (cmd == 0xa39) // >= 20151001
+        {
+            size += PacketConstants.NAME_LENGTH + sizeof(byte) + sizeof(ushort) + sizeof(ushort) + sizeof(ushort) + sizeof(ushort) + sizeof(byte); // name + slot + hairColor + hairStyle + startJob + unknown + sex
+        }
+        else if (cmd == 0x970) // >= 20120307
+        {
+            size += PacketConstants.NAME_LENGTH + sizeof(byte) + sizeof(ushort) + sizeof(ushort); // name + slot + hairColor + hairStyle
+        }
+        else // older versions
+        {
+            size += PacketConstants.NAME_LENGTH + 6 * sizeof(byte) + sizeof(byte) + 2 * sizeof(ushort); // name + str/agi/vit/int/dex/luk + slot + hairColor + hairStyle
+        }
+        return size;
     }
 
     public override void Read(BinaryReader reader)
@@ -58,26 +76,5 @@ public class CH_MAKE_NEW_CHAR : IncomingPacket
             HairColor = reader.ReadUInt16();
             HairStyle = reader.ReadUInt16();
         }
-    }
-
-    public override int GetSize()
-    {
-        int cmd = (int)Header;
-        int size = sizeof(short); // packetType
-
-        if (cmd == 0xa39) // >= 20151001
-        {
-            size += PacketConstants.NAME_LENGTH + sizeof(byte) + sizeof(ushort) + sizeof(ushort) + sizeof(ushort) + sizeof(ushort) + sizeof(byte); // name + slot + hairColor + hairStyle + startJob + unknown + sex
-        }
-        else if (cmd == 0x970) // >= 20120307
-        {
-            size += PacketConstants.NAME_LENGTH + sizeof(byte) + sizeof(ushort) + sizeof(ushort); // name + slot + hairColor + hairStyle
-        }
-        else // older versions
-        {
-            size += PacketConstants.NAME_LENGTH + 6 * sizeof(byte) + sizeof(byte) + 2 * sizeof(ushort); // name + str/agi/vit/int/dex/luk + slot + hairColor + hairStyle
-        }
-
-        return size;
     }
 }

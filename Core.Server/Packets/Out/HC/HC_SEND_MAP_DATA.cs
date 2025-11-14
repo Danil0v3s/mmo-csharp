@@ -7,7 +7,7 @@ public class HC_SEND_MAP_DATA : OutgoingPacket
     public uint Ip { get; init; }
     public ushort Port { get; init; }
 
-    public HC_SEND_MAP_DATA() : base(PacketHeader.HC_SEND_MAP_DATA, false) { } // This header might be conditional
+    public HC_SEND_MAP_DATA() : base(PacketHeader.HC_SEND_MAP_DATA, -1) { } // This header might be conditional
 
     public override void Write(BinaryWriter writer)
     {

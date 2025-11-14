@@ -5,7 +5,7 @@ public class HC_ACK_CHARINFO_PER_PAGE : OutgoingPacket
     public byte[] CharInfoData { get; init; } = Array.Empty<byte>();
     public byte Count { get; init; }
 
-    public HC_ACK_CHARINFO_PER_PAGE() : base(PacketHeader.HC_ACK_CHARINFO_PER_PAGE, false) { }
+    public HC_ACK_CHARINFO_PER_PAGE() : base(PacketHeader.HC_ACK_CHARINFO_PER_PAGE, -1) { }
 
     public override void Write(BinaryWriter writer)
     {

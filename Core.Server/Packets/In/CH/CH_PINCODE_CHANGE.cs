@@ -6,7 +6,9 @@ public class CH_PINCODE_CHANGE : IncomingPacket
     public string OldPin { get; internal set; } = string.Empty;
     public string NewPin { get; internal set; } = string.Empty;
 
-    public CH_PINCODE_CHANGE() : base(PacketHeader.CH_PINCODE_CHANGE, true)
+    private const int SIZE = 14; // packetType (2) + accountId (4) + oldpin (4) + newpin (4)
+    
+    public CH_PINCODE_CHANGE() : base(PacketHeader.CH_PINCODE_CHANGE, SIZE)
     {
         OldPin = new string('\0', 4);
         NewPin = new string('\0', 4);
@@ -23,10 +25,5 @@ public class CH_PINCODE_CHANGE : IncomingPacket
 
         // Read new PIN (typically 4 characters)
         NewPin = reader.ReadFixedString(4);
-    }
-
-    public override int GetSize()
-    {
-        return sizeof(short) + sizeof(uint) + 4 + 4; // packetType + accountId + oldpin[4] + newpin[4]
     }
 }

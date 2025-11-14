@@ -27,7 +27,7 @@ public class AC_ACCEPT_LOGIN : OutgoingPacket
     public string Token { get; init; }
     public AC_ACCEPT_LOGIN_sub[] CharServers { get; init; }
 
-    public AC_ACCEPT_LOGIN() : base(PacketHeader.AC_ACCEPT_LOGIN, isFixedLength: false)
+    public AC_ACCEPT_LOGIN() : base(PacketHeader.AC_ACCEPT_LOGIN, -1)
     {
     }
 

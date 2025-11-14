@@ -5,7 +5,7 @@ public class HC_NOTIFY_ACCESSIBLE_MAPNAME : OutgoingPacket
     public short PacketLength { get; init; }
     public HC_NOTIFY_ACCESSIBLE_MAPNAME_SUB[] Maps { get; init; } = Array.Empty<HC_NOTIFY_ACCESSIBLE_MAPNAME_SUB>();
 
-    public HC_NOTIFY_ACCESSIBLE_MAPNAME() : base(PacketHeader.HC_NOTIFY_ACCESSIBLE_MAPNAME, false) { }
+    public HC_NOTIFY_ACCESSIBLE_MAPNAME() : base(PacketHeader.HC_NOTIFY_ACCESSIBLE_MAPNAME, -1) { }
 
     public override void Write(BinaryWriter writer)
     {

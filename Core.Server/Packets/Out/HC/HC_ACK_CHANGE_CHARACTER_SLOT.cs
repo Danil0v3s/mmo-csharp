@@ -2,10 +2,12 @@ namespace Core.Server.Packets.Out.HC;
 
 public class HC_ACK_CHANGE_CHARACTER_SLOT : OutgoingPacket
 {
+    private const int SIZE = 8; // Fixed length: 2 (header) + 2 (length) + 2 (reason) + 2 (charMoves)
+    
     public short Reason { get; init; }
     public short CharMoves { get; init; }
 
-    public HC_ACK_CHANGE_CHARACTER_SLOT() : base(PacketHeader.HC_ACK_CHANGE_CHARACTER_SLOT, true) { }
+    public HC_ACK_CHANGE_CHARACTER_SLOT() : base(PacketHeader.HC_ACK_CHANGE_CHARACTER_SLOT, SIZE) { }
 
     public override void Write(BinaryWriter writer)
     {
@@ -17,6 +19,6 @@ public class HC_ACK_CHANGE_CHARACTER_SLOT : OutgoingPacket
 
     public override int GetSize()
     {
-        return 8;
+        return SIZE;
     }
 }

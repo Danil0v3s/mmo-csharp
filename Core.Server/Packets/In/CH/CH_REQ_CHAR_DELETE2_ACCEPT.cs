@@ -2,10 +2,12 @@ namespace Core.Server.Packets.In.CH;
 
 public class CH_REQ_CHAR_DELETE2_ACCEPT : IncomingPacket
 {
+    private const int SIZE = 12; // packetType (2) + charId (4) + birthDate (6)
+    
     public uint CharId { get; internal set; }
     public byte[] BirthDate { get; internal set; } = new byte[6];
 
-    public CH_REQ_CHAR_DELETE2_ACCEPT() : base(PacketHeader.CH_REQ_CHAR_DELETE2_ACCEPT, true) { }
+    public CH_REQ_CHAR_DELETE2_ACCEPT() : base(PacketHeader.CH_REQ_CHAR_DELETE2_ACCEPT, SIZE) { }
 
     public override void Read(BinaryReader reader)
     {
@@ -18,10 +20,5 @@ public class CH_REQ_CHAR_DELETE2_ACCEPT : IncomingPacket
         {
             BirthDate[i] = reader.ReadByte();
         }
-    }
-
-    public override int GetSize()
-    {
-        return sizeof(short) + sizeof(uint) + 6; // packetType + charId + birthDate[6]
     }
 }

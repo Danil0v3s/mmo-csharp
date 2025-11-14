@@ -5,7 +5,7 @@ public class CH_DELETE_CHAR : IncomingPacket
     public uint CharId { get; internal set; }
     public string Email { get; internal set; } = string.Empty;
 
-    public CH_DELETE_CHAR(int cmd) : base((PacketHeader)cmd, true) // cmd can be 0x68 or 0x1fb
+    public CH_DELETE_CHAR(int cmd) : base((PacketHeader)cmd, cmd == 0x68 ? 46 : 56) // cmd can be 0x68 (46 bytes) or 0x1fb (56 bytes)
     {
         Email = new string('\0', 40);
     }
@@ -18,16 +18,5 @@ public class CH_DELETE_CHAR : IncomingPacket
 
         // Read email (40 bytes)
         Email = reader.ReadFixedString(40);
-    }
-
-    public override int GetSize()
-    {
-        int cmd = (int)Header;
-        int size = sizeof(short) + sizeof(uint) + 40; // packetType + charId + email[40]
-        if (cmd == 0x1fb)
-        {
-            size += 10; // Additional bytes for newer packet
-        }
-        return cmd == 0x68 ? 46 : 56; // Fixed sizes based on packet type
     }
 }

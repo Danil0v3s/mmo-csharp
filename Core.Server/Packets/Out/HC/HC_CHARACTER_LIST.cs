@@ -57,7 +57,7 @@ public class HC_CHARACTER_LIST : OutgoingPacket
 {
     public CharacterInfo[] Characters { get; init; } = Array.Empty<CharacterInfo>();
     
-    public HC_CHARACTER_LIST() : base(PacketHeader.HC_CHARACTER_LIST, isFixedLength: false)
+    public HC_CHARACTER_LIST() : base(PacketHeader.HC_CHARACTER_LIST, -1)
     {
     }
     

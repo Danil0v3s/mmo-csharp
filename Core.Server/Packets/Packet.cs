@@ -7,14 +7,12 @@ namespace Core.Server.Packets;
 public abstract class Packet : IPacket
 {
     public PacketHeader Header { get; }
-    public bool IsFixedLength { get; }
+    public int Size { get; }
     
-    protected Packet(PacketHeader header, bool isFixedLength)
+    protected Packet(PacketHeader header, int size)
     {
         Header = header;
-        IsFixedLength = isFixedLength;
+        Size = size;
     }
-    
-    public abstract int GetSize();
 }
 

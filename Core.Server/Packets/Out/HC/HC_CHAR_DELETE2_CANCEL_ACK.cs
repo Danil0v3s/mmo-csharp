@@ -2,10 +2,12 @@ namespace Core.Server.Packets.Out.HC;
 
 public class HC_CHAR_DELETE2_CANCEL_ACK : OutgoingPacket
 {
+    private const int SIZE = 10; // packetType (2) + charId (4) + result (4)
+    
     public uint CharId { get; init; }
     public uint Result { get; init; }
 
-    public HC_CHAR_DELETE2_CANCEL_ACK() : base(PacketHeader.HC_CHAR_DELETE2_CANCEL_ACK, true) { }
+    public HC_CHAR_DELETE2_CANCEL_ACK() : base(PacketHeader.HC_CHAR_DELETE2_CANCEL_ACK, SIZE) { }
 
     public override void Write(BinaryWriter writer)
     {
@@ -16,6 +18,6 @@ public class HC_CHAR_DELETE2_CANCEL_ACK : OutgoingPacket
 
     public override int GetSize()
     {
-        return sizeof(short) + sizeof(uint) + sizeof(uint); // packetType + charId + result
+        return SIZE;
     }
 }

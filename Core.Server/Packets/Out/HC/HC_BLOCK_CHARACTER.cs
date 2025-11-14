@@ -5,7 +5,7 @@ public class HC_BLOCK_CHARACTER : OutgoingPacket
     public short PacketLength { get; init; }
     public CharacterBlockInfo[] BlockInfo { get; init; } = Array.Empty<CharacterBlockInfo>();
 
-    public HC_BLOCK_CHARACTER() : base(PacketHeader.HC_BLOCK_CHARACTER, false) { }
+    public HC_BLOCK_CHARACTER() : base(PacketHeader.HC_BLOCK_CHARACTER, -1) { }
 
     public override void Write(BinaryWriter writer)
     {
