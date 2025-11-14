@@ -16,9 +16,4 @@ public class HC_ACK_CHANGE_CHARACTER_SLOT : OutgoingPacket
         writer.Write(Reason);
         writer.Write(CharMoves);
     }
-
-    public override int GetSize()
-    {
-        return SIZE;
-    }
 }

@@ -201,7 +201,7 @@ public class CharacterInfo
         size += sizeof(short); // Accessory3
         size += sizeof(short); // HeadPalette
         size += sizeof(short); // BodyPalette
-        size += 24; // Name[24]
+        size += PacketConstants.NAME_LENGTH; // Name[24]
         size += sizeof(byte); // Str
         size += sizeof(byte); // Agi
         size += sizeof(byte); // Vit
@@ -211,7 +211,7 @@ public class CharacterInfo
         size += sizeof(byte); // CharNum
         size += sizeof(byte); // HairColor
         size += sizeof(short); // IsChangedCharName
-        size += 16; // MapName[16] (PACKETVER >= 20100803)
+        size += PacketConstants.MAP_NAME_LENGTH; // MapName[16] (PACKETVER >= 20100803)
         size += sizeof(int); // DelRevDate (PACKETVER >= 20100803)
         size += sizeof(int); // RobePalette (PACKETVER >= 20110111)
         size += sizeof(int); // ChrSlotChangeCnt (PACKETVER >= 20110928)

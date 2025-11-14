@@ -18,9 +18,4 @@ public class SC_NOTIFY_BAN : OutgoingPacket
         writer.Write((short)Header);
         writer.Write(Result);
     }
-
-    public override int GetSize()
-    {
-        return SIZE;
-    }
 }

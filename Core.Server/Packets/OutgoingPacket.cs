@@ -20,9 +20,9 @@ public abstract class OutgoingPacket : Packet
     
     /// <summary>
     /// Gets the actual size of this packet instance.
-    /// For fixed-length packets, returns Size.
-    /// For variable-length packets, calculates the actual size.
+    /// For fixed-length packets, returns Size from the base class.
+    /// For variable-length packets, override to calculate the actual size.
     /// </summary>
-    public abstract int GetSize();
+    public virtual int GetSize() => Size;
 }
 

@@ -15,9 +15,4 @@ public class HC_CHAR_DELETE2_ACCEPT_ACK : OutgoingPacket
         writer.Write(CharId);
         writer.Write(Result);
     }
-
-    public override int GetSize()
-    {
-        return SIZE;
-    }
 }

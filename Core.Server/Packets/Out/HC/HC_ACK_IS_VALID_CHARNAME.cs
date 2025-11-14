@@ -13,9 +13,4 @@ public class HC_ACK_IS_VALID_CHARNAME : OutgoingPacket
         writer.Write((short)Header);
         writer.Write(Result);
     }
-
-    public override int GetSize()
-    {
-        return SIZE;
-    }
 }

@@ -20,9 +20,4 @@ public class AC_REFUSE_LOGIN : OutgoingPacket
         writer.Write(Error); // For version >= 20120000
         writer.Write(Encoding.UTF8.GetBytes(UnblockTime.PadRight(20, '\0')));
     }
-
-    public override int GetSize()
-    {
-        return SIZE;
-    }
 }

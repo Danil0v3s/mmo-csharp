@@ -17,9 +17,4 @@ public class HC_CHAR_DELETE2_ACK : OutgoingPacket
         writer.Write(Result);
         writer.Write(DeleteDate);
     }
-
-    public override int GetSize()
-    {
-        return SIZE;
-    }
 }

@@ -13,9 +13,4 @@ public class HC_REFUSE_ENTER : OutgoingPacket
         writer.Write((short)Header);
         writer.Write(ErrorCode);
     }
-
-    public override int GetSize()
-    {
-        return SIZE;
-    }
 }
