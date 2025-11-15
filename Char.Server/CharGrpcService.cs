@@ -12,7 +12,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     {
         // TODO: Query from database
         var response = new CharacterListResponse();
-        response.Characters.Add(new CharacterInfo
+        response.Characters.Add(new Core.Server.IPC.CharacterInfo
         {
             CharacterId = 1001,
             Name = "Warrior123",
@@ -20,7 +20,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             ClassId = 1,
             CreatedAt = DateTimeOffset.UtcNow.AddDays(-30).ToUnixTimeSeconds()
         });
-        response.Characters.Add(new CharacterInfo
+        response.Characters.Add(new Core.Server.IPC.CharacterInfo
         {
             CharacterId = 1002,
             Name = "Mage456",
@@ -40,7 +40,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         var response = new CreateCharacterResponse
         {
             Success = true,
-            Character = new CharacterInfo
+            Character = new Core.Server.IPC.CharacterInfo
             {
                 CharacterId = new Random().Next(10000, 99999),
                 Name = request.Name,
@@ -73,7 +73,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         // TODO: Query from database
         var response = new CharacterDataResponse
         {
-            Character = new CharacterInfo
+            Character = new Core.Server.IPC.CharacterInfo
             {
                 CharacterId = request.CharacterId,
                 Name = "TestChar",

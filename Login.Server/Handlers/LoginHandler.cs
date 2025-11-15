@@ -13,7 +13,7 @@ namespace Login.Server.Handlers;
 /// Handles CA_LOGIN packets for user authentication.
 /// </summary>
 [PacketHandler(PacketHeader.CA_LOGIN)]
-public class LoginHandler : IPacketHandler<CA_LOGIN>
+public class LoginHandler : IPacketHandler<LoginSessionData, CA_LOGIN>
 {
     private readonly ILogger<LoginHandler> _logger;
     private readonly ILoginRepository _loginRepository;
@@ -26,7 +26,7 @@ public class LoginHandler : IPacketHandler<CA_LOGIN>
         _loginRepository = loginRepository ?? throw new ArgumentNullException(nameof(loginRepository));
     }
 
-    public async Task HandleAsync(ClientSession session, CA_LOGIN packet)
+    public async Task HandleAsync(LoginSessionData session, CA_LOGIN packet)
     {
         _logger.LogInformation("Login request from session {SessionId}: {Username}",
             session.SessionId, packet.Username);

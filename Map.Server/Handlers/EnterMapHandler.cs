@@ -11,7 +11,7 @@ namespace Map.Server.Handlers;
 /// Note: This is a placeholder - actual CZ_ENTER packet class needs to be implemented.
 /// </summary>
 [PacketHandler(PacketHeader.CZ_ENTER)]
-public class EnterMapHandler : IPacketHandler<CZ_HEARTBEAT>
+public class EnterMapHandler : IPacketHandler<MapSessionData, CZ_HEARTBEAT>
 {
     private readonly ILogger<EnterMapHandler> _logger;
     private readonly ConcurrentDictionary<long, PlayerEntity> _players;
@@ -30,7 +30,7 @@ public class EnterMapHandler : IPacketHandler<CZ_HEARTBEAT>
         _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
     }
 
-    public async Task HandleAsync(ClientSession session, CZ_HEARTBEAT packet)
+    public async Task HandleAsync(MapSessionData session, CZ_HEARTBEAT packet)
     {
         // TODO: Extract characterId and mapId from actual CZ_ENTER packet
         long characterId = 1001; // Placeholder
