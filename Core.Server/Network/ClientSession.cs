@@ -8,7 +8,7 @@ namespace Core.Server.Network;
 
 public class ClientSession : IDisposable
 {
-    private readonly Socket _socket;
+    public readonly Socket _socket;
     private readonly ILogger _logger;
     private readonly PacketBuffer _incomingBuffer;
     private readonly ConcurrentQueue<byte[]> _outgoingPackets;
