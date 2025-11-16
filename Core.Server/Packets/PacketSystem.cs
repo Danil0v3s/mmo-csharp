@@ -18,6 +18,8 @@ public class PacketSystem
         Factory = factory ?? new PacketFactory();
         Registry = registry ?? new PacketSizeRegistry();
         Configuration = new PacketConfiguration();
+        
+        Initialize();
     }
     
     /// <summary>

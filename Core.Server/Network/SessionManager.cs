@@ -24,13 +24,13 @@ public class SessionManager : IDisposable
         IPacketFactory packetFactory,
         IPacketSizeRegistry sizeRegistry,
         ILogger logger,
-        int heartbeatTimeout = 30000)
+        ServerConfiguration configuration)
     {
         _sessions = new ConcurrentDictionary<Guid, ClientSession>();
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _packetFactory = packetFactory ?? throw new ArgumentNullException(nameof(packetFactory));
         _sizeRegistry = sizeRegistry ?? throw new ArgumentNullException(nameof(sizeRegistry));
-        _heartbeatTimeout = heartbeatTimeout;
+        _heartbeatTimeout = configuration.HeartbeatTimeout;
         
         _cts = new CancellationTokenSource();
         _cleanupTask = Task.Run(() => CleanupLoopAsync(_cts.Token));

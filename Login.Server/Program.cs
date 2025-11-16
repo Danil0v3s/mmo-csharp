@@ -4,6 +4,7 @@ using Core.Database.Context;
 using Core.Database.Seeds;
 using Core.Server;
 using Core.Server.Network;
+using Core.Server.Packets;
 using Login.Server;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -24,13 +25,18 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 
 // Create server configuration
-var serverConfig = new ServerConfiguration();
+var serverConfig = new LoginServerConfiguration();
 configuration.GetSection("Server").Bind(serverConfig);
 
 // Configure services
+builder.Services.AddSingleton<ServerConfiguration>(serverConfig);
 builder.Services.AddSingleton(serverConfig);
 builder.Services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
 builder.Services.AddSingleton<LoginServerImpl>();
+builder.Services.AddSingleton<PacketSystem>();
+builder.Services.AddSingleton<IPacketFactory>(sp => sp.GetRequiredService<PacketSystem>().Factory);
+builder.Services.AddSingleton<IPacketSizeRegistry>(sp => sp.GetRequiredService<PacketSystem>().Registry);
+builder.Services.AddSingleton<SessionManager>();
 
 // Register database services
 var connectionString = configuration.GetConnectionString("GameDatabase") 

@@ -2,6 +2,7 @@
 using System.Reflection;
 using Core.Server;
 using Core.Server.Network;
+using Core.Server.Packets;
 using Map.Server;
 using Serilog;
 
@@ -21,16 +22,21 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 
 // Create server configuration
-var serverConfig = new ServerConfiguration();
+var serverConfig = new MapServerConfiguration();
 configuration.GetSection("Server").Bind(serverConfig);
 
 // Configure services
+builder.Services.AddSingleton<ServerConfiguration>(serverConfig);
 builder.Services.AddSingleton(serverConfig);
 builder.Services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
 builder.Services.AddSingleton<ConcurrentDictionary<long, PlayerEntity>>();
 builder.Services.AddSingleton<ConcurrentDictionary<Guid, long>>();
 builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddSingleton<MapServerImpl>();
+builder.Services.AddSingleton<PacketSystem>();
+builder.Services.AddSingleton<IPacketFactory>(sp => sp.GetRequiredService<PacketSystem>().Factory);
+builder.Services.AddSingleton<IPacketSizeRegistry>(sp => sp.GetRequiredService<PacketSystem>().Registry);
+builder.Services.AddSingleton<SessionManager>();
 
 // Auto-register all packet handlers from assembly
 var handlerTypes = typeof(MapServerImpl).Assembly.GetTypes()

@@ -28,7 +28,7 @@ public abstract class GameLoopServer : AbstractServer
             _packetSystem.Factory,
             _packetSystem.Registry,
             logger,
-            configuration.HeartbeatTimeout
+            configuration
         );
     }
 

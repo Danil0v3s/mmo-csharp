@@ -2,6 +2,7 @@
 using Char.Server;
 using Core.Server;
 using Core.Server.Network;
+using Core.Server.Packets;
 using Serilog;
 
 // Setup configuration
@@ -20,13 +21,18 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 
 // Create server configuration
-var serverConfig = new ServerConfiguration();
+var serverConfig = new CharServerConfiguration();
 configuration.GetSection("Server").Bind(serverConfig);
 
 // Configure services
+builder.Services.AddSingleton<ServerConfiguration>(serverConfig);
 builder.Services.AddSingleton(serverConfig);
 builder.Services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
 builder.Services.AddSingleton<CharServerImpl>();
+builder.Services.AddSingleton<PacketSystem>();
+builder.Services.AddSingleton<IPacketFactory>(sp => sp.GetRequiredService<PacketSystem>().Factory);
+builder.Services.AddSingleton<IPacketSizeRegistry>(sp => sp.GetRequiredService<PacketSystem>().Registry);
+builder.Services.AddSingleton<SessionManager>();
 
 // Auto-register all packet handlers from assembly
 var handlerTypes = typeof(CharServerImpl).Assembly.GetTypes()
