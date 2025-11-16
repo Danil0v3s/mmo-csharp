@@ -1,4 +1,5 @@
 using Core.Server;
+using Core.Server.IPC;
 using Core.Server.Network;
 using Core.Server.Packets;
 using Core.Server.Packets.In.CA;
@@ -70,6 +71,15 @@ public class LoginHandler(
             SendNotifyBan(sd, 1);
             return;
         }
+
+        if (!loginServer.ServerConnections.GetSessionsByType(ServerType.Char).Any())
+        {
+            // ShowStatus("Connection refused: there is no char-server online (account: %s).\n", sd->userid);
+            SendNotifyBan(sd, 1);
+            return;
+        }
+        
+        
     }
 
     private async void OnAuthFailure(LoginSessionData sd, int result)

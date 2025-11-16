@@ -1,3 +1,4 @@
+using Core.Server.IPC;
 using Microsoft.Extensions.Logging;
 
 namespace Core.Server;
@@ -11,6 +12,12 @@ public abstract class AbstractServer : IServer
 
     public string ServerName { get; }
     public ServerState State { get; protected set; }
+    
+    /// <summary>
+    /// Access to server connection manager for IPC operations.
+    /// Use this to iterate through connected servers by type.
+    /// </summary>
+    public ServerConnectionManager ServerConnections => IpcClient.ConnectionManager;
 
     protected AbstractServer(string serverName, ServerConfiguration configuration, ILogger logger)
     {

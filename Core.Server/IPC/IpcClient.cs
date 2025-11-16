@@ -1,38 +1,51 @@
+using Core.Server.IPC;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Logging;
 
 namespace Core.Server;
 
+/// <summary>
+/// Legacy IPC client - wraps the new ServerConnectionManager for backward compatibility.
+/// Consider migrating to use ServerConnectionManager directly.
+/// </summary>
 public class IpcClient
 {
     private readonly string _serverName;
     private readonly Dictionary<string, string> _endpoints;
-    private readonly Dictionary<string, GrpcChannel> _channels;
     private readonly ILogger _logger;
+    private readonly ServerConnectionManager _connectionManager;
+
+    public ServerConnectionManager ConnectionManager => _connectionManager;
 
     public IpcClient(string serverName, Dictionary<string, string> endpoints, ILogger logger)
     {
         _serverName = serverName;
         _endpoints = endpoints;
-        _channels = new Dictionary<string, GrpcChannel>();
         _logger = logger;
+        _connectionManager = new ServerConnectionManager(serverName, logger);
     }
 
     public async Task ConnectToServersAsync(CancellationToken cancellationToken)
     {
         foreach (var (serverName, endpoint) in _endpoints)
         {
+            var serverType = ParseServerType(serverName);
+            
             try
             {
-                var channel = GrpcChannel.ForAddress(endpoint);
-                _channels[serverName] = channel;
-                _logger.LogInformation("{ServerName} connected to {TargetServer} at {Endpoint}", 
-                    _serverName, serverName, endpoint);
+                var session = await _connectionManager.AddConnectionAsync(
+                    serverName, serverType, endpoint, cancellationToken);
+                
+                if (session == null)
+                {
+                    _logger.LogWarning("{ServerName} failed to establish connection to {TargetServer} at {Endpoint} - server may not be running", 
+                        _serverName, serverName, endpoint);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to connect to {TargetServer} at {Endpoint}", 
-                    serverName, endpoint);
+                _logger.LogWarning(ex, "{ServerName} error connecting to {TargetServer} at {Endpoint}", 
+                    _serverName, serverName, endpoint);
             }
         }
 
@@ -41,27 +54,27 @@ public class IpcClient
 
     public GrpcChannel? GetChannel(string serverName)
     {
-        _channels.TryGetValue(serverName, out var channel);
-        return channel;
+        var session = _connectionManager.GetSessionByName(serverName);
+        return session?.IsConnected == true ? session.Channel : null;
     }
 
     public async Task DisconnectAsync()
     {
-        foreach (var (serverName, channel) in _channels)
-        {
-            try
-            {
-                await channel.ShutdownAsync();
-                _logger.LogInformation("{ServerName} disconnected from {TargetServer}", 
-                    _serverName, serverName);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error disconnecting from {TargetServer}", serverName);
-            }
-        }
+        await _connectionManager.DisconnectAllAsync();
+    }
 
-        _channels.Clear();
+    private static ServerType ParseServerType(string serverName)
+    {
+        if (serverName.Contains("Login", StringComparison.OrdinalIgnoreCase))
+            return ServerType.Login;
+        if (serverName.Contains("Char", StringComparison.OrdinalIgnoreCase))
+            return ServerType.Char;
+        if (serverName.Contains("Map", StringComparison.OrdinalIgnoreCase))
+            return ServerType.Map;
+        if (serverName.Contains("Web", StringComparison.OrdinalIgnoreCase))
+            return ServerType.Web;
+        
+        return ServerType.Login; // Default fallback
     }
 }
 

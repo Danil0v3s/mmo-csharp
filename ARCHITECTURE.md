@@ -87,10 +87,22 @@ IServer (interface)
 - `CharacterService` - Character CRUD operations
 - `MapService` - Map entry/exit, player info
 
-**IpcClient:**
-- Connection pooling
-- Channel registry
-- Automatic reconnection support
+**ServerConnectionManager:**
+- Track server connections by type (Login, Char, Map, Web)
+- Health check monitoring (5s interval, 3 missed checks = timeout)
+- Automatic cleanup of dead connections
+- Query servers by type for iteration
+- Thread-safe concurrent connection management
+
+**ServerSession:**
+- Represents a single server connection
+- Automatic health monitoring
+- Connection state tracking
+- gRPC channel management
+
+**IpcClient (Legacy):**
+- Backward-compatible wrapper around ServerConnectionManager
+- Automatic server type detection from endpoint names
 
 ## Server Configurations
 
