@@ -6,8 +6,10 @@ using Core.Server;
 using Core.Server.Network;
 using Core.Server.Packets;
 using Login.Server;
+using Login.Server.UseCase;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 // Setup configuration
 var configuration = new ConfigurationBuilder()
@@ -31,16 +33,18 @@ configuration.GetSection("Server").Bind(serverConfig);
 // Configure services
 builder.Services.AddSingleton<ServerConfiguration>(serverConfig);
 builder.Services.AddSingleton(serverConfig);
-builder.Services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
+builder.Services.AddSingleton<ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
 builder.Services.AddSingleton<LoginServerImpl>();
 builder.Services.AddSingleton<PacketSystem>();
 builder.Services.AddSingleton<IPacketFactory>(sp => sp.GetRequiredService<PacketSystem>().Factory);
 builder.Services.AddSingleton<IPacketSizeRegistry>(sp => sp.GetRequiredService<PacketSystem>().Registry);
 builder.Services.AddSingleton<SessionManager>();
 
+builder.Services.AddTransient<ILoginMmoAuth, LoginMmoAuth>();
+
 // Register database services
-var connectionString = configuration.GetConnectionString("GameDatabase") 
-    ?? throw new InvalidOperationException("Database connection string 'GameDatabase' not found in configuration");
+var connectionString = configuration.GetConnectionString("GameDatabase")
+                       ?? throw new InvalidOperationException("Database connection string 'GameDatabase' not found in configuration");
 builder.Services.AddGameDatabase(connectionString);
 
 // Auto-register all packet handlers from assembly
@@ -68,22 +72,22 @@ app.MapGrpcService<LoginGrpcService>();
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    
+
     try
     {
         Log.Information("Initializing database...");
-        
+
         var context = services.GetRequiredService<GameDbContext>();
-        
+
         // Apply any pending migrations
         await context.Database.MigrateAsync();
         Log.Information("Database migrations applied successfully");
-        
+
         // Seed database from SQL scripts
         var loggerFactory = services.GetRequiredService<ILoggerFactory>();
         var seeder = new DatabaseSeeder(context, loggerFactory.CreateLogger<DatabaseSeeder>());
         await seeder.SeedAsync();
-        
+
         Log.Information("Database initialization completed");
     }
     catch (Exception ex)
@@ -110,9 +114,9 @@ Console.CancelKeyPress += (sender, e) =>
 try
 {
     await server.StartAsync(cts.Token);
-    
+
     Log.Information("LoginServer is running. Press Ctrl+C to stop.");
-    
+
     await Task.Delay(Timeout.Infinite, cts.Token);
 }
 catch (OperationCanceledException)

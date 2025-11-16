@@ -5,7 +5,7 @@ namespace Login.Server;
 /// <summary>
 /// Login server specific configuration
 /// </summary>
-public class LoginServerConfiguration : Core.Server.ServerConfiguration
+public class LoginServerConfiguration : ServerConfiguration
 {
     // IP Ban Settings
     

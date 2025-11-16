@@ -1,11 +1,10 @@
+using Core.Server;
 using Core.Server.Network;
 using Core.Server.Packets;
-using Core.Server.Packets.ClientPackets;
-using Core.Server.Packets.ServerPackets;
-using System.Security.Cryptography;
-using System.Text;
-using Core.Database.Repositories.Api;
 using Core.Server.Packets.In.CA;
+using Core.Server.Packets.Out.AC;
+using Core.Server.Packets.ServerPackets;
+using Login.Server.UseCase;
 
 namespace Login.Server.Handlers;
 
@@ -15,10 +14,12 @@ namespace Login.Server.Handlers;
 [PacketHandler(PacketHeader.CA_LOGIN)]
 public class LoginHandler(
     ILogger<LoginHandler> logger,
-    ILoginRepository loginRepository
+    ILoginMmoAuth loginMmoAuth,
+    LoginServerImpl loginServer,
+    SessionManager sessionManager,
+    LoginServerConfiguration loginConfig
 ) : IPacketHandler<LoginSessionData, CA_LOGIN>
 {
-
     public async Task HandleAsync(LoginSessionData session, CA_LOGIN packet)
     {
         try
@@ -31,65 +32,17 @@ public class LoginHandler(
 
             // read config for use_md5_passwds
             session.PasswordEnc = false;
+            var result = await loginMmoAuth.ExecuteAsync(new ILoginMmoAuth.Input(session, false));
+            var updatedSession = sessionManager.GetSession(session.SessionId) as LoginSessionData ?? throw new InvalidOperationException("Session not found");
 
-            // // Validate credentials against database
-            // var account = await _loginRepository.GetByEmailAsync(packet.Username);
-            //
-            // if (account == null)
-            // {
-            //     _logger.LogWarning("Login failed for {Username} - account not found", packet.Username);
-            //     session.Disconnect(DisconnectReason.Kicked);
-            //     return;
-            // }
-            //
-            // // Verify password (assuming plain text for now, should use hashing in production)
-            // if (account.UserPass != packet.Password)
-            // {
-            //     _logger.LogWarning("Login failed for {Username} - invalid password", packet.Username);
-            //
-            //     // Update failed login attempts
-            //     // await _loginRepository.IncrementLoginAttemptsAsync(account.AccountId);
-            //
-            //     session.Disconnect(DisconnectReason.Kicked);
-            //     return;
-            // }
-            //
-            // // Check account state
-            // if (account.State != 0)
-            // {
-            //     _logger.LogWarning("Login failed for {Username} - account state {State}",
-            //         packet.Username, account.State);
-            //     session.Disconnect(DisconnectReason.Kicked);
-            //     return;
-            // }
-
-            // Check if account is banned
-            // if (account.Unbantime.HasValue && account.Unbantime.Value > DateTime.UtcNow)
-            // {
-            //     _logger.LogWarning("Login failed for {Username} - account banned until {BanTime}", 
-            //         packet.Username, account.Unbantime.Value);
-            //     session.Disconnect(DisconnectReason.Kicked);
-            //     return;
-            // }
-
-            // Update last login info
-            // await _loginRepository.UpdateLastLoginAsync(
-            //     account.AccountId, 
-            //     session.RemoteEndPoint?.Address.ToString() ?? "unknown");
-
-            // Generate session token
-            var sessionToken = GenerateSessionToken();
-
-            // var responsePacket = new AC_ACCEPT_LOGIN
-            // {
-            //     SessionToken = sessionToken,
-            //     CharacterSlots = (byte)(account.CharacterSlots ?? 9)
-            // };
-            //
-            // session.EnqueuePacket(responsePacket);
-
-            // _logger.LogInformation("Login successful for {Username} (AccountId: {AccountId}), token: {Token}",
-            //     packet.Username, account.AccountId, sessionToken);
+            if (result.ResultCode == -1)
+            {
+                OnAuthSuccess(updatedSession);
+            }
+            else
+            {
+                OnAuthFailure(updatedSession, result.ResultCode);
+            }
         }
         catch (Exception ex)
         {
@@ -98,8 +51,46 @@ public class LoginHandler(
         }
     }
 
-    private static int GenerateSessionToken()
+    private async void OnAuthSuccess(LoginSessionData sd)
     {
-        return Random.Shared.Next(100000, 999999);
+        if (loginServer.State != ServerState.Running)
+        {
+            SendNotifyBan(sd, 1);
+            return;
+        }
+
+        if (loginConfig.GroupIdToConnect >= 0 && sd.GroupId != loginConfig.GroupIdToConnect)
+        {
+            // ShowStatus("Connection refused: the required group id for connection is %d (account: %s, group: %d).\n", login_config.group_id_to_connect, sd->userid, sd->group_id);
+            SendNotifyBan(sd, 1);
+            return;
+        } else if (loginConfig.MinGroupIdToConnect >= 0 && loginConfig.GroupIdToConnect == -1 && sd.GroupId < loginConfig.MinGroupIdToConnect)
+        {
+            // ShowStatus("Connection refused: the minimum group id required for connection is %d (account: %s, group: %d).\n", login_config.min_group_id_to_connect, sd->userid, sd->group_id);
+            SendNotifyBan(sd, 1);
+            return;
+        }
+    }
+
+    private async void OnAuthFailure(LoginSessionData sd, int result)
+    {
+        // TODO: implement other paths
+        var packet = new AC_REFUSE_LOGIN
+        {
+            Error = (uint)result,
+            UnblockTime = string.Empty
+        };
+        
+        sd.EnqueuePacket(packet);
+    }
+
+    private void SendNotifyBan(LoginSessionData sd, byte result)
+    {
+        var packet = new SC_NOTIFY_BAN
+        {
+            Result = result
+        };
+            
+        sd.EnqueuePacket(packet);
     }
 }

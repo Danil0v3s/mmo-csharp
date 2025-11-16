@@ -1,8 +1,8 @@
-namespace Login.Server;
-
 using System.Net.Sockets;
 using Core.Server.Network;
 using Core.Server.Packets;
+
+namespace Login.Server;
 
 public class LoginSessionData(
     Socket socket,
