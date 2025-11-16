@@ -4,6 +4,7 @@ using Core.Server;
 using Core.Server.Network;
 using Core.Server.Packets;
 using Serilog;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 // Setup configuration
 var configuration = new ConfigurationBuilder()
@@ -27,7 +28,7 @@ configuration.GetSection("Server").Bind(serverConfig);
 // Configure services
 builder.Services.AddSingleton<ServerConfiguration>(serverConfig);
 builder.Services.AddSingleton(serverConfig);
-builder.Services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
+builder.Services.AddSingleton<ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
 builder.Services.AddSingleton<CharServerImpl>();
 builder.Services.AddSingleton<PacketSystem>();
 builder.Services.AddSingleton<IPacketFactory>(sp => sp.GetRequiredService<PacketSystem>().Factory);

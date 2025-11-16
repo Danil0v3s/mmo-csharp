@@ -1,8 +1,8 @@
-namespace Map.Server;
-
 using System.Net.Sockets;
 using Core.Server.Network;
 using Core.Server.Packets;
+
+namespace Map.Server;
 
 public class MapSessionData(
     Socket socket,

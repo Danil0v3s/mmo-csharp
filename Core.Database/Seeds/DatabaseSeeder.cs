@@ -1,3 +1,4 @@
+using System.Data;
 using Core.Database.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -85,7 +86,7 @@ public class DatabaseSeeder
         
         // Use raw database connection to avoid EF Core's SQL parsing
         var connection = _context.Database.GetDbConnection();
-        var wasOpen = connection.State == System.Data.ConnectionState.Open;
+        var wasOpen = connection.State == ConnectionState.Open;
         
         if (!wasOpen)
         {

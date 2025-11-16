@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Sockets;
-using Char.Server.Handlers;
 using Core.Server;
 using Core.Server.Network;
 

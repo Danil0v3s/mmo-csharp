@@ -7,7 +7,6 @@ using Core.Server.Packets.ClientPackets;
 using Core.Server.Packets.In.CA;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Xunit;
 
 namespace Core.Server.Tests.Network;
 

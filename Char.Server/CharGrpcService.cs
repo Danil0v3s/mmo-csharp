@@ -1,6 +1,5 @@
 using Core.Server.IPC;
 using Grpc.Core;
-using CharacterInfo = Core.Server.Packets.CharacterInfo;
 
 namespace Char.Server;
 
@@ -12,7 +11,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     {
         // TODO: Query from database
         var response = new CharacterListResponse();
-        response.Characters.Add(new Core.Server.IPC.CharacterInfo
+        response.Characters.Add(new CharacterInfo
         {
             CharacterId = 1001,
             Name = "Warrior123",
@@ -20,7 +19,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             ClassId = 1,
             CreatedAt = DateTimeOffset.UtcNow.AddDays(-30).ToUnixTimeSeconds()
         });
-        response.Characters.Add(new Core.Server.IPC.CharacterInfo
+        response.Characters.Add(new CharacterInfo
         {
             CharacterId = 1002,
             Name = "Mage456",
@@ -40,7 +39,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         var response = new CreateCharacterResponse
         {
             Success = true,
-            Character = new Core.Server.IPC.CharacterInfo
+            Character = new CharacterInfo
             {
                 CharacterId = new Random().Next(10000, 99999),
                 Name = request.Name,
@@ -73,7 +72,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         // TODO: Query from database
         var response = new CharacterDataResponse
         {
-            Character = new Core.Server.IPC.CharacterInfo
+            Character = new CharacterInfo
             {
                 CharacterId = request.CharacterId,
                 Name = "TestChar",

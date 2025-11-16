@@ -1,5 +1,3 @@
-using Core.Server.Packets;
-
 namespace Core.Server.Packets.ServerPackets;
 
 [PacketVersion(1)]

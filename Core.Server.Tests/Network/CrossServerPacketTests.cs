@@ -1,4 +1,3 @@
-using System.Net.Sockets;
 using System.Reflection;
 using Core.Server.Network;
 using Core.Server.Packets;
@@ -7,7 +6,6 @@ using Core.Server.Packets.In.CA;
 using Core.Server.Tests.Mocks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Xunit;
 
 namespace Core.Server.Tests.Network;
 
@@ -261,7 +259,7 @@ public class CrossServerPacketTests
         if (headerProperty != null)
         {
             var backingField = typeof(T).BaseType?.GetField("<Header>k__BackingField", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                BindingFlags.NonPublic | BindingFlags.Instance);
             backingField?.SetValue(packet, header);
         }
         return packet;

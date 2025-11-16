@@ -58,6 +58,11 @@ public class SessionManager : IDisposable
         return session;
     }
 
+    public void UpdateSession(ClientSession session)
+    {
+        _sessions[session.SessionId] = session;
+    }
+
     public bool TryGetSession(Guid sessionId, out ClientSession? session)
     {
         return _sessions.TryGetValue(sessionId, out session);

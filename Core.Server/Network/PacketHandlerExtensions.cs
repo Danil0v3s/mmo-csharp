@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using Core.Server.Packets;
 using Microsoft.Extensions.Logging;
 
 namespace Core.Server.Network;
@@ -45,7 +47,7 @@ public static class PacketHandlerExtensions
     internal static async Task ProcessMockSessionPacketsAsync(
         this PacketHandlerRegistry registry,
         object session,
-        System.Collections.Concurrent.ConcurrentQueue<Packets.IncomingPacket> packets,
+        ConcurrentQueue<IncomingPacket> packets,
         Action<DisconnectReason> disconnectCallback,
         ILogger logger)
     {

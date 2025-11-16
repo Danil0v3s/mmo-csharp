@@ -1,8 +1,8 @@
-namespace Char.Server;
-
 using System.Net.Sockets;
 using Core.Server.Network;
 using Core.Server.Packets;
+
+namespace Char.Server;
 
 public class CharSessionData(
     Socket socket,

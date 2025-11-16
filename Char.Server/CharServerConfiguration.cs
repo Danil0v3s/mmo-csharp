@@ -131,7 +131,7 @@ public class CharConfiguration
 /// <summary>
 /// Character server configuration
 /// </summary>
-public class CharServerConfiguration : Core.Server.ServerConfiguration
+public class CharServerConfiguration : ServerConfiguration
 {
     /// <summary>
     /// User ID for authentication

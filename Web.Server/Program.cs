@@ -1,6 +1,7 @@
 ﻿using Core.Server;
 using Serilog;
 using Web.Server;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 // Setup configuration
 var configuration = new ConfigurationBuilder()
@@ -24,7 +25,7 @@ configuration.GetSection("Server").Bind(serverConfig);
 // Configure services
 services.AddSingleton(serverConfig);
 services.AddLogging(builder => builder.AddSerilog());
-services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
+services.AddSingleton<ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
 services.AddSingleton<WebServerImpl>();
 
 var serviceProvider = services.BuildServiceProvider();
