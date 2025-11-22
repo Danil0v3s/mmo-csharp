@@ -31,7 +31,6 @@ configuration.GetSection("Server").Bind(serverConfig);
 builder.Services.AddSingleton<ServerConfiguration>(serverConfig);
 builder.Services.AddSingleton(serverConfig);
 builder.Services.AddSingleton<ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
-builder.Services.AddSingleton<TimerManager>();
 builder.Services.AddSingleton<ConcurrentDictionary<long, PlayerEntity>>();
 builder.Services.AddSingleton<ConcurrentDictionary<Guid, long>>();
 builder.Services.AddSingleton<SessionManager>();

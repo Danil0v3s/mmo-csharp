@@ -16,4 +16,5 @@ public interface ILoginDataRepository
     public AuthNode GetAuthNode(int accountId);
     public AuthNode AddAuthNode(LoginSessionData sd, int ip);
     public void RemoveAuthNode(int accountId);
+    void Update(OnlineLoginData onlineLoginData);
 }

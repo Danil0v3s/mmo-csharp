@@ -30,7 +30,6 @@ configuration.GetSection("Server").Bind(serverConfig);
 builder.Services.AddSingleton<ServerConfiguration>(serverConfig);
 builder.Services.AddSingleton(serverConfig);
 builder.Services.AddSingleton<ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
-builder.Services.AddSingleton<TimerManager>();
 builder.Services.AddSingleton<CharServerImpl>();
 builder.Services.AddSingleton<PacketSystem>();
 builder.Services.AddSingleton<IPacketFactory>(sp => sp.GetRequiredService<PacketSystem>().Factory);

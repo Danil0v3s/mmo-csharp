@@ -1,6 +1,6 @@
+using Core.Timer;
 using Login.Server.Model;
 using Login.Server.Repository.Api;
-using Timer = Login.Server.Model.Timer;
 
 namespace Login.Server.Repository.Impl;
 
@@ -21,24 +21,28 @@ internal class LoginDataRepository : ILoginDataRepository
     {
         lock (_onlineLoginDataDictionary)
         {
-            if (!_onlineLoginDataDictionary.TryGetValue(new AccountId(accountId), out var onlineLoginData))
+            var accId = new AccountId(accountId);
+            if (!_onlineLoginDataDictionary.TryGetValue(accId, out var onlineLoginData))
             {
                 onlineLoginData = new OnlineLoginData(
                     CharServer: charServer,
-                    AccountId: accountId,
-                    WaitingDisconnect: Timer.INVALID_TIMER,
-                    VipTimeoutTid: Timer.INVALID_TIMER
+                    AccountId: accId,
+                    WaitingDisconnect: Scheduler.InvalidTimer,
+                    VipTimeoutTid: Scheduler.InvalidTimer
                 );
             }
             else
             {
                 onlineLoginData = onlineLoginData with { CharServer = charServer };
 
-                if (onlineLoginData.WaitingDisconnect != Timer.INVALID_TIMER)
+                if (onlineLoginData.WaitingDisconnect != Scheduler.InvalidTimer)
                 {
-                    onlineLoginData = onlineLoginData with { WaitingDisconnect = Timer.INVALID_TIMER }; 
+                    Scheduler.Cancel(onlineLoginData.WaitingDisconnect);
+                    onlineLoginData = onlineLoginData with { WaitingDisconnect = Scheduler.InvalidTimer }; 
                 } 
             }
+            
+            // loginrepository -> enable webtoken
             
             return onlineLoginData;
         }
@@ -62,5 +66,10 @@ internal class LoginDataRepository : ILoginDataRepository
     public void RemoveAuthNode(int accountId)
     {
         throw new NotImplementedException();
+    }
+
+    public void Update(OnlineLoginData onlineLoginData)
+    {
+        _onlineLoginDataDictionary[onlineLoginData.AccountId] = onlineLoginData;
     }
 }

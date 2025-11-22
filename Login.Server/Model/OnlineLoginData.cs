@@ -1,8 +1,11 @@
+using Core.Timer;
+using Login.Server.Repository.Impl;
+
 namespace Login.Server.Model;
 
 public record OnlineLoginData(
-    int AccountId,
-    TimerId WaitingDisconnect,
+    AccountId AccountId,
     int CharServer,
+    TimerId WaitingDisconnect,
     TimerId VipTimeoutTid
 );

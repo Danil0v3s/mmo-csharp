@@ -7,6 +7,8 @@ using Core.Server.Network;
 using Core.Server.Packets;
 using Core.Timer;
 using Login.Server;
+using Login.Server.Repository.Api;
+using Login.Server.Repository.Impl;
 using Login.Server.UseCase;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -35,12 +37,13 @@ configuration.GetSection("Server").Bind(serverConfig);
 builder.Services.AddSingleton<ServerConfiguration>(serverConfig);
 builder.Services.AddSingleton(serverConfig);
 builder.Services.AddSingleton<ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
-builder.Services.AddSingleton<TimerManager>();
 builder.Services.AddSingleton<LoginServerImpl>();
 builder.Services.AddSingleton<PacketSystem>();
 builder.Services.AddSingleton<IPacketFactory>(sp => sp.GetRequiredService<PacketSystem>().Factory);
 builder.Services.AddSingleton<IPacketSizeRegistry>(sp => sp.GetRequiredService<PacketSystem>().Registry);
 builder.Services.AddSingleton<SessionManager>();
+
+builder.Services.AddTransient<ILoginDataRepository, LoginDataRepository>();
 
 builder.Services.AddTransient<ILoginMmoAuth, LoginMmoAuth>();
 

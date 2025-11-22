@@ -5,6 +5,8 @@ using Core.Server.Packets;
 using Core.Server.Packets.In.CA;
 using Core.Server.Packets.Out.AC;
 using Core.Server.Packets.ServerPackets;
+using Core.Timer;
+using Login.Server.Repository.Api;
 using Login.Server.UseCase;
 
 namespace Login.Server.Handlers;
@@ -18,7 +20,8 @@ public class LoginHandler(
     ILoginMmoAuth loginMmoAuth,
     LoginServerImpl loginServer,
     SessionManager sessionManager,
-    LoginServerConfiguration loginConfig
+    LoginServerConfiguration loginConfig,
+    ILoginDataRepository loginDataRepository
 ) : IPacketHandler<LoginSessionData, CA_LOGIN>
 {
     public async Task HandleAsync(LoginSessionData session, CA_LOGIN packet)
@@ -65,7 +68,8 @@ public class LoginHandler(
             // ShowStatus("Connection refused: the required group id for connection is %d (account: %s, group: %d).\n", login_config.group_id_to_connect, sd->userid, sd->group_id);
             SendNotifyBan(sd, 1);
             return;
-        } else if (loginConfig.MinGroupIdToConnect >= 0 && loginConfig.GroupIdToConnect == -1 && sd.GroupId < loginConfig.MinGroupIdToConnect)
+        }
+        else if (loginConfig.MinGroupIdToConnect >= 0 && loginConfig.GroupIdToConnect == -1 && sd.GroupId < loginConfig.MinGroupIdToConnect)
         {
             // ShowStatus("Connection refused: the minimum group id required for connection is %d (account: %s, group: %d).\n", login_config.min_group_id_to_connect, sd->userid, sd->group_id);
             SendNotifyBan(sd, 1);
@@ -78,8 +82,51 @@ public class LoginHandler(
             SendNotifyBan(sd, 1);
             return;
         }
-        
-        
+
+        var data = loginDataRepository.GetOnlineUser(sd.AccountId);
+        if (data != null)
+        {
+            if (data.CharServer > -1)
+            {
+                logger.LogInformation("User {Username} is already online", sd.UserId);
+
+                // TODO: send IPC to char server 0x2734 -> sd.AccountId
+
+                if (data.WaitingDisconnect == Scheduler.InvalidTimer)
+                {
+                    data = data with
+                    {
+                        WaitingDisconnect = Scheduler.Schedule(
+                            this.OnDisconnectTimer,
+                            new OnDisconnectTimerData(sd.AccountId),
+                            TimeSpan.FromMilliseconds(30_000L)
+                        )
+                    };
+                    loginDataRepository.Update(data);
+                }
+            }
+        }
+    }
+
+    private record struct OnDisconnectTimerData(int AccountId);
+
+    private ValueTask OnDisconnectTimer(object? state, TimerId timerId, long arg3)
+    {
+        if (state is not OnDisconnectTimerData data)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var p = loginDataRepository.GetOnlineUser(data.AccountId);
+        if (p != null && p.WaitingDisconnect == timerId && p.AccountId.Value == data.AccountId)
+        {
+            p = p with { WaitingDisconnect = Scheduler.InvalidTimer };
+            loginDataRepository.Update(p);
+            loginDataRepository.RemoveOnlineUser(data.AccountId);
+            loginDataRepository.RemoveAuthNode(data.AccountId);
+        }
+
+        return ValueTask.CompletedTask;
     }
 
     private async void OnAuthFailure(LoginSessionData sd, int result)
@@ -90,7 +137,7 @@ public class LoginHandler(
             Error = (uint)result,
             UnblockTime = string.Empty
         };
-        
+
         sd.EnqueuePacket(packet);
     }
 
@@ -100,7 +147,7 @@ public class LoginHandler(
         {
             Result = result
         };
-            
+
         sd.EnqueuePacket(packet);
     }
 }
