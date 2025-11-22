@@ -3,6 +3,7 @@ using Char.Server;
 using Core.Server;
 using Core.Server.Network;
 using Core.Server.Packets;
+using Core.Timer;
 using Serilog;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
@@ -29,6 +30,7 @@ configuration.GetSection("Server").Bind(serverConfig);
 builder.Services.AddSingleton<ServerConfiguration>(serverConfig);
 builder.Services.AddSingleton(serverConfig);
 builder.Services.AddSingleton<ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
+builder.Services.AddSingleton<TimerManager>();
 builder.Services.AddSingleton<CharServerImpl>();
 builder.Services.AddSingleton<PacketSystem>();
 builder.Services.AddSingleton<IPacketFactory>(sp => sp.GetRequiredService<PacketSystem>().Factory);

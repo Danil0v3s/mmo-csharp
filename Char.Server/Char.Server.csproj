@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
+        <ProjectReference Include="..\Core.Timer\Core.Timer.csproj" />
     </ItemGroup>
 
     <ItemGroup>
