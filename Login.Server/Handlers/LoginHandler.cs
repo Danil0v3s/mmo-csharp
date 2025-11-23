@@ -103,9 +103,49 @@ public class LoginHandler(
                         )
                     };
                     loginDataRepository.Update(data);
+
+                    SendNotifyBan(sd, 8); // Server still recognizes your last login
                 }
             }
+            else if (data.CharServer == -1)
+            {
+                loginDataRepository.RemoveAuthNode(sd.AccountId);
+                loginDataRepository.RemoveOnlineUser(sd.AccountId);
+                data = null;
+            }
         }
+
+        // login_log(ip, sd->userid, 100, "login ok");
+        logger.LogInformation("Connection of the account {Account} accepted", sd.UserId);
+
+        var acceptLoginPacket = new AC_ACCEPT_LOGIN
+        {
+            LoginId1 = (uint)sd.LoginId1,
+            AID = (uint)sd.AccountId,
+            LoginId2 = (uint)sd.LoginId2,
+            LastIp = 0,
+            LastLogin = "",
+            Sex = (byte)(sd.Sex == 'F' ? 0 : sd.Sex == 'M' ? 1 : 3),
+            Token = sd.WebAuthToken,
+            CharServers = loginServer.ServerConnections
+                .GetSessionsByType(ServerType.Char)
+                .Select(charServer => new AC_ACCEPT_LOGIN_sub())
+                .ToArray()
+        };
+        
+        sd.EnqueuePacket(acceptLoginPacket);
+        loginDataRepository.AddAuthNode(sd);
+        
+        // mark client as online
+        var onlineUser = loginDataRepository.AddOnlineUser(-1, sd.AccountId) with
+        {
+            WaitingDisconnect = Scheduler.Schedule(
+                this.OnDisconnectTimer,
+                new OnDisconnectTimerData(sd.AccountId),
+                TimeSpan.FromMilliseconds(30_000L)
+            )
+        };
+        loginDataRepository.Update(onlineUser);
     }
 
     private record struct OnDisconnectTimerData(int AccountId);

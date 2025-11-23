@@ -1,3 +1,4 @@
+using System.Net;
 using Login.Server.Model;
 
 namespace Login.Server.Repository.Api;
@@ -12,9 +13,9 @@ public interface ILoginDataRepository
     public OnlineLoginData GetOnlineUser(int accountId);
     public OnlineLoginData AddOnlineUser(int charServer, int accountId);
     public void RemoveOnlineUser(int accountId);
+    void Update(OnlineLoginData onlineLoginData);
     
     public AuthNode GetAuthNode(int accountId);
-    public AuthNode AddAuthNode(LoginSessionData sd, int ip);
+    public AuthNode AddAuthNode(LoginSessionData sd);
     public void RemoveAuthNode(int accountId);
-    void Update(OnlineLoginData onlineLoginData);
 }
