@@ -26,6 +26,7 @@ public enum PacketHeader : short
     CT_AUTH = 0xacf,
     TC_RESULT = 0xae3,
 
+
     // Char
     HC_ACK_CHANGE_CHARACTER_SLOT = 0xb70,  // 2928 in decimal
     HC_ACK_CHARINFO_PER_PAGE = 0xb72,      // 2930 in decimal  

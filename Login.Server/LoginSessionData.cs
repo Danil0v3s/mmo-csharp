@@ -26,6 +26,15 @@ public class LoginSessionData(
     public byte ClientType { get; set; }
     public byte[] ClientHash { get; set; }
     public int HasClientHash { get; set; }
-    
+
     public string WebAuthToken { get; set; } = string.Empty; // WEB_AUTH_TOKEN_LENGTH
+
+    // Character server specific properties
+    public bool IsCharServer { get; set; } = false;
+    public string CharServerName { get; set; } = string.Empty;
+    public uint CharServerIp { get; set; }
+    public ushort CharServerPort { get; set; }
+    public ushort CharServerType { get; set; }
+    public ushort CharServerNew { get; set; }
+    public ushort CharServerUsers { get; set; } = 0;
 }

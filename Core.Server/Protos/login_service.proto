@@ -7,6 +7,7 @@ package login;
 service LoginService {
   rpc ValidateSession (ValidateSessionRequest) returns (ValidateSessionResponse);
   rpc GetAccountInfo (AccountInfoRequest) returns (AccountInfoResponse);
+  rpc RegisterCharacterServer (CharacterServerRegistrationRequest) returns (CharacterServerRegistrationResponse);
 }
 
 message ValidateSessionRequest {
@@ -28,5 +29,22 @@ message AccountInfoResponse {
   string username = 2;
   string email = 3;
   int64 created_at = 4;
+}
+
+// Character Server Registration
+message CharacterServerRegistrationRequest {
+  string username = 1;      // Character server username (special server account)
+  string password = 2;      // Character server password
+  string server_name = 3;   // Name of the character server
+  string server_address = 4; // IP:Port of the character server
+  uint32 server_type = 5;   // Server type (0=normal, 1=maintenance, etc.)
+  bool new_server = 6;      // Whether to display as 'new' server
+}
+
+message CharacterServerRegistrationResponse {
+  bool success = 1;
+  int32 server_id = 2;      // Assigned server ID (account ID)
+  int32 result_code = 3;    // 0 = success, 3 = refused, etc.
+  string error_message = 4; // Error message if success is false
 }
 

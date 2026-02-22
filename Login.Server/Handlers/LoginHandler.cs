@@ -76,7 +76,7 @@ public class LoginHandler(
             return;
         }
 
-        if (!loginServer.ServerConnections.HasConnection(ServerType.Char))
+        if (!loginServer.GetActiveCharServers().Any())
         {
             // ShowStatus("Connection refused: there is no char-server online (account: %s).\n", sd->userid);
             SendNotifyBan(sd, 1);

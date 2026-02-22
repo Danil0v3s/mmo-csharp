@@ -7,6 +7,7 @@ using Core.Server.Network;
 using Core.Server.Packets;
 using Core.Timer;
 using Login.Server;
+using Login.Server.Handlers;
 using Login.Server.Repository.Api;
 using Login.Server.Repository.Impl;
 using Login.Server.UseCase;
@@ -46,6 +47,7 @@ builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddTransient<ILoginDataRepository, LoginDataRepository>();
 
 builder.Services.AddTransient<ILoginMmoAuth, LoginMmoAuth>();
+builder.Services.AddTransient<CharServerGrpcHandler>();
 
 // Register database services
 var connectionString = configuration.GetConnectionString("GameDatabase")
