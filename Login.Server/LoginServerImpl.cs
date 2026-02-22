@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using Core.Server;
+using Core.Server.IPC;
 using Core.Server.Network;
 using Core.Server.Packets.Out.AC;
 using Login.Server.Security;
@@ -15,6 +16,7 @@ public class LoginServerImpl : GameLoopServer
     private readonly PacketHandlerRegistry _handlerRegistry;
     private readonly ILoginSecurityService _loginSecurityService;
     private DateTime _nextIpBanCleanupUtc = DateTime.MinValue;
+    private DateTime _nextCharIpSyncUtc = DateTime.MinValue;
 
     // Character server data - equivalent to C++ ch_server array
     private readonly CharServerData[] _charServers = new CharServerData[5]; // MAX_SERVERS = 5
@@ -135,6 +137,14 @@ public class LoginServerImpl : GameLoopServer
         }
     }
 
+    public void UpdateCharServerAddress(int serverId, uint serverIp)
+    {
+        if (serverId >= 0 && serverId < _charServers.Length)
+        {
+            _charServers[serverId] = _charServers[serverId] with { Ip = serverIp };
+        }
+    }
+
     /// <summary>
     /// Checks if a given account ID corresponds to a character server
     /// </summary>
@@ -232,6 +242,8 @@ public class LoginServerImpl : GameLoopServer
             await _loginSecurityService.CleanupExpiredIpBansAsync(cancellationToken);
         }
 
+        await RequestCharServerAddressSyncAsync(cancellationToken);
+
         await Task.CompletedTask;
     }
 
@@ -240,6 +252,32 @@ public class LoginServerImpl : GameLoopServer
         foreach (var session in SessionManager.GetAllSessions())
         {
             await session.FlushPacketsAsync();
+        }
+    }
+
+    private async Task RequestCharServerAddressSyncAsync(CancellationToken cancellationToken)
+    {
+        if (DateTime.UtcNow < _nextCharIpSyncUtc)
+        {
+            return;
+        }
+
+        _nextCharIpSyncUtc = DateTime.UtcNow.AddSeconds(60);
+        var charSessions = ServerConnections.GetSessionsByType(ServerType.Char).ToList();
+        foreach (var charSession in charSessions)
+        {
+            try
+            {
+                var client = new CharacterService.CharacterServiceClient(charSession.Channel);
+                await client.RequestAddressSyncAsync(new AddressSyncRequest(), cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(
+                    ex,
+                    "Failed to request char address sync for server {ServerName}",
+                    charSession.ServerName);
+            }
         }
     }
 }

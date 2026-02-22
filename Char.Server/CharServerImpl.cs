@@ -17,6 +17,8 @@ public class CharServerImpl : GameLoopServer
     private int _registeredServerId = -1;
     private DateTime _nextRegistrationAttemptUtc = DateTime.MinValue;
     private DateTime _nextUserCountSyncUtc = DateTime.MinValue;
+    private DateTime _nextAddressSyncUtc = DateTime.MinValue;
+    private DateTime _nextOnlineSyncUtc = DateTime.MinValue;
 
     public CharServerImpl(
         ServerConfiguration configuration,
@@ -45,6 +47,8 @@ public class CharServerImpl : GameLoopServer
 
     protected override async Task StopTcpListenerAsync(CancellationToken cancellationToken)
     {
+        await SetAllOfflineOnLoginServerAsync(cancellationToken);
+
         if (_listenerSocket != null)
         {
             _listenerSocket.Close();
@@ -89,6 +93,8 @@ public class CharServerImpl : GameLoopServer
     {
         await EnsureRegisteredOnLoginServerAsync(cancellationToken);
         await SyncUserCountAsync(cancellationToken);
+        await SyncCharacterServerAddressAsync(cancellationToken);
+        await SyncOnlineAccountsAsync(cancellationToken);
 
         await Task.CompletedTask;
     }
@@ -197,6 +203,32 @@ public class CharServerImpl : GameLoopServer
         return disconnected;
     }
 
+    public async Task HandleAccountStatusBroadcastAsync(int accountId, bool isBan, uint value)
+    {
+        if (accountId <= 0)
+        {
+            return;
+        }
+
+        // Keep behavior simple and safe: if account gets blocked/banned, force disconnect.
+        if ((!isBan && value != 0) || (isBan && value > (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds()))
+        {
+            await ForceDisconnectAccountAsync(accountId);
+        }
+    }
+
+    public async Task HandleAccountSexBroadcastAsync(int accountId, uint sex)
+    {
+        if (accountId <= 0)
+        {
+            return;
+        }
+
+        // Match legacy behavior where sex changes require online clients to reconnect.
+        await ForceDisconnectAccountAsync(accountId);
+        Logger.LogInformation("Received account sex update for account {AccountId} with sex code {Sex}", accountId, sex);
+    }
+
     public async Task<CharacterServerAuthResponse?> AuthenticateAccountWithLoginServerAsync(
         int accountId,
         int loginId1,
@@ -241,6 +273,270 @@ public class CharServerImpl : GameLoopServer
             CharServerId = Math.Max(_registeredServerId, 0),
             Online = online
         }, cancellationToken: cancellationToken);
+    }
+
+    public async Task<AccountDataResponse?> RequestFullAccountDataAsync(
+        int accountId,
+        CancellationToken cancellationToken = default)
+    {
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return null;
+        }
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        return await client.GetFullAccountDataAsync(new AccountDataRequest
+        {
+            AccountId = accountId
+        }, cancellationToken: cancellationToken);
+    }
+
+    public async Task<AccountInfoResponse?> RequestDetailedAccountInfoAsync(
+        int accountId,
+        CancellationToken cancellationToken = default)
+    {
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return null;
+        }
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        return await client.GetAccountInfoAsync(new AccountInfoRequest
+        {
+            AccountId = accountId
+        }, cancellationToken: cancellationToken);
+    }
+
+    public async Task<AccountStateUpdateResponse?> UpdateAccountStateAsync(
+        int accountId,
+        uint state,
+        CancellationToken cancellationToken = default)
+    {
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return null;
+        }
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        return await client.UpdateAccountStateAsync(new AccountStateUpdateRequest
+        {
+            AccountId = accountId,
+            State = state
+        }, cancellationToken: cancellationToken);
+    }
+
+    public async Task<AccountBanResponse?> BanAccountAsync(
+        int accountId,
+        int durationSeconds,
+        CancellationToken cancellationToken = default)
+    {
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return null;
+        }
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        return await client.BanAccountAsync(new AccountBanRequest
+        {
+            AccountId = accountId,
+            DurationSeconds = durationSeconds
+        }, cancellationToken: cancellationToken);
+    }
+
+    public async Task<AccountUnbanResponse?> UnbanAccountAsync(
+        int accountId,
+        CancellationToken cancellationToken = default)
+    {
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return null;
+        }
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        return await client.UnbanAccountAsync(new AccountUnbanRequest
+        {
+            AccountId = accountId
+        }, cancellationToken: cancellationToken);
+    }
+
+    public async Task<AccountEmailChangeResponse?> ChangeAccountEmailAsync(
+        int accountId,
+        string currentEmail,
+        string newEmail,
+        CancellationToken cancellationToken = default)
+    {
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return null;
+        }
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        return await client.ChangeAccountEmailAsync(new AccountEmailChangeRequest
+        {
+            AccountId = accountId,
+            CurrentEmail = currentEmail,
+            NewEmail = newEmail
+        }, cancellationToken: cancellationToken);
+    }
+
+    public async Task<AccountSexChangeResponse?> ChangeAccountSexAsync(
+        int accountId,
+        CancellationToken cancellationToken = default)
+    {
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return null;
+        }
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        return await client.ChangeAccountSexAsync(new AccountSexChangeRequest
+        {
+            AccountId = accountId
+        }, cancellationToken: cancellationToken);
+    }
+
+    public async Task<AccountPincodeUpdateResponse?> UpdateAccountPincodeAsync(
+        int accountId,
+        string pincode,
+        CancellationToken cancellationToken = default)
+    {
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return null;
+        }
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        return await client.UpdateAccountPincodeAsync(new AccountPincodeUpdateRequest
+        {
+            AccountId = accountId,
+            Pincode = pincode
+        }, cancellationToken: cancellationToken);
+    }
+
+    public async Task<AccountPincodeAuthFailResponse?> NotifyPincodeAuthFailAsync(
+        int accountId,
+        CancellationToken cancellationToken = default)
+    {
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return null;
+        }
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        return await client.NotifyPincodeAuthFailAsync(new AccountPincodeAuthFailRequest
+        {
+            AccountId = accountId
+        }, cancellationToken: cancellationToken);
+    }
+
+    public async Task<GlobalAccRegUpdateResponse?> UpdateGlobalAccountRegistersAsync(
+        int accountId,
+        IEnumerable<GlobalAccRegEntry> entries,
+        CancellationToken cancellationToken = default)
+    {
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return null;
+        }
+
+        var request = new GlobalAccRegUpdateRequest
+        {
+            AccountId = accountId
+        };
+        request.Entries.AddRange(entries);
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        return await client.UpdateGlobalAccountRegistersAsync(request, cancellationToken: cancellationToken);
+    }
+
+    public async Task<GlobalAccRegFetchResponse?> GetGlobalAccountRegistersAsync(
+        int accountId,
+        long charId,
+        CancellationToken cancellationToken = default)
+    {
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return null;
+        }
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        return await client.GetGlobalAccountRegistersAsync(new GlobalAccRegFetchRequest
+        {
+            AccountId = accountId,
+            CharId = charId
+        }, cancellationToken: cancellationToken);
+    }
+
+    public async Task<AccountVipDataResponse?> RequestVipDataAsync(
+        int accountId,
+        uint flags,
+        int durationSeconds,
+        int mapServerId,
+        CancellationToken cancellationToken = default)
+    {
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return null;
+        }
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        return await client.RequestVipDataAsync(new AccountVipDataRequest
+        {
+            AccountId = accountId,
+            Flags = flags,
+            DurationSeconds = durationSeconds,
+            MapServerId = mapServerId
+        }, cancellationToken: cancellationToken);
+    }
+
+    public async Task TriggerCharacterServerAddressSyncAsync(CancellationToken cancellationToken)
+    {
+        _nextAddressSyncUtc = DateTime.MinValue;
+        await SyncCharacterServerAddressAsync(cancellationToken);
+    }
+
+    public async Task HandleVipDataPushAsync(
+        int accountId,
+        long vipTime,
+        uint flags,
+        uint groupId,
+        int mapServerId,
+        bool isVip,
+        uint charSlots,
+        uint charVip,
+        uint oldGroup)
+    {
+        if (accountId <= 0)
+        {
+            return;
+        }
+
+        Logger.LogInformation(
+            "Received VIP data push for account {AccountId}: isVip={IsVip}, vipTime={VipTime}, flags={Flags}, groupId={GroupId}, mapServer={MapServerId}, slots={CharSlots}, charVip={CharVip}, oldGroup={OldGroup}",
+            accountId,
+            isVip,
+            vipTime,
+            flags,
+            groupId,
+            mapServerId,
+            charSlots,
+            charVip,
+            oldGroup);
+
+        // Force refresh behavior for online sessions affected by VIP changes.
+        await ForceDisconnectAccountAsync(accountId);
     }
 
     private async Task EnsureRegisteredOnLoginServerAsync(CancellationToken cancellationToken)
@@ -305,6 +601,104 @@ public class CharServerImpl : GameLoopServer
             ServerId = _registeredServerId,
             UserCount = (uint)userCount
         }, cancellationToken: cancellationToken);
+    }
+
+    private async Task SyncCharacterServerAddressAsync(CancellationToken cancellationToken)
+    {
+        if (!_registeredToLoginServer || _registeredServerId < 0 || DateTime.UtcNow < _nextAddressSyncUtc)
+        {
+            return;
+        }
+
+        _nextAddressSyncUtc = DateTime.UtcNow.AddSeconds(60);
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return;
+        }
+
+        if (!TryConvertIpv4ToUInt(_charConfiguration.CharIp, out var ip))
+        {
+            Logger.LogWarning("Cannot sync char server address because CharIp is invalid: {CharIp}", _charConfiguration.CharIp);
+            return;
+        }
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        await client.UpdateCharacterServerAddressAsync(new CharacterServerAddressUpdateRequest
+        {
+            ServerId = _registeredServerId,
+            Ip = ip
+        }, cancellationToken: cancellationToken);
+    }
+
+    private async Task SetAllOfflineOnLoginServerAsync(CancellationToken cancellationToken)
+    {
+        if (!_registeredToLoginServer || _registeredServerId < 0)
+        {
+            return;
+        }
+
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var client = new LoginService.LoginServiceClient(loginSession.Channel);
+            await client.SetAllOfflineForCharacterServerAsync(new CharacterServerSetAllOfflineRequest
+            {
+                ServerId = _registeredServerId
+            }, cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to set all offline on login server for char server {ServerId}", _registeredServerId);
+        }
+    }
+
+    private async Task SyncOnlineAccountsAsync(CancellationToken cancellationToken)
+    {
+        if (!_registeredToLoginServer || _registeredServerId < 0 || DateTime.UtcNow < _nextOnlineSyncUtc)
+        {
+            return;
+        }
+
+        _nextOnlineSyncUtc = DateTime.UtcNow.AddSeconds(30);
+        var loginSession = ServerConnections.GetSessionsByType(ServerType.Login).FirstOrDefault();
+        if (loginSession?.IsConnected != true)
+        {
+            return;
+        }
+
+        var accountIds = SessionManager.GetAllSessions()
+            .OfType<CharSessionData>()
+            .Where(session => session.AccountId.HasValue)
+            .Select(session => session.AccountId!.Value)
+            .Distinct()
+            .ToList();
+
+        var client = new LoginService.LoginServiceClient(loginSession.Channel);
+        var request = new CharacterServerOnlineSyncRequest
+        {
+            ServerId = _registeredServerId
+        };
+        request.AccountIds.AddRange(accountIds);
+        await client.SyncOnlineAccountsAsync(request, cancellationToken: cancellationToken);
+    }
+
+    private static bool TryConvertIpv4ToUInt(string ipAddress, out uint ip)
+    {
+        ip = 0;
+        if (!IPAddress.TryParse(ipAddress, out var parsed) || parsed.AddressFamily != AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        var bytes = parsed.GetAddressBytes();
+        ip = ((uint)bytes[0] << 24) | ((uint)bytes[1] << 16) | ((uint)bytes[2] << 8) | bytes[3];
+        return true;
     }
 
     private record MapAuthTicket(

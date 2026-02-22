@@ -12,6 +12,10 @@ service CharacterService {
   rpc IssueMapAuthTicket (MapAuthTicketRequest) returns (MapAuthTicketResponse);
   rpc ConsumeMapAuthTicket (MapAuthConsumeRequest) returns (MapAuthConsumeResponse);
   rpc ForceDisconnectAccount (ForceDisconnectAccountRequest) returns (ForceDisconnectAccountResponse);
+  rpc BroadcastAccountStatusUpdate (AccountStatusBroadcastRequest) returns (AccountStatusBroadcastResponse);
+  rpc BroadcastAccountSexUpdate (AccountSexBroadcastRequest) returns (AccountSexBroadcastResponse);
+  rpc RequestAddressSync (AddressSyncRequest) returns (AddressSyncResponse);
+  rpc PushVipData (AccountVipPushRequest) returns (AccountVipPushResponse);
 }
 
 message CharacterListRequest {
@@ -100,4 +104,45 @@ message ForceDisconnectAccountRequest {
 message ForceDisconnectAccountResponse {
   bool success = 1;
   int32 disconnected_sessions = 2;
+}
+
+message AccountStatusBroadcastRequest {
+  int32 account_id = 1;
+  bool is_ban = 2;
+  uint32 value = 3; // state or unban_time depending on is_ban
+}
+
+message AccountStatusBroadcastResponse {
+  bool success = 1;
+}
+
+message AccountSexBroadcastRequest {
+  int32 account_id = 1;
+  uint32 sex = 2;
+}
+
+message AccountSexBroadcastResponse {
+  bool success = 1;
+}
+
+message AddressSyncRequest {}
+
+message AddressSyncResponse {
+  bool success = 1;
+}
+
+message AccountVipPushRequest {
+  int32 account_id = 1;
+  int64 vip_time = 2;
+  uint32 flags = 3;
+  uint32 group_id = 4;
+  int32 map_server_id = 5;
+  bool is_vip = 6;
+  uint32 char_slots = 7;
+  uint32 char_vip = 8;
+  uint32 old_group = 9;
+}
+
+message AccountVipPushResponse {
+  bool success = 1;
 }

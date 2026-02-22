@@ -148,4 +148,45 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             DisconnectedSessions = disconnected
         };
     }
+
+    public override async Task<AccountStatusBroadcastResponse> BroadcastAccountStatusUpdate(
+        AccountStatusBroadcastRequest request,
+        ServerCallContext context)
+    {
+        await _charServer.HandleAccountStatusBroadcastAsync(request.AccountId, request.IsBan, request.Value);
+        return new AccountStatusBroadcastResponse { Success = true };
+    }
+
+    public override async Task<AccountSexBroadcastResponse> BroadcastAccountSexUpdate(
+        AccountSexBroadcastRequest request,
+        ServerCallContext context)
+    {
+        await _charServer.HandleAccountSexBroadcastAsync(request.AccountId, request.Sex);
+        return new AccountSexBroadcastResponse { Success = true };
+    }
+
+    public override async Task<AddressSyncResponse> RequestAddressSync(
+        AddressSyncRequest request,
+        ServerCallContext context)
+    {
+        await _charServer.TriggerCharacterServerAddressSyncAsync(context.CancellationToken);
+        return new AddressSyncResponse { Success = true };
+    }
+
+    public override async Task<AccountVipPushResponse> PushVipData(
+        AccountVipPushRequest request,
+        ServerCallContext context)
+    {
+        await _charServer.HandleVipDataPushAsync(
+            request.AccountId,
+            request.VipTime,
+            request.Flags,
+            request.GroupId,
+            request.MapServerId,
+            request.IsVip,
+            request.CharSlots,
+            request.CharVip,
+            request.OldGroup);
+        return new AccountVipPushResponse { Success = true };
+    }
 }

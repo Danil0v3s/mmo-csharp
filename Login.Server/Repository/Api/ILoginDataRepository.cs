@@ -13,6 +13,7 @@ public interface ILoginDataRepository
     public OnlineLoginData? GetOnlineUser(int accountId);
     public OnlineLoginData AddOnlineUser(int charServer, int accountId);
     public void RemoveOnlineUser(int accountId);
+    public int RemoveOnlineUsersByCharServer(int charServer);
     public void SetOnlineUserCharServer(int accountId, int charServer);
     void Update(OnlineLoginData onlineLoginData);
     

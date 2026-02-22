@@ -7,11 +7,25 @@ package login;
 service LoginService {
   rpc ValidateSession (ValidateSessionRequest) returns (ValidateSessionResponse);
   rpc GetAccountInfo (AccountInfoRequest) returns (AccountInfoResponse);
+  rpc GetFullAccountData (AccountDataRequest) returns (AccountDataResponse);
   rpc RegisterCharacterServer (CharacterServerRegistrationRequest) returns (CharacterServerRegistrationResponse);
   rpc AuthenticateAccountForCharServer (CharacterServerAuthRequest) returns (CharacterServerAuthResponse);
   rpc UpdateCharacterServerUserCount (CharacterServerUserCountUpdateRequest) returns (CharacterServerUserCountUpdateResponse);
   rpc NotifyAccountStatus (AccountStatusUpdateRequest) returns (AccountStatusUpdateResponse);
   rpc ListCharacterServers (CharacterServerListRequest) returns (CharacterServerListResponse);
+  rpc UpdateAccountState (AccountStateUpdateRequest) returns (AccountStateUpdateResponse);
+  rpc BanAccount (AccountBanRequest) returns (AccountBanResponse);
+  rpc UnbanAccount (AccountUnbanRequest) returns (AccountUnbanResponse);
+  rpc ChangeAccountEmail (AccountEmailChangeRequest) returns (AccountEmailChangeResponse);
+  rpc ChangeAccountSex (AccountSexChangeRequest) returns (AccountSexChangeResponse);
+  rpc UpdateCharacterServerAddress (CharacterServerAddressUpdateRequest) returns (CharacterServerAddressUpdateResponse);
+  rpc SetAllOfflineForCharacterServer (CharacterServerSetAllOfflineRequest) returns (CharacterServerSetAllOfflineResponse);
+  rpc UpdateAccountPincode (AccountPincodeUpdateRequest) returns (AccountPincodeUpdateResponse);
+  rpc NotifyPincodeAuthFail (AccountPincodeAuthFailRequest) returns (AccountPincodeAuthFailResponse);
+  rpc SyncOnlineAccounts (CharacterServerOnlineSyncRequest) returns (CharacterServerOnlineSyncResponse);
+  rpc UpdateGlobalAccountRegisters (GlobalAccRegUpdateRequest) returns (GlobalAccRegUpdateResponse);
+  rpc GetGlobalAccountRegisters (GlobalAccRegFetchRequest) returns (GlobalAccRegFetchResponse);
+  rpc RequestVipData (AccountVipDataRequest) returns (AccountVipDataResponse);
 }
 
 message ValidateSessionRequest {
@@ -29,10 +43,36 @@ message AccountInfoRequest {
 }
 
 message AccountInfoResponse {
+  bool success = 1;
+  int64 account_id = 2;
+  string username = 3;
+  string email = 4;
+  int64 created_at = 5;
+  int32 group_id = 6;
+  int64 login_count = 7;
+  uint32 state = 8;
+  string last_ip = 9;
+  string last_login = 10;
+  string birthdate = 11;
+}
+
+message AccountDataRequest {
   int64 account_id = 1;
-  string username = 2;
+}
+
+message AccountDataResponse {
+  bool success = 1;
+  int64 account_id = 2;
   string email = 3;
-  int64 created_at = 4;
+  int64 expiration_time = 4;
+  int32 group_id = 5;
+  uint32 char_slots = 6;
+  string birthdate = 7;
+  string pincode = 8;
+  int64 pincode_change = 9;
+  bool is_vip = 10;
+  uint32 char_vip = 11;
+  uint32 max_billing = 12;
 }
 
 // Character Server Registration
@@ -106,4 +146,160 @@ message CharacterServerEntry {
 
 message CharacterServerListResponse {
   repeated CharacterServerEntry servers = 1;
+}
+
+message AccountStateUpdateRequest {
+  int64 account_id = 1;
+  uint32 state = 2;
+}
+
+message AccountStateUpdateResponse {
+  bool success = 1;
+  uint32 state = 2;
+  string error_message = 3;
+}
+
+message AccountBanRequest {
+  int64 account_id = 1;
+  int64 duration_seconds = 2;
+}
+
+message AccountBanResponse {
+  bool success = 1;
+  int64 account_id = 2;
+  int64 unban_time = 3;
+  string error_message = 4;
+}
+
+message AccountUnbanRequest {
+  int64 account_id = 1;
+}
+
+message AccountUnbanResponse {
+  bool success = 1;
+  int64 account_id = 2;
+  string error_message = 3;
+}
+
+message AccountEmailChangeRequest {
+  int64 account_id = 1;
+  string current_email = 2;
+  string new_email = 3;
+}
+
+message AccountEmailChangeResponse {
+  bool success = 1;
+  int64 account_id = 2;
+  string email = 3;
+  string error_message = 4;
+}
+
+message AccountSexChangeRequest {
+  int64 account_id = 1;
+}
+
+message AccountSexChangeResponse {
+  bool success = 1;
+  int64 account_id = 2;
+  uint32 sex = 3;
+  string error_message = 4;
+}
+
+message CharacterServerAddressUpdateRequest {
+  int32 server_id = 1;
+  uint32 ip = 2;
+}
+
+message CharacterServerAddressUpdateResponse {
+  bool success = 1;
+}
+
+message CharacterServerSetAllOfflineRequest {
+  int32 server_id = 1;
+}
+
+message CharacterServerSetAllOfflineResponse {
+  bool success = 1;
+  uint32 removed_accounts = 2;
+}
+
+message AccountPincodeUpdateRequest {
+  int64 account_id = 1;
+  string pincode = 2;
+}
+
+message AccountPincodeUpdateResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message AccountPincodeAuthFailRequest {
+  int64 account_id = 1;
+}
+
+message AccountPincodeAuthFailResponse {
+  bool success = 1;
+}
+
+message CharacterServerOnlineSyncRequest {
+  int32 server_id = 1;
+  repeated int32 account_ids = 2;
+}
+
+message CharacterServerOnlineSyncResponse {
+  bool success = 1;
+  uint32 synced_accounts = 2;
+}
+
+message GlobalAccRegEntry {
+  string key = 1;
+  uint32 index = 2;
+  bool is_numeric = 3;
+  int64 num_value = 4;
+  string str_value = 5;
+}
+
+message GlobalAccRegUpdateRequest {
+  int64 account_id = 1;
+  repeated GlobalAccRegEntry entries = 2;
+}
+
+message GlobalAccRegUpdateResponse {
+  bool success = 1;
+  uint32 updated_entries = 2;
+  string error_message = 3;
+}
+
+message GlobalAccRegFetchRequest {
+  int64 account_id = 1;
+  int64 char_id = 2;
+}
+
+message GlobalAccRegFetchResponse {
+  bool success = 1;
+  int64 account_id = 2;
+  int64 char_id = 3;
+  repeated GlobalAccRegEntry entries = 4;
+  string error_message = 5;
+}
+
+message AccountVipDataRequest {
+  int64 account_id = 1;
+  uint32 flags = 2;
+  int64 duration_seconds = 3;
+  int32 map_server_id = 4;
+}
+
+message AccountVipDataResponse {
+  bool success = 1;
+  int64 account_id = 2;
+  int64 vip_time = 3;
+  uint32 flags = 4;
+  uint32 group_id = 5;
+  int32 map_server_id = 6;
+  bool is_vip = 7;
+  uint32 char_slots = 8;
+  uint32 char_vip = 9;
+  uint32 old_group = 10;
+  string error_message = 11;
 }

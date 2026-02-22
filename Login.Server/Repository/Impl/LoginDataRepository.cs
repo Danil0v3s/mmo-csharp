@@ -90,6 +90,25 @@ internal class LoginDataRepository(ILoginRepository loginRepository) : ILoginDat
         UpdateAccountWebTokenEnabled(accountId, false);
     }
 
+    public int RemoveOnlineUsersByCharServer(int charServer)
+    {
+        List<int> accountIdsToRemove;
+        lock (OnlineLoginDataDictionary)
+        {
+            accountIdsToRemove = OnlineLoginDataDictionary
+                .Where(p => p.Value.CharServer == charServer)
+                .Select(p => p.Key.Value)
+                .ToList();
+        }
+
+        foreach (var accountId in accountIdsToRemove)
+        {
+            RemoveOnlineUser(accountId);
+        }
+
+        return accountIdsToRemove.Count;
+    }
+
     public AuthNode? GetAuthNode(int accountId)
     {
         lock (AuthNodeDictionary)
