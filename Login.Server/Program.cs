@@ -12,6 +12,7 @@ using Login.Server.Repository.Api;
 using Login.Server.Repository.Impl;
 using Login.Server.Security;
 using Login.Server.UseCase;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
@@ -72,7 +73,14 @@ builder.Logging.AddSerilog();
 
 // Configure gRPC
 builder.Services.AddGrpc();
-builder.WebHost.UseUrls($"http://0.0.0.0:{serverConfig.GrpcPort}");
+builder.WebHost.ConfigureKestrel(options =>
+{
+    // gRPC over cleartext (h2c) requires an HTTP/2-only endpoint.
+    options.ListenAnyIP(serverConfig.GrpcPort, listenOptions =>
+    {
+        listenOptions.Protocols = HttpProtocols.Http2;
+    });
+});
 
 var app = builder.Build();
 app.MapGrpcService<LoginGrpcService>();
