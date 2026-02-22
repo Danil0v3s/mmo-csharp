@@ -107,6 +107,17 @@ public class LoginServerImpl : GameLoopServer
         return _charServers.Where(cs => !string.IsNullOrEmpty(cs.Name));
     }
 
+    public IEnumerable<(int ServerId, CharServerData Data)> GetActiveCharServersWithIds()
+    {
+        for (int i = 0; i < _charServers.Length; i++)
+        {
+            if (!string.IsNullOrEmpty(_charServers[i].Name))
+            {
+                yield return (i, _charServers[i]);
+            }
+        }
+    }
+
     /// <summary>
     /// Updates character server user count
     /// </summary>
@@ -196,4 +207,3 @@ public class LoginServerImpl : GameLoopServer
         }
     }
 }
-

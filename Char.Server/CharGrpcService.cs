@@ -5,6 +5,13 @@ namespace Char.Server;
 
 public class CharGrpcService : CharacterService.CharacterServiceBase
 {
+    private readonly CharServerImpl _charServer;
+
+    public CharGrpcService(CharServerImpl charServer)
+    {
+        _charServer = charServer;
+    }
+
     public override Task<CharacterListResponse> GetCharacterList(
         CharacterListRequest request, 
         ServerCallContext context)
@@ -88,5 +95,45 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
 
         return Task.FromResult(response);
     }
-}
 
+    public override Task<MapAuthTicketResponse> IssueMapAuthTicket(
+        MapAuthTicketRequest request,
+        ServerCallContext context)
+    {
+        var success = _charServer.IssueMapAuthTicket(
+            request.AccountId,
+            request.CharacterId,
+            request.LoginId1,
+            request.LoginId2,
+            request.Sex,
+            request.ClientType,
+            request.TtlSeconds);
+
+        return Task.FromResult(new MapAuthTicketResponse
+        {
+            Success = success,
+            ErrorMessage = success ? string.Empty : "Invalid auth ticket request"
+        });
+    }
+
+    public override Task<MapAuthConsumeResponse> ConsumeMapAuthTicket(
+        MapAuthConsumeRequest request,
+        ServerCallContext context)
+    {
+        var success = _charServer.TryConsumeMapAuthTicket(
+            request.AccountId,
+            request.CharacterId,
+            request.LoginId1,
+            request.LoginId2,
+            out var sex,
+            out var clientType);
+
+        return Task.FromResult(new MapAuthConsumeResponse
+        {
+            Success = success,
+            ErrorMessage = success ? string.Empty : "Map auth ticket missing/expired/mismatch",
+            Sex = sex,
+            ClientType = clientType
+        });
+    }
+}

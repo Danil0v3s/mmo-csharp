@@ -8,23 +8,24 @@ namespace Login.Server.Repository.Impl;
 
 internal class LoginDataRepository(ILoginRepository loginRepository) : ILoginDataRepository
 {
-    private Dictionary<AccountId, OnlineLoginData> _onlineLoginDataDictionary = new();
-    private Dictionary<AccountId, AuthNode> _authNodeDictionary = new();
+    private static readonly Dictionary<AccountId, OnlineLoginData> OnlineLoginDataDictionary = new();
+    private static readonly Dictionary<AccountId, AuthNode> AuthNodeDictionary = new();
 
-    public OnlineLoginData GetOnlineUser(int accountId)
+    public OnlineLoginData? GetOnlineUser(int accountId)
     {
-        lock (_onlineLoginDataDictionary)
+        lock (OnlineLoginDataDictionary)
         {
-            return _onlineLoginDataDictionary[new AccountId(accountId)];
+            OnlineLoginDataDictionary.TryGetValue(new AccountId(accountId), out var data);
+            return data;
         }
     }
 
     public OnlineLoginData AddOnlineUser(int charServer, int accountId)
     {
-        lock (_onlineLoginDataDictionary)
+        lock (OnlineLoginDataDictionary)
         {
             var accId = new AccountId(accountId);
-            if (!_onlineLoginDataDictionary.TryGetValue(accId, out var onlineLoginData))
+            if (!OnlineLoginDataDictionary.TryGetValue(accId, out var onlineLoginData))
             {
                 onlineLoginData = new OnlineLoginData(
                     CharServer: charServer,
@@ -50,30 +51,51 @@ internal class LoginDataRepository(ILoginRepository loginRepository) : ILoginDat
         }
     }
 
-    public void RemoveOnlineUser(int accountId)
+    public void SetOnlineUserCharServer(int accountId, int charServer)
     {
-        lock (_onlineLoginDataDictionary)
+        lock (OnlineLoginDataDictionary)
         {
             var accId = new AccountId(accountId);
-            if (_onlineLoginDataDictionary.TryGetValue(accId, out var onlineLoginData))
+            if (OnlineLoginDataDictionary.TryGetValue(accId, out var onlineLoginData))
+            {
+                Update(onlineLoginData with { CharServer = charServer });
+            }
+            else
+            {
+                Update(new OnlineLoginData(
+                    AccountId: accId,
+                    CharServer: charServer,
+                    WaitingDisconnect: Scheduler.InvalidTimer,
+                    VipTimeoutTid: Scheduler.InvalidTimer));
+            }
+        }
+    }
+
+    public void RemoveOnlineUser(int accountId)
+    {
+        lock (OnlineLoginDataDictionary)
+        {
+            var accId = new AccountId(accountId);
+            if (OnlineLoginDataDictionary.TryGetValue(accId, out var onlineLoginData))
             {
                 if (onlineLoginData.WaitingDisconnect != Scheduler.InvalidTimer)
                 {
                     Scheduler.Cancel(onlineLoginData.WaitingDisconnect);
                 }
 
-                _onlineLoginDataDictionary.Remove(accId);
+                OnlineLoginDataDictionary.Remove(accId);
             }
         }
 
         UpdateAccountWebTokenEnabled(accountId, false);
     }
 
-    public AuthNode GetAuthNode(int accountId)
+    public AuthNode? GetAuthNode(int accountId)
     {
-        lock (_authNodeDictionary)
+        lock (AuthNodeDictionary)
         {
-            return _authNodeDictionary[new AccountId(accountId)];
+            AuthNodeDictionary.TryGetValue(new AccountId(accountId), out var authNode);
+            return authNode;
         }
     }
 
@@ -84,30 +106,50 @@ internal class LoginDataRepository(ILoginRepository loginRepository) : ILoginDat
             LoginId1: sd.LoginId1,
             LoginId2: sd.LoginId2,
             Sex: sd.Sex,
-            Ip: sd._socket.RemoteEndPoint.GetHashCode(), // todo what's this?
+            Ip: sd._socket.RemoteEndPoint?.GetHashCode() ?? 0,
             ClientType: sd.ClientType
         );
-        lock (_authNodeDictionary)
+        lock (AuthNodeDictionary)
         {
-            _authNodeDictionary.Add(new AccountId(authNode.AccountId), authNode);
+            AuthNodeDictionary[new AccountId(authNode.AccountId)] = authNode;
         }
 
         return authNode;
     }
 
+    public bool TryConsumeAuthNode(int accountId, int loginId1, int loginId2, char sex, out AuthNode? authNode)
+    {
+        lock (AuthNodeDictionary)
+        {
+            var key = new AccountId(accountId);
+            if (AuthNodeDictionary.TryGetValue(key, out var candidate) &&
+                candidate.LoginId1 == loginId1 &&
+                candidate.LoginId2 == loginId2 &&
+                candidate.Sex == sex)
+            {
+                AuthNodeDictionary.Remove(key);
+                authNode = candidate;
+                return true;
+            }
+        }
+
+        authNode = default;
+        return false;
+    }
+
     public void RemoveAuthNode(int accountId)
     {
-        lock (_authNodeDictionary)
+        lock (AuthNodeDictionary)
         {
-            _authNodeDictionary.Remove(new AccountId(accountId));
+            AuthNodeDictionary.Remove(new AccountId(accountId));
         }
     }
 
     public void Update(OnlineLoginData onlineLoginData)
     {
-        lock (_onlineLoginDataDictionary)
+        lock (OnlineLoginDataDictionary)
         {
-            _onlineLoginDataDictionary[onlineLoginData.AccountId] = onlineLoginData;
+            OnlineLoginDataDictionary[onlineLoginData.AccountId] = onlineLoginData;
         }
     }
 

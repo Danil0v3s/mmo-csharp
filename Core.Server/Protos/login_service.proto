@@ -8,6 +8,10 @@ service LoginService {
   rpc ValidateSession (ValidateSessionRequest) returns (ValidateSessionResponse);
   rpc GetAccountInfo (AccountInfoRequest) returns (AccountInfoResponse);
   rpc RegisterCharacterServer (CharacterServerRegistrationRequest) returns (CharacterServerRegistrationResponse);
+  rpc AuthenticateAccountForCharServer (CharacterServerAuthRequest) returns (CharacterServerAuthResponse);
+  rpc UpdateCharacterServerUserCount (CharacterServerUserCountUpdateRequest) returns (CharacterServerUserCountUpdateResponse);
+  rpc NotifyAccountStatus (AccountStatusUpdateRequest) returns (AccountStatusUpdateResponse);
+  rpc ListCharacterServers (CharacterServerListRequest) returns (CharacterServerListResponse);
 }
 
 message ValidateSessionRequest {
@@ -48,3 +52,58 @@ message CharacterServerRegistrationResponse {
   string error_message = 4; // Error message if success is false
 }
 
+// Character server auth request (rAthena 0x2712 equivalent)
+message CharacterServerAuthRequest {
+  int32 account_id = 1;
+  int32 login_id1 = 2;
+  int32 login_id2 = 3;
+  uint32 sex = 4;
+  int32 request_id = 5;
+  uint32 char_server_id = 6;
+}
+
+message CharacterServerAuthResponse {
+  bool success = 1;
+  int32 account_id = 2;
+  int32 login_id1 = 3;
+  int32 login_id2 = 4;
+  uint32 sex = 5;
+  int32 request_id = 6;
+  uint32 client_type = 7;
+  string error_message = 8;
+}
+
+message CharacterServerUserCountUpdateRequest {
+  int32 server_id = 1;
+  uint32 user_count = 2;
+}
+
+message CharacterServerUserCountUpdateResponse {
+  bool success = 1;
+}
+
+message AccountStatusUpdateRequest {
+  int32 account_id = 1;
+  int32 char_server_id = 2;
+  bool online = 3;
+}
+
+message AccountStatusUpdateResponse {
+  bool success = 1;
+}
+
+message CharacterServerListRequest {}
+
+message CharacterServerEntry {
+  int32 server_id = 1;
+  string server_name = 2;
+  uint32 ip = 3;
+  uint32 port = 4;
+  uint32 users = 5;
+  uint32 server_type = 6;
+  bool is_new = 7;
+}
+
+message CharacterServerListResponse {
+  repeated CharacterServerEntry servers = 1;
+}

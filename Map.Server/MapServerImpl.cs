@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using Core.Server;
+using Core.Server.IPC;
 using Core.Server.Network;
 
 namespace Map.Server;
@@ -114,6 +115,53 @@ public class MapServerImpl : GameLoopServer
             await session.FlushPacketsAsync();
         }
     }
+
+    public async Task<bool> ValidateCharAuthTicketAsync(
+        int accountId,
+        long characterId,
+        int loginId1,
+        int loginId2,
+        CancellationToken cancellationToken = default)
+    {
+        var charSession = ServerConnections.GetSessionsByType(ServerType.Char).FirstOrDefault();
+        if (charSession?.IsConnected != true)
+        {
+            return false;
+        }
+
+        var charClient = new CharacterService.CharacterServiceClient(charSession.Channel);
+        var response = await charClient.ConsumeMapAuthTicketAsync(new MapAuthConsumeRequest
+        {
+            AccountId = accountId,
+            CharacterId = characterId,
+            LoginId1 = loginId1,
+            LoginId2 = loginId2
+        }, cancellationToken: cancellationToken);
+
+        return response.Success;
+    }
+
+    public void AddPlayerToMap(long characterId, uint mapId, float x, float y, float z)
+    {
+        _players[characterId] = new PlayerEntity
+        {
+            CharacterId = characterId,
+            MapId = mapId,
+            PositionX = x,
+            PositionY = y,
+            PositionZ = z
+        };
+    }
+
+    public bool RemovePlayerFromMap(long characterId)
+    {
+        return _players.TryRemove(characterId, out _);
+    }
+
+    public IEnumerable<PlayerEntity> GetPlayersOnMap(uint mapId)
+    {
+        return _players.Values.Where(p => p.MapId == mapId);
+    }
 }
 
 public class PlayerEntity
@@ -125,4 +173,3 @@ public class PlayerEntity
     public float PositionZ { get; set; }
     public Guid SessionId { get; set; }
 }
-

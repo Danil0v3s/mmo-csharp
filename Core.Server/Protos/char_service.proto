@@ -9,6 +9,8 @@ service CharacterService {
   rpc CreateCharacter (CreateCharacterRequest) returns (CreateCharacterResponse);
   rpc DeleteCharacter (DeleteCharacterRequest) returns (DeleteCharacterResponse);
   rpc GetCharacterData (CharacterDataRequest) returns (CharacterDataResponse);
+  rpc IssueMapAuthTicket (MapAuthTicketRequest) returns (MapAuthTicketResponse);
+  rpc ConsumeMapAuthTicket (MapAuthConsumeRequest) returns (MapAuthConsumeResponse);
 }
 
 message CharacterListRequest {
@@ -60,3 +62,32 @@ message CharacterDataResponse {
   float position_z = 5;
 }
 
+// Char->Map handoff ticket (rAthena chmapif auth flow equivalent)
+message MapAuthTicketRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  int32 login_id1 = 3;
+  int32 login_id2 = 4;
+  uint32 sex = 5;
+  uint32 client_type = 6;
+  int32 ttl_seconds = 7;
+}
+
+message MapAuthTicketResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message MapAuthConsumeRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  int32 login_id1 = 3;
+  int32 login_id2 = 4;
+}
+
+message MapAuthConsumeResponse {
+  bool success = 1;
+  string error_message = 2;
+  uint32 sex = 3;
+  uint32 client_type = 4;
+}

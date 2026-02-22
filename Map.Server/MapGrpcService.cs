@@ -5,29 +5,59 @@ namespace Map.Server;
 
 public class MapGrpcService : MapService.MapServiceBase
 {
-    public override Task<EnterMapResponse> EnterMap(
+    private readonly MapServerImpl _mapServer;
+
+    public MapGrpcService(MapServerImpl mapServer)
+    {
+        _mapServer = mapServer;
+    }
+
+    public override async Task<EnterMapResponse> EnterMap(
         EnterMapRequest request, 
         ServerCallContext context)
     {
-        // This would be called by CharServer when a player selects a character
-        var response = new EnterMapResponse
+        if (request.AccountId > 0 && request.LoginId1 > 0 && request.LoginId2 > 0)
+        {
+            var authOk = await _mapServer.ValidateCharAuthTicketAsync(
+                request.AccountId,
+                request.CharacterId,
+                request.LoginId1,
+                request.LoginId2,
+                context.CancellationToken);
+
+            if (!authOk)
+            {
+                return new EnterMapResponse
+                {
+                    Success = false,
+                    ErrorMessage = "Character auth ticket rejected by char server"
+                };
+            }
+        }
+
+        _mapServer.AddPlayerToMap(
+            request.CharacterId,
+            (uint)request.MapId,
+            request.PositionX,
+            request.PositionY,
+            request.PositionZ);
+
+        return new EnterMapResponse
         {
             Success = true
         };
-
-        return Task.FromResult(response);
     }
 
     public override Task<LeaveMapResponse> LeaveMap(
         LeaveMapRequest request, 
         ServerCallContext context)
     {
-        var response = new LeaveMapResponse
+        _mapServer.RemovePlayerFromMap(request.CharacterId);
+
+        return Task.FromResult(new LeaveMapResponse
         {
             Success = true
-        };
-
-        return Task.FromResult(response);
+        });
     }
 
     public override Task<MapInfoResponse> GetMapInfo(
@@ -40,17 +70,18 @@ public class MapGrpcService : MapService.MapServiceBase
             MapName = "Test Map"
         };
 
-        // TODO: Add actual players in the map
-        response.Players.Add(new PlayerInfo
+        foreach (var player in _mapServer.GetPlayersOnMap((uint)request.MapId))
         {
-            CharacterId = 1001,
-            Name = "Player1",
-            PositionX = 100.0f,
-            PositionY = 0.0f,
-            PositionZ = 100.0f
-        });
+            response.Players.Add(new PlayerInfo
+            {
+                CharacterId = player.CharacterId,
+                Name = $"Char{player.CharacterId}",
+                PositionX = player.PositionX,
+                PositionY = player.PositionY,
+                PositionZ = player.PositionZ
+            });
+        }
 
         return Task.FromResult(response);
     }
 }
-

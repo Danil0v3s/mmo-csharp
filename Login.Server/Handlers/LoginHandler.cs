@@ -127,9 +127,17 @@ public class LoginHandler(
             LastLogin = "",
             Sex = (byte)(sd.Sex == 'F' ? 0 : sd.Sex == 'M' ? 1 : 3),
             Token = sd.WebAuthToken,
-            CharServers = loginServer.ServerConnections
-                .GetSessionsByType(ServerType.Char)
-                .Select(charServer => new AC_ACCEPT_LOGIN_sub())
+            CharServers = loginServer.GetActiveCharServersWithIds()
+                .Select(charServer => new AC_ACCEPT_LOGIN_sub
+                {
+                    Ip = charServer.Data.Ip,
+                    Port = charServer.Data.Port,
+                    Name = charServer.Data.Name,
+                    Users = charServer.Data.Users,
+                    Type = charServer.Data.Type,
+                    New = charServer.Data.New,
+                    Unknown = new byte[128]
+                })
                 .ToArray()
         };
         

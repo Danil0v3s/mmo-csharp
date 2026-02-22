@@ -10,12 +10,14 @@ namespace Login.Server.Repository.Api;
 /// </summary>
 public interface ILoginDataRepository
 {
-    public OnlineLoginData GetOnlineUser(int accountId);
+    public OnlineLoginData? GetOnlineUser(int accountId);
     public OnlineLoginData AddOnlineUser(int charServer, int accountId);
     public void RemoveOnlineUser(int accountId);
+    public void SetOnlineUserCharServer(int accountId, int charServer);
     void Update(OnlineLoginData onlineLoginData);
     
-    public AuthNode GetAuthNode(int accountId);
+    public AuthNode? GetAuthNode(int accountId);
     public AuthNode AddAuthNode(LoginSessionData sd);
+    public bool TryConsumeAuthNode(int accountId, int loginId1, int loginId2, char sex, out AuthNode? authNode);
     public void RemoveAuthNode(int accountId);
 }

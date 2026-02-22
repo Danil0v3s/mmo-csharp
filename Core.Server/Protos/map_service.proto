@@ -11,11 +11,15 @@ service MapService {
 }
 
 message EnterMapRequest {
-  int64 character_id = 1;
-  int32 map_id = 2;
-  float position_x = 3;
-  float position_y = 4;
-  float position_z = 5;
+  int32 account_id = 1;
+  int32 login_id1 = 2;
+  int32 login_id2 = 3;
+  uint32 sex = 4;
+  int64 character_id = 5;
+  int32 map_id = 6;
+  float position_x = 7;
+  float position_y = 8;
+  float position_z = 9;
 }
 
 message EnterMapResponse {
@@ -49,4 +53,3 @@ message MapInfoResponse {
   string map_name = 2;
   repeated PlayerInfo players = 3;
 }
-
