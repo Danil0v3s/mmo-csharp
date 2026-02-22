@@ -12,5 +12,6 @@ public class CharSessionData(
     ILogger logger
 ) : ClientSession(socket, heartbeatTimeout, packetFactory, sizeRegistry, logger)
 {
+    public int? AccountId { get; set; }
     public int? CharacterId { get; set; }
 }

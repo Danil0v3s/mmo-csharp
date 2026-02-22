@@ -11,8 +11,7 @@ namespace Login.Server.Handlers;
 public class CharServerGrpcHandler(
     ILogger logger,
     ILoginMmoAuth loginMmoAuth,
-    LoginServerImpl loginServer,
-    LoginServerConfiguration loginConfig
+    LoginServerImpl loginServer
 )
 {
     /// <summary>
@@ -119,6 +118,8 @@ public class TempAuthSessionData : Login.Server.UseCase.ILoginMmoAuth.ITempSessi
 {
     public string UserId { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
+    public int PasswordEnc { get; set; } = 0;
+    public string Md5Key { get; set; } = string.Empty;
     public int AccountId { get; set; }
     public char Sex { get; set; } = '\0';
     public byte ClientType { get; set; }

@@ -61,7 +61,7 @@ public class MapServerImpl : GameLoopServer
             try
             {
                 var clientSocket = await _listenerSocket.AcceptAsync(cancellationToken);
-                var session = SessionManager.CreateSession(clientSocket);
+                var session = SessionManager.CreateSession<MapSessionData>(clientSocket);
                 Logger.LogInformation("Client connected: {SessionId}", session.SessionId);
             }
             catch (OperationCanceledException)

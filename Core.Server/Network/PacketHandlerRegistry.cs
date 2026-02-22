@@ -104,8 +104,10 @@ public class PacketHandlerRegistry(IServiceProvider serviceProvider, ILogger log
             return;
         }
 
-        // Get the packet type (TPacket)
-        var packetType = handlerInterface.GetGenericArguments()[0];
+        // IPacketHandler<TSession, TPacket>
+        var genericArguments = handlerInterface.GetGenericArguments();
+        var sessionType = genericArguments[0];
+        var packetType = genericArguments[1];
         var handleMethod = handlerInterface.GetMethod("HandleAsync");
 
         if (handleMethod == null)
@@ -127,7 +129,8 @@ public class PacketHandlerRegistry(IServiceProvider serviceProvider, ILogger log
                 return;
             }
 
-            if (packet.GetType() == packetType || packetType.IsAssignableFrom(packet.GetType()))
+            if ((session.GetType() == sessionType || sessionType.IsAssignableFrom(session.GetType())) &&
+                (packet.GetType() == packetType || packetType.IsAssignableFrom(packet.GetType())))
             {
                 var task = (Task?)handleMethod.Invoke(handler, new object[] { session, packet });
                 if (task != null)
@@ -135,8 +138,13 @@ public class PacketHandlerRegistry(IServiceProvider serviceProvider, ILogger log
             }
             else
             {
-                _logger.LogError("Packet type mismatch for header {Header}. Expected {ExpectedType}, got {ActualType}",
-                    attribute.Header, packetType.Name, packet.GetType().Name);
+                _logger.LogError(
+                    "Handler type mismatch for header {Header}. Expected session={ExpectedSession} packet={ExpectedPacket}, got session={ActualSession} packet={ActualPacket}",
+                    attribute.Header,
+                    sessionType.Name,
+                    packetType.Name,
+                    session.GetType().Name,
+                    packet.GetType().Name);
             }
         };
 

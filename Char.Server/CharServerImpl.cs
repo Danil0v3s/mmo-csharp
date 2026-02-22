@@ -63,7 +63,7 @@ public class CharServerImpl : GameLoopServer
             try
             {
                 var clientSocket = await _listenerSocket.AcceptAsync(cancellationToken);
-                var session = SessionManager.CreateSession(clientSocket);
+                var session = SessionManager.CreateSession<CharSessionData>(clientSocket);
                 Logger.LogInformation("Client connected: {SessionId}", session.SessionId);
             }
             catch (OperationCanceledException)
@@ -166,6 +166,35 @@ public class CharServerImpl : GameLoopServer
             clientType = ticket.ClientType;
             return true;
         }
+    }
+
+    public async Task<int> ForceDisconnectAccountAsync(int accountId)
+    {
+        if (accountId <= 0)
+        {
+            return 0;
+        }
+
+        var disconnected = 0;
+        foreach (var session in SessionManager.GetAllSessions())
+        {
+            if (session is CharSessionData charSession &&
+                charSession.AccountId.HasValue &&
+                charSession.AccountId.Value == accountId &&
+                charSession.IsAlive)
+            {
+                charSession.Disconnect(DisconnectReason.Kicked);
+                disconnected++;
+            }
+        }
+
+        if (disconnected > 0)
+        {
+            Logger.LogInformation("Force-disconnected {Count} session(s) for account {AccountId}", disconnected, accountId);
+            await NotifyAccountStatusAsync(accountId, online: false);
+        }
+
+        return disconnected;
     }
 
     public async Task<CharacterServerAuthResponse?> AuthenticateAccountWithLoginServerAsync(

@@ -136,4 +136,16 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             ClientType = clientType
         });
     }
+
+    public override async Task<ForceDisconnectAccountResponse> ForceDisconnectAccount(
+        ForceDisconnectAccountRequest request,
+        ServerCallContext context)
+    {
+        var disconnected = await _charServer.ForceDisconnectAccountAsync(request.AccountId);
+        return new ForceDisconnectAccountResponse
+        {
+            Success = true,
+            DisconnectedSessions = disconnected
+        };
+    }
 }

@@ -19,12 +19,13 @@ public class LoginSessionData(
 
     public string UserId { get; set; } = string.Empty; // NAME_LENGTH
     public string Password { get; set; } = string.Empty; // 23+1 for plaintext, 32+1 for md5-ed passwords
-    public bool PasswordEnc { get; set; } // was the passwd transmited encrypted or clear ?
+    public int PasswordEnc { get; set; } // 0=plain, 1=md5(md5key+pass), 2=md5(pass+md5key)
+    public string Md5Key { get; set; } = string.Empty;
 
     public DateTime LastLogin { get; set; }
     public byte GroupId { get; set; }
     public byte ClientType { get; set; }
-    public byte[] ClientHash { get; set; }
+    public byte[] ClientHash { get; set; } = Array.Empty<byte>();
     public int HasClientHash { get; set; }
 
     public string WebAuthToken { get; set; } = string.Empty; // WEB_AUTH_TOKEN_LENGTH

@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Sockets;
 using Core.Server;
 using Core.Server.Network;
+using Core.Server.Packets.Out.AC;
+using Login.Server.Security;
 
 namespace Login.Server;
 
@@ -11,6 +13,8 @@ public class LoginServerImpl : GameLoopServer
 {
     private Socket? _listenerSocket;
     private readonly PacketHandlerRegistry _handlerRegistry;
+    private readonly ILoginSecurityService _loginSecurityService;
+    private DateTime _nextIpBanCleanupUtc = DateTime.MinValue;
 
     // Character server data - equivalent to C++ ch_server array
     private readonly CharServerData[] _charServers = new CharServerData[5]; // MAX_SERVERS = 5
@@ -21,11 +25,13 @@ public class LoginServerImpl : GameLoopServer
     public LoginServerImpl(
         ServerConfiguration configuration,
         ILogger<LoginServerImpl> logger,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        ILoginSecurityService loginSecurityService)
         : base("LoginServer", configuration, logger)
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
         _handlerRegistry.DiscoverAndRegisterFromCallingAssembly();
+        _loginSecurityService = loginSecurityService;
 
         // Initialize character server array
         for (int i = 0; i < _charServers.Length; i++)
@@ -170,7 +176,30 @@ public class LoginServerImpl : GameLoopServer
             try
             {
                 var clientSocket = await _listenerSocket.AcceptAsync(cancellationToken);
-                var session = SessionManager.CreateSession(clientSocket);
+                var session = SessionManager.CreateSession<LoginSessionData>(clientSocket);
+
+                if (Configuration is LoginServerConfiguration loginConfig &&
+                    clientSocket.RemoteEndPoint is IPEndPoint remoteEndPoint &&
+                    loginConfig.IpBan &&
+                    await _loginSecurityService.IsIpBannedAsync(remoteEndPoint.Address, cancellationToken))
+                {
+                    await _loginSecurityService.LogLoginAttemptAsync(
+                        remoteEndPoint.Address,
+                        "unknown",
+                        -3,
+                        "ip banned",
+                        cancellationToken);
+
+                    session.EnqueuePacket(new AC_REFUSE_LOGIN
+                    {
+                        Error = 3,
+                        UnblockTime = string.Empty
+                    });
+                    await session.FlushPacketsAsync();
+                    session.Disconnect(DisconnectReason.Kicked);
+                    continue;
+                }
+
                 Logger.LogInformation("Client connected: {SessionId}", session.SessionId);
             }
             catch (OperationCanceledException)
@@ -194,8 +223,15 @@ public class LoginServerImpl : GameLoopServer
 
     protected override async Task UpdateGameLogicAsync(double deltaTime, CancellationToken cancellationToken)
     {
-        // Login server doesn't have much game logic
-        // Could implement login rate limiting, session cleanup, etc.
+        if (Configuration is LoginServerConfiguration loginConfig &&
+            loginConfig.IpBan &&
+            loginConfig.IpBanCleanupInterval > 0 &&
+            DateTime.UtcNow >= _nextIpBanCleanupUtc)
+        {
+            _nextIpBanCleanupUtc = DateTime.UtcNow.AddSeconds(loginConfig.IpBanCleanupInterval);
+            await _loginSecurityService.CleanupExpiredIpBansAsync(cancellationToken);
+        }
+
         await Task.CompletedTask;
     }
 

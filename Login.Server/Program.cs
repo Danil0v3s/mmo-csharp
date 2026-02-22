@@ -10,6 +10,7 @@ using Login.Server;
 using Login.Server.Handlers;
 using Login.Server.Repository.Api;
 using Login.Server.Repository.Impl;
+using Login.Server.Security;
 using Login.Server.UseCase;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -45,6 +46,7 @@ builder.Services.AddSingleton<IPacketSizeRegistry>(sp => sp.GetRequiredService<P
 builder.Services.AddSingleton<SessionManager>();
 
 builder.Services.AddTransient<ILoginDataRepository, LoginDataRepository>();
+builder.Services.AddSingleton<ILoginSecurityService, LoginSecurityService>();
 
 builder.Services.AddTransient<ILoginMmoAuth, LoginMmoAuth>();
 builder.Services.AddTransient<CharServerGrpcHandler>();

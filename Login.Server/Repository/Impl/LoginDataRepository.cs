@@ -158,7 +158,7 @@ internal class LoginDataRepository(ILoginRepository loginRepository) : ILoginDat
         var account = await loginRepository.GetByIdAsync(accountId);
         if (account != null)
         {
-            account.WebAuthTokenEnabled = 0;
+            account.WebAuthTokenEnabled = (short)(enabled ? 1 : 0);
             await loginRepository.UpdateAsync(account);
         }
     }

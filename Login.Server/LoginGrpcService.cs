@@ -1,4 +1,5 @@
 using Core.Server.IPC;
+using Core.Database.Repositories.Api;
 using Grpc.Core;
 using Login.Server.Handlers;
 using Login.Server.Repository.Api;
@@ -31,20 +32,28 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         return Task.FromResult(response);
     }
 
-    public override Task<AccountInfoResponse> GetAccountInfo(
+    public override async Task<AccountInfoResponse> GetAccountInfo(
         AccountInfoRequest request,
         ServerCallContext context)
     {
-        // TODO: Query from database
-        var response = new AccountInfoResponse
+        var account = await LoginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
+        if (account == null)
         {
-            AccountId = request.AccountId,
-            Username = "TestUser",
-            Email = "test@example.com",
-            CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-        };
+            return new AccountInfoResponse
+            {
+                AccountId = request.AccountId
+            };
+        }
 
-        return Task.FromResult(response);
+        return new AccountInfoResponse
+        {
+            AccountId = account.AccountId,
+            Username = account.UserId,
+            Email = account.Email,
+            CreatedAt = account.LastLogin.HasValue
+                ? new DateTimeOffset(account.LastLogin.Value).ToUnixTimeSeconds()
+                : 0
+        };
     }
 
     public override async Task<CharacterServerRegistrationResponse> RegisterCharacterServer(
@@ -55,8 +64,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         var handler = new CharServerGrpcHandler(
             Logger,
             LoginMmoAuth,
-            LoginServer,
-            LoginConfig
+            LoginServer
         );
 
         return await handler.RegisterCharacterServerAsync(request, context);
@@ -165,18 +173,21 @@ public class LoginGrpcService : LoginService.LoginServiceBase
     private readonly LoginServerImpl LoginServer;
     private readonly LoginServerConfiguration LoginConfig;
     private readonly ILoginDataRepository LoginDataRepository;
+    private readonly ILoginRepository LoginRepository;
 
     public LoginGrpcService(
         ILogger<LoginGrpcService> logger,
         ILoginMmoAuth loginMmoAuth,
         LoginServerImpl loginServer,
         LoginServerConfiguration loginConfig,
-        ILoginDataRepository loginDataRepository)
+        ILoginDataRepository loginDataRepository,
+        ILoginRepository loginRepository)
     {
         Logger = logger;
         LoginMmoAuth = loginMmoAuth;
         LoginServer = loginServer;
         LoginConfig = loginConfig;
         LoginDataRepository = loginDataRepository;
+        LoginRepository = loginRepository;
     }
 }

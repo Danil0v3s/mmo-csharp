@@ -1,7 +1,7 @@
 using Core.Database.Repositories.Api;
 using Core.Server.Network;
-using Core.Server.Packets;
 using Core.Server.UseCase;
+using System.Globalization;
 
 namespace Login.Server.UseCase;
 
@@ -15,6 +15,8 @@ public interface ILoginMmoAuth : IUseCaseAsync<ILoginMmoAuth.Input, ILoginMmoAut
     {
         string UserId { get; set; }
         string Password { get; set; }
+        int PasswordEnc { get; set; }
+        string Md5Key { get; set; }
         int AccountId { get; set; }
         char Sex { get; set; }
         byte ClientType { get; set; }
@@ -33,25 +35,30 @@ internal sealed class LoginMmoAuth(
     SessionManager sessionManager
 ) : ILoginMmoAuth
 {
+    private static readonly object RegistrationLock = new();
+    private static readonly Queue<DateTime> RegistrationWindow = new();
+
     public async Task<ILoginMmoAuth.Output> ExecuteAsync(ILoginMmoAuth.Input input)
     {
         // Handle both LoginSessionData and ITempSessionData
         string userId, password;
-        byte clientType = 0;
+        int passwordEncMode = 0;
+        string md5Key = string.Empty;
         object sessionObject = input.LoginSessionData;
 
         if (sessionObject is LoginSessionData loginSd)
         {
             userId = loginSd.UserId;
             password = loginSd.Password;
-            clientType = loginSd.ClientType;
-            var ip = loginSd._socket.LocalEndPoint;
+            passwordEncMode = loginSd.PasswordEnc;
+            md5Key = loginSd.Md5Key;
         }
         else if (sessionObject is ILoginMmoAuth.ITempSessionData tempSd)
         {
             userId = tempSd.UserId;
             password = tempSd.Password;
-            clientType = tempSd.ClientType;
+            passwordEncMode = tempSd.PasswordEnc;
+            md5Key = tempSd.Md5Key;
         }
         else
         {
@@ -61,21 +68,35 @@ internal sealed class LoginMmoAuth(
 
         if (configuration.UseDnsbl)
         {
-            // TODO: read login_config.use_dnsbl
+            var remoteIp = ExtractRemoteIp(sessionObject);
+            if (remoteIp != null && await IsDnsBlacklistedAsync(remoteIp))
+            {
+                logger.LogInformation("DNSBL rejected login from {Ip}", remoteIp);
+                return new ILoginMmoAuth.Output(3);
+            }
         }
 
-        var len = Math.Max(userId.Length, PacketConstants.MAP_NAME_LENGTH);
+        string lookupUserId = userId;
+        var account = await loginRepository.GetByUserIdAsync(lookupUserId);
 
-        if (configuration.NewAccountFlag)
+        if (account == null && configuration.NewAccountFlag && !input.IsServer)
         {
-            // TODO: read login_config.new_account_flag
+            var createResult = await TryCreateNewAccountAsync(lookupUserId, password, passwordEncMode, sessionObject);
+            if (createResult == NewAccountCreateResult.Success && lookupUserId.Length > 2)
+            {
+                lookupUserId = lookupUserId[..^2];
+                userId = lookupUserId;
+                account = await loginRepository.GetByUserIdAsync(lookupUserId);
+            }
+            else if (createResult != NewAccountCreateResult.NotApplicable)
+            {
+                return new ILoginMmoAuth.Output((int)createResult);
+            }
         }
-
-        var account = await loginRepository.GetByEmailAsync(userId);
 
         if (account == null)
         {
-            logger.LogInformation("Unknown account (account: {Account})", userId);
+            logger.LogInformation("Unknown account (account: {Account})", lookupUserId);
             return new ILoginMmoAuth.Output(0);
         }
 
@@ -93,14 +114,28 @@ internal sealed class LoginMmoAuth(
             processedPassword = ConvertToMd5(password);
         }
 
-        if (!CheckPasswords(account.UserPass, processedPassword))
+        if (!CheckPasswords(account.UserPass, processedPassword, passwordEncMode, md5Key))
         {
             logger.LogInformation("Invalid password (account: {Account})", userId);
             return new ILoginMmoAuth.Output(1);
         }
 
-        // TODO expiration time
-        // TODO unban time
+        var unixNow = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        if (account.ExpirationTime != 0 && account.ExpirationTime < unixNow)
+        {
+            logger.LogInformation("Connection refused (account: {Account}, expired ID)", userId);
+            return new ILoginMmoAuth.Output(2);
+        }
+
+        if (account.UnbanTime != 0 && account.UnbanTime > unixNow)
+        {
+            logger.LogInformation(
+                "Connection refused (account: {Account}, banned until {UnbanTime})",
+                userId,
+                DateTimeOffset.FromUnixTimeSeconds(account.UnbanTime).ToString(configuration.DateFormat, CultureInfo.InvariantCulture));
+            return new ILoginMmoAuth.Output(6);
+        }
 
         if (account.State != 0)
         {
@@ -110,7 +145,31 @@ internal sealed class LoginMmoAuth(
 
         if (configuration.ClientHashCheck > 0 && !input.IsServer)
         {
-            // TODO hash check && !isServer
+            if (sessionObject is not LoginSessionData loginSession)
+            {
+                return new ILoginMmoAuth.Output(5);
+            }
+
+            var clientHashHex = loginSession.HasClientHash != 0 ? ConvertToHex(loginSession.ClientHash) : string.Empty;
+
+            bool matched = configuration.ClientHashNodes
+                .OrderByDescending(node => node.GroupId)
+                .Where(node => account.GroupId >= node.GroupId)
+                .Any(node =>
+                    string.IsNullOrWhiteSpace(node.Md5Hash) ||
+                    (loginSession.HasClientHash != 0 &&
+                     string.Equals(node.Md5Hash.Trim(), clientHashHex, StringComparison.OrdinalIgnoreCase)));
+
+            if (!matched)
+            {
+                logger.LogInformation(
+                    loginSession.HasClientHash == 0
+                        ? "Client didn't send client hash (account: {Account})"
+                        : "Invalid client hash (account: {Account}, sent md5: {ClientHash})",
+                    userId,
+                    clientHashHex);
+                return new ILoginMmoAuth.Output(5);
+            }
         }
 
         logger.LogInformation("Authentication accepted (account: {Account}, id: {AccountId})", userId, account.AccountId);
@@ -131,12 +190,15 @@ internal sealed class LoginMmoAuth(
                 session.GroupId = account.GroupId;
 
                 account.LastLogin = DateTime.Now;
-                account.LastIp = session._socket.LocalEndPoint?.ToString() ?? string.Empty;
+                account.LastIp = session._socket.RemoteEndPoint?.ToString() ?? string.Empty;
                 account.UnbanTime = 0;
                 account.LoginCount++;
                 _ = loginRepository.UpdateAsync(account);
 
-                // TODO: web_auth_token
+                if (configuration.UseWebAuthToken)
+                {
+                    session.WebAuthToken = account.WebAuthToken ?? string.Empty;
+                }
                 sessionManager.UpdateSession(session);
 
                 if (session.Sex != 'S' && sd.AccountId < 2000000)
@@ -154,6 +216,10 @@ internal sealed class LoginMmoAuth(
             tempSd.LoginId2 = random.Next(1, int.MaxValue);
             tempSd.Sex = account.Sex;
             tempSd.GroupId = account.GroupId;
+            if (configuration.UseWebAuthToken)
+            {
+                tempSd.WebAuthToken = account.WebAuthToken ?? string.Empty;
+            }
 
             account.LastLogin = DateTime.Now;
             account.UnbanTime = 0;
@@ -164,17 +230,28 @@ internal sealed class LoginMmoAuth(
         return new ILoginMmoAuth.Output(-1);
     }
 
-    private bool CheckPasswords(string pass, string confirm)
+    private bool CheckPasswords(string accountPassword, string providedPassword, int passwordEncMode, string md5Key)
     {
-        // If MD5 passwords are enabled, compare as MD5 hashes
-        if (configuration.UseMd5Passwords)
+        if (passwordEncMode == 0)
         {
-            string expectedHash = ConvertToMd5(pass);
-            return expectedHash.Equals(confirm, StringComparison.InvariantCultureIgnoreCase);
+            return accountPassword.Equals(providedPassword, StringComparison.OrdinalIgnoreCase);
         }
 
-        // Otherwise, compare as plain text
-        return pass.Equals(confirm, StringComparison.InvariantCultureIgnoreCase);
+        bool matched = false;
+
+        if ((passwordEncMode & 0x01) != 0)
+        {
+            var expected = ConvertToMd5($"{md5Key}{accountPassword}");
+            matched |= expected.Equals(providedPassword, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if ((passwordEncMode & 0x02) != 0)
+        {
+            var expected = ConvertToMd5($"{accountPassword}{md5Key}");
+            matched |= expected.Equals(providedPassword, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return matched;
     }
 
     private string ConvertToMd5(string input)
@@ -187,5 +264,149 @@ internal sealed class LoginMmoAuth(
             // Convert to hex string
             return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
         }
+    }
+
+    private static string ConvertToHex(byte[] input)
+    {
+        return BitConverter.ToString(input).Replace("-", "").ToLowerInvariant();
+    }
+
+    private async Task<NewAccountCreateResult> TryCreateNewAccountAsync(
+        string candidateUserId,
+        string password,
+        int passwordEncMode,
+        object sessionObject)
+    {
+        if (candidateUserId.Length <= 2 || password.Length == 0 || passwordEncMode != 0)
+        {
+            return NewAccountCreateResult.NotApplicable;
+        }
+
+        if (candidateUserId[^2] != '_')
+        {
+            return NewAccountCreateResult.NotApplicable;
+        }
+
+        var sexSuffix = char.ToUpperInvariant(candidateUserId[^1]);
+        if (sexSuffix is not ('M' or 'F'))
+        {
+            return NewAccountCreateResult.NotApplicable;
+        }
+
+        var accountName = candidateUserId[..^2];
+        if (accountName.Length < configuration.AccountNameMinLength || password.Length < configuration.PasswordMinLength)
+        {
+            logger.LogInformation("Rejected auto-create for invalid account/password length ({Account})", accountName);
+            return NewAccountCreateResult.UnregisteredId;
+        }
+
+        lock (RegistrationLock)
+        {
+            var now = DateTime.UtcNow;
+            while (RegistrationWindow.Count > 0 &&
+                   (now - RegistrationWindow.Peek()).TotalSeconds > configuration.RegistrationInterval)
+            {
+                RegistrationWindow.Dequeue();
+            }
+
+            if (RegistrationWindow.Count >= configuration.AllowedRegistrations)
+            {
+                logger.LogInformation("Registration limit reached, rejecting auto-create for {Account}", accountName);
+                return NewAccountCreateResult.RejectedFromServer;
+            }
+        }
+
+        if (await loginRepository.GetByUserIdAsync(accountName) != null)
+        {
+            logger.LogInformation("Attempted auto-create for existing account {Account}", accountName);
+            return NewAccountCreateResult.IncorrectPassword;
+        }
+
+        var expirationUnix = configuration.StartLimitedTime >= 0
+            ? DateTimeOffset.UtcNow.ToUnixTimeSeconds() + configuration.StartLimitedTime
+            : 0;
+
+        var remoteIp = ExtractRemoteIp(sessionObject)?.ToString() ?? string.Empty;
+        await loginRepository.AddAsync(new Core.Database.Entities.LoginEntity
+        {
+            UserId = accountName,
+            UserPass = password,
+            Sex = sexSuffix,
+            Email = "a@a.com",
+            GroupId = 0,
+            State = 0,
+            UnbanTime = 0,
+            ExpirationTime = (uint)Math.Max(expirationUnix, 0),
+            LoginCount = 0,
+            LastLogin = null,
+            LastIp = remoteIp,
+            Birthdate = null,
+            CharacterSlots = (byte)Math.Clamp(configuration.CharactersPerAccount, 0, byte.MaxValue),
+            Pincode = string.Empty,
+            PincodeChange = 0,
+            VipTime = 0,
+            OldGroup = 0,
+            WebAuthToken = null,
+            WebAuthTokenEnabled = 0
+        });
+
+        lock (RegistrationLock)
+        {
+            RegistrationWindow.Enqueue(DateTime.UtcNow);
+        }
+
+        logger.LogInformation("Account auto-created via suffix flow: {Account} ({Sex})", accountName, sexSuffix);
+        return NewAccountCreateResult.Success;
+    }
+
+    private async Task<bool> IsDnsBlacklistedAsync(System.Net.IPAddress remoteIp)
+    {
+        var octets = remoteIp.ToString().Split('.');
+        if (octets.Length != 4)
+        {
+            return false;
+        }
+
+        var reversedIp = string.Join('.', octets.Reverse());
+        var servers = configuration.DnsblServers.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var dnsblServer in servers)
+        {
+            try
+            {
+                var queryHost = $"{reversedIp}.{dnsblServer}";
+                var result = await System.Net.Dns.GetHostAddressesAsync(queryHost);
+                if (result.Length > 0)
+                {
+                    return true;
+                }
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                // NXDOMAIN/lookup failures mean "not listed" for this server.
+            }
+        }
+
+        return false;
+    }
+
+    private static System.Net.IPAddress? ExtractRemoteIp(object sessionObject)
+    {
+        if (sessionObject is LoginSessionData loginSession &&
+            loginSession._socket.RemoteEndPoint is System.Net.IPEndPoint endpoint)
+        {
+            return endpoint.Address;
+        }
+
+        return null;
+    }
+
+    private enum NewAccountCreateResult
+    {
+        NotApplicable = int.MinValue,
+        Success = -1,
+        UnregisteredId = 0,
+        IncorrectPassword = 1,
+        RejectedFromServer = 3
     }
 }

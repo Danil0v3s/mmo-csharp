@@ -52,6 +52,35 @@ public class SessionManager : IDisposable
         throw new InvalidOperationException("Failed to add session to manager");
     }
 
+    public TSession CreateSession<TSession>(Socket socket) where TSession : ClientSession
+    {
+        var session = Activator.CreateInstance(
+            typeof(TSession),
+            socket,
+            _heartbeatTimeout,
+            _packetFactory,
+            _sizeRegistry,
+            _logger) as TSession;
+
+        if (session == null)
+        {
+            throw new InvalidOperationException($"Failed to create session of type {typeof(TSession).Name}");
+        }
+
+        if (_sessions.TryAdd(session.SessionId, session))
+        {
+            _logger.LogInformation(
+                "Created session {SessionId} ({SessionType}) from {RemoteEndpoint}",
+                session.SessionId,
+                typeof(TSession).Name,
+                socket.RemoteEndPoint);
+            return session;
+        }
+
+        session.Dispose();
+        throw new InvalidOperationException("Failed to add session to manager");
+    }
+
     public ClientSession? GetSession(Guid sessionId)
     {
         _sessions.TryGetValue(sessionId, out var session);
@@ -178,4 +207,3 @@ public class SessionManager : IDisposable
         _cts.Dispose();
     }
 }
-

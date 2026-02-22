@@ -1,12 +1,12 @@
 using Core.Server.Network;
 using Core.Server.Packets;
-using Core.Server.Packets.ClientPackets;
+using Core.Server.Packets.In.CH;
 using Core.Server.Packets.Out.HC;
 
 namespace Char.Server.Handlers;
 
 [PacketHandler(PacketHeader.CH_SELECT_CHAR)]
-public class CharacterSelectHandler : IPacketHandler<CharSessionData, CZ_HEARTBEAT>
+public class CharacterSelectHandler : IPacketHandler<CharSessionData, CH_SELECT_CHAR>
 {
     private readonly ILogger<CharacterSelectHandler> _logger;
 
@@ -15,9 +15,20 @@ public class CharacterSelectHandler : IPacketHandler<CharSessionData, CZ_HEARTBE
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task HandleAsync(CharSessionData session, CZ_HEARTBEAT packet)
+    public async Task HandleAsync(CharSessionData session, CH_SELECT_CHAR packet)
     {
-        _logger.LogInformation("Character list request from session {SessionId}", session.SessionId);
+        if (!session.AccountId.HasValue)
+        {
+            _logger.LogWarning("Rejecting CH_SELECT_CHAR from unauthenticated session {SessionId}", session.SessionId);
+            session.Disconnect(DisconnectReason.Kicked);
+            return;
+        }
+
+        _logger.LogInformation(
+            "Character select request from account {AccountId}, slot {Slot}, session {SessionId}",
+            session.AccountId.Value,
+            packet.Slot,
+            session.SessionId);
 
         // TODO: implement correct packets
         var responsePacket = new HC_SEND_MAP_DATA();
