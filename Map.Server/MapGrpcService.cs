@@ -1,15 +1,20 @@
 using Core.Server.IPC;
 using Grpc.Core;
+using Map.Server.Services;
 
 namespace Map.Server;
 
 public class MapGrpcService : MapService.MapServiceBase
 {
-    private readonly MapServerImpl _mapServer;
+    private readonly ICharServerIpcService _charServerIpc;
+    private readonly IPlayerMapService _playerMapService;
 
-    public MapGrpcService(MapServerImpl mapServer)
+    public MapGrpcService(
+        ICharServerIpcService charServerIpc,
+        IPlayerMapService playerMapService)
     {
-        _mapServer = mapServer;
+        _charServerIpc = charServerIpc;
+        _playerMapService = playerMapService;
     }
 
     public override async Task<EnterMapResponse> EnterMap(
@@ -18,7 +23,7 @@ public class MapGrpcService : MapService.MapServiceBase
     {
         if (request.AccountId > 0 && request.LoginId1 > 0 && request.LoginId2 > 0)
         {
-            var authOk = await _mapServer.ValidateCharAuthTicketAsync(
+            var authOk = await _charServerIpc.ValidateCharAuthTicketAsync(
                 request.AccountId,
                 request.CharacterId,
                 request.LoginId1,
@@ -35,7 +40,7 @@ public class MapGrpcService : MapService.MapServiceBase
             }
         }
 
-        _mapServer.AddPlayerToMap(
+        _playerMapService.AddPlayerToMap(
             request.CharacterId,
             (uint)request.MapId,
             request.PositionX,
@@ -52,7 +57,7 @@ public class MapGrpcService : MapService.MapServiceBase
         LeaveMapRequest request, 
         ServerCallContext context)
     {
-        _mapServer.RemovePlayerFromMap(request.CharacterId);
+        _playerMapService.RemovePlayerFromMap(request.CharacterId);
 
         return Task.FromResult(new LeaveMapResponse
         {
@@ -70,7 +75,7 @@ public class MapGrpcService : MapService.MapServiceBase
             MapName = "Test Map"
         };
 
-        foreach (var player in _mapServer.GetPlayersOnMap((uint)request.MapId))
+        foreach (var player in _playerMapService.GetPlayersOnMap((uint)request.MapId))
         {
             response.Players.Add(new PlayerInfo
             {

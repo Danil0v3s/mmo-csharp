@@ -1,31 +1,50 @@
-using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using Core.Server;
 using Core.Server.IPC;
 using Core.Server.Network;
+using Core.Server.Packets;
+using Map.Server.Services;
 
 namespace Map.Server;
 
 public class MapServerImpl : GameLoopServer
 {
     private Socket? _listenerSocket;
-    private readonly ConcurrentDictionary<long, PlayerEntity> _players;
-    private readonly ConcurrentDictionary<Guid, long> _sessionToCharacter;
     private readonly PacketHandlerRegistry _handlerRegistry;
+    private readonly MapServerState _serverState;
+    private readonly IPlayerMapService _playerMapService;
 
     public MapServerImpl(
         ServerConfiguration configuration,
         ILogger<MapServerImpl> logger,
         IServiceProvider serviceProvider,
-        ConcurrentDictionary<long, PlayerEntity> players,
-        ConcurrentDictionary<Guid, long> sessionToCharacter)
-        : base("MapServer", configuration, logger)
+        PacketSystem packetSystem,
+        SessionManager sessionManager,
+        ServerConnectionService connectionService,
+        MapServerState serverState,
+        IPlayerMapService playerMapService)
+        : base("MapServer", configuration, logger, packetSystem, sessionManager)
     {
-        _players = players;
-        _sessionToCharacter = sessionToCharacter;
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
         _handlerRegistry.DiscoverAndRegisterFromCallingAssembly();
+        _serverState = serverState;
+        _playerMapService = playerMapService;
+
+        // Wire up the connection service to use this server's connection manager
+        connectionService.SetConnectionManager(ServerConnections);
+    }
+
+    public override async Task StartAsync(CancellationToken cancellationToken = default)
+    {
+        await base.StartAsync(cancellationToken);
+        _serverState.SetState(State);
+    }
+
+    public override async Task StopAsync(CancellationToken cancellationToken = default)
+    {
+        await base.StopAsync(cancellationToken);
+        _serverState.SetState(State);
     }
 
     protected override async Task StartTcpListenerAsync(CancellationToken cancellationToken)
@@ -83,27 +102,10 @@ public class MapServerImpl : GameLoopServer
         }
     }
 
-    private void BroadcastToMap(uint mapId, byte[] packet, long? excludeCharacterId = null)
-    {
-        foreach (var player in _players.Values.Where(p => p.MapId == mapId))
-        {
-            if (excludeCharacterId.HasValue && player.CharacterId == excludeCharacterId.Value)
-                continue;
-
-            var session = SessionManager.GetAllSessions()
-                .FirstOrDefault(s => s.SessionId == player.SessionId);
-            
-            session?.EnqueuePacket(packet);
-        }
-    }
-
     protected override async Task UpdateGameLogicAsync(double deltaTime, CancellationToken cancellationToken)
     {
         // Update game logic (AI, physics, etc.)
         // This runs at 60 FPS for MapServer
-        
-        // Example: Update NPC AI, check collisions, etc.
-        // For now, just a placeholder
         
         await Task.CompletedTask;
     }
@@ -114,53 +116,6 @@ public class MapServerImpl : GameLoopServer
         {
             await session.FlushPacketsAsync();
         }
-    }
-
-    public async Task<bool> ValidateCharAuthTicketAsync(
-        int accountId,
-        long characterId,
-        int loginId1,
-        int loginId2,
-        CancellationToken cancellationToken = default)
-    {
-        var charSession = ServerConnections.GetSessionsByType(ServerType.Char).FirstOrDefault();
-        if (charSession?.IsConnected != true)
-        {
-            return false;
-        }
-
-        var charClient = new CharacterService.CharacterServiceClient(charSession.Channel);
-        var response = await charClient.ConsumeMapAuthTicketAsync(new MapAuthConsumeRequest
-        {
-            AccountId = accountId,
-            CharacterId = characterId,
-            LoginId1 = loginId1,
-            LoginId2 = loginId2
-        }, cancellationToken: cancellationToken);
-
-        return response.Success;
-    }
-
-    public void AddPlayerToMap(long characterId, uint mapId, float x, float y, float z)
-    {
-        _players[characterId] = new PlayerEntity
-        {
-            CharacterId = characterId,
-            MapId = mapId,
-            PositionX = x,
-            PositionY = y,
-            PositionZ = z
-        };
-    }
-
-    public bool RemovePlayerFromMap(long characterId)
-    {
-        return _players.TryRemove(characterId, out _);
-    }
-
-    public IEnumerable<PlayerEntity> GetPlayersOnMap(uint mapId)
-    {
-        return _players.Values.Where(p => p.MapId == mapId);
     }
 }
 

@@ -9,21 +9,15 @@ using Login.Server.Security;
 
 namespace Login.Server;
 
-using System.Collections.Concurrent;
-
 public class LoginServerImpl : GameLoopServer
 {
     private Socket? _listenerSocket;
     private readonly PacketHandlerRegistry _handlerRegistry;
     private readonly ILoginSecurityService _loginSecurityService;
+    private readonly UseCase.ICharServerIpcService _charServerIpcService;
+    private readonly UseCase.LoginServerState _serverState;
     private DateTime _nextIpBanCleanupUtc = DateTime.MinValue;
     private DateTime _nextCharIpSyncUtc = DateTime.MinValue;
-
-    // Character server data - equivalent to C++ ch_server array
-    private readonly CharServerData[] _charServers = new CharServerData[5]; // MAX_SERVERS = 5
-
-    // Track character server sessions by account ID
-    private readonly ConcurrentDictionary<int, string> _charServerSessions = new();
 
     public LoginServerImpl(
         ServerConfiguration configuration,
@@ -31,7 +25,10 @@ public class LoginServerImpl : GameLoopServer
         IServiceProvider serviceProvider,
         ILoginSecurityService loginSecurityService,
         PacketSystem packetSystem,
-        SessionManager sessionManager
+        SessionManager sessionManager,
+        ServerConnectionService connectionService,
+        UseCase.ICharServerIpcService charServerIpcService,
+        UseCase.LoginServerState serverState
     )
         : base("LoginServer", configuration, logger, packetSystem, sessionManager)
     {
@@ -39,125 +36,23 @@ public class LoginServerImpl : GameLoopServer
         _handlerRegistry.DiscoverAndRegisterFromCallingAssembly();
         _handlerRegistry.WarmUpHandlers(TimeSpan.FromSeconds(5), failOnError: false);
         _loginSecurityService = loginSecurityService;
+        _charServerIpcService = charServerIpcService;
+        _serverState = serverState;
 
-        // Initialize character server array
-        for (int i = 0; i < _charServers.Length; i++)
-        {
-            _charServers[i] = new CharServerData
-            {
-                Name = string.Empty,
-                SocketFd = -1,
-                Ip = 0,
-                Port = 0,
-                Users = 0,
-                Type = 0,
-                New = 0
-            };
-        }
+        // Wire up the connection service to use this server's connection manager
+        connectionService.SetConnectionManager(ServerConnections);
     }
 
-    /// <summary>
-    /// Adds a character server to the internal tracking array
-    /// </summary>
-    public void AddCharServer(int serverId, string serverName, uint serverIp, ushort serverPort, ushort serverType,
-        ushort newServer)
+    public override async Task StartAsync(CancellationToken cancellationToken = default)
     {
-        if (serverId >= 0 && serverId < _charServers.Length)
-        {
-            _charServers[serverId] = new CharServerData
-            {
-                Name = serverName,
-                SocketFd = -1, // Will be set to the actual socket fd in C++, but we track differently in C#
-                Ip = serverIp,
-                Port = serverPort,
-                Users = 0,
-                Type = serverType,
-                New = newServer
-            };
-
-            // Track the session for this character server
-            _charServerSessions[serverId] = serverName;
-        }
+        await base.StartAsync(cancellationToken);
+        _serverState.SetState(State);
     }
 
-    /// <summary>
-    /// Removes a character server from tracking
-    /// </summary>
-    public void RemoveCharServer(int serverId)
+    public override async Task StopAsync(CancellationToken cancellationToken = default)
     {
-        if (serverId >= 0 && serverId < _charServers.Length)
-        {
-            _charServerSessions.TryRemove(serverId, out _);
-            _charServers[serverId] = new CharServerData
-            {
-                Name = string.Empty,
-                SocketFd = -1,
-                Ip = 0,
-                Port = 0,
-                Users = 0,
-                Type = 0,
-                New = 0
-            };
-        }
-    }
-
-    /// <summary>
-    /// Gets character server data by ID
-    /// </summary>
-    public CharServerData? GetCharServer(int serverId)
-    {
-        if (serverId >= 0 && serverId < _charServers.Length)
-        {
-            return _charServers[serverId];
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Gets all active character servers
-    /// </summary>
-    public IEnumerable<CharServerData> GetActiveCharServers()
-    {
-        return _charServers.Where(cs => !string.IsNullOrEmpty(cs.Name));
-    }
-
-    public IEnumerable<(int ServerId, CharServerData Data)> GetActiveCharServersWithIds()
-    {
-        for (int i = 0; i < _charServers.Length; i++)
-        {
-            if (!string.IsNullOrEmpty(_charServers[i].Name))
-            {
-                yield return (i, _charServers[i]);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Updates character server user count
-    /// </summary>
-    public void UpdateCharServerUserCount(int serverId, ushort userCount)
-    {
-        if (serverId >= 0 && serverId < _charServers.Length)
-        {
-            _charServers[serverId] = _charServers[serverId] with { Users = userCount };
-        }
-    }
-
-    public void UpdateCharServerAddress(int serverId, uint serverIp)
-    {
-        if (serverId >= 0 && serverId < _charServers.Length)
-        {
-            _charServers[serverId] = _charServers[serverId] with { Ip = serverIp };
-        }
-    }
-
-    /// <summary>
-    /// Checks if a given account ID corresponds to a character server
-    /// </summary>
-    public bool IsCharacterServer(int accountId)
-    {
-        return _charServerSessions.ContainsKey(accountId);
+        await base.StopAsync(cancellationToken);
+        _serverState.SetState(State);
     }
 
     protected override async Task StartTcpListenerAsync(CancellationToken cancellationToken)
@@ -274,21 +169,6 @@ public class LoginServerImpl : GameLoopServer
         }
 
         _nextCharIpSyncUtc = DateTime.UtcNow.AddSeconds(60);
-        var charSessions = ServerConnections.GetSessionsByType(ServerType.Char).ToList();
-        foreach (var charSession in charSessions)
-        {
-            try
-            {
-                var client = new CharacterService.CharacterServiceClient(charSession.Channel);
-                await client.RequestAddressSyncAsync(new AddressSyncRequest(), cancellationToken: cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(
-                    ex,
-                    "Failed to request char address sync for server {ServerName}",
-                    charSession.ServerName);
-            }
-        }
+        await _charServerIpcService.RequestCharServerAddressSyncAsync(cancellationToken);
     }
 }

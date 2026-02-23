@@ -1,3 +1,4 @@
+using Char.Server.Services;
 using Core.Server.IPC;
 using Grpc.Core;
 
@@ -6,10 +7,14 @@ namespace Char.Server;
 public class CharGrpcService : CharacterService.CharacterServiceBase
 {
     private readonly CharServerImpl _charServer;
+    private readonly IMapAuthTicketService _mapAuthTicketService;
 
-    public CharGrpcService(CharServerImpl charServer)
+    public CharGrpcService(
+        CharServerImpl charServer,
+        IMapAuthTicketService mapAuthTicketService)
     {
         _charServer = charServer;
+        _mapAuthTicketService = mapAuthTicketService;
     }
 
     public override Task<CharacterListResponse> GetCharacterList(
@@ -100,7 +105,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         MapAuthTicketRequest request,
         ServerCallContext context)
     {
-        var success = _charServer.IssueMapAuthTicket(
+        var success = _mapAuthTicketService.IssueTicket(
             request.AccountId,
             request.CharacterId,
             request.LoginId1,
@@ -120,7 +125,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         MapAuthConsumeRequest request,
         ServerCallContext context)
     {
-        var success = _charServer.TryConsumeMapAuthTicket(
+        var success = _mapAuthTicketService.TryConsumeTicket(
             request.AccountId,
             request.CharacterId,
             request.LoginId1,
@@ -165,12 +170,12 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         return new AccountSexBroadcastResponse { Success = true };
     }
 
-    public override async Task<AddressSyncResponse> RequestAddressSync(
+    public override Task<AddressSyncResponse> RequestAddressSync(
         AddressSyncRequest request,
         ServerCallContext context)
     {
-        await _charServer.TriggerCharacterServerAddressSyncAsync(context.CancellationToken);
-        return new AddressSyncResponse { Success = true };
+        _charServer.TriggerAddressSync();
+        return Task.FromResult(new AddressSyncResponse { Success = true });
     }
 
     public override async Task<AccountVipPushResponse> PushVipData(

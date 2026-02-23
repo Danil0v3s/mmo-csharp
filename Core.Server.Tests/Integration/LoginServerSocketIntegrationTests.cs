@@ -54,6 +54,7 @@ public class LoginServerSocketIntegrationTests
         services.AddSingleton<ILoginAuthUseCase, LoginAuthUseCase>();
         services.AddSingleton<ILoginSessionPacketUseCase, LoginSessionPacketUseCase>();
         services.AddSingleton<LoginServerImpl>();
+        services.AddSingleton<ILoginServerRuntime, DeferredLoginServerRuntime>();
 
         var handlerTypes = typeof(LoginServerImpl).Assembly.GetTypes()
             .Where(t => t.IsClass && !t.IsAbstract)
@@ -141,6 +142,7 @@ public class LoginServerSocketIntegrationTests
         services.AddSingleton<ILoginAuthUseCase, LoginAuthUseCase>();
         services.AddSingleton<ILoginSessionPacketUseCase, LoginSessionPacketUseCase>();
         services.AddSingleton<LoginServerImpl>();
+        services.AddSingleton<ILoginServerRuntime, DeferredLoginServerRuntime>();
 
         var handlerTypes = typeof(LoginServerImpl).Assembly.GetTypes()
             .Where(t => t.IsClass && !t.IsAbstract)
@@ -222,6 +224,7 @@ public class LoginServerSocketIntegrationTests
         services.AddSingleton<ILoginAuthUseCase, LoginAuthUseCase>();
         services.AddSingleton<ILoginSessionPacketUseCase, LoginSessionPacketUseCase>();
         services.AddSingleton<LoginServerImpl>();
+        services.AddSingleton<ILoginServerRuntime, DeferredLoginServerRuntime>();
 
         var handlerTypes = typeof(LoginServerImpl).Assembly.GetTypes()
             .Where(t => t.IsClass && !t.IsAbstract)

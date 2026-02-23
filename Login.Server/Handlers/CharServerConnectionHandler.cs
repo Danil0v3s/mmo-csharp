@@ -1,3 +1,4 @@
+using Core.Server;
 using Core.Server.IPC;
 using Grpc.Core;
 using Login.Server.UseCase;
@@ -11,7 +12,7 @@ namespace Login.Server.Handlers;
 public class CharServerGrpcHandler(
     ILogger logger,
     ILoginMmoAuth loginMmoAuth,
-    LoginServerImpl loginServer
+    ICharServerRegistry charServerRegistry
 )
 {
     /// <summary>
@@ -36,12 +37,12 @@ public class CharServerGrpcHandler(
         {
             // Authenticate the character server using the same logic as regular login
             // but with isServer=true
-            var result = await loginMmoAuth.ExecuteAsync(new Login.Server.UseCase.ILoginMmoAuth.Input(sessionData, true));
+            var result = await loginMmoAuth.ExecuteAsync(new ILoginMmoAuth.Input(sessionData, true));
 
             if (result.ResultCode == -1 && sessionData.Sex == 'S' && sessionData.AccountId < 5) // MAX_SERVERS = 5
             {
                 // Verify that the character server ID isn't already in use
-                var existingServer = loginServer.GetCharServer(sessionData.AccountId);
+                var existingServer = charServerRegistry.GetCharServer(sessionData.AccountId);
                 if (existingServer != null && !string.IsNullOrEmpty(existingServer.Name))
                 {
                     logger.LogWarning("Character server registration refused: server ID {ServerId} already in use", sessionData.AccountId);
@@ -57,7 +58,7 @@ public class CharServerGrpcHandler(
                 uint serverIp = ConvertIpToUInt32(request.ServerAddress.Split(':')[0]);
 
                 // Add the character server to our tracking
-                loginServer.AddCharServer(
+                charServerRegistry.AddCharServer(
                     sessionData.AccountId,
                     request.ServerName,
                     serverIp,
@@ -114,7 +115,7 @@ public class CharServerGrpcHandler(
 /// <summary>
 /// Temporary session data class for authentication purposes only
 /// </summary>
-public class TempAuthSessionData : Login.Server.UseCase.ILoginMmoAuth.ITempSessionData
+public class TempAuthSessionData : ILoginMmoAuth.ITempSessionData
 {
     public string UserId { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;

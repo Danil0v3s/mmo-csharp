@@ -1,4 +1,4 @@
-using Core.Server.IPC;
+using Char.Server.Services;
 using Core.Server.Network;
 using Core.Server.Packets;
 using Core.Server.Packets.In.CH;
@@ -9,17 +9,19 @@ namespace Char.Server.Handlers;
 [PacketHandler(PacketHeader.CH_REQ_TO_CONNECT)]
 public class ClientConnectHandler(
     ILogger<ClientConnectHandler> logger,
-    CharServerImpl charServer
+    ICharServerState charServerState,
+    ILoginServerIpcService loginServerIpc
 ) : IPacketHandler<CharSessionData, CH_REQ_TO_CONNECT>
 {
     public async Task HandleAsync(CharSessionData session, CH_REQ_TO_CONNECT packet)
     {
-        var authResponse = await charServer.AuthenticateAccountWithLoginServerAsync(
+        var authResponse = await loginServerIpc.AuthenticateAccountAsync(
             (int)packet.AccountId,
             (int)packet.LoginId1,
             (int)packet.LoginId2,
             packet.Sex,
-            requestId: (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % int.MaxValue));
+            requestId: (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % int.MaxValue),
+            charServerState.RegisteredServerId);
 
         if (authResponse?.Success != true)
         {

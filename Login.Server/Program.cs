@@ -1,12 +1,11 @@
-﻿using System.Reflection;
-using Core.Database;
+﻿using Core.Database;
 using Core.Database.Context;
 using Core.Database.Seeds;
 using Core.Server;
 using Core.Server.DependencyInjection;
+using Core.Server.IPC;
 using Core.Server.Network;
 using Core.Server.Packets;
-using Core.Timer;
 using Login.Server;
 using Login.Server.Handlers;
 using Login.Server.Repository.Api;
@@ -41,7 +40,20 @@ configuration.GetSection("Server").Bind(serverConfig);
 builder.Services.AddSingleton<ServerConfiguration>(serverConfig);
 builder.Services.AddSingleton(serverConfig);
 builder.Services.AddSingleton<ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
+
+// Register the new decoupled services
+builder.Services.AddSingleton<ICharServerRegistry, CharServerRegistry>();
+builder.Services.AddSingleton<ServerConnectionService>();
+builder.Services.AddSingleton<IServerConnectionService>(sp => sp.GetRequiredService<ServerConnectionService>());
+builder.Services.AddSingleton<ICharServerIpcService, CharServerIpcService>();
+
+// Register server state separately to avoid circular dependencies during handler warm-up
+builder.Services.AddSingleton<LoginServerState>();
+builder.Services.AddSingleton<ILoginServerRuntime>(sp => sp.GetRequiredService<LoginServerState>());
+
+// Register LoginServerImpl - now with clean dependencies
 builder.Services.AddSingleton<LoginServerImpl>();
+
 builder.Services.AddGameServerRuntime();
 
 builder.Services.AddTransient<ILoginDataRepository, LoginDataRepository>();

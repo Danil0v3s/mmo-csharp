@@ -1,9 +1,10 @@
 ﻿using System.Reflection;
 using Char.Server;
+using Char.Server.Services;
 using Core.Server;
+using Core.Server.IPC;
 using Core.Server.Network;
 using Core.Server.Packets;
-using Core.Timer;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Serilog;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
@@ -31,7 +32,21 @@ configuration.GetSection("Server").Bind(serverConfig);
 builder.Services.AddSingleton<ServerConfiguration>(serverConfig);
 builder.Services.AddSingleton(serverConfig);
 builder.Services.AddSingleton<ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
+
+// Register decoupled services
+builder.Services.AddSingleton<ServerConnectionService>();
+builder.Services.AddSingleton<IServerConnectionService>(sp => sp.GetRequiredService<ServerConnectionService>());
+builder.Services.AddSingleton<ILoginServerIpcService, LoginServerIpcService>();
+builder.Services.AddSingleton<IMapAuthTicketService, MapAuthTicketService>();
+
+// Register server state separately to avoid circular dependencies
+builder.Services.AddSingleton<CharServerState>();
+builder.Services.AddSingleton<ICharServerState>(sp => sp.GetRequiredService<CharServerState>());
+
+// Register CharServerImpl - also provides ICharServerRuntime for gRPC service
 builder.Services.AddSingleton<CharServerImpl>();
+
+// Core services
 builder.Services.AddSingleton<PacketSystem>();
 builder.Services.AddSingleton<IPacketFactory>(sp => sp.GetRequiredService<PacketSystem>().Factory);
 builder.Services.AddSingleton<IPacketSizeRegistry>(sp => sp.GetRequiredService<PacketSystem>().Registry);

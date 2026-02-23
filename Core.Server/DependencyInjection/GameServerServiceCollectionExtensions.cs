@@ -1,4 +1,5 @@
 using System.Reflection;
+using Core.Server.IPC;
 using Core.Server.Network;
 using Core.Server.Packets;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +14,17 @@ public static class GameServerServiceCollectionExtensions
         services.AddSingleton<IPacketFactory>(sp => sp.GetRequiredService<PacketSystem>().Factory);
         services.AddSingleton<IPacketSizeRegistry>(sp => sp.GetRequiredService<PacketSystem>().Registry);
         services.AddSingleton<SessionManager>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers char server registry and connection services for servers that need IPC.
+    /// </summary>
+    public static IServiceCollection AddCharServerServices(this IServiceCollection services)
+    {
+        services.AddSingleton<ICharServerRegistry, CharServerRegistry>();
+        services.AddSingleton<ServerConnectionService>();
+        services.AddSingleton<IServerConnectionService>(sp => sp.GetRequiredService<ServerConnectionService>());
         return services;
     }
 

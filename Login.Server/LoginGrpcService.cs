@@ -1,3 +1,4 @@
+using Core.Server;
 using Core.Server.IPC;
 using Core.Database.Context;
 using Core.Database.Entities;
@@ -15,6 +16,35 @@ public class LoginGrpcService : LoginService.LoginServiceBase
 {
     // In-memory session storage (should be Redis/database in production)
     private static readonly Dictionary<string, (long AccountId, string Username)> Sessions = new();
+
+    private readonly ILogger<LoginGrpcService> _logger;
+    private readonly ICharServerRegistry _charServerRegistry;
+    private readonly IServerConnectionService _connectionService;
+    private readonly CharServerGrpcHandler _charServerGrpcHandler;
+    private readonly LoginServerConfiguration _loginConfig;
+    private readonly ILoginDataRepository _loginDataRepository;
+    private readonly ILoginRepository _loginRepository;
+    private readonly GameDbContext _dbContext;
+
+    public LoginGrpcService(
+        ILogger<LoginGrpcService> logger,
+        ICharServerRegistry charServerRegistry,
+        IServerConnectionService connectionService,
+        CharServerGrpcHandler charServerGrpcHandler,
+        LoginServerConfiguration loginConfig,
+        ILoginDataRepository loginDataRepository,
+        ILoginRepository loginRepository,
+        GameDbContext dbContext)
+    {
+        _logger = logger;
+        _charServerRegistry = charServerRegistry;
+        _connectionService = connectionService;
+        _charServerGrpcHandler = charServerGrpcHandler;
+        _loginConfig = loginConfig;
+        _loginDataRepository = loginDataRepository;
+        _loginRepository = loginRepository;
+        _dbContext = dbContext;
+    }
 
     public override Task<ValidateSessionResponse> ValidateSession(
         ValidateSessionRequest request, 
@@ -40,7 +70,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         AccountInfoRequest request,
         ServerCallContext context)
     {
-        var account = await LoginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
+        var account = await _loginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
         if (account == null)
         {
             return new AccountInfoResponse
@@ -64,7 +94,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
             State = account.State,
             LastIp = account.LastIp,
             LastLogin = account.LastLogin.HasValue
-                ? account.LastLogin.Value.ToString(LoginConfig.DateFormat, CultureInfo.InvariantCulture)
+                ? account.LastLogin.Value.ToString(_loginConfig.DateFormat, CultureInfo.InvariantCulture)
                 : string.Empty,
             Birthdate = account.Birthdate.HasValue
                 ? account.Birthdate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
@@ -76,7 +106,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         AccountDataRequest request,
         ServerCallContext context)
     {
-        var account = await LoginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
+        var account = await _loginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
         if (account == null)
         {
             return new AccountDataResponse
@@ -88,8 +118,8 @@ public class LoginGrpcService : LoginService.LoginServiceBase
 
         var baseSlots = account.CharacterSlots > 0
             ? account.CharacterSlots
-            : (uint)Math.Max(LoginConfig.CharactersPerAccount, 0);
-        var vipSlotsIncrease = LoginConfig.Vip?.CharacterSlotIncrease ?? 0;
+            : (uint)Math.Max(_loginConfig.CharactersPerAccount, 0);
+        var vipSlotsIncrease = _loginConfig.Vip?.CharacterSlotIncrease ?? 0;
         var isVip = account.VipTime > DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var finalSlots = isVip ? baseSlots + vipSlotsIncrease : baseSlots;
 
@@ -116,14 +146,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         CharacterServerRegistrationRequest request,
         ServerCallContext context)
     {
-        // Use the CharServerGrpcHandler to process the registration
-        var handler = new CharServerGrpcHandler(
-            Logger,
-            LoginMmoAuth,
-            LoginServer
-        );
-
-        return await handler.RegisterCharacterServerAsync(request, context);
+        return await _charServerGrpcHandler.RegisterCharacterServerAsync(request, context);
     }
 
     public override Task<CharacterServerAuthResponse> AuthenticateAccountForCharServer(
@@ -138,14 +161,14 @@ public class LoginGrpcService : LoginService.LoginServiceBase
             _ => '\0'
         };
 
-        if (LoginDataRepository.TryConsumeAuthNode(
+        if (_loginDataRepository.TryConsumeAuthNode(
                 request.AccountId,
                 request.LoginId1,
                 request.LoginId2,
                 expectedSex,
                 out var authNode) && authNode != null)
         {
-            LoginDataRepository.SetOnlineUserCharServer(request.AccountId, (int)request.CharServerId);
+            _loginDataRepository.SetOnlineUserCharServer(request.AccountId, (int)request.CharServerId);
 
             return Task.FromResult(new CharacterServerAuthResponse
             {
@@ -175,7 +198,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         CharacterServerUserCountUpdateRequest request,
         ServerCallContext context)
     {
-        LoginServer.UpdateCharServerUserCount(request.ServerId, (ushort)request.UserCount);
+        _charServerRegistry.UpdateCharServerUserCount(request.ServerId, (ushort)request.UserCount);
         return Task.FromResult(new CharacterServerUserCountUpdateResponse { Success = true });
     }
 
@@ -183,7 +206,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         CharacterServerAddressUpdateRequest request,
         ServerCallContext context)
     {
-        LoginServer.UpdateCharServerAddress(request.ServerId, request.Ip);
+        _charServerRegistry.UpdateCharServerAddress(request.ServerId, request.Ip);
         return Task.FromResult(new CharacterServerAddressUpdateResponse { Success = true });
     }
 
@@ -191,7 +214,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         CharacterServerSetAllOfflineRequest request,
         ServerCallContext context)
     {
-        var removed = LoginDataRepository.RemoveOnlineUsersByCharServer(request.ServerId);
+        var removed = _loginDataRepository.RemoveOnlineUsersByCharServer(request.ServerId);
         return Task.FromResult(new CharacterServerSetAllOfflineResponse
         {
             Success = true,
@@ -203,7 +226,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         AccountPincodeUpdateRequest request,
         ServerCallContext context)
     {
-        var account = await LoginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
+        var account = await _loginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
         if (account == null)
         {
             return new AccountPincodeUpdateResponse
@@ -215,7 +238,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
 
         account.Pincode = request.Pincode ?? string.Empty;
         account.PincodeChange = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        await LoginRepository.UpdateAsync(account, context.CancellationToken);
+        await _loginRepository.UpdateAsync(account, context.CancellationToken);
 
         return new AccountPincodeUpdateResponse { Success = true };
     }
@@ -224,8 +247,8 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         AccountPincodeAuthFailRequest request,
         ServerCallContext context)
     {
-        LoginDataRepository.RemoveOnlineUser((int)request.AccountId);
-        Logger.LogInformation("PIN Code check failed for account {AccountId}", request.AccountId);
+        _loginDataRepository.RemoveOnlineUser((int)request.AccountId);
+        _logger.LogInformation("PIN Code check failed for account {AccountId}", request.AccountId);
         return Task.FromResult(new AccountPincodeAuthFailResponse { Success = true });
     }
 
@@ -233,7 +256,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         CharacterServerOnlineSyncRequest request,
         ServerCallContext context)
     {
-        LoginDataRepository.RemoveOnlineUsersByCharServer(request.ServerId);
+        _loginDataRepository.RemoveOnlineUsersByCharServer(request.ServerId);
 
         var uniqueAccounts = request.AccountIds
             .Where(accountId => accountId > 0)
@@ -242,7 +265,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
 
         foreach (var accountId in uniqueAccounts)
         {
-            LoginDataRepository.SetOnlineUserCharServer(accountId, request.ServerId);
+            _loginDataRepository.SetOnlineUserCharServer(accountId, request.ServerId);
         }
 
         return Task.FromResult(new CharacterServerOnlineSyncResponse
@@ -275,14 +298,14 @@ public class LoginGrpcService : LoginService.LoginServiceBase
 
             if (entry.IsNumeric)
             {
-                var existing = await DbContext.GlobalAccountRegistersNum
+                var existing = await _dbContext.GlobalAccountRegistersNum
                     .FirstOrDefaultAsync(
                         e => e.AccountId == (int)request.AccountId && e.Key == entry.Key && e.Index == entry.Index,
                         context.CancellationToken);
 
                 if (existing == null)
                 {
-                    DbContext.GlobalAccountRegistersNum.Add(new GlobalAccRegNumEntity
+                    _dbContext.GlobalAccountRegistersNum.Add(new GlobalAccRegNumEntity
                     {
                         AccountId = (int)request.AccountId,
                         Key = entry.Key,
@@ -297,14 +320,14 @@ public class LoginGrpcService : LoginService.LoginServiceBase
             }
             else
             {
-                var existing = await DbContext.GlobalAccountRegistersStr
+                var existing = await _dbContext.GlobalAccountRegistersStr
                     .FirstOrDefaultAsync(
                         e => e.AccountId == (int)request.AccountId && e.Key == entry.Key && e.Index == entry.Index,
                         context.CancellationToken);
 
                 if (existing == null)
                 {
-                    DbContext.GlobalAccountRegistersStr.Add(new GlobalAccRegStrEntity
+                    _dbContext.GlobalAccountRegistersStr.Add(new GlobalAccRegStrEntity
                     {
                         AccountId = (int)request.AccountId,
                         Key = entry.Key,
@@ -319,7 +342,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
             }
         }
 
-        await DbContext.SaveChangesAsync(context.CancellationToken);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
         return new GlobalAccRegUpdateResponse
         {
@@ -350,7 +373,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
             CharId = request.CharId
         };
 
-        var numericEntries = await DbContext.GlobalAccountRegistersNum
+        var numericEntries = await _dbContext.GlobalAccountRegistersNum
             .Where(e => e.AccountId == (int)request.AccountId)
             .ToListAsync(context.CancellationToken);
 
@@ -366,7 +389,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
             });
         }
 
-        var stringEntries = await DbContext.GlobalAccountRegistersStr
+        var stringEntries = await _dbContext.GlobalAccountRegistersStr
             .Where(e => e.AccountId == (int)request.AccountId)
             .ToListAsync(context.CancellationToken);
 
@@ -389,7 +412,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         AccountVipDataRequest request,
         ServerCallContext context)
     {
-        var account = await LoginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
+        var account = await _loginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
         if (account == null)
         {
             return new AccountVipDataResponse
@@ -400,7 +423,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
             };
         }
 
-        var vipConfig = LoginConfig.Vip ?? new VipConfiguration();
+        var vipConfig = _loginConfig.Vip ?? new VipConfiguration();
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var vipTime = (long)account.VipTime;
 
@@ -444,11 +467,11 @@ public class LoginGrpcService : LoginService.LoginServiceBase
 
         var baseSlots = account.CharacterSlots > 0
             ? account.CharacterSlots
-            : (uint)Math.Max(LoginConfig.CharactersPerAccount, 0);
+            : (uint)Math.Max(_loginConfig.CharactersPerAccount, 0);
         var charVip = vipConfig.CharacterSlotIncrease;
         var charSlots = isVip ? baseSlots + charVip : baseSlots;
 
-        await LoginRepository.UpdateAsync(account, context.CancellationToken);
+        await _loginRepository.UpdateAsync(account, context.CancellationToken);
         await BroadcastVipDataAsync(
             (int)request.AccountId,
             vipTime,
@@ -481,12 +504,12 @@ public class LoginGrpcService : LoginService.LoginServiceBase
     {
         if (request.Online)
         {
-            LoginDataRepository.SetOnlineUserCharServer(request.AccountId, request.CharServerId);
+            _loginDataRepository.SetOnlineUserCharServer(request.AccountId, request.CharServerId);
         }
         else
         {
-            LoginDataRepository.RemoveOnlineUser(request.AccountId);
-            LoginDataRepository.RemoveAuthNode(request.AccountId);
+            _loginDataRepository.RemoveOnlineUser(request.AccountId);
+            _loginDataRepository.RemoveAuthNode(request.AccountId);
         }
 
         return Task.FromResult(new AccountStatusUpdateResponse { Success = true });
@@ -497,7 +520,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         ServerCallContext context)
     {
         var response = new CharacterServerListResponse();
-        foreach (var (serverId, server) in LoginServer.GetActiveCharServersWithIds())
+        foreach (var (serverId, server) in _charServerRegistry.GetActiveCharServersWithIds())
         {
             response.Servers.Add(new CharacterServerEntry
             {
@@ -518,7 +541,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         AccountStateUpdateRequest request,
         ServerCallContext context)
     {
-        var account = await LoginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
+        var account = await _loginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
         if (account == null)
         {
             return new AccountStateUpdateResponse
@@ -530,7 +553,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         }
 
         account.State = request.State;
-        await LoginRepository.UpdateAsync(account, context.CancellationToken);
+        await _loginRepository.UpdateAsync(account, context.CancellationToken);
         await BroadcastAccountStatusUpdateAsync((int)request.AccountId, isBan: false, request.State);
 
         return new AccountStateUpdateResponse
@@ -544,7 +567,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         AccountBanRequest request,
         ServerCallContext context)
     {
-        var account = await LoginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
+        var account = await _loginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
         if (account == null)
         {
             return new AccountBanResponse
@@ -570,7 +593,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         }
 
         account.UnbanTime = (uint)newUnban;
-        await LoginRepository.UpdateAsync(account, context.CancellationToken);
+        await _loginRepository.UpdateAsync(account, context.CancellationToken);
         await BroadcastAccountStatusUpdateAsync((int)request.AccountId, isBan: true, (uint)newUnban);
 
         return new AccountBanResponse
@@ -585,7 +608,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         AccountUnbanRequest request,
         ServerCallContext context)
     {
-        var account = await LoginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
+        var account = await _loginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
         if (account == null)
         {
             return new AccountUnbanResponse
@@ -597,7 +620,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         }
 
         account.UnbanTime = 0;
-        await LoginRepository.UpdateAsync(account, context.CancellationToken);
+        await _loginRepository.UpdateAsync(account, context.CancellationToken);
         await BroadcastAccountStatusUpdateAsync((int)request.AccountId, isBan: true, 0);
 
         return new AccountUnbanResponse
@@ -611,7 +634,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         AccountEmailChangeRequest request,
         ServerCallContext context)
     {
-        var account = await LoginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
+        var account = await _loginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
         if (account == null)
         {
             return new AccountEmailChangeResponse
@@ -654,7 +677,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         }
 
         account.Email = request.NewEmail;
-        await LoginRepository.UpdateAsync(account, context.CancellationToken);
+        await _loginRepository.UpdateAsync(account, context.CancellationToken);
 
         return new AccountEmailChangeResponse
         {
@@ -668,7 +691,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         AccountSexChangeRequest request,
         ServerCallContext context)
     {
-        var account = await LoginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
+        var account = await _loginRepository.GetByIdAsync((int)request.AccountId, context.CancellationToken);
         if (account == null)
         {
             return new AccountSexChangeResponse
@@ -690,7 +713,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         }
 
         account.Sex = account.Sex == 'M' ? 'F' : 'M';
-        await LoginRepository.UpdateAsync(account, context.CancellationToken);
+        await _loginRepository.UpdateAsync(account, context.CancellationToken);
         var sexCode = account.Sex switch
         {
             'F' => 0u,
@@ -727,7 +750,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
 
     private async Task BroadcastAccountStatusUpdateAsync(int accountId, bool isBan, uint value)
     {
-        var charSessions = LoginServer.ServerConnections.GetSessionsByType(ServerType.Char).ToList();
+        var charSessions = _connectionService.GetSessionsByType(ServerType.Char).ToList();
         foreach (var charSession in charSessions)
         {
             try
@@ -742,7 +765,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(
+                _logger.LogWarning(
                     ex,
                     "Failed to broadcast account status update for account {AccountId} to char server {ServerName}",
                     accountId,
@@ -753,7 +776,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
 
     private async Task BroadcastAccountSexUpdateAsync(int accountId, uint sex)
     {
-        var charSessions = LoginServer.ServerConnections.GetSessionsByType(ServerType.Char).ToList();
+        var charSessions = _connectionService.GetSessionsByType(ServerType.Char).ToList();
         foreach (var charSession in charSessions)
         {
             try
@@ -767,7 +790,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(
+                _logger.LogWarning(
                     ex,
                     "Failed to broadcast account sex update for account {AccountId} to char server {ServerName}",
                     accountId,
@@ -787,7 +810,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         uint charVip,
         uint oldGroup)
     {
-        var charSessions = LoginServer.ServerConnections.GetSessionsByType(ServerType.Char).ToList();
+        var charSessions = _connectionService.GetSessionsByType(ServerType.Char).ToList();
         foreach (var charSession in charSessions)
         {
             try
@@ -808,39 +831,12 @@ public class LoginGrpcService : LoginService.LoginServiceBase
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(
+                _logger.LogWarning(
                     ex,
                     "Failed to broadcast VIP data for account {AccountId} to char server {ServerName}",
                     accountId,
                     charSession.ServerName);
             }
         }
-    }
-
-    // Dependencies for the new method
-    private readonly ILogger<LoginGrpcService> Logger;
-    private readonly ILoginMmoAuth LoginMmoAuth;
-    private readonly LoginServerImpl LoginServer;
-    private readonly LoginServerConfiguration LoginConfig;
-    private readonly ILoginDataRepository LoginDataRepository;
-    private readonly ILoginRepository LoginRepository;
-    private readonly GameDbContext DbContext;
-
-    public LoginGrpcService(
-        ILogger<LoginGrpcService> logger,
-        ILoginMmoAuth loginMmoAuth,
-        LoginServerImpl loginServer,
-        LoginServerConfiguration loginConfig,
-        ILoginDataRepository loginDataRepository,
-        ILoginRepository loginRepository,
-        GameDbContext dbContext)
-    {
-        Logger = logger;
-        LoginMmoAuth = loginMmoAuth;
-        LoginServer = loginServer;
-        LoginConfig = loginConfig;
-        LoginDataRepository = loginDataRepository;
-        LoginRepository = loginRepository;
-        DbContext = dbContext;
     }
 }
