@@ -14,7 +14,7 @@ public class HC_SEND_MAP_DATA : OutgoingPacket
         writer.Write((short)Header);
         writer.Write(CharId);
         writer.WriteFixedString(MapName, PacketConstants.MAP_NAME_LENGTH); // mapname[16]
-        writer.Write(Ip);
+        writer.WriteIpv4ForClient(Ip);
         writer.Write(Port);
         // Additional fields may be needed based on PACKETVER
     }

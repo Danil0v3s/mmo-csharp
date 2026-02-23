@@ -1,4 +1,5 @@
 using System.Text;
+using System.Buffers.Binary;
 
 namespace Core.Server.Packets;
 
@@ -7,6 +8,18 @@ namespace Core.Server.Packets;
 /// </summary>
 public static class BinaryWriterExtensions
 {
+    /// <summary>
+    /// Writes an IPv4 value stored in host order as client-facing packet order.
+    /// Mirrors rAthena's htonl(...) before writing into packet buffers.
+    /// </summary>
+    public static void WriteIpv4ForClient(this BinaryWriter writer, uint ipHostOrder)
+    {
+        uint encoded = BitConverter.IsLittleEndian
+            ? BinaryPrimitives.ReverseEndianness(ipHostOrder)
+            : ipHostOrder;
+        writer.Write(encoded);
+    }
+    
     /// <summary>
     /// Writes a fixed-length string using single-byte encoding (ASCII).
     /// Truncates if the string is too long, pads with null bytes if too short.
@@ -82,4 +95,3 @@ public static class BinaryWriterExtensions
         }
     }
 }
-

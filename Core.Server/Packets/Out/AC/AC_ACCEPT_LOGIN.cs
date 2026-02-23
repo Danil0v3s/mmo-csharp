@@ -17,7 +17,6 @@ public class AC_ACCEPT_LOGIN_sub
 [PacketVersion(1)]
 public class AC_ACCEPT_LOGIN : OutgoingPacket
 {
-    public short PacketLength { get; init; }
     public uint LoginId1 { get; init; }
     public uint AID { get; init; }
     public uint LoginId2 { get; init; }
@@ -34,7 +33,7 @@ public class AC_ACCEPT_LOGIN : OutgoingPacket
     public override void Write(BinaryWriter writer)
     {
         writer.Write((short)Header);
-        writer.Write(PacketLength);
+        writer.Write((short)GetSize());
         writer.Write(LoginId1);
         writer.Write(AID);
         writer.Write(LoginId2);
@@ -45,7 +44,7 @@ public class AC_ACCEPT_LOGIN : OutgoingPacket
         
         foreach (var server in CharServers)
         {
-            writer.Write(server.Ip);
+            writer.WriteIpv4ForClient(server.Ip);
             writer.Write(server.Port);
             writer.Write(Encoding.UTF8.GetBytes(server.Name.PadRight(20, '\0')));
             writer.Write(server.Users);
