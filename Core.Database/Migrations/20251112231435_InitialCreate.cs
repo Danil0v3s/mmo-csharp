@@ -829,7 +829,7 @@ namespace Core.Database.Migrations
                     pincode_change = table.Column<uint>(type: "int unsigned", nullable: false, defaultValue: 0u),
                     vip_time = table.Column<uint>(type: "int unsigned", nullable: false, defaultValue: 0u),
                     old_group = table.Column<byte>(type: "tinyint unsigned", nullable: false, defaultValue: (byte)0),
-                    web_auth_token = table.Column<string>(type: "varchar(17)", maxLength: 17, nullable: true, defaultValue: "0")
+                    web_auth_token = table.Column<string>(type: "varchar(17)", maxLength: 17, nullable: true, defaultValue: null)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     web_auth_token_enabled = table.Column<short>(type: "smallint", nullable: false, defaultValue: (short)0)
                 },

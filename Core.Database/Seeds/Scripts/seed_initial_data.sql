@@ -26,4 +26,4 @@ INSERT INTO `clan_alliance` (clan_id, opposition, alliance_id, name) VALUES (4, 
 -- ============================================
 -- INSECURE: Change password in production!
 INSERT INTO `login` (account_id, userid, user_pass, sex, email) VALUES ('1', 's1', 'p1', 'S', 'athena@athena.com');
-
+ALTER TABLE `login` AUTO_INCREMENT = 2000000;

@@ -17,19 +17,19 @@ internal abstract class BaseRepository<TEntity> where TEntity : class
     protected async Task<TEntity> AddAsync(TEntity entity, CancellationToken ct = default)
     {
         await DbSet.AddAsync(entity, ct);
+        await Context.SaveChangesAsync(ct);
         return entity;
     }
 
-    protected Task UpdateAsync(TEntity entity)
+    protected async Task UpdateAsync(TEntity entity, CancellationToken ct = default)
     {
         DbSet.Update(entity);
-        return Task.CompletedTask;
+        await Context.SaveChangesAsync(ct);
     }
 
-    protected Task DeleteAsync(TEntity entity)
+    protected async Task DeleteAsync(TEntity entity, CancellationToken ct = default)
     {
         DbSet.Remove(entity);
-        return Task.CompletedTask;
+        await Context.SaveChangesAsync(ct);
     }
 }
-

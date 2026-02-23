@@ -3850,7 +3850,7 @@ namespace Core.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(17)
                         .HasColumnType("varchar(17)")
-                        .HasDefaultValue("0")
+                        .HasDefaultValue((string)null)
                         .HasColumnName("web_auth_token");
 
                     b.Property<short>("WebAuthTokenEnabled")

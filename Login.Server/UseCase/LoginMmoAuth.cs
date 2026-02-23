@@ -1,7 +1,11 @@
 using Core.Database.Repositories.Api;
 using Core.Server.Network;
 using Core.Server.UseCase;
+using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Login.Server.UseCase;
 
@@ -193,7 +197,7 @@ internal sealed class LoginMmoAuth(
                 account.LastIp = session._socket.RemoteEndPoint?.ToString() ?? string.Empty;
                 account.UnbanTime = 0;
                 account.LoginCount++;
-                _ = loginRepository.UpdateAsync(account);
+                await PersistAccountLoginStateAsync(account);
 
                 if (configuration.UseWebAuthToken)
                 {
@@ -216,15 +220,16 @@ internal sealed class LoginMmoAuth(
             tempSd.LoginId2 = random.Next(1, int.MaxValue);
             tempSd.Sex = account.Sex;
             tempSd.GroupId = account.GroupId;
-            if (configuration.UseWebAuthToken)
-            {
-                tempSd.WebAuthToken = account.WebAuthToken ?? string.Empty;
-            }
 
             account.LastLogin = DateTime.Now;
             account.UnbanTime = 0;
             account.LoginCount++;
-            _ = loginRepository.UpdateAsync(account);
+            await PersistAccountLoginStateAsync(account);
+
+            if (configuration.UseWebAuthToken)
+            {
+                tempSd.WebAuthToken = account.WebAuthToken ?? string.Empty;
+            }
         }
 
         return new ILoginMmoAuth.Output(-1);
@@ -269,6 +274,70 @@ internal sealed class LoginMmoAuth(
     private static string ConvertToHex(byte[] input)
     {
         return BitConverter.ToString(input).Replace("-", "").ToLowerInvariant();
+    }
+
+    private async Task PersistAccountLoginStateAsync(Core.Database.Entities.LoginEntity account)
+    {
+        if (!configuration.UseWebAuthToken || account.Sex == 'S')
+        {
+            await loginRepository.UpdateAsync(account);
+            return;
+        }
+
+        const int maxRetries = 20;
+
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            account.WebAuthToken = GenerateWebAuthToken();
+            account.WebAuthTokenEnabled = 1;
+
+            try
+            {
+                await loginRepository.UpdateAsync(account);
+                return;
+            }
+            catch (DbUpdateException ex) when (IsDuplicateWebAuthTokenError(ex) && attempt < maxRetries)
+            {
+                // Retry with a new random token.
+            }
+            catch (DbUpdateException ex) when (IsDuplicateWebAuthTokenError(ex))
+            {
+                logger.LogError(
+                    ex,
+                    "Failed to generate unique web_auth_token for account {AccountId} after {Retries} retries. Disabling token for this login.",
+                    account.AccountId,
+                    maxRetries);
+
+                account.WebAuthToken = null;
+                account.WebAuthTokenEnabled = 0;
+                await loginRepository.UpdateAsync(account);
+                return;
+            }
+        }
+    }
+
+    private static bool IsDuplicateWebAuthTokenError(DbUpdateException ex)
+    {
+        Exception? current = ex;
+        while (current != null)
+        {
+            if (current is MySqlException mysqlEx && mysqlEx.Number == 1062)
+            {
+                return true;
+            }
+
+            current = current.InnerException;
+        }
+
+        return false;
+    }
+
+    private static string GenerateWebAuthToken()
+    {
+        const int webAuthTokenLength = 17;
+        var source = $"{Guid.NewGuid():N}{Random.Shared.NextInt64()}";
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(source));
+        return Convert.ToHexString(hash).ToLowerInvariant()[..(webAuthTokenLength - 1)];
     }
 
     private async Task<NewAccountCreateResult> TryCreateNewAccountAsync(

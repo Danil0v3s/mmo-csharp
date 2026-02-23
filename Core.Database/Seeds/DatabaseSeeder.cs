@@ -27,6 +27,8 @@ public class DatabaseSeeder
     {
         try
         {
+            await EnsureLoginAutoIncrementAsync(ct);
+
             // Check if database is already seeded
             if (await IsDatabaseSeededAsync(ct))
             {
@@ -126,5 +128,14 @@ public class DatabaseSeeder
                 await connection.CloseAsync();
             }
         }
+    }
+
+    /// <summary>
+    /// Ensures login account IDs follow rAthena baseline (>= 2000000).
+    /// Safe to run multiple times.
+    /// </summary>
+    private async Task EnsureLoginAutoIncrementAsync(CancellationToken ct)
+    {
+        await _context.Database.ExecuteSqlRawAsync("ALTER TABLE `login` AUTO_INCREMENT = 2000000;", ct);
     }
 }

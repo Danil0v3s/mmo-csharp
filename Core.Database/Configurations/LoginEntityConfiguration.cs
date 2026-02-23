@@ -94,7 +94,7 @@ public class LoginEntityConfiguration : IEntityTypeConfiguration<LoginEntity>
         
         builder.Property(e => e.WebAuthToken)
             .HasColumnName("web_auth_token")
-            .HasDefaultValue("0")
+            .HasDefaultValue(null)
             .HasMaxLength(17);
         
         builder.Property(e => e.WebAuthTokenEnabled)
@@ -117,4 +117,3 @@ public class LoginEntityConfiguration : IEntityTypeConfiguration<LoginEntity>
         // Seed data is applied via DatabaseSeeder from SQL scripts
     }
 }
-
