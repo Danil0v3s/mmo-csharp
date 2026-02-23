@@ -3,10 +3,14 @@ using Core.Database.Repositories.Api;
 using Core.Timer;
 using Login.Server.Model;
 using Login.Server.Repository.Api;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Login.Server.Repository.Impl;
 
-internal class LoginDataRepository(ILoginRepository loginRepository) : ILoginDataRepository
+internal class LoginDataRepository(
+    IServiceScopeFactory scopeFactory,
+    ILogger<LoginDataRepository> logger) : ILoginDataRepository
 {
     private static readonly Dictionary<AccountId, OnlineLoginData> OnlineLoginDataDictionary = new();
     private static readonly Dictionary<AccountId, AuthNode> AuthNodeDictionary = new();
@@ -20,12 +24,13 @@ internal class LoginDataRepository(ILoginRepository loginRepository) : ILoginDat
         }
     }
 
-    public OnlineLoginData AddOnlineUser(int charServer, int accountId)
+    public async Task<OnlineLoginData> AddOnlineUser(int charServer, int accountId)
     {
+        OnlineLoginData onlineLoginData;
         lock (OnlineLoginDataDictionary)
         {
             var accId = new AccountId(accountId);
-            if (!OnlineLoginDataDictionary.TryGetValue(accId, out var onlineLoginData))
+            if (!OnlineLoginDataDictionary.TryGetValue(accId, out var existingOnlineLoginData))
             {
                 onlineLoginData = new OnlineLoginData(
                     CharServer: charServer,
@@ -36,7 +41,7 @@ internal class LoginDataRepository(ILoginRepository loginRepository) : ILoginDat
             }
             else
             {
-                onlineLoginData = onlineLoginData with { CharServer = charServer };
+                onlineLoginData = existingOnlineLoginData with { CharServer = charServer };
 
                 if (onlineLoginData.WaitingDisconnect != Scheduler.InvalidTimer)
                 {
@@ -44,11 +49,10 @@ internal class LoginDataRepository(ILoginRepository loginRepository) : ILoginDat
                     onlineLoginData = onlineLoginData with { WaitingDisconnect = Scheduler.InvalidTimer };
                 }
             }
-
-            UpdateAccountWebTokenEnabled(accountId, true);
-
-            return onlineLoginData;
         }
+
+        await UpdateAccountWebTokenEnabled(accountId, true);
+        return onlineLoginData;
     }
 
     public void SetOnlineUserCharServer(int accountId, int charServer)
@@ -71,7 +75,7 @@ internal class LoginDataRepository(ILoginRepository loginRepository) : ILoginDat
         }
     }
 
-    public void RemoveOnlineUser(int accountId)
+    public async Task RemoveOnlineUser(int accountId)
     {
         lock (OnlineLoginDataDictionary)
         {
@@ -87,10 +91,10 @@ internal class LoginDataRepository(ILoginRepository loginRepository) : ILoginDat
             }
         }
 
-        UpdateAccountWebTokenEnabled(accountId, false);
+        await UpdateAccountWebTokenEnabled(accountId, false);
     }
 
-    public int RemoveOnlineUsersByCharServer(int charServer)
+    public async Task<int> RemoveOnlineUsersByCharServer(int charServer)
     {
         List<int> accountIdsToRemove;
         lock (OnlineLoginDataDictionary)
@@ -103,7 +107,7 @@ internal class LoginDataRepository(ILoginRepository loginRepository) : ILoginDat
 
         foreach (var accountId in accountIdsToRemove)
         {
-            RemoveOnlineUser(accountId);
+            await RemoveOnlineUser(accountId);
         }
 
         return accountIdsToRemove.Count;
@@ -172,13 +176,26 @@ internal class LoginDataRepository(ILoginRepository loginRepository) : ILoginDat
         }
     }
 
-    private async void UpdateAccountWebTokenEnabled(int accountId, bool enabled)
+    private async Task UpdateAccountWebTokenEnabled(int accountId, bool enabled)
     {
-        var account = await loginRepository.GetByIdAsync(accountId);
-        if (account != null)
+        try
         {
-            account.WebAuthTokenEnabled = (short)(enabled ? 1 : 0);
-            await loginRepository.UpdateAsync(account);
+            using var scope = scopeFactory.CreateScope();
+            var loginRepository = scope.ServiceProvider.GetRequiredService<ILoginRepository>();
+            var account = await loginRepository.GetByIdAsync(accountId);
+            if (account != null)
+            {
+                account.WebAuthTokenEnabled = (short)(enabled ? 1 : 0);
+                await loginRepository.UpdateAsync(account);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Failed to update WebAuthTokenEnabled for account {AccountId} (enabled={Enabled})",
+                accountId,
+                enabled);
         }
     }
 }

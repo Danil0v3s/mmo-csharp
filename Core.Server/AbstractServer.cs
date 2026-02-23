@@ -44,7 +44,7 @@ public abstract class AbstractServer : IServer
             ServerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             
             await OnStartingAsync(ServerCts.Token);
-            await IpcClient.ConnectToServersAsync(ServerCts.Token);
+            IpcClient.ConnectToServersAsync(ServerCts.Token);
             
             State = ServerState.Running;
             Logger.LogInformation("{ServerName} started successfully", ServerName);

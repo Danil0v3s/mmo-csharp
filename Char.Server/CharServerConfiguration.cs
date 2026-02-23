@@ -174,11 +174,6 @@ public class CharServerConfiguration : ServerConfiguration
     public string BindIp { get; set; } = "0.0.0.0";
     
     /// <summary>
-    /// Character server port
-    /// </summary>
-    public ushort CharPort { get; set; } = 5002;
-    
-    /// <summary>
     /// Character server maintenance mode
     /// </summary>
     public int CharMaintenance { get; set; } = 0;

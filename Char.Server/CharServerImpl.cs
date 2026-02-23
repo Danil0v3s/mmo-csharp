@@ -242,7 +242,8 @@ public class CharServerImpl : GameLoopServer, ICharServerRuntime
             _charConfiguration.UserId,
             _charConfiguration.Password,
             _charConfiguration.ServerName,
-            $"{_charConfiguration.CharIp}:{_charConfiguration.CharPort}",
+            $"{_charConfiguration.CharIp}:{_charConfiguration.Port}",
+            (ushort)_charConfiguration.Port,
             (uint)_charConfiguration.CharMaintenance,
             _charConfiguration.CharNew,
             cancellationToken);

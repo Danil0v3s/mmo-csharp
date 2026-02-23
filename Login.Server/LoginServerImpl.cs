@@ -14,8 +14,8 @@ public class LoginServerImpl : GameLoopServer
     private Socket? _listenerSocket;
     private readonly PacketHandlerRegistry _handlerRegistry;
     private readonly ILoginSecurityService _loginSecurityService;
-    private readonly UseCase.ICharServerIpcService _charServerIpcService;
-    private readonly UseCase.LoginServerState _serverState;
+    private readonly ICharServerIpcService _charServerIpcService;
+    private readonly LoginServerState _serverState;
     private DateTime _nextIpBanCleanupUtc = DateTime.MinValue;
     private DateTime _nextCharIpSyncUtc = DateTime.MinValue;
 
@@ -27,8 +27,8 @@ public class LoginServerImpl : GameLoopServer
         PacketSystem packetSystem,
         SessionManager sessionManager,
         ServerConnectionService connectionService,
-        UseCase.ICharServerIpcService charServerIpcService,
-        UseCase.LoginServerState serverState
+        ICharServerIpcService charServerIpcService,
+        LoginServerState serverState
     )
         : base("LoginServer", configuration, logger, packetSystem, sessionManager)
     {

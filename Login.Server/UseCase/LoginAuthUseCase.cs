@@ -6,6 +6,7 @@ using Core.Server.Network;
 using Core.Server.Packets.Out.AC;
 using Core.Server.Packets.ServerPackets;
 using Core.Timer;
+using Login.Server.Model;
 using Login.Server.Repository.Api;
 using Login.Server.Security;
 
@@ -128,48 +129,12 @@ public sealed class LoginAuthUseCase(
             return;
         }
     
-        var data = loginDataRepository.GetOnlineUser(sd.AccountId);
-        if (data != null)
+        var canContinueLoginFlow = await HandleExistingOnlineUserStateAsync(sd);
+        if (!canContinueLoginFlow)
         {
-            if (data.CharServer > -1)
-            {
-                logger.LogInformation("User {Username} is already online", sd.UserId);
-                var activeServer = charServerRegistry.GetCharServer(data.CharServer);
-                if (activeServer == null || string.IsNullOrWhiteSpace(activeServer.Name))
-                {
-                    loginDataRepository.RemoveAuthNode(sd.AccountId);
-                    loginDataRepository.RemoveOnlineUser(sd.AccountId);
-                    data = null;
-                    goto ContinueLoginFlow;
-                }
-    
-                await charServerIpcService.ForceDisconnectAccountFromCharServersAsync(sd.AccountId);
-    
-                if (data.WaitingDisconnect == Scheduler.InvalidTimer)
-                {
-                    data = data with
-                    {
-                        WaitingDisconnect = Scheduler.Schedule(
-                            this.OnDisconnectTimer,
-                            new OnDisconnectTimerData(sd.AccountId),
-                            TimeSpan.FromMilliseconds(30_000L)
-                        )
-                    };
-                    loginDataRepository.Update(data);
-                }
-    
-                SendNotifyBan(sd, 8);
-                return;
-            }
-            else if (data.CharServer == -1)
-            {
-                loginDataRepository.RemoveAuthNode(sd.AccountId);
-                loginDataRepository.RemoveOnlineUser(sd.AccountId);
-                data = null;
-            }
+            return;
         }
-    
-    ContinueLoginFlow:
+
         logger.LogInformation("Connection of the account {Account} accepted", sd.UserId);
         if (remoteIp != null)
         {
@@ -202,7 +167,7 @@ public sealed class LoginAuthUseCase(
         sd.EnqueuePacket(acceptLoginPacket);
         loginDataRepository.AddAuthNode(sd);
     
-        var onlineUser = loginDataRepository.AddOnlineUser(-1, sd.AccountId) with
+        var onlineUser = (await loginDataRepository.AddOnlineUser(-1, sd.AccountId)) with
         {
             WaitingDisconnect = Scheduler.Schedule(
                 this.OnDisconnectTimer,
@@ -212,14 +177,66 @@ public sealed class LoginAuthUseCase(
         };
         loginDataRepository.Update(onlineUser);
     }
+
+    private async Task<bool> HandleExistingOnlineUserStateAsync(LoginSessionData sd)
+    {
+        var data = loginDataRepository.GetOnlineUser(sd.AccountId);
+        if (data == null)
+        {
+            return true;
+        }
+
+        if (data.CharServer > -1)
+        {
+            return await HandleConnectedCharServerUserAsync(sd, data);
+        }
+
+        if (data.CharServer == -1)
+        {
+            loginDataRepository.RemoveAuthNode(sd.AccountId);
+            await loginDataRepository.RemoveOnlineUser(sd.AccountId);
+        }
+
+        return true;
+    }
+
+    private async Task<bool> HandleConnectedCharServerUserAsync(LoginSessionData sd, OnlineLoginData data)
+    {
+        logger.LogInformation("User {Username} is already online", sd.UserId);
+        var activeServer = charServerRegistry.GetCharServer(data.CharServer);
+        if (activeServer == null || string.IsNullOrWhiteSpace(activeServer.Name))
+        {
+            loginDataRepository.RemoveAuthNode(sd.AccountId);
+            await loginDataRepository.RemoveOnlineUser(sd.AccountId);
+            return true;
+        }
+
+        await charServerIpcService.ForceDisconnectAccountFromCharServersAsync(sd.AccountId);
+
+        if (data.WaitingDisconnect == Scheduler.InvalidTimer)
+        {
+            data = data with
+            {
+                WaitingDisconnect = Scheduler.Schedule(
+                    this.OnDisconnectTimer,
+                    new OnDisconnectTimerData(sd.AccountId),
+                    TimeSpan.FromMilliseconds(30_000L)
+                )
+            };
+            loginDataRepository.Update(data);
+        }
+
+        SendNotifyBan(sd, 8);
+        return false;
+    }
     
     private record struct OnDisconnectTimerData(int AccountId);
     
-    private ValueTask OnDisconnectTimer(object? state, TimerId timerId, long arg3)
+    private async ValueTask OnDisconnectTimer(object? state, TimerId timerId, long arg3)
     {
         if (state is not OnDisconnectTimerData data)
         {
-            return ValueTask.CompletedTask;
+            return;
         }
     
         var p = loginDataRepository.GetOnlineUser(data.AccountId);
@@ -227,11 +244,9 @@ public sealed class LoginAuthUseCase(
         {
             p = p with { WaitingDisconnect = Scheduler.InvalidTimer };
             loginDataRepository.Update(p);
-            loginDataRepository.RemoveOnlineUser(data.AccountId);
+            await loginDataRepository.RemoveOnlineUser(data.AccountId);
             loginDataRepository.RemoveAuthNode(data.AccountId);
         }
-    
-        return ValueTask.CompletedTask;
     }
     
     private Task SendAuthFailureAsync(LoginSessionData sd, int result)

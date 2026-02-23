@@ -1,7 +1,17 @@
 using Core.Server;
 using Core.Server.IPC;
 
-namespace Login.Server.UseCase;
+namespace Login.Server;
+
+/// <summary>
+/// IPC operations for communicating with character servers.
+/// Separated from the server implementation to allow clean DI.
+/// </summary>
+public interface ICharServerIpcService
+{
+    Task ForceDisconnectAccountFromCharServersAsync(int accountId, CancellationToken cancellationToken = default);
+    Task RequestCharServerAddressSyncAsync(CancellationToken cancellationToken = default);
+}
 
 public class CharServerIpcService(
     IServerConnectionService connectionService,

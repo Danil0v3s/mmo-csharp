@@ -86,6 +86,7 @@ public interface ILoginServerIpcService
         string password,
         string serverName,
         string serverAddress,
+        ushort socketPort,
         uint serverType,
         bool newServer,
         CancellationToken cancellationToken = default);

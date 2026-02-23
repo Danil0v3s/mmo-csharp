@@ -83,6 +83,7 @@ message CharacterServerRegistrationRequest {
   string server_address = 4; // IP:Port of the character server
   uint32 server_type = 5;   // Server type (0=normal, 1=maintenance, etc.)
   bool new_server = 6;      // Whether to display as 'new' server
+  uint32 socket_port = 7;   // Character server TCP socket port (not gRPC port)
 }
 
 message CharacterServerRegistrationResponse {

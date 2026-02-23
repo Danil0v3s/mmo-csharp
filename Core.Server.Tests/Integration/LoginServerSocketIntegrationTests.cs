@@ -353,7 +353,7 @@ public class LoginServerSocketIntegrationTests
         public OnlineLoginData? GetOnlineUser(int accountId)
             => _onlineUsers.TryGetValue(accountId, out var data) ? data : null;
 
-        public OnlineLoginData AddOnlineUser(int charServer, int accountId)
+        public Task<OnlineLoginData> AddOnlineUser(int charServer, int accountId)
         {
             var data = new OnlineLoginData(
                 new AccountId(accountId),
@@ -361,12 +361,16 @@ public class LoginServerSocketIntegrationTests
                 Scheduler.InvalidTimer,
                 Scheduler.InvalidTimer);
             _onlineUsers[accountId] = data;
-            return data;
+            return Task.FromResult(data);
         }
 
-        public void RemoveOnlineUser(int accountId) => _onlineUsers.Remove(accountId);
+        public Task RemoveOnlineUser(int accountId)
+        {
+            _onlineUsers.Remove(accountId);
+            return Task.CompletedTask;
+        }
 
-        public int RemoveOnlineUsersByCharServer(int charServer)
+        public Task<int> RemoveOnlineUsersByCharServer(int charServer)
         {
             var toRemove = _onlineUsers
                 .Where(kv => kv.Value.CharServer == charServer)
@@ -377,7 +381,7 @@ public class LoginServerSocketIntegrationTests
                 _onlineUsers.Remove(accountId);
             }
 
-            return toRemove.Length;
+            return Task.FromResult(toRemove.Length);
         }
 
         public void SetOnlineUserCharServer(int accountId, int charServer)

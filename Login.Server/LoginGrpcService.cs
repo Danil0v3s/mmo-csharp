@@ -210,16 +210,16 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         return Task.FromResult(new CharacterServerAddressUpdateResponse { Success = true });
     }
 
-    public override Task<CharacterServerSetAllOfflineResponse> SetAllOfflineForCharacterServer(
+    public override async Task<CharacterServerSetAllOfflineResponse> SetAllOfflineForCharacterServer(
         CharacterServerSetAllOfflineRequest request,
         ServerCallContext context)
     {
-        var removed = _loginDataRepository.RemoveOnlineUsersByCharServer(request.ServerId);
-        return Task.FromResult(new CharacterServerSetAllOfflineResponse
+        var removed = await _loginDataRepository.RemoveOnlineUsersByCharServer(request.ServerId);
+        return new CharacterServerSetAllOfflineResponse
         {
             Success = true,
             RemovedAccounts = (uint)Math.Max(removed, 0)
-        });
+        };
     }
 
     public override async Task<AccountPincodeUpdateResponse> UpdateAccountPincode(
@@ -243,20 +243,20 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         return new AccountPincodeUpdateResponse { Success = true };
     }
 
-    public override Task<AccountPincodeAuthFailResponse> NotifyPincodeAuthFail(
+    public override async Task<AccountPincodeAuthFailResponse> NotifyPincodeAuthFail(
         AccountPincodeAuthFailRequest request,
         ServerCallContext context)
     {
-        _loginDataRepository.RemoveOnlineUser((int)request.AccountId);
+        await _loginDataRepository.RemoveOnlineUser((int)request.AccountId);
         _logger.LogInformation("PIN Code check failed for account {AccountId}", request.AccountId);
-        return Task.FromResult(new AccountPincodeAuthFailResponse { Success = true });
+        return new AccountPincodeAuthFailResponse { Success = true };
     }
 
-    public override Task<CharacterServerOnlineSyncResponse> SyncOnlineAccounts(
+    public override async Task<CharacterServerOnlineSyncResponse> SyncOnlineAccounts(
         CharacterServerOnlineSyncRequest request,
         ServerCallContext context)
     {
-        _loginDataRepository.RemoveOnlineUsersByCharServer(request.ServerId);
+        await _loginDataRepository.RemoveOnlineUsersByCharServer(request.ServerId);
 
         var uniqueAccounts = request.AccountIds
             .Where(accountId => accountId > 0)
@@ -268,11 +268,11 @@ public class LoginGrpcService : LoginService.LoginServiceBase
             _loginDataRepository.SetOnlineUserCharServer(accountId, request.ServerId);
         }
 
-        return Task.FromResult(new CharacterServerOnlineSyncResponse
+        return new CharacterServerOnlineSyncResponse
         {
             Success = true,
             SyncedAccounts = (uint)uniqueAccounts.Count
-        });
+        };
     }
 
     public override async Task<GlobalAccRegUpdateResponse> UpdateGlobalAccountRegisters(
@@ -498,7 +498,7 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         };
     }
 
-    public override Task<AccountStatusUpdateResponse> NotifyAccountStatus(
+    public override async Task<AccountStatusUpdateResponse> NotifyAccountStatus(
         AccountStatusUpdateRequest request,
         ServerCallContext context)
     {
@@ -508,11 +508,11 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         }
         else
         {
-            _loginDataRepository.RemoveOnlineUser(request.AccountId);
+            await _loginDataRepository.RemoveOnlineUser(request.AccountId);
             _loginDataRepository.RemoveAuthNode(request.AccountId);
         }
 
-        return Task.FromResult(new AccountStatusUpdateResponse { Success = true });
+        return new AccountStatusUpdateResponse { Success = true };
     }
 
     public override Task<CharacterServerListResponse> ListCharacterServers(

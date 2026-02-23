@@ -56,13 +56,14 @@ public class CharServerGrpcHandler(
 
                 // Parse the server IP address
                 uint serverIp = ConvertIpToUInt32(request.ServerAddress.Split(':')[0]);
+                ushort socketPort = ResolveSocketPort(request);
 
                 // Add the character server to our tracking
                 charServerRegistry.AddCharServer(
                     sessionData.AccountId,
                     request.ServerName,
                     serverIp,
-                    ushort.Parse(request.ServerAddress.Split(':')[1]), // Extract port
+                    socketPort,
                     (ushort)request.ServerType,
                     request.NewServer ? (ushort)1 : (ushort)0);
 
@@ -109,6 +110,23 @@ public class CharServerGrpcHandler(
         if (BitConverter.IsLittleEndian)
             Array.Reverse(bytes);
         return BitConverter.ToUInt32(bytes, 0);
+    }
+
+    private ushort ResolveSocketPort(CharacterServerRegistrationRequest request)
+    {
+        if (request.SocketPort > 0 && request.SocketPort <= ushort.MaxValue)
+        {
+            return (ushort)request.SocketPort;
+        }
+
+        // Legacy fallback for older clients that only sent IP:Port in server_address.
+        var addressParts = request.ServerAddress.Split(':');
+        if (addressParts.Length > 1 && ushort.TryParse(addressParts[1], out var parsedPort))
+        {
+            return parsedPort;
+        }
+
+        throw new FormatException("Character server registration missing a valid socket port.");
     }
 }
 
