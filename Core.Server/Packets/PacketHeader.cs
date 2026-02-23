@@ -27,10 +27,10 @@ public enum PacketHeader : short
     TC_RESULT = 0xae3,
 
 
-    // Char
-    HC_ACK_CHANGE_CHARACTER_SLOT = 0xb70,  // 2928 in decimal
-    HC_ACK_CHARINFO_PER_PAGE = 0xb72,      // 2930 in decimal  
-    HC_ACCEPT_MAKECHAR = 0xb6f,            // 2927 in decimal
+    // Char (PACKETVER 20220406)
+    HC_ACK_CHANGE_CHARACTER_SLOT = 0xb70,
+    HC_ACK_CHARINFO_PER_PAGE = 0xb72,
+    HC_ACCEPT_MAKECHAR = 0xb6f,
     HC_NOTIFY_ACCESSIBLE_MAPNAME = 0x840,  // 2112 in decimal
     CH_SELECT_ACCESSIBLE_MAPNAME = 0x841,   // 2113 in decimal
     
@@ -44,7 +44,8 @@ public enum PacketHeader : short
     CH_REQ_CHAR_DELETE2_CANCEL = 0x82b,
     CH_REQ_CHAR_DELETE2_ACCEPT = 0x829,
     CH_REQ_CHAR_DELETE2 = 0x827,
-    CH_REQ_CHANGE_CHARNAME = 0x28f,
+    CH_DELETE_CHAR = 0x1fb,
+    CH_REQ_CHANGE_CHARNAME = 0x8fc,
     CH_REQ_CHANGE_CHARACTERNAME = 0x8fc,
     CH_REQ_CAPTCHA = 0x7e5,
     CH_PINCODE_SETNEW = 0x8ba,
@@ -52,7 +53,8 @@ public enum PacketHeader : short
     CH_PINCODE_CHANGE = 0x8be,
     CH_MOVE_CHAR_SLOT = 0x8d4,
     CH_KEEP_ALIVE = 0x187,
-    CH_MAKE_NEW_CHAR = 0x67,
+    CH_MAKE_NEW_CHAR = 0xa39,
+    CH_MAKE_NEW_CHAR_V1 = 0x67,
     CH_MAKE_NEW_CHAR_V2 = 0x970,
     CH_MAKE_NEW_CHAR_V3 = 0xa39,
     
@@ -61,7 +63,7 @@ public enum PacketHeader : short
     HC_CHAR_DELETE2_ACCEPT_ACK = 0x82a,
     HC_ACK_IS_VALID_CHARNAME = 0x28e,
     HC_REFUSE_ENTER = 0x6c,
-    HC_ACK_CHANGE_CHARNAME = 0x290,
+    HC_ACK_CHANGE_CHARNAME = 0x8fd,
     HC_CHAR_DELETE2_ACK = 0x828,
     HC_BLOCK_CHARACTER = 0x20d,
     HC_ACK_CHANGE_CHARACTERNAME = 0x8fd,

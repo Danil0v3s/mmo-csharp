@@ -15,8 +15,6 @@ public class CH_REQ_IS_VALID_CHARNAME : IncomingPacket
 
     public override void Read(BinaryReader reader)
     {
-        // Skip packet type (already processed)
-        reader.ReadInt16(); // Skip packet type
         AccountId = reader.ReadUInt32();
         CharId = reader.ReadUInt32();
         NewName = reader.ReadFixedString(PacketConstants.NAME_LENGTH);

@@ -8,16 +8,13 @@ public class HC_ACCEPT_MAKECHAR : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
-        short packetLength = (short)GetSize();
         writer.Write((short)Header);
-        writer.Write(packetLength);
-
-        // Write character data
         writer.Write(CharData);
     }
 
     public override int GetSize()
     {
-        return sizeof(short) + sizeof(short) + CharData.Length; // packetType + packetLength + character data
+        // PACKET_HC_ACCEPT_MAKECHAR has no packetLength field.
+        return sizeof(short) + CharData.Length;
     }
 }

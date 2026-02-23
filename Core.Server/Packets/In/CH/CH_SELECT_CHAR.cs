@@ -10,8 +10,6 @@ public class CH_SELECT_CHAR : IncomingPacket
 
     public override void Read(BinaryReader reader)
     {
-        // Skip packet type (already processed)
-        reader.ReadInt16(); // Skip packet type
         Slot = reader.ReadByte();
     }
 }

@@ -14,8 +14,6 @@ public class CH_REQ_CHANGE_CHARACTERNAME : IncomingPacket
 
     public override void Read(BinaryReader reader)
     {
-        // Skip packet type (already processed)
-        reader.ReadInt16(); // Skip packet type
         CharId = reader.ReadUInt32();
         NewName = reader.ReadFixedString(PacketConstants.NAME_LENGTH);
     }

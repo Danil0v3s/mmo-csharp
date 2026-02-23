@@ -11,8 +11,6 @@ public class CH_REQ_CAPTCHA : IncomingPacket
 
     public override void Read(BinaryReader reader)
     {
-        // Skip packet type (already processed)
-        reader.ReadInt16(); // Skip packet type
         Unknown = reader.ReadUInt16();
         AccountId = reader.ReadUInt32();
     }

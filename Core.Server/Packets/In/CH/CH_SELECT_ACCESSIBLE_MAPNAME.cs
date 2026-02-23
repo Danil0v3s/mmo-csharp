@@ -12,7 +12,6 @@ public class CH_SELECT_ACCESSIBLE_MAPNAME : IncomingPacket
 
     public override void Read(BinaryReader reader)
     {
-        PacketType = reader.ReadInt16();
         Slot = reader.ReadSByte();
         MapNumber = reader.ReadSByte();
     }

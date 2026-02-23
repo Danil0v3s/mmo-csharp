@@ -14,8 +14,6 @@ public class CH_PINCODE_SETNEW : IncomingPacket
 
     public override void Read(BinaryReader reader)
     {
-        // Skip packet type (already processed)
-        reader.ReadInt16(); // Skip packet type
         AccountId = reader.ReadUInt32();
 
         // Read new PIN (typically 4 characters)

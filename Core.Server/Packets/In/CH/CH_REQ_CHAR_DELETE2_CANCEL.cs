@@ -10,8 +10,6 @@ public class CH_REQ_CHAR_DELETE2_CANCEL : IncomingPacket
 
     public override void Read(BinaryReader reader)
     {
-        // Skip packet type (already processed)
-        reader.ReadInt16(); // Skip packet type
         CharId = reader.ReadUInt32();
     }
 }

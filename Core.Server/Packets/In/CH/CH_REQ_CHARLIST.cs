@@ -8,7 +8,5 @@ public class CH_REQ_CHARLIST : IncomingPacket
 
     public override void Read(BinaryReader reader)
     {
-        // Skip packet type (already processed)
-        reader.ReadInt16(); // Skip packet type
     }
 }

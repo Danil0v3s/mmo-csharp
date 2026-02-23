@@ -11,8 +11,6 @@ public class CH_REQ_CHAR_DELETE2_ACCEPT : IncomingPacket
 
     public override void Read(BinaryReader reader)
     {
-        // Skip packet type (already processed)
-        reader.ReadInt16(); // Skip packet type
         CharId = reader.ReadUInt32();
 
         // Read birth date (6 bytes: YY MM DD)

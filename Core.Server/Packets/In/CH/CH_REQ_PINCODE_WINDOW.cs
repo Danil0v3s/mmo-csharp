@@ -10,8 +10,6 @@ public class CH_REQ_PINCODE_WINDOW : IncomingPacket
 
     public override void Read(BinaryReader reader)
     {
-        // Skip packet type (already processed)
-        reader.ReadInt16(); // Skip packet type
         AccountId = reader.ReadUInt32();
     }
 }
