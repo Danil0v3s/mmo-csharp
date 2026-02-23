@@ -1,14 +1,18 @@
 namespace Map.Server.Services;
 
-/// <summary>
-/// IPC operations for communicating with the Char server.
-/// </summary>
-public interface ICharServerIpcService
+public interface ICharServerIpcService :
+    ICharServerIpcServiceCore,
+    ICharServerIpcServiceInter,
+    ICharServerIpcServiceParty,
+    ICharServerIpcServiceGuild,
+    ICharServerIpcServiceStorage,
+    ICharServerIpcServiceMail,
+    ICharServerIpcServiceAuction,
+    ICharServerIpcServiceQuest,
+    ICharServerIpcServicePet,
+    ICharServerIpcServiceHomunculus,
+    ICharServerIpcServiceMercenary,
+    ICharServerIpcServiceElemental,
+    ICharServerIpcServiceClan
 {
-    Task<bool> ValidateCharAuthTicketAsync(
-        int accountId,
-        long characterId,
-        int loginId1,
-        int loginId2,
-        CancellationToken cancellationToken = default);
 }

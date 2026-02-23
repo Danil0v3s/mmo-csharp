@@ -3,32 +3,20 @@ using Core.Server.IPC;
 
 namespace Map.Server.Services;
 
-public class CharServerIpcService(
-    IServerConnectionService connectionService
-) : ICharServerIpcService
+public partial class CharServerIpcService : ICharServerIpcService
 {
-    public async Task<bool> ValidateCharAuthTicketAsync(
-        int accountId,
-        long characterId,
-        int loginId1,
-        int loginId2,
-        CancellationToken cancellationToken = default)
+    private readonly IServerConnectionService _connectionService;
+
+    public CharServerIpcService(IServerConnectionService connectionService)
     {
-        var charSession = connectionService.GetSessionsByType(ServerType.Char).FirstOrDefault();
-        if (charSession?.IsConnected != true)
-        {
-            return false;
-        }
+        _connectionService = connectionService;
+    }
 
-        var charClient = new CharacterService.CharacterServiceClient(charSession.Channel);
-        var response = await charClient.ConsumeMapAuthTicketAsync(new MapAuthConsumeRequest
-        {
-            AccountId = accountId,
-            CharacterId = characterId,
-            LoginId1 = loginId1,
-            LoginId2 = loginId2
-        }, cancellationToken: cancellationToken);
-
-        return response.Success;
+    private CharacterService.CharacterServiceClient? GetClient()
+    {
+        var charSession = _connectionService.GetSessionsByType(ServerType.Char).FirstOrDefault();
+        return charSession?.IsConnected == true
+            ? new CharacterService.CharacterServiceClient(charSession.Channel)
+            : null;
     }
 }

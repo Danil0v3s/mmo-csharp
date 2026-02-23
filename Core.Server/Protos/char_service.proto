@@ -9,6 +9,11 @@ service CharacterService {
   rpc CreateCharacter (CreateCharacterRequest) returns (CreateCharacterResponse);
   rpc DeleteCharacter (DeleteCharacterRequest) returns (DeleteCharacterResponse);
   rpc GetCharacterData (CharacterDataRequest) returns (CharacterDataResponse);
+  rpc RequestMapServerChange (MapServerChangeRequest) returns (MapServerChangeResponse);
+  rpc RequestCharacterMapAuth (CharacterMapAuthRequest) returns (CharacterMapAuthResponse);
+  rpc SaveCharacterState (SaveCharacterStateRequest) returns (SaveCharacterStateResponse);
+  rpc NotifyCharacterSelectAuthOk (CharacterSelectAuthOkRequest) returns (CharacterSelectAuthOkResponse);
+  rpc KeepAlive (CharacterKeepAliveRequest) returns (CharacterKeepAliveResponse);
   rpc IssueMapAuthTicket (MapAuthTicketRequest) returns (MapAuthTicketResponse);
   rpc ConsumeMapAuthTicket (MapAuthConsumeRequest) returns (MapAuthConsumeResponse);
   rpc ForceDisconnectAccount (ForceDisconnectAccountRequest) returns (ForceDisconnectAccountResponse);
@@ -16,6 +21,108 @@ service CharacterService {
   rpc BroadcastAccountSexUpdate (AccountSexBroadcastRequest) returns (AccountSexBroadcastResponse);
   rpc RequestAddressSync (AddressSyncRequest) returns (AddressSyncResponse);
   rpc PushVipData (AccountVipPushRequest) returns (AccountVipPushResponse);
+  rpc RegisterMapServerMaps (MapServerMapRegistryRequest) returns (MapServerMapRegistryResponse);
+  rpc GetMapServerUserCount (MapServerUserCountRequest) returns (MapServerUserCountResponse);
+  rpc RegisterMapServerUserCount (MapServerUserCountUpdateRequest) returns (MapServerUserCountUpdateResponse);
+  rpc UpdateMapServerAddress (MapServerAddressUpdateRequest) returns (MapServerAddressUpdateResponse);
+  rpc RequestStatusChangeData (StatusChangeDataRequest) returns (StatusChangeDataResponse);
+  rpc SaveStatusChangeData (StatusChangeDataSaveRequest) returns (StatusChangeDataSaveResponse);
+  rpc LoadSkillCooldown (SkillCooldownLoadRequest) returns (SkillCooldownLoadResponse);
+  rpc SaveSkillCooldown (SkillCooldownSaveRequest) returns (SkillCooldownSaveResponse);
+  rpc SetCharacterOffline (CharacterOnlineStateRequest) returns (CharacterOnlineStateResponse);
+  rpc SetCharacterOnline (CharacterOnlineStateRequest) returns (CharacterOnlineStateResponse);
+  rpc SetAllCharactersOffline (SetAllCharactersOfflineRequest) returns (SetAllCharactersOfflineResponse);
+  rpc RequestRemoveFriend (RemoveFriendRequest) returns (RemoveFriendResponse);
+  rpc RequestCharacterName (CharacterNameRequest) returns (CharacterNameResponse);
+  rpc RequestEmailChange (CharacterEmailChangeRequest) returns (CharacterEmailChangeResponse);
+  rpc ForwardAccountStatusChange (ForwardAccountStatusChangeRequest) returns (ForwardAccountStatusChangeResponse);
+  rpc RequestDivorce (DivorceRequest) returns (DivorceResponse);
+  rpc RequestCharacterBan (CharacterBanRequest) returns (CharacterBanResponse);
+  rpc RequestCharacterUnban (CharacterUnbanRequest) returns (CharacterUnbanResponse);
+  rpc UpdateFame (FameUpdateRequest) returns (FameUpdateResponse);
+  rpc RequestFameList (FameListRequest) returns (FameListResponse);
+  rpc GetBonusScript (BonusScriptGetRequest) returns (BonusScriptGetResponse);
+  rpc SaveBonusScript (BonusScriptSaveRequest) returns (BonusScriptSaveResponse);
+  rpc InterBroadcast (InterBroadcastRequest) returns (InterBroadcastResponse);
+  rpc InterBroadcastItem (InterBroadcastItemRequest) returns (InterBroadcastItemResponse);
+  rpc InterWhisper (InterWhisperRequest) returns (InterWhisperResponse);
+  rpc InterWhisperReply (InterWhisperReplyRequest) returns (InterWhisperReplyResponse);
+  rpc InterWhisperToGm (InterWhisperToGmRequest) returns (InterWhisperToGmResponse);
+  rpc InterRegistryUpdate (InterRegistryUpdateRequest) returns (InterRegistryUpdateResponse);
+  rpc InterRegistryFetch (InterRegistryFetchRequest) returns (InterRegistryFetchResponse);
+  rpc InterNameChange (InterNameChangeRequest) returns (InterNameChangeResponse);
+  rpc InterAccountInfo (InterAccountInfoRequest) returns (InterAccountInfoResponse);
+  rpc PartyCreate (PartyCreateRequest) returns (PartyCreateResponse);
+  rpc PartyInfo (PartyInfoRequest) returns (PartyInfoResponse);
+  rpc PartyAddMember (PartyAddMemberRequest) returns (PartyAddMemberResponse);
+  rpc PartyChangeOption (PartyChangeOptionRequest) returns (PartyChangeOptionResponse);
+  rpc PartyLeave (PartyLeaveRequest) returns (PartyLeaveResponse);
+  rpc PartyChangeMap (PartyChangeMapRequest) returns (PartyChangeMapResponse);
+  rpc PartyBreak (PartyBreakRequest) returns (PartyBreakResponse);
+  rpc PartyMessage (PartyMessageRequest) returns (PartyMessageResponse);
+  rpc PartyLeaderChange (PartyLeaderChangeRequest) returns (PartyLeaderChangeResponse);
+  rpc PartyShareLevel (PartyShareLevelRequest) returns (PartyShareLevelResponse);
+  rpc GuildCreate (GuildCreateRequest) returns (GuildCreateResponse);
+  rpc GuildInfo (GuildInfoRequest) returns (GuildInfoResponse);
+  rpc GuildAddMember (GuildAddMemberRequest) returns (GuildAddMemberResponse);
+  rpc GuildMasterChange (GuildMasterChangeRequest) returns (GuildMasterChangeResponse);
+  rpc GuildLeave (GuildLeaveRequest) returns (GuildLeaveResponse);
+  rpc GuildChangeMemberInfoShort (GuildChangeMemberInfoShortRequest) returns (GuildChangeMemberInfoShortResponse);
+  rpc GuildBreak (GuildBreakRequest) returns (GuildBreakResponse);
+  rpc GuildMessage (GuildMessageRequest) returns (GuildMessageResponse);
+  rpc GuildBasicInfoChange (GuildBasicInfoChangeRequest) returns (GuildBasicInfoChangeResponse);
+  rpc GuildMemberInfoChange (GuildMemberInfoChangeRequest) returns (GuildMemberInfoChangeResponse);
+  rpc GuildPositionChange (GuildPositionChangeRequest) returns (GuildPositionChangeResponse);
+  rpc GuildSkillUp (GuildSkillUpRequest) returns (GuildSkillUpResponse);
+  rpc GuildAlliance (GuildAllianceRequest) returns (GuildAllianceResponse);
+  rpc GuildNotice (GuildNoticeRequest) returns (GuildNoticeResponse);
+  rpc GuildEmblem (GuildEmblemRequest) returns (GuildEmblemResponse);
+  rpc GuildCastleDataLoad (GuildCastleDataLoadRequest) returns (GuildCastleDataLoadResponse);
+  rpc GuildCastleDataSave (GuildCastleDataSaveRequest) returns (GuildCastleDataSaveResponse);
+  rpc GuildEmblemVersion (GuildEmblemVersionRequest) returns (GuildEmblemVersionResponse);
+  rpc GuildStorageLoad (GuildStorageLoadRequest) returns (GuildStorageLoadResponse);
+  rpc GuildStorageSave (GuildStorageSaveRequest) returns (GuildStorageSaveResponse);
+  rpc StorageItemboundRetrieve (StorageItemboundRetrieveRequest) returns (StorageItemboundRetrieveResponse);
+  rpc AccountStorageLoad (AccountStorageLoadRequest) returns (AccountStorageLoadResponse);
+  rpc AccountStorageSave (AccountStorageSaveRequest) returns (AccountStorageSaveResponse);
+  rpc MailRequestInbox (MailRequestInboxRequest) returns (MailRequestInboxResponse);
+  rpc MailRead (MailReadRequest) returns (MailReadResponse);
+  rpc MailGetAttachment (MailGetAttachmentRequest) returns (MailGetAttachmentResponse);
+  rpc MailDelete (MailDeleteRequest) returns (MailDeleteResponse);
+  rpc MailReturn (MailReturnRequest) returns (MailReturnResponse);
+  rpc MailSend (MailSendRequest) returns (MailSendResponse);
+  rpc MailReceiverCheck (MailReceiverCheckRequest) returns (MailReceiverCheckResponse);
+  rpc AuctionRequestList (AuctionRequestListRequest) returns (AuctionRequestListResponse);
+  rpc AuctionRegister (AuctionRegisterRequest) returns (AuctionRegisterResponse);
+  rpc AuctionCancel (AuctionCancelRequest) returns (AuctionCancelResponse);
+  rpc AuctionClose (AuctionCloseRequest) returns (AuctionCloseResponse);
+  rpc AuctionBid (AuctionBidRequest) returns (AuctionBidResponse);
+  rpc QuestLoad (QuestLoadRequest) returns (QuestLoadResponse);
+  rpc QuestSave (QuestSaveRequest) returns (QuestSaveResponse);
+  rpc AchievementLoad (AchievementLoadRequest) returns (AchievementLoadResponse);
+  rpc AchievementSave (AchievementSaveRequest) returns (AchievementSaveResponse);
+  rpc AchievementReward (AchievementRewardRequest) returns (AchievementRewardResponse);
+  rpc PetCreate (PetCreateRequest) returns (PetCreateResponse);
+  rpc PetLoad (PetLoadRequest) returns (PetLoadResponse);
+  rpc PetSave (PetSaveRequest) returns (PetSaveResponse);
+  rpc PetDelete (PetDeleteRequest) returns (PetDeleteResponse);
+  rpc HomunculusCreate (HomunculusCreateRequest) returns (HomunculusCreateResponse);
+  rpc HomunculusLoad (HomunculusLoadRequest) returns (HomunculusLoadResponse);
+  rpc HomunculusSave (HomunculusSaveRequest) returns (HomunculusSaveResponse);
+  rpc HomunculusDelete (HomunculusDeleteRequest) returns (HomunculusDeleteResponse);
+  rpc HomunculusRename (HomunculusRenameRequest) returns (HomunculusRenameResponse);
+  rpc MercenaryCreate (MercenaryCreateRequest) returns (MercenaryCreateResponse);
+  rpc MercenaryLoad (MercenaryLoadRequest) returns (MercenaryLoadResponse);
+  rpc MercenarySave (MercenarySaveRequest) returns (MercenarySaveResponse);
+  rpc MercenaryDelete (MercenaryDeleteRequest) returns (MercenaryDeleteResponse);
+  rpc ElementalCreate (ElementalCreateRequest) returns (ElementalCreateResponse);
+  rpc ElementalLoad (ElementalLoadRequest) returns (ElementalLoadResponse);
+  rpc ElementalSave (ElementalSaveRequest) returns (ElementalSaveResponse);
+  rpc ElementalDelete (ElementalDeleteRequest) returns (ElementalDeleteResponse);
+  rpc ClanRequest (ClanRequestRequest) returns (ClanRequestResponse);
+  rpc ClanMessage (ClanMessageRequest) returns (ClanMessageResponse);
+  rpc ClanMemberLeft (ClanMemberStateRequest) returns (ClanMemberStateResponse);
+  rpc ClanMemberJoined (ClanMemberStateRequest) returns (ClanMemberStateResponse);
 }
 
 message CharacterListRequest {
@@ -65,6 +172,86 @@ message CharacterDataResponse {
   float position_x = 3;
   float position_y = 4;
   float position_z = 5;
+}
+
+// rAthena parity for chmapif_parse_reqchangemapserv (0x2b05)
+message MapServerChangeRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  int32 login_id1 = 3;
+  int32 login_id2 = 4;
+  uint32 sex = 5;
+  uint32 client_type = 6;
+  string map_name = 7;
+  uint32 x = 8;
+  uint32 y = 9;
+  int32 target_map_server_id = 10;
+  uint32 client_ip = 11;
+  uint32 group_id = 12;
+  int32 ttl_seconds = 13;
+}
+
+message MapServerChangeResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// rAthena parity for chmapif_parse_reqauth (0x2b26)
+message CharacterMapAuthRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  int32 login_id1 = 3;
+  int32 login_id2 = 4;
+  uint32 sex = 5;
+  uint32 ip = 6;
+  bool autotrade = 7;
+}
+
+message CharacterMapAuthResponse {
+  bool success = 1;
+  string error_message = 2;
+  int32 account_id = 3;
+  int64 character_id = 4;
+  int32 login_id1 = 5;
+  int32 login_id2 = 6;
+  int64 expiration_time = 7;
+  uint32 group_id = 8;
+  bool changing_map_servers = 9;
+  CharacterDataResponse character_data = 10;
+}
+
+// rAthena parity for chmapif_parse_reqsavechar (0x2b01)
+message SaveCharacterStateRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  bool set_offline_after_save = 3;
+  bool final_save = 4;
+}
+
+message SaveCharacterStateResponse {
+  bool success = 1;
+  string error_message = 2;
+  bool save_ack = 3;
+}
+
+// rAthena parity for chmapif_parse_authok (0x2b02)
+message CharacterSelectAuthOkRequest {
+  int32 account_id = 1;
+  int32 login_id1 = 2;
+  int32 login_id2 = 3;
+  uint32 ip = 4;
+}
+
+message CharacterSelectAuthOkResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// rAthena parity for chmapif_parse_keepalive (0x2b23)
+message CharacterKeepAliveRequest {}
+
+message CharacterKeepAliveResponse {
+  bool success = 1;
 }
 
 // Char->Map handoff ticket (rAthena chmapif auth flow equivalent)
@@ -145,4 +332,1248 @@ message AccountVipPushRequest {
 
 message AccountVipPushResponse {
   bool success = 1;
+}
+
+message MapServerMapRegistryRequest {
+  int32 map_server_id = 1;
+  repeated string map_names = 2;
+}
+
+message MapServerMapRegistryResponse {
+  bool success = 1;
+  int32 registered_maps = 2;
+}
+
+message MapServerUserCountRequest {
+  int32 map_server_id = 1;
+}
+
+message MapServerUserCountResponse {
+  bool success = 1;
+  int32 user_count = 2;
+}
+
+message MapServerUserCountUpdateRequest {
+  int32 map_server_id = 1;
+  int32 user_count = 2;
+}
+
+message MapServerUserCountUpdateResponse {
+  bool success = 1;
+}
+
+message MapServerAddressUpdateRequest {
+  int32 map_server_id = 1;
+  uint32 ip = 2;
+  uint32 port = 3;
+}
+
+message MapServerAddressUpdateResponse {
+  bool success = 1;
+}
+
+message StatusChangeDataRequest {
+  int64 character_id = 1;
+}
+
+message StatusChangeDataResponse {
+  bool success = 1;
+  bytes data = 2;
+}
+
+message StatusChangeDataSaveRequest {
+  int64 character_id = 1;
+  bytes data = 2;
+}
+
+message StatusChangeDataSaveResponse {
+  bool success = 1;
+}
+
+message SkillCooldownLoadRequest {
+  int64 character_id = 1;
+}
+
+message SkillCooldownLoadResponse {
+  bool success = 1;
+  bytes data = 2;
+}
+
+message SkillCooldownSaveRequest {
+  int64 character_id = 1;
+  bytes data = 2;
+}
+
+message SkillCooldownSaveResponse {
+  bool success = 1;
+}
+
+message CharacterOnlineStateRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+}
+
+message CharacterOnlineStateResponse {
+  bool success = 1;
+}
+
+message SetAllCharactersOfflineRequest {
+  int32 map_server_id = 1;
+}
+
+message SetAllCharactersOfflineResponse {
+  bool success = 1;
+}
+
+message RemoveFriendRequest {
+  int64 character_id = 1;
+  int64 friend_character_id = 2;
+}
+
+message RemoveFriendResponse {
+  bool success = 1;
+}
+
+message CharacterNameRequest {
+  int64 character_id = 1;
+}
+
+message CharacterNameResponse {
+  bool success = 1;
+  string name = 2;
+}
+
+message CharacterEmailChangeRequest {
+  int32 account_id = 1;
+  string current_email = 2;
+  string new_email = 3;
+}
+
+message CharacterEmailChangeResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message ForwardAccountStatusChangeRequest {
+  int32 account_id = 1;
+  uint32 state = 2;
+}
+
+message ForwardAccountStatusChangeResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message DivorceRequest {
+  int64 character_id = 1;
+  int64 partner_character_id = 2;
+}
+
+message DivorceResponse {
+  bool success = 1;
+}
+
+message CharacterBanRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  int32 duration_seconds = 3;
+}
+
+message CharacterBanResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message CharacterUnbanRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+}
+
+message CharacterUnbanResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message FameEntry {
+  int64 character_id = 1;
+  int32 value = 2;
+}
+
+message FameUpdateRequest {
+  int32 fame_type = 1;
+  int64 character_id = 2;
+  int32 value = 3;
+}
+
+message FameUpdateResponse {
+  bool success = 1;
+}
+
+message FameListRequest {
+  int32 fame_type = 1;
+}
+
+message FameListResponse {
+  bool success = 1;
+  repeated FameEntry entries = 2;
+}
+
+message BonusScriptGetRequest {
+  int64 character_id = 1;
+}
+
+message BonusScriptGetResponse {
+  bool success = 1;
+  bytes data = 2;
+}
+
+message BonusScriptSaveRequest {
+  int64 character_id = 1;
+  bytes data = 2;
+}
+
+message BonusScriptSaveResponse {
+  bool success = 1;
+}
+
+message InterBroadcastRequest {
+  int32 source_account_id = 1;
+  int64 source_character_id = 2;
+  string message = 3;
+  int32 color = 4;
+  int32 type = 5;
+}
+
+message InterBroadcastResponse {
+  bool success = 1;
+}
+
+message InterBroadcastItemRequest {
+  int32 source_account_id = 1;
+  int64 source_character_id = 2;
+  string message = 3;
+  int32 item_id = 4;
+  int64 amount = 5;
+}
+
+message InterBroadcastItemResponse {
+  bool success = 1;
+}
+
+message InterWhisperRequest {
+  int32 source_account_id = 1;
+  int64 source_character_id = 2;
+  string source_name = 3;
+  string target_name = 4;
+  string message = 5;
+}
+
+message InterWhisperResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message InterWhisperReplyRequest {
+  int32 source_account_id = 1;
+  int64 source_character_id = 2;
+  string source_name = 3;
+  string target_name = 4;
+  bool accepted = 5;
+}
+
+message InterWhisperReplyResponse {
+  bool success = 1;
+}
+
+message InterWhisperToGmRequest {
+  int32 source_account_id = 1;
+  int64 source_character_id = 2;
+  string source_name = 3;
+  int32 min_gm_level = 4;
+  string message = 5;
+}
+
+message InterWhisperToGmResponse {
+  bool success = 1;
+}
+
+message InterRegistryEntry {
+  string key = 1;
+  uint32 index = 2;
+  bool is_numeric = 3;
+  int64 num_value = 4;
+  string str_value = 5;
+}
+
+message InterRegistryUpdateRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  repeated InterRegistryEntry entries = 3;
+}
+
+message InterRegistryUpdateResponse {
+  bool success = 1;
+  uint32 updated_entries = 2;
+  string error_message = 3;
+}
+
+message InterRegistryFetchRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+}
+
+message InterRegistryFetchResponse {
+  bool success = 1;
+  repeated InterRegistryEntry entries = 2;
+  string error_message = 3;
+}
+
+message InterNameChangeRequest {
+  int64 character_id = 1;
+  string new_name = 2;
+  int32 rename_type = 3;
+}
+
+message InterNameChangeResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message InterAccountInfoRequest {
+  int32 account_id = 1;
+}
+
+message InterAccountInfoResponse {
+  bool success = 1;
+  int32 account_id = 2;
+  string username = 3;
+  string email = 4;
+  uint32 group_id = 5;
+  uint32 state = 6;
+  string last_ip = 7;
+}
+
+message PartyMemberInfo {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  string name = 3;
+  int32 class_id = 4;
+  string map_name = 5;
+  uint32 level = 6;
+  bool online = 7;
+}
+
+message PartyInfoData {
+  int32 party_id = 1;
+  string name = 2;
+  int32 item = 3;
+  int32 item2 = 4;
+  int64 leader_character_id = 5;
+  repeated PartyMemberInfo members = 6;
+}
+
+message PartyCreateRequest {
+  string name = 1;
+  int32 item = 2;
+  int32 item2 = 3;
+  int32 leader_account_id = 4;
+  int64 leader_character_id = 5;
+  string leader_name = 6;
+  int32 leader_class_id = 7;
+  string leader_map_name = 8;
+  uint32 leader_level = 9;
+}
+
+message PartyCreateResponse {
+  bool success = 1;
+  int32 party_id = 2;
+  string error_message = 3;
+}
+
+message PartyInfoRequest {
+  int32 party_id = 1;
+  int64 requesting_character_id = 2;
+}
+
+message PartyInfoResponse {
+  bool success = 1;
+  PartyInfoData party = 2;
+}
+
+message PartyAddMemberRequest {
+  int32 party_id = 1;
+  int32 account_id = 2;
+  int64 character_id = 3;
+  string name = 4;
+  int32 class_id = 5;
+  string map_name = 6;
+  uint32 level = 7;
+}
+
+message PartyAddMemberResponse {
+  bool success = 1;
+}
+
+message PartyChangeOptionRequest {
+  int32 party_id = 1;
+  int32 account_id = 2;
+  int32 exp = 3;
+  int32 item = 4;
+}
+
+message PartyChangeOptionResponse {
+  bool success = 1;
+}
+
+message PartyLeaveRequest {
+  int32 party_id = 1;
+  int32 account_id = 2;
+  int64 character_id = 3;
+  string name = 4;
+  int32 withdraw_type = 5;
+}
+
+message PartyLeaveResponse {
+  bool success = 1;
+}
+
+message PartyChangeMapRequest {
+  int32 party_id = 1;
+  int32 account_id = 2;
+  int64 character_id = 3;
+  bool online = 4;
+  uint32 level = 5;
+  string map_name = 6;
+}
+
+message PartyChangeMapResponse {
+  bool success = 1;
+}
+
+message PartyBreakRequest {
+  int32 party_id = 1;
+}
+
+message PartyBreakResponse {
+  bool success = 1;
+}
+
+message PartyMessageRequest {
+  int32 party_id = 1;
+  int32 account_id = 2;
+  string message = 3;
+}
+
+message PartyMessageResponse {
+  bool success = 1;
+}
+
+message PartyLeaderChangeRequest {
+  int32 party_id = 1;
+  int32 account_id = 2;
+  int64 character_id = 3;
+}
+
+message PartyLeaderChangeResponse {
+  bool success = 1;
+}
+
+message PartyShareLevelRequest {
+  uint32 share_level = 1;
+}
+
+message PartyShareLevelResponse {
+  bool success = 1;
+}
+
+message GuildMemberInfo {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  string name = 3;
+  int32 class_id = 4;
+  uint32 level = 5;
+  bool online = 6;
+  string position_name = 7;
+}
+
+message GuildPositionInfo {
+  int32 index = 1;
+  string name = 2;
+  int32 mode = 3;
+  int32 exp_mode = 4;
+}
+
+message GuildInfoData {
+  int32 guild_id = 1;
+  string name = 2;
+  int32 level = 3;
+  int32 max_member = 4;
+  int32 master_character_id = 5;
+  int32 emblem_version = 6;
+  bytes emblem_data = 7;
+  string notice1 = 8;
+  string notice2 = 9;
+  repeated GuildMemberInfo members = 10;
+  repeated GuildPositionInfo positions = 11;
+}
+
+message GuildCreateRequest {
+  int32 account_id = 1;
+  string name = 2;
+  int64 master_character_id = 3;
+  string master_name = 4;
+  int32 master_class_id = 5;
+  uint32 master_level = 6;
+}
+
+message GuildCreateResponse {
+  bool success = 1;
+  int32 guild_id = 2;
+  string error_message = 3;
+}
+
+message GuildInfoRequest {
+  int32 guild_id = 1;
+}
+
+message GuildInfoResponse {
+  bool success = 1;
+  GuildInfoData guild = 2;
+}
+
+message GuildAddMemberRequest {
+  int32 guild_id = 1;
+  int32 account_id = 2;
+  int64 character_id = 3;
+  string name = 4;
+  int32 class_id = 5;
+  uint32 level = 6;
+}
+
+message GuildAddMemberResponse {
+  bool success = 1;
+}
+
+message GuildMasterChangeRequest {
+  int32 guild_id = 1;
+  string master_name = 2;
+}
+
+message GuildMasterChangeResponse {
+  bool success = 1;
+}
+
+message GuildLeaveRequest {
+  int32 guild_id = 1;
+  int32 account_id = 2;
+  int64 character_id = 3;
+  int32 flag = 4;
+  string message = 5;
+}
+
+message GuildLeaveResponse {
+  bool success = 1;
+}
+
+message GuildChangeMemberInfoShortRequest {
+  int32 guild_id = 1;
+  int32 account_id = 2;
+  int64 character_id = 3;
+  bool online = 4;
+  uint32 level = 5;
+  int32 class_id = 6;
+}
+
+message GuildChangeMemberInfoShortResponse {
+  bool success = 1;
+}
+
+message GuildBreakRequest {
+  int32 guild_id = 1;
+}
+
+message GuildBreakResponse {
+  bool success = 1;
+}
+
+message GuildMessageRequest {
+  int32 guild_id = 1;
+  int32 account_id = 2;
+  string message = 3;
+}
+
+message GuildMessageResponse {
+  bool success = 1;
+}
+
+message GuildBasicInfoChangeRequest {
+  int32 guild_id = 1;
+  int32 type = 2;
+  bytes data = 3;
+}
+
+message GuildBasicInfoChangeResponse {
+  bool success = 1;
+}
+
+message GuildMemberInfoChangeRequest {
+  int32 guild_id = 1;
+  int32 account_id = 2;
+  int64 character_id = 3;
+  int32 type = 4;
+  bytes data = 5;
+}
+
+message GuildMemberInfoChangeResponse {
+  bool success = 1;
+}
+
+message GuildPositionChangeRequest {
+  int32 guild_id = 1;
+  int32 index = 2;
+  GuildPositionInfo position = 3;
+}
+
+message GuildPositionChangeResponse {
+  bool success = 1;
+}
+
+message GuildSkillUpRequest {
+  int32 guild_id = 1;
+  uint32 skill_id = 2;
+  int32 account_id = 3;
+  int32 max = 4;
+}
+
+message GuildSkillUpResponse {
+  bool success = 1;
+}
+
+message GuildAllianceRequest {
+  int32 guild_id1 = 1;
+  int32 guild_id2 = 2;
+  int32 account_id1 = 3;
+  int32 account_id2 = 4;
+  int32 flag = 5;
+}
+
+message GuildAllianceResponse {
+  bool success = 1;
+}
+
+message GuildNoticeRequest {
+  int32 guild_id = 1;
+  string notice1 = 2;
+  string notice2 = 3;
+}
+
+message GuildNoticeResponse {
+  bool success = 1;
+}
+
+message GuildEmblemRequest {
+  int32 guild_id = 1;
+  int32 dummy = 2;
+  bytes data = 3;
+}
+
+message GuildEmblemResponse {
+  bool success = 1;
+}
+
+message GuildCastleDataLoadRequest {
+  repeated int32 castle_ids = 1;
+}
+
+message GuildCastleDataLoadResponse {
+  bool success = 1;
+  map<int32, int32> values = 2;
+}
+
+message GuildCastleDataSaveRequest {
+  int32 castle_id = 1;
+  int32 index = 2;
+  int32 value = 3;
+}
+
+message GuildCastleDataSaveResponse {
+  bool success = 1;
+}
+
+message GuildEmblemVersionRequest {
+  int32 guild_id = 1;
+  int32 version = 2;
+}
+
+message GuildEmblemVersionResponse {
+  bool success = 1;
+}
+
+message GuildStorageLoadRequest {
+  int32 guild_id = 1;
+}
+
+message GuildStorageLoadResponse {
+  bool success = 1;
+  bytes data = 2;
+}
+
+message GuildStorageSaveRequest {
+  int32 guild_id = 1;
+  bytes data = 2;
+}
+
+message GuildStorageSaveResponse {
+  bool success = 1;
+}
+
+message StorageItemboundRetrieveRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+}
+
+message StorageItemboundRetrieveResponse {
+  bool success = 1;
+  int32 retrieved_count = 2;
+}
+
+message AccountStorageLoadRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+}
+
+message AccountStorageLoadResponse {
+  bool success = 1;
+  bytes data = 2;
+}
+
+message AccountStorageSaveRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  bytes data = 3;
+}
+
+message AccountStorageSaveResponse {
+  bool success = 1;
+}
+
+message MailMessageData {
+  int64 mail_id = 1;
+  int32 sender_account_id = 2;
+  int64 sender_character_id = 3;
+  string sender_name = 4;
+  int32 receiver_account_id = 5;
+  int64 receiver_character_id = 6;
+  string receiver_name = 7;
+  string title = 8;
+  string body = 9;
+  int64 zeny = 10;
+  bytes attachment = 11;
+  bool opened = 12;
+}
+
+message MailRequestInboxRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+}
+
+message MailRequestInboxResponse {
+  bool success = 1;
+  repeated MailMessageData mails = 2;
+}
+
+message MailReadRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  int64 mail_id = 3;
+}
+
+message MailReadResponse {
+  bool success = 1;
+  MailMessageData mail = 2;
+}
+
+message MailGetAttachmentRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  int64 mail_id = 3;
+}
+
+message MailGetAttachmentResponse {
+  bool success = 1;
+  int64 zeny = 2;
+  bytes attachment = 3;
+}
+
+message MailDeleteRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  int64 mail_id = 3;
+}
+
+message MailDeleteResponse {
+  bool success = 1;
+}
+
+message MailReturnRequest {
+  int32 account_id = 1;
+  int64 character_id = 2;
+  int64 mail_id = 3;
+}
+
+message MailReturnResponse {
+  bool success = 1;
+}
+
+message MailSendRequest {
+  int32 sender_account_id = 1;
+  int64 sender_character_id = 2;
+  string sender_name = 3;
+  int32 receiver_account_id = 4;
+  int64 receiver_character_id = 5;
+  string receiver_name = 6;
+  string title = 7;
+  string body = 8;
+  int64 zeny = 9;
+  bytes attachment = 10;
+}
+
+message MailSendResponse {
+  bool success = 1;
+  int64 mail_id = 2;
+}
+
+message MailReceiverCheckRequest {
+  string receiver_name = 1;
+}
+
+message MailReceiverCheckResponse {
+  bool success = 1;
+  int32 account_id = 2;
+  int64 character_id = 3;
+  string receiver_name = 4;
+}
+
+message AuctionData {
+  int64 auction_id = 1;
+  int64 seller_character_id = 2;
+  string seller_name = 3;
+  int64 buyer_character_id = 4;
+  string buyer_name = 5;
+  int32 item_id = 6;
+  string item_name = 7;
+  int32 item_type = 8;
+  int32 refine = 9;
+  int32 attribute = 10;
+  int32 price = 11;
+  int32 buy_now = 12;
+  int32 hours = 13;
+  int64 end_time_unix = 14;
+  bytes item_payload = 15;
+}
+
+message AuctionRequestListRequest {
+  int64 character_id = 1;
+  int32 type = 2;
+  int32 price = 3;
+  string search_text = 4;
+  int32 page = 5;
+}
+
+message AuctionRequestListResponse {
+  bool success = 1;
+  int32 count = 2;
+  int32 pages = 3;
+  repeated AuctionData auctions = 4;
+}
+
+message AuctionRegisterRequest {
+  AuctionData auction = 1;
+}
+
+message AuctionRegisterResponse {
+  bool success = 1;
+  AuctionData auction = 2;
+}
+
+message AuctionCancelRequest {
+  int64 character_id = 1;
+  int64 auction_id = 2;
+}
+
+message AuctionCancelResponse {
+  bool success = 1;
+  int32 result = 2;
+}
+
+message AuctionCloseRequest {
+  int64 character_id = 1;
+  int64 auction_id = 2;
+}
+
+message AuctionCloseResponse {
+  bool success = 1;
+  int32 result = 2;
+}
+
+message AuctionBidRequest {
+  int64 character_id = 1;
+  string bidder_name = 2;
+  int64 auction_id = 3;
+  int32 bid = 4;
+}
+
+message AuctionBidResponse {
+  bool success = 1;
+  int32 refund_zeny = 2;
+  int32 result = 3;
+}
+
+message QuestEntryData {
+  int32 quest_id = 1;
+  int64 time_unix = 2;
+  repeated int32 counts = 3;
+  int32 state = 4;
+}
+
+message QuestLoadRequest {
+  int64 character_id = 1;
+}
+
+message QuestLoadResponse {
+  bool success = 1;
+  repeated QuestEntryData quests = 2;
+}
+
+message QuestSaveRequest {
+  int64 character_id = 1;
+  repeated QuestEntryData quests = 2;
+}
+
+message QuestSaveResponse {
+  bool success = 1;
+}
+
+message AchievementEntryData {
+  int32 achievement_id = 1;
+  repeated int32 counts = 2;
+  int64 completed_unix = 3;
+  int64 rewarded_unix = 4;
+  int32 score = 5;
+}
+
+message AchievementLoadRequest {
+  int64 character_id = 1;
+}
+
+message AchievementLoadResponse {
+  bool success = 1;
+  repeated AchievementEntryData achievements = 2;
+}
+
+message AchievementSaveRequest {
+  int64 character_id = 1;
+  repeated AchievementEntryData achievements = 2;
+}
+
+message AchievementSaveResponse {
+  bool success = 1;
+}
+
+message AchievementRewardRequest {
+  int64 character_id = 1;
+  int32 achievement_id = 2;
+  int32 item_id = 3;
+  int32 item_amount = 4;
+  string character_name = 5;
+  string achievement_name = 6;
+}
+
+message AchievementRewardResponse {
+  bool success = 1;
+  int64 rewarded_unix = 2;
+}
+
+message PetData {
+  int32 pet_id = 1;
+  int32 account_id = 2;
+  int32 character_id = 3;
+  int32 class_id = 4;
+  int32 level = 5;
+  int32 egg_item_id = 6;
+  int32 equip_item_id = 7;
+  int32 intimacy = 8;
+  int32 hungry = 9;
+  int32 rename_flag = 10;
+  bool incubate = 11;
+  string name = 12;
+  bytes payload = 13;
+}
+
+message PetCreateRequest {
+  int32 account_id = 1;
+  int32 character_id = 2;
+  int32 class_id = 3;
+  int32 level = 4;
+  int32 egg_item_id = 5;
+  int32 equip_item_id = 6;
+  int32 intimacy = 7;
+  int32 hungry = 8;
+  int32 rename_flag = 9;
+  bool incubate = 10;
+  string name = 11;
+}
+
+message PetCreateResponse {
+  bool success = 1;
+  int32 account_id = 2;
+  int32 class_id = 3;
+  int32 pet_id = 4;
+  PetData pet = 5;
+}
+
+message PetLoadRequest {
+  int32 account_id = 1;
+  int32 character_id = 2;
+  int32 pet_id = 3;
+}
+
+message PetLoadResponse {
+  bool success = 1;
+  int32 account_id = 2;
+  bool no_info = 3;
+  PetData pet = 4;
+}
+
+message PetSaveRequest {
+  int32 account_id = 1;
+  PetData pet = 2;
+}
+
+message PetSaveResponse {
+  bool success = 1;
+  int32 account_id = 2;
+}
+
+message PetDeleteRequest {
+  int32 pet_id = 1;
+}
+
+message PetDeleteResponse {
+  bool success = 1;
+}
+
+message HomunculusData {
+  int32 homunculus_id = 1;
+  int32 character_id = 2;
+  int32 class_id = 3;
+  string name = 4;
+  int32 level = 5;
+  int64 exp = 6;
+  int32 intimacy = 7;
+  int32 hunger = 8;
+  int32 hp = 9;
+  int32 max_hp = 10;
+  int32 sp = 11;
+  int32 max_sp = 12;
+  bytes payload = 13;
+}
+
+message HomunculusCreateRequest {
+  int32 account_id = 1;
+  HomunculusData homunculus = 2;
+}
+
+message HomunculusCreateResponse {
+  bool success = 1;
+  int32 account_id = 2;
+  HomunculusData homunculus = 3;
+}
+
+message HomunculusLoadRequest {
+  int32 account_id = 1;
+  int32 homunculus_id = 2;
+}
+
+message HomunculusLoadResponse {
+  bool success = 1;
+  int32 account_id = 2;
+  HomunculusData homunculus = 3;
+}
+
+message HomunculusSaveRequest {
+  int32 account_id = 1;
+  HomunculusData homunculus = 2;
+}
+
+message HomunculusSaveResponse {
+  bool success = 1;
+  int32 account_id = 2;
+}
+
+message HomunculusDeleteRequest {
+  int32 homunculus_id = 1;
+}
+
+message HomunculusDeleteResponse {
+  bool success = 1;
+}
+
+message HomunculusRenameRequest {
+  int32 account_id = 1;
+  int32 character_id = 2;
+  string name = 3;
+}
+
+message HomunculusRenameResponse {
+  bool success = 1;
+  int32 account_id = 2;
+  int32 character_id = 3;
+  string name = 4;
+}
+
+message MercenaryData {
+  int32 mercenary_id = 1;
+  int32 character_id = 2;
+  int32 class_id = 3;
+  int32 hp = 4;
+  int32 sp = 5;
+  int32 kill_count = 6;
+  int64 life_time = 7;
+  bytes payload = 8;
+}
+
+message MercenaryCreateRequest {
+  MercenaryData mercenary = 1;
+}
+
+message MercenaryCreateResponse {
+  bool success = 1;
+  MercenaryData mercenary = 2;
+}
+
+message MercenaryLoadRequest {
+  int32 mercenary_id = 1;
+  int32 character_id = 2;
+}
+
+message MercenaryLoadResponse {
+  bool success = 1;
+  MercenaryData mercenary = 2;
+}
+
+message MercenarySaveRequest {
+  MercenaryData mercenary = 1;
+}
+
+message MercenarySaveResponse {
+  bool success = 1;
+}
+
+message MercenaryDeleteRequest {
+  int32 mercenary_id = 1;
+}
+
+message MercenaryDeleteResponse {
+  bool success = 1;
+}
+
+message ElementalData {
+  int32 elemental_id = 1;
+  int32 character_id = 2;
+  int32 class_id = 3;
+  int32 mode = 4;
+  int32 hp = 5;
+  int32 sp = 6;
+  int32 max_hp = 7;
+  int32 max_sp = 8;
+  int32 attack = 9;
+  int32 attack2 = 10;
+  int32 matk = 11;
+  int32 aspd = 12;
+  int32 def = 13;
+  int32 mdef = 14;
+  int32 flee = 15;
+  int32 hit = 16;
+  int64 life_time = 17;
+  bytes payload = 18;
+}
+
+message ElementalCreateRequest {
+  ElementalData elemental = 1;
+}
+
+message ElementalCreateResponse {
+  bool success = 1;
+  ElementalData elemental = 2;
+}
+
+message ElementalLoadRequest {
+  int32 elemental_id = 1;
+  int32 character_id = 2;
+}
+
+message ElementalLoadResponse {
+  bool success = 1;
+  ElementalData elemental = 2;
+}
+
+message ElementalSaveRequest {
+  ElementalData elemental = 1;
+}
+
+message ElementalSaveResponse {
+  bool success = 1;
+}
+
+message ElementalDeleteRequest {
+  int32 elemental_id = 1;
+}
+
+message ElementalDeleteResponse {
+  bool success = 1;
+}
+
+message ClanAllianceData {
+  bool opposition = 1;
+  int32 clan_id = 2;
+  string name = 3;
+}
+
+message ClanData {
+  int32 clan_id = 1;
+  string name = 2;
+  string master = 3;
+  string map_name = 4;
+  int32 max_member = 5;
+  int32 connect_member = 6;
+  repeated ClanAllianceData alliances = 7;
+}
+
+message ClanRequestRequest {
+}
+
+message ClanRequestResponse {
+  bool success = 1;
+  repeated ClanData clans = 2;
+}
+
+message ClanMessageRequest {
+  int32 clan_id = 1;
+  int32 account_id = 2;
+  string message = 3;
+}
+
+message ClanMessageResponse {
+  bool success = 1;
+}
+
+message ClanMemberStateRequest {
+  int32 clan_id = 1;
+}
+
+message ClanMemberStateResponse {
+  bool success = 1;
+  int32 clan_id = 2;
+  int32 connect_member = 3;
 }

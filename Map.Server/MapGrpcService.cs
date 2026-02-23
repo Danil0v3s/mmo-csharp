@@ -8,44 +8,92 @@ public class MapGrpcService : MapService.MapServiceBase
 {
     private readonly ICharServerIpcService _charServerIpc;
     private readonly IPlayerMapService _playerMapService;
+    private readonly ILogger<MapGrpcService> _logger;
 
     public MapGrpcService(
         ICharServerIpcService charServerIpc,
-        IPlayerMapService playerMapService)
+        IPlayerMapService playerMapService,
+        ILogger<MapGrpcService> logger)
     {
         _charServerIpc = charServerIpc;
         _playerMapService = playerMapService;
+        _logger = logger;
     }
 
     public override async Task<EnterMapResponse> EnterMap(
         EnterMapRequest request, 
         ServerCallContext context)
     {
+        var mapId = request.MapId;
+        var posX = request.PositionX;
+        var posY = request.PositionY;
+        var posZ = request.PositionZ;
+
         if (request.AccountId > 0 && request.LoginId1 > 0 && request.LoginId2 > 0)
         {
-            var authOk = await _charServerIpc.ValidateCharAuthTicketAsync(
+            var auth = await _charServerIpc.RequestCharacterMapAuthAsync(
                 request.AccountId,
                 request.CharacterId,
                 request.LoginId1,
                 request.LoginId2,
+                request.Sex,
+                0,
+                autotrade: false,
                 context.CancellationToken);
 
-            if (!authOk)
+            if (auth?.Success != true)
             {
                 return new EnterMapResponse
                 {
                     Success = false,
-                    ErrorMessage = "Character auth ticket rejected by char server"
+                    ErrorMessage = auth?.ErrorMessage ?? "Character auth ticket rejected by char server"
                 };
             }
+
+            _logger.LogInformation(
+                "Map auth accepted for account {AccountId}, char {CharacterId} (sex={Sex}, clientType={ClientType})",
+                request.AccountId,
+                request.CharacterId,
+                request.Sex,
+                auth.CharacterData?.Character?.ClassId ?? 0);
+
+            if (mapId <= 0 && auth.CharacterData != null)
+            {
+                mapId = auth.CharacterData.MapId;
+                posX = auth.CharacterData.PositionX;
+                posY = auth.CharacterData.PositionY;
+                posZ = auth.CharacterData.PositionZ;
+            }
+        }
+
+        // If caller did not provide a spawn/map, pull authoritative data from Char server.
+        if (mapId <= 0)
+        {
+            var characterData = await _charServerIpc.GetCharacterDataAsync(
+                request.CharacterId,
+                context.CancellationToken);
+
+            if (characterData?.Character == null || characterData.MapId <= 0)
+            {
+                return new EnterMapResponse
+                {
+                    Success = false,
+                    ErrorMessage = "Character data unavailable from char server"
+                };
+            }
+
+            mapId = characterData.MapId;
+            posX = characterData.PositionX;
+            posY = characterData.PositionY;
+            posZ = characterData.PositionZ;
         }
 
         _playerMapService.AddPlayerToMap(
             request.CharacterId,
-            (uint)request.MapId,
-            request.PositionX,
-            request.PositionY,
-            request.PositionZ);
+            (uint)mapId,
+            posX,
+            posY,
+            posZ);
 
         return new EnterMapResponse
         {
