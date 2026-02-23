@@ -20,8 +20,9 @@
 
     <ItemGroup>
         <!-- Copy SQL seed scripts to output directory -->
-        <None Update="Scripts\*.sql">
+        <None Update="Seeds\Scripts\**\*.sql">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
         </None>
         <!-- Copy appsettings.json for design-time migrations -->
         <None Update="appsettings.json">

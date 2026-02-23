@@ -101,8 +101,8 @@ public class ClientSession : IDisposable
         {
             while (_outgoingPackets.TryDequeue(out var packet))
             {
-                var header = BitConverter.ToInt16(packet, 0);
-                _logger.LogInformation("[Socket] Sending {Header:X4} {SessionId}", header, SessionId);
+                var header = (PacketHeader) BitConverter.ToInt16(packet, 0);
+                _logger.LogInformation("[Socket] Sending {Header} {SessionId}", header, SessionId);
                 await _socket.SendAsync(packet, SocketFlags.None);
             }
         }
