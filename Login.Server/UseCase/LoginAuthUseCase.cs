@@ -27,7 +27,7 @@ public sealed class LoginAuthUseCase(
     ILogger<LoginAuthUseCase> logger,
     //ILoginMmoAuth loginMmoAuth,
     //LoginServerImpl loginServer,
-    //SessionManager sessionManager,
+    SessionManager sessionManager,
     LoginServerConfiguration loginConfig,
     ILoginDataRepository loginDataRepository,
     ILoginSecurityService loginSecurityService

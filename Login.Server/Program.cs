@@ -3,6 +3,7 @@ using Core.Database;
 using Core.Database.Context;
 using Core.Database.Seeds;
 using Core.Server;
+using Core.Server.DependencyInjection;
 using Core.Server.Network;
 using Core.Server.Packets;
 using Core.Timer;
@@ -41,10 +42,7 @@ builder.Services.AddSingleton<ServerConfiguration>(serverConfig);
 builder.Services.AddSingleton(serverConfig);
 builder.Services.AddSingleton<ILogger>(sp => sp.GetRequiredService<ILogger<Program>>());
 builder.Services.AddSingleton<LoginServerImpl>();
-builder.Services.AddSingleton<PacketSystem>();
-builder.Services.AddSingleton<IPacketFactory>(sp => sp.GetRequiredService<PacketSystem>().Factory);
-builder.Services.AddSingleton<IPacketSizeRegistry>(sp => sp.GetRequiredService<PacketSystem>().Registry);
-builder.Services.AddSingleton<SessionManager>();
+builder.Services.AddGameServerRuntime();
 
 builder.Services.AddTransient<ILoginDataRepository, LoginDataRepository>();
 builder.Services.AddSingleton<ILoginSecurityService, LoginSecurityService>();
@@ -58,15 +56,7 @@ var connectionString = configuration.GetConnectionString("GameDatabase")
                        ?? throw new InvalidOperationException("Database connection string 'GameDatabase' not found in configuration");
 builder.Services.AddGameDatabase(connectionString);
 
-// Auto-register all packet handlers from assembly
-var handlerTypes = typeof(LoginServerImpl).Assembly.GetTypes()
-    .Where(t => t.IsClass && !t.IsAbstract)
-    .Where(t => t.GetCustomAttribute<PacketHandlerAttribute>() != null);
-
-foreach (var handlerType in handlerTypes)
-{
-    builder.Services.AddTransient(handlerType);
-}
+builder.Services.AddPacketHandlersFromAssembly(typeof(LoginServerImpl).Assembly);
 
 // Configure logging
 builder.Logging.ClearProviders();

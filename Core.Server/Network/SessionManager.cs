@@ -36,22 +36,6 @@ public class SessionManager : IDisposable
         _cleanupTask = Task.Run(() => CleanupLoopAsync(_cts.Token));
     }
 
-    public ClientSession CreateSession(Socket socket)
-    {
-        var session = new ClientSession(socket, _heartbeatTimeout, _packetFactory, _sizeRegistry, _logger);
-        
-        if (_sessions.TryAdd(session.SessionId, session))
-        {
-            _logger.LogInformation("Created session {SessionId} from {RemoteEndpoint}", 
-                session.SessionId, socket.RemoteEndPoint);
-            return session;
-        }
-
-        // Shouldn't happen, but handle just in case
-        session.Dispose();
-        throw new InvalidOperationException("Failed to add session to manager");
-    }
-
     public TSession CreateSession<TSession>(Socket socket) where TSession : ClientSession
     {
         var session = Activator.CreateInstance(

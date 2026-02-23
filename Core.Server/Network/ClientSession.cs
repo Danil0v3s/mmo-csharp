@@ -16,31 +16,36 @@ public class ClientSession : IDisposable
     private readonly CancellationTokenSource _cts;
     private readonly Task _receiveTask;
     private readonly IPacketFactory _packetFactory;
-    
+
     public Guid SessionId { get; }
     public long LastHeartbeatTime { get; private set; }
     public int HeartbeatTimeout { get; }
     public bool IsAlive { get; private set; }
     public DisconnectReason? DisconnectReason { get; private set; }
-    
+
     public ConcurrentQueue<IncomingPacket> IncomingPackets { get; }
 
-    public ClientSession(Socket socket, int heartbeatTimeout, IPacketFactory packetFactory, 
-        IPacketSizeRegistry sizeRegistry, ILogger logger)
+    public ClientSession(
+        Socket socket,
+        int heartbeatTimeout,
+        IPacketFactory packetFactory,
+        IPacketSizeRegistry sizeRegistry,
+        ILogger logger
+    )
     {
         _socket = socket;
         _logger = logger;
         _packetFactory = packetFactory ?? throw new ArgumentNullException(nameof(packetFactory));
         HeartbeatTimeout = heartbeatTimeout;
-        
+
         SessionId = Guid.NewGuid();
         LastHeartbeatTime = Stopwatch.GetTimestamp();
         IsAlive = true;
-        
+
         _incomingBuffer = new PacketBuffer(sizeRegistry);
         _outgoingPackets = new ConcurrentQueue<byte[]>();
         IncomingPackets = new ConcurrentQueue<IncomingPacket>();
-        
+
         _cts = new CancellationTokenSource();
         _receiveTask = Task.Run(() => ReceiveLoopAsync(_cts.Token));
     }
@@ -66,7 +71,7 @@ public class ClientSession : IDisposable
 
         _outgoingPackets.Enqueue(packet);
     }
-    
+
     public void EnqueuePacket(OutgoingPacket packet)
     {
         if (!IsAlive)
@@ -81,7 +86,7 @@ public class ClientSession : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error serializing packet {PacketType} for session {SessionId}", 
+            _logger.LogError(ex, "Error serializing packet {PacketType} for session {SessionId}",
                 packet.GetType().Name, SessionId);
         }
     }
@@ -118,7 +123,7 @@ public class ClientSession : IDisposable
             while (!cancellationToken.IsCancellationRequested && IsAlive)
             {
                 var received = await _socket.ReceiveAsync(buffer, SocketFlags.None, cancellationToken);
-                
+
                 if (received == 0)
                 {
                     Disconnect(Network.DisconnectReason.ClientDisconnect);
@@ -159,13 +164,14 @@ public class ClientSession : IDisposable
                             UpdateHeartbeat();
                             continue;
                         }
-                        
+
                         _logger.LogInformation("[Socket] Received {Header} {SessionId}", header, SessionId);
 
                         // Check if we can create this packet type
                         if (!_packetFactory.CanCreatePacket(header))
                         {
-                            _logger.LogWarning("No handler for packet {Header} (0x{HeaderHex:X4}) from session {SessionId}", 
+                            _logger.LogWarning(
+                                "No handler for packet {Header} (0x{HeaderHex:X4}) from session {SessionId}",
                                 header, (short)header, SessionId);
                             continue;
                         }
@@ -183,7 +189,7 @@ public class ClientSession : IDisposable
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error deserializing packet {Header} from session {SessionId}", 
+                        _logger.LogError(ex, "Error deserializing packet {Header} from session {SessionId}",
                             header, SessionId);
                     }
                 }
@@ -209,22 +215,22 @@ public class ClientSession : IDisposable
 
         IsAlive = false;
         DisconnectReason = reason;
-        
+
         _logger.LogInformation("Session {SessionId} disconnected: {Reason}", SessionId, reason);
-        
+
         _cts.Cancel();
     }
 
     public void Dispose()
     {
         Disconnect(Network.DisconnectReason.ServerShutdown);
-        
+
         try
         {
             _receiveTask.Wait(TimeSpan.FromSeconds(2));
         }
         catch { }
-        
+
         _socket.Close();
         _socket.Dispose();
         _incomingBuffer.Dispose();

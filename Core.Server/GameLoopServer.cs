@@ -17,20 +17,17 @@ public abstract class GameLoopServer : AbstractServer
     protected SessionManager SessionManager => _sessionManager;
     protected PacketSystem PacketSystem => _packetSystem;
 
-    protected GameLoopServer(string serverName, ServerConfiguration configuration, ILogger logger)
+    protected GameLoopServer(
+        string serverName,
+        ServerConfiguration configuration,
+        ILogger logger,
+        PacketSystem packetSystem,
+        SessionManager sessionManager
+    )
         : base(serverName, configuration, logger)
     {
-        // Initialize packet system
-        _packetSystem = new PacketSystem();
-        _packetSystem.Initialize();
-        
-        // Create session manager with packet system dependencies
-        _sessionManager = new SessionManager(
-            _packetSystem.Factory,
-            _packetSystem.Registry,
-            logger,
-            configuration
-        );
+        _sessionManager = sessionManager;
+        _packetSystem = packetSystem;
     }
 
     protected override async Task OnStartingAsync(CancellationToken cancellationToken)
@@ -42,7 +39,7 @@ public abstract class GameLoopServer : AbstractServer
     protected override async Task OnStoppingAsync(CancellationToken cancellationToken)
     {
         await _sessionManager.DisconnectAllAsync(DisconnectReason.ServerShutdown);
-        
+
         if (_gameLoopTask != null)
         {
             try
@@ -54,14 +51,14 @@ public abstract class GameLoopServer : AbstractServer
                 // Expected during shutdown
             }
         }
-        
+
         await StopTcpListenerAsync(cancellationToken);
     }
 
     private async Task GameLoopAsync(CancellationToken cancellationToken)
     {
         Logger.LogInformation("{ServerName} game loop started at {FPS} FPS", ServerName, TargetFPS);
-        
+
         var stopwatch = Stopwatch.StartNew();
         var lastFrameTime = stopwatch.Elapsed.TotalMilliseconds;
 

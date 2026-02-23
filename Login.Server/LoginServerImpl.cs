@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using Core.Server;
 using Core.Server.IPC;
 using Core.Server.Network;
+using Core.Server.Packets;
 using Core.Server.Packets.Out.AC;
 using Login.Server.Security;
 
@@ -28,8 +29,11 @@ public class LoginServerImpl : GameLoopServer
         ServerConfiguration configuration,
         ILogger<LoginServerImpl> logger,
         IServiceProvider serviceProvider,
-        ILoginSecurityService loginSecurityService)
-        : base("LoginServer", configuration, logger)
+        ILoginSecurityService loginSecurityService,
+        PacketSystem packetSystem,
+        SessionManager sessionManager
+    )
+        : base("LoginServer", configuration, logger, packetSystem, sessionManager)
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
         _handlerRegistry.DiscoverAndRegisterFromCallingAssembly();
@@ -55,7 +59,8 @@ public class LoginServerImpl : GameLoopServer
     /// <summary>
     /// Adds a character server to the internal tracking array
     /// </summary>
-    public void AddCharServer(int serverId, string serverName, uint serverIp, ushort serverPort, ushort serverType, ushort newServer)
+    public void AddCharServer(int serverId, string serverName, uint serverIp, ushort serverPort, ushort serverType,
+        ushort newServer)
     {
         if (serverId >= 0 && serverId < _charServers.Length)
         {
@@ -105,6 +110,7 @@ public class LoginServerImpl : GameLoopServer
         {
             return _charServers[serverId];
         }
+
         return null;
     }
 

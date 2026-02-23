@@ -17,12 +17,12 @@ public class PacketSystem
     
     private readonly ILogger<PacketSystem> _logger;
     
-    public PacketSystem(IPacketFactory? factory = null, IPacketSizeRegistry? registry = null, ILogger<PacketSystem>? logger = null)
+    public PacketSystem()
     {
-        Factory = factory ?? new PacketFactory();
-        Registry = registry ?? new PacketSizeRegistry();
+        Factory = new PacketFactory();
+        Registry = new PacketSizeRegistry();
         Configuration = new PacketConfiguration();
-        _logger = logger ?? NullLogger<PacketSystem>.Instance;
+        _logger = NullLogger<PacketSystem>.Instance;
         
         Initialize();
     }
