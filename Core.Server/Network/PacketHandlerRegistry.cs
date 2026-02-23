@@ -14,7 +14,6 @@ namespace Core.Server.Network;
 public class PacketHandlerRegistry(IServiceProvider serviceProvider, ILogger logger)
 {
     private static readonly TimeSpan HandlerExecutionTimeout = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan DependencyProbeTimeout = TimeSpan.FromSeconds(2);
     private readonly ConcurrentDictionary<PacketHeader, Func<ClientSession, IncomingPacket, Task>> _handlers = new();
     private readonly ConcurrentDictionary<PacketHeader, Type> _handlerTypes = new();
     private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -127,27 +126,15 @@ public class PacketHandlerRegistry(IServiceProvider serviceProvider, ILogger log
             object handler;
             try
             {
-                _logger.LogInformation(
-                    "Resolving handler {HandlerType} for header {Header} (session {SessionId})",
-                    handlerType.Name,
-                    attribute.Header,
-                    session.SessionId);
-                // Resolve handler instance from scoped provider so handlers can depend on scoped services.
                 var resolveTask = Task.Run(() => scope.ServiceProvider.GetRequiredService(handlerType));
                 var resolved = await Task.WhenAny(resolveTask, Task.Delay(HandlerExecutionTimeout));
                 if (resolved != resolveTask)
                 {
-                    ProbeDependencies(scope.ServiceProvider, handlerType, attribute.Header, session.SessionId);
                     throw new TimeoutException(
                         $"Timed out resolving handler {handlerType.Name} after {(int)HandlerExecutionTimeout.TotalMilliseconds}ms.");
                 }
 
                 handler = await resolveTask;
-                _logger.LogInformation(
-                    "Resolved handler {HandlerType} for header {Header} (session {SessionId})",
-                    handlerType.Name,
-                    attribute.Header,
-                    session.SessionId);
             }
             catch (Exception ex)
             {
@@ -165,11 +152,6 @@ public class PacketHandlerRegistry(IServiceProvider serviceProvider, ILogger log
             {
                 try
                 {
-                    _logger.LogInformation(
-                        "Invoking handler {HandlerType} for header {Header} (session {SessionId})",
-                        handlerType.Name,
-                        attribute.Header,
-                        session.SessionId);
                     var task = (Task?)handleMethod.Invoke(handler, new object[] { session, packet });
                     if (task != null)
                     {
@@ -182,11 +164,6 @@ public class PacketHandlerRegistry(IServiceProvider serviceProvider, ILogger log
 
                         await task;
                     }
-                    _logger.LogInformation(
-                        "Completed handler {HandlerType} for header {Header} (session {SessionId})",
-                        handlerType.Name,
-                        attribute.Header,
-                        session.SessionId);
                 }
                 catch (TargetInvocationException ex) when (ex.InnerException != null)
                 {
@@ -245,18 +222,9 @@ public class PacketHandlerRegistry(IServiceProvider serviceProvider, ILogger log
     {
         if (_handlers.TryGetValue(packet.Header, out var handler))
         {
-            _logger.LogInformation(
-                "Found handler delegate for header {Header} (session {SessionId})",
-                packet.Header,
-                session.SessionId);
             await handler(session, packet);
             return true;
         }
-
-        _logger.LogWarning(
-            "No handler delegate found for header {Header} (session {SessionId})",
-            packet.Header,
-            session.SessionId);
         return false;
     }
 
@@ -292,8 +260,6 @@ public class PacketHandlerRegistry(IServiceProvider serviceProvider, ILogger log
         {
             var header = kvp.Key;
             var handlerType = kvp.Value;
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-
             try
             {
                 var resolveTask = Task.Run(() => scope.ServiceProvider.GetRequiredService(handlerType));
@@ -305,11 +271,6 @@ public class PacketHandlerRegistry(IServiceProvider serviceProvider, ILogger log
                 }
 
                 _ = resolveTask.GetAwaiter().GetResult();
-                _logger.LogInformation(
-                    "Warm-up resolved handler {HandlerType} for header {Header} in {ElapsedMs}ms",
-                    handlerType.Name,
-                    header,
-                    sw.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
@@ -322,110 +283,6 @@ public class PacketHandlerRegistry(IServiceProvider serviceProvider, ILogger log
                 {
                     throw;
                 }
-            }
-        }
-    }
-
-    private void ProbeDependencies(IServiceProvider provider, Type rootType, PacketHeader header, Guid sessionId)
-    {
-        _logger.LogError(
-            "Dependency probe for {RootType} (header {Header}, session {SessionId}) started.",
-            rootType.Name,
-            header,
-            sessionId);
-
-        var visited = new HashSet<Type>();
-        ProbeType(provider, rootType, 0, visited, header, sessionId);
-
-        _logger.LogError(
-            "Dependency probe for {RootType} (header {Header}, session {SessionId}) finished.",
-            rootType.Name,
-            header,
-            sessionId);
-    }
-
-    private void ProbeType(
-        IServiceProvider provider,
-        Type type,
-        int depth,
-        HashSet<Type> visited,
-        PacketHeader header,
-        Guid sessionId)
-    {
-        if (!visited.Add(type) || depth > 5)
-            return;
-
-        var ctor = type.GetConstructors()
-            .OrderByDescending(c => c.GetParameters().Length)
-            .FirstOrDefault();
-        if (ctor == null)
-            return;
-
-        foreach (var param in ctor.GetParameters())
-        {
-            var dependencyType = param.ParameterType;
-            string indent = new string(' ', depth * 2);
-            try
-            {
-                var resolveTask = Task.Run(() => provider.GetService(dependencyType));
-                var completed = Task.WhenAny(resolveTask, Task.Delay(DependencyProbeTimeout)).GetAwaiter().GetResult();
-                if (completed != resolveTask)
-                {
-                    _logger.LogError(
-                        "{Indent}Dependency resolve timeout: {OwnerType} -> {DependencyType} (header {Header}, session {SessionId})",
-                        indent,
-                        type.Name,
-                        dependencyType.Name,
-                        header,
-                        sessionId);
-
-                    // If we timed out resolving a concrete type, inspect its constructor graph
-                    // without requiring the root instance to be created.
-                    if (dependencyType.IsClass && !dependencyType.IsAbstract)
-                    {
-                        ProbeType(provider, dependencyType, depth + 1, visited, header, sessionId);
-                    }
-                    continue;
-                }
-
-                var instance = resolveTask.GetAwaiter().GetResult();
-                if (instance == null)
-                {
-                    _logger.LogError(
-                        "{Indent}Dependency missing: {OwnerType} -> {DependencyType} (header {Header}, session {SessionId})",
-                        indent,
-                        type.Name,
-                        dependencyType.Name,
-                        header,
-                        sessionId);
-                }
-                else
-                {
-                    _logger.LogInformation(
-                        "{Indent}Dependency resolved: {OwnerType} -> {DependencyType} ({ImplementationType})",
-                        indent,
-                        type.Name,
-                        dependencyType.Name,
-                        instance.GetType().Name);
-
-                    if (!dependencyType.IsPrimitive &&
-                        dependencyType != typeof(string) &&
-                        dependencyType != typeof(object))
-                    {
-                        ProbeType(provider, instance.GetType(), depth + 1, visited, header, sessionId);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "{Indent}Dependency resolve threw: {OwnerType} -> {DependencyType} (header {Header}, session {SessionId})",
-                    indent,
-                    type.Name,
-                    dependencyType.Name,
-                    header,
-                    sessionId);
             }
         }
     }

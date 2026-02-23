@@ -13,7 +13,6 @@ public abstract class GameLoopServer : AbstractServer
 
     protected int TargetFPS => Configuration.TargetFPS;
     protected double TargetFrameTime => 1000.0 / TargetFPS;
-    protected virtual TimeSpan MaxFramePhaseDuration => TimeSpan.FromSeconds(2);
     protected SessionManager SessionManager => _sessionManager;
     protected PacketSystem PacketSystem => _packetSystem;
 
@@ -71,24 +70,16 @@ public abstract class GameLoopServer : AbstractServer
             try
             {
                 // Process incoming packets (non-blocking)
-                var phaseStart = Stopwatch.GetTimestamp();
                 await ProcessIncomingPacketsAsync(deltaTime, cancellationToken);
-                LogSlowPhase("ProcessIncomingPacketsAsync", phaseStart);
 
                 // Update game logic
-                phaseStart = Stopwatch.GetTimestamp();
                 await UpdateGameLogicAsync(deltaTime, cancellationToken);
-                LogSlowPhase("UpdateGameLogicAsync", phaseStart);
 
                 // Check heartbeats and disconnect timed-out clients
-                phaseStart = Stopwatch.GetTimestamp();
                 await _sessionManager.CheckHeartbeatsAsync();
-                LogSlowPhase("CheckHeartbeatsAsync", phaseStart);
 
                 // Flush outgoing packets
-                phaseStart = Stopwatch.GetTimestamp();
                 await FlushOutgoingPacketsAsync(cancellationToken);
-                LogSlowPhase("FlushOutgoingPacketsAsync", phaseStart);
             }
             catch (OperationCanceledException)
             {
@@ -118,22 +109,6 @@ public abstract class GameLoopServer : AbstractServer
         }
 
         Logger.LogInformation("{ServerName} game loop stopped", ServerName);
-    }
-
-    private void LogSlowPhase(string phaseName, long phaseStartTimestamp)
-    {
-        var elapsed = TimeSpan.FromSeconds(
-            (Stopwatch.GetTimestamp() - phaseStartTimestamp) / (double)Stopwatch.Frequency);
-
-        if (elapsed > MaxFramePhaseDuration)
-        {
-            Logger.LogWarning(
-                "{ServerName} phase {PhaseName} took {ElapsedMs}ms (threshold {ThresholdMs}ms)",
-                ServerName,
-                phaseName,
-                (int)elapsed.TotalMilliseconds,
-                (int)MaxFramePhaseDuration.TotalMilliseconds);
-        }
     }
 
     protected abstract Task StartTcpListenerAsync(CancellationToken cancellationToken);

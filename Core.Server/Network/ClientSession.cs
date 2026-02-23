@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.Sockets;
-using System.Text;
 using Core.Server.Packets;
 using Microsoft.Extensions.Logging;
 
@@ -142,16 +141,7 @@ public class ClientSession : IDisposable
                     {
                         int availableAfter = _incomingBuffer.Available;
                         if (availableAfter < availableBefore)
-                        {
-                            var preview = _incomingBuffer.PeekAvailable();
-                            _logger.LogWarning(
-                                "Dropped {DroppedBytes} byte(s) while parsing incoming stream for session {SessionId}. Remaining={RemainingBytes}, NextBytes={NextBytesHex}",
-                                availableBefore - availableAfter,
-                                SessionId,
-                                availableAfter,
-                                BytesToHex(preview));
                             continue;
-                        }
 
                         break;
                     }
@@ -235,21 +225,6 @@ public class ClientSession : IDisposable
         _socket.Dispose();
         _incomingBuffer.Dispose();
         _cts.Dispose();
-    }
-
-    private static string BytesToHex(ReadOnlySpan<byte> bytes)
-    {
-        if (bytes.IsEmpty)
-            return "<empty>";
-
-        var sb = new StringBuilder(bytes.Length * 3);
-        for (int i = 0; i < bytes.Length; i++)
-        {
-            if (i > 0) sb.Append(' ');
-            sb.Append(bytes[i].ToString("X2"));
-        }
-
-        return sb.ToString();
     }
 }
 

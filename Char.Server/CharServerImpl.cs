@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using Core.Server;
 using Core.Server.IPC;
 using Core.Server.Network;
+using Core.Server.Packets;
 
 namespace Char.Server;
 
@@ -23,8 +24,11 @@ public class CharServerImpl : GameLoopServer
     public CharServerImpl(
         ServerConfiguration configuration,
         ILogger<CharServerImpl> logger,
-        IServiceProvider serviceProvider)
-        : base("CharServer", configuration, logger)
+        IServiceProvider serviceProvider,
+        PacketSystem packetSystem,
+        SessionManager sessionManager
+        )
+        : base("CharServer", configuration, logger, packetSystem, sessionManager)
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
         _handlerRegistry.DiscoverAndRegisterFromCallingAssembly();
