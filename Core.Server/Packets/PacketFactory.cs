@@ -125,7 +125,6 @@ public class PacketFactory : IPacketFactory
             var packetTypes = assembly.GetTypes()
                 .Where(t => !t.IsAbstract && 
                            typeof(IncomingPacket).IsAssignableFrom(t) &&
-                           t.GetCustomAttribute<PacketVersionAttribute>() != null &&
                            t.GetConstructor(Type.EmptyTypes) != null); // Must have parameterless constructor
             
             foreach (var type in packetTypes)
@@ -140,7 +139,6 @@ public class PacketFactory : IPacketFactory
             {
                 if (!type!.IsAbstract && 
                     typeof(IncomingPacket).IsAssignableFrom(type) &&
-                    type.GetCustomAttribute<PacketVersionAttribute>() != null &&
                     type.GetConstructor(Type.EmptyTypes) != null)
                 {
                     RegisterPacketType(type);
@@ -157,8 +155,6 @@ public class PacketFactory : IPacketFactory
         try
         {
             var versionAttr = type.GetCustomAttribute<PacketVersionAttribute>();
-            if (versionAttr == null)
-                return;
             
             // Create a temporary instance to get the header
             var packet = Activator.CreateInstance(type) as IncomingPacket;
@@ -166,7 +162,7 @@ public class PacketFactory : IPacketFactory
                 return;
             
             var header = packet.Header;
-            var version = versionAttr.Version;
+            var version = versionAttr?.Version ?? 1;
             
             // Register using reflection to call the generic method
             var method = typeof(PacketFactory).GetMethod(nameof(RegisterPacket))!;
@@ -193,4 +189,3 @@ public class PacketFactory : IPacketFactory
         }
     }
 }
-

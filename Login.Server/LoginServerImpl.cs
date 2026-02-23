@@ -33,6 +33,7 @@ public class LoginServerImpl : GameLoopServer
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
         _handlerRegistry.DiscoverAndRegisterFromCallingAssembly();
+        _handlerRegistry.WarmUpHandlers(TimeSpan.FromSeconds(5), failOnError: false);
         _loginSecurityService = loginSecurityService;
 
         // Initialize character server array
@@ -207,10 +208,14 @@ public class LoginServerImpl : GameLoopServer
                     });
                     await session.FlushPacketsAsync();
                     session.Disconnect(DisconnectReason.Kicked);
+                    SessionManager.RemoveSession(session.SessionId);
                     continue;
                 }
 
-                Logger.LogInformation("Client connected: {SessionId}", session.SessionId);
+                Logger.LogInformation(
+                    "Client connected: {SessionId} from {RemoteEndpoint}",
+                    session.SessionId,
+                    clientSocket.RemoteEndPoint);
             }
             catch (OperationCanceledException)
             {

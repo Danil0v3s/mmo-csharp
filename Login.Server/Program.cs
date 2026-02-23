@@ -50,6 +50,7 @@ builder.Services.AddTransient<ILoginDataRepository, LoginDataRepository>();
 builder.Services.AddSingleton<ILoginSecurityService, LoginSecurityService>();
 
 builder.Services.AddTransient<ILoginMmoAuth, LoginMmoAuth>();
+builder.Services.AddTransient<ILoginAuthUseCase, LoginAuthUseCase>();
 builder.Services.AddTransient<CharServerGrpcHandler>();
 
 // Register database services

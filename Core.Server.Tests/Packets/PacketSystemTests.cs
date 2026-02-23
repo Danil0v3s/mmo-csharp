@@ -4,7 +4,7 @@ using Core.Server.Packets.In.CA;
 using Core.Server.Packets.Out.HC;
 using Core.Server.Packets.ServerPackets;
 using Microsoft.Extensions.Configuration;
-using CharacterInfo = Core.Server.Packets.CharacterInfo;
+using CharacterInfo = Core.Server.Packets.Out.HC.CharacterInfo;
 
 namespace Core.Server.Tests.Packets;
 
@@ -217,4 +217,3 @@ public class PacketSystemTests
         }
     }
 }
-

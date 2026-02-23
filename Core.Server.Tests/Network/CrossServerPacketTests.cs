@@ -3,6 +3,7 @@ using Core.Server.Network;
 using Core.Server.Packets;
 using Core.Server.Packets.ClientPackets;
 using Core.Server.Packets.In.CA;
+using Core.Server.Packets.In.CH;
 using Core.Server.Tests.Mocks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -36,7 +37,7 @@ public class CrossServerPacketTests
     {
         // Arrange
         var (registry, session, logger) = CreateLoginServerContext();
-        var charPacket = new MockIncomingPacket(PacketHeader.CH_CHARLIST_REQ);
+        var charPacket = new MockIncomingPacket(PacketHeader.CH_REQ_CHARLIST);
 
         // Act - Send char server packet to login server
         session.IncomingPackets.Enqueue(charPacket);
@@ -70,10 +71,10 @@ public class CrossServerPacketTests
         var (registry, session, logger) = CreateCharServerContext();
         
         // Verify the handler is registered
-        Assert.True(registry.HasHandler(PacketHeader.CH_CHARLIST_REQ), 
-            "CharServer should have handler for CH_CHARLIST_REQ");
+        Assert.True(registry.HasHandler(PacketHeader.CH_REQ_CHARLIST), 
+            "CharServer should have handler for CH_REQ_CHARLIST");
         
-        var packet = new MockIncomingPacket(PacketHeader.CH_CHARLIST_REQ);
+        var packet = new MockIncomingPacket(PacketHeader.CH_REQ_CHARLIST);
 
         // Act
         session.IncomingPackets.Enqueue(packet);
@@ -158,7 +159,7 @@ public class CrossServerPacketTests
     {
         // Arrange
         var (registry, session, logger) = CreateMapServerContext();
-        var charPacket = new MockIncomingPacket(PacketHeader.CH_CHARLIST_REQ);
+        var charPacket = new MockIncomingPacket(PacketHeader.CH_REQ_CHARLIST);
 
         // Act - Send char server packet to map server
         session.IncomingPackets.Enqueue(charPacket);
@@ -190,9 +191,9 @@ public class CrossServerPacketTests
         var (registry, _, _) = CreateLoginServerContext();
 
         // Assert - Char server packets
-        Assert.False(registry.HasHandler(PacketHeader.CH_CHARLIST_REQ), 
+        Assert.False(registry.HasHandler(PacketHeader.CH_REQ_CHARLIST), 
             "Login server should NOT handle char server packets");
-        Assert.False(registry.HasHandler(PacketHeader.CH_MAKE_CHAR), 
+        Assert.False(registry.HasHandler(PacketHeader.CH_MAKE_NEW_CHAR), 
             "Login server should NOT handle char server packets");
 
         // Assert - Map server packets
@@ -229,7 +230,7 @@ public class CrossServerPacketTests
 
         var registry = new PacketHandlerRegistry(services, logger);
         // Manually register only CHAR handlers (not all handlers in assembly)
-        registry.RegisterHandler(PacketHeader.CH_CHARLIST_REQ, new MockCharHandler());
+        registry.RegisterHandler(PacketHeader.CH_REQ_CHARLIST, new MockCharHandler());
 
         var session = new MockClientSession(logger);
         return (registry, session, logger);
@@ -267,7 +268,7 @@ public class CrossServerPacketTests
 
     // Mock handlers for each server type
     [PacketHandler(PacketHeader.CA_LOGIN)]
-    public class MockLoginHandler : IPacketHandler<CA_LOGIN>
+    public class MockLoginHandler : IPacketHandler<ClientSession, CA_LOGIN>
     {
         public Task HandleAsync(ClientSession session, CA_LOGIN packet)
         {
@@ -275,17 +276,17 @@ public class CrossServerPacketTests
         }
     }
 
-    [PacketHandler(PacketHeader.CH_CHARLIST_REQ)]
-    public class MockCharHandler : IPacketHandler<CZ_HEARTBEAT>
+    [PacketHandler(PacketHeader.CH_REQ_CHARLIST)]
+    public class MockCharHandler : IPacketHandler<ClientSession, CH_REQ_CHARLIST>
     {
-        public Task HandleAsync(ClientSession session, CZ_HEARTBEAT packet)
+        public Task HandleAsync(ClientSession session, CH_REQ_CHARLIST packet)
         {
             return Task.CompletedTask;
         }
     }
 
     [PacketHandler(PacketHeader.CZ_ENTER)]
-    public class MockMapHandler : IPacketHandler<CZ_HEARTBEAT>
+    public class MockMapHandler : IPacketHandler<ClientSession, CZ_HEARTBEAT>
     {
         public Task HandleAsync(ClientSession session, CZ_HEARTBEAT packet)
         {
@@ -293,4 +294,3 @@ public class CrossServerPacketTests
         }
     }
 }
-

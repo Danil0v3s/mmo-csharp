@@ -48,7 +48,7 @@ public class MockClientSession
 /// </summary>
 public class MockIncomingPacket : IncomingPacket
 {
-    public MockIncomingPacket(PacketHeader header) : base(header, false)
+    public MockIncomingPacket(PacketHeader header) : base(header, 4)
     {
     }
 
@@ -56,7 +56,4 @@ public class MockIncomingPacket : IncomingPacket
     {
         // Mock implementation - do nothing
     }
-
-    public override int GetSize() => 4;
 }
-

@@ -3,7 +3,7 @@ using Core.Server.Packets.ClientPackets;
 using Core.Server.Packets.In.CA;
 using Core.Server.Packets.Out.HC;
 using Core.Server.Packets.ServerPackets;
-using CharacterInfo = Core.Server.Packets.CharacterInfo;
+using CharacterInfo = Core.Server.Packets.Out.HC.CharacterInfo;
 
 namespace Core.Server.Tests.Packets;
 
@@ -23,11 +23,11 @@ public class PacketSizeTests
         };
         
         // Act
-        int size = packet.GetSize();
+        int size = packet.Size;
         
         // Assert - PacketType (2) + Version (4) + Username (24) + Password (24) + Clienttype (1) = 55
         Assert.Equal(55, size);
-        Assert.True(packet.IsFixedLength);
+        Assert.True(packet.Size > 0);
     }
     
     [Fact]
@@ -37,11 +37,11 @@ public class PacketSizeTests
         var packet = new CZ_HEARTBEAT();
         
         // Act
-        int size = packet.GetSize();
+        int size = packet.Size;
         
         // Assert - Only header (2)
         Assert.Equal(2, size);
-        Assert.True(packet.IsFixedLength);
+        Assert.True(packet.Size > 0);
     }
     
     [Fact]
@@ -61,7 +61,7 @@ public class PacketSizeTests
         
         // Assert - Header (2) + Size field (2) + Count (1) + 1 Character (42) = 47
         Assert.Equal(47, size);
-        Assert.False(packet.IsFixedLength);
+        Assert.True(packet.Size < 0);
     }
     
     [Fact]
@@ -78,7 +78,7 @@ public class PacketSizeTests
         
         // Assert - Header (2) + Size (2) + Count (1) + 0 characters = 5
         Assert.Equal(5, size);
-        Assert.False(packet.IsFixedLength);
+        Assert.True(packet.Size < 0);
     }
     
     [Fact]
@@ -148,4 +148,3 @@ public class PacketSizeTests
         }
     }
 }
-

@@ -74,7 +74,7 @@ public class PacketSizeRegistry : IPacketSizeRegistry
             var packetTypes = assembly.GetTypes()
                 .Where(t => !t.IsAbstract && 
                            typeof(Packet).IsAssignableFrom(t) &&
-                           t.GetCustomAttribute<PacketVersionAttribute>() != null);
+                           t.GetConstructor(Type.EmptyTypes) != null);
             
             foreach (var type in packetTypes)
             {
@@ -88,7 +88,7 @@ public class PacketSizeRegistry : IPacketSizeRegistry
             {
                 if (!type!.IsAbstract && 
                     typeof(Packet).IsAssignableFrom(type) &&
-                    type.GetCustomAttribute<PacketVersionAttribute>() != null)
+                    type.GetConstructor(Type.EmptyTypes) != null)
                 {
                     RegisterPacketType(type);
                 }
@@ -144,4 +144,3 @@ public class PacketSizeRegistry : IPacketSizeRegistry
         }
     }
 }
-

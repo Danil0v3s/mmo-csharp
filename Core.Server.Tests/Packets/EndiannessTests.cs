@@ -1,5 +1,4 @@
 using Core.Server.Packets.Out.HC;
-using CharacterInfo = Core.Server.Packets.CharacterInfo;
 
 namespace Core.Server.Tests.Packets;
 
@@ -100,9 +99,9 @@ public class EndiannessTests
             data = ms.ToArray();
         }
         
-        // Assert - Check header (0x006b) in little-endian
-        Assert.Equal(0x6b, data[0]); // Low byte
-        Assert.Equal(0x00, data[1]); // High byte
+        // Assert - Check header (HC_CHARACTER_LIST = 0x082d) in little-endian
+        Assert.Equal(0x2d, data[0]); // Low byte
+        Assert.Equal(0x08, data[1]); // High byte
         
         // Assert - Check CharId (0x11223344) in little-endian (after header, size, count)
         Assert.Equal(0x44, data[5]); // Lowest byte
@@ -148,4 +147,3 @@ public class EndiannessTests
         Assert.Equal(originalLong, readLong);
     }
 }
-

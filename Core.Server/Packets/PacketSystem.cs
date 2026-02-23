@@ -1,5 +1,7 @@
 using System.Text;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Core.Server.Packets;
 
@@ -13,11 +15,14 @@ public class PacketSystem
     public IPacketSizeRegistry Registry { get; }
     public PacketConfiguration Configuration { get; private set; }
     
-    public PacketSystem(IPacketFactory? factory = null, IPacketSizeRegistry? registry = null)
+    private readonly ILogger<PacketSystem> _logger;
+    
+    public PacketSystem(IPacketFactory? factory = null, IPacketSizeRegistry? registry = null, ILogger<PacketSystem>? logger = null)
     {
         Factory = factory ?? new PacketFactory();
         Registry = registry ?? new PacketSizeRegistry();
         Configuration = new PacketConfiguration();
+        _logger = logger ?? NullLogger<PacketSystem>.Instance;
         
         Initialize();
     }
@@ -57,6 +62,7 @@ public class PacketSystem
     {
         // Read packet header
         short headerValue = reader.ReadInt16();
+        _logger.LogInformation("[ReadPacket] {Header:X4}", headerValue);
         if (!Enum.IsDefined(typeof(PacketHeader), headerValue))
         {
             throw new InvalidDataException($"Unknown packet header: 0x{headerValue:X4}");
@@ -112,4 +118,3 @@ public class PacketSystem
         return ms.ToArray();
     }
 }
-

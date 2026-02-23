@@ -109,6 +109,15 @@ public class PacketBuffer
         return true;
     }
 
+    public ReadOnlySpan<byte> PeekAvailable(int maxBytes = 16)
+    {
+        if (Available <= 0)
+            return ReadOnlySpan<byte>.Empty;
+
+        int count = Math.Min(Available, Math.Max(1, maxBytes));
+        return _buffer.AsSpan(_readPosition, count);
+    }
+
     public void Compact()
     {
         if (_readPosition == 0)
@@ -150,4 +159,3 @@ public class PacketBuffer
         }
     }
 }
-

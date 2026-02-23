@@ -3,7 +3,7 @@ using Core.Server.Packets.ClientPackets;
 using Core.Server.Packets.In.CA;
 using Core.Server.Packets.Out.HC;
 using Core.Server.Packets.ServerPackets;
-using CharacterInfo = Core.Server.Packets.CharacterInfo;
+using CharacterInfo = Core.Server.Packets.Out.HC.CharacterInfo;
 
 namespace Core.Server.Tests.Packets;
 
@@ -34,7 +34,7 @@ public class PacketSerializationTests
         
         // Assert - Check size
         Assert.Equal(55, data.Length);
-        Assert.Equal(55, original.GetSize());
+        Assert.Equal(55, original.Size);
         
         // Assert - Verify byte layout (little-endian)
         Assert.Equal(0x64, data[0]); // Header low byte (0x64)
@@ -62,8 +62,8 @@ public class PacketSerializationTests
         
         // Assert
         Assert.Equal(2, data.Length);
-        Assert.Equal(2, heartbeat.GetSize());
-        Assert.True(heartbeat.IsFixedLength);
+        Assert.Equal(2, heartbeat.Size);
+        Assert.True(heartbeat.Size > 0);
         
         // Deserialize
         using (var ms = new MemoryStream(data))
@@ -109,7 +109,7 @@ public class PacketSerializationTests
         // Assert - Check size
         Assert.Equal(47, data.Length);
         Assert.Equal(47, original.GetSize());
-        Assert.False(original.IsFixedLength);
+        Assert.True(original.Size < 0);
         
         // Deserialize
         using (var ms = new MemoryStream(data))
@@ -123,7 +123,7 @@ public class PacketSerializationTests
             Assert.Equal(47, size);
             Assert.Equal(1, count);
             
-            var character = CharacterInfo.Read(reader);
+            var character = Core.Server.Packets.Out.HC.CharacterInfo.Read(reader);
             Assert.Equal(original.Characters[0].CharId, character.CharId);
             Assert.Equal(original.Characters[0].Name, character.Name);
         }
@@ -185,7 +185,7 @@ public class PacketSerializationTests
             var chars = new CharacterInfo[count];
             for (int i = 0; i < count; i++)
             {
-                chars[i] = CharacterInfo.Read(reader);
+                chars[i] = Core.Server.Packets.Out.HC.CharacterInfo.Read(reader);
             }
             
             Assert.Equal(original.Characters[0].CharId, chars[0].CharId);
@@ -261,4 +261,3 @@ public class PacketSerializationTests
         }
     }
 }
-

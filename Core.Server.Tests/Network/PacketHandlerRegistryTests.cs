@@ -5,6 +5,7 @@ using Core.Server.Network;
 using Core.Server.Packets;
 using Core.Server.Packets.ClientPackets;
 using Core.Server.Packets.In.CA;
+using Core.Server.Packets.In.CH;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -46,7 +47,7 @@ public class PacketHandlerRegistryTests
         // Assert - The assembly now contains both Test and Mock handlers, 
         // but only one handler per packet type is registered (duplicates are rejected)
         Assert.True(registry.HasHandler(PacketHeader.CA_LOGIN), "Should find CA_LOGIN handler");
-        Assert.True(registry.HasHandler(PacketHeader.CH_CHARLIST_REQ), "Should find CH_CHARLIST_REQ handler");
+        Assert.True(registry.HasHandler(PacketHeader.CH_REQ_CHARLIST), "Should find CH_REQ_CHARLIST handler");
         Assert.True(registry.HasHandler(PacketHeader.CZ_ENTER), "Should find CZ_ENTER handler");
         Assert.Equal(3, registry.HandlerCount);
     }
@@ -133,7 +134,7 @@ public class PacketHandlerRegistryTests
 
     // Test handlers
     [PacketHandler(PacketHeader.CA_LOGIN)]
-    public class TestLoginHandler : IPacketHandler<CA_LOGIN>
+    public class TestLoginHandler : IPacketHandler<ClientSession, CA_LOGIN>
     {
         public static bool WasCalled { get; private set; }
         public static ClientSession? LastSession { get; private set; }
@@ -155,8 +156,8 @@ public class PacketHandlerRegistryTests
         }
     }
 
-    [PacketHandler(PacketHeader.CH_CHARLIST_REQ)]
-    public class TestCharHandler : IPacketHandler<CZ_HEARTBEAT>
+    [PacketHandler(PacketHeader.CH_REQ_CHARLIST)]
+    public class TestCharHandler : IPacketHandler<ClientSession, CH_REQ_CHARLIST>
     {
         public static bool WasCalled { get; private set; }
 
@@ -165,7 +166,7 @@ public class PacketHandlerRegistryTests
             WasCalled = false;
         }
 
-        public Task HandleAsync(ClientSession session, CZ_HEARTBEAT packet)
+        public Task HandleAsync(ClientSession session, CH_REQ_CHARLIST packet)
         {
             WasCalled = true;
             return Task.CompletedTask;
@@ -173,7 +174,7 @@ public class PacketHandlerRegistryTests
     }
 
     [PacketHandler(PacketHeader.CZ_ENTER)]
-    public class TestMapHandler : IPacketHandler<CZ_HEARTBEAT>
+    public class TestMapHandler : IPacketHandler<ClientSession, CZ_HEARTBEAT>
     {
         public static bool WasCalled { get; private set; }
 
@@ -206,4 +207,3 @@ public class TestLogger<T> : ILogger<T>
 
     public IReadOnlyCollection<string> Logs => _logs;
 }
-

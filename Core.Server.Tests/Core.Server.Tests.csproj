@@ -21,6 +21,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
+    <ProjectReference Include="..\Char.Server\Char.Server.csproj" />
+    <ProjectReference Include="..\Login.Server\Login.Server.csproj" />
   </ItemGroup>
 
 </Project>

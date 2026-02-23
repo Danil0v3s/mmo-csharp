@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.Sockets;
+using System.Text;
 using Core.Server.Packets;
 using Microsoft.Extensions.Logging;
 
@@ -87,13 +88,17 @@ public class ClientSession : IDisposable
 
     public async Task FlushPacketsAsync()
     {
-        if (!IsAlive || _outgoingPackets.IsEmpty)
+        // Allow flushing queued packets even after Disconnect() so handlers can
+        // send a final response before the session is cleaned up.
+        if (_outgoingPackets.IsEmpty)
             return;
 
         try
         {
             while (_outgoingPackets.TryDequeue(out var packet))
             {
+                var header = BitConverter.ToInt16(packet, 0);
+                _logger.LogInformation("[Socket] Sending {Header:X4} {SessionId}", header, SessionId);
                 await _socket.SendAsync(packet, SocketFlags.None);
             }
         }
@@ -122,9 +127,30 @@ public class ClientSession : IDisposable
 
                 _incomingBuffer.Write(buffer.AsSpan(0, received));
 
-                // Parse packets from buffer
-                while (_incomingBuffer.TryReadPacket(out var header, out var packetData))
+                // Parse packets from buffer.
+                // Keep parsing while bytes are being consumed to avoid "silent stalls"
+                // when malformed/unknown packet bytes are skipped.
+                while (true)
                 {
+                    int availableBefore = _incomingBuffer.Available;
+                    if (!_incomingBuffer.TryReadPacket(out var header, out var packetData))
+                    {
+                        int availableAfter = _incomingBuffer.Available;
+                        if (availableAfter < availableBefore)
+                        {
+                            var preview = _incomingBuffer.PeekAvailable();
+                            _logger.LogWarning(
+                                "Dropped {DroppedBytes} byte(s) while parsing incoming stream for session {SessionId}. Remaining={RemainingBytes}, NextBytes={NextBytesHex}",
+                                availableBefore - availableAfter,
+                                SessionId,
+                                availableAfter,
+                                BytesToHex(preview));
+                            continue;
+                        }
+
+                        break;
+                    }
+
                     try
                     {
                         // Handle heartbeat packets directly
@@ -133,6 +159,8 @@ public class ClientSession : IDisposable
                             UpdateHeartbeat();
                             continue;
                         }
+                        
+                        _logger.LogInformation("[Socket] Received {Header} {SessionId}", header, SessionId);
 
                         // Check if we can create this packet type
                         if (!_packetFactory.CanCreatePacket(header))
@@ -202,6 +230,21 @@ public class ClientSession : IDisposable
         _incomingBuffer.Dispose();
         _cts.Dispose();
     }
+
+    private static string BytesToHex(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.IsEmpty)
+            return "<empty>";
+
+        var sb = new StringBuilder(bytes.Length * 3);
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            if (i > 0) sb.Append(' ');
+            sb.Append(bytes[i].ToString("X2"));
+        }
+
+        return sb.ToString();
+    }
 }
 
 public enum DisconnectReason
@@ -214,4 +257,3 @@ public enum DisconnectReason
     UnhandledPacket,
     PacketHandlerError
 }
-

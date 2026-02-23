@@ -21,7 +21,20 @@ public static class PacketHandlerExtensions
         {
             try
             {
+                logger.LogInformation(
+                    "Dequeued packet {PacketType} (0x{Header:X4}) for session {SessionId}",
+                    packet.GetType().Name,
+                    (short)packet.Header,
+                    session.SessionId);
+
                 bool handled = await registry.TryHandlePacketAsync(session, packet);
+
+                logger.LogInformation(
+                    "Dispatch result for packet {PacketType} (0x{Header:X4}) session {SessionId}: handled={Handled}",
+                    packet.GetType().Name,
+                    (short)packet.Header,
+                    session.SessionId,
+                    handled);
                 
                 if (!handled)
                 {
@@ -75,4 +88,3 @@ public static class PacketHandlerExtensions
         }
     }
 }
-
