@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using Char.Server;
 using Char.Server.Services;
+using Core.Database;
 using Core.Server;
 using Core.Server.IPC;
 using Core.Server.Network;
@@ -38,6 +39,7 @@ builder.Services.AddSingleton<ServerConnectionService>();
 builder.Services.AddSingleton<IServerConnectionService>(sp => sp.GetRequiredService<ServerConnectionService>());
 builder.Services.AddSingleton<ILoginServerIpcService, LoginServerIpcService>();
 builder.Services.AddSingleton<IMapAuthTicketService, MapAuthTicketService>();
+builder.Services.AddTransient<ICharacterListFlowService, CharacterListFlowService>();
 
 // Register server state separately to avoid circular dependencies
 builder.Services.AddSingleton<CharServerState>();
@@ -45,6 +47,11 @@ builder.Services.AddSingleton<ICharServerState>(sp => sp.GetRequiredService<Char
 
 // Register CharServerImpl - also provides ICharServerRuntime for gRPC service
 builder.Services.AddSingleton<CharServerImpl>();
+
+// Register database services used by character list/select handlers.
+var connectionString = configuration.GetConnectionString("GameDatabase")
+                       ?? throw new InvalidOperationException("Database connection string 'GameDatabase' not found in configuration");
+builder.Services.AddGameDatabase(connectionString);
 
 // Core services
 builder.Services.AddSingleton<PacketSystem>();

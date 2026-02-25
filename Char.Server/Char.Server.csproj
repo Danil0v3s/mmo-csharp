@@ -10,6 +10,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
         <ProjectReference Include="..\Core.Timer\Core.Timer.csproj" />
+        <ProjectReference Include="..\Core.Database\Core.Database.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -24,6 +25,10 @@
         <None Update="appsettings.json">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="logs\" />
     </ItemGroup>
 
 </Project>
