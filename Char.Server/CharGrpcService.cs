@@ -1,16 +1,54 @@
 using Char.Server.Services;
+using Core.Database.Context;
+using Core.Database.Entities;
+using Core.Database.Repositories.Api;
 using Core.Server.IPC;
 using Core.Server;
 using Grpc.Core;
 using System.Collections.Concurrent;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
 
 namespace Char.Server;
 
 public class CharGrpcService : CharacterService.CharacterServiceBase
 {
+    private const int MaxCharacterNameLength = 24;
+    private const int FameTypeBlacksmith = 0;
+    private const int FameTypeAlchemist = 1;
+    private const int FameTypeTaekwon = 2;
+    private static readonly ushort[] BlacksmithFameClasses =
+    [
+        10,   // JOB_BLACKSMITH
+        4011, // JOB_WHITESMITH
+        4033, // JOB_BABY_BLACKSMITH
+        4058, // JOB_MECHANIC
+        4064, // JOB_MECHANIC_T
+        4100, // JOB_BABY_MECHANIC
+        4253  // JOB_MEISTER
+    ];
+    private static readonly ushort[] AlchemistFameClasses =
+    [
+        18,   // JOB_ALCHEMIST
+        4019, // JOB_CREATOR
+        4041, // JOB_BABY_ALCHEMIST
+        4071, // JOB_GENETIC
+        4078, // JOB_GENETIC_T
+        4107, // JOB_BABY_GENETIC
+        4259  // JOB_BIOLO
+    ];
+    private static readonly ushort[] TaekwonFameClasses =
+    [
+        4046, // JOB_TAEKWON
+        4225  // JOB_BABY_TAEKWON
+    ];
     private readonly CharServerImpl _charServer;
     private readonly IMapAuthTicketService _mapAuthTicketService;
     private readonly ILoginServerIpcService _loginServerIpc;
+    private readonly ICharacterRepository _characterRepository;
+    private readonly IFriendRepository _friendRepository;
+    private readonly GameDbContext _dbContext;
+    private readonly CharServerConfiguration _configuration;
     private readonly ILogger<CharGrpcService> _logger;
     private readonly ConcurrentDictionary<int, string[]> _mapServerMaps = new();
     private readonly ConcurrentDictionary<int, int> _mapServerUserCounts = new();
@@ -19,12 +57,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     private readonly ConcurrentDictionary<long, byte[]> _skillCooldownByCharacter = new();
     private readonly ConcurrentDictionary<long, byte[]> _bonusScriptByCharacter = new();
     private readonly ConcurrentDictionary<int, ConcurrentDictionary<long, int>> _fameByType = new();
-    private readonly ConcurrentDictionary<int, PartyState> _parties = new();
-    private int _nextPartyId = 1000;
     private uint _partyShareLevel = 0;
-    private readonly ConcurrentDictionary<int, GuildState> _guilds = new();
-    private readonly ConcurrentDictionary<int, Dictionary<int, int>> _guildCastleData = new();
-    private int _nextGuildId = 2000;
     private readonly ConcurrentDictionary<int, byte[]> _guildStorageByGuild = new();
     private readonly ConcurrentDictionary<int, byte[]> _accountStorageByAccount = new();
     private readonly ConcurrentDictionary<long, MailState> _mailById = new();
@@ -32,8 +65,6 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     private int _nextMailId = 5000;
     private readonly ConcurrentDictionary<long, AuctionState> _auctionsById = new();
     private int _nextAuctionId = 7000;
-    private readonly ConcurrentDictionary<long, List<QuestEntryState>> _questsByCharacter = new();
-    private readonly ConcurrentDictionary<long, List<AchievementEntryState>> _achievementsByCharacter = new();
     private readonly ConcurrentDictionary<int, PetState> _petsById = new();
     private readonly ConcurrentDictionary<int, MercenaryState> _mercenariesById = new();
     private readonly ConcurrentDictionary<int, ElementalState> _elementalsById = new();
@@ -48,11 +79,19 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         CharServerImpl charServer,
         IMapAuthTicketService mapAuthTicketService,
         ILoginServerIpcService loginServerIpc,
+        ICharacterRepository characterRepository,
+        IFriendRepository friendRepository,
+        GameDbContext dbContext,
+        CharServerConfiguration configuration,
         ILogger<CharGrpcService> logger)
     {
         _charServer = charServer;
         _mapAuthTicketService = mapAuthTicketService;
         _loginServerIpc = loginServerIpc;
+        _characterRepository = characterRepository;
+        _friendRepository = friendRepository;
+        _dbContext = dbContext;
+        _configuration = configuration;
         _logger = logger;
         _clansById.TryAdd(1, new ClanState
         {
@@ -65,72 +104,190 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         });
     }
 
-    public override Task<CharacterListResponse> GetCharacterList(
+    public override async Task<CharacterListResponse> GetCharacterList(
         CharacterListRequest request, 
         ServerCallContext context)
     {
-        // TODO: Query from database
         var response = new CharacterListResponse();
-        response.Characters.Add(new CharacterInfo
-        {
-            CharacterId = 1001,
-            Name = "Warrior123",
-            Level = 50,
-            ClassId = 1,
-            CreatedAt = DateTimeOffset.UtcNow.AddDays(-30).ToUnixTimeSeconds()
-        });
-        response.Characters.Add(new CharacterInfo
-        {
-            CharacterId = 1002,
-            Name = "Mage456",
-            Level = 45,
-            ClassId = 2,
-            CreatedAt = DateTimeOffset.UtcNow.AddDays(-20).ToUnixTimeSeconds()
-        });
 
-        return Task.FromResult(response);
+        if (request.AccountId <= 0)
+        {
+            return response;
+        }
+
+        var characters = await _characterRepository.GetByAccountIdAsync((int)request.AccountId, context.CancellationToken);
+        foreach (var character in characters
+                     .Where(c => c.DeleteDate == 0)
+                     .OrderBy(c => c.CharNum))
+        {
+            response.Characters.Add(ToCharacterInfo(character));
+        }
+
+        return response;
     }
 
-    public override Task<CreateCharacterResponse> CreateCharacter(
+    public override async Task<CreateCharacterResponse> CreateCharacter(
         CreateCharacterRequest request, 
         ServerCallContext context)
     {
-        // TODO: Create in database
-        var response = new CreateCharacterResponse
+        if (!_configuration.CharNew)
         {
-            Success = true,
-            Character = new CharacterInfo
+            return new CreateCharacterResponse
             {
-                CharacterId = new Random().Next(10000, 99999),
-                Name = request.Name,
-                Level = 1,
-                ClassId = request.ClassId,
-                CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-            }
+                Success = false,
+                ErrorMessage = "Character creation is disabled"
+            };
+        }
+
+        if (request.AccountId <= 0 || string.IsNullOrWhiteSpace(request.Name))
+        {
+            return new CreateCharacterResponse
+            {
+                Success = false,
+                ErrorMessage = "Invalid character create request"
+            };
+        }
+
+        var normalizedName = request.Name.Trim();
+        if (normalizedName.Length < _configuration.Char.CharNameMinLength || normalizedName.Length > MaxCharacterNameLength)
+        {
+            return new CreateCharacterResponse
+            {
+                Success = false,
+                ErrorMessage = "Invalid character name length"
+            };
+        }
+
+        if (await _characterRepository.NameExistsAsync(normalizedName, context.CancellationToken))
+        {
+            return new CreateCharacterResponse
+            {
+                Success = false,
+                ErrorMessage = "Character name already exists"
+            };
+        }
+
+        var characters = await _characterRepository.GetByAccountIdAsync((int)request.AccountId, context.CancellationToken);
+        var activeCharacters = characters.Where(c => c.DeleteDate == 0).ToList();
+
+        if (_configuration.Char.CharPerAccount > 0 && activeCharacters.Count >= _configuration.Char.CharPerAccount)
+        {
+            return new CreateCharacterResponse
+            {
+                Success = false,
+                ErrorMessage = "Character slots are full"
+            };
+        }
+
+        if (!TryFindAvailableSlot(activeCharacters, out var slot))
+        {
+            return new CreateCharacterResponse
+            {
+                Success = false,
+                ErrorMessage = "No available character slot"
+            };
+        }
+
+        var startPoint = _configuration.StartPoint.FirstOrDefault() ?? new StartPoint { Map = "prontera", X = 156, Y = 191 };
+        var nowUtc = DateTime.UtcNow;
+        var entity = new CharEntity
+        {
+            AccountId = (int)request.AccountId,
+            CharNum = slot,
+            Name = normalizedName,
+            Class = (ushort)Math.Max(request.ClassId, 0),
+            BaseLevel = 1,
+            JobLevel = 1,
+            LastMap = startPoint.Map,
+            LastX = (ushort)startPoint.X,
+            LastY = (ushort)startPoint.Y,
+            SaveMap = startPoint.Map,
+            SaveX = (ushort)startPoint.X,
+            SaveY = (ushort)startPoint.Y,
+            Online = 0,
+            DeleteDate = 0,
+            LastLogin = nowUtc
         };
 
-        return Task.FromResult(response);
+        try
+        {
+            entity = await _characterRepository.AddAsync(entity, context.CancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed creating character for account {AccountId}", request.AccountId);
+            return new CreateCharacterResponse
+            {
+                Success = false,
+                ErrorMessage = "Database error"
+            };
+        }
+
+        return new CreateCharacterResponse
+        {
+            Success = true,
+            Character = ToCharacterInfo(entity)
+        };
     }
 
-    public override Task<DeleteCharacterResponse> DeleteCharacter(
+    public override async Task<DeleteCharacterResponse> DeleteCharacter(
         DeleteCharacterRequest request, 
         ServerCallContext context)
     {
-        // TODO: Delete from database
-        var response = new DeleteCharacterResponse
+        if (request.AccountId <= 0 || request.CharacterId <= 0)
         {
-            Success = true
-        };
+            return new DeleteCharacterResponse { Success = false };
+        }
 
-        return Task.FromResult(response);
+        var character = await LoadCharacterEntityAsync(request.CharacterId, context.CancellationToken);
+        if (character is null || character.AccountId != request.AccountId || character.DeleteDate != 0)
+        {
+            return new DeleteCharacterResponse { Success = false };
+        }
+
+        if (IsDeleteBlockedByBaseLevel(character.BaseLevel, _configuration.Char.CharDeleteLevel))
+        {
+            return new DeleteCharacterResponse { Success = false };
+        }
+
+        if ((_configuration.Char.CharDeleteRestriction & 0x02) != 0 && character.GuildId != 0)
+        {
+            return new DeleteCharacterResponse { Success = false };
+        }
+
+        if ((_configuration.Char.CharDeleteRestriction & 0x01) != 0 && character.PartyId != 0)
+        {
+            return new DeleteCharacterResponse { Success = false };
+        }
+
+        // rAthena-compatible soft-delete visibility behavior for char-list:
+        // set delete timestamp so it disappears from active list without hard row removal.
+        character.DeleteDate = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        character.Online = 0;
+
+        try
+        {
+            await _characterRepository.UpdateAsync(character, context.CancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed deleting character {CharacterId} for account {AccountId}",
+                request.CharacterId,
+                request.AccountId);
+            return new DeleteCharacterResponse { Success = false };
+        }
+
+        return new DeleteCharacterResponse { Success = true };
     }
 
-    public override Task<CharacterDataResponse> GetCharacterData(
+    public override async Task<CharacterDataResponse> GetCharacterData(
         CharacterDataRequest request, 
         ServerCallContext context)
     {
-        // TODO: Query from database
-        return Task.FromResult(BuildCharacterDataResponse(request.CharacterId));
+        var character = await LoadCharacterEntityAsync(request.CharacterId, context.CancellationToken);
+        return character is null ? new CharacterDataResponse() : ToCharacterDataResponse(character);
     }
 
     public override Task<MapServerChangeResponse> RequestMapServerChange(
@@ -178,23 +335,35 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         });
     }
 
-    public override Task<CharacterMapAuthResponse> RequestCharacterMapAuth(
+    public override async Task<CharacterMapAuthResponse> RequestCharacterMapAuth(
         CharacterMapAuthRequest request,
         ServerCallContext context)
     {
         if (_charServer.State != ServerState.Running || request.AccountId <= 0 || request.CharacterId <= 0)
         {
-            return Task.FromResult(new CharacterMapAuthResponse
+            return new CharacterMapAuthResponse
             {
                 Success = false,
                 ErrorMessage = "Invalid map auth request"
-            });
+            };
         }
 
         // Autotrade bypass parity path.
         if (request.Autotrade)
         {
-            return Task.FromResult(new CharacterMapAuthResponse
+            var autotradeCharacter = await LoadCharacterEntityAsync(request.CharacterId, context.CancellationToken);
+            if (autotradeCharacter is null || autotradeCharacter.AccountId != request.AccountId)
+            {
+                return new CharacterMapAuthResponse
+                {
+                    Success = false,
+                    ErrorMessage = "Character not found",
+                    AccountId = request.AccountId,
+                    CharacterId = request.CharacterId
+                };
+            }
+
+            return new CharacterMapAuthResponse
             {
                 Success = true,
                 AccountId = request.AccountId,
@@ -204,8 +373,8 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
                 ExpirationTime = 0,
                 GroupId = 0,
                 ChangingMapServers = false,
-                CharacterData = BuildCharacterDataResponse(request.CharacterId)
-            });
+                CharacterData = ToCharacterDataResponse(autotradeCharacter)
+            };
         }
 
         if (!_mapAuthTicketService.TryConsumeTicket(
@@ -216,7 +385,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
                 out var sex,
                 out var clientType))
         {
-            return Task.FromResult(new CharacterMapAuthResponse
+            return new CharacterMapAuthResponse
             {
                 Success = false,
                 ErrorMessage = "Auth ticket missing/expired/mismatch",
@@ -224,12 +393,26 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
                 CharacterId = request.CharacterId,
                 LoginId1 = request.LoginId1,
                 LoginId2 = request.LoginId2
-            });
+            };
         }
 
-        var characterData = BuildCharacterDataResponse(request.CharacterId);
+        var character = await LoadCharacterEntityAsync(request.CharacterId, context.CancellationToken);
+        if (character is null || character.AccountId != request.AccountId)
+        {
+            return new CharacterMapAuthResponse
+            {
+                Success = false,
+                ErrorMessage = "Character not found",
+                AccountId = request.AccountId,
+                CharacterId = request.CharacterId,
+                LoginId1 = request.LoginId1,
+                LoginId2 = request.LoginId2
+            };
+        }
 
-        return Task.FromResult(new CharacterMapAuthResponse
+        var characterData = ToCharacterDataResponse(character);
+
+        return new CharacterMapAuthResponse
         {
             Success = true,
             AccountId = request.AccountId,
@@ -240,7 +423,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             GroupId = 0,
             ChangingMapServers = true,
             CharacterData = characterData
-        });
+        };
     }
 
     public override Task<SaveCharacterStateResponse> SaveCharacterState(
@@ -257,12 +440,66 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             });
         }
 
-        // DB persistence will be wired as repository migration progresses.
-        return Task.FromResult(new SaveCharacterStateResponse
+        return SaveCharacterStateInternalAsync(request, context);
+    }
+
+    private async Task<SaveCharacterStateResponse> SaveCharacterStateInternalAsync(
+        SaveCharacterStateRequest request,
+        ServerCallContext context)
+    {
+        var character = await LoadCharacterEntityAsync(request.CharacterId, context.CancellationToken);
+        if (character is null || character.AccountId != request.AccountId)
+        {
+            return new SaveCharacterStateResponse
+            {
+                Success = false,
+                ErrorMessage = "Character not found",
+                SaveAck = false
+            };
+        }
+
+        // rAthena parity: save-char always persists; when "set offline" flag is present,
+        // mark character offline after save and emit save-ack.
+        if (request.SetOfflineAfterSave)
+        {
+            character.Online = 0;
+        }
+
+        character.LastLogin = DateTime.UtcNow;
+
+        try
+        {
+            await _characterRepository.UpdateAsync(character, context.CancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to persist SaveCharacterState for account {AccountId}, character {CharacterId}",
+                request.AccountId,
+                request.CharacterId);
+            return new SaveCharacterStateResponse
+            {
+                Success = false,
+                ErrorMessage = "Database error",
+                SaveAck = false
+            };
+        }
+
+        if (request.SetOfflineAfterSave && _charServer.RegisteredServerId >= 0)
+        {
+            await _loginServerIpc.NotifyAccountStatusAsync(
+                request.AccountId,
+                _charServer.RegisteredServerId,
+                online: false,
+                context.CancellationToken);
+        }
+
+        return new SaveCharacterStateResponse
         {
             Success = true,
             SaveAck = request.SetOfflineAfterSave
-        });
+        };
     }
 
     public override Task<CharacterSelectAuthOkResponse> NotifyCharacterSelectAuthOk(
@@ -354,64 +591,114 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         return Task.FromResult(new MapServerAddressUpdateResponse { Success = true });
     }
 
-    public override Task<StatusChangeDataResponse> RequestStatusChangeData(
+    public override async Task<StatusChangeDataResponse> RequestStatusChangeData(
         StatusChangeDataRequest request,
         ServerCallContext context)
     {
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(new StatusChangeDataResponse { Success = false });
+            return new StatusChangeDataResponse { Success = false };
         }
 
-        _statusChangeDataByCharacter.TryGetValue(request.CharacterId, out var data);
-        return Task.FromResult(new StatusChangeDataResponse
+        var rows = await _dbContext.StatusChanges
+            .AsNoTracking()
+            .Where(e => e.CharId == (int)request.CharacterId)
+            .OrderBy(e => e.Type)
+            .ToListAsync(context.CancellationToken);
+
+        return new StatusChangeDataResponse
         {
             Success = true,
-            Data = Google.Protobuf.ByteString.CopyFrom(data ?? Array.Empty<byte>())
-        });
+            Data = Google.Protobuf.ByteString.CopyFrom(SerializeStatusChangeRows(rows))
+        };
     }
 
-    public override Task<StatusChangeDataSaveResponse> SaveStatusChangeData(
+    public override async Task<StatusChangeDataSaveResponse> SaveStatusChangeData(
         StatusChangeDataSaveRequest request,
         ServerCallContext context)
     {
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(new StatusChangeDataSaveResponse { Success = false });
+            return new StatusChangeDataSaveResponse { Success = false };
         }
 
-        _statusChangeDataByCharacter[request.CharacterId] = request.Data.ToByteArray();
-        return Task.FromResult(new StatusChangeDataSaveResponse { Success = true });
+        if (!TryDeserializeStatusChangeRows(request.Data.ToByteArray(), out var rows))
+        {
+            return new StatusChangeDataSaveResponse { Success = false };
+        }
+
+        var charId = (int)request.CharacterId;
+        var existing = await _dbContext.StatusChanges
+            .Where(e => e.CharId == charId)
+            .ToListAsync(context.CancellationToken);
+        if (existing.Count > 0)
+        {
+            _dbContext.StatusChanges.RemoveRange(existing);
+        }
+
+        foreach (var row in rows)
+        {
+            row.CharId = charId;
+            _dbContext.StatusChanges.Add(row);
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new StatusChangeDataSaveResponse { Success = true };
     }
 
-    public override Task<SkillCooldownLoadResponse> LoadSkillCooldown(
+    public override async Task<SkillCooldownLoadResponse> LoadSkillCooldown(
         SkillCooldownLoadRequest request,
         ServerCallContext context)
     {
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(new SkillCooldownLoadResponse { Success = false });
+            return new SkillCooldownLoadResponse { Success = false };
         }
 
-        _skillCooldownByCharacter.TryGetValue(request.CharacterId, out var data);
-        return Task.FromResult(new SkillCooldownLoadResponse
+        var rows = await _dbContext.SkillCooldowns
+            .AsNoTracking()
+            .Where(e => e.CharId == (int)request.CharacterId)
+            .OrderBy(e => e.Skill)
+            .ToListAsync(context.CancellationToken);
+
+        return new SkillCooldownLoadResponse
         {
             Success = true,
-            Data = Google.Protobuf.ByteString.CopyFrom(data ?? Array.Empty<byte>())
-        });
+            Data = Google.Protobuf.ByteString.CopyFrom(SerializeSkillCooldownRows(rows))
+        };
     }
 
-    public override Task<SkillCooldownSaveResponse> SaveSkillCooldown(
+    public override async Task<SkillCooldownSaveResponse> SaveSkillCooldown(
         SkillCooldownSaveRequest request,
         ServerCallContext context)
     {
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(new SkillCooldownSaveResponse { Success = false });
+            return new SkillCooldownSaveResponse { Success = false };
         }
 
-        _skillCooldownByCharacter[request.CharacterId] = request.Data.ToByteArray();
-        return Task.FromResult(new SkillCooldownSaveResponse { Success = true });
+        if (!TryDeserializeSkillCooldownRows(request.Data.ToByteArray(), out var rows))
+        {
+            return new SkillCooldownSaveResponse { Success = false };
+        }
+
+        var charId = (int)request.CharacterId;
+        var existing = await _dbContext.SkillCooldowns
+            .Where(e => e.CharId == charId)
+            .ToListAsync(context.CancellationToken);
+        if (existing.Count > 0)
+        {
+            _dbContext.SkillCooldowns.RemoveRange(existing);
+        }
+
+        foreach (var row in rows)
+        {
+            row.CharId = charId;
+            _dbContext.SkillCooldowns.Add(row);
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new SkillCooldownSaveResponse { Success = true };
     }
 
     public override async Task<CharacterOnlineStateResponse> SetCharacterOffline(
@@ -423,53 +710,140 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             return new CharacterOnlineStateResponse { Success = false };
         }
 
+        var characters = await _characterRepository.GetByAccountIdAsync(request.AccountId, context.CancellationToken);
+        var updatedAny = false;
+        foreach (var character in characters.Where(c => c.DeleteDate == 0 &&
+                                                        (!request.CharacterId.Equals(0) ? c.CharId == request.CharacterId : true)))
+        {
+            if (character.Online == 0)
+            {
+                continue;
+            }
+
+            character.Online = 0;
+            await _characterRepository.UpdateAsync(character, context.CancellationToken);
+            updatedAny = true;
+        }
+
         await _charServer.ForceDisconnectAccountAsync(request.AccountId);
+
+        if (_charServer.RegisteredServerId >= 0)
+        {
+            await _loginServerIpc.NotifyAccountStatusAsync(
+                request.AccountId,
+                _charServer.RegisteredServerId,
+                online: false,
+                context.CancellationToken);
+        }
+
+        if (!updatedAny && request.CharacterId > 0)
+        {
+            return new CharacterOnlineStateResponse { Success = false };
+        }
+
         return new CharacterOnlineStateResponse { Success = true };
     }
 
-    public override Task<CharacterOnlineStateResponse> SetCharacterOnline(
+    public override async Task<CharacterOnlineStateResponse> SetCharacterOnline(
         CharacterOnlineStateRequest request,
         ServerCallContext context)
     {
-        return Task.FromResult(new CharacterOnlineStateResponse
+        if (request.AccountId <= 0 || request.CharacterId <= 0)
         {
-            Success = request.AccountId > 0
-        });
+            return new CharacterOnlineStateResponse { Success = false };
+        }
+
+        var character = await LoadCharacterEntityAsync(request.CharacterId, context.CancellationToken);
+        if (character is null || character.AccountId != request.AccountId || character.DeleteDate != 0)
+        {
+            return new CharacterOnlineStateResponse { Success = false };
+        }
+
+        if (character.Online == 0)
+        {
+            character.Online = 1;
+            await _characterRepository.UpdateAsync(character, context.CancellationToken);
+        }
+
+        if (_charServer.RegisteredServerId >= 0)
+        {
+            await _loginServerIpc.NotifyAccountStatusAsync(
+                request.AccountId,
+                _charServer.RegisteredServerId,
+                online: true,
+                context.CancellationToken);
+        }
+
+        return new CharacterOnlineStateResponse { Success = true };
     }
 
-    public override Task<SetAllCharactersOfflineResponse> SetAllCharactersOffline(
+    public override async Task<SetAllCharactersOfflineResponse> SetAllCharactersOffline(
         SetAllCharactersOfflineRequest request,
         ServerCallContext context)
     {
         _logger.LogInformation("Received map-server all-offline request from map server {MapServerId}", request.MapServerId);
-        return Task.FromResult(new SetAllCharactersOfflineResponse { Success = true });
+
+        var onlineCharacters = await _characterRepository.GetOnlineCharactersAsync(context.CancellationToken);
+        foreach (var character in onlineCharacters)
+        {
+            character.Online = 0;
+            await _characterRepository.UpdateAsync(character, context.CancellationToken);
+        }
+
+        if (_charServer.RegisteredServerId >= 0)
+        {
+            await _loginServerIpc.SetAllOfflineAsync(_charServer.RegisteredServerId, context.CancellationToken);
+        }
+
+        return new SetAllCharactersOfflineResponse { Success = true };
     }
 
-    public override Task<RemoveFriendResponse> RequestRemoveFriend(
+    public override async Task<RemoveFriendResponse> RequestRemoveFriend(
         RemoveFriendRequest request,
         ServerCallContext context)
     {
-        return Task.FromResult(new RemoveFriendResponse
+        if (request.CharacterId <= 0 || request.FriendCharacterId <= 0)
         {
-            Success = request.CharacterId > 0 && request.FriendCharacterId > 0
-        });
+            return new RemoveFriendResponse { Success = false };
+        }
+
+        try
+        {
+            await _friendRepository.DeleteAsync((int)request.CharacterId, (int)request.FriendCharacterId, context.CancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed removing friend relation char {CharacterId} -> friend {FriendCharacterId}",
+                request.CharacterId,
+                request.FriendCharacterId);
+            return new RemoveFriendResponse { Success = false };
+        }
+
+        return new RemoveFriendResponse { Success = true };
     }
 
-    public override Task<CharacterNameResponse> RequestCharacterName(
+    public override async Task<CharacterNameResponse> RequestCharacterName(
         CharacterNameRequest request,
         ServerCallContext context)
     {
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(new CharacterNameResponse { Success = false, Name = string.Empty });
+            return new CharacterNameResponse { Success = false, Name = string.Empty };
         }
 
-        var characterData = BuildCharacterDataResponse(request.CharacterId);
-        return Task.FromResult(new CharacterNameResponse
+        var character = await LoadCharacterEntityAsync(request.CharacterId, context.CancellationToken);
+        if (character is null)
+        {
+            return new CharacterNameResponse { Success = false, Name = string.Empty };
+        }
+
+        return new CharacterNameResponse
         {
             Success = true,
-            Name = characterData.Character?.Name ?? string.Empty
-        });
+            Name = character.Name
+        };
     }
 
     public override async Task<CharacterEmailChangeResponse> RequestEmailChange(
@@ -505,14 +879,37 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         };
     }
 
-    public override Task<DivorceResponse> RequestDivorce(
+    public override async Task<DivorceResponse> RequestDivorce(
         DivorceRequest request,
         ServerCallContext context)
     {
-        return Task.FromResult(new DivorceResponse
+        if (request.CharacterId <= 0 || request.PartnerCharacterId <= 0)
         {
-            Success = request.CharacterId > 0
-        });
+            return new DivorceResponse { Success = false };
+        }
+
+        var updated = false;
+
+        var character = await LoadCharacterEntityAsync(request.CharacterId, context.CancellationToken);
+        if (character is not null && character.PartnerId != 0)
+        {
+            character.PartnerId = 0;
+            await _characterRepository.UpdateAsync(character, context.CancellationToken);
+            updated = true;
+        }
+
+        var partner = await LoadCharacterEntityAsync(request.PartnerCharacterId, context.CancellationToken);
+        if (partner is not null && partner.PartnerId != 0)
+        {
+            partner.PartnerId = 0;
+            await _characterRepository.UpdateAsync(partner, context.CancellationToken);
+            updated = true;
+        }
+
+        return new DivorceResponse
+        {
+            Success = updated
+        };
     }
 
     public override async Task<CharacterBanResponse> RequestCharacterBan(
@@ -550,65 +947,128 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         FameUpdateRequest request,
         ServerCallContext context)
     {
+        return UpdateFameInternalAsync(request, context);
+    }
+
+    private async Task<FameUpdateResponse> UpdateFameInternalAsync(
+        FameUpdateRequest request,
+        ServerCallContext context)
+    {
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(new FameUpdateResponse { Success = false });
+            return new FameUpdateResponse { Success = false };
         }
 
+        var character = await LoadCharacterEntityAsync(request.CharacterId, context.CancellationToken);
+        if (character is null)
+        {
+            return new FameUpdateResponse { Success = false };
+        }
+
+        character.Fame = (uint)Math.Max(request.Value, 0);
+        await _characterRepository.UpdateAsync(character, context.CancellationToken);
+
+        // Keep current in-memory cache in sync during migration; DB is source of truth.
         var fame = _fameByType.GetOrAdd(request.FameType, _ => new ConcurrentDictionary<long, int>());
         fame[request.CharacterId] = request.Value;
 
-        return Task.FromResult(new FameUpdateResponse { Success = true });
+        return new FameUpdateResponse { Success = true };
     }
 
-    public override Task<FameListResponse> RequestFameList(
+    public override async Task<FameListResponse> RequestFameList(
         FameListRequest request,
         ServerCallContext context)
     {
         var response = new FameListResponse { Success = true };
-        if (_fameByType.TryGetValue(request.FameType, out var fame))
+        var allowedClasses = GetFameClassFilter(request.FameType);
+        if (allowedClasses is null)
         {
-            foreach (var entry in fame.OrderByDescending(e => e.Value).Take(10))
-            {
-                response.Entries.Add(new FameEntry
-                {
-                    CharacterId = entry.Key,
-                    Value = entry.Value
-                });
-            }
+            return response;
         }
 
-        return Task.FromResult(response);
+        var rankedCharacters = await _dbContext.Characters
+            .AsNoTracking()
+            .Where(c => c.Fame > 0 && c.DeleteDate == 0 && allowedClasses.Contains(c.Class))
+            .OrderByDescending(c => c.Fame)
+            .ThenBy(c => c.CharId)
+            .Take(10)
+            .ToListAsync(context.CancellationToken);
+
+        foreach (var character in rankedCharacters)
+        {
+            response.Entries.Add(new FameEntry
+            {
+                CharacterId = character.CharId,
+                Value = (int)Math.Min(character.Fame, int.MaxValue)
+            });
+        }
+
+        return response;
     }
 
-    public override Task<BonusScriptGetResponse> GetBonusScript(
+    private static ushort[]? GetFameClassFilter(int fameType)
+    {
+        return fameType switch
+        {
+            FameTypeBlacksmith => BlacksmithFameClasses,
+            FameTypeAlchemist => AlchemistFameClasses,
+            FameTypeTaekwon => TaekwonFameClasses,
+            _ => null
+        };
+    }
+
+    public override async Task<BonusScriptGetResponse> GetBonusScript(
         BonusScriptGetRequest request,
         ServerCallContext context)
     {
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(new BonusScriptGetResponse { Success = false });
+            return new BonusScriptGetResponse { Success = false };
         }
 
-        _bonusScriptByCharacter.TryGetValue(request.CharacterId, out var data);
-        return Task.FromResult(new BonusScriptGetResponse
+        var rows = await _dbContext.BonusScripts
+            .AsNoTracking()
+            .Where(e => e.CharId == (int)request.CharacterId)
+            .ToListAsync(context.CancellationToken);
+
+        return new BonusScriptGetResponse
         {
             Success = true,
-            Data = Google.Protobuf.ByteString.CopyFrom(data ?? Array.Empty<byte>())
-        });
+            Data = Google.Protobuf.ByteString.CopyFrom(SerializeBonusScriptRows(rows))
+        };
     }
 
-    public override Task<BonusScriptSaveResponse> SaveBonusScript(
+    public override async Task<BonusScriptSaveResponse> SaveBonusScript(
         BonusScriptSaveRequest request,
         ServerCallContext context)
     {
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(new BonusScriptSaveResponse { Success = false });
+            return new BonusScriptSaveResponse { Success = false };
         }
 
-        _bonusScriptByCharacter[request.CharacterId] = request.Data.ToByteArray();
-        return Task.FromResult(new BonusScriptSaveResponse { Success = true });
+        if (!TryDeserializeBonusScriptRows(request.Data.ToByteArray(), out var rows))
+        {
+            return new BonusScriptSaveResponse { Success = false };
+        }
+
+        var charId = (int)request.CharacterId;
+        var existing = await _dbContext.BonusScripts
+            .Where(e => e.CharId == charId)
+            .ToListAsync(context.CancellationToken);
+        if (existing.Count > 0)
+        {
+            _dbContext.BonusScripts.RemoveRange(existing);
+        }
+
+        foreach (var row in rows)
+        {
+            row.CharId = charId;
+            _dbContext.BonusScripts.Add(row);
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new BonusScriptSaveResponse { Success = true };
     }
 
     public override Task<InterBroadcastResponse> InterBroadcast(
@@ -759,215 +1219,285 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         };
     }
 
-    public override Task<PartyCreateResponse> PartyCreate(
+    public override async Task<PartyCreateResponse> PartyCreate(
         PartyCreateRequest request,
         ServerCallContext context)
     {
         if (request.LeaderAccountId <= 0 || request.LeaderCharacterId <= 0 || string.IsNullOrWhiteSpace(request.Name))
         {
-            return Task.FromResult(new PartyCreateResponse
+            return new PartyCreateResponse
             {
                 Success = false,
                 ErrorMessage = "Invalid party create request"
-            });
+            };
         }
 
-        var partyId = Interlocked.Increment(ref _nextPartyId);
-        var party = new PartyState
+        var name = request.Name.Trim();
+        if (name.Length == 0 || name.Length > 24)
         {
-            PartyId = partyId,
-            Name = request.Name.Trim(),
-            Item = request.Item,
-            Item2 = request.Item2,
-            LeaderCharacterId = request.LeaderCharacterId
-        };
+            return new PartyCreateResponse
+            {
+                Success = false,
+                ErrorMessage = "Invalid party name"
+            };
+        }
 
-        party.Members[request.LeaderCharacterId] = new PartyMemberState
+        var leader = await _dbContext.Characters
+            .FirstOrDefaultAsync(
+                c => c.CharId == request.LeaderCharacterId && c.DeleteDate == 0,
+                context.CancellationToken);
+        if (leader is null || leader.AccountId != request.LeaderAccountId || leader.PartyId != 0)
         {
-            AccountId = request.LeaderAccountId,
-            CharacterId = request.LeaderCharacterId,
-            Name = request.LeaderName ?? string.Empty,
-            ClassId = request.LeaderClassId,
-            MapName = request.LeaderMapName ?? string.Empty,
-            Level = request.LeaderLevel,
-            Online = true
+            return new PartyCreateResponse
+            {
+                Success = false,
+                ErrorMessage = "Leader character is not eligible"
+            };
+        }
+
+        var nameExists = await _dbContext.Parties
+            .AsNoTracking()
+            .AnyAsync(p => p.Name == name, context.CancellationToken);
+        if (nameExists)
+        {
+            return new PartyCreateResponse
+            {
+                Success = false,
+                ErrorMessage = "Party name already exists"
+            };
+        }
+
+        var party = new PartyEntity
+        {
+            Name = name,
+            Exp = 0,
+            Item = (byte)Math.Clamp(request.Item, 0, byte.MaxValue),
+            LeaderId = request.LeaderAccountId,
+            LeaderChar = (int)request.LeaderCharacterId
         };
+        _dbContext.Parties.Add(party);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        _parties[partyId] = party;
+        leader.PartyId = party.PartyId;
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        return Task.FromResult(new PartyCreateResponse
+        return new PartyCreateResponse
         {
             Success = true,
-            PartyId = partyId
-        });
+            PartyId = party.PartyId
+        };
     }
 
-    public override Task<PartyInfoResponse> PartyInfo(
+    public override async Task<PartyInfoResponse> PartyInfo(
         PartyInfoRequest request,
         ServerCallContext context)
     {
-        if (!_parties.TryGetValue(request.PartyId, out var party))
+        var party = await LoadPartyInfoDataAsync(request.PartyId, context.CancellationToken);
+        if (party is null)
         {
-            return Task.FromResult(new PartyInfoResponse { Success = false });
+            return new PartyInfoResponse { Success = false };
         }
 
-        PartyInfoData data;
-        lock (party.SyncRoot)
-        {
-            data = new PartyInfoData
-            {
-                PartyId = party.PartyId,
-                Name = party.Name,
-                Item = party.Item,
-                Item2 = party.Item2,
-                LeaderCharacterId = party.LeaderCharacterId
-            };
-
-            data.Members.AddRange(party.Members.Values.Select(ToPartyMemberInfo));
-        }
-
-        return Task.FromResult(new PartyInfoResponse
+        return new PartyInfoResponse
         {
             Success = true,
-            Party = data
-        });
+            Party = party
+        };
     }
 
-    public override Task<PartyAddMemberResponse> PartyAddMember(
+    public override async Task<PartyAddMemberResponse> PartyAddMember(
         PartyAddMemberRequest request,
         ServerCallContext context)
     {
-        if (!_parties.TryGetValue(request.PartyId, out var party) ||
-            request.AccountId <= 0 ||
-            request.CharacterId <= 0)
+        if (request.PartyId <= 0 || request.AccountId <= 0 || request.CharacterId <= 0)
         {
-            return Task.FromResult(new PartyAddMemberResponse { Success = false });
+            return new PartyAddMemberResponse { Success = false };
         }
 
-        lock (party.SyncRoot)
+        var partyExists = await _dbContext.Parties
+            .AsNoTracking()
+            .AnyAsync(p => p.PartyId == request.PartyId, context.CancellationToken);
+        if (!partyExists)
         {
-            party.Members[request.CharacterId] = new PartyMemberState
-            {
-                AccountId = request.AccountId,
-                CharacterId = request.CharacterId,
-                Name = request.Name ?? string.Empty,
-                ClassId = request.ClassId,
-                MapName = request.MapName ?? string.Empty,
-                Level = request.Level,
-                Online = true
-            };
+            return new PartyAddMemberResponse { Success = false };
         }
 
-        return Task.FromResult(new PartyAddMemberResponse { Success = true });
+        var character = await _dbContext.Characters
+            .FirstOrDefaultAsync(
+                c => c.CharId == request.CharacterId && c.DeleteDate == 0,
+                context.CancellationToken);
+        if (character is null || character.AccountId != request.AccountId)
+        {
+            return new PartyAddMemberResponse { Success = false };
+        }
+
+        if (character.PartyId != 0 && character.PartyId != request.PartyId)
+        {
+            return new PartyAddMemberResponse { Success = false };
+        }
+
+        character.PartyId = request.PartyId;
+        if (request.ClassId > 0)
+        {
+            character.Class = (ushort)Math.Clamp(request.ClassId, 0, ushort.MaxValue);
+        }
+        if (request.Level > 0)
+        {
+            character.BaseLevel = (ushort)Math.Clamp(request.Level, 0, ushort.MaxValue);
+        }
+        if (!string.IsNullOrWhiteSpace(request.MapName))
+        {
+            character.LastMap = request.MapName;
+        }
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+
+        return new PartyAddMemberResponse { Success = true };
     }
 
-    public override Task<PartyChangeOptionResponse> PartyChangeOption(
+    public override async Task<PartyChangeOptionResponse> PartyChangeOption(
         PartyChangeOptionRequest request,
         ServerCallContext context)
     {
-        if (!_parties.TryGetValue(request.PartyId, out var party))
+        var party = await _dbContext.Parties
+            .FirstOrDefaultAsync(p => p.PartyId == request.PartyId, context.CancellationToken);
+        if (party is null)
         {
-            return Task.FromResult(new PartyChangeOptionResponse { Success = false });
+            return new PartyChangeOptionResponse { Success = false };
         }
 
-        lock (party.SyncRoot)
-        {
-            party.Item = request.Item;
-            party.Exp = request.Exp;
-        }
-
-        return Task.FromResult(new PartyChangeOptionResponse { Success = true });
+        party.Exp = (byte)Math.Clamp(request.Exp, 0, byte.MaxValue);
+        party.Item = (byte)Math.Clamp(request.Item, 0, byte.MaxValue);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new PartyChangeOptionResponse { Success = true };
     }
 
-    public override Task<PartyLeaveResponse> PartyLeave(
+    public override async Task<PartyLeaveResponse> PartyLeave(
         PartyLeaveRequest request,
         ServerCallContext context)
     {
-        if (!_parties.TryGetValue(request.PartyId, out var party))
+        var party = await _dbContext.Parties
+            .FirstOrDefaultAsync(p => p.PartyId == request.PartyId, context.CancellationToken);
+        if (party is null)
         {
-            return Task.FromResult(new PartyLeaveResponse { Success = false });
+            return new PartyLeaveResponse { Success = false };
         }
 
-        lock (party.SyncRoot)
+        var character = await _dbContext.Characters
+            .FirstOrDefaultAsync(c => c.CharId == request.CharacterId && c.DeleteDate == 0, context.CancellationToken);
+        if (character is null || character.PartyId != request.PartyId)
         {
-            party.Members.Remove(request.CharacterId);
-
-            if (party.LeaderCharacterId == request.CharacterId)
-            {
-                party.LeaderCharacterId = party.Members.Keys.FirstOrDefault();
-            }
-
-            if (party.Members.Count == 0)
-            {
-                _parties.TryRemove(request.PartyId, out _);
-            }
+            return new PartyLeaveResponse { Success = false };
         }
 
-        return Task.FromResult(new PartyLeaveResponse { Success = true });
+        character.PartyId = 0;
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+
+        var remainingMembers = await _dbContext.Characters
+            .AsNoTracking()
+            .Where(c => c.PartyId == request.PartyId && c.DeleteDate == 0)
+            .OrderBy(c => c.CharId)
+            .Select(c => new { c.CharId, c.AccountId })
+            .ToListAsync(context.CancellationToken);
+
+        if (remainingMembers.Count == 0)
+        {
+            _dbContext.Parties.Remove(party);
+        }
+        else if (party.LeaderChar == request.CharacterId)
+        {
+            party.LeaderChar = remainingMembers[0].CharId;
+            party.LeaderId = remainingMembers[0].AccountId;
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new PartyLeaveResponse { Success = true };
     }
 
-    public override Task<PartyChangeMapResponse> PartyChangeMap(
+    public override async Task<PartyChangeMapResponse> PartyChangeMap(
         PartyChangeMapRequest request,
         ServerCallContext context)
     {
-        if (!_parties.TryGetValue(request.PartyId, out var party))
+        var character = await _dbContext.Characters
+            .FirstOrDefaultAsync(
+                c => c.CharId == request.CharacterId && c.PartyId == request.PartyId && c.DeleteDate == 0,
+                context.CancellationToken);
+        if (character is null)
         {
-            return Task.FromResult(new PartyChangeMapResponse { Success = false });
+            return new PartyChangeMapResponse { Success = false };
         }
 
-        lock (party.SyncRoot)
+        character.Online = request.Online ? (short)1 : (short)0;
+        if (request.Level > 0)
         {
-            if (!party.Members.TryGetValue(request.CharacterId, out var member))
-            {
-                return Task.FromResult(new PartyChangeMapResponse { Success = false });
-            }
-
-            member.MapName = request.MapName ?? string.Empty;
-            member.Level = request.Level;
-            member.Online = request.Online;
+            character.BaseLevel = (ushort)Math.Clamp(request.Level, 0, ushort.MaxValue);
+        }
+        if (!string.IsNullOrWhiteSpace(request.MapName))
+        {
+            character.LastMap = request.MapName;
         }
 
-        return Task.FromResult(new PartyChangeMapResponse { Success = true });
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new PartyChangeMapResponse { Success = true };
     }
 
-    public override Task<PartyBreakResponse> PartyBreak(
+    public override async Task<PartyBreakResponse> PartyBreak(
         PartyBreakRequest request,
         ServerCallContext context)
     {
-        return Task.FromResult(new PartyBreakResponse
+        var party = await _dbContext.Parties
+            .FirstOrDefaultAsync(p => p.PartyId == request.PartyId, context.CancellationToken);
+        if (party is null)
         {
-            Success = _parties.TryRemove(request.PartyId, out _)
-        });
+            return new PartyBreakResponse { Success = false };
+        }
+
+        var members = await _dbContext.Characters
+            .Where(c => c.PartyId == request.PartyId)
+            .ToListAsync(context.CancellationToken);
+        foreach (var member in members)
+        {
+            member.PartyId = 0;
+        }
+
+        _dbContext.Parties.Remove(party);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new PartyBreakResponse { Success = true };
     }
 
-    public override Task<PartyMessageResponse> PartyMessage(
+    public override async Task<PartyMessageResponse> PartyMessage(
         PartyMessageRequest request,
         ServerCallContext context)
     {
-        var success = _parties.ContainsKey(request.PartyId) && !string.IsNullOrWhiteSpace(request.Message);
-        return Task.FromResult(new PartyMessageResponse { Success = success });
+        var exists = await _dbContext.Parties
+            .AsNoTracking()
+            .AnyAsync(p => p.PartyId == request.PartyId, context.CancellationToken);
+        var success = exists && !string.IsNullOrWhiteSpace(request.Message);
+        return new PartyMessageResponse { Success = success };
     }
 
-    public override Task<PartyLeaderChangeResponse> PartyLeaderChange(
+    public override async Task<PartyLeaderChangeResponse> PartyLeaderChange(
         PartyLeaderChangeRequest request,
         ServerCallContext context)
     {
-        if (!_parties.TryGetValue(request.PartyId, out var party))
+        var party = await _dbContext.Parties
+            .FirstOrDefaultAsync(p => p.PartyId == request.PartyId, context.CancellationToken);
+        if (party is null)
         {
-            return Task.FromResult(new PartyLeaderChangeResponse { Success = false });
+            return new PartyLeaderChangeResponse { Success = false };
         }
 
-        lock (party.SyncRoot)
+        var character = await _dbContext.Characters
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.CharId == request.CharacterId && c.PartyId == request.PartyId, context.CancellationToken);
+        if (character is null)
         {
-            if (!party.Members.ContainsKey(request.CharacterId))
-            {
-                return Task.FromResult(new PartyLeaderChangeResponse { Success = false });
-            }
-
-            party.LeaderCharacterId = request.CharacterId;
+            return new PartyLeaderChangeResponse { Success = false };
         }
 
-        return Task.FromResult(new PartyLeaderChangeResponse { Success = true });
+        party.LeaderChar = character.CharId;
+        party.LeaderId = character.AccountId;
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new PartyLeaderChangeResponse { Success = true };
     }
 
     public override Task<PartyShareLevelResponse> PartyShareLevel(
@@ -978,381 +1508,628 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         return Task.FromResult(new PartyShareLevelResponse { Success = true });
     }
 
-    public override Task<GuildCreateResponse> GuildCreate(
+    public override async Task<GuildCreateResponse> GuildCreate(
         GuildCreateRequest request,
         ServerCallContext context)
     {
         if (request.AccountId <= 0 || request.MasterCharacterId <= 0 || string.IsNullOrWhiteSpace(request.Name))
         {
-            return Task.FromResult(new GuildCreateResponse
+            return new GuildCreateResponse
             {
                 Success = false,
                 ErrorMessage = "Invalid guild create request"
-            });
+            };
         }
 
-        var guildId = Interlocked.Increment(ref _nextGuildId);
-        var guild = new GuildState
+        var guildName = request.Name.Trim();
+        if (guildName.Length == 0 || guildName.Length > 24)
         {
-            GuildId = guildId,
-            Name = request.Name.Trim(),
-            MasterCharacterId = request.MasterCharacterId,
-            Level = 1,
-            MaxMember = 16
+            return new GuildCreateResponse
+            {
+                Success = false,
+                ErrorMessage = "Invalid guild name"
+            };
+        }
+
+        var existingByName = await _dbContext.Guilds
+            .AsNoTracking()
+            .AnyAsync(g => g.Name == guildName, context.CancellationToken);
+        if (existingByName)
+        {
+            return new GuildCreateResponse
+            {
+                Success = false,
+                ErrorMessage = "Guild name already exists"
+            };
+        }
+
+        var masterChar = await _dbContext.Characters
+            .FirstOrDefaultAsync(c => c.CharId == request.MasterCharacterId && c.DeleteDate == 0, context.CancellationToken);
+        if (masterChar is null || masterChar.AccountId != request.AccountId || masterChar.GuildId != 0)
+        {
+            return new GuildCreateResponse
+            {
+                Success = false,
+                ErrorMessage = "Master character is not eligible"
+            };
+        }
+
+        var guild = new GuildEntity
+        {
+            Name = guildName,
+            CharId = masterChar.CharId,
+            Master = masterChar.Name,
+            GuildLv = 1,
+            MaxMember = 16,
+            AverageLv = (ushort)Math.Clamp((int)masterChar.BaseLevel, 1, ushort.MaxValue),
+            Mes1 = string.Empty,
+            Mes2 = string.Empty
         };
 
-        guild.Members[request.MasterCharacterId] = new GuildMemberState
+        _dbContext.Guilds.Add(guild);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+
+        _dbContext.GuildMembers.Add(new GuildMemberEntity
         {
-            AccountId = request.AccountId,
-            CharacterId = request.MasterCharacterId,
-            Name = request.MasterName ?? string.Empty,
-            ClassId = request.MasterClassId,
-            Level = request.MasterLevel,
-            Online = true,
-            PositionName = "Master"
-        };
+            GuildId = guild.GuildId,
+            CharId = masterChar.CharId,
+            Position = 0
+        });
+        masterChar.GuildId = guild.GuildId;
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        _guilds[guildId] = guild;
-
-        return Task.FromResult(new GuildCreateResponse
+        return new GuildCreateResponse
         {
             Success = true,
-            GuildId = guildId
-        });
+            GuildId = guild.GuildId
+        };
     }
 
-    public override Task<GuildInfoResponse> GuildInfo(
+    public override async Task<GuildInfoResponse> GuildInfo(
         GuildInfoRequest request,
         ServerCallContext context)
     {
-        if (!_guilds.TryGetValue(request.GuildId, out var guild))
+        var data = await LoadGuildInfoDataAsync(request.GuildId, context.CancellationToken);
+        if (data is null)
         {
-            return Task.FromResult(new GuildInfoResponse { Success = false });
+            return new GuildInfoResponse { Success = false };
         }
 
-        GuildInfoData data;
-        lock (guild.SyncRoot)
-        {
-            data = ToGuildInfoData(guild);
-        }
-
-        return Task.FromResult(new GuildInfoResponse
+        return new GuildInfoResponse
         {
             Success = true,
             Guild = data
-        });
+        };
     }
 
-    public override Task<GuildAddMemberResponse> GuildAddMember(
+    public override async Task<GuildAddMemberResponse> GuildAddMember(
         GuildAddMemberRequest request,
         ServerCallContext context)
     {
-        if (!_guilds.TryGetValue(request.GuildId, out var guild) ||
-            request.AccountId <= 0 ||
-            request.CharacterId <= 0)
+        if (request.GuildId <= 0 || request.AccountId <= 0 || request.CharacterId <= 0)
         {
-            return Task.FromResult(new GuildAddMemberResponse { Success = false });
+            return new GuildAddMemberResponse { Success = false };
         }
 
-        lock (guild.SyncRoot)
+        var guild = await _dbContext.Guilds
+            .FirstOrDefaultAsync(g => g.GuildId == request.GuildId, context.CancellationToken);
+        if (guild is null)
         {
-            guild.Members[request.CharacterId] = new GuildMemberState
+            return new GuildAddMemberResponse { Success = false };
+        }
+
+        var charEntity = await _dbContext.Characters
+            .FirstOrDefaultAsync(c => c.CharId == request.CharacterId && c.DeleteDate == 0, context.CancellationToken);
+        if (charEntity is null || charEntity.AccountId != request.AccountId)
+        {
+            return new GuildAddMemberResponse { Success = false };
+        }
+
+        if (charEntity.GuildId != 0 && charEntity.GuildId != request.GuildId)
+        {
+            return new GuildAddMemberResponse { Success = false };
+        }
+
+        var memberCount = await _dbContext.GuildMembers
+            .AsNoTracking()
+            .CountAsync(m => m.GuildId == request.GuildId, context.CancellationToken);
+        if (guild.MaxMember > 0 && memberCount >= guild.MaxMember)
+        {
+            return new GuildAddMemberResponse { Success = false };
+        }
+
+        var memberExists = await _dbContext.GuildMembers
+            .AsNoTracking()
+            .AnyAsync(m => m.GuildId == request.GuildId && m.CharId == request.CharacterId, context.CancellationToken);
+        if (!memberExists)
+        {
+            _dbContext.GuildMembers.Add(new GuildMemberEntity
             {
-                AccountId = request.AccountId,
-                CharacterId = request.CharacterId,
-                Name = request.Name ?? string.Empty,
-                ClassId = request.ClassId,
-                Level = request.Level,
-                Online = true,
-                PositionName = "Member"
-            };
+                CharId = (int)request.CharacterId,
+                GuildId = request.GuildId,
+                Position = 1
+            });
         }
 
-        return Task.FromResult(new GuildAddMemberResponse { Success = true });
+        charEntity.GuildId = request.GuildId;
+        if (request.Level > 0)
+        {
+            charEntity.BaseLevel = (ushort)Math.Clamp(request.Level, 1, ushort.MaxValue);
+        }
+        if (request.ClassId > 0)
+        {
+            charEntity.Class = (ushort)Math.Clamp(request.ClassId, 0, ushort.MaxValue);
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new GuildAddMemberResponse { Success = true };
     }
 
-    public override Task<GuildMasterChangeResponse> GuildMasterChange(
+    public override async Task<GuildMasterChangeResponse> GuildMasterChange(
         GuildMasterChangeRequest request,
         ServerCallContext context)
     {
-        if (!_guilds.TryGetValue(request.GuildId, out var guild))
+        var guild = await _dbContext.Guilds
+            .FirstOrDefaultAsync(g => g.GuildId == request.GuildId, context.CancellationToken);
+        if (guild is null)
         {
-            return Task.FromResult(new GuildMasterChangeResponse { Success = false });
+            return new GuildMasterChangeResponse { Success = false };
         }
 
-        lock (guild.SyncRoot)
+        var newMaster = await _dbContext.Characters
+            .FirstOrDefaultAsync(
+                c => c.GuildId == request.GuildId && c.DeleteDate == 0 &&
+                     c.Name == request.MasterName,
+                context.CancellationToken);
+        if (newMaster is null)
         {
-            var newMaster = guild.Members.Values
-                .FirstOrDefault(member => string.Equals(member.Name, request.MasterName, StringComparison.OrdinalIgnoreCase));
-            if (newMaster == null)
-            {
-                return Task.FromResult(new GuildMasterChangeResponse { Success = false });
-            }
-
-            guild.MasterCharacterId = newMaster.CharacterId;
-            newMaster.PositionName = "Master";
+            return new GuildMasterChangeResponse { Success = false };
         }
 
-        return Task.FromResult(new GuildMasterChangeResponse { Success = true });
+        var oldMasterMember = await _dbContext.GuildMembers
+            .FirstOrDefaultAsync(m => m.GuildId == request.GuildId && m.CharId == guild.CharId, context.CancellationToken);
+        var newMasterMember = await _dbContext.GuildMembers
+            .FirstOrDefaultAsync(m => m.GuildId == request.GuildId && m.CharId == newMaster.CharId, context.CancellationToken);
+        if (newMasterMember is null)
+        {
+            return new GuildMasterChangeResponse { Success = false };
+        }
+
+        if (oldMasterMember is not null && oldMasterMember.CharId != newMasterMember.CharId)
+        {
+            oldMasterMember.Position = 1;
+        }
+        newMasterMember.Position = 0;
+        guild.CharId = newMaster.CharId;
+        guild.Master = newMaster.Name;
+        guild.LastMasterChange = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new GuildMasterChangeResponse { Success = true };
     }
 
-    public override Task<GuildLeaveResponse> GuildLeave(
+    public override async Task<GuildLeaveResponse> GuildLeave(
         GuildLeaveRequest request,
         ServerCallContext context)
     {
-        if (!_guilds.TryGetValue(request.GuildId, out var guild))
+        var guild = await _dbContext.Guilds
+            .FirstOrDefaultAsync(g => g.GuildId == request.GuildId, context.CancellationToken);
+        if (guild is null)
         {
-            return Task.FromResult(new GuildLeaveResponse { Success = false });
+            return new GuildLeaveResponse { Success = false };
         }
 
-        lock (guild.SyncRoot)
+        var member = await _dbContext.GuildMembers
+            .FirstOrDefaultAsync(m => m.GuildId == request.GuildId && m.CharId == request.CharacterId, context.CancellationToken);
+        var charEntity = await _dbContext.Characters
+            .FirstOrDefaultAsync(c => c.CharId == request.CharacterId && c.GuildId == request.GuildId, context.CancellationToken);
+        if (member is null || charEntity is null)
         {
-            guild.Members.Remove(request.CharacterId);
+            return new GuildLeaveResponse { Success = false };
+        }
 
-            if (guild.MasterCharacterId == request.CharacterId)
-            {
-                guild.MasterCharacterId = guild.Members.Keys.FirstOrDefault();
-            }
+        _dbContext.GuildMembers.Remove(member);
+        charEntity.GuildId = 0;
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-            if (guild.Members.Count == 0)
+        var remaining = await _dbContext.GuildMembers
+            .AsNoTracking()
+            .Where(m => m.GuildId == request.GuildId)
+            .OrderBy(m => m.Position)
+            .ThenBy(m => m.CharId)
+            .ToListAsync(context.CancellationToken);
+
+        if (remaining.Count == 0)
+        {
+            _dbContext.Guilds.Remove(guild);
+        }
+        else if (guild.CharId == request.CharacterId)
+        {
+            var newMasterMember = remaining[0];
+            var newMasterChar = await _dbContext.Characters
+                .FirstOrDefaultAsync(c => c.CharId == newMasterMember.CharId, context.CancellationToken);
+            if (newMasterChar is not null)
             {
-                _guilds.TryRemove(request.GuildId, out _);
+                var mutableMasterMember = await _dbContext.GuildMembers
+                    .FirstOrDefaultAsync(m => m.GuildId == request.GuildId && m.CharId == newMasterMember.CharId, context.CancellationToken);
+                if (mutableMasterMember is not null)
+                {
+                    mutableMasterMember.Position = 0;
+                }
+
+                guild.CharId = newMasterChar.CharId;
+                guild.Master = newMasterChar.Name;
+                guild.LastMasterChange = DateTime.UtcNow;
             }
         }
 
-        return Task.FromResult(new GuildLeaveResponse { Success = true });
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new GuildLeaveResponse { Success = true };
     }
 
-    public override Task<GuildChangeMemberInfoShortResponse> GuildChangeMemberInfoShort(
+    public override async Task<GuildChangeMemberInfoShortResponse> GuildChangeMemberInfoShort(
         GuildChangeMemberInfoShortRequest request,
         ServerCallContext context)
     {
-        if (!_guilds.TryGetValue(request.GuildId, out var guild))
+        var memberExists = await _dbContext.GuildMembers
+            .AsNoTracking()
+            .AnyAsync(m => m.GuildId == request.GuildId && m.CharId == request.CharacterId, context.CancellationToken);
+        if (!memberExists)
         {
-            return Task.FromResult(new GuildChangeMemberInfoShortResponse { Success = false });
+            return new GuildChangeMemberInfoShortResponse { Success = false };
         }
 
-        lock (guild.SyncRoot)
+        var charEntity = await _dbContext.Characters
+            .FirstOrDefaultAsync(c => c.CharId == request.CharacterId && c.GuildId == request.GuildId, context.CancellationToken);
+        if (charEntity is null)
         {
-            if (!guild.Members.TryGetValue(request.CharacterId, out var member))
-            {
-                return Task.FromResult(new GuildChangeMemberInfoShortResponse { Success = false });
-            }
-
-            member.Online = request.Online;
-            member.Level = request.Level;
-            member.ClassId = request.ClassId;
+            return new GuildChangeMemberInfoShortResponse { Success = false };
         }
 
-        return Task.FromResult(new GuildChangeMemberInfoShortResponse { Success = true });
+        charEntity.Online = request.Online ? (short)1 : (short)0;
+        if (request.Level > 0)
+        {
+            charEntity.BaseLevel = (ushort)Math.Clamp(request.Level, 1, ushort.MaxValue);
+        }
+        if (request.ClassId > 0)
+        {
+            charEntity.Class = (ushort)Math.Clamp(request.ClassId, 0, ushort.MaxValue);
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new GuildChangeMemberInfoShortResponse { Success = true };
     }
 
-    public override Task<GuildBreakResponse> GuildBreak(
+    public override async Task<GuildBreakResponse> GuildBreak(
         GuildBreakRequest request,
         ServerCallContext context)
     {
-        return Task.FromResult(new GuildBreakResponse
+        var guild = await _dbContext.Guilds
+            .FirstOrDefaultAsync(g => g.GuildId == request.GuildId, context.CancellationToken);
+        if (guild is null)
         {
-            Success = _guilds.TryRemove(request.GuildId, out _)
-        });
+            return new GuildBreakResponse { Success = false };
+        }
+
+        var members = await _dbContext.Characters
+            .Where(c => c.GuildId == request.GuildId)
+            .ToListAsync(context.CancellationToken);
+        foreach (var member in members)
+        {
+            member.GuildId = 0;
+        }
+
+        _dbContext.Guilds.Remove(guild);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new GuildBreakResponse { Success = true };
     }
 
-    public override Task<GuildMessageResponse> GuildMessage(
+    public override async Task<GuildMessageResponse> GuildMessage(
         GuildMessageRequest request,
         ServerCallContext context)
     {
-        var success = _guilds.ContainsKey(request.GuildId) && !string.IsNullOrWhiteSpace(request.Message);
-        return Task.FromResult(new GuildMessageResponse { Success = success });
+        var guildExists = await _dbContext.Guilds
+            .AsNoTracking()
+            .AnyAsync(g => g.GuildId == request.GuildId, context.CancellationToken);
+        var success = guildExists && !string.IsNullOrWhiteSpace(request.Message);
+        return new GuildMessageResponse { Success = success };
     }
 
-    public override Task<GuildBasicInfoChangeResponse> GuildBasicInfoChange(
+    public override async Task<GuildBasicInfoChangeResponse> GuildBasicInfoChange(
         GuildBasicInfoChangeRequest request,
         ServerCallContext context)
     {
-        if (!_guilds.TryGetValue(request.GuildId, out var guild))
+        var guild = await _dbContext.Guilds
+            .FirstOrDefaultAsync(g => g.GuildId == request.GuildId, context.CancellationToken);
+        if (guild is null)
         {
-            return Task.FromResult(new GuildBasicInfoChangeResponse { Success = false });
+            return new GuildBasicInfoChangeResponse { Success = false };
         }
 
-        lock (guild.SyncRoot)
+        switch (request.Type)
         {
-            switch (request.Type)
-            {
-                case 1:
-                    guild.Name = request.Data.ToStringUtf8();
-                    break;
-                case 2:
-                    if (request.Data.Length >= 4)
-                    {
-                        guild.Level = BitConverter.ToInt32(request.Data.ToByteArray(), 0);
-                    }
-                    break;
-            }
+            case 1:
+                var newName = request.Data.ToStringUtf8().Trim();
+                if (newName.Length == 0 || newName.Length > 24)
+                {
+                    return new GuildBasicInfoChangeResponse { Success = false };
+                }
+
+                var nameConflict = await _dbContext.Guilds
+                    .AsNoTracking()
+                    .AnyAsync(g => g.GuildId != request.GuildId && g.Name == newName, context.CancellationToken);
+                if (nameConflict)
+                {
+                    return new GuildBasicInfoChangeResponse { Success = false };
+                }
+                guild.Name = newName;
+                break;
+            case 2:
+                if (request.Data.Length >= 4)
+                {
+                    guild.GuildLv = (byte)Math.Clamp(BitConverter.ToInt32(request.Data.ToByteArray(), 0), 0, byte.MaxValue);
+                }
+                break;
         }
 
-        return Task.FromResult(new GuildBasicInfoChangeResponse { Success = true });
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new GuildBasicInfoChangeResponse { Success = true };
     }
 
-    public override Task<GuildMemberInfoChangeResponse> GuildMemberInfoChange(
+    public override async Task<GuildMemberInfoChangeResponse> GuildMemberInfoChange(
         GuildMemberInfoChangeRequest request,
         ServerCallContext context)
     {
-        if (!_guilds.TryGetValue(request.GuildId, out var guild))
+        var member = await _dbContext.GuildMembers
+            .FirstOrDefaultAsync(m => m.GuildId == request.GuildId && m.CharId == request.CharacterId, context.CancellationToken);
+        if (member is null)
         {
-            return Task.FromResult(new GuildMemberInfoChangeResponse { Success = false });
+            return new GuildMemberInfoChangeResponse { Success = false };
         }
 
-        lock (guild.SyncRoot)
+        switch (request.Type)
         {
-            if (!guild.Members.TryGetValue(request.CharacterId, out var member))
-            {
-                return Task.FromResult(new GuildMemberInfoChangeResponse { Success = false });
-            }
-
-            switch (request.Type)
-            {
-                case 1:
-                    member.PositionName = request.Data.ToStringUtf8();
-                    break;
-                case 2:
-                    if (request.Data.Length >= 4)
+            case 1:
+                var position = await _dbContext.GuildPositions
+                    .FirstOrDefaultAsync(p => p.GuildId == request.GuildId && p.Position == member.Position, context.CancellationToken);
+                var posName = request.Data.ToStringUtf8();
+                if (position is null)
+                {
+                    _dbContext.GuildPositions.Add(new GuildPositionEntity
                     {
-                        member.ClassId = BitConverter.ToInt32(request.Data.ToByteArray(), 0);
+                        GuildId = request.GuildId,
+                        Position = member.Position,
+                        Name = posName
+                    });
+                }
+                else
+                {
+                    position.Name = posName;
+                }
+                break;
+            case 2:
+                if (request.Data.Length >= 4)
+                {
+                    var classId = BitConverter.ToInt32(request.Data.ToByteArray(), 0);
+                    var charEntity = await _dbContext.Characters
+                        .FirstOrDefaultAsync(c => c.CharId == request.CharacterId && c.GuildId == request.GuildId, context.CancellationToken);
+                    if (charEntity is not null)
+                    {
+                        charEntity.Class = (ushort)Math.Clamp(classId, 0, ushort.MaxValue);
                     }
-                    break;
-            }
+                }
+                break;
         }
 
-        return Task.FromResult(new GuildMemberInfoChangeResponse { Success = true });
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new GuildMemberInfoChangeResponse { Success = true };
     }
 
-    public override Task<GuildPositionChangeResponse> GuildPositionChange(
+    public override async Task<GuildPositionChangeResponse> GuildPositionChange(
         GuildPositionChangeRequest request,
         ServerCallContext context)
     {
-        if (!_guilds.TryGetValue(request.GuildId, out var guild))
+        var guildExists = await _dbContext.Guilds
+            .AsNoTracking()
+            .AnyAsync(g => g.GuildId == request.GuildId, context.CancellationToken);
+        if (!guildExists)
         {
-            return Task.FromResult(new GuildPositionChangeResponse { Success = false });
+            return new GuildPositionChangeResponse { Success = false };
         }
 
-        lock (guild.SyncRoot)
+        var index = (byte)Math.Clamp(request.Index, 0, byte.MaxValue);
+        var position = await _dbContext.GuildPositions
+            .FirstOrDefaultAsync(p => p.GuildId == request.GuildId && p.Position == index, context.CancellationToken);
+        if (position is null)
         {
-            guild.Positions[request.Index] = new GuildPositionState
+            position = new GuildPositionEntity
             {
-                Index = request.Index,
+                GuildId = request.GuildId,
+                Position = index,
                 Name = request.Position?.Name ?? string.Empty,
-                Mode = request.Position?.Mode ?? 0,
-                ExpMode = request.Position?.ExpMode ?? 0
+                Mode = (ushort)Math.Clamp(request.Position?.Mode ?? 0, 0, ushort.MaxValue),
+                ExpMode = (byte)Math.Clamp(request.Position?.ExpMode ?? 0, 0, byte.MaxValue)
             };
+            _dbContext.GuildPositions.Add(position);
+        }
+        else
+        {
+            position.Name = request.Position?.Name ?? string.Empty;
+            position.Mode = (ushort)Math.Clamp(request.Position?.Mode ?? 0, 0, ushort.MaxValue);
+            position.ExpMode = (byte)Math.Clamp(request.Position?.ExpMode ?? 0, 0, byte.MaxValue);
         }
 
-        return Task.FromResult(new GuildPositionChangeResponse { Success = true });
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new GuildPositionChangeResponse { Success = true };
     }
 
-    public override Task<GuildSkillUpResponse> GuildSkillUp(
+    public override async Task<GuildSkillUpResponse> GuildSkillUp(
         GuildSkillUpRequest request,
         ServerCallContext context)
     {
-        if (!_guilds.TryGetValue(request.GuildId, out var guild))
+        var guildExists = await _dbContext.Guilds
+            .AsNoTracking()
+            .AnyAsync(g => g.GuildId == request.GuildId, context.CancellationToken);
+        if (!guildExists)
         {
-            return Task.FromResult(new GuildSkillUpResponse { Success = false });
+            return new GuildSkillUpResponse { Success = false };
         }
 
-        lock (guild.SyncRoot)
+        var skillId = (ushort)Math.Clamp((int)request.SkillId, 0, ushort.MaxValue);
+        var skill = await _dbContext.GuildSkills
+            .FirstOrDefaultAsync(s => s.GuildId == request.GuildId && s.Id == skillId, context.CancellationToken);
+        var max = (byte)Math.Clamp(request.Max, 0, byte.MaxValue);
+        if (skill is null)
         {
-            guild.Skills[request.SkillId] = Math.Min(guild.Skills.GetValueOrDefault(request.SkillId) + 1, request.Max);
+            _dbContext.GuildSkills.Add(new GuildSkillEntity
+            {
+                GuildId = request.GuildId,
+                Id = skillId,
+                Lv = max == 0 ? (byte)0 : (byte)1
+            });
+        }
+        else
+        {
+            var nextLv = skill.Lv + 1;
+            skill.Lv = max == 0 ? (byte)0 : (byte)Math.Min(nextLv, max);
         }
 
-        return Task.FromResult(new GuildSkillUpResponse { Success = true });
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new GuildSkillUpResponse { Success = true };
     }
 
-    public override Task<GuildAllianceResponse> GuildAlliance(
+    public override async Task<GuildAllianceResponse> GuildAlliance(
         GuildAllianceRequest request,
         ServerCallContext context)
     {
-        var ok = _guilds.ContainsKey(request.GuildId1) && _guilds.ContainsKey(request.GuildId2);
-        return Task.FromResult(new GuildAllianceResponse { Success = ok });
+        var guild1 = await _dbContext.Guilds.FirstOrDefaultAsync(g => g.GuildId == request.GuildId1, context.CancellationToken);
+        var guild2 = await _dbContext.Guilds.FirstOrDefaultAsync(g => g.GuildId == request.GuildId2, context.CancellationToken);
+        if (guild1 is null || guild2 is null)
+        {
+            return new GuildAllianceResponse { Success = false };
+        }
+
+        if (request.Flag == 0)
+        {
+            var links = await _dbContext.GuildAlliances
+                .Where(a =>
+                    (a.GuildId == request.GuildId1 && a.AllianceId == request.GuildId2) ||
+                    (a.GuildId == request.GuildId2 && a.AllianceId == request.GuildId1))
+                .ToListAsync(context.CancellationToken);
+            if (links.Count > 0)
+            {
+                _dbContext.GuildAlliances.RemoveRange(links);
+            }
+        }
+        else
+        {
+            await UpsertGuildAllianceAsync(request.GuildId1, request.GuildId2, request.Flag, guild2.Name, context.CancellationToken);
+            await UpsertGuildAllianceAsync(request.GuildId2, request.GuildId1, request.Flag, guild1.Name, context.CancellationToken);
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new GuildAllianceResponse { Success = true };
     }
 
-    public override Task<GuildNoticeResponse> GuildNotice(
+    public override async Task<GuildNoticeResponse> GuildNotice(
         GuildNoticeRequest request,
         ServerCallContext context)
     {
-        if (!_guilds.TryGetValue(request.GuildId, out var guild))
+        var guild = await _dbContext.Guilds
+            .FirstOrDefaultAsync(g => g.GuildId == request.GuildId, context.CancellationToken);
+        if (guild is null)
         {
-            return Task.FromResult(new GuildNoticeResponse { Success = false });
+            return new GuildNoticeResponse { Success = false };
         }
 
-        lock (guild.SyncRoot)
-        {
-            guild.Notice1 = request.Notice1 ?? string.Empty;
-            guild.Notice2 = request.Notice2 ?? string.Empty;
-        }
+        guild.Mes1 = Truncate(request.Notice1 ?? string.Empty, 60);
+        guild.Mes2 = Truncate(request.Notice2 ?? string.Empty, 120);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        return Task.FromResult(new GuildNoticeResponse { Success = true });
+        return new GuildNoticeResponse { Success = true };
     }
 
-    public override Task<GuildEmblemResponse> GuildEmblem(
+    public override async Task<GuildEmblemResponse> GuildEmblem(
         GuildEmblemRequest request,
         ServerCallContext context)
     {
-        if (!_guilds.TryGetValue(request.GuildId, out var guild))
+        var guild = await _dbContext.Guilds
+            .FirstOrDefaultAsync(g => g.GuildId == request.GuildId, context.CancellationToken);
+        if (guild is null)
         {
-            return Task.FromResult(new GuildEmblemResponse { Success = false });
+            return new GuildEmblemResponse { Success = false };
         }
 
-        lock (guild.SyncRoot)
-        {
-            guild.EmblemData = request.Data.ToByteArray();
-            guild.EmblemVersion++;
-        }
+        var data = request.Data.ToByteArray();
+        guild.EmblemData = data;
+        guild.EmblemLen = (uint)data.Length;
+        guild.EmblemId = guild.EmblemId + 1;
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        return Task.FromResult(new GuildEmblemResponse { Success = true });
+        return new GuildEmblemResponse { Success = true };
     }
 
-    public override Task<GuildCastleDataLoadResponse> GuildCastleDataLoad(
+    public override async Task<GuildCastleDataLoadResponse> GuildCastleDataLoad(
         GuildCastleDataLoadRequest request,
         ServerCallContext context)
     {
         var response = new GuildCastleDataLoadResponse { Success = true };
-        foreach (var castleId in request.CastleIds)
+        foreach (var castleId in request.CastleIds.Where(id => id > 0).Distinct())
         {
-            if (_guildCastleData.TryGetValue(castleId, out var values))
+            var castle = await _dbContext.GuildCastles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.CastleId == castleId, context.CancellationToken);
+
+            for (var index = 1; index <= 17; index++)
             {
-                foreach (var value in values)
-                {
-                    response.Values[(castleId << 8) + value.Key] = value.Value;
-                }
+                response.Values[(castleId << 8) + index] = GetGuildCastleIndexValue(castle, index);
             }
         }
 
-        return Task.FromResult(response);
+        return response;
     }
 
-    public override Task<GuildCastleDataSaveResponse> GuildCastleDataSave(
+    public override async Task<GuildCastleDataSaveResponse> GuildCastleDataSave(
         GuildCastleDataSaveRequest request,
         ServerCallContext context)
     {
-        var castle = _guildCastleData.GetOrAdd(request.CastleId, _ => new Dictionary<int, int>());
-        castle[request.Index] = request.Value;
-        return Task.FromResult(new GuildCastleDataSaveResponse { Success = true });
+        if (request.CastleId <= 0 || request.Index <= 0)
+        {
+            return new GuildCastleDataSaveResponse { Success = false };
+        }
+
+        var castle = await _dbContext.GuildCastles
+            .FirstOrDefaultAsync(c => c.CastleId == request.CastleId, context.CancellationToken);
+        if (castle is null)
+        {
+            castle = new GuildCastleEntity { CastleId = request.CastleId };
+            _dbContext.GuildCastles.Add(castle);
+        }
+
+        if (!TrySetGuildCastleIndexValue(castle, request.Index, request.Value))
+        {
+            return new GuildCastleDataSaveResponse { Success = false };
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new GuildCastleDataSaveResponse { Success = true };
     }
 
-    public override Task<GuildEmblemVersionResponse> GuildEmblemVersion(
+    public override async Task<GuildEmblemVersionResponse> GuildEmblemVersion(
         GuildEmblemVersionRequest request,
         ServerCallContext context)
     {
-        if (!_guilds.TryGetValue(request.GuildId, out var guild))
+        var guild = await _dbContext.Guilds
+            .FirstOrDefaultAsync(g => g.GuildId == request.GuildId, context.CancellationToken);
+        if (guild is null)
         {
-            return Task.FromResult(new GuildEmblemVersionResponse { Success = false });
+            return new GuildEmblemVersionResponse { Success = false };
         }
 
-        lock (guild.SyncRoot)
-        {
-            guild.EmblemVersion = request.Version;
-        }
+        guild.EmblemId = (uint)Math.Max(request.Version, 0);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        return Task.FromResult(new GuildEmblemVersionResponse { Success = true });
+        return new GuildEmblemVersionResponse { Success = true };
     }
 
     public override Task<GuildStorageLoadResponse> GuildStorageLoad(
@@ -1779,109 +2556,127 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         });
     }
 
-    public override Task<QuestLoadResponse> QuestLoad(
+    public override async Task<QuestLoadResponse> QuestLoad(
         QuestLoadRequest request,
         ServerCallContext context)
     {
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(new QuestLoadResponse { Success = false });
+            return new QuestLoadResponse { Success = false };
         }
 
         var response = new QuestLoadResponse { Success = true };
-        if (_questsByCharacter.TryGetValue(request.CharacterId, out var quests))
-        {
-            lock (quests)
-            {
-                response.Quests.AddRange(
-                    quests.OrderBy(entry => entry.State == 2 ? 1 : 0)
-                        .Select(ToQuestEntryData));
-            }
-        }
+        var quests = await _dbContext.Quests
+            .AsNoTracking()
+            .Where(q => q.CharId == request.CharacterId)
+            .ToListAsync(context.CancellationToken);
+        response.Quests.AddRange(
+            quests.OrderBy(entry => ParseQuestState(entry.State) == 2 ? 1 : 0)
+                .Select(ToQuestEntryData));
 
-        return Task.FromResult(response);
+        return response;
     }
 
-    public override Task<QuestSaveResponse> QuestSave(
+    public override async Task<QuestSaveResponse> QuestSave(
         QuestSaveRequest request,
         ServerCallContext context)
     {
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(new QuestSaveResponse { Success = false });
+            return new QuestSaveResponse { Success = false };
         }
 
-        var entries = request.Quests.Select(ToQuestEntryState).ToList();
-        _questsByCharacter[request.CharacterId] = entries;
-        return Task.FromResult(new QuestSaveResponse { Success = true });
+        var charId = (int)request.CharacterId;
+        var existing = await _dbContext.Quests
+            .Where(q => q.CharId == charId)
+            .ToListAsync(context.CancellationToken);
+        if (existing.Count > 0)
+        {
+            _dbContext.Quests.RemoveRange(existing);
+        }
+
+        foreach (var quest in request.Quests)
+        {
+            _dbContext.Quests.Add(ToQuestEntity(charId, quest));
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new QuestSaveResponse { Success = true };
     }
 
-    public override Task<AchievementLoadResponse> AchievementLoad(
+    public override async Task<AchievementLoadResponse> AchievementLoad(
         AchievementLoadRequest request,
         ServerCallContext context)
     {
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(new AchievementLoadResponse { Success = false });
+            return new AchievementLoadResponse { Success = false };
         }
 
         var response = new AchievementLoadResponse { Success = true };
-        if (_achievementsByCharacter.TryGetValue(request.CharacterId, out var achievements))
-        {
-            lock (achievements)
-            {
-                response.Achievements.AddRange(
-                    achievements.OrderBy(entry => entry.CompletedUnix > 0 ? 1 : 0)
-                        .Select(ToAchievementEntryData));
-            }
-        }
+        var achievements = await _dbContext.Achievements
+            .AsNoTracking()
+            .Where(a => a.CharId == request.CharacterId)
+            .ToListAsync(context.CancellationToken);
+        response.Achievements.AddRange(
+            achievements.OrderBy(entry => entry.Completed.HasValue ? 1 : 0)
+                .Select(ToAchievementEntryData));
 
-        return Task.FromResult(response);
+        return response;
     }
 
-    public override Task<AchievementSaveResponse> AchievementSave(
+    public override async Task<AchievementSaveResponse> AchievementSave(
         AchievementSaveRequest request,
         ServerCallContext context)
     {
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(new AchievementSaveResponse { Success = false });
+            return new AchievementSaveResponse { Success = false };
         }
 
-        var entries = request.Achievements.Select(ToAchievementEntryState).ToList();
-        _achievementsByCharacter[request.CharacterId] = entries;
-        return Task.FromResult(new AchievementSaveResponse { Success = true });
+        var charId = (int)request.CharacterId;
+        var existing = await _dbContext.Achievements
+            .Where(a => a.CharId == charId)
+            .ToListAsync(context.CancellationToken);
+        if (existing.Count > 0)
+        {
+            _dbContext.Achievements.RemoveRange(existing);
+        }
+
+        foreach (var achievement in request.Achievements)
+        {
+            _dbContext.Achievements.Add(ToAchievementEntity(charId, achievement));
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new AchievementSaveResponse { Success = true };
     }
 
-    public override Task<AchievementRewardResponse> AchievementReward(
+    public override async Task<AchievementRewardResponse> AchievementReward(
         AchievementRewardRequest request,
         ServerCallContext context)
     {
         if (request.CharacterId <= 0 || request.AchievementId <= 0)
         {
-            return Task.FromResult(new AchievementRewardResponse { Success = false, RewardedUnix = 0 });
+            return new AchievementRewardResponse { Success = false, RewardedUnix = 0 };
         }
 
-        if (!_achievementsByCharacter.TryGetValue(request.CharacterId, out var achievements))
+        var achievement = await _dbContext.Achievements
+            .FirstOrDefaultAsync(
+                a => a.CharId == request.CharacterId && a.Id == request.AchievementId,
+                context.CancellationToken);
+        if (achievement is null || !achievement.Completed.HasValue || achievement.Rewarded.HasValue)
         {
-            return Task.FromResult(new AchievementRewardResponse { Success = false, RewardedUnix = 0 });
+            return new AchievementRewardResponse { Success = false, RewardedUnix = 0 };
         }
 
-        lock (achievements)
+        achievement.Rewarded = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new AchievementRewardResponse
         {
-            var achievement = achievements.FirstOrDefault(entry => entry.AchievementId == request.AchievementId);
-            if (achievement == null || achievement.CompletedUnix <= 0 || achievement.RewardedUnix > 0)
-            {
-                return Task.FromResult(new AchievementRewardResponse { Success = false, RewardedUnix = 0 });
-            }
-
-            achievement.RewardedUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            return Task.FromResult(new AchievementRewardResponse
-            {
-                Success = true,
-                RewardedUnix = achievement.RewardedUnix
-            });
-        }
+            Success = true,
+            RewardedUnix = ((DateTimeOffset)achievement.Rewarded.Value).ToUnixTimeSeconds()
+        };
     }
 
     public override Task<PetCreateResponse> PetCreate(
@@ -2338,53 +3133,98 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             : auction.SellerCharacterId == characterId);
     }
 
-    private static QuestEntryData ToQuestEntryData(QuestEntryState quest)
+    private static QuestEntryData ToQuestEntryData(QuestEntity quest)
     {
         var data = new QuestEntryData
         {
-            QuestId = quest.QuestId,
-            TimeUnix = quest.TimeUnix,
-            State = quest.State
+            QuestId = (int)Math.Min(quest.QuestId, int.MaxValue),
+            TimeUnix = quest.Time,
+            State = ParseQuestState(quest.State)
         };
-        data.Counts.AddRange(quest.Counts);
+        data.Counts.Add((int)quest.Count1);
+        data.Counts.Add((int)quest.Count2);
+        data.Counts.Add((int)quest.Count3);
         return data;
     }
 
-    private static QuestEntryState ToQuestEntryState(QuestEntryData quest)
+    private static QuestEntity ToQuestEntity(int charId, QuestEntryData quest)
     {
-        return new QuestEntryState
+        return new QuestEntity
         {
-            QuestId = quest.QuestId,
-            TimeUnix = quest.TimeUnix,
-            State = quest.State,
-            Counts = quest.Counts.ToList()
+            CharId = charId,
+            QuestId = SafeUIntFromInt(quest.QuestId),
+            Time = SafeUIntFromLong(quest.TimeUnix),
+            State = quest.State.ToString(),
+            Count1 = SafeUIntFromRepeated(quest.Counts, 0),
+            Count2 = SafeUIntFromRepeated(quest.Counts, 1),
+            Count3 = SafeUIntFromRepeated(quest.Counts, 2)
         };
     }
 
-    private static AchievementEntryData ToAchievementEntryData(AchievementEntryState achievement)
+    private static AchievementEntryData ToAchievementEntryData(AchievementEntity achievement)
     {
         var data = new AchievementEntryData
         {
-            AchievementId = achievement.AchievementId,
-            CompletedUnix = achievement.CompletedUnix,
-            RewardedUnix = achievement.RewardedUnix,
-            Score = achievement.Score
+            AchievementId = (int)Math.Clamp(achievement.Id, int.MinValue, int.MaxValue),
+            CompletedUnix = achievement.Completed.HasValue ? ((DateTimeOffset)achievement.Completed.Value).ToUnixTimeSeconds() : 0,
+            RewardedUnix = achievement.Rewarded.HasValue ? ((DateTimeOffset)achievement.Rewarded.Value).ToUnixTimeSeconds() : 0,
+            Score = 0
         };
-        data.Counts.AddRange(achievement.Counts);
+        data.Counts.Add((int)achievement.Count1);
+        data.Counts.Add((int)achievement.Count2);
+        data.Counts.Add((int)achievement.Count3);
+        data.Counts.Add((int)achievement.Count4);
+        data.Counts.Add((int)achievement.Count5);
+        data.Counts.Add((int)achievement.Count6);
+        data.Counts.Add((int)achievement.Count7);
+        data.Counts.Add((int)achievement.Count8);
+        data.Counts.Add((int)achievement.Count9);
+        data.Counts.Add((int)achievement.Count10);
         return data;
     }
 
-    private static AchievementEntryState ToAchievementEntryState(AchievementEntryData achievement)
+    private static AchievementEntity ToAchievementEntity(int charId, AchievementEntryData achievement)
     {
-        return new AchievementEntryState
+        return new AchievementEntity
         {
-            AchievementId = achievement.AchievementId,
-            CompletedUnix = achievement.CompletedUnix,
-            RewardedUnix = achievement.RewardedUnix,
-            Score = achievement.Score,
-            Counts = achievement.Counts.ToList()
+            CharId = charId,
+            Id = achievement.AchievementId,
+            Count1 = SafeUIntFromRepeated(achievement.Counts, 0),
+            Count2 = SafeUIntFromRepeated(achievement.Counts, 1),
+            Count3 = SafeUIntFromRepeated(achievement.Counts, 2),
+            Count4 = SafeUIntFromRepeated(achievement.Counts, 3),
+            Count5 = SafeUIntFromRepeated(achievement.Counts, 4),
+            Count6 = SafeUIntFromRepeated(achievement.Counts, 5),
+            Count7 = SafeUIntFromRepeated(achievement.Counts, 6),
+            Count8 = SafeUIntFromRepeated(achievement.Counts, 7),
+            Count9 = SafeUIntFromRepeated(achievement.Counts, 8),
+            Count10 = SafeUIntFromRepeated(achievement.Counts, 9),
+            Completed = achievement.CompletedUnix > 0
+                ? DateTimeOffset.FromUnixTimeSeconds(achievement.CompletedUnix).UtcDateTime
+                : null,
+            Rewarded = achievement.RewardedUnix > 0
+                ? DateTimeOffset.FromUnixTimeSeconds(achievement.RewardedUnix).UtcDateTime
+                : null
         };
     }
+
+    private static uint SafeUIntFromRepeated(Google.Protobuf.Collections.RepeatedField<int> values, int index)
+    {
+        if (index < 0 || index >= values.Count)
+        {
+            return 0;
+        }
+        return values[index] < 0 ? 0u : (uint)values[index];
+    }
+
+    private static uint SafeUIntFromLong(long value)
+        => value < 0 ? 0u : value > uint.MaxValue ? uint.MaxValue : (uint)value;
+
+    private static uint SafeUIntFromInt(int value)
+        => value < 0 ? 0u : (uint)value;
+
+    private static int ParseQuestState(string? state)
+        => int.TryParse(state, out var parsed) ? parsed : 0;
 
     private static PetData ToPetData(PetState pet)
     {
@@ -2566,72 +3406,174 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         return data;
     }
 
-    private static PartyMemberInfo ToPartyMemberInfo(PartyMemberState member)
+    private async Task<PartyInfoData?> LoadPartyInfoDataAsync(int partyId, CancellationToken ct)
     {
-        return new PartyMemberInfo
+        var party = await _dbContext.Parties
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.PartyId == partyId, ct);
+        if (party is null)
+        {
+            return null;
+        }
+
+        var members = await _dbContext.Characters
+            .AsNoTracking()
+            .Where(c => c.PartyId == partyId && c.DeleteDate == 0)
+            .OrderBy(c => c.CharId == party.LeaderChar ? 0 : 1)
+            .ThenBy(c => c.CharId)
+            .ToListAsync(ct);
+
+        var data = new PartyInfoData
+        {
+            PartyId = party.PartyId,
+            Name = party.Name,
+            Item = party.Item,
+            // Current schema has a single `party.item`; keep item2 aligned until schema expands.
+            Item2 = party.Item,
+            LeaderCharacterId = party.LeaderChar
+        };
+
+        data.Members.AddRange(members.Select(member => new PartyMemberInfo
         {
             AccountId = member.AccountId,
-            CharacterId = member.CharacterId,
+            CharacterId = member.CharId,
             Name = member.Name,
-            ClassId = member.ClassId,
-            MapName = member.MapName,
-            Level = member.Level,
-            Online = member.Online
+            ClassId = member.Class,
+            MapName = member.LastMap,
+            Level = member.BaseLevel,
+            Online = member.Online != 0
+        }));
+
+        return data;
+    }
+
+    private static int GetGuildCastleIndexValue(GuildCastleEntity? castle, int index)
+    {
+        if (castle is null)
+        {
+            return 0;
+        }
+
+        return index switch
+        {
+            1 => castle.GuildId,
+            2 => SafeInt(castle.Economy),
+            3 => SafeInt(castle.Defense),
+            4 => SafeInt(castle.TriggerE),
+            5 => SafeInt(castle.TriggerD),
+            6 => SafeInt(castle.NextTime),
+            7 => SafeInt(castle.PayTime),
+            8 => SafeInt(castle.CreateTime),
+            9 => SafeInt(castle.VisibleC),
+            10 => SafeInt(castle.VisibleG0),
+            11 => SafeInt(castle.VisibleG1),
+            12 => SafeInt(castle.VisibleG2),
+            13 => SafeInt(castle.VisibleG3),
+            14 => SafeInt(castle.VisibleG4),
+            15 => SafeInt(castle.VisibleG5),
+            16 => SafeInt(castle.VisibleG6),
+            17 => SafeInt(castle.VisibleG7),
+            _ => 0
         };
     }
 
-    private sealed class PartyState
+    private static bool TrySetGuildCastleIndexValue(GuildCastleEntity castle, int index, int value)
     {
-        public int PartyId { get; init; }
-        public string Name { get; set; } = string.Empty;
-        public int Item { get; set; }
-        public int Item2 { get; set; }
-        public int Exp { get; set; }
-        public long LeaderCharacterId { get; set; }
-        public object SyncRoot { get; } = new();
-        public Dictionary<long, PartyMemberState> Members { get; } = new();
+        switch (index)
+        {
+            case 1: castle.GuildId = value; return true;
+            case 2: castle.Economy = SafeUInt(value); return true;
+            case 3: castle.Defense = SafeUInt(value); return true;
+            case 4: castle.TriggerE = SafeUInt(value); return true;
+            case 5: castle.TriggerD = SafeUInt(value); return true;
+            case 6: castle.NextTime = SafeUInt(value); return true;
+            case 7: castle.PayTime = SafeUInt(value); return true;
+            case 8: castle.CreateTime = SafeUInt(value); return true;
+            case 9: castle.VisibleC = SafeUInt(value); return true;
+            case 10: castle.VisibleG0 = SafeUInt(value); return true;
+            case 11: castle.VisibleG1 = SafeUInt(value); return true;
+            case 12: castle.VisibleG2 = SafeUInt(value); return true;
+            case 13: castle.VisibleG3 = SafeUInt(value); return true;
+            case 14: castle.VisibleG4 = SafeUInt(value); return true;
+            case 15: castle.VisibleG5 = SafeUInt(value); return true;
+            case 16: castle.VisibleG6 = SafeUInt(value); return true;
+            case 17: castle.VisibleG7 = SafeUInt(value); return true;
+            default:
+                return false;
+        }
     }
 
-    private sealed class PartyMemberState
-    {
-        public int AccountId { get; init; }
-        public long CharacterId { get; init; }
-        public string Name { get; init; } = string.Empty;
-        public int ClassId { get; init; }
-        public string MapName { get; set; } = string.Empty;
-        public uint Level { get; set; }
-        public bool Online { get; set; }
-    }
+    private static uint SafeUInt(int value) => value < 0 ? 0u : (uint)value;
+    private static int SafeInt(uint value) => value > int.MaxValue ? int.MaxValue : (int)value;
 
-    private static GuildInfoData ToGuildInfoData(GuildState guild)
+    private async Task<GuildInfoData?> LoadGuildInfoDataAsync(int guildId, CancellationToken ct)
     {
+        var guild = await _dbContext.Guilds
+            .AsNoTracking()
+            .FirstOrDefaultAsync(g => g.GuildId == guildId, ct);
+        if (guild is null)
+        {
+            return null;
+        }
+
+        var members = await _dbContext.GuildMembers
+            .AsNoTracking()
+            .Where(m => m.GuildId == guildId)
+            .OrderBy(m => m.Position)
+            .ThenBy(m => m.CharId)
+            .ToListAsync(ct);
+
+        var positions = await _dbContext.GuildPositions
+            .AsNoTracking()
+            .Where(p => p.GuildId == guildId)
+            .OrderBy(p => p.Position)
+            .ToListAsync(ct);
+        var positionById = positions.ToDictionary(p => p.Position, p => p);
+
+        var memberCharIds = members.Select(m => m.CharId).ToList();
+        var memberChars = memberCharIds.Count == 0
+            ? new List<CharEntity>()
+            : await _dbContext.Characters
+                .AsNoTracking()
+                .Where(c => memberCharIds.Contains(c.CharId))
+                .ToListAsync(ct);
+        var memberCharById = memberChars.ToDictionary(c => c.CharId, c => c);
+
         var data = new GuildInfoData
         {
             GuildId = guild.GuildId,
             Name = guild.Name,
-            Level = guild.Level,
+            Level = guild.GuildLv,
             MaxMember = guild.MaxMember,
-            MasterCharacterId = (int)Math.Clamp(guild.MasterCharacterId, int.MinValue, int.MaxValue),
-            EmblemVersion = guild.EmblemVersion,
+            MasterCharacterId = guild.CharId,
+            EmblemVersion = (int)Math.Min(guild.EmblemId, int.MaxValue),
             EmblemData = Google.Protobuf.ByteString.CopyFrom(guild.EmblemData ?? Array.Empty<byte>()),
-            Notice1 = guild.Notice1,
-            Notice2 = guild.Notice2
+            Notice1 = guild.Mes1,
+            Notice2 = guild.Mes2
         };
 
-        data.Members.AddRange(guild.Members.Values.Select(member => new GuildMemberInfo
+        data.Members.AddRange(members.Select(member =>
         {
-            AccountId = member.AccountId,
-            CharacterId = member.CharacterId,
-            Name = member.Name,
-            ClassId = member.ClassId,
-            Level = member.Level,
-            Online = member.Online,
-            PositionName = member.PositionName
+            memberCharById.TryGetValue(member.CharId, out var character);
+            var positionName = positionById.TryGetValue(member.Position, out var pos)
+                ? pos.Name
+                : member.Position == 0 ? "Master" : "Member";
+
+            return new GuildMemberInfo
+            {
+                AccountId = character?.AccountId ?? 0,
+                CharacterId = member.CharId,
+                Name = character?.Name ?? string.Empty,
+                ClassId = character?.Class ?? 0,
+                Level = character?.BaseLevel ?? 0,
+                Online = (character?.Online ?? 0) != 0,
+                PositionName = positionName
+            };
         }));
 
-        data.Positions.AddRange(guild.Positions.Values.OrderBy(position => position.Index).Select(position => new GuildPositionInfo
+        data.Positions.AddRange(positions.Select(position => new GuildPositionInfo
         {
-            Index = position.Index,
+            Index = position.Position,
             Name = position.Name,
             Mode = position.Mode,
             ExpMode = position.ExpMode
@@ -2640,40 +3582,38 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         return data;
     }
 
-    private sealed class GuildState
+    private async Task UpsertGuildAllianceAsync(
+        int guildId,
+        int allianceId,
+        int opposition,
+        string allianceName,
+        CancellationToken ct)
     {
-        public int GuildId { get; init; }
-        public string Name { get; set; } = string.Empty;
-        public int Level { get; set; }
-        public int MaxMember { get; set; }
-        public long MasterCharacterId { get; set; }
-        public int EmblemVersion { get; set; }
-        public byte[] EmblemData { get; set; } = Array.Empty<byte>();
-        public string Notice1 { get; set; } = string.Empty;
-        public string Notice2 { get; set; } = string.Empty;
-        public object SyncRoot { get; } = new();
-        public Dictionary<long, GuildMemberState> Members { get; } = new();
-        public Dictionary<int, GuildPositionState> Positions { get; } = new();
-        public Dictionary<uint, int> Skills { get; } = new();
+        var entry = await _dbContext.GuildAlliances
+            .FirstOrDefaultAsync(a => a.GuildId == guildId && a.AllianceId == allianceId, ct);
+        if (entry is null)
+        {
+            _dbContext.GuildAlliances.Add(new GuildAllianceEntity
+            {
+                GuildId = guildId,
+                AllianceId = allianceId,
+                Opposition = opposition,
+                Name = allianceName
+            });
+            return;
+        }
+
+        entry.Opposition = opposition;
+        entry.Name = allianceName;
     }
 
-    private sealed class GuildMemberState
+    private static string Truncate(string value, int maxLength)
     {
-        public int AccountId { get; init; }
-        public long CharacterId { get; init; }
-        public string Name { get; init; } = string.Empty;
-        public int ClassId { get; set; }
-        public uint Level { get; set; }
-        public bool Online { get; set; }
-        public string PositionName { get; set; } = string.Empty;
-    }
-
-    private sealed class GuildPositionState
-    {
-        public int Index { get; init; }
-        public string Name { get; init; } = string.Empty;
-        public int Mode { get; init; }
-        public int ExpMode { get; init; }
+        if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
+        {
+            return value;
+        }
+        return value[..maxLength];
     }
 
     private sealed class MailState
@@ -2709,23 +3649,6 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         public int Hours { get; init; }
         public long EndTimeUnix { get; init; }
         public byte[] ItemPayload { get; init; } = Array.Empty<byte>();
-    }
-
-    private sealed class QuestEntryState
-    {
-        public int QuestId { get; init; }
-        public long TimeUnix { get; init; }
-        public int State { get; init; }
-        public List<int> Counts { get; init; } = new();
-    }
-
-    private sealed class AchievementEntryState
-    {
-        public int AchievementId { get; init; }
-        public List<int> Counts { get; init; } = new();
-        public long CompletedUnix { get; init; }
-        public long RewardedUnix { get; set; }
-        public int Score { get; init; }
     }
 
     private sealed class PetState
@@ -2815,23 +3738,258 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         public string Name { get; init; } = string.Empty;
     }
 
-    private static CharacterDataResponse BuildCharacterDataResponse(long characterId)
+    private async Task<CharEntity?> LoadCharacterEntityAsync(long characterId, CancellationToken cancellationToken)
+    {
+        if (characterId <= 0 || characterId > int.MaxValue)
+        {
+            return null;
+        }
+
+        return await _characterRepository.GetByIdAsync((int)characterId, cancellationToken);
+    }
+
+    private static CharacterInfo ToCharacterInfo(CharEntity character)
+    {
+        return new CharacterInfo
+        {
+            CharacterId = character.CharId,
+            Name = character.Name,
+            Level = character.BaseLevel,
+            ClassId = character.Class,
+            CreatedAt = character.LastLogin.HasValue
+                ? new DateTimeOffset(character.LastLogin.Value).ToUnixTimeSeconds()
+                : 0
+        };
+    }
+
+    private static CharacterDataResponse ToCharacterDataResponse(CharEntity character)
     {
         return new CharacterDataResponse
         {
-            Character = new CharacterInfo
-            {
-                CharacterId = characterId,
-                Name = "TestChar",
-                Level = 50,
-                ClassId = 1,
-                CreatedAt = DateTimeOffset.UtcNow.AddDays(-30).ToUnixTimeSeconds()
-            },
-            MapId = 1,
-            PositionX = 100.0f,
-            PositionY = 0.0f,
-            PositionZ = 100.0f
+            Character = ToCharacterInfo(character),
+            MapId = 0,
+            PositionX = character.LastX,
+            PositionY = character.LastY,
+            PositionZ = 0
         };
+    }
+
+    private static bool TryFindAvailableSlot(IReadOnlyCollection<CharEntity> activeCharacters, out byte slot)
+    {
+        var usedSlots = activeCharacters.Select(c => c.CharNum).ToHashSet();
+        for (byte i = 0; i < 9; i++)
+        {
+            if (!usedSlots.Contains(i))
+            {
+                slot = i;
+                return true;
+            }
+        }
+
+        slot = 0;
+        return false;
+    }
+
+    private static bool IsDeleteBlockedByBaseLevel(ushort baseLevel, int deleteLevelConfig)
+    {
+        if (deleteLevelConfig == 0)
+        {
+            return false;
+        }
+
+        if (deleteLevelConfig > 0)
+        {
+            return baseLevel >= deleteLevelConfig;
+        }
+
+        return baseLevel <= -deleteLevelConfig;
+    }
+
+    private static byte[] SerializeStatusChangeRows(IReadOnlyCollection<ScDataEntity> rows)
+    {
+        using var ms = new MemoryStream();
+        using var writer = new BinaryWriter(ms);
+        writer.Write((byte)1); // payload version
+        writer.Write(rows.Count);
+        foreach (var row in rows)
+        {
+            writer.Write(row.AccountId);
+            writer.Write(row.CharId);
+            writer.Write(row.Type);
+            writer.Write(row.Tick);
+            writer.Write(row.Val1);
+            writer.Write(row.Val2);
+            writer.Write(row.Val3);
+            writer.Write(row.Val4);
+        }
+
+        return ms.ToArray();
+    }
+
+    private static bool TryDeserializeStatusChangeRows(byte[] payload, out List<ScDataEntity> rows)
+    {
+        rows = [];
+        try
+        {
+            using var ms = new MemoryStream(payload);
+            using var reader = new BinaryReader(ms);
+            var version = reader.ReadByte();
+            if (version != 1)
+            {
+                return false;
+            }
+
+            var count = reader.ReadInt32();
+            if (count < 0)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < count; i++)
+            {
+                rows.Add(new ScDataEntity
+                {
+                    AccountId = reader.ReadInt32(),
+                    CharId = reader.ReadInt32(),
+                    Type = reader.ReadUInt16(),
+                    Tick = reader.ReadInt64(),
+                    Val1 = reader.ReadInt32(),
+                    Val2 = reader.ReadInt32(),
+                    Val3 = reader.ReadInt32(),
+                    Val4 = reader.ReadInt32()
+                });
+            }
+
+            return ms.Position == ms.Length;
+        }
+        catch
+        {
+            rows = [];
+            return false;
+        }
+    }
+
+    private static byte[] SerializeSkillCooldownRows(IReadOnlyCollection<SkillCooldownEntity> rows)
+    {
+        using var ms = new MemoryStream();
+        using var writer = new BinaryWriter(ms);
+        writer.Write((byte)1); // payload version
+        writer.Write(rows.Count);
+        foreach (var row in rows)
+        {
+            writer.Write(row.AccountId);
+            writer.Write(row.CharId);
+            writer.Write(row.Skill);
+            writer.Write(row.Tick);
+        }
+
+        return ms.ToArray();
+    }
+
+    private static bool TryDeserializeSkillCooldownRows(byte[] payload, out List<SkillCooldownEntity> rows)
+    {
+        rows = [];
+        try
+        {
+            using var ms = new MemoryStream(payload);
+            using var reader = new BinaryReader(ms);
+            var version = reader.ReadByte();
+            if (version != 1)
+            {
+                return false;
+            }
+
+            var count = reader.ReadInt32();
+            if (count < 0)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < count; i++)
+            {
+                rows.Add(new SkillCooldownEntity
+                {
+                    AccountId = reader.ReadInt32(),
+                    CharId = reader.ReadInt32(),
+                    Skill = reader.ReadUInt16(),
+                    Tick = reader.ReadInt64()
+                });
+            }
+
+            return ms.Position == ms.Length;
+        }
+        catch
+        {
+            rows = [];
+            return false;
+        }
+    }
+
+    private static byte[] SerializeBonusScriptRows(IReadOnlyCollection<BonusScriptEntity> rows)
+    {
+        using var ms = new MemoryStream();
+        using var writer = new BinaryWriter(ms);
+        writer.Write((byte)1); // payload version
+        writer.Write(rows.Count);
+        foreach (var row in rows)
+        {
+            var scriptBytes = Encoding.UTF8.GetBytes(row.Script ?? string.Empty);
+            writer.Write(scriptBytes.Length);
+            writer.Write(scriptBytes);
+            writer.Write(row.Tick);
+            writer.Write(row.Flag);
+            writer.Write(row.Type);
+            writer.Write(row.Icon);
+        }
+
+        return ms.ToArray();
+    }
+
+    private static bool TryDeserializeBonusScriptRows(byte[] payload, out List<BonusScriptEntity> rows)
+    {
+        rows = [];
+        try
+        {
+            using var ms = new MemoryStream(payload);
+            using var reader = new BinaryReader(ms);
+            var version = reader.ReadByte();
+            if (version != 1)
+            {
+                return false;
+            }
+
+            var count = reader.ReadInt32();
+            if (count < 0)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < count; i++)
+            {
+                var length = reader.ReadInt32();
+                if (length < 0)
+                {
+                    return false;
+                }
+
+                var script = Encoding.UTF8.GetString(reader.ReadBytes(length));
+                rows.Add(new BonusScriptEntity
+                {
+                    Script = script,
+                    Tick = reader.ReadInt64(),
+                    Flag = reader.ReadUInt16(),
+                    Type = reader.ReadByte(),
+                    Icon = reader.ReadInt16()
+                });
+            }
+
+            return ms.Position == ms.Length;
+        }
+        catch
+        {
+            rows = [];
+            return false;
+        }
     }
 
     public override Task<MapAuthTicketResponse> IssueMapAuthTicket(

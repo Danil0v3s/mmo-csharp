@@ -167,6 +167,16 @@ public class CharServerConfiguration : ServerConfiguration
     /// Character server IP address
     /// </summary>
     public string CharIp { get; set; } = "127.0.0.1";
+
+    /// <summary>
+    /// Map server IP address for client handoff.
+    /// </summary>
+    public string MapIp { get; set; } = "127.0.0.1";
+
+    /// <summary>
+    /// Map server TCP port for client handoff.
+    /// </summary>
+    public ushort MapPort { get; set; } = 5191;
     
     /// <summary>
     /// Bind IP address
