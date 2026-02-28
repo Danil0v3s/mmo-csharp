@@ -53,14 +53,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     private readonly ConcurrentDictionary<int, string[]> _mapServerMaps = new();
     private readonly ConcurrentDictionary<int, int> _mapServerUserCounts = new();
     private readonly ConcurrentDictionary<int, (uint Ip, uint Port)> _mapServerAddresses = new();
-    private readonly ConcurrentDictionary<long, byte[]> _statusChangeDataByCharacter = new();
-    private readonly ConcurrentDictionary<long, byte[]> _skillCooldownByCharacter = new();
-    private readonly ConcurrentDictionary<long, byte[]> _bonusScriptByCharacter = new();
-    private readonly ConcurrentDictionary<int, ConcurrentDictionary<long, int>> _fameByType = new();
     private uint _partyShareLevel = 0;
-    private readonly ConcurrentDictionary<int, byte[]> _guildStorageByGuild = new();
-    private readonly ConcurrentDictionary<int, byte[]> _accountStorageByAccount = new();
-    private readonly ConcurrentDictionary<int, int> _clanConnectMembers = new();
 
     public CharGrpcService(
         CharServerImpl charServer,
@@ -945,10 +938,6 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
 
         character.Fame = (uint)Math.Max(request.Value, 0);
         await _characterRepository.UpdateAsync(character, context.CancellationToken);
-
-        // Keep current in-memory cache in sync during migration; DB is source of truth.
-        var fame = _fameByType.GetOrAdd(request.FameType, _ => new ConcurrentDictionary<long, int>());
-        fame[request.CharacterId] = request.Value;
 
         return new FameUpdateResponse { Success = true };
     }
@@ -2110,34 +2099,53 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         return new GuildEmblemVersionResponse { Success = true };
     }
 
-    public override Task<GuildStorageLoadResponse> GuildStorageLoad(
+    public override async Task<GuildStorageLoadResponse> GuildStorageLoad(
         GuildStorageLoadRequest request,
         ServerCallContext context)
     {
         if (request.GuildId <= 0)
         {
-            return Task.FromResult(new GuildStorageLoadResponse { Success = false });
+            return new GuildStorageLoadResponse { Success = false };
         }
 
-        _guildStorageByGuild.TryGetValue(request.GuildId, out var data);
-        return Task.FromResult(new GuildStorageLoadResponse
+        var row = await _dbContext.GuildStoragePayloads
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.GuildId == request.GuildId, context.CancellationToken);
+
+        return new GuildStorageLoadResponse
         {
             Success = true,
-            Data = Google.Protobuf.ByteString.CopyFrom(data ?? Array.Empty<byte>())
-        });
+            Data = Google.Protobuf.ByteString.CopyFrom(row?.Data ?? Array.Empty<byte>())
+        };
     }
 
-    public override Task<GuildStorageSaveResponse> GuildStorageSave(
+    public override async Task<GuildStorageSaveResponse> GuildStorageSave(
         GuildStorageSaveRequest request,
         ServerCallContext context)
     {
         if (request.GuildId <= 0)
         {
-            return Task.FromResult(new GuildStorageSaveResponse { Success = false });
+            return new GuildStorageSaveResponse { Success = false };
         }
 
-        _guildStorageByGuild[request.GuildId] = request.Data.ToByteArray();
-        return Task.FromResult(new GuildStorageSaveResponse { Success = true });
+        var data = request.Data.ToByteArray();
+        var row = await _dbContext.GuildStoragePayloads
+            .FirstOrDefaultAsync(s => s.GuildId == request.GuildId, context.CancellationToken);
+        if (row is null)
+        {
+            _dbContext.GuildStoragePayloads.Add(new GuildStoragePayloadEntity
+            {
+                GuildId = request.GuildId,
+                Data = data
+            });
+        }
+        else
+        {
+            row.Data = data;
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new GuildStorageSaveResponse { Success = true };
     }
 
     public override Task<StorageItemboundRetrieveResponse> StorageItemboundRetrieve(
@@ -2152,34 +2160,53 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         });
     }
 
-    public override Task<AccountStorageLoadResponse> AccountStorageLoad(
+    public override async Task<AccountStorageLoadResponse> AccountStorageLoad(
         AccountStorageLoadRequest request,
         ServerCallContext context)
     {
         if (request.AccountId <= 0)
         {
-            return Task.FromResult(new AccountStorageLoadResponse { Success = false });
+            return new AccountStorageLoadResponse { Success = false };
         }
 
-        _accountStorageByAccount.TryGetValue(request.AccountId, out var data);
-        return Task.FromResult(new AccountStorageLoadResponse
+        var row = await _dbContext.AccountStoragePayloads
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.AccountId == request.AccountId, context.CancellationToken);
+
+        return new AccountStorageLoadResponse
         {
             Success = true,
-            Data = Google.Protobuf.ByteString.CopyFrom(data ?? Array.Empty<byte>())
-        });
+            Data = Google.Protobuf.ByteString.CopyFrom(row?.Data ?? Array.Empty<byte>())
+        };
     }
 
-    public override Task<AccountStorageSaveResponse> AccountStorageSave(
+    public override async Task<AccountStorageSaveResponse> AccountStorageSave(
         AccountStorageSaveRequest request,
         ServerCallContext context)
     {
         if (request.AccountId <= 0)
         {
-            return Task.FromResult(new AccountStorageSaveResponse { Success = false });
+            return new AccountStorageSaveResponse { Success = false };
         }
 
-        _accountStorageByAccount[request.AccountId] = request.Data.ToByteArray();
-        return Task.FromResult(new AccountStorageSaveResponse { Success = true });
+        var data = request.Data.ToByteArray();
+        var row = await _dbContext.AccountStoragePayloads
+            .FirstOrDefaultAsync(s => s.AccountId == request.AccountId, context.CancellationToken);
+        if (row is null)
+        {
+            _dbContext.AccountStoragePayloads.Add(new AccountStoragePayloadEntity
+            {
+                AccountId = request.AccountId,
+                Data = data
+            });
+        }
+        else
+        {
+            row.Data = data;
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new AccountStorageSaveResponse { Success = true };
     }
 
     public override async Task<MailRequestInboxResponse> MailRequestInbox(
@@ -3219,25 +3246,12 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         var alliances = await _dbContext.ClanAlliances
             .AsNoTracking()
             .ToListAsync(context.CancellationToken);
-        var connectedCounts = await _dbContext.Characters
-            .AsNoTracking()
-            .Where(c => c.ClanId > 0 && c.Online != 0 && c.DeleteDate == 0)
-            .GroupBy(c => c.ClanId)
-            .Select(g => new { ClanId = g.Key, Count = g.Count() })
-            .ToListAsync(context.CancellationToken);
-
-        foreach (var count in connectedCounts)
-        {
-            _clanConnectMembers[count.ClanId] = count.Count;
-        }
-
         var alliancesByClan = alliances
             .GroupBy(a => a.ClanId)
             .ToDictionary(g => g.Key, g => g.OrderBy(a => a.AllianceId).ToList());
 
         foreach (var clan in clans)
         {
-            var connectMember = _clanConnectMembers.GetValueOrDefault(clan.ClanId, 0);
             var data = new ClanData
             {
                 ClanId = clan.ClanId,
@@ -3245,7 +3259,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
                 Master = clan.Master,
                 MapName = clan.MapName,
                 MaxMember = clan.MaxMember,
-                ConnectMember = connectMember
+                ConnectMember = clan.ConnectMember
             };
 
             if (alliancesByClan.TryGetValue(clan.ClanId, out var clanAlliances))
@@ -3280,10 +3294,9 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         ClanMemberStateRequest request,
         ServerCallContext context)
     {
-        var exists = await _dbContext.Clans
-            .AsNoTracking()
-            .AnyAsync(c => c.ClanId == request.ClanId, context.CancellationToken);
-        if (!exists)
+        var clan = await _dbContext.Clans
+            .FirstOrDefaultAsync(c => c.ClanId == request.ClanId, context.CancellationToken);
+        if (clan is null)
         {
             return new ClanMemberStateResponse
             {
@@ -3293,18 +3306,17 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             };
         }
 
-        var current = _clanConnectMembers.GetOrAdd(request.ClanId, 0);
-        if (current > 0)
+        if (clan.ConnectMember > 0)
         {
-            current--;
-            _clanConnectMembers[request.ClanId] = current;
+            clan.ConnectMember--;
         }
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
         return new ClanMemberStateResponse
         {
             Success = true,
             ClanId = request.ClanId,
-            ConnectMember = current
+            ConnectMember = clan.ConnectMember
         };
     }
 
@@ -3312,10 +3324,9 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         ClanMemberStateRequest request,
         ServerCallContext context)
     {
-        var exists = await _dbContext.Clans
-            .AsNoTracking()
-            .AnyAsync(c => c.ClanId == request.ClanId, context.CancellationToken);
-        if (!exists)
+        var clan = await _dbContext.Clans
+            .FirstOrDefaultAsync(c => c.ClanId == request.ClanId, context.CancellationToken);
+        if (clan is null)
         {
             return new ClanMemberStateResponse
             {
@@ -3325,13 +3336,17 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             };
         }
 
-        var current = _clanConnectMembers.AddOrUpdate(request.ClanId, 1, (_, value) => value + 1);
+        if (clan.ConnectMember < ushort.MaxValue)
+        {
+            clan.ConnectMember++;
+        }
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
         return new ClanMemberStateResponse
         {
             Success = true,
             ClanId = request.ClanId,
-            ConnectMember = current
+            ConnectMember = clan.ConnectMember
         };
     }
 

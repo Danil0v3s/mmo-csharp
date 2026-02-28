@@ -25,6 +25,9 @@ This plan covers parity for char-server RPC surfaces (map/login/internal service
   - Clan RPCs now use DB-backed `clan`/`clan_alliance` reads with online-member count derived from `char` online state (and transient connect-member cache updates for join/left notifications).
   - Pet/Homunculus/Mercenary/Elemental RPCs now use DB-backed persistence (`pet`, `homunculus`, `mercenary`, `elemental`) for create/load/save/delete flows; in-memory state dictionaries were removed.
   - Mail and Auction RPCs now use DB-backed persistence (`mail`, `mail_attachments`, `auction`) for inbox/read/get/delete/return/send/check and list/register/cancel/close/bid flows.
+  - Removed migration-era in-memory caches for fame/bonus-script/scdata/skill-cooldown paths; these flows are now DB-sourced only.
+  - Clan connect-member parity is now persisted via `clan.connect_member` with join/left acknowledgements writing DB-backed counts.
+  - Guild/account storage payload RPCs now persist opaque bytes in DB (`guild_storage_payload`, `account_storage_payload`) instead of in-memory dictionaries.
 
 ## 1. Current gap audit
 
@@ -89,11 +92,11 @@ Many RPCs currently backed by `ConcurrentDictionary` in-memory state only (party
 ## Phase C: Replace in-memory subsystem state with DB-backed inter parity
 
 11. [x] Party RPCs -> DB-backed parity (`int_party` semantics).
-12. [ ] Guild RPCs + castle + guild storage parity (`int_guild`, `int_storage`).
+12. [x] Guild RPCs + castle + guild storage parity (`int_guild`, `int_storage`).
 13. [x] Mail + auction parity (`int_mail`, `int_auction`).
 14. [x] Quest + achievement parity (`int_quest`, `int_achievement`).
 15. [x] Pet/homunculus/mercenary/elemental parity (`int_pet`, `int_homun`, `int_mercenary`, `int_elemental`).
-16. [ ] Clan/fame/bonus script/scdata/skill-cooldown persistence parity.
+16. [x] Clan/fame/bonus script/scdata/skill-cooldown persistence parity.
 
 ## Phase D: Hardening and parity verification
 

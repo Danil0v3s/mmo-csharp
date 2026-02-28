@@ -94,6 +94,22 @@ namespace Core.Database.Migrations
                     b.ToTable("acc_reg_str", (string)null);
                 });
 
+            modelBuilder.Entity("Core.Database.Entities.AccountStoragePayloadEntity", b =>
+                {
+                    b.Property<int>("AccountId")
+                        .HasColumnType("int")
+                        .HasColumnName("account_id");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("longblob")
+                        .HasColumnName("data");
+
+                    b.HasKey("AccountId");
+
+                    b.ToTable("account_storage_payload", (string)null);
+                });
+
             modelBuilder.Entity("Core.Database.Entities.AchievementEntity", b =>
                 {
                     b.Property<int>("CharId")
@@ -1646,6 +1662,12 @@ namespace Core.Database.Migrations
                         .HasDefaultValue("")
                         .HasColumnName("master");
 
+                    b.Property<ushort>("ConnectMember")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint unsigned")
+                        .HasDefaultValue((ushort)0)
+                        .HasColumnName("connect_member");
+
                     b.Property<ushort>("MaxMember")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("smallint unsigned")
@@ -2594,6 +2616,22 @@ namespace Core.Database.Migrations
                         .HasDatabaseName("guild_id");
 
                     b.ToTable("guild_storage", (string)null);
+                });
+
+            modelBuilder.Entity("Core.Database.Entities.GuildStoragePayloadEntity", b =>
+                {
+                    b.Property<int>("GuildId")
+                        .HasColumnType("int")
+                        .HasColumnName("guild_id");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("longblob")
+                        .HasColumnName("data");
+
+                    b.HasKey("GuildId");
+
+                    b.ToTable("guild_storage_payload", (string)null);
                 });
 
             modelBuilder.Entity("Core.Database.Entities.GuildStorageLogEntity", b =>

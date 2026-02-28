@@ -27,6 +27,8 @@ public class GameDbContext : DbContext
     public DbSet<CartInventoryEntity> CartInventories { get; set; }
     public DbSet<StorageEntity> Storages { get; set; }
     public DbSet<GuildStorageEntity> GuildStorages { get; set; }
+    public DbSet<AccountStoragePayloadEntity> AccountStoragePayloads { get; set; }
+    public DbSet<GuildStoragePayloadEntity> GuildStoragePayloads { get; set; }
     public DbSet<GuildStorageLogEntity> GuildStorageLogs { get; set; }
     
     // Guild
@@ -121,4 +123,3 @@ public class GameDbContext : DbContext
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(GameDbContext).Assembly);
     }
 }
-

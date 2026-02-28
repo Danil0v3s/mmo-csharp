@@ -15,6 +15,7 @@ public class ClanEntityConfiguration : IEntityTypeConfiguration<ClanEntity>
         builder.Property(e => e.Name).HasColumnName("name").HasMaxLength(24).IsRequired().HasDefaultValue("");
         builder.Property(e => e.Master).HasColumnName("master").HasMaxLength(24).IsRequired().HasDefaultValue("");
         builder.Property(e => e.MapName).HasColumnName("mapname").HasMaxLength(24).IsRequired().HasDefaultValue("");
+        builder.Property(e => e.ConnectMember).HasColumnName("connect_member").HasDefaultValue((ushort)0);
         builder.Property(e => e.MaxMember).HasColumnName("max_member").HasDefaultValue((ushort)0);
         
         // Seed data is applied via DatabaseSeeder from SQL scripts
