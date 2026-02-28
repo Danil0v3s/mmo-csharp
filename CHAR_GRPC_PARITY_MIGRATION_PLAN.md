@@ -22,6 +22,9 @@ This plan covers parity for char-server RPC surfaces (map/login/internal service
   - Guild core lifecycle and state RPCs moved to DB-backed flows (`guild`, `guild_member`, `guild_position`, `guild_skill`, `guild_alliance`, `char.guild_id`) for create/info/member/master/leave/break/message/notice/emblem/basic/member/position/skill/alliance paths.
   - Guild castle data RPCs (`GuildCastleDataLoad/Save`) now map rAthena `CD_*` indexes directly to persisted `guild_castle` columns with DB-backed load/save semantics.
   - Quest and Achievement RPCs now use DB-backed persistence (`quest`, `achievement`) for load/save/reward flows instead of in-memory dictionaries.
+  - Clan RPCs now use DB-backed `clan`/`clan_alliance` reads with online-member count derived from `char` online state (and transient connect-member cache updates for join/left notifications).
+  - Pet/Homunculus/Mercenary/Elemental RPCs now use DB-backed persistence (`pet`, `homunculus`, `mercenary`, `elemental`) for create/load/save/delete flows; in-memory state dictionaries were removed.
+  - Mail and Auction RPCs now use DB-backed persistence (`mail`, `mail_attachments`, `auction`) for inbox/read/get/delete/return/send/check and list/register/cancel/close/bid flows.
 
 ## 1. Current gap audit
 
@@ -87,9 +90,9 @@ Many RPCs currently backed by `ConcurrentDictionary` in-memory state only (party
 
 11. [x] Party RPCs -> DB-backed parity (`int_party` semantics).
 12. [ ] Guild RPCs + castle + guild storage parity (`int_guild`, `int_storage`).
-13. [ ] Mail + auction parity (`int_mail`, `int_auction`).
-14. [ ] Quest + achievement parity (`int_quest`, `int_achievement`).
-15. [ ] Pet/homunculus/mercenary/elemental parity (`int_pet`, `int_homun`, `int_mercenary`, `int_elemental`).
+13. [x] Mail + auction parity (`int_mail`, `int_auction`).
+14. [x] Quest + achievement parity (`int_quest`, `int_achievement`).
+15. [x] Pet/homunculus/mercenary/elemental parity (`int_pet`, `int_homun`, `int_mercenary`, `int_elemental`).
 16. [ ] Clan/fame/bonus script/scdata/skill-cooldown persistence parity.
 
 ## Phase D: Hardening and parity verification

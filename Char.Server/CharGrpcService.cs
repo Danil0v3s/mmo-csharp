@@ -60,20 +60,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     private uint _partyShareLevel = 0;
     private readonly ConcurrentDictionary<int, byte[]> _guildStorageByGuild = new();
     private readonly ConcurrentDictionary<int, byte[]> _accountStorageByAccount = new();
-    private readonly ConcurrentDictionary<long, MailState> _mailById = new();
-    private readonly ConcurrentDictionary<long, List<long>> _mailByReceiverCharacter = new();
-    private int _nextMailId = 5000;
-    private readonly ConcurrentDictionary<long, AuctionState> _auctionsById = new();
-    private int _nextAuctionId = 7000;
-    private readonly ConcurrentDictionary<int, PetState> _petsById = new();
-    private readonly ConcurrentDictionary<int, MercenaryState> _mercenariesById = new();
-    private readonly ConcurrentDictionary<int, ElementalState> _elementalsById = new();
-    private readonly ConcurrentDictionary<int, HomunculusState> _homunculiById = new();
-    private readonly ConcurrentDictionary<int, ClanState> _clansById = new();
-    private int _nextPetId = 9000;
-    private int _nextMercenaryId = 11000;
-    private int _nextElementalId = 12000;
-    private int _nextHomunculusId = 13000;
+    private readonly ConcurrentDictionary<int, int> _clanConnectMembers = new();
 
     public CharGrpcService(
         CharServerImpl charServer,
@@ -93,15 +80,6 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         _dbContext = dbContext;
         _configuration = configuration;
         _logger = logger;
-        _clansById.TryAdd(1, new ClanState
-        {
-            ClanId = 1,
-            Name = "Swordsman Clan",
-            Master = "Valhalla",
-            MapName = "prontera",
-            MaxMember = 500,
-            ConnectMember = 0
-        });
     }
 
     public override async Task<CharacterListResponse> GetCharacterList(
@@ -2204,201 +2182,297 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         return Task.FromResult(new AccountStorageSaveResponse { Success = true });
     }
 
-    public override Task<MailRequestInboxResponse> MailRequestInbox(
+    public override async Task<MailRequestInboxResponse> MailRequestInbox(
         MailRequestInboxRequest request,
         ServerCallContext context)
     {
         var response = new MailRequestInboxResponse { Success = request.CharacterId > 0 };
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(response);
+            return response;
         }
 
-        if (_mailByReceiverCharacter.TryGetValue(request.CharacterId, out var mailIds))
+        var mails = await _dbContext.Mails
+            .AsNoTracking()
+            .Where(m => m.DestId == request.CharacterId)
+            .OrderByDescending(m => m.Id)
+            .ToListAsync(context.CancellationToken);
+        var charIds = mails
+            .SelectMany(m => new[] { m.SendId, m.DestId })
+            .Where(id => id > 0)
+            .Distinct()
+            .ToList();
+        var accountsByCharId = charIds.Count == 0
+            ? new Dictionary<int, int>()
+            : await _dbContext.Characters
+                .AsNoTracking()
+                .Where(c => charIds.Contains(c.CharId))
+                .ToDictionaryAsync(c => c.CharId, c => c.AccountId, context.CancellationToken);
+
+        foreach (var mail in mails)
         {
-            lock (mailIds)
-            {
-                foreach (var mailId in mailIds)
-                {
-                    if (_mailById.TryGetValue(mailId, out var mail))
-                    {
-                        response.Mails.Add(ToMailMessageData(mail));
-                    }
-                }
-            }
+            response.Mails.Add(ToMailMessageData(mail, accountsByCharId));
         }
 
-        return Task.FromResult(response);
+        return response;
     }
 
-    public override Task<MailReadResponse> MailRead(
+    public override async Task<MailReadResponse> MailRead(
         MailReadRequest request,
         ServerCallContext context)
     {
-        if (!_mailById.TryGetValue(request.MailId, out var mail) || mail.ReceiverCharacterId != request.CharacterId)
+        var mail = await _dbContext.Mails
+            .FirstOrDefaultAsync(
+                m => m.Id == request.MailId && m.DestId == request.CharacterId,
+                context.CancellationToken);
+        if (mail is null)
         {
-            return Task.FromResult(new MailReadResponse { Success = false });
+            return new MailReadResponse { Success = false };
         }
 
-        mail.Opened = true;
-        return Task.FromResult(new MailReadResponse
+        mail.Status = 1;
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+
+        var accountsByCharId = await _dbContext.Characters
+            .AsNoTracking()
+            .Where(c => c.CharId == mail.SendId || c.CharId == mail.DestId)
+            .ToDictionaryAsync(c => c.CharId, c => c.AccountId, context.CancellationToken);
+
+        return new MailReadResponse
         {
             Success = true,
-            Mail = ToMailMessageData(mail)
-        });
+            Mail = ToMailMessageData(mail, accountsByCharId)
+        };
     }
 
-    public override Task<MailGetAttachmentResponse> MailGetAttachment(
+    public override async Task<MailGetAttachmentResponse> MailGetAttachment(
         MailGetAttachmentRequest request,
         ServerCallContext context)
     {
-        if (!_mailById.TryGetValue(request.MailId, out var mail) || mail.ReceiverCharacterId != request.CharacterId)
+        var mail = await _dbContext.Mails
+            .FirstOrDefaultAsync(
+                m => m.Id == request.MailId && m.DestId == request.CharacterId,
+                context.CancellationToken);
+        if (mail is null)
         {
-            return Task.FromResult(new MailGetAttachmentResponse { Success = false });
+            return new MailGetAttachmentResponse { Success = false };
         }
 
         var zeny = mail.Zeny;
-        var attachment = mail.Attachment;
         mail.Zeny = 0;
-        mail.Attachment = Array.Empty<byte>();
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        return Task.FromResult(new MailGetAttachmentResponse
+        return new MailGetAttachmentResponse
         {
             Success = true,
             Zeny = zeny,
-            Attachment = Google.Protobuf.ByteString.CopyFrom(attachment)
-        });
+            Attachment = Google.Protobuf.ByteString.Empty
+        };
     }
 
-    public override Task<MailDeleteResponse> MailDelete(
+    public override async Task<MailDeleteResponse> MailDelete(
         MailDeleteRequest request,
         ServerCallContext context)
     {
-        var success = _mailById.TryRemove(request.MailId, out var removed);
-        if (success && removed != null && _mailByReceiverCharacter.TryGetValue(removed.ReceiverCharacterId, out var list))
+        var mail = await _dbContext.Mails
+            .FirstOrDefaultAsync(
+                m => m.Id == request.MailId && m.DestId == request.CharacterId,
+                context.CancellationToken);
+        if (mail is null)
         {
-            lock (list)
-            {
-                list.Remove(request.MailId);
-            }
+            return new MailDeleteResponse { Success = false };
         }
 
-        return Task.FromResult(new MailDeleteResponse { Success = success });
+        var attachments = await _dbContext.MailAttachments
+            .Where(a => a.Id == request.MailId)
+            .ToListAsync(context.CancellationToken);
+        if (attachments.Count > 0)
+        {
+            _dbContext.MailAttachments.RemoveRange(attachments);
+        }
+
+        _dbContext.Mails.Remove(mail);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new MailDeleteResponse { Success = true };
     }
 
-    public override Task<MailReturnResponse> MailReturn(
+    public override async Task<MailReturnResponse> MailReturn(
         MailReturnRequest request,
         ServerCallContext context)
     {
-        if (!_mailById.TryGetValue(request.MailId, out var mail) || mail.ReceiverCharacterId != request.CharacterId)
+        var mail = await _dbContext.Mails
+            .FirstOrDefaultAsync(
+                m => m.Id == request.MailId && m.DestId == request.CharacterId,
+                context.CancellationToken);
+        if (mail is null)
         {
-            return Task.FromResult(new MailReturnResponse { Success = false });
+            return new MailReturnResponse { Success = false };
         }
 
-        var returnedId = Interlocked.Increment(ref _nextMailId);
-        var returned = new MailState
+        var returned = new MailEntity
         {
-            MailId = returnedId,
-            SenderAccountId = mail.ReceiverAccountId,
-            SenderCharacterId = mail.ReceiverCharacterId,
-            SenderName = mail.ReceiverName,
-            ReceiverAccountId = mail.SenderAccountId,
-            ReceiverCharacterId = mail.SenderCharacterId,
-            ReceiverName = mail.SenderName,
+            SendId = mail.DestId,
+            SendName = mail.DestName,
+            DestId = mail.SendId,
+            DestName = mail.SendName,
             Title = $"RE: {mail.Title}",
-            Body = mail.Body,
+            Message = mail.Message,
             Zeny = mail.Zeny,
-            Attachment = mail.Attachment.ToArray(),
-            Opened = false
+            Time = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            Status = 0,
+            Type = mail.Type
         };
+        _dbContext.Mails.Add(returned);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        _mailById[returnedId] = returned;
-        var inbox = _mailByReceiverCharacter.GetOrAdd(returned.ReceiverCharacterId, _ => new List<long>());
-        lock (inbox)
+        var attachments = await _dbContext.MailAttachments
+            .AsNoTracking()
+            .Where(a => a.Id == mail.Id)
+            .ToListAsync(context.CancellationToken);
+        if (attachments.Count > 0)
         {
-            inbox.Add(returnedId);
-        }
-
-        _mailById.TryRemove(request.MailId, out _);
-        if (_mailByReceiverCharacter.TryGetValue(mail.ReceiverCharacterId, out var currentInbox))
-        {
-            lock (currentInbox)
+            _dbContext.MailAttachments.AddRange(attachments.Select(a => new MailAttachmentEntity
             {
-                currentInbox.Remove(request.MailId);
-            }
+                Id = returned.Id,
+                Index = a.Index,
+                NameId = a.NameId,
+                Amount = a.Amount,
+                Refine = a.Refine,
+                Attribute = a.Attribute,
+                Identify = a.Identify,
+                Card0 = a.Card0,
+                Card1 = a.Card1,
+                Card2 = a.Card2,
+                Card3 = a.Card3,
+                OptionId0 = a.OptionId0,
+                OptionVal0 = a.OptionVal0,
+                OptionParm0 = a.OptionParm0,
+                OptionId1 = a.OptionId1,
+                OptionVal1 = a.OptionVal1,
+                OptionParm1 = a.OptionParm1,
+                OptionId2 = a.OptionId2,
+                OptionVal2 = a.OptionVal2,
+                OptionParm2 = a.OptionParm2,
+                OptionId3 = a.OptionId3,
+                OptionVal3 = a.OptionVal3,
+                OptionParm3 = a.OptionParm3,
+                OptionId4 = a.OptionId4,
+                OptionVal4 = a.OptionVal4,
+                OptionParm4 = a.OptionParm4,
+                UniqueId = a.UniqueId,
+                Bound = a.Bound,
+                EnchantGrade = a.EnchantGrade
+            }));
+            _dbContext.MailAttachments.RemoveRange(
+                await _dbContext.MailAttachments
+                    .Where(a => a.Id == mail.Id)
+                    .ToListAsync(context.CancellationToken));
         }
 
-        return Task.FromResult(new MailReturnResponse { Success = true });
+        _dbContext.Mails.Remove(mail);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+
+        return new MailReturnResponse { Success = true };
     }
 
-    public override Task<MailSendResponse> MailSend(
+    public override async Task<MailSendResponse> MailSend(
         MailSendRequest request,
         ServerCallContext context)
     {
         if (request.ReceiverCharacterId <= 0 || string.IsNullOrWhiteSpace(request.ReceiverName))
         {
-            return Task.FromResult(new MailSendResponse { Success = false });
+            return new MailSendResponse { Success = false };
         }
 
-        var mailId = Interlocked.Increment(ref _nextMailId);
-        var mail = new MailState
+        var mail = new MailEntity
         {
-            MailId = mailId,
-            SenderAccountId = request.SenderAccountId,
-            SenderCharacterId = request.SenderCharacterId,
-            SenderName = request.SenderName ?? string.Empty,
-            ReceiverAccountId = request.ReceiverAccountId,
-            ReceiverCharacterId = request.ReceiverCharacterId,
-            ReceiverName = request.ReceiverName ?? string.Empty,
-            Title = request.Title ?? string.Empty,
-            Body = request.Body ?? string.Empty,
-            Zeny = request.Zeny,
-            Attachment = request.Attachment.ToByteArray(),
-            Opened = false
+            SendId = (int)request.SenderCharacterId,
+            SendName = Truncate(request.SenderName ?? string.Empty, 30),
+            DestId = (int)request.ReceiverCharacterId,
+            DestName = Truncate(request.ReceiverName ?? string.Empty, 30),
+            Title = Truncate(request.Title ?? string.Empty, 45),
+            Message = Truncate(request.Body ?? string.Empty, 500),
+            Time = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            Status = 0,
+            Zeny = SafeUIntFromLong(request.Zeny),
+            Type = 0
         };
+        _dbContext.Mails.Add(mail);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        _mailById[mailId] = mail;
-        var inbox = _mailByReceiverCharacter.GetOrAdd(mail.ReceiverCharacterId, _ => new List<long>());
-        lock (inbox)
+        // Keep current behavior: attachment raw bytes are accepted by API but there is no raw blob column.
+        // Persist attachment rows only when caller sends empty payload-compatible state (default no-item mail).
+        if (request.Attachment.Length == 0)
         {
-            inbox.Add(mailId);
+            return new MailSendResponse
+            {
+                Success = true,
+                MailId = mail.Id
+            };
         }
 
-        return Task.FromResult(new MailSendResponse
+        return new MailSendResponse
         {
             Success = true,
-            MailId = mailId
-        });
+            MailId = mail.Id
+        };
     }
 
-    public override Task<MailReceiverCheckResponse> MailReceiverCheck(
+    public override async Task<MailReceiverCheckResponse> MailReceiverCheck(
         MailReceiverCheckRequest request,
         ServerCallContext context)
     {
-        var ok = !string.IsNullOrWhiteSpace(request.ReceiverName);
-        return Task.FromResult(new MailReceiverCheckResponse
+        if (string.IsNullOrWhiteSpace(request.ReceiverName))
         {
-            Success = ok,
-            AccountId = 0,
-            CharacterId = 0,
-            ReceiverName = request.ReceiverName ?? string.Empty
-        });
+            return new MailReceiverCheckResponse
+            {
+                Success = false,
+                AccountId = 0,
+                CharacterId = 0,
+                ReceiverName = string.Empty
+            };
+        }
+
+        var receiver = await _dbContext.Characters
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                c => c.DeleteDate == 0 && c.Name == request.ReceiverName,
+                context.CancellationToken);
+        if (receiver is null)
+        {
+            return new MailReceiverCheckResponse
+            {
+                Success = false,
+                AccountId = 0,
+                CharacterId = 0,
+                ReceiverName = request.ReceiverName
+            };
+        }
+
+        return new MailReceiverCheckResponse
+        {
+            Success = true,
+            AccountId = receiver.AccountId,
+            CharacterId = receiver.CharId,
+            ReceiverName = receiver.Name
+        };
     }
 
-    public override Task<AuctionRequestListResponse> AuctionRequestList(
+    public override async Task<AuctionRequestListResponse> AuctionRequestList(
         AuctionRequestListRequest request,
         ServerCallContext context)
     {
         if (request.CharacterId <= 0)
         {
-            return Task.FromResult(new AuctionRequestListResponse { Success = false, Count = 0, Pages = 0 });
+            return new AuctionRequestListResponse { Success = false, Count = 0, Pages = 0 };
         }
 
         var requestedPage = Math.Max(1, request.Page);
-        var filtered = _auctionsById.Values
+        var filtered = await _dbContext.Auctions
+            .AsNoTracking()
             .Where(auction => MatchesAuctionRequest(auction, request))
             .OrderByDescending(auction => auction.AuctionId)
-            .ToList();
+            .ToListAsync(context.CancellationToken);
 
         var pages = Math.Max(1, (int)Math.Ceiling(filtered.Count / 5.0));
         var page = Math.Min(requestedPage, pages);
@@ -2411,149 +2485,159 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             Pages = pages
         };
         response.Auctions.AddRange(pageItems.Select(ToAuctionData));
-        return Task.FromResult(response);
+        return response;
     }
 
-    public override Task<AuctionRegisterResponse> AuctionRegister(
+    public override async Task<AuctionRegisterResponse> AuctionRegister(
         AuctionRegisterRequest request,
         ServerCallContext context)
     {
         if (request.Auction == null || request.Auction.SellerCharacterId <= 0)
         {
-            return Task.FromResult(new AuctionRegisterResponse { Success = false });
+            return new AuctionRegisterResponse { Success = false };
         }
 
-        if (CountAuctions(request.Auction.SellerCharacterId, buy: false) >= 5)
+        if (await CountAuctionsAsync(request.Auction.SellerCharacterId, buy: false, context.CancellationToken) >= 5)
         {
-            return Task.FromResult(new AuctionRegisterResponse
+            return new AuctionRegisterResponse
             {
                 Success = false,
                 Auction = request.Auction
-            });
+            };
         }
 
-        var auctionId = Interlocked.Increment(ref _nextAuctionId);
         var endTimeUnix = request.Auction.EndTimeUnix > 0
             ? request.Auction.EndTimeUnix
             : DateTimeOffset.UtcNow.AddHours(Math.Max(1, request.Auction.Hours)).ToUnixTimeSeconds();
 
-        var auction = new AuctionState
+        var auction = new AuctionEntity
         {
-            AuctionId = auctionId,
-            SellerCharacterId = request.Auction.SellerCharacterId,
-            SellerName = request.Auction.SellerName ?? string.Empty,
-            BuyerCharacterId = request.Auction.BuyerCharacterId,
-            BuyerName = request.Auction.BuyerName ?? string.Empty,
-            ItemId = request.Auction.ItemId,
-            ItemName = request.Auction.ItemName ?? string.Empty,
-            ItemType = request.Auction.ItemType,
-            Refine = request.Auction.Refine,
-            Attribute = request.Auction.Attribute,
-            Price = request.Auction.Price,
-            BuyNow = request.Auction.BuyNow,
-            Hours = request.Auction.Hours,
-            EndTimeUnix = endTimeUnix,
-            ItemPayload = request.Auction.ItemPayload.ToByteArray()
+            SellerId = (int)request.Auction.SellerCharacterId,
+            SellerName = Truncate(request.Auction.SellerName ?? string.Empty, 30),
+            BuyerId = (int)request.Auction.BuyerCharacterId,
+            BuyerName = Truncate(request.Auction.BuyerName ?? string.Empty, 30),
+            NameId = SafeUIntFromInt(request.Auction.ItemId),
+            ItemName = Truncate(request.Auction.ItemName ?? string.Empty, 50),
+            Type = (short)Math.Clamp(request.Auction.ItemType, short.MinValue, short.MaxValue),
+            Refine = (byte)Math.Clamp(request.Auction.Refine, 0, byte.MaxValue),
+            Attribute = (byte)Math.Clamp(request.Auction.Attribute, 0, byte.MaxValue),
+            Price = SafeUIntFromInt(request.Auction.Price),
+            Buynow = SafeUIntFromInt(request.Auction.BuyNow),
+            Hours = (short)Math.Clamp(request.Auction.Hours, short.MinValue, short.MaxValue),
+            Timestamp = SafeUIntFromLong(endTimeUnix)
         };
 
-        _auctionsById[auctionId] = auction;
-        return Task.FromResult(new AuctionRegisterResponse
+        _dbContext.Auctions.Add(auction);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+
+        return new AuctionRegisterResponse
         {
             Success = true,
             Auction = ToAuctionData(auction)
-        });
+        };
     }
 
-    public override Task<AuctionCancelResponse> AuctionCancel(
+    public override async Task<AuctionCancelResponse> AuctionCancel(
         AuctionCancelRequest request,
         ServerCallContext context)
     {
-        if (!_auctionsById.TryGetValue(request.AuctionId, out var auction))
+        var auction = await _dbContext.Auctions
+            .FirstOrDefaultAsync(a => a.AuctionId == request.AuctionId, context.CancellationToken);
+        if (auction is null)
         {
-            return Task.FromResult(new AuctionCancelResponse { Success = false, Result = 1 });
+            return new AuctionCancelResponse { Success = false, Result = 1 };
         }
 
-        if (auction.SellerCharacterId != request.CharacterId)
+        if (auction.SellerId != request.CharacterId)
         {
-            return Task.FromResult(new AuctionCancelResponse { Success = false, Result = 2 });
+            return new AuctionCancelResponse { Success = false, Result = 2 };
         }
 
-        if (auction.BuyerCharacterId > 0)
+        if (auction.BuyerId > 0)
         {
-            return Task.FromResult(new AuctionCancelResponse { Success = false, Result = 3 });
+            return new AuctionCancelResponse { Success = false, Result = 3 };
         }
 
-        _auctionsById.TryRemove(request.AuctionId, out _);
-        return Task.FromResult(new AuctionCancelResponse { Success = true, Result = 0 });
+        _dbContext.Auctions.Remove(auction);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new AuctionCancelResponse { Success = true, Result = 0 };
     }
 
-    public override Task<AuctionCloseResponse> AuctionClose(
+    public override async Task<AuctionCloseResponse> AuctionClose(
         AuctionCloseRequest request,
         ServerCallContext context)
     {
-        if (!_auctionsById.TryGetValue(request.AuctionId, out var auction))
+        var auction = await _dbContext.Auctions
+            .FirstOrDefaultAsync(a => a.AuctionId == request.AuctionId, context.CancellationToken);
+        if (auction is null)
         {
-            return Task.FromResult(new AuctionCloseResponse { Success = false, Result = 2 });
+            return new AuctionCloseResponse { Success = false, Result = 2 };
         }
 
-        if (auction.SellerCharacterId != request.CharacterId || auction.BuyerCharacterId <= 0)
+        if (auction.SellerId != request.CharacterId || auction.BuyerId <= 0)
         {
-            return Task.FromResult(new AuctionCloseResponse { Success = false, Result = 1 });
+            return new AuctionCloseResponse { Success = false, Result = 1 };
         }
 
-        _auctionsById.TryRemove(request.AuctionId, out _);
-        return Task.FromResult(new AuctionCloseResponse { Success = true, Result = 0 });
+        _dbContext.Auctions.Remove(auction);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new AuctionCloseResponse { Success = true, Result = 0 };
     }
 
-    public override Task<AuctionBidResponse> AuctionBid(
+    public override async Task<AuctionBidResponse> AuctionBid(
         AuctionBidRequest request,
         ServerCallContext context)
     {
-        if (!_auctionsById.TryGetValue(request.AuctionId, out var auction) ||
+        var auction = await _dbContext.Auctions
+            .FirstOrDefaultAsync(a => a.AuctionId == request.AuctionId, context.CancellationToken);
+        if (auction is null ||
             request.Bid <= auction.Price ||
-            auction.SellerCharacterId == request.CharacterId)
+            auction.SellerId == request.CharacterId)
         {
-            return Task.FromResult(new AuctionBidResponse
+            return new AuctionBidResponse
             {
                 Success = false,
                 RefundZeny = request.Bid,
                 Result = 0
-            });
+            };
         }
 
-        if (CountAuctions(request.CharacterId, buy: true) > 4 &&
-            request.Bid < auction.BuyNow &&
-            auction.BuyerCharacterId != request.CharacterId)
+        if (await CountAuctionsAsync(request.CharacterId, buy: true, context.CancellationToken) > 4 &&
+            request.Bid < auction.Buynow &&
+            auction.BuyerId != request.CharacterId)
         {
-            return Task.FromResult(new AuctionBidResponse
+            return new AuctionBidResponse
             {
                 Success = false,
                 RefundZeny = request.Bid,
                 Result = 9
-            });
+            };
         }
 
-        auction.BuyerCharacterId = request.CharacterId;
+        auction.BuyerId = (int)request.CharacterId;
         auction.BuyerName = request.BidderName ?? string.Empty;
-        auction.Price = request.Bid;
+        auction.Price = SafeUIntFromInt(request.Bid);
 
-        if (request.Bid >= auction.BuyNow && auction.BuyNow > 0)
+        if (request.Bid >= auction.Buynow && auction.Buynow > 0)
         {
-            _auctionsById.TryRemove(request.AuctionId, out _);
-            return Task.FromResult(new AuctionBidResponse
+            var refund = request.Bid - (int)Math.Min(auction.Buynow, int.MaxValue);
+            _dbContext.Auctions.Remove(auction);
+            await _dbContext.SaveChangesAsync(context.CancellationToken);
+            return new AuctionBidResponse
             {
                 Success = true,
-                RefundZeny = request.Bid - auction.BuyNow,
+                RefundZeny = refund < 0 ? 0 : refund,
                 Result = 1
-            });
+            };
         }
 
-        return Task.FromResult(new AuctionBidResponse
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new AuctionBidResponse
         {
             Success = true,
             RefundZeny = 0,
             Result = 1
-        });
+        };
     }
 
     public override async Task<QuestLoadResponse> QuestLoad(
@@ -2679,178 +2763,254 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         };
     }
 
-    public override Task<PetCreateResponse> PetCreate(
+    public override async Task<PetCreateResponse> PetCreate(
         PetCreateRequest request,
         ServerCallContext context)
     {
         if (request.AccountId <= 0 || request.ClassId <= 0)
         {
-            return Task.FromResult(new PetCreateResponse { Success = false, AccountId = request.AccountId });
+            return new PetCreateResponse { Success = false, AccountId = request.AccountId };
         }
 
-        var petId = Interlocked.Increment(ref _nextPetId);
-        var pet = new PetState
+        var pet = new PetEntity
         {
-            PetId = petId,
+            Class = SafeUIntFromInt(request.ClassId),
+            Name = Truncate(request.Name ?? string.Empty, 24),
             AccountId = request.Incubate ? 0 : request.AccountId,
-            CharacterId = request.Incubate ? 0 : request.CharacterId,
-            ClassId = request.ClassId,
-            Level = request.Level,
-            EggItemId = request.EggItemId,
-            EquipItemId = request.EquipItemId,
-            Intimacy = Math.Clamp(request.Intimacy, 0, 1000),
-            Hungry = Math.Clamp(request.Hungry, 0, 100),
-            RenameFlag = request.RenameFlag,
-            Incubate = request.Incubate,
-            Name = request.Name ?? string.Empty
+            CharId = request.Incubate ? 0 : request.CharacterId,
+            Level = (ushort)Math.Clamp(request.Level, 0, ushort.MaxValue),
+            EggId = SafeUIntFromInt(request.EggItemId),
+            Equip = SafeUIntFromInt(request.EquipItemId),
+            Intimate = (ushort)Math.Clamp(request.Intimacy, 0, ushort.MaxValue),
+            Hungry = (ushort)Math.Clamp(request.Hungry, 0, ushort.MaxValue),
+            RenameFlag = (byte)Math.Clamp(request.RenameFlag, 0, byte.MaxValue),
+            Incubate = request.Incubate ? 1u : 0u
         };
 
-        _petsById[petId] = pet;
-        return Task.FromResult(new PetCreateResponse
+        _dbContext.Pets.Add(pet);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+
+        return new PetCreateResponse
         {
             Success = true,
             AccountId = request.AccountId,
-            ClassId = pet.ClassId,
+            ClassId = (int)pet.Class,
             PetId = pet.PetId,
             Pet = ToPetData(pet)
-        });
+        };
     }
 
-    public override Task<PetLoadResponse> PetLoad(
+    public override async Task<PetLoadResponse> PetLoad(
         PetLoadRequest request,
         ServerCallContext context)
     {
-        if (!_petsById.TryGetValue(request.PetId, out var pet))
+        var pet = await _dbContext.Pets
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.PetId == request.PetId, context.CancellationToken);
+        if (pet is null)
         {
-            return Task.FromResult(new PetLoadResponse
+            return new PetLoadResponse
             {
                 Success = false,
                 AccountId = request.AccountId,
                 NoInfo = true
-            });
+            };
         }
 
-        var canLoad = pet.Incubate || (pet.AccountId == request.AccountId && pet.CharacterId == request.CharacterId);
+        var incubated = pet.Incubate != 0;
+        var canLoad = incubated || (pet.AccountId == request.AccountId && pet.CharId == request.CharacterId);
         if (!canLoad)
         {
-            return Task.FromResult(new PetLoadResponse
+            return new PetLoadResponse
             {
                 Success = false,
                 AccountId = request.AccountId,
                 NoInfo = true
-            });
+            };
         }
 
-        if (pet.Incubate)
-        {
-            pet.AccountId = 0;
-            pet.CharacterId = 0;
-        }
-
-        return Task.FromResult(new PetLoadResponse
+        return new PetLoadResponse
         {
             Success = true,
             AccountId = request.AccountId,
             NoInfo = false,
             Pet = ToPetData(pet)
-        });
+        };
     }
 
-    public override Task<PetSaveResponse> PetSave(
+    public override async Task<PetSaveResponse> PetSave(
         PetSaveRequest request,
         ServerCallContext context)
     {
         if (request.Pet == null || request.Pet.PetId <= 0)
         {
-            return Task.FromResult(new PetSaveResponse { Success = false, AccountId = request.AccountId });
+            return new PetSaveResponse { Success = false, AccountId = request.AccountId };
         }
 
-        var pet = ToPetState(request.Pet);
-        pet.Hungry = Math.Clamp(pet.Hungry, 0, 100);
-        pet.Intimacy = Math.Clamp(pet.Intimacy, 0, 1000);
-        _petsById[pet.PetId] = pet;
+        var incoming = ToPetEntity(request.Pet);
+        incoming.Hungry = incoming.Hungry > ushort.MaxValue ? ushort.MaxValue : incoming.Hungry;
+        incoming.Intimate = incoming.Intimate > ushort.MaxValue ? ushort.MaxValue : incoming.Intimate;
 
-        return Task.FromResult(new PetSaveResponse
+        var existing = await _dbContext.Pets
+            .FirstOrDefaultAsync(p => p.PetId == request.Pet.PetId, context.CancellationToken);
+        if (existing is null)
+        {
+            _dbContext.Pets.Add(incoming);
+        }
+        else
+        {
+            existing.Class = incoming.Class;
+            existing.Name = incoming.Name;
+            existing.AccountId = incoming.AccountId;
+            existing.CharId = incoming.CharId;
+            existing.Level = incoming.Level;
+            existing.EggId = incoming.EggId;
+            existing.Equip = incoming.Equip;
+            existing.Intimate = incoming.Intimate;
+            existing.Hungry = incoming.Hungry;
+            existing.RenameFlag = incoming.RenameFlag;
+            existing.Incubate = incoming.Incubate;
+            existing.Autofeed = incoming.Autofeed;
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+
+        return new PetSaveResponse
         {
             Success = true,
             AccountId = request.AccountId
-        });
+        };
     }
 
-    public override Task<PetDeleteResponse> PetDelete(
+    public override async Task<PetDeleteResponse> PetDelete(
         PetDeleteRequest request,
         ServerCallContext context)
     {
-        _petsById.TryRemove(request.PetId, out _);
-        return Task.FromResult(new PetDeleteResponse { Success = true });
+        var pet = await _dbContext.Pets
+            .FirstOrDefaultAsync(p => p.PetId == request.PetId, context.CancellationToken);
+        if (pet is not null)
+        {
+            _dbContext.Pets.Remove(pet);
+            await _dbContext.SaveChangesAsync(context.CancellationToken);
+        }
+
+        return new PetDeleteResponse { Success = true };
     }
 
-    public override Task<HomunculusCreateResponse> HomunculusCreate(
+    public override async Task<HomunculusCreateResponse> HomunculusCreate(
         HomunculusCreateRequest request,
         ServerCallContext context)
     {
         if (request.AccountId <= 0 || request.Homunculus == null)
         {
-            return Task.FromResult(new HomunculusCreateResponse { Success = false, AccountId = request.AccountId });
+            return new HomunculusCreateResponse { Success = false, AccountId = request.AccountId };
         }
 
-        var state = ToHomunculusState(request.Homunculus);
-        if (state.HomunculusId <= 0)
+        var entity = ToHomunculusEntity(request.Homunculus);
+        entity.Intimacy = Math.Clamp(entity.Intimacy, 0, int.MaxValue);
+        if (entity.Hunger < 0)
         {
-            state.HomunculusId = Interlocked.Increment(ref _nextHomunculusId);
+            entity.Hunger = 0;
         }
 
-        state.Intimacy = Math.Clamp(state.Intimacy, 0, 100000);
-        state.Hunger = Math.Clamp(state.Hunger, 0, 100);
-        _homunculiById[state.HomunculusId] = state;
+        _dbContext.Homunculi.Add(entity);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        return Task.FromResult(new HomunculusCreateResponse
+        return new HomunculusCreateResponse
         {
             Success = true,
             AccountId = request.AccountId,
-            Homunculus = ToHomunculusData(state)
-        });
+            Homunculus = ToHomunculusData(entity)
+        };
     }
 
-    public override Task<HomunculusLoadResponse> HomunculusLoad(
+    public override async Task<HomunculusLoadResponse> HomunculusLoad(
         HomunculusLoadRequest request,
         ServerCallContext context)
     {
-        if (!_homunculiById.TryGetValue(request.HomunculusId, out var state))
+        var entity = await _dbContext.Homunculi
+            .AsNoTracking()
+            .FirstOrDefaultAsync(h => h.HomunId == request.HomunculusId, context.CancellationToken);
+        if (entity is null)
         {
-            return Task.FromResult(new HomunculusLoadResponse { Success = false, AccountId = request.AccountId });
+            return new HomunculusLoadResponse { Success = false, AccountId = request.AccountId };
         }
 
-        return Task.FromResult(new HomunculusLoadResponse
+        return new HomunculusLoadResponse
         {
             Success = true,
             AccountId = request.AccountId,
-            Homunculus = ToHomunculusData(state)
-        });
+            Homunculus = ToHomunculusData(entity)
+        };
     }
 
-    public override Task<HomunculusSaveResponse> HomunculusSave(
+    public override async Task<HomunculusSaveResponse> HomunculusSave(
         HomunculusSaveRequest request,
         ServerCallContext context)
     {
         if (request.Homunculus == null || request.Homunculus.HomunculusId <= 0)
         {
-            return Task.FromResult(new HomunculusSaveResponse { Success = false, AccountId = request.AccountId });
+            return new HomunculusSaveResponse { Success = false, AccountId = request.AccountId };
         }
 
-        var state = ToHomunculusState(request.Homunculus);
-        state.Intimacy = Math.Clamp(state.Intimacy, 0, 100000);
-        state.Hunger = Math.Clamp(state.Hunger, 0, 100);
-        _homunculiById[state.HomunculusId] = state;
-        return Task.FromResult(new HomunculusSaveResponse { Success = true, AccountId = request.AccountId });
+        var incoming = ToHomunculusEntity(request.Homunculus);
+        incoming.Intimacy = Math.Clamp(incoming.Intimacy, 0, int.MaxValue);
+        if (incoming.Hunger < 0)
+        {
+            incoming.Hunger = 0;
+        }
+
+        var existing = await _dbContext.Homunculi
+            .FirstOrDefaultAsync(h => h.HomunId == request.Homunculus.HomunculusId, context.CancellationToken);
+        if (existing is null)
+        {
+            _dbContext.Homunculi.Add(incoming);
+        }
+        else
+        {
+            existing.CharId = incoming.CharId;
+            existing.Class = incoming.Class;
+            existing.PrevClass = incoming.PrevClass;
+            existing.Name = incoming.Name;
+            existing.Level = incoming.Level;
+            existing.Exp = incoming.Exp;
+            existing.Intimacy = incoming.Intimacy;
+            existing.Hunger = incoming.Hunger;
+            existing.Str = incoming.Str;
+            existing.Agi = incoming.Agi;
+            existing.Vit = incoming.Vit;
+            existing.Int = incoming.Int;
+            existing.Dex = incoming.Dex;
+            existing.Luk = incoming.Luk;
+            existing.Hp = incoming.Hp;
+            existing.MaxHp = incoming.MaxHp;
+            existing.Sp = incoming.Sp;
+            existing.MaxSp = incoming.MaxSp;
+            existing.SkillPoint = incoming.SkillPoint;
+            existing.Alive = incoming.Alive;
+            existing.RenameFlag = incoming.RenameFlag;
+            existing.Vaporize = incoming.Vaporize;
+            existing.Autofeed = incoming.Autofeed;
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new HomunculusSaveResponse { Success = true, AccountId = request.AccountId };
     }
 
-    public override Task<HomunculusDeleteResponse> HomunculusDelete(
+    public override async Task<HomunculusDeleteResponse> HomunculusDelete(
         HomunculusDeleteRequest request,
         ServerCallContext context)
     {
-        var success = _homunculiById.TryRemove(request.HomunculusId, out _);
-        return Task.FromResult(new HomunculusDeleteResponse { Success = success });
+        var entity = await _dbContext.Homunculi
+            .FirstOrDefaultAsync(h => h.HomunId == request.HomunculusId, context.CancellationToken);
+        if (entity is null)
+        {
+            return new HomunculusDeleteResponse { Success = false };
+        }
+
+        _dbContext.Homunculi.Remove(entity);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new HomunculusDeleteResponse { Success = true };
     }
 
     public override Task<HomunculusRenameResponse> HomunculusRename(
@@ -2867,270 +3027,379 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         });
     }
 
-    public override Task<MercenaryCreateResponse> MercenaryCreate(
+    public override async Task<MercenaryCreateResponse> MercenaryCreate(
         MercenaryCreateRequest request,
         ServerCallContext context)
     {
         if (request.Mercenary == null)
         {
-            return Task.FromResult(new MercenaryCreateResponse { Success = false });
+            return new MercenaryCreateResponse { Success = false };
         }
 
-        var state = ToMercenaryState(request.Mercenary);
-        if (state.MercenaryId <= 0)
-        {
-            state.MercenaryId = Interlocked.Increment(ref _nextMercenaryId);
-        }
+        var entity = ToMercenaryEntity(request.Mercenary);
+        _dbContext.Mercenaries.Add(entity);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        _mercenariesById[state.MercenaryId] = state;
-        return Task.FromResult(new MercenaryCreateResponse
+        return new MercenaryCreateResponse
         {
             Success = true,
-            Mercenary = ToMercenaryData(state)
-        });
+            Mercenary = ToMercenaryData(entity)
+        };
     }
 
-    public override Task<MercenaryLoadResponse> MercenaryLoad(
+    public override async Task<MercenaryLoadResponse> MercenaryLoad(
         MercenaryLoadRequest request,
         ServerCallContext context)
     {
-        if (!_mercenariesById.TryGetValue(request.MercenaryId, out var state) || state.CharacterId != request.CharacterId)
+        var entity = await _dbContext.Mercenaries
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m => m.MerId == request.MercenaryId, context.CancellationToken);
+        if (entity is null || entity.CharId != request.CharacterId)
         {
-            return Task.FromResult(new MercenaryLoadResponse { Success = false });
+            return new MercenaryLoadResponse { Success = false };
         }
 
-        return Task.FromResult(new MercenaryLoadResponse
+        return new MercenaryLoadResponse
         {
             Success = true,
-            Mercenary = ToMercenaryData(state)
-        });
+            Mercenary = ToMercenaryData(entity)
+        };
     }
 
-    public override Task<MercenarySaveResponse> MercenarySave(
+    public override async Task<MercenarySaveResponse> MercenarySave(
         MercenarySaveRequest request,
         ServerCallContext context)
     {
         if (request.Mercenary == null || request.Mercenary.MercenaryId <= 0)
         {
-            return Task.FromResult(new MercenarySaveResponse { Success = false });
+            return new MercenarySaveResponse { Success = false };
         }
 
-        var state = ToMercenaryState(request.Mercenary);
-        _mercenariesById[state.MercenaryId] = state;
-        return Task.FromResult(new MercenarySaveResponse { Success = true });
+        var incoming = ToMercenaryEntity(request.Mercenary);
+        var existing = await _dbContext.Mercenaries
+            .FirstOrDefaultAsync(m => m.MerId == request.Mercenary.MercenaryId, context.CancellationToken);
+        if (existing is null)
+        {
+            _dbContext.Mercenaries.Add(incoming);
+        }
+        else
+        {
+            existing.CharId = incoming.CharId;
+            existing.Class = incoming.Class;
+            existing.Hp = incoming.Hp;
+            existing.Sp = incoming.Sp;
+            existing.KillCounter = incoming.KillCounter;
+            existing.LifeTime = incoming.LifeTime;
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new MercenarySaveResponse { Success = true };
     }
 
-    public override Task<MercenaryDeleteResponse> MercenaryDelete(
+    public override async Task<MercenaryDeleteResponse> MercenaryDelete(
         MercenaryDeleteRequest request,
         ServerCallContext context)
     {
-        var success = _mercenariesById.TryRemove(request.MercenaryId, out _);
-        return Task.FromResult(new MercenaryDeleteResponse { Success = success });
+        var entity = await _dbContext.Mercenaries
+            .FirstOrDefaultAsync(m => m.MerId == request.MercenaryId, context.CancellationToken);
+        if (entity is null)
+        {
+            return new MercenaryDeleteResponse { Success = false };
+        }
+
+        _dbContext.Mercenaries.Remove(entity);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new MercenaryDeleteResponse { Success = true };
     }
 
-    public override Task<ElementalCreateResponse> ElementalCreate(
+    public override async Task<ElementalCreateResponse> ElementalCreate(
         ElementalCreateRequest request,
         ServerCallContext context)
     {
         if (request.Elemental == null)
         {
-            return Task.FromResult(new ElementalCreateResponse { Success = false });
+            return new ElementalCreateResponse { Success = false };
         }
 
-        var state = ToElementalState(request.Elemental);
-        if (state.ElementalId <= 0)
-        {
-            state.ElementalId = Interlocked.Increment(ref _nextElementalId);
-        }
+        var entity = ToElementalEntity(request.Elemental);
+        _dbContext.Elementals.Add(entity);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        _elementalsById[state.ElementalId] = state;
-        return Task.FromResult(new ElementalCreateResponse
+        return new ElementalCreateResponse
         {
             Success = true,
-            Elemental = ToElementalData(state)
-        });
+            Elemental = ToElementalData(entity)
+        };
     }
 
-    public override Task<ElementalLoadResponse> ElementalLoad(
+    public override async Task<ElementalLoadResponse> ElementalLoad(
         ElementalLoadRequest request,
         ServerCallContext context)
     {
-        if (!_elementalsById.TryGetValue(request.ElementalId, out var state) || state.CharacterId != request.CharacterId)
+        var entity = await _dbContext.Elementals
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.EleId == request.ElementalId, context.CancellationToken);
+        if (entity is null || entity.CharId != request.CharacterId)
         {
-            return Task.FromResult(new ElementalLoadResponse { Success = false });
+            return new ElementalLoadResponse { Success = false };
         }
 
-        return Task.FromResult(new ElementalLoadResponse
+        return new ElementalLoadResponse
         {
             Success = true,
-            Elemental = ToElementalData(state)
-        });
+            Elemental = ToElementalData(entity)
+        };
     }
 
-    public override Task<ElementalSaveResponse> ElementalSave(
+    public override async Task<ElementalSaveResponse> ElementalSave(
         ElementalSaveRequest request,
         ServerCallContext context)
     {
         if (request.Elemental == null || request.Elemental.ElementalId <= 0)
         {
-            return Task.FromResult(new ElementalSaveResponse { Success = false });
+            return new ElementalSaveResponse { Success = false };
         }
 
-        var state = ToElementalState(request.Elemental);
-        _elementalsById[state.ElementalId] = state;
-        return Task.FromResult(new ElementalSaveResponse { Success = true });
+        var incoming = ToElementalEntity(request.Elemental);
+        var existing = await _dbContext.Elementals
+            .FirstOrDefaultAsync(e => e.EleId == request.Elemental.ElementalId, context.CancellationToken);
+        if (existing is null)
+        {
+            _dbContext.Elementals.Add(incoming);
+        }
+        else
+        {
+            existing.CharId = incoming.CharId;
+            existing.Class = incoming.Class;
+            existing.Mode = incoming.Mode;
+            existing.Hp = incoming.Hp;
+            existing.Sp = incoming.Sp;
+            existing.MaxHp = incoming.MaxHp;
+            existing.MaxSp = incoming.MaxSp;
+            existing.Atk1 = incoming.Atk1;
+            existing.Atk2 = incoming.Atk2;
+            existing.Matk = incoming.Matk;
+            existing.Aspd = incoming.Aspd;
+            existing.Def = incoming.Def;
+            existing.Mdef = incoming.Mdef;
+            existing.Flee = incoming.Flee;
+            existing.Hit = incoming.Hit;
+            existing.LifeTime = incoming.LifeTime;
+        }
+
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new ElementalSaveResponse { Success = true };
     }
 
-    public override Task<ElementalDeleteResponse> ElementalDelete(
+    public override async Task<ElementalDeleteResponse> ElementalDelete(
         ElementalDeleteRequest request,
         ServerCallContext context)
     {
-        var success = _elementalsById.TryRemove(request.ElementalId, out _);
-        return Task.FromResult(new ElementalDeleteResponse { Success = success });
+        var entity = await _dbContext.Elementals
+            .FirstOrDefaultAsync(e => e.EleId == request.ElementalId, context.CancellationToken);
+        if (entity is null)
+        {
+            return new ElementalDeleteResponse { Success = false };
+        }
+
+        _dbContext.Elementals.Remove(entity);
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new ElementalDeleteResponse { Success = true };
     }
 
-    public override Task<ClanRequestResponse> ClanRequest(
+    public override async Task<ClanRequestResponse> ClanRequest(
         ClanRequestRequest request,
         ServerCallContext context)
     {
         var response = new ClanRequestResponse { Success = true };
-        response.Clans.AddRange(_clansById.Values
+        var clans = await _dbContext.Clans
+            .AsNoTracking()
             .OrderBy(clan => clan.ClanId)
-            .Select(ToClanData));
-        return Task.FromResult(response);
+            .ToListAsync(context.CancellationToken);
+        var alliances = await _dbContext.ClanAlliances
+            .AsNoTracking()
+            .ToListAsync(context.CancellationToken);
+        var connectedCounts = await _dbContext.Characters
+            .AsNoTracking()
+            .Where(c => c.ClanId > 0 && c.Online != 0 && c.DeleteDate == 0)
+            .GroupBy(c => c.ClanId)
+            .Select(g => new { ClanId = g.Key, Count = g.Count() })
+            .ToListAsync(context.CancellationToken);
+
+        foreach (var count in connectedCounts)
+        {
+            _clanConnectMembers[count.ClanId] = count.Count;
+        }
+
+        var alliancesByClan = alliances
+            .GroupBy(a => a.ClanId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(a => a.AllianceId).ToList());
+
+        foreach (var clan in clans)
+        {
+            var connectMember = _clanConnectMembers.GetValueOrDefault(clan.ClanId, 0);
+            var data = new ClanData
+            {
+                ClanId = clan.ClanId,
+                Name = clan.Name,
+                Master = clan.Master,
+                MapName = clan.MapName,
+                MaxMember = clan.MaxMember,
+                ConnectMember = connectMember
+            };
+
+            if (alliancesByClan.TryGetValue(clan.ClanId, out var clanAlliances))
+            {
+                data.Alliances.AddRange(clanAlliances.Select(a => new ClanAllianceData
+                {
+                    Opposition = a.Opposition != 0,
+                    ClanId = a.AllianceId,
+                    Name = a.Name
+                }));
+            }
+
+            response.Clans.Add(data);
+        }
+
+        return response;
     }
 
-    public override Task<ClanMessageResponse> ClanMessage(
+    public override async Task<ClanMessageResponse> ClanMessage(
         ClanMessageRequest request,
         ServerCallContext context)
     {
-        var success = request.ClanId > 0 &&
-            _clansById.ContainsKey(request.ClanId) &&
-            !string.IsNullOrWhiteSpace(request.Message);
-        return Task.FromResult(new ClanMessageResponse { Success = success });
+        var clanExists = request.ClanId > 0 &&
+                         await _dbContext.Clans
+                             .AsNoTracking()
+                             .AnyAsync(c => c.ClanId == request.ClanId, context.CancellationToken);
+        var success = clanExists && !string.IsNullOrWhiteSpace(request.Message);
+        return new ClanMessageResponse { Success = success };
     }
 
-    public override Task<ClanMemberStateResponse> ClanMemberLeft(
+    public override async Task<ClanMemberStateResponse> ClanMemberLeft(
         ClanMemberStateRequest request,
         ServerCallContext context)
     {
-        if (!_clansById.TryGetValue(request.ClanId, out var clan))
+        var exists = await _dbContext.Clans
+            .AsNoTracking()
+            .AnyAsync(c => c.ClanId == request.ClanId, context.CancellationToken);
+        if (!exists)
         {
-            return Task.FromResult(new ClanMemberStateResponse
+            return new ClanMemberStateResponse
             {
                 Success = false,
                 ClanId = request.ClanId,
                 ConnectMember = 0
-            });
+            };
         }
 
-        lock (clan.SyncRoot)
+        var current = _clanConnectMembers.GetOrAdd(request.ClanId, 0);
+        if (current > 0)
         {
-            if (clan.ConnectMember > 0)
-            {
-                clan.ConnectMember--;
-            }
+            current--;
+            _clanConnectMembers[request.ClanId] = current;
         }
 
-        return Task.FromResult(new ClanMemberStateResponse
+        return new ClanMemberStateResponse
         {
             Success = true,
-            ClanId = clan.ClanId,
-            ConnectMember = clan.ConnectMember
-        });
-    }
-
-    public override Task<ClanMemberStateResponse> ClanMemberJoined(
-        ClanMemberStateRequest request,
-        ServerCallContext context)
-    {
-        if (!_clansById.TryGetValue(request.ClanId, out var clan))
-        {
-            return Task.FromResult(new ClanMemberStateResponse
-            {
-                Success = false,
-                ClanId = request.ClanId,
-                ConnectMember = 0
-            });
-        }
-
-        lock (clan.SyncRoot)
-        {
-            clan.ConnectMember++;
-        }
-
-        return Task.FromResult(new ClanMemberStateResponse
-        {
-            Success = true,
-            ClanId = clan.ClanId,
-            ConnectMember = clan.ConnectMember
-        });
-    }
-
-    private static MailMessageData ToMailMessageData(MailState mail)
-    {
-        return new MailMessageData
-        {
-            MailId = mail.MailId,
-            SenderAccountId = mail.SenderAccountId,
-            SenderCharacterId = mail.SenderCharacterId,
-            SenderName = mail.SenderName,
-            ReceiverAccountId = mail.ReceiverAccountId,
-            ReceiverCharacterId = mail.ReceiverCharacterId,
-            ReceiverName = mail.ReceiverName,
-            Title = mail.Title,
-            Body = mail.Body,
-            Zeny = mail.Zeny,
-            Attachment = Google.Protobuf.ByteString.CopyFrom(mail.Attachment),
-            Opened = mail.Opened
+            ClanId = request.ClanId,
+            ConnectMember = current
         };
     }
 
-    private static AuctionData ToAuctionData(AuctionState auction)
+    public override async Task<ClanMemberStateResponse> ClanMemberJoined(
+        ClanMemberStateRequest request,
+        ServerCallContext context)
+    {
+        var exists = await _dbContext.Clans
+            .AsNoTracking()
+            .AnyAsync(c => c.ClanId == request.ClanId, context.CancellationToken);
+        if (!exists)
+        {
+            return new ClanMemberStateResponse
+            {
+                Success = false,
+                ClanId = request.ClanId,
+                ConnectMember = 0
+            };
+        }
+
+        var current = _clanConnectMembers.AddOrUpdate(request.ClanId, 1, (_, value) => value + 1);
+
+        return new ClanMemberStateResponse
+        {
+            Success = true,
+            ClanId = request.ClanId,
+            ConnectMember = current
+        };
+    }
+
+    private static MailMessageData ToMailMessageData(MailEntity mail, IReadOnlyDictionary<int, int> accountsByCharId)
+    {
+        return new MailMessageData
+        {
+            MailId = mail.Id,
+            SenderAccountId = accountsByCharId.GetValueOrDefault(mail.SendId, 0),
+            SenderCharacterId = mail.SendId,
+            SenderName = mail.SendName,
+            ReceiverAccountId = accountsByCharId.GetValueOrDefault(mail.DestId, 0),
+            ReceiverCharacterId = mail.DestId,
+            ReceiverName = mail.DestName,
+            Title = mail.Title,
+            Body = mail.Message,
+            Zeny = mail.Zeny,
+            Attachment = Google.Protobuf.ByteString.Empty,
+            Opened = mail.Status != 0
+        };
+    }
+
+    private static AuctionData ToAuctionData(AuctionEntity auction)
     {
         return new AuctionData
         {
             AuctionId = auction.AuctionId,
-            SellerCharacterId = auction.SellerCharacterId,
+            SellerCharacterId = auction.SellerId,
             SellerName = auction.SellerName,
-            BuyerCharacterId = auction.BuyerCharacterId,
+            BuyerCharacterId = auction.BuyerId,
             BuyerName = auction.BuyerName,
-            ItemId = auction.ItemId,
+            ItemId = (int)Math.Min(auction.NameId, int.MaxValue),
             ItemName = auction.ItemName,
-            ItemType = auction.ItemType,
+            ItemType = auction.Type,
             Refine = auction.Refine,
             Attribute = auction.Attribute,
-            Price = auction.Price,
-            BuyNow = auction.BuyNow,
+            Price = (int)Math.Min(auction.Price, int.MaxValue),
+            BuyNow = (int)Math.Min(auction.Buynow, int.MaxValue),
             Hours = auction.Hours,
-            EndTimeUnix = auction.EndTimeUnix,
-            ItemPayload = Google.Protobuf.ByteString.CopyFrom(auction.ItemPayload)
+            EndTimeUnix = auction.Timestamp,
+            ItemPayload = Google.Protobuf.ByteString.Empty
         };
     }
 
-    private static bool MatchesAuctionRequest(AuctionState auction, AuctionRequestListRequest request)
+    private static bool MatchesAuctionRequest(AuctionEntity auction, AuctionRequestListRequest request)
     {
         return request.Type switch
         {
             4 => string.IsNullOrWhiteSpace(request.SearchText) ||
                  auction.ItemName.Contains(request.SearchText, StringComparison.OrdinalIgnoreCase),
             5 => auction.Price <= request.Price,
-            6 => auction.SellerCharacterId == request.CharacterId,
-            7 => auction.BuyerCharacterId == request.CharacterId,
+            6 => auction.SellerId == request.CharacterId,
+            7 => auction.BuyerId == request.CharacterId,
             _ => true
         };
     }
 
-    private int CountAuctions(long characterId, bool buy)
+    private async Task<int> CountAuctionsAsync(long characterId, bool buy, CancellationToken ct)
     {
         if (characterId <= 0)
         {
             return 0;
         }
 
-        return _auctionsById.Values.Count(auction => buy
-            ? auction.BuyerCharacterId == characterId
-            : auction.SellerCharacterId == characterId);
+        var id = (int)Math.Min(characterId, int.MaxValue);
+        return buy
+            ? await _dbContext.Auctions.AsNoTracking().CountAsync(auction => auction.BuyerId == id, ct)
+            : await _dbContext.Auctions.AsNoTracking().CountAsync(auction => auction.SellerId == id, ct);
     }
 
     private static QuestEntryData ToQuestEntryData(QuestEntity quest)
@@ -3226,184 +3495,161 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     private static int ParseQuestState(string? state)
         => int.TryParse(state, out var parsed) ? parsed : 0;
 
-    private static PetData ToPetData(PetState pet)
+    private static PetData ToPetData(PetEntity pet)
     {
         return new PetData
         {
             PetId = pet.PetId,
             AccountId = pet.AccountId,
-            CharacterId = pet.CharacterId,
-            ClassId = pet.ClassId,
+            CharacterId = pet.CharId,
+            ClassId = (int)pet.Class,
             Level = pet.Level,
-            EggItemId = pet.EggItemId,
-            EquipItemId = pet.EquipItemId,
-            Intimacy = pet.Intimacy,
+            EggItemId = (int)Math.Min(pet.EggId, int.MaxValue),
+            EquipItemId = (int)Math.Min(pet.Equip, int.MaxValue),
+            Intimacy = pet.Intimate,
             Hungry = pet.Hungry,
             RenameFlag = pet.RenameFlag,
-            Incubate = pet.Incubate,
+            Incubate = pet.Incubate != 0,
             Name = pet.Name,
-            Payload = Google.Protobuf.ByteString.CopyFrom(pet.Payload)
+            Payload = Google.Protobuf.ByteString.Empty
         };
     }
 
-    private static PetState ToPetState(PetData pet)
+    private static PetEntity ToPetEntity(PetData pet)
     {
-        return new PetState
+        return new PetEntity
         {
             PetId = pet.PetId,
+            Class = SafeUIntFromInt(pet.ClassId),
+            Name = Truncate(pet.Name, 24),
             AccountId = pet.AccountId,
-            CharacterId = pet.CharacterId,
-            ClassId = pet.ClassId,
-            Level = pet.Level,
-            EggItemId = pet.EggItemId,
-            EquipItemId = pet.EquipItemId,
-            Intimacy = pet.Intimacy,
-            Hungry = pet.Hungry,
-            RenameFlag = pet.RenameFlag,
-            Incubate = pet.Incubate,
-            Name = pet.Name,
-            Payload = pet.Payload.ToByteArray()
+            CharId = pet.CharacterId,
+            Level = (ushort)Math.Clamp(pet.Level, 0, ushort.MaxValue),
+            EggId = SafeUIntFromInt(pet.EggItemId),
+            Equip = SafeUIntFromInt(pet.EquipItemId),
+            Intimate = (ushort)Math.Clamp(pet.Intimacy, 0, ushort.MaxValue),
+            Hungry = (ushort)Math.Clamp(pet.Hungry, 0, ushort.MaxValue),
+            RenameFlag = (byte)Math.Clamp(pet.RenameFlag, 0, byte.MaxValue),
+            Incubate = pet.Incubate ? 1u : 0u
         };
     }
 
-    private static HomunculusData ToHomunculusData(HomunculusState hom)
+    private static HomunculusData ToHomunculusData(HomunculusEntity hom)
     {
         return new HomunculusData
         {
-            HomunculusId = hom.HomunculusId,
-            CharacterId = hom.CharacterId,
-            ClassId = hom.ClassId,
+            HomunculusId = hom.HomunId,
+            CharacterId = hom.CharId,
+            ClassId = (int)hom.Class,
             Name = hom.Name,
             Level = hom.Level,
-            Exp = hom.Exp,
+            Exp = (long)Math.Min(hom.Exp, (ulong)long.MaxValue),
             Intimacy = hom.Intimacy,
             Hunger = hom.Hunger,
-            Hp = hom.Hp,
-            MaxHp = hom.MaxHp,
-            Sp = hom.Sp,
-            MaxSp = hom.MaxSp,
-            Payload = Google.Protobuf.ByteString.CopyFrom(hom.Payload)
+            Hp = (int)Math.Min(hom.Hp, int.MaxValue),
+            MaxHp = (int)Math.Min(hom.MaxHp, int.MaxValue),
+            Sp = (int)Math.Min(hom.Sp, int.MaxValue),
+            MaxSp = (int)Math.Min(hom.MaxSp, int.MaxValue),
+            Payload = Google.Protobuf.ByteString.Empty
         };
     }
 
-    private static HomunculusState ToHomunculusState(HomunculusData hom)
+    private static HomunculusEntity ToHomunculusEntity(HomunculusData hom)
     {
-        return new HomunculusState
+        return new HomunculusEntity
         {
-            HomunculusId = hom.HomunculusId,
-            CharacterId = hom.CharacterId,
-            ClassId = hom.ClassId,
-            Name = hom.Name,
-            Level = hom.Level,
-            Exp = hom.Exp,
-            Intimacy = hom.Intimacy,
-            Hunger = hom.Hunger,
-            Hp = hom.Hp,
-            MaxHp = hom.MaxHp,
-            Sp = hom.Sp,
-            MaxSp = hom.MaxSp,
-            Payload = hom.Payload.ToByteArray()
+            HomunId = hom.HomunculusId,
+            CharId = hom.CharacterId,
+            Class = SafeUIntFromInt(hom.ClassId),
+            Name = Truncate(hom.Name, 24),
+            Level = (short)Math.Clamp(hom.Level, short.MinValue, short.MaxValue),
+            Exp = hom.Exp < 0 ? 0ul : (ulong)hom.Exp,
+            Intimacy = Math.Max(hom.Intimacy, 0),
+            Hunger = (short)Math.Clamp(hom.Hunger, short.MinValue, short.MaxValue),
+            Hp = SafeUIntFromInt(hom.Hp),
+            MaxHp = SafeUIntFromInt(hom.MaxHp),
+            Sp = SafeUIntFromInt(hom.Sp),
+            MaxSp = SafeUIntFromInt(hom.MaxSp),
+            Alive = 1
         };
     }
 
-    private static MercenaryData ToMercenaryData(MercenaryState merc)
+    private static MercenaryData ToMercenaryData(MercenaryEntity merc)
     {
         return new MercenaryData
         {
-            MercenaryId = merc.MercenaryId,
-            CharacterId = merc.CharacterId,
-            ClassId = merc.ClassId,
-            Hp = merc.Hp,
-            Sp = merc.Sp,
-            KillCount = merc.KillCount,
+            MercenaryId = merc.MerId,
+            CharacterId = merc.CharId,
+            ClassId = (int)merc.Class,
+            Hp = (int)Math.Min(merc.Hp, int.MaxValue),
+            Sp = (int)Math.Min(merc.Sp, int.MaxValue),
+            KillCount = merc.KillCounter,
             LifeTime = merc.LifeTime,
-            Payload = Google.Protobuf.ByteString.CopyFrom(merc.Payload)
+            Payload = Google.Protobuf.ByteString.Empty
         };
     }
 
-    private static MercenaryState ToMercenaryState(MercenaryData merc)
+    private static MercenaryEntity ToMercenaryEntity(MercenaryData merc)
     {
-        return new MercenaryState
+        return new MercenaryEntity
         {
-            MercenaryId = merc.MercenaryId,
-            CharacterId = merc.CharacterId,
-            ClassId = merc.ClassId,
-            Hp = merc.Hp,
-            Sp = merc.Sp,
-            KillCount = merc.KillCount,
-            LifeTime = merc.LifeTime,
-            Payload = merc.Payload.ToByteArray()
+            MerId = merc.MercenaryId,
+            CharId = merc.CharacterId,
+            Class = SafeUIntFromInt(merc.ClassId),
+            Hp = SafeUIntFromInt(merc.Hp),
+            Sp = SafeUIntFromInt(merc.Sp),
+            KillCounter = merc.KillCount,
+            LifeTime = merc.LifeTime
         };
     }
 
-    private static ElementalData ToElementalData(ElementalState ele)
+    private static ElementalData ToElementalData(ElementalEntity ele)
     {
         return new ElementalData
         {
-            ElementalId = ele.ElementalId,
-            CharacterId = ele.CharacterId,
-            ClassId = ele.ClassId,
-            Mode = ele.Mode,
-            Hp = ele.Hp,
-            Sp = ele.Sp,
-            MaxHp = ele.MaxHp,
-            MaxSp = ele.MaxSp,
-            Attack = ele.Attack,
-            Attack2 = ele.Attack2,
-            Matk = ele.Matk,
+            ElementalId = ele.EleId,
+            CharacterId = ele.CharId,
+            ClassId = (int)ele.Class,
+            Mode = (int)Math.Min(ele.Mode, int.MaxValue),
+            Hp = (int)Math.Min(ele.Hp, int.MaxValue),
+            Sp = (int)Math.Min(ele.Sp, int.MaxValue),
+            MaxHp = (int)Math.Min(ele.MaxHp, int.MaxValue),
+            MaxSp = (int)Math.Min(ele.MaxSp, int.MaxValue),
+            Attack = (int)Math.Min(ele.Atk1, int.MaxValue),
+            Attack2 = (int)Math.Min(ele.Atk2, int.MaxValue),
+            Matk = (int)Math.Min(ele.Matk, int.MaxValue),
             Aspd = ele.Aspd,
             Def = ele.Def,
             Mdef = ele.Mdef,
             Flee = ele.Flee,
             Hit = ele.Hit,
             LifeTime = ele.LifeTime,
-            Payload = Google.Protobuf.ByteString.CopyFrom(ele.Payload)
+            Payload = Google.Protobuf.ByteString.Empty
         };
     }
 
-    private static ElementalState ToElementalState(ElementalData ele)
+    private static ElementalEntity ToElementalEntity(ElementalData ele)
     {
-        return new ElementalState
+        return new ElementalEntity
         {
-            ElementalId = ele.ElementalId,
-            CharacterId = ele.CharacterId,
-            ClassId = ele.ClassId,
-            Mode = ele.Mode,
-            Hp = ele.Hp,
-            Sp = ele.Sp,
-            MaxHp = ele.MaxHp,
-            MaxSp = ele.MaxSp,
-            Attack = ele.Attack,
-            Attack2 = ele.Attack2,
-            Matk = ele.Matk,
-            Aspd = ele.Aspd,
-            Def = ele.Def,
-            Mdef = ele.Mdef,
-            Flee = ele.Flee,
-            Hit = ele.Hit,
-            LifeTime = ele.LifeTime,
-            Payload = ele.Payload.ToByteArray()
+            EleId = ele.ElementalId,
+            CharId = ele.CharacterId,
+            Class = SafeUIntFromInt(ele.ClassId),
+            Mode = SafeUIntFromInt(ele.Mode),
+            Hp = SafeUIntFromInt(ele.Hp),
+            Sp = SafeUIntFromInt(ele.Sp),
+            MaxHp = SafeUIntFromInt(ele.MaxHp),
+            MaxSp = SafeUIntFromInt(ele.MaxSp),
+            Atk1 = SafeUIntFromInt(ele.Attack),
+            Atk2 = SafeUIntFromInt(ele.Attack2),
+            Matk = SafeUIntFromInt(ele.Matk),
+            Aspd = (ushort)Math.Clamp(ele.Aspd, 0, ushort.MaxValue),
+            Def = (ushort)Math.Clamp(ele.Def, 0, ushort.MaxValue),
+            Mdef = (ushort)Math.Clamp(ele.Mdef, 0, ushort.MaxValue),
+            Flee = (ushort)Math.Clamp(ele.Flee, 0, ushort.MaxValue),
+            Hit = (ushort)Math.Clamp(ele.Hit, 0, ushort.MaxValue),
+            LifeTime = ele.LifeTime
         };
-    }
-
-    private static ClanData ToClanData(ClanState clan)
-    {
-        var data = new ClanData
-        {
-            ClanId = clan.ClanId,
-            Name = clan.Name,
-            Master = clan.Master,
-            MapName = clan.MapName,
-            MaxMember = clan.MaxMember,
-            ConnectMember = clan.ConnectMember
-        };
-        data.Alliances.AddRange(clan.Alliances.Select(a => new ClanAllianceData
-        {
-            Opposition = a.Opposition,
-            ClanId = a.ClanId,
-            Name = a.Name
-        }));
-        return data;
     }
 
     private async Task<PartyInfoData?> LoadPartyInfoDataAsync(int partyId, CancellationToken ct)
@@ -3614,128 +3860,6 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             return value;
         }
         return value[..maxLength];
-    }
-
-    private sealed class MailState
-    {
-        public long MailId { get; init; }
-        public int SenderAccountId { get; init; }
-        public long SenderCharacterId { get; init; }
-        public string SenderName { get; init; } = string.Empty;
-        public int ReceiverAccountId { get; init; }
-        public long ReceiverCharacterId { get; init; }
-        public string ReceiverName { get; init; } = string.Empty;
-        public string Title { get; init; } = string.Empty;
-        public string Body { get; init; } = string.Empty;
-        public long Zeny { get; set; }
-        public byte[] Attachment { get; set; } = Array.Empty<byte>();
-        public bool Opened { get; set; }
-    }
-
-    private sealed class AuctionState
-    {
-        public long AuctionId { get; init; }
-        public long SellerCharacterId { get; init; }
-        public string SellerName { get; init; } = string.Empty;
-        public long BuyerCharacterId { get; set; }
-        public string BuyerName { get; set; } = string.Empty;
-        public int ItemId { get; init; }
-        public string ItemName { get; init; } = string.Empty;
-        public int ItemType { get; init; }
-        public int Refine { get; init; }
-        public int Attribute { get; init; }
-        public int Price { get; set; }
-        public int BuyNow { get; init; }
-        public int Hours { get; init; }
-        public long EndTimeUnix { get; init; }
-        public byte[] ItemPayload { get; init; } = Array.Empty<byte>();
-    }
-
-    private sealed class PetState
-    {
-        public int PetId { get; set; }
-        public int AccountId { get; set; }
-        public int CharacterId { get; set; }
-        public int ClassId { get; init; }
-        public int Level { get; init; }
-        public int EggItemId { get; init; }
-        public int EquipItemId { get; init; }
-        public int Intimacy { get; set; }
-        public int Hungry { get; set; }
-        public int RenameFlag { get; init; }
-        public bool Incubate { get; init; }
-        public string Name { get; init; } = string.Empty;
-        public byte[] Payload { get; init; } = Array.Empty<byte>();
-    }
-
-    private sealed class HomunculusState
-    {
-        public int HomunculusId { get; set; }
-        public int CharacterId { get; init; }
-        public int ClassId { get; init; }
-        public string Name { get; init; } = string.Empty;
-        public int Level { get; init; }
-        public long Exp { get; init; }
-        public int Intimacy { get; set; }
-        public int Hunger { get; set; }
-        public int Hp { get; init; }
-        public int MaxHp { get; init; }
-        public int Sp { get; init; }
-        public int MaxSp { get; init; }
-        public byte[] Payload { get; init; } = Array.Empty<byte>();
-    }
-
-    private sealed class MercenaryState
-    {
-        public int MercenaryId { get; set; }
-        public int CharacterId { get; init; }
-        public int ClassId { get; init; }
-        public int Hp { get; init; }
-        public int Sp { get; init; }
-        public int KillCount { get; init; }
-        public long LifeTime { get; init; }
-        public byte[] Payload { get; init; } = Array.Empty<byte>();
-    }
-
-    private sealed class ElementalState
-    {
-        public int ElementalId { get; set; }
-        public int CharacterId { get; init; }
-        public int ClassId { get; init; }
-        public int Mode { get; init; }
-        public int Hp { get; init; }
-        public int Sp { get; init; }
-        public int MaxHp { get; init; }
-        public int MaxSp { get; init; }
-        public int Attack { get; init; }
-        public int Attack2 { get; init; }
-        public int Matk { get; init; }
-        public int Aspd { get; init; }
-        public int Def { get; init; }
-        public int Mdef { get; init; }
-        public int Flee { get; init; }
-        public int Hit { get; init; }
-        public long LifeTime { get; init; }
-        public byte[] Payload { get; init; } = Array.Empty<byte>();
-    }
-
-    private sealed class ClanState
-    {
-        public int ClanId { get; init; }
-        public string Name { get; init; } = string.Empty;
-        public string Master { get; init; } = string.Empty;
-        public string MapName { get; init; } = string.Empty;
-        public int MaxMember { get; init; }
-        public int ConnectMember { get; set; }
-        public object SyncRoot { get; } = new();
-        public List<ClanAllianceState> Alliances { get; } = new();
-    }
-
-    private sealed class ClanAllianceState
-    {
-        public bool Opposition { get; init; }
-        public int ClanId { get; init; }
-        public string Name { get; init; } = string.Empty;
     }
 
     private async Task<CharEntity?> LoadCharacterEntityAsync(long characterId, CancellationToken cancellationToken)
