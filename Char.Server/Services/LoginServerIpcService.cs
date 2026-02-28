@@ -321,6 +321,27 @@ public class LoginServerIpcService(
         }
     }
 
+    public async Task UnregisterCharacterServerAsync(
+        int serverId,
+        CancellationToken cancellationToken = default)
+    {
+        var session = GetLoginSession();
+        if (session?.IsConnected != true) return;
+
+        try
+        {
+            var client = new LoginService.LoginServiceClient(session.Channel);
+            await client.UnregisterCharacterServerAsync(new CharacterServerUnregisterRequest
+            {
+                ServerId = serverId
+            }, cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to unregister char server {ServerId} on login server", serverId);
+        }
+    }
+
     public async Task SyncOnlineAccountsAsync(
         int serverId,
         IEnumerable<int> accountIds,

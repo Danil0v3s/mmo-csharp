@@ -2,9 +2,11 @@ using System.Net;
 using System.Net.Sockets;
 using Core.Server;
 using Core.Server.IPC;
+using Core.Server.Monitoring;
 using Core.Server.Network;
 using Core.Server.Packets;
 using Core.Server.Packets.Out.AC;
+using Login.Server.Repository.Api;
 using Login.Server.Security;
 
 namespace Login.Server;
@@ -15,6 +17,9 @@ public class LoginServerImpl : GameLoopServer
     private readonly PacketHandlerRegistry _handlerRegistry;
     private readonly ILoginSecurityService _loginSecurityService;
     private readonly ICharServerIpcService _charServerIpcService;
+    private readonly ICharServerRegistry _charServerRegistry;
+    private readonly ILoginDataRepository _loginDataRepository;
+    private readonly EndpointLivenessMonitor _charServerLivenessMonitor;
     private readonly LoginServerState _serverState;
     private DateTime _nextIpBanCleanupUtc = DateTime.MinValue;
     private DateTime _nextCharIpSyncUtc = DateTime.MinValue;
@@ -28,6 +33,8 @@ public class LoginServerImpl : GameLoopServer
         SessionManager sessionManager,
         ServerConnectionService connectionService,
         ICharServerIpcService charServerIpcService,
+        ICharServerRegistry charServerRegistry,
+        ILoginDataRepository loginDataRepository,
         LoginServerState serverState
     )
         : base("LoginServer", configuration, logger, packetSystem, sessionManager)
@@ -37,6 +44,14 @@ public class LoginServerImpl : GameLoopServer
         _handlerRegistry.WarmUpHandlers(TimeSpan.FromSeconds(5), failOnError: false);
         _loginSecurityService = loginSecurityService;
         _charServerIpcService = charServerIpcService;
+        _charServerRegistry = charServerRegistry;
+        _loginDataRepository = loginDataRepository;
+        _charServerLivenessMonitor = new EndpointLivenessMonitor(
+            logger,
+            scope: "LoginServer -> CharServers",
+            probeInterval: TimeSpan.FromSeconds(15),
+            connectTimeout: TimeSpan.FromSeconds(1),
+            failureThreshold: 3);
         _serverState = serverState;
 
         // Wire up the connection service to use this server's connection manager
@@ -149,6 +164,7 @@ public class LoginServerImpl : GameLoopServer
         }
 
         await RequestCharServerAddressSyncAsync(cancellationToken);
+        await PruneUnreachableCharServersAsync(cancellationToken);
 
         await Task.CompletedTask;
     }
@@ -170,5 +186,31 @@ public class LoginServerImpl : GameLoopServer
 
         _nextCharIpSyncUtc = DateTime.UtcNow.AddSeconds(60);
         await _charServerIpcService.RequestCharServerAddressSyncAsync(cancellationToken);
+    }
+
+    private async Task PruneUnreachableCharServersAsync(CancellationToken cancellationToken)
+    {
+        var activeServers = _charServerRegistry
+            .GetActiveCharServersWithIds()
+            .Select(server => new MonitoredEndpoint(
+                server.ServerId,
+                server.Data.Ip,
+                server.Data.Port,
+                server.Data.Name))
+            .ToList();
+
+        var unreachableServers = await _charServerLivenessMonitor.ProbeDueEndpointsAsync(activeServers, cancellationToken);
+
+        foreach (var server in unreachableServers)
+        {
+            var removed = await _loginDataRepository.RemoveOnlineUsersByCharServer(server.Id);
+            _charServerRegistry.RemoveCharServer(server.Id);
+
+            Logger.LogWarning(
+                "Pruned unreachable char server id {ServerId} (endpoint {Endpoint}) and removed {RemovedAccounts} online account bindings",
+                server.Id,
+                EndpointProbe.FormatEndpoint(server.Ip, server.Port),
+                removed);
+        }
     }
 }

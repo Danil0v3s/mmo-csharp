@@ -9,6 +9,7 @@ service LoginService {
   rpc GetAccountInfo (AccountInfoRequest) returns (AccountInfoResponse);
   rpc GetFullAccountData (AccountDataRequest) returns (AccountDataResponse);
   rpc RegisterCharacterServer (CharacterServerRegistrationRequest) returns (CharacterServerRegistrationResponse);
+  rpc UnregisterCharacterServer (CharacterServerUnregisterRequest) returns (CharacterServerUnregisterResponse);
   rpc AuthenticateAccountForCharServer (CharacterServerAuthRequest) returns (CharacterServerAuthResponse);
   rpc UpdateCharacterServerUserCount (CharacterServerUserCountUpdateRequest) returns (CharacterServerUserCountUpdateResponse);
   rpc NotifyAccountStatus (AccountStatusUpdateRequest) returns (AccountStatusUpdateResponse);
@@ -91,6 +92,15 @@ message CharacterServerRegistrationResponse {
   int32 server_id = 2;      // Assigned server ID (account ID)
   int32 result_code = 3;    // 0 = success, 3 = refused, etc.
   string error_message = 4; // Error message if success is false
+}
+
+message CharacterServerUnregisterRequest {
+  int32 server_id = 1;
+}
+
+message CharacterServerUnregisterResponse {
+  bool success = 1;
+  uint32 removed_accounts = 2;
 }
 
 // Character server auth request (rAthena 0x2712 equivalent)

@@ -77,6 +77,8 @@ public class CharServerImpl : GameLoopServer, ICharServerRuntime
         if (_serverState.IsRegisteredToLoginServer && _serverState.RegisteredServerId >= 0)
         {
             await _loginServerIpc.SetAllOfflineAsync(_serverState.RegisteredServerId, cancellationToken);
+            await _loginServerIpc.UnregisterCharacterServerAsync(_serverState.RegisteredServerId, cancellationToken);
+            _serverState.SetRegistered(false, -1);
         }
 
         if (_listenerSocket != null)

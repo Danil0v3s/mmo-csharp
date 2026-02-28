@@ -149,6 +149,28 @@ public class LoginGrpcService : LoginService.LoginServiceBase
         return await _charServerGrpcHandler.RegisterCharacterServerAsync(request, context);
     }
 
+    public override async Task<CharacterServerUnregisterResponse> UnregisterCharacterServer(
+        CharacterServerUnregisterRequest request,
+        ServerCallContext context)
+    {
+        if (request.ServerId < 0)
+        {
+            return new CharacterServerUnregisterResponse { Success = false };
+        }
+
+        var removed = await _loginDataRepository.RemoveOnlineUsersByCharServer(request.ServerId);
+        _charServerRegistry.RemoveCharServer(request.ServerId);
+
+        _logger.LogInformation("Unregistered char server id {ServerId} (removed {RemovedAccounts} online account bindings)",
+            request.ServerId, removed);
+
+        return new CharacterServerUnregisterResponse
+        {
+            Success = true,
+            RemovedAccounts = (uint)Math.Max(removed, 0)
+        };
+    }
+
     public override Task<CharacterServerAuthResponse> AuthenticateAccountForCharServer(
         CharacterServerAuthRequest request,
         ServerCallContext context)

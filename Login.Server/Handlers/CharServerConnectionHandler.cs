@@ -1,7 +1,9 @@
 using Core.Server;
 using Core.Server.IPC;
+using Core.Server.Monitoring;
 using Grpc.Core;
 using Login.Server.UseCase;
+using Login.Server.Repository.Api;
 
 namespace Login.Server.Handlers;
 
@@ -12,7 +14,8 @@ namespace Login.Server.Handlers;
 public class CharServerGrpcHandler(
     ILogger logger,
     ILoginMmoAuth loginMmoAuth,
-    ICharServerRegistry charServerRegistry
+    ICharServerRegistry charServerRegistry,
+    ILoginDataRepository loginDataRepository
 )
 {
     /// <summary>
@@ -45,13 +48,17 @@ public class CharServerGrpcHandler(
                 var existingServer = charServerRegistry.GetCharServer(sessionData.AccountId);
                 if (existingServer != null && !string.IsNullOrEmpty(existingServer.Name))
                 {
-                    logger.LogWarning("Character server registration refused: server ID {ServerId} already in use", sessionData.AccountId);
-                    return new CharacterServerRegistrationResponse
+                    var staleRegistrationCleared = await TryClearStaleServerRegistrationAsync(sessionData.AccountId, existingServer);
+                    if (!staleRegistrationCleared)
                     {
-                        Success = false,
-                        ErrorMessage = "Server ID already in use",
-                        ResultCode = 3
-                    };
+                        logger.LogWarning("Character server registration refused: server ID {ServerId} already in use", sessionData.AccountId);
+                        return new CharacterServerRegistrationResponse
+                        {
+                            Success = false,
+                            ErrorMessage = "Server ID already in use",
+                            ResultCode = 3
+                        };
+                    }
                 }
 
                 // Parse the server IP address
@@ -127,6 +134,41 @@ public class CharServerGrpcHandler(
         }
 
         throw new FormatException("Character server registration missing a valid socket port.");
+    }
+
+    private async Task<bool> TryClearStaleServerRegistrationAsync(int serverId, CharServerData existingServer)
+    {
+        if (existingServer.Port <= 0 || existingServer.Ip == 0)
+        {
+            logger.LogWarning("Clearing stale char server registration for ID {ServerId}: missing endpoint data", serverId);
+            await RemoveServerRegistrationAsync(serverId);
+            return true;
+        }
+
+        var endpointReachable = await IsServerEndpointReachableAsync(existingServer.Ip, existingServer.Port);
+        if (endpointReachable)
+        {
+            return false;
+        }
+
+        logger.LogWarning(
+            "Clearing stale char server registration for ID {ServerId}: endpoint {Endpoint} is unreachable",
+            serverId,
+            EndpointProbe.FormatEndpoint(existingServer.Ip, existingServer.Port));
+
+        await RemoveServerRegistrationAsync(serverId);
+        return true;
+    }
+
+    private async Task RemoveServerRegistrationAsync(int serverId)
+    {
+        await loginDataRepository.RemoveOnlineUsersByCharServer(serverId);
+        charServerRegistry.RemoveCharServer(serverId);
+    }
+
+    private static async Task<bool> IsServerEndpointReachableAsync(uint ip, int port)
+    {
+        return await EndpointProbe.TryConnectAsync(ip, port, TimeSpan.FromSeconds(1));
     }
 }
 

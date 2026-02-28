@@ -105,6 +105,10 @@ public interface ILoginServerIpcService
         int serverId,
         CancellationToken cancellationToken = default);
 
+    Task UnregisterCharacterServerAsync(
+        int serverId,
+        CancellationToken cancellationToken = default);
+
     Task SyncOnlineAccountsAsync(
         int serverId,
         IEnumerable<int> accountIds,
