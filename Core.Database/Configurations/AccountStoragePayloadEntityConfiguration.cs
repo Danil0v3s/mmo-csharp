@@ -11,7 +11,7 @@ public class AccountStoragePayloadEntityConfiguration : IEntityTypeConfiguration
         builder.ToTable("account_storage_payload");
         builder.HasKey(e => e.AccountId);
 
-        builder.Property(e => e.AccountId).HasColumnName("account_id");
+        builder.Property(e => e.AccountId).ValueGeneratedNever().HasColumnName("account_id");
         builder.Property(e => e.Data).HasColumnName("data").HasColumnType("longblob");
     }
 }

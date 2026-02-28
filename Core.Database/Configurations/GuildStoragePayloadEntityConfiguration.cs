@@ -11,7 +11,7 @@ public class GuildStoragePayloadEntityConfiguration : IEntityTypeConfiguration<G
         builder.ToTable("guild_storage_payload");
         builder.HasKey(e => e.GuildId);
 
-        builder.Property(e => e.GuildId).HasColumnName("guild_id");
+        builder.Property(e => e.GuildId).ValueGeneratedNever().HasColumnName("guild_id");
         builder.Property(e => e.Data).HasColumnName("data").HasColumnType("longblob");
     }
 }
