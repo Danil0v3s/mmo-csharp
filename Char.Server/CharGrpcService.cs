@@ -5,7 +5,6 @@ using Core.Database.Repositories.Api;
 using Core.Server.IPC;
 using Core.Server;
 using Grpc.Core;
-using System.Collections.Concurrent;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 
@@ -44,20 +43,19 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     ];
     private readonly CharServerImpl _charServer;
     private readonly IMapAuthTicketService _mapAuthTicketService;
+    private readonly IMapServerRegistryService _mapServerRegistry;
     private readonly ILoginServerIpcService _loginServerIpc;
     private readonly ICharacterRepository _characterRepository;
     private readonly IFriendRepository _friendRepository;
     private readonly GameDbContext _dbContext;
     private readonly CharServerConfiguration _configuration;
     private readonly ILogger<CharGrpcService> _logger;
-    private readonly ConcurrentDictionary<int, string[]> _mapServerMaps = new();
-    private readonly ConcurrentDictionary<int, int> _mapServerUserCounts = new();
-    private readonly ConcurrentDictionary<int, (uint Ip, uint Port)> _mapServerAddresses = new();
     private uint _partyShareLevel = 0;
 
     public CharGrpcService(
         CharServerImpl charServer,
         IMapAuthTicketService mapAuthTicketService,
+        IMapServerRegistryService mapServerRegistry,
         ILoginServerIpcService loginServerIpc,
         ICharacterRepository characterRepository,
         IFriendRepository friendRepository,
@@ -67,6 +65,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     {
         _charServer = charServer;
         _mapAuthTicketService = mapAuthTicketService;
+        _mapServerRegistry = mapServerRegistry;
         _loginServerIpc = loginServerIpc;
         _characterRepository = characterRepository;
         _friendRepository = friendRepository;
@@ -290,6 +289,24 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             });
         }
 
+        if (request.TargetMapServerId > 0 && !_mapServerRegistry.HasServer(request.TargetMapServerId))
+        {
+            return Task.FromResult(new MapServerChangeResponse
+            {
+                Success = false,
+                ErrorMessage = "Unknown target map server"
+            });
+        }
+
+        if (request.TargetMapServerId <= 0 && !_mapServerRegistry.ContainsMap(request.MapName))
+        {
+            return Task.FromResult(new MapServerChangeResponse
+            {
+                Success = false,
+                ErrorMessage = "No registered map server for requested map"
+            });
+        }
+
         var issued = _mapAuthTicketService.IssueTicket(
             request.AccountId,
             request.CharacterId,
@@ -508,18 +525,12 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             return Task.FromResult(new MapServerMapRegistryResponse { Success = false, RegisteredMaps = 0 });
         }
 
-        var maps = request.MapNames
-            .Where(map => !string.IsNullOrWhiteSpace(map))
-            .Select(map => map.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        _mapServerMaps[request.MapServerId] = maps;
+        var registeredMaps = _mapServerRegistry.RegisterMaps(request.MapServerId, request.MapNames);
 
         return Task.FromResult(new MapServerMapRegistryResponse
         {
             Success = true,
-            RegisteredMaps = maps.Length
+            RegisteredMaps = registeredMaps
         });
     }
 
@@ -532,8 +543,8 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             return Task.FromResult(new MapServerUserCountResponse { Success = false, UserCount = 0 });
         }
 
-        _mapServerUserCounts.TryGetValue(request.MapServerId, out var users);
-        return Task.FromResult(new MapServerUserCountResponse { Success = true, UserCount = users });
+        var exists = _mapServerRegistry.TryGetUserCount(request.MapServerId, out var users);
+        return Task.FromResult(new MapServerUserCountResponse { Success = exists, UserCount = users });
     }
 
     public override Task<MapServerUserCountUpdateResponse> RegisterMapServerUserCount(
@@ -545,7 +556,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             return Task.FromResult(new MapServerUserCountUpdateResponse { Success = false });
         }
 
-        _mapServerUserCounts[request.MapServerId] = request.UserCount;
+        _mapServerRegistry.SetUserCount(request.MapServerId, request.UserCount);
         return Task.FromResult(new MapServerUserCountUpdateResponse { Success = true });
     }
 
@@ -558,7 +569,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             return Task.FromResult(new MapServerAddressUpdateResponse { Success = false });
         }
 
-        _mapServerAddresses[request.MapServerId] = (request.Ip, request.Port);
+        _mapServerRegistry.SetAddress(request.MapServerId, request.Ip, request.Port);
         return Task.FromResult(new MapServerAddressUpdateResponse { Success = true });
     }
 
@@ -682,9 +693,8 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         }
 
         var characters = await _characterRepository.GetByAccountIdAsync(request.AccountId, context.CancellationToken);
-        var updatedAny = false;
         foreach (var character in characters.Where(c => c.DeleteDate == 0 &&
-                                                        (!request.CharacterId.Equals(0) ? c.CharId == request.CharacterId : true)))
+                                                        (request.CharacterId <= 0 || c.CharId == request.CharacterId)))
         {
             if (character.Online == 0)
             {
@@ -693,7 +703,6 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
 
             character.Online = 0;
             await _characterRepository.UpdateAsync(character, context.CancellationToken);
-            updatedAny = true;
         }
 
         await _charServer.ForceDisconnectAccountAsync(request.AccountId);
@@ -705,11 +714,6 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
                 _charServer.RegisteredServerId,
                 online: false,
                 context.CancellationToken);
-        }
-
-        if (!updatedAny && request.CharacterId > 0)
-        {
-            return new CharacterOnlineStateResponse { Success = false };
         }
 
         return new CharacterOnlineStateResponse { Success = true };

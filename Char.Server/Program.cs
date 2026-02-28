@@ -39,6 +39,7 @@ builder.Services.AddSingleton<ServerConnectionService>();
 builder.Services.AddSingleton<IServerConnectionService>(sp => sp.GetRequiredService<ServerConnectionService>());
 builder.Services.AddSingleton<ILoginServerIpcService, LoginServerIpcService>();
 builder.Services.AddSingleton<IMapAuthTicketService, MapAuthTicketService>();
+builder.Services.AddSingleton<IMapServerRegistryService, MapServerRegistryService>();
 builder.Services.AddTransient<ICharacterListFlowService, CharacterListFlowService>();
 
 // Register server state separately to avoid circular dependencies

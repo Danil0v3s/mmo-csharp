@@ -28,6 +28,15 @@ This plan covers parity for char-server RPC surfaces (map/login/internal service
   - Removed migration-era in-memory caches for fame/bonus-script/scdata/skill-cooldown paths; these flows are now DB-sourced only.
   - Clan connect-member parity is now persisted via `clan.connect_member` with join/left acknowledgements writing DB-backed counts.
   - Guild/account storage payload RPCs now persist opaque bytes in DB (`guild_storage_payload`, `account_storage_payload`) instead of in-memory dictionaries.
+- 2026-02-28:
+  - Added `CharGrpcService` parity regression tests for map-auth ticket consume/replay rejection and online-state transitions (`SetCharacterOnline`, `SetAllCharactersOffline`) in `Char.Server.Tests`.
+  - Added `CharGrpcService` parity regression tests for `SaveCharacterState` offline-save ack semantics and `DeleteCharacter` restriction gates (party/guild/base-level) plus soft-delete success path.
+  - `SetCharacterOffline` parity behavior tightened to treat `character_id <= 0` as account-wide offline update and return success for valid requests.
+  - Map-server registry/address/usercount state moved to singleton `IMapServerRegistryService` so routing metadata is shared across gRPC calls (not per-request instance state).
+  - Added offline parity tests for account-wide (`character_id = 0`) and specific-character offline requests.
+  - Added packet-level handler flow tests for `CH_SELECT_CHAR` map handoff path: success sends `HC_SEND_MAP_DATA` and issues map-auth ticket; reject paths send `SC_NOTIFY_BAN` / `HC_REFUSE_ENTER` as expected.
+  - Expanded RPC branch-matrix tests for core char gRPC endpoints (`GetCharacterList`, `GetCharacterData`, `RequestCharacterName`, `CreateCharacter`, `RequestCharacterMapAuth`, `RequestMapServerChange`, `SetCharacterOnline`, map-server usercount registry flows) with both success and reject branches.
+  - Completed core RPC branch-matrix coverage for migrated char flows by adding invalid/not-found/restriction branches across `RequestCharacterMapAuth`, `SaveCharacterState`, `DeleteCharacter`, online/offline state RPCs, and map-server registry validation RPCs.
 
 ## 1. Current gap audit
 
@@ -75,19 +84,19 @@ Many RPCs currently backed by `ConcurrentDictionary` in-memory state only (party
 
 ## Phase A: Close core TODOs and map-auth/save parity first
 
-1. [ ] Replace `GetCharacterList` hardcoded payload with repository-backed query.
-2. [ ] Replace `GetCharacterData` stub with repository-backed load + map/save position mapping.
-3. [ ] Replace `RequestCharacterMapAuth` stub payload with repository-backed character data.
-4. [ ] Implement `SaveCharacterState` DB persistence (position/map/status + offline transition parity).
-5. [ ] Implement `CreateCharacter` DB path with validation parity (name/rules/slots).
-6. [ ] Implement `DeleteCharacter` DB path with restriction parity (party/guild/baselevel/delay).
-7. [ ] Implement `RequestCharacterName` lookup via repository (no stub fallback).
+1. [x] Replace `GetCharacterList` hardcoded payload with repository-backed query.
+2. [x] Replace `GetCharacterData` stub with repository-backed load + map/save position mapping.
+3. [x] Replace `RequestCharacterMapAuth` stub payload with repository-backed character data.
+4. [x] Implement `SaveCharacterState` DB persistence (position/map/status + offline transition parity).
+5. [x] Implement `CreateCharacter` DB path with validation parity (name/rules/slots).
+6. [x] Implement `DeleteCharacter` DB path with restriction parity (party/guild/baselevel/delay).
+7. [x] Implement `RequestCharacterName` lookup via repository (no stub fallback).
 
 ## Phase B: Online state and map-server registry parity
 
-8. [ ] Make `SetCharacterOnline` update persisted online state and login synchronization behavior.
-9. [ ] Make `SetCharacterOffline` and `SetAllCharactersOffline` fully align with rAthena offline propagation.
-10. [ ] Align map-server registry/address/usercount flows with actual map-server identity and routing source-of-truth.
+8. [x] Make `SetCharacterOnline` update persisted online state and login synchronization behavior.
+9. [x] Make `SetCharacterOffline` and `SetAllCharactersOffline` fully align with rAthena offline propagation.
+10. [x] Align map-server registry/address/usercount flows with actual map-server identity and routing source-of-truth.
 
 ## Phase C: Replace in-memory subsystem state with DB-backed inter parity
 
@@ -100,10 +109,10 @@ Many RPCs currently backed by `ConcurrentDictionary` in-memory state only (party
 
 ## Phase D: Hardening and parity verification
 
-17. [ ] Add RPC-level integration tests for success + reject/error branches per migrated endpoint.
-18. [ ] Add replay/ordering tests for map-auth ticket consume paths.
-19. [ ] Add DB state transition tests (online flags, save semantics, delete semantics).
-20. [ ] Add packet-level parity checks for char select/map handoff paths that depend on these RPCs.
+17. [x] Add RPC-level integration tests for success + reject/error branches per migrated endpoint.
+18. [x] Add replay/ordering tests for map-auth ticket consume paths.
+19. [x] Add DB state transition tests (online flags, save semantics, delete semantics).
+20. [x] Add packet-level parity checks for char select/map handoff paths that depend on these RPCs.
 
 ## 4. Immediate next unit (recommended)
 
