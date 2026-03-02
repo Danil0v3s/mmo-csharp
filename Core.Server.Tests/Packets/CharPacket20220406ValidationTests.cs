@@ -9,6 +9,9 @@ public class CharPacket20220406ValidationTests
     {
         Assert.Equal(0x8fc, (short)PacketHeader.CH_REQ_CHANGE_CHARNAME);
         Assert.Equal(0x8fd, (short)PacketHeader.HC_ACK_CHANGE_CHARNAME);
+        Assert.Equal(0x6f, (short)PacketHeader.HC_ACCEPT_DELETECHAR);
+        Assert.Equal(0x70, (short)PacketHeader.HC_REFUSE_DELETECHAR);
+        Assert.Equal(0xb6e, (short)PacketHeader.HC_REFUSE_MAKECHAR);
         Assert.Equal(0xb6f, (short)PacketHeader.HC_ACCEPT_MAKECHAR);
         Assert.Equal(0xb70, (short)PacketHeader.HC_ACK_CHANGE_CHARACTER_SLOT);
         Assert.Equal(0xb72, (short)PacketHeader.HC_ACK_CHARINFO_PER_PAGE);

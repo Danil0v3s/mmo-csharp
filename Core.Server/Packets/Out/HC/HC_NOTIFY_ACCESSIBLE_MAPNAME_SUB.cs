@@ -2,8 +2,8 @@ namespace Core.Server.Packets.Out.HC;
 
 public class HC_NOTIFY_ACCESSIBLE_MAPNAME_SUB
 {
-    public int Status { get; internal set; }
-    public string Map { get; internal set; } = string.Empty;
+    public int Status { get; set; }
+    public string Map { get; set; } = string.Empty;
 
     public void Read(BinaryReader reader)
     {

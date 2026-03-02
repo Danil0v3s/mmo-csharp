@@ -9,10 +9,14 @@ public class CharKeepAliveHandler(ILogger<CharKeepAliveHandler> logger) : IPacke
 {
     public Task HandleAsync(CharSessionData session, CH_KEEP_ALIVE packet)
     {
-        if (!session.AccountId.HasValue)
+        if (!session.AccountId.HasValue || session.AccountId.Value != (int)packet.AccountId)
         {
-            session.AccountId = (int)packet.AccountId;
-            logger.LogDebug("Bound account {AccountId} to char session {SessionId} via keepalive", packet.AccountId, session.SessionId);
+            logger.LogWarning(
+                "Rejecting CH_KEEP_ALIVE with mismatched/unbound account id {PacketAccountId} for session {SessionId} (session account {SessionAccountId})",
+                packet.AccountId,
+                session.SessionId,
+                session.AccountId);
+            session.Disconnect(DisconnectReason.Kicked);
         }
 
         return Task.CompletedTask;

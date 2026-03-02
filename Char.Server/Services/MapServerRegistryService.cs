@@ -77,4 +77,40 @@ public class MapServerRegistryService : IMapServerRegistryService
 
         return _mapsByServer.Values.Any(maps => maps.Contains(mapName.Trim(), StringComparer.OrdinalIgnoreCase));
     }
+
+    public bool TryGetMapAddress(string mapName, out uint ip, out ushort port)
+    {
+        ip = 0;
+        port = 0;
+
+        if (string.IsNullOrWhiteSpace(mapName))
+        {
+            return false;
+        }
+
+        var normalized = mapName.Trim();
+        foreach (var entry in _mapsByServer)
+        {
+            if (!entry.Value.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!_addressesByServer.TryGetValue(entry.Key, out var address))
+            {
+                continue;
+            }
+
+            if (address.Port == 0 || address.Port > ushort.MaxValue)
+            {
+                continue;
+            }
+
+            ip = address.Ip;
+            port = (ushort)address.Port;
+            return true;
+        }
+
+        return false;
+    }
 }

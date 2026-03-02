@@ -31,4 +31,5 @@ public class CharSessionData(
     public bool IsVip { get; set; }
     public int VipCharacterSlots { get; set; }
     public int BillingCharacterSlots { get; set; }
+    public string PendingCharacterRename { get; set; } = string.Empty;
 }

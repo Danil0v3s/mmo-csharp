@@ -8,4 +8,5 @@ public interface IMapServerRegistryService
     void SetAddress(int mapServerId, uint ip, uint port);
     bool HasServer(int mapServerId);
     bool ContainsMap(string mapName);
+    bool TryGetMapAddress(string mapName, out uint ip, out ushort port);
 }

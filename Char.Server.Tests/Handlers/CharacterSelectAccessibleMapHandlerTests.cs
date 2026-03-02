@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using Char.Server;
 using Char.Server.Handlers;
 using Char.Server.Services;
 using Core.Database.Entities;
@@ -11,10 +12,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Char.Server.Tests.Handlers;
 
-public class CharacterSelectPacketFlowTests
+public class CharacterSelectAccessibleMapHandlerTests
 {
     [Fact]
-    public async Task HandleAsync_ValidSelection_ShouldSendMapDataAndIssueMapAuthTicket()
+    public async Task HandleAsync_WhenValid_ShouldSendMapDataAndIssueTicket()
     {
         using var sockets = CreateSocketPair();
         var loggerFactory = LoggerFactory.Create(_ => { });
@@ -24,63 +25,46 @@ public class CharacterSelectPacketFlowTests
             heartbeatTimeout: 30000,
             packetSystem.Factory,
             packetSystem.Registry,
-            loggerFactory.CreateLogger("session"));
+            loggerFactory.CreateLogger("session"))
+        {
+            AccountId = 2000000,
+            LoginId1 = 111,
+            LoginId2 = 222,
+            Sex = 0,
+            ClientType = 0,
+            IsAuthenticated = true,
+            AccountDataLoaded = true
+        };
 
-        session.AccountId = 2000000;
-        session.LoginId1 = 111;
-        session.LoginId2 = 222;
-        session.Sex = 0;
-        session.ClientType = 0;
-        session.IsAuthenticated = true;
-        session.AccountDataLoaded = true;
-        session.PincodeVerified = true;
-
-        var repository = new InMemoryCharacterRepository(
+        var repo = new InMemoryCharacterRepository(
         [
-            new CharEntity
-            {
-                CharId = 1001,
-                AccountId = 2000000,
-                CharNum = 2,
-                Name = "Danilo",
-                LastMap = "prontera",
-                DeleteDate = 0,
-                Online = 0
-            }
+            new CharEntity { CharId = 1001, AccountId = 2000000, CharNum = 0, DeleteDate = 0, LastMap = "unknown", Online = 0 }
         ]);
-
         var mapAuth = new MapAuthTicketService();
-        var handler = new CharacterSelectHandler(
-            loggerFactory.CreateLogger<CharacterSelectHandler>(),
-            repository,
+        var handler = new CharacterSelectAccessibleMapHandler(
+            repo,
             mapAuth,
             new FakeServerConnectionService(hasMapConnection: true),
-            new FakeMapServerRegistryService(hasMaps: ["prontera"]),
-            new CharServerConfiguration());
+            new FakeMapServerRegistryService(["prontera"]));
 
-        await handler.HandleAsync(session, BuildSelectPacket(slot: 2));
+        await handler.HandleAsync(session, BuildSelectAccessibleMapPacket(slot: 0, mapNumber: 0));
         await session.FlushPacketsAsync();
 
         var payload = ReceiveSinglePacket(sockets.ClientSide);
         Assert.Equal((short)PacketHeader.HC_SEND_MAP_DATA, BitConverter.ToInt16(payload, 0));
         Assert.Equal((uint)1001, BitConverter.ToUInt32(payload, 2));
 
-        var stored = await repository.GetByIdAsync(1001);
-        Assert.NotNull(stored);
-        Assert.Equal(-2, stored!.Online);
+        var updated = await repo.GetByIdAsync(1001);
+        Assert.NotNull(updated);
+        Assert.Equal("prontera", updated!.LastMap);
+        Assert.Equal(-2, updated.Online);
 
-        var consumed = mapAuth.TryConsumeTicket(
-            accountId: 2000000,
-            characterId: 1001,
-            loginId1: 111,
-            loginId2: 222,
-            out _,
-            out _);
+        var consumed = mapAuth.TryConsumeTicket(2000000, 1001, 111, 222, out _, out _);
         Assert.True(consumed);
     }
 
     [Fact]
-    public async Task HandleAsync_NoMapConnection_ShouldSendNotifyBanResult()
+    public async Task HandleAsync_WhenInvalidMapNumber_ShouldRejectEnter()
     {
         using var sockets = CreateSocketPair();
         var loggerFactory = LoggerFactory.Create(_ => { });
@@ -90,78 +74,36 @@ public class CharacterSelectPacketFlowTests
             heartbeatTimeout: 30000,
             packetSystem.Factory,
             packetSystem.Registry,
-            loggerFactory.CreateLogger("session"));
+            loggerFactory.CreateLogger("session"))
+        {
+            AccountId = 2000000,
+            IsAuthenticated = true,
+            AccountDataLoaded = true
+        };
 
-        session.AccountId = 2000001;
-        session.IsAuthenticated = true;
-        session.AccountDataLoaded = true;
-        session.PincodeVerified = true;
-
-        var repository = new InMemoryCharacterRepository(
+        var repo = new InMemoryCharacterRepository(
         [
-            new CharEntity { CharId = 2001, AccountId = 2000001, CharNum = 0, DeleteDate = 0 }
+            new CharEntity { CharId = 1001, AccountId = 2000000, CharNum = 0, DeleteDate = 0, Online = 0 }
         ]);
 
-        var handler = new CharacterSelectHandler(
-            loggerFactory.CreateLogger<CharacterSelectHandler>(),
-            repository,
-            new MapAuthTicketService(),
-            new FakeServerConnectionService(hasMapConnection: false),
-            new FakeMapServerRegistryService(hasMaps: []),
-            new CharServerConfiguration());
-
-        await handler.HandleAsync(session, BuildSelectPacket(slot: 0));
-        await session.FlushPacketsAsync();
-
-        var payload = ReceiveSinglePacket(sockets.ClientSide);
-        Assert.Equal((short)PacketHeader.HC_NOTIFY_ACCESSIBLE_MAPNAME, BitConverter.ToInt16(payload, 0));
-        Assert.True(session.IsAlive);
-    }
-
-    [Fact]
-    public async Task HandleAsync_WhenSelectedMapIsUnavailable_ShouldSendAccessibleMapsAndMarkOnline()
-    {
-        using var sockets = CreateSocketPair();
-        var loggerFactory = LoggerFactory.Create(_ => { });
-        var packetSystem = new PacketSystem();
-        var session = new CharSessionData(
-            sockets.ServerSide,
-            heartbeatTimeout: 30000,
-            packetSystem.Factory,
-            packetSystem.Registry,
-            loggerFactory.CreateLogger("session"));
-
-        session.AccountId = 2000002;
-        session.IsAuthenticated = true;
-        session.AccountDataLoaded = true;
-        session.PincodeVerified = true;
-
-        var repository = new InMemoryCharacterRepository(
-        [
-            new CharEntity { CharId = 2002, AccountId = 2000002, CharNum = 0, LastMap = "missing_map", DeleteDate = 0, Online = 0 }
-        ]);
-
-        var handler = new CharacterSelectHandler(
-            loggerFactory.CreateLogger<CharacterSelectHandler>(),
-            repository,
+        var handler = new CharacterSelectAccessibleMapHandler(
+            repo,
             new MapAuthTicketService(),
             new FakeServerConnectionService(hasMapConnection: true),
-            new FakeMapServerRegistryService(hasMaps: []),
-            new CharServerConfiguration());
+            new FakeMapServerRegistryService(["prontera"]));
 
-        await handler.HandleAsync(session, BuildSelectPacket(slot: 0));
+        await handler.HandleAsync(session, BuildSelectAccessibleMapPacket(slot: 0, mapNumber: 127));
         await session.FlushPacketsAsync();
 
         var payload = ReceiveSinglePacket(sockets.ClientSide);
-        Assert.Equal((short)PacketHeader.HC_NOTIFY_ACCESSIBLE_MAPNAME, BitConverter.ToInt16(payload, 0));
-
-        var updated = await repository.GetByIdAsync(2002);
+        Assert.Equal((short)PacketHeader.HC_REFUSE_ENTER, BitConverter.ToInt16(payload, 0));
+        var updated = await repo.GetByIdAsync(1001);
         Assert.NotNull(updated);
         Assert.Equal(-2, updated!.Online);
     }
 
     [Fact]
-    public async Task HandleAsync_Unauthenticated_ShouldSendRefuseEnterAndDisconnect()
+    public async Task HandleAsync_WhenCurrentMapIsAvailable_ShouldRejectEnter()
     {
         using var sockets = CreateSocketPair();
         var loggerFactory = LoggerFactory.Create(_ => { });
@@ -171,28 +113,83 @@ public class CharacterSelectPacketFlowTests
             heartbeatTimeout: 30000,
             packetSystem.Factory,
             packetSystem.Registry,
-            loggerFactory.CreateLogger("session"));
+            loggerFactory.CreateLogger("session"))
+        {
+            AccountId = 2000000,
+            IsAuthenticated = true,
+            AccountDataLoaded = true
+        };
 
-        var handler = new CharacterSelectHandler(
-            loggerFactory.CreateLogger<CharacterSelectHandler>(),
-            new InMemoryCharacterRepository([]),
+        var repo = new InMemoryCharacterRepository(
+        [
+            new CharEntity { CharId = 1001, AccountId = 2000000, CharNum = 0, DeleteDate = 0, LastMap = "prontera", Online = 0 }
+        ]);
+
+        var handler = new CharacterSelectAccessibleMapHandler(
+            repo,
             new MapAuthTicketService(),
             new FakeServerConnectionService(hasMapConnection: true),
-            new FakeMapServerRegistryService(hasMaps: []),
-            new CharServerConfiguration());
+            new FakeMapServerRegistryService(["prontera"]));
 
-        await handler.HandleAsync(session, BuildSelectPacket(slot: 0));
+        await handler.HandleAsync(session, BuildSelectAccessibleMapPacket(slot: 0, mapNumber: 0));
         await session.FlushPacketsAsync();
 
         var payload = ReceiveSinglePacket(sockets.ClientSide);
         Assert.Equal((short)PacketHeader.HC_REFUSE_ENTER, BitConverter.ToInt16(payload, 0));
-        Assert.False(session.IsAlive);
+        var updated = await repo.GetByIdAsync(1001);
+        Assert.NotNull(updated);
+        Assert.Equal(-2, updated!.Online);
     }
 
-    private static CH_SELECT_CHAR BuildSelectPacket(byte slot)
+    [Fact]
+    public async Task HandleAsync_WhenNoMapConnection_ShouldSendAuthResultServerClosed()
     {
-        var packet = new CH_SELECT_CHAR();
-        using var ms = new MemoryStream([slot]);
+        using var sockets = CreateSocketPair();
+        var loggerFactory = LoggerFactory.Create(_ => { });
+        var packetSystem = new PacketSystem();
+        var session = new CharSessionData(
+            sockets.ServerSide,
+            heartbeatTimeout: 30000,
+            packetSystem.Factory,
+            packetSystem.Registry,
+            loggerFactory.CreateLogger("session"))
+        {
+            AccountId = 2000000,
+            IsAuthenticated = true,
+            AccountDataLoaded = true
+        };
+
+        var repo = new InMemoryCharacterRepository(
+        [
+            new CharEntity { CharId = 1001, AccountId = 2000000, CharNum = 0, DeleteDate = 0, LastMap = "unknown", Online = 0 }
+        ]);
+
+        var handler = new CharacterSelectAccessibleMapHandler(
+            repo,
+            new MapAuthTicketService(),
+            new FakeServerConnectionService(hasMapConnection: false),
+            new FakeMapServerRegistryService(["prontera"]));
+
+        await handler.HandleAsync(session, BuildSelectAccessibleMapPacket(slot: 0, mapNumber: 0));
+        await session.FlushPacketsAsync();
+
+        var payload = ReceiveSinglePacket(sockets.ClientSide);
+        Assert.Equal((short)PacketHeader.SC_NOTIFY_BAN, BitConverter.ToInt16(payload, 0));
+        Assert.Equal((byte)1, payload[2]);
+        Assert.True(session.IsAlive);
+    }
+
+    private static CH_SELECT_ACCESSIBLE_MAPNAME BuildSelectAccessibleMapPacket(sbyte slot, sbyte mapNumber)
+    {
+        var packet = new CH_SELECT_ACCESSIBLE_MAPNAME();
+        using var ms = new MemoryStream();
+        using (var writer = new BinaryWriter(ms, System.Text.Encoding.ASCII, leaveOpen: true))
+        {
+            writer.Write(slot);
+            writer.Write(mapNumber);
+        }
+
+        ms.Position = 0;
         using var reader = new BinaryReader(ms);
         packet.Read(reader);
         return packet;
@@ -241,10 +238,10 @@ public class CharacterSelectPacketFlowTests
         public int GetConnectionCount(ServerType serverType) => HasConnection(serverType) ? 1 : 0;
     }
 
-    private sealed class FakeMapServerRegistryService(IEnumerable<string> hasMaps) : IMapServerRegistryService
+    private sealed class FakeMapServerRegistryService(IEnumerable<string> maps) : IMapServerRegistryService
     {
-        private readonly HashSet<string> _maps = new(hasMaps, StringComparer.OrdinalIgnoreCase);
-        public int RegisterMaps(int mapServerId, IEnumerable<string> maps) => 0;
+        private readonly HashSet<string> _maps = new(maps, StringComparer.OrdinalIgnoreCase);
+        public int RegisterMaps(int mapServerId, IEnumerable<string> mapsToRegister) => 0;
         public void SetUserCount(int mapServerId, int userCount) { }
         public bool TryGetUserCount(int mapServerId, out int userCount) { userCount = 0; return false; }
         public void SetAddress(int mapServerId, uint ip, uint port) { }
@@ -317,7 +314,8 @@ public class CharacterSelectPacketFlowTests
                 CharNum = source.CharNum,
                 Name = source.Name,
                 LastMap = source.LastMap,
-                SaveMap = source.SaveMap,
+                LastX = source.LastX,
+                LastY = source.LastY,
                 DeleteDate = source.DeleteDate,
                 Online = source.Online
             };

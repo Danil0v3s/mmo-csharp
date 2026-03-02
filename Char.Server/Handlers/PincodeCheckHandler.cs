@@ -23,7 +23,17 @@ public class PincodeCheckHandler(
 
         if (!configuration.Pincode.Enabled)
         {
-            session.PincodeVerified = true;
+            session.Disconnect(DisconnectReason.Kicked);
+            return;
+        }
+
+        if (!PincodeFlowSupport.IsValidPinFormat(packet.PinCode))
+        {
+            logger.LogWarning(
+                "Rejecting CH_PINCODE_CHECK with invalid pin format for account {AccountId} (session {SessionId})",
+                session.AccountId.Value,
+                session.SessionId);
+            session.Disconnect(DisconnectReason.Kicked);
             return;
         }
 

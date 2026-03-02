@@ -22,7 +22,6 @@ public class PincodeWindowHandler(
 
         if (!configuration.Pincode.Enabled)
         {
-            session.PincodeVerified = true;
             return;
         }
 

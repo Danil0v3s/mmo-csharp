@@ -117,8 +117,92 @@ public class CharServerImpl : GameLoopServer, ICharServerRuntime
     {
         foreach (var session in SessionManager.GetAllSessions())
         {
-            await _handlerRegistry.ProcessSessionPacketsAsync(session, Logger);
+            while (session.IncomingPackets.TryDequeue(out var packet))
+            {
+                try
+                {
+                    if (session is CharSessionData charSession &&
+                        ShouldRejectForPincodeGate(charSession, packet.Header, _charConfiguration))
+                    {
+                        Logger.LogWarning(
+                            "Disconnecting session {SessionId}: packet 0x{Header:X4} is not allowed before pincode verification",
+                            session.SessionId,
+                            (short)packet.Header);
+                        charSession.Disconnect(DisconnectReason.Kicked);
+                        break;
+                    }
+
+                    bool handled = await _handlerRegistry.TryHandlePacketAsync(session, packet);
+                    if (!handled)
+                    {
+                        Logger.LogError(
+                            "No handler registered for packet {PacketType} (Header: 0x{Header:X4}) from session {SessionId}. Disconnecting client.",
+                            packet.GetType().Name,
+                            (short)packet.Header,
+                            session.SessionId);
+                        session.Disconnect(DisconnectReason.UnhandledPacket);
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(
+                        ex,
+                        "Error handling packet {PacketType} from session {SessionId}. Disconnecting client.",
+                        packet.GetType().Name,
+                        session.SessionId);
+                    session.Disconnect(DisconnectReason.PacketHandlerError);
+                    break;
+                }
+            }
         }
+    }
+
+    internal static bool ShouldRejectForPincodeGate(
+        CharSessionData session,
+        PacketHeader header,
+        CharServerConfiguration configuration)
+    {
+        return ShouldRejectForPincodeGate(
+            configuration.Pincode.Enabled,
+            session.PincodeVerified,
+            session.Pincode,
+            header);
+    }
+
+    internal static bool ShouldRejectForPincodeGate(
+        bool pincodeEnabled,
+        bool pincodeVerified,
+        string pincode,
+        PacketHeader header)
+    {
+        if (!pincodeEnabled)
+        {
+            return false;
+        }
+
+        if (pincodeVerified)
+        {
+            return false;
+        }
+
+        // rAthena parser only hard-gates "other packets" when a pincode already exists.
+        if (string.IsNullOrEmpty(pincode))
+        {
+            return false;
+        }
+
+        return !IsAllowedBeforePincodeVerification(header);
+    }
+
+    internal static bool IsAllowedBeforePincodeVerification(PacketHeader header)
+    {
+        return header == PacketHeader.CH_REQ_TO_CONNECT ||
+               header == PacketHeader.CH_KEEP_ALIVE ||
+               header == PacketHeader.CH_PINCODE_CHECK ||
+               header == PacketHeader.CH_PINCODE_CHANGE ||
+               header == PacketHeader.CH_REQ_PINCODE_WINDOW ||
+               header == PacketHeader.CH_REQ_CHARLIST;
     }
 
     protected override async Task UpdateGameLogicAsync(double deltaTime, CancellationToken cancellationToken)
