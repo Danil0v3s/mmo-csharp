@@ -6,8 +6,5 @@ public class HC_ACCEPT_DELETECHAR : OutgoingPacket
 
     public HC_ACCEPT_DELETECHAR() : base(PacketHeader.HC_ACCEPT_DELETECHAR, SIZE) { }
 
-    public override void Write(BinaryWriter writer)
-    {
-        writer.Write((short)Header);
-    }
+    public override void Write(BinaryWriter writer) { }
 }

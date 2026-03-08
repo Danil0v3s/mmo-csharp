@@ -64,12 +64,7 @@ public class ZC_ENTITY_LIST : OutgoingPacket
     
     public override void Write(BinaryWriter writer)
     {
-        int size = GetSize();
-        PacketValidator.ValidateSize(size);
         PacketValidator.ValidateArrayCount(Entities.Length, EntityInfo.Size, nameof(Entities));
-        
-        writer.Write((short)Header);           // 2 bytes
-        writer.Write((short)size);             // 2 bytes
         writer.Write((short)Entities.Length);  // 2 bytes (count)
         
         foreach (var entity in Entities)
@@ -80,4 +75,3 @@ public class ZC_ENTITY_LIST : OutgoingPacket
     
     public override int GetSize() => 2 + 2 + 2 + (Entities.Length * EntityInfo.Size);
 }
-

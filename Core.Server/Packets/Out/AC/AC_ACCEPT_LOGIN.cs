@@ -32,8 +32,6 @@ public class AC_ACCEPT_LOGIN : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
-        writer.Write((short)Header);
-        writer.Write((short)GetSize());
         writer.Write(LoginId1);
         writer.Write(AID);
         writer.Write(LoginId2);

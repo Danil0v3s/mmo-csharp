@@ -9,7 +9,6 @@ public class HC_CHARLIST_NOTIFY : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
-        writer.Write((short)Header);
         writer.Write(TotalPages);
     }
 

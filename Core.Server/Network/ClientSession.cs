@@ -80,7 +80,7 @@ public class ClientSession : IDisposable
         {
             using var ms = new MemoryStream();
             using var writer = new BinaryWriter(ms);
-            packet.Write(writer);
+            packet.WritePacket(writer);
             _outgoingPackets.Enqueue(ms.ToArray());
         }
         catch (Exception ex)

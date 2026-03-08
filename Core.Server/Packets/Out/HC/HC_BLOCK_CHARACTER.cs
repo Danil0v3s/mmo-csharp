@@ -8,9 +8,6 @@ public class HC_BLOCK_CHARACTER : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
-        writer.Write((short)Header);
-        writer.Write((short)GetSize());
-
         foreach (var info in BlockInfo)
         {
             info.Write(writer);

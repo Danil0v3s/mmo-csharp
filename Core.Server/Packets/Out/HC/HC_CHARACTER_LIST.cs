@@ -63,12 +63,7 @@ public class HC_CHARACTER_LIST : OutgoingPacket
     
     public override void Write(BinaryWriter writer)
     {
-        int size = GetSize();
-        PacketValidator.ValidateSize(size);
         PacketValidator.ValidateArrayCount(Characters.Length, CharacterInfo.Size, nameof(Characters));
-        
-        writer.Write((short)Header);              // 2 bytes
-        writer.Write((short)size);                // 2 bytes (total size)
         writer.Write((byte)Characters.Length);    // 1 byte (count)
         
         foreach (var character in Characters)
@@ -79,4 +74,3 @@ public class HC_CHARACTER_LIST : OutgoingPacket
     
     public override int GetSize() => 2 + 2 + 1 + (Characters.Length * CharacterInfo.Size);
 }
-

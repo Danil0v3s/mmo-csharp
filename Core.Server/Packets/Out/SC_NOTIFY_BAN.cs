@@ -13,7 +13,6 @@ public class SC_NOTIFY_BAN : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
-        writer.Write((short)Header);
         writer.Write(Result);
     }
 }

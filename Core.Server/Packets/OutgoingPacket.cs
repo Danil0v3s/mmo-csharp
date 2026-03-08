@@ -2,7 +2,7 @@ namespace Core.Server.Packets;
 
 /// <summary>
 /// Base class for packets sent to clients.
-/// Outgoing packets implement the Write method to serialize to a BinaryWriter.
+/// Outgoing packets implement the Write method to serialize only their body fields.
 /// </summary>
 public abstract class OutgoingPacket : Packet
 {
@@ -12,11 +12,30 @@ public abstract class OutgoingPacket : Packet
     }
     
     /// <summary>
-    /// Writes the complete packet to the provided BinaryWriter.
-    /// Must write the header, size field (if variable-length), and all packet body data.
+    /// Whether this packet includes an explicit packet-length field after the header.
+    /// Variable-length packets do by default; fixed-length packets may opt in explicitly.
+    /// </summary>
+    public virtual bool HasPacketLength => Size == -1;
+
+    /// <summary>
+    /// Writes only the packet body to the provided BinaryWriter.
     /// </summary>
     /// <param name="writer">BinaryWriter to write the packet to</param>
     public abstract void Write(BinaryWriter writer);
+
+    public void WritePacket(BinaryWriter writer)
+    {
+        int size = GetSize();
+        PacketValidator.ValidateSize(size);
+
+        writer.Write((short)Header);
+        if (HasPacketLength)
+        {
+            writer.Write((short)size);
+        }
+
+        Write(writer);
+    }
     
     /// <summary>
     /// Gets the actual size of this packet instance.
@@ -25,4 +44,3 @@ public abstract class OutgoingPacket : Packet
     /// </summary>
     public virtual int GetSize() => Size;
 }
-

@@ -16,7 +16,6 @@ public class AC_REFUSE_LOGIN : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
-        writer.Write((short)Header);
         writer.Write(Error); // For version >= 20120000
         writer.Write(Encoding.UTF8.GetBytes(UnblockTime.PadRight(20, '\0')));
     }

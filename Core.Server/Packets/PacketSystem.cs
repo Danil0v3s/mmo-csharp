@@ -103,9 +103,7 @@ public class PacketSystem
     /// </summary>
     public void WritePacket(BinaryWriter writer, OutgoingPacket packet)
     {
-        int size = packet.GetSize();
-        PacketValidator.ValidateSize(size);
-        packet.Write(writer);
+        packet.WritePacket(writer);
     }
     
     /// <summary>

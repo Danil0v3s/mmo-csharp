@@ -14,8 +14,6 @@ public class AC_ACK_HASH : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
-        writer.Write((short)Header);
-        writer.Write(PacketLength);
         writer.Write(Encoding.UTF8.GetBytes(Salt));
     }
 

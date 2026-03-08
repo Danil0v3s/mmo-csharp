@@ -12,7 +12,6 @@ public class HC_CHAR_DELETE2_ACK : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
-        writer.Write((short)Header);
         writer.Write(CharId);
         writer.Write(Result);
         writer.Write(DeleteDate);

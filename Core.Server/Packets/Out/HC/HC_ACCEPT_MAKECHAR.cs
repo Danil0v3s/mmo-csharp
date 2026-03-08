@@ -6,10 +6,11 @@ public class HC_ACCEPT_MAKECHAR : OutgoingPacket
 
     public HC_ACCEPT_MAKECHAR() : base(PacketHeader.HC_ACCEPT_MAKECHAR, -1) { }
 
+    public override bool HasPacketLength => false;
+
     public override void Write(BinaryWriter writer)
     {
         global::Core.Server.Packets.CharacterInfo.ValidateSingleSize(CharData.Length, nameof(CharData));
-        writer.Write((short)Header);
         writer.Write(CharData);
     }
 

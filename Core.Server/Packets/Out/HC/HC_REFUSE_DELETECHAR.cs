@@ -10,7 +10,6 @@ public class HC_REFUSE_DELETECHAR : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
-        writer.Write((short)Header);
         writer.Write(Error);
     }
 }

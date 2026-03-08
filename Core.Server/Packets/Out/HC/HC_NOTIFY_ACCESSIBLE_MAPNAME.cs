@@ -9,12 +9,6 @@ public class HC_NOTIFY_ACCESSIBLE_MAPNAME : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
-        // Calculate packet length before writing
-        short actualLength = (short)GetSize();
-
-        writer.Write((short)Header);
-        writer.Write(actualLength); // packetLength
-
         foreach (var map in Maps)
         {
             map.Write(writer);

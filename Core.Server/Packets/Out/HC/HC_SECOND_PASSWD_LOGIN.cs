@@ -12,7 +12,6 @@ public class HC_SECOND_PASSWD_LOGIN : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
-        writer.Write((short)Header);
         writer.Write(Seed);
         writer.Write(AccountId);
         writer.Write(State);

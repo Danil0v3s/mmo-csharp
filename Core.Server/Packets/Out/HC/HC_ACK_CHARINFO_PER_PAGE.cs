@@ -10,11 +10,6 @@ public class HC_ACK_CHARINFO_PER_PAGE : OutgoingPacket
     public override void Write(BinaryWriter writer)
     {
         global::Core.Server.Packets.CharacterInfo.ValidateBlockSize(CharInfoData.Length, nameof(CharInfoData));
-        short packetLength = (short)GetSize();
-        writer.Write((short)Header);
-        writer.Write(packetLength);
-
-        // Write character info data
         writer.Write(CharInfoData);
     }
 

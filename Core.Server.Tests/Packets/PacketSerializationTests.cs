@@ -102,7 +102,7 @@ public class PacketSerializationTests
         using (var ms = new MemoryStream())
         using (var writer = new BinaryWriter(ms))
         {
-            original.Write(writer);
+            original.WritePacket(writer);
             data = ms.ToArray();
         }
         
@@ -161,7 +161,7 @@ public class PacketSerializationTests
         using (var ms = new MemoryStream())
         using (var writer = new BinaryWriter(ms))
         {
-            original.Write(writer);
+            original.WritePacket(writer);
             data = ms.ToArray();
         }
         
@@ -227,7 +227,7 @@ public class PacketSerializationTests
         using (var ms = new MemoryStream())
         using (var writer = new BinaryWriter(ms))
         {
-            original.Write(writer);
+            original.WritePacket(writer);
             data = ms.ToArray();
         }
         

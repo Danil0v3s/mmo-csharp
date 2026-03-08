@@ -10,7 +10,6 @@ public class HC_ACK_CHANGE_CHARNAME : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
-        writer.Write((short)Header);
         writer.Write(Result);
     }
 }

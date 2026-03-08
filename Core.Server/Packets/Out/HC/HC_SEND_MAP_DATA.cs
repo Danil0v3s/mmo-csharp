@@ -10,9 +10,10 @@ public class HC_SEND_MAP_DATA : OutgoingPacket
 
     public HC_SEND_MAP_DATA() : base(PacketHeader.HC_SEND_MAP_DATA, -1) { } // This header might be conditional
 
+    public override bool HasPacketLength => false;
+
     public override void Write(BinaryWriter writer)
     {
-        writer.Write((short)Header);
         writer.Write(CharId);
         writer.WriteFixedString(MapName, PacketConstants.MAP_NAME_LENGTH); // mapname[16]
         writer.WriteIpv4ForClient(Ip);

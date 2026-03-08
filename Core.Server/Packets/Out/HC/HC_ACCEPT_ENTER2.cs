@@ -16,8 +16,6 @@ public class HC_ACCEPT_ENTER2 : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
-        writer.Write((short)Header);
-        writer.Write((short)PacketSize);
         writer.Write(Normal);
         writer.Write(Premium);
         writer.Write(Billing);

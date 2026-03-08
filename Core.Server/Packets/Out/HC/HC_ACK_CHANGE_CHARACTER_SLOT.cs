@@ -9,10 +9,10 @@ public class HC_ACK_CHANGE_CHARACTER_SLOT : OutgoingPacket
 
     public HC_ACK_CHANGE_CHARACTER_SLOT() : base(PacketHeader.HC_ACK_CHANGE_CHARACTER_SLOT, SIZE) { }
 
+    public override bool HasPacketLength => true;
+
     public override void Write(BinaryWriter writer)
     {
-        writer.Write((short)Header);
-        writer.Write((short)8); // Fixed length: 2 (header) + 2 (length) + 2 (reason) + 2 (charMoves) = 8
         writer.Write(Reason);
         writer.Write(CharMoves);
     }
