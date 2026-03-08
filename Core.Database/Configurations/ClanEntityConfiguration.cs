@@ -18,6 +18,9 @@ public class ClanEntityConfiguration : IEntityTypeConfiguration<ClanEntity>
         builder.Property(e => e.ConnectMember).HasColumnName("connect_member").HasDefaultValue((ushort)0);
         builder.Property(e => e.MaxMember).HasColumnName("max_member").HasDefaultValue((ushort)0);
         
+        // rAthena parity: char.clan_id is a raw sentinel-backed id, not an EF relationship.
+        builder.Ignore(e => e.Members);
+
         // Seed data is applied via DatabaseSeeder from SQL scripts
     }
 }

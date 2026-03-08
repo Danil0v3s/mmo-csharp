@@ -72,7 +72,7 @@ public class CharacterListFlowService(
             PremiumStart = MinimumCharacterSlots,
             PremiumEnd = (byte)Math.Clamp(MinimumCharacterSlots + session.VipCharacterSlots, byte.MinValue, byte.MaxValue),
             Extension = string.Empty,
-            CharacterData = Array.Empty<byte>()
+            CharacterData = listPayload
         });
 
         session.EnqueuePacket(new HC_CHARLIST_NOTIFY(PacketHeader.HC_CHARLIST_NOTIFY)
@@ -83,7 +83,6 @@ public class CharacterListFlowService(
 
         session.EnqueuePacket(new HC_BLOCK_CHARACTER
         {
-            PacketLength = sizeof(short) + sizeof(short),
             BlockInfo = Array.Empty<CharacterBlockInfo>()
         });
 
@@ -95,7 +94,7 @@ public class CharacterListFlowService(
         }
 
         logger.LogInformation(
-            "Sent initial character window payload for account {AccountId} (session {SessionId}) (chars={CharacterCount})",
+            "Sent initial character window payload for account {AccountId} (session {SessionId}) (bytes={PayloadBytes})",
             session.AccountId.Value,
             session.SessionId,
             listPayload.Length);
@@ -145,7 +144,7 @@ public class CharacterListFlowService(
         // rAthena CH_REQ_CHARLIST equivalent (0x099d-like per-page ack path).
         session.EnqueuePacket(new HC_ACK_CHARINFO_PER_PAGE
         {
-            CharInfoData = SerializeCharacterPageData(listPayload)
+            CharInfoData = listPayload
         });
 
         logger.LogInformation(
@@ -204,7 +203,7 @@ public class CharacterListFlowService(
             configuration.GmAllowGroup);
     }
 
-    private async Task<(bool Success, Core.Server.Packets.Out.HC.CharacterInfo[] Payload, int CharSlots)> TryLoadActiveCharacters(
+    private async Task<(bool Success, byte[] Payload, int CharSlots)> TryLoadActiveCharacters(
         CharSessionData session,
         CancellationToken cancellationToken)
     {
@@ -221,7 +220,7 @@ public class CharacterListFlowService(
                 session.AccountId.Value,
                 session.SessionId);
             CharRejectFlow.RejectEnter(session, errorCode: 0);
-            return (false, Array.Empty<Core.Server.Packets.Out.HC.CharacterInfo>(), DefaultCharSlots);
+            return (false, Array.Empty<byte>(), DefaultCharSlots);
         }
 
         var activeCharacters = characters
@@ -229,33 +228,12 @@ public class CharacterListFlowService(
             .OrderBy(c => c.CharNum)
             .ToList();
 
-        var listPayload = activeCharacters
-            .Select(c => new Core.Server.Packets.Out.HC.CharacterInfo
-            {
-                CharId = c.CharId,
-                Exp = (long)Math.Min(c.BaseExp, (ulong)long.MaxValue),
-                Zeny = (int)Math.Min(c.Zeny, (uint)int.MaxValue),
-                JobLevel = (short)Math.Min(c.JobLevel, (ushort)short.MaxValue),
-                Name = c.Name
-            })
-            .ToArray();
+        var listPayload = CharacterPacketSerialization.SerializeCharacters(activeCharacters);
 
         var charSlots = session.CharacterSlots > 0
             ? session.CharacterSlots
             : Math.Max(DefaultCharSlots, activeCharacters.Count);
 
         return (true, listPayload, charSlots);
-    }
-
-    private static byte[] SerializeCharacterPageData(Core.Server.Packets.Out.HC.CharacterInfo[] characters)
-    {
-        using var ms = new MemoryStream();
-        using var writer = new BinaryWriter(ms);
-        foreach (var character in characters)
-        {
-            character.Write(writer);
-        }
-
-        return ms.ToArray();
     }
 }

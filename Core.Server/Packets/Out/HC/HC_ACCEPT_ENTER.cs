@@ -14,6 +14,7 @@ public class HC_ACCEPT_ENTER : OutgoingPacket
 
     public override void Write(BinaryWriter writer)
     {
+        global::Core.Server.Packets.CharacterInfo.ValidateBlockSize(CharacterData.Length, nameof(CharacterData));
         writer.Write((short)Header);
         writer.Write((short)GetSize());
         writer.Write(Total);
@@ -25,6 +26,7 @@ public class HC_ACCEPT_ENTER : OutgoingPacket
 
     public override int GetSize()
     {
+        global::Core.Server.Packets.CharacterInfo.ValidateBlockSize(CharacterData.Length, nameof(CharacterData));
         return sizeof(short) + sizeof(short) + sizeof(byte) + sizeof(byte) + sizeof(byte) + ExtensionLength + CharacterData.Length;
     }
 }

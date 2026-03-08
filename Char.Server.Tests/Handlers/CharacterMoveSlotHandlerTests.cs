@@ -121,6 +121,7 @@ public class CharacterMoveSlotHandlerTests
         Assert.True(ContainsHeader(payload, PacketHeader.HC_ACK_CHANGE_CHARACTER_SLOT));
         Assert.True(ContainsAckSlotMove(payload, reason: 0, moves: 1));
         Assert.True(ContainsHeader(payload, PacketHeader.HC_ACCEPT_ENTER2));
+        Assert.Equal(27 + CharacterInfo.SerializedSize, FindVariablePacketLength(payload, PacketHeader.HC_ACCEPT_ENTER));
 
         var moved = await repo.GetByIdAsync(1001);
         Assert.NotNull(moved);
@@ -254,6 +255,21 @@ public class CharacterMoveSlotHandlerTests
         }
 
         return false;
+    }
+
+    private static short FindVariablePacketLength(byte[] payload, PacketHeader header)
+    {
+        var low = (byte)((short)header & 0xFF);
+        var high = (byte)(((short)header >> 8) & 0xFF);
+        for (var i = 0; i <= payload.Length - 4; i++)
+        {
+            if (payload[i] == low && payload[i + 1] == high)
+            {
+                return BitConverter.ToInt16(payload, i + 2);
+            }
+        }
+
+        throw new Xunit.Sdk.XunitException($"Packet {header} not found in payload.");
     }
 
     private static SocketPair CreateSocketPair()

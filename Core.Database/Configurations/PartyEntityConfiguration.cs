@@ -17,5 +17,8 @@ public class PartyEntityConfiguration : IEntityTypeConfiguration<PartyEntity>
         builder.Property(e => e.Item).HasColumnName("item").HasDefaultValue((byte)0);
         builder.Property(e => e.LeaderId).HasColumnName("leader_id").HasDefaultValue(0u);
         builder.Property(e => e.LeaderChar).HasColumnName("leader_char").HasDefaultValue(0u);
+
+        // rAthena parity: char.party_id is a raw sentinel-backed id, not an EF relationship.
+        builder.Ignore(e => e.Members);
     }
 }

@@ -30,5 +30,8 @@ public class GuildEntityConfiguration : IEntityTypeConfiguration<GuildEntity>
         builder.Property(e => e.LastMasterChange).HasColumnName("last_master_change");
         
         builder.HasIndex(e => e.CharId).HasDatabaseName("char_id");
+
+        // rAthena parity: char.guild_id is a raw sentinel-backed id, not an EF relationship.
+        builder.Ignore(e => e.Characters);
     }
 }

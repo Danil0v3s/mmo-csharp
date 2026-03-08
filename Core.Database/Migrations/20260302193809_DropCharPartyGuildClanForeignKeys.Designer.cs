@@ -4,6 +4,7 @@ using Core.Database.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Core.Database.Migrations
 {
     [DbContext(typeof(GameDbContext))]
-    partial class GameDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260302193809_DropCharPartyGuildClanForeignKeys")]
+    partial class DropCharPartyGuildClanForeignKeys
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1034,6 +1037,9 @@ namespace Core.Database.Migrations
                         .HasColumnType("int")
                         .HasColumnName("child");
 
+                    b.Property<int?>("ClanEntityClanId")
+                        .HasColumnType("int");
+
                     b.Property<int>("ClanId")
                         .HasColumnType("int")
                         .HasColumnName("clan_id");
@@ -1089,6 +1095,9 @@ namespace Core.Database.Migrations
                     b.Property<byte>("Font")
                         .HasColumnType("tinyint unsigned")
                         .HasColumnName("font");
+
+                    b.Property<int?>("GuildEntityGuildId")
+                        .HasColumnType("int");
 
                     b.Property<int>("GuildId")
                         .HasColumnType("int")
@@ -1226,6 +1235,9 @@ namespace Core.Database.Migrations
                         .HasColumnType("int")
                         .HasColumnName("partner_id");
 
+                    b.Property<int?>("PartyEntityPartyId")
+                        .HasColumnType("int");
+
                     b.Property<int>("PartyId")
                         .HasColumnType("int")
                         .HasColumnName("party_id");
@@ -1339,6 +1351,10 @@ namespace Core.Database.Migrations
                     b.HasIndex("AccountId")
                         .HasDatabaseName("account_id");
 
+                    b.HasIndex("ClanEntityClanId");
+
+                    b.HasIndex("GuildEntityGuildId");
+
                     b.HasIndex("GuildId")
                         .HasDatabaseName("guild_id");
 
@@ -1348,6 +1364,8 @@ namespace Core.Database.Migrations
 
                     b.HasIndex("Online")
                         .HasDatabaseName("online");
+
+                    b.HasIndex("PartyEntityPartyId");
 
                     b.HasIndex("PartyId")
                         .HasDatabaseName("party_id");
@@ -6347,6 +6365,18 @@ namespace Core.Database.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Core.Database.Entities.ClanEntity", null)
+                        .WithMany("Members")
+                        .HasForeignKey("ClanEntityClanId");
+
+                    b.HasOne("Core.Database.Entities.GuildEntity", null)
+                        .WithMany("Characters")
+                        .HasForeignKey("GuildEntityGuildId");
+
+                    b.HasOne("Core.Database.Entities.PartyEntity", null)
+                        .WithMany("Members")
+                        .HasForeignKey("PartyEntityPartyId");
+
                     b.Navigation("Account");
                 });
 
@@ -6530,11 +6560,15 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.ClanEntity", b =>
                 {
                     b.Navigation("Alliances");
+
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("Core.Database.Entities.GuildEntity", b =>
                 {
                     b.Navigation("Alliances");
+
+                    b.Navigation("Characters");
 
                     b.Navigation("Members");
 
@@ -6558,6 +6592,11 @@ namespace Core.Database.Migrations
             modelBuilder.Entity("Core.Database.Entities.MailEntity", b =>
                 {
                     b.Navigation("Attachments");
+                });
+
+            modelBuilder.Entity("Core.Database.Entities.PartyEntity", b =>
+                {
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("Core.Database.Entities.VendingEntity", b =>

@@ -4,7 +4,6 @@ using Core.Server.Network;
 using Core.Server.Packets;
 using Core.Server.Packets.In.CH;
 using Core.Server.Packets.Out.HC;
-using HcCharacterInfo = Core.Server.Packets.Out.HC.CharacterInfo;
 using Char.Server.Services;
 
 namespace Char.Server.Handlers;
@@ -37,7 +36,7 @@ public class CharacterCreateHandler(
 
         session.EnqueuePacket(new HC_ACCEPT_MAKECHAR
         {
-            CharData = SerializeCharacter(createResult.Character!)
+            CharData = CharacterPacketSerialization.SerializeCharacter(createResult.Character!)
         });
     }
 
@@ -126,22 +125,5 @@ public class CharacterCreateHandler(
         }
 
         session.EnqueuePacket(packet);
-    }
-
-    private static byte[] SerializeCharacter(CharEntity character)
-    {
-        var info = new HcCharacterInfo
-        {
-            CharId = character.CharId,
-            Exp = (long)Math.Min(character.BaseExp, (ulong)long.MaxValue),
-            Zeny = (int)Math.Min(character.Zeny, (uint)int.MaxValue),
-            JobLevel = (short)Math.Min(character.JobLevel, (ushort)short.MaxValue),
-            Name = character.Name
-        };
-
-        using var ms = new MemoryStream();
-        using var writer = new BinaryWriter(ms);
-        info.Write(writer);
-        return ms.ToArray();
     }
 }

@@ -99,21 +99,10 @@ public class CharEntityConfiguration : IEntityTypeConfiguration<CharEntity>
         builder.HasIndex(e => e.GuildId).HasDatabaseName("guild_id");
         builder.HasIndex(e => e.Online).HasDatabaseName("online");
         
-        // Relationships
-        builder.HasOne(e => e.Party)
-            .WithMany(p => p.Members)
-            .HasForeignKey(e => e.PartyId)
-            .OnDelete(DeleteBehavior.Restrict);
-        
-        builder.HasOne(e => e.Guild)
-            .WithMany(g => g.Characters)
-            .HasForeignKey(e => e.GuildId)
-            .OnDelete(DeleteBehavior.Restrict);
-        
-        builder.HasOne(e => e.Clan)
-            .WithMany(c => c.Members)
-            .HasForeignKey(e => e.ClanId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // rAthena parity: these ids use "0 means none" sentinel values.
+        // Enforcing SQL foreign keys for party/guild/clan breaks normal inserts for new chars.
+        builder.Ignore(e => e.Party);
+        builder.Ignore(e => e.Guild);
+        builder.Ignore(e => e.Clan);
     }
 }
-

@@ -169,6 +169,7 @@ public class CharacterCreateHandlerTests
 
         var payload = ReceiveSinglePacket(sockets.ClientSide);
         Assert.Equal((short)PacketHeader.HC_ACCEPT_MAKECHAR, BitConverter.ToInt16(payload, 0));
+        Assert.Equal(2 + CharacterInfo.SerializedSize, payload.Length);
 
         var created = await repository.GetByNameAsync("Danilo");
         Assert.NotNull(created);

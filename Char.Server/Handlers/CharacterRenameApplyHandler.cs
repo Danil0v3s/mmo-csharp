@@ -97,7 +97,7 @@ public class CharacterRenameApplyHandler(
             PremiumStart = MinimumCharacterSlots,
             PremiumEnd = (byte)Math.Clamp(MinimumCharacterSlots + session.VipCharacterSlots, byte.MinValue, byte.MaxValue),
             Extension = string.Empty,
-            CharacterData = Array.Empty<byte>()
+            CharacterData = CharacterPacketSerialization.SerializeCharacters(activeCharacters)
         });
 
         session.EnqueuePacket(new HC_CHARLIST_NOTIFY(PacketHeader.HC_CHARLIST_NOTIFY)
@@ -108,7 +108,6 @@ public class CharacterRenameApplyHandler(
 
         session.EnqueuePacket(new HC_BLOCK_CHARACTER
         {
-            PacketLength = sizeof(short) + sizeof(short),
             BlockInfo = Array.Empty<CharacterBlockInfo>()
         });
     }

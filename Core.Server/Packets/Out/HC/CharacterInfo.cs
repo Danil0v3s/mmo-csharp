@@ -2,50 +2,52 @@ namespace Core.Server.Packets;
 
 public class CharacterInfo
 {
-    public uint GID { get; internal set; } // or init; depending on usage
-    public long Exp { get; internal set; }
-    public int Money { get; internal set; }
-    public long JobExp { get; internal set; }
-    public int JobLevel { get; internal set; }
-    public int BodyState { get; internal set; }
-    public int HealthState { get; internal set; }
-    public int EffectState { get; internal set; }
-    public int Virtue { get; internal set; }
-    public int Honor { get; internal set; }
-    public short JobPoint { get; internal set; }
-    public long Hp { get; internal set; }
-    public long MaxHp { get; internal set; }
-    public long Sp { get; internal set; }
-    public long MaxSp { get; internal set; }
-    public short Speed { get; internal set; }
-    public short Job { get; internal set; }
-    public short Head { get; internal set; }
-    public short Body { get; internal set; }
-    public short Weapon { get; internal set; }
-    public short Level { get; internal set; }
-    public short SpPoint { get; internal set; }
-    public short Accessory { get; internal set; }
-    public short Shield { get; internal set; }
-    public short Accessory2 { get; internal set; }
-    public short Accessory3 { get; internal set; }
-    public short HeadPalette { get; internal set; }
-    public short BodyPalette { get; internal set; }
-    public string Name { get; internal set; } = string.Empty;
-    public byte Str { get; internal set; }
-    public byte Agi { get; internal set; }
-    public byte Vit { get; internal set; }
-    public byte Int { get; internal set; }
-    public byte Dex { get; internal set; }
-    public byte Luk { get; internal set; }
-    public byte CharNum { get; internal set; }
-    public byte HairColor { get; internal set; }
-    public short IsChangedCharName { get; internal set; }
-    public string MapName { get; internal set; } = string.Empty;
-    public int DelRevDate { get; internal set; }
-    public int RobePalette { get; internal set; }
-    public int ChrSlotChangeCnt { get; internal set; }
-    public int ChrNameChangeCnt { get; internal set; }
-    public byte Sex { get; internal set; }
+    public const int SerializedSize = 175;
+
+    public uint GID { get; set; }
+    public long Exp { get; set; }
+    public int Money { get; set; }
+    public long JobExp { get; set; }
+    public int JobLevel { get; set; }
+    public int BodyState { get; set; }
+    public int HealthState { get; set; }
+    public int EffectState { get; set; }
+    public int Virtue { get; set; }
+    public int Honor { get; set; }
+    public short JobPoint { get; set; }
+    public long Hp { get; set; }
+    public long MaxHp { get; set; }
+    public long Sp { get; set; }
+    public long MaxSp { get; set; }
+    public short Speed { get; set; }
+    public short Job { get; set; }
+    public short Head { get; set; }
+    public short Body { get; set; }
+    public short Weapon { get; set; }
+    public short Level { get; set; }
+    public short SpPoint { get; set; }
+    public short Accessory { get; set; }
+    public short Shield { get; set; }
+    public short Accessory2 { get; set; }
+    public short Accessory3 { get; set; }
+    public short HeadPalette { get; set; }
+    public short BodyPalette { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public byte Str { get; set; }
+    public byte Agi { get; set; }
+    public byte Vit { get; set; }
+    public byte Int { get; set; }
+    public byte Dex { get; set; }
+    public byte Luk { get; set; }
+    public byte CharNum { get; set; }
+    public byte HairColor { get; set; }
+    public short IsChangedCharName { get; set; }
+    public string MapName { get; set; } = string.Empty;
+    public int DelRevDate { get; set; }
+    public int RobePalette { get; set; }
+    public int ChrSlotChangeCnt { get; set; }
+    public int ChrNameChangeCnt { get; set; }
+    public byte Sex { get; set; }
 
     public void Read(BinaryReader reader)
     {
@@ -171,53 +173,24 @@ public class CharacterInfo
     
     public int GetSize()
     {
-        // Size calculation for CHARACTER_INFO struct
-        int size = 0;
-        size += sizeof(uint); // GID
-        size += sizeof(long); // Exp (int64 for PACKETVER >= 20170830)
-        size += sizeof(int); // Money
-        size += sizeof(long); // JobExp (int64 for PACKETVER >= 20170830)
-        size += sizeof(int); // JobLevel
-        size += sizeof(int); // BodyState
-        size += sizeof(int); // HealthState
-        size += sizeof(int); // EffectState
-        size += sizeof(int); // Virtue
-        size += sizeof(int); // Honor
-        size += sizeof(short); // JobPoint
-        size += sizeof(long); // Hp (int64 for >= 20220330)
-        size += sizeof(long); // MaxHp
-        size += sizeof(long); // Sp
-        size += sizeof(long); // MaxSp
-        size += sizeof(short); // Speed
-        size += sizeof(short); // Job
-        size += sizeof(short); // Head
-        size += sizeof(short); // Body (PACKETVER >= 20141022)
-        size += sizeof(short); // Weapon
-        size += sizeof(short); // Level
-        size += sizeof(short); // SpPoint
-        size += sizeof(short); // Accessory
-        size += sizeof(short); // Shield
-        size += sizeof(short); // Accessory2
-        size += sizeof(short); // Accessory3
-        size += sizeof(short); // HeadPalette
-        size += sizeof(short); // BodyPalette
-        size += PacketConstants.NAME_LENGTH; // Name[24]
-        size += sizeof(byte); // Str
-        size += sizeof(byte); // Agi
-        size += sizeof(byte); // Vit
-        size += sizeof(byte); // Int
-        size += sizeof(byte); // Dex
-        size += sizeof(byte); // Luk
-        size += sizeof(byte); // CharNum
-        size += sizeof(byte); // HairColor
-        size += sizeof(short); // IsChangedCharName
-        size += PacketConstants.MAP_NAME_LENGTH; // MapName[16] (PACKETVER >= 20100803)
-        size += sizeof(int); // DelRevDate (PACKETVER >= 20100803)
-        size += sizeof(int); // RobePalette (PACKETVER >= 20110111)
-        size += sizeof(int); // ChrSlotChangeCnt (PACKETVER >= 20110928)
-        size += sizeof(int); // ChrNameChangeCnt (PACKETVER >= 20111025)
-        size += sizeof(byte); // Sex (PACKETVER >= 20141016)
+        return SerializedSize;
+    }
 
-        return size;
+    public static void ValidateBlockSize(int length, string fieldName)
+    {
+        if (length % SerializedSize != 0)
+        {
+            throw new InvalidOperationException(
+                $"{fieldName} length must be a multiple of {SerializedSize} bytes, but was {length}.");
+        }
+    }
+
+    public static void ValidateSingleSize(int length, string fieldName)
+    {
+        if (length != SerializedSize)
+        {
+            throw new InvalidOperationException(
+                $"{fieldName} length must be exactly {SerializedSize} bytes, but was {length}.");
+        }
     }
 }
