@@ -8,6 +8,17 @@ service MapService {
   rpc EnterMap (EnterMapRequest) returns (EnterMapResponse);
   rpc LeaveMap (LeaveMapRequest) returns (LeaveMapResponse);
   rpc GetMapInfo (MapInfoRequest) returns (MapInfoResponse);
+
+  // Inter-base push receivers (P5). Char server forwards inter-base ops
+  // here so each map server can emit to its connected game clients. For
+  // now these are queue-only on the map side — game-client emission is
+  // wired in the map gameplay phase.
+  rpc ReceiveBroadcast (MapBroadcastNotification) returns (MapBroadcastAck);
+  rpc ReceiveItemBroadcast (MapItemBroadcastNotification) returns (MapBroadcastAck);
+  rpc ReceiveWhisper (MapWhisperNotification) returns (MapWhisperAck);
+  rpc ReceiveWhisperToGm (MapWhisperToGmNotification) returns (MapBroadcastAck);
+  rpc NotifyNameChange (MapNameChangeNotification) returns (MapBroadcastAck);
+  rpc NotifyAddressSync (MapAddressSyncNotification) returns (MapBroadcastAck);
 }
 
 message EnterMapRequest {
@@ -52,4 +63,59 @@ message MapInfoResponse {
   int32 map_id = 1;
   string map_name = 2;
   repeated PlayerInfo players = 3;
+}
+
+// --- Inter-base push notifications (P5) ---
+
+message MapBroadcastNotification {
+  int32 source_account_id = 1;
+  int64 source_character_id = 2;
+  string source_name = 3;
+  uint32 font_color = 4;       // rAthena fontColor field
+  uint32 font_type = 5;
+  uint32 font_size = 6;
+  uint32 font_align = 7;
+  uint32 font_y = 8;
+  string message = 9;
+}
+
+message MapItemBroadcastNotification {
+  int32 source_account_id = 1;
+  int64 source_character_id = 2;
+  string source_name = 3;
+  uint32 item_id = 4;
+  uint32 amount = 5;
+}
+
+message MapWhisperNotification {
+  int32 target_character_id = 1;
+  string target_name = 2;
+  string source_name = 3;
+  string message = 4;
+}
+
+message MapWhisperToGmNotification {
+  string source_name = 1;
+  uint32 min_group_id = 2;     // GMs with group_id >= this receive
+  string message = 3;
+}
+
+message MapNameChangeNotification {
+  int32 entity_type = 1;       // 0=char, 1=pet, 2=homunculus (rAthena's name change types)
+  int64 entity_id = 2;
+  string new_name = 3;
+}
+
+message MapAddressSyncNotification {
+  // Empty payload; receiver re-resolves its own address. Mirrors rAthena 0x2b1e
+  // (chmapif_sendall(0x2b1e) chained off chlogif_parse_updip).
+}
+
+message MapBroadcastAck {
+  bool success = 1;
+}
+
+message MapWhisperAck {
+  bool success = 1;
+  bool delivered = 2;   // false = target not on this map server
 }

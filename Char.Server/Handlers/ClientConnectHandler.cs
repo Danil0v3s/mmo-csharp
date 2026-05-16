@@ -150,17 +150,18 @@ public class ClientConnectHandler(
                     charServerState.RegisteredServerId,
                     dupCts.Token);
 
-                if (globalOnline?.IsOnline == true)
+                var otherServerId = ResolveKickTargetServerId(globalOnline);
+                if (otherServerId.HasValue)
                 {
                     logger.LogInformation(
                         "Account {AccountId} already online on char server {OtherServerId}; kicking older session",
                         session.AccountId.Value,
-                        globalOnline.CharServerId);
+                        otherServerId.Value);
 
                     // Ask login to broadcast a force-disconnect to the other char server.
                     await loginServerIpc.NotifyAccountStatusAsync(
                         session.AccountId.Value,
-                        globalOnline.CharServerId,
+                        otherServerId.Value,
                         online: false,
                         cancellationToken: dupCts.Token);
                 }
@@ -245,6 +246,20 @@ public class ClientConnectHandler(
     internal static bool IsRepeatedConnectPacket(int? boundAccountId)
     {
         return boundAccountId.HasValue;
+    }
+
+    /// <summary>
+    /// rAthena char_auth_ok cross-server kick decision. Given the login server's response
+    /// to IsAccountOnlineAnywhere, returns the char server id to kick, or null to skip.
+    /// Skips when: response is null (RPC failed / login unreachable), IsOnline is false,
+    /// or the reported char_server_id is non-positive (defensive guard against malformed
+    /// responses that could send a disconnect to our own server).
+    /// </summary>
+    internal static int? ResolveKickTargetServerId(AccountOnlineAnywhereResponse? response)
+    {
+        if (response?.IsOnline != true) return null;
+        if (response.CharServerId <= 0) return null;
+        return response.CharServerId;
     }
 
     internal static bool HasDuplicateLiveAccountSession(

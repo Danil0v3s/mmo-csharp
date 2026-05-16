@@ -70,11 +70,9 @@ Client wrappers: [Login.Server/CharServerIpcService.cs](../../../Login.Server/Ch
 
 Comprehensive: `IpBan`, `DynamicPassFailureBan*`, `UseDnsbl`, `DnsblServers`, `UseMd5Passwords`, `ClientHashCheck`, `ClientHashNodes`, `AllowedRegistrations`, `RegistrationInterval`, `GroupIdToConnect`, `MinGroupIdToConnect`, `CharactersPerAccount`, VIP config, `UseWebAuthToken`.
 
-## Pending ⚠️
+## Pending
 
-### char→map address-sync fan-out (deferred to P5)
-
-When a char server's address changes, rAthena's 0x2b1e propagates to all map servers (chained off 0x2735 from login). C# currently has the char→login leg working ([CharGrpcService.cs:4418-4427](../../../Char.Server/CharGrpcService.cs) calls `TriggerAddressSync()`), but the char→map fan-out needs a new `map_service.proto` RPC plus a map-side receiver — folded into P5 (inter-base routing) since maps need similar receivers for broadcast/whisper.
+None — P5 closed the char→map address-sync fan-out by adding `NotifyAddressSync` to `map_service.proto` and wiring the fan-out via `MapServerIpcService.NotifyAddressSyncAsync`.
 
 ## History
 

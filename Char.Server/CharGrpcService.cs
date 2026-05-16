@@ -45,6 +45,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     private readonly IMapAuthTicketService _mapAuthTicketService;
     private readonly IMapServerRegistryService _mapServerRegistry;
     private readonly ILoginServerIpcService _loginServerIpc;
+    private readonly IMapServerIpcService _mapServerIpc;
     private readonly ICharacterRepository _characterRepository;
     private readonly IFriendRepository _friendRepository;
     private readonly GameDbContext _dbContext;
@@ -56,6 +57,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         IMapAuthTicketService mapAuthTicketService,
         IMapServerRegistryService mapServerRegistry,
         ILoginServerIpcService loginServerIpc,
+        IMapServerIpcService mapServerIpc,
         ICharacterRepository characterRepository,
         IFriendRepository friendRepository,
         GameDbContext dbContext,
@@ -66,6 +68,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         _mapAuthTicketService = mapAuthTicketService;
         _mapServerRegistry = mapServerRegistry;
         _loginServerIpc = loginServerIpc;
+        _mapServerIpc = mapServerIpc;
         _characterRepository = characterRepository;
         _friendRepository = friendRepository;
         _dbContext = dbContext;
@@ -1041,58 +1044,113 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         return new BonusScriptSaveResponse { Success = true };
     }
 
-    public override Task<InterBroadcastResponse> InterBroadcast(
+    public override async Task<InterBroadcastResponse> InterBroadcast(
         InterBroadcastRequest request,
         ServerCallContext context)
     {
-        _logger.LogInformation(
-            "Inter broadcast from account {AccountId}, char {CharacterId}: {Message}",
-            request.SourceAccountId,
-            request.SourceCharacterId,
-            request.Message);
-        return Task.FromResult(new InterBroadcastResponse { Success = true });
+        if (string.IsNullOrWhiteSpace(request.Message))
+        {
+            return new InterBroadcastResponse { Success = false };
+        }
+
+        // rAthena `mapif_parse_broadcast` carries fontColor (uint32) + fontType (int16) +
+        // fontSize/fontAlign/fontY. The proto only exposes color/type today; the remaining
+        // fields default to 0 (rAthena's default for non-styled announcements).
+        await _mapServerIpc.BroadcastAsync(new MapBroadcastNotification
+        {
+            SourceAccountId = request.SourceAccountId,
+            SourceCharacterId = request.SourceCharacterId,
+            SourceName = string.Empty,
+            FontColor = (uint)Math.Max(request.Color, 0),
+            FontType = (uint)Math.Max(request.Type, 0),
+            Message = request.Message
+        }, context.CancellationToken);
+
+        return new InterBroadcastResponse { Success = true };
     }
 
-    public override Task<InterBroadcastItemResponse> InterBroadcastItem(
+    public override async Task<InterBroadcastItemResponse> InterBroadcastItem(
         InterBroadcastItemRequest request,
         ServerCallContext context)
     {
-        _logger.LogInformation(
-            "Inter item broadcast from account {AccountId}, char {CharacterId}: item={ItemId} amount={Amount}",
-            request.SourceAccountId,
-            request.SourceCharacterId,
-            request.ItemId,
-            request.Amount);
-        return Task.FromResult(new InterBroadcastItemResponse { Success = true });
+        if (request.ItemId == 0)
+        {
+            return new InterBroadcastItemResponse { Success = false };
+        }
+
+        await _mapServerIpc.BroadcastItemAsync(new MapItemBroadcastNotification
+        {
+            SourceAccountId = request.SourceAccountId,
+            SourceCharacterId = request.SourceCharacterId,
+            SourceName = string.Empty,
+            ItemId = (uint)Math.Max(request.ItemId, 0),
+            Amount = (uint)Math.Max(request.Amount, 0)
+        }, context.CancellationToken);
+
+        return new InterBroadcastItemResponse { Success = true };
     }
 
-    public override Task<InterWhisperResponse> InterWhisper(
+    public override async Task<InterWhisperResponse> InterWhisper(
         InterWhisperRequest request,
         ServerCallContext context)
     {
-        var ok = !string.IsNullOrWhiteSpace(request.SourceName)
-            && !string.IsNullOrWhiteSpace(request.TargetName)
-            && !string.IsNullOrWhiteSpace(request.Message);
-        return Task.FromResult(new InterWhisperResponse
+        if (string.IsNullOrWhiteSpace(request.SourceName)
+            || string.IsNullOrWhiteSpace(request.TargetName)
+            || string.IsNullOrWhiteSpace(request.Message))
         {
-            Success = ok,
-            ErrorMessage = ok ? string.Empty : "Invalid whisper request"
-        });
+            return new InterWhisperResponse { Success = false, ErrorMessage = "Invalid whisper request" };
+        }
+
+        // Resolve target char id from name; rAthena lookup-by-name parity.
+        var target = await _characterRepository.GetByNameAsync(request.TargetName, context.CancellationToken);
+        if (target is null)
+        {
+            return new InterWhisperResponse { Success = false, ErrorMessage = "Recipient not found" };
+        }
+
+        var delivered = await _mapServerIpc.SendWhisperAsync(new MapWhisperNotification
+        {
+            TargetCharacterId = target.CharId,
+            TargetName = target.Name,
+            SourceName = request.SourceName,
+            Message = request.Message
+        }, context.CancellationToken);
+
+        return new InterWhisperResponse
+        {
+            Success = delivered,
+            ErrorMessage = delivered ? string.Empty : "Recipient not online"
+        };
     }
 
     public override Task<InterWhisperReplyResponse> InterWhisperReply(
         InterWhisperReplyRequest request,
         ServerCallContext context)
     {
+        // rAthena 0x3002 is the reply ack from the map server back to char (and on to the
+        // requesting map server). The C# proto-shape uses the same RPC for the ack; since
+        // SendWhisperAsync already aggregates per-map acks into a single delivered bool,
+        // this RPC is currently a no-op acknowledgement endpoint for legacy callers.
         return Task.FromResult(new InterWhisperReplyResponse { Success = true });
     }
 
-    public override Task<InterWhisperToGmResponse> InterWhisperToGm(
+    public override async Task<InterWhisperToGmResponse> InterWhisperToGm(
         InterWhisperToGmRequest request,
         ServerCallContext context)
     {
-        var ok = !string.IsNullOrWhiteSpace(request.SourceName) && !string.IsNullOrWhiteSpace(request.Message);
-        return Task.FromResult(new InterWhisperToGmResponse { Success = ok });
+        if (string.IsNullOrWhiteSpace(request.SourceName) || string.IsNullOrWhiteSpace(request.Message))
+        {
+            return new InterWhisperToGmResponse { Success = false };
+        }
+
+        await _mapServerIpc.SendWhisperToGmAsync(new MapWhisperToGmNotification
+        {
+            SourceName = request.SourceName,
+            MinGroupId = (uint)Math.Max(request.MinGmLevel, 0),
+            Message = request.Message
+        }, context.CancellationToken);
+
+        return new InterWhisperToGmResponse { Success = true };
     }
 
     public override async Task<InterRegistryUpdateResponse> InterRegistryUpdate(
@@ -1151,16 +1209,50 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         return response;
     }
 
-    public override Task<InterNameChangeResponse> InterNameChange(
+    public override async Task<InterNameChangeResponse> InterNameChange(
         InterNameChangeRequest request,
         ServerCallContext context)
     {
-        var ok = request.CharacterId > 0 && !string.IsNullOrWhiteSpace(request.NewName);
-        return Task.FromResult(new InterNameChangeResponse
+        if (request.CharacterId <= 0 || string.IsNullOrWhiteSpace(request.NewName))
         {
-            Success = ok,
-            ErrorMessage = ok ? string.Empty : "Invalid name change request"
-        });
+            return new InterNameChangeResponse { Success = false, ErrorMessage = "Invalid name change request" };
+        }
+
+        // rAthena `mapif_parse_NameChangeRequest` (inter.cpp:1358) validates against
+        // char_name_option / char_name_letters before acking. Option 1 = whitelist
+        // (only listed letters allowed), 2 = blacklist (listed letters forbidden), else
+        // no restriction.
+        if (!IsAllowedCharName(request.NewName, _configuration.Char.CharNameOption, _configuration.Char.CharNameLetters))
+        {
+            return new InterNameChangeResponse { Success = false, ErrorMessage = "Name contains disallowed characters" };
+        }
+
+        // Broadcast to all map servers so they can refresh their UI / re-derive names.
+        // rAthena leaves the DB update to the map server (TODO comment in inter.cpp:1384);
+        // we mirror that — the map server's gameplay layer owns the rename DB write.
+        await _mapServerIpc.NotifyNameChangeAsync(new MapNameChangeNotification
+        {
+            EntityType = request.RenameType,
+            EntityId = request.CharacterId,
+            NewName = request.NewName
+        }, context.CancellationToken);
+
+        return new InterNameChangeResponse { Success = true };
+    }
+
+    internal static bool IsAllowedCharName(string name, int option, string letters)
+    {
+        if (option == 1)
+        {
+            // whitelist
+            return name.All(ch => letters.Contains(ch));
+        }
+        if (option == 2)
+        {
+            // blacklist
+            return !name.Any(ch => letters.Contains(ch));
+        }
+        return true;
     }
 
     public override async Task<InterAccountInfoResponse> InterAccountInfo(
@@ -4415,15 +4507,15 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         return new AccountSexBroadcastResponse { Success = true };
     }
 
-    public override Task<AddressSyncResponse> RequestAddressSync(
+    public override async Task<AddressSyncResponse> RequestAddressSync(
         AddressSyncRequest request,
         ServerCallContext context)
     {
-        // rAthena 0x2735 parity: trigger char-side IP re-resolution + re-push to login.
-        // The full rAthena flow also fans out to map servers via 0x2b1e — that's deferred
-        // to P5 (inter-base routing) since it needs a new map_service.proto receiver.
+        // rAthena 0x2735 parity: trigger char-side IP re-resolution + re-push to login,
+        // and fan out 0x2b1e to all connected map servers so they re-resolve their own.
         _charServer.TriggerAddressSync();
-        return Task.FromResult(new AddressSyncResponse { Success = true });
+        await _mapServerIpc.NotifyAddressSyncAsync(context.CancellationToken);
+        return new AddressSyncResponse { Success = true };
     }
 
     public override async Task<AccountVipPushResponse> PushVipData(

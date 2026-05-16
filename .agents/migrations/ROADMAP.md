@@ -255,6 +255,8 @@ After P7 lands, the next phase is map-server gameplay — combat, skills, AI, NP
 
 ## History
 
+- **2026-05-16** — **P5 complete.** Inter-base routing wired end-to-end (char→map). Six new map-service receivers, char-side `IMapServerIpcService` wrapper, all five `Inter*` RPCs route properly. Address-sync fan-out included. Map handlers log+ack as placeholders for the gameplay phase. Suite at 140 tests. **P1–P5 done.** Next: P6 (map→char IPC wiring for character lifecycle, handshake/topology, social ops).
+- **2026-05-16** — **P4 complete.** Cross-server duplicate-online logic extracted into testable `ClientConnectHandler.ResolveKickTargetServerId` helper.
 - **2026-05-16** — **P3 complete.** Login server completeness closed. `IsAccountOnlineAnywhere` RPC + char-side cross-server duplicate check wired. PC-ban "missing" claim resolved as misread (rAthena has no such mechanism; existing IP ban check matches). char→map address-sync fan-out folded into P5 since maps need new gRPC receivers anyway. Tests for the multi-server scenarios deferred to P4 which has the harness. Next: P4 (cross-server dup-online integration test).
 - **2026-05-16** — **P1 and P2 complete.** Char-server side now ~100% rAthena parity (modulo a few stubs deferred to P6 map wiring). Test suite 129/129. See per-doc Histories for specifics. Next: P3 (Login completeness).
 - **2026-05-15** — Roadmap created. Sequenced after audit found Map.Server invokes only 2 of 118 char RPCs; user directive is to complete Login + Char + Interop (incl. map→char) before any map gameplay work.

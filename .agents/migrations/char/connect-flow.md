@@ -65,6 +65,7 @@ End-to-end client connect handshake, from `CH_REQ_TO_CONNECT (0x65)` through log
 
 ## History
 
+- **2026-05-16** — **P4 closed.** Extracted `ResolveKickTargetServerId` static helper that decides whether to kick a cross-server live session given the login server's `IsAccountOnlineAnywhere` response. Added 4 unit tests in [ConnectFlowRegressionGuardTests.cs](../../../Char.Server.Tests/Services/ConnectFlowRegressionGuardTests.cs) covering: RPC null/unreachable, account not online elsewhere, online on a different server, defensive guard against server_id=0 in malformed responses. Full multi-server integration harness (in-process gRPC, two char servers + one login) deferred to P7.
 - **2026-05-16** — **P3 connect-flow items closed:**
   - Cross-server duplicate-online check wired: [ClientConnectHandler.cs](../../../Char.Server/Handlers/ClientConnectHandler.cs) now calls `IsAccountOnlineAnywhereAsync` after the local duplicate-session guard. If positive, kicks the older session via `NotifyAccountStatusAsync(online: false)` so login fans out a force-disconnect to the other char server.
   - PC-ban check resolved as won't-fix (no such mechanism in rAthena; existing `IsIpBannedAsync` already mirrors `ipban_check`).

@@ -38,6 +38,7 @@ builder.Services.AddSingleton<ILogger>(sp => sp.GetRequiredService<ILogger<Progr
 builder.Services.AddSingleton<ServerConnectionService>();
 builder.Services.AddSingleton<IServerConnectionService>(sp => sp.GetRequiredService<ServerConnectionService>());
 builder.Services.AddSingleton<ILoginServerIpcService, LoginServerIpcService>();
+builder.Services.AddSingleton<IMapServerIpcService, MapServerIpcService>();
 builder.Services.AddSingleton<IMapAuthTicketService, MapAuthTicketService>();
 builder.Services.AddSingleton<IMapServerRegistryService, MapServerRegistryService>();
 builder.Services.AddTransient<ICharacterListFlowService, CharacterListFlowService>();

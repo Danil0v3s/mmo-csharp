@@ -27,4 +27,9 @@ public class PlayerMapService : IPlayerMapService
     {
         return _players.Values.Where(p => p.MapId == mapId);
     }
+
+    public bool IsPlayerOnAnyMap(long characterId)
+    {
+        return _players.ContainsKey(characterId);
+    }
 }

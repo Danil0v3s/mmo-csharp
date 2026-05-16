@@ -1,5 +1,6 @@
 using Char.Server.Handlers;
 using Char.Server.Services;
+using Core.Server.IPC;
 
 namespace Char.Server.Tests.Services;
 
@@ -63,5 +64,37 @@ public class ConnectFlowRegressionGuardTests
     {
         var result = CharacterListFlowService.IsOutOfOrderCharlistRequest(isAuthenticated, accountDataLoaded);
         Assert.Equal(expectedOutOfOrder, result);
+    }
+
+    // P4 — cross-server duplicate-online decision
+
+    [Fact]
+    public void ResolveKickTargetServerId_WhenResponseIsNull_ReturnsNull()
+    {
+        // RPC unreachable (login server down) — connect proceeds without cross-server kick.
+        Assert.Null(ClientConnectHandler.ResolveKickTargetServerId(null));
+    }
+
+    [Fact]
+    public void ResolveKickTargetServerId_WhenNotOnlineElsewhere_ReturnsNull()
+    {
+        var response = new AccountOnlineAnywhereResponse { IsOnline = false, CharServerId = 7 };
+        Assert.Null(ClientConnectHandler.ResolveKickTargetServerId(response));
+    }
+
+    [Fact]
+    public void ResolveKickTargetServerId_WhenOnlineOnOtherCharServer_ReturnsThatServerId()
+    {
+        var response = new AccountOnlineAnywhereResponse { IsOnline = true, CharServerId = 42 };
+        Assert.Equal(42, ClientConnectHandler.ResolveKickTargetServerId(response));
+    }
+
+    [Fact]
+    public void ResolveKickTargetServerId_WhenServerIdIsZero_ReturnsNull()
+    {
+        // Defensive guard against malformed responses — never send a kick with server id 0
+        // (which would be ambiguous and could be misrouted to self).
+        var response = new AccountOnlineAnywhereResponse { IsOnline = true, CharServerId = 0 };
+        Assert.Null(ClientConnectHandler.ResolveKickTargetServerId(response));
     }
 }

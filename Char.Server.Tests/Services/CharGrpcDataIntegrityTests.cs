@@ -334,6 +334,7 @@ public class CharGrpcDataIntegrityTests
             new MapAuthTicketService(),
             new MapServerRegistryService(),
             loginIpc,
+            new MapServerIpcService(new ServerConnectionService(), loggerFactory.CreateLogger<MapServerIpcService>()),
             new NoOpCharacterRepository(dbContext),
             new NoOpFriendRepository(),
             dbContext,

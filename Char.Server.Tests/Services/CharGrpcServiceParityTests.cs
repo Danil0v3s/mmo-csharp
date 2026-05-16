@@ -649,6 +649,7 @@ public class CharGrpcServiceParityTests
             ticketService,
             new MapServerRegistryService(),
             loginIpc,
+            new MapServerIpcService(new ServerConnectionService(), loggerFactory.CreateLogger<MapServerIpcService>()),
             characterRepository,
             new NoOpFriendRepository(),
             dbContext,

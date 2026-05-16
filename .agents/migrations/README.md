@@ -18,7 +18,7 @@ Living status of the port from rAthena C++ (`/Volumes/1TB/Projetos/rathena`) to 
 | [Char (gRPC server)](char/grpc.md) | ✅ ~98% | Remaining: KeepAlive + RequestAddressSync stubs (deferred to P6 map wiring) |
 | [Char (connect flow)](char/connect-flow.md) | ✅ 100% | Cross-server dup-online wired in P3 |
 | [Map (IPC integration)](map/ipc-integration.md) | ❌ ~2% | **Map server doesn't invoke 106 of 118 char RPCs**; no save-on-logout, no module ops |
-| [Inter base](inter/base.md) | ⚠️ ~50% | Broadcast/whisper don't route; name change is TODO |
+| [Inter base](inter/base.md) | ✅ 100% | All routing wired (P5); map-side client emission is gameplay work |
 | [Inter modules](inter/modules.md) | ✅ Char side 100% / 🔁 Map side 0% | Map-side callers missing (P6) |
 
 ## Roadmap
@@ -56,6 +56,8 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-16** — **P5 complete.** Inter-base routing fully wired: char→map fan-out via new `IMapServerIpcService`, broadcast/whisper/name-change/address-sync all route. Added 6 map-side proto receivers + handlers (log + ack; game-client emission deferred to map gameplay). `IsAllowedCharName` validation matches rAthena `mapif_parse_NameChangeRequest`. Suite at 140 tests.
+- **2026-05-16** — **P4 complete.** Cross-server duplicate-online logic extracted into testable `ClientConnectHandler.ResolveKickTargetServerId` helper. Added 4 unit tests covering RPC null, not-online-elsewhere, online-on-other, and defensive guard against server_id=0. Suite now 133 tests. Full in-process multi-server gRPC harness deferred to P7.
 - **2026-05-16** — **P3 complete.** Login server completeness closed. Added `IsAccountOnlineAnywhere` RPC backed by login's `OnlineLoginDataDictionary`. Char connect handler now consults it after the local duplicate check and kicks older sessions via `NotifyAccountStatusAsync(online: false)`. PC-ban check and address-sync broadcast both resolved as misreads or deferred to P5. Tests for cross-server scenarios scheduled for P4 (which needs a multi-server harness). Suite still green at 129 tests.
 - **2026-05-16** — **P2 complete.** Char-server completeness closed. Pincode state machine fully aligned with rAthena (`MustChange`, expiration, `pincode_force`, enum naming). `PartyShareLevel` persisted to `CharServerState`. Verified `UpdateFame` was already implemented, that reject codes/rename burst already match rAthena, and that the replay-login defense is correctly in `TryConsumeAuthNode` (formal test deferred). Added `PincodeStateTests.cs` (9 tests) + 1 out-of-order char-select test. Suite now 129 tests, all green.
 - **2026-05-16** — **P1 complete.** Three char-side data-loss bugs fixed (mail attachments, auction refund, homunculus skills). Added EF Core InMemory test infrastructure; 9 new regression tests in `CharGrpcDataIntegrityTests.cs`. Full Char.Server.Tests suite green at 119 tests. See [char/grpc.md](char/grpc.md) and [inter/modules.md](inter/modules.md) for details.

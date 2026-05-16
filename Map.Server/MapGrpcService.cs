@@ -114,7 +114,7 @@ public class MapGrpcService : MapService.MapServiceBase
     }
 
     public override Task<MapInfoResponse> GetMapInfo(
-        MapInfoRequest request, 
+        MapInfoRequest request,
         ServerCallContext context)
     {
         var response = new MapInfoResponse
@@ -136,5 +136,70 @@ public class MapGrpcService : MapService.MapServiceBase
         }
 
         return Task.FromResult(response);
+    }
+
+    // --- P5 inter-base push receivers ---
+    // These accept pushes from the char server and log them. Game-client emission
+    // (broadcasting to connected players, displaying announce text, etc.) is
+    // wired in the map gameplay phase. For now the receivers serve to prove the
+    // round-trip works end-to-end and to keep the proto contract enforced.
+
+    public override Task<MapBroadcastAck> ReceiveBroadcast(
+        MapBroadcastNotification request,
+        ServerCallContext context)
+    {
+        _logger.LogInformation(
+            "Received inter-broadcast from {SourceName} (acc={AccountId}, char={CharId}): {Message}",
+            request.SourceName, request.SourceAccountId, request.SourceCharacterId, request.Message);
+        return Task.FromResult(new MapBroadcastAck { Success = true });
+    }
+
+    public override Task<MapBroadcastAck> ReceiveItemBroadcast(
+        MapItemBroadcastNotification request,
+        ServerCallContext context)
+    {
+        _logger.LogInformation(
+            "Received inter-item-broadcast from {SourceName}: item={ItemId} amount={Amount}",
+            request.SourceName, request.ItemId, request.Amount);
+        return Task.FromResult(new MapBroadcastAck { Success = true });
+    }
+
+    public override Task<MapWhisperAck> ReceiveWhisper(
+        MapWhisperNotification request,
+        ServerCallContext context)
+    {
+        var delivered = _playerMapService.IsPlayerOnAnyMap(request.TargetCharacterId);
+        _logger.LogInformation(
+            "Received whisper for {TargetName} (char={CharId}) from {Source}; delivered={Delivered}",
+            request.TargetName, request.TargetCharacterId, request.SourceName, delivered);
+        return Task.FromResult(new MapWhisperAck { Success = true, Delivered = delivered });
+    }
+
+    public override Task<MapBroadcastAck> ReceiveWhisperToGm(
+        MapWhisperToGmNotification request,
+        ServerCallContext context)
+    {
+        _logger.LogInformation(
+            "Received whisper-to-gm from {Source} (min group {MinGroup}): {Message}",
+            request.SourceName, request.MinGroupId, request.Message);
+        return Task.FromResult(new MapBroadcastAck { Success = true });
+    }
+
+    public override Task<MapBroadcastAck> NotifyNameChange(
+        MapNameChangeNotification request,
+        ServerCallContext context)
+    {
+        _logger.LogInformation(
+            "Received name-change for entity type={Type} id={Id} new={NewName}",
+            request.EntityType, request.EntityId, request.NewName);
+        return Task.FromResult(new MapBroadcastAck { Success = true });
+    }
+
+    public override Task<MapBroadcastAck> NotifyAddressSync(
+        MapAddressSyncNotification request,
+        ServerCallContext context)
+    {
+        _logger.LogInformation("Received address-sync notification from char server");
+        return Task.FromResult(new MapBroadcastAck { Success = true });
     }
 }
