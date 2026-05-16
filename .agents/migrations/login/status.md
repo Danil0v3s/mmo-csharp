@@ -72,23 +72,16 @@ Comprehensive: `IpBan`, `DynamicPassFailureBan*`, `UseDnsbl`, `DnsblServers`, `U
 
 ## Pending ⚠️
 
-### Cross-server account-online sync
+### char→map address-sync fan-out (deferred to P5)
 
-The login server doesn't currently maintain a global `online_char_db` view. When a player is online on char server A, char server B's `CH_REQ_TO_CONNECT` handler has no way to learn that. Two implementation options:
-1. Add an RPC `IsAccountOnlineAnywhere(accountId)` that login can answer from its tracked char-server online updates.
-2. Have login reject duplicate auth requests directly during `AuthenticateAccountForCharServer` if the account is already online elsewhere.
-
-Companion gap on the char side is tracked in [../char/connect-flow.md](../char/connect-flow.md) (Pending → Duplicate-online).
-
-### PC-ban check from `login_log`
-
-rAthena reads recent PC ban entries from `login_log` during login. C# has no equivalent — `login_log` writes exist for audit (via `LogLogin`), but no read path on connect. Decide whether parity matters; if so, add a check in [LoginMmoAuth.cs](../../../Login.Server/UseCase/LoginMmoAuth.cs) before issuing `AC_ACCEPT_LOGIN`.
-
-### `RequestAddressSync` (0x2735) is a stub
-
-When a char server's address changes, rAthena's 0x2735 propagates it to all map servers. C# has the proto but [CharGrpcService.cs:4207](../../../Char.Server/CharGrpcService.cs) returns hardcoded success and does no broadcast. Tracked here because it's a login-driven flow (login pushes the new address to char, which would push to map).
+When a char server's address changes, rAthena's 0x2b1e propagates to all map servers (chained off 0x2735 from login). C# currently has the char→login leg working ([CharGrpcService.cs:4418-4427](../../../Char.Server/CharGrpcService.cs) calls `TriggerAddressSync()`), but the char→map fan-out needs a new `map_service.proto` RPC plus a map-side receiver — folded into P5 (inter-base routing) since maps need similar receivers for broadcast/whisper.
 
 ## History
 
+- **2026-05-16** — **P3 complete.**
+  - Added `IsAccountOnlineAnywhere` RPC to `login_service.proto`. Server-side handler in [LoginGrpcService.cs](../../../Login.Server/LoginGrpcService.cs) queries the existing `OnlineLoginDataDictionary` (LoginDataRepository), excluding the calling char server. This gives any char server a global view of online accounts.
+  - Wired the char-side caller into [ClientConnectHandler.cs](../../../Char.Server/Handlers/ClientConnectHandler.cs): after local duplicate check, if the account is online on a *different* char server, ask login to broadcast force-disconnect via `NotifyAccountStatusAsync(online: false)` — matches rAthena's "kick older session" behavior in `char_auth_ok`.
+  - **PC-ban check from `login_log` resolved as won't-fix:** rAthena has no such check. The actual rAthena IP-ban gate is `ipban_check` (ipban.cpp:40) which queries the `ipbanlist` table; C# `IsIpBannedAsync` already mirrors this. Plan item was based on a misread of the audit doc.
+  - **`RequestAddressSync` (0x2735):** char→login leg already works (TriggerAddressSync). char→map fan-out deferred to P5.
 - **2026-05-15** — Migration analysis from the original `LoginServerMigrationAnalysis.md` was largely outdated. Audit confirmed all listed "MISSING" features (char-server registration, IP ban, DNSBL, client hash, inter-server comms, MD5 passwords) are implemented. Original analysis doc deleted; this status doc replaces it.
 - **(pre-2026-05)** — Login server packet/auth/security surface brought to ~95% parity. Open work: cross-server account-online sync, PC-ban read, address-sync broadcast.

@@ -4419,6 +4419,9 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         AddressSyncRequest request,
         ServerCallContext context)
     {
+        // rAthena 0x2735 parity: trigger char-side IP re-resolution + re-push to login.
+        // The full rAthena flow also fans out to map servers via 0x2b1e — that's deferred
+        // to P5 (inter-base routing) since it needs a new map_service.proto receiver.
         _charServer.TriggerAddressSync();
         return Task.FromResult(new AddressSyncResponse { Success = true });
     }

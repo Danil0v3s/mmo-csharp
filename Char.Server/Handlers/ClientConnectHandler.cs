@@ -136,6 +136,43 @@ public class ClientConnectHandler(
             return;
         }
 
+        // rAthena char_auth_ok parity (cross-server): consult login server's global online
+        // registry to detect the same account being live on a different char server. If so,
+        // ask the login server to kick the existing session and continue locally — matches
+        // rAthena's "kick older session" behavior.
+        if (charServerState.RegisteredServerId > 0)
+        {
+            using var dupCts = new CancellationTokenSource(ConnectRpcTimeoutMs);
+            try
+            {
+                var globalOnline = await loginServerIpc.IsAccountOnlineAnywhereAsync(
+                    session.AccountId.Value,
+                    charServerState.RegisteredServerId,
+                    dupCts.Token);
+
+                if (globalOnline?.IsOnline == true)
+                {
+                    logger.LogInformation(
+                        "Account {AccountId} already online on char server {OtherServerId}; kicking older session",
+                        session.AccountId.Value,
+                        globalOnline.CharServerId);
+
+                    // Ask login to broadcast a force-disconnect to the other char server.
+                    await loginServerIpc.NotifyAccountStatusAsync(
+                        session.AccountId.Value,
+                        globalOnline.CharServerId,
+                        online: false,
+                        cancellationToken: dupCts.Token);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                logger.LogWarning(
+                    "ConnectFlow: cross-server duplicate-online RPC timed out for account {AccountId}",
+                    session.AccountId.Value);
+            }
+        }
+
         session.IsAuthenticated = true;
 
         logger.LogInformation(

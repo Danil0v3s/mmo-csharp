@@ -169,6 +169,7 @@ public class PincodeHandlerParityTests
     {
         public Task<CharacterServerAuthResponse?> AuthenticateAccountAsync(int accountId, int loginId1, int loginId2, uint sex, int requestId, int charServerId, CancellationToken cancellationToken = default) => Task.FromResult<CharacterServerAuthResponse?>(null);
         public Task NotifyAccountStatusAsync(int accountId, int charServerId, bool online, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<AccountOnlineAnywhereResponse?> IsAccountOnlineAnywhereAsync(int accountId, int excludeCharServerId, CancellationToken cancellationToken = default) => Task.FromResult<AccountOnlineAnywhereResponse?>(null);
         public Task<AccountDataResponse?> RequestFullAccountDataAsync(int accountId, CancellationToken cancellationToken = default) => Task.FromResult<AccountDataResponse?>(null);
         public Task<AccountInfoResponse?> RequestDetailedAccountInfoAsync(int accountId, CancellationToken cancellationToken = default) => Task.FromResult<AccountInfoResponse?>(null);
         public Task<AccountStateUpdateResponse?> UpdateAccountStateAsync(int accountId, uint state, CancellationToken cancellationToken = default) => Task.FromResult<AccountStateUpdateResponse?>(null);

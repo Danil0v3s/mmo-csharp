@@ -23,6 +23,15 @@ public interface ILoginServerIpcService
         bool online,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Query whether the account is online on any char server other than the excluded one.
+    /// Mirrors rAthena's cross-server `online_char_db` consult done in `char_auth_ok`.
+    /// </summary>
+    Task<AccountOnlineAnywhereResponse?> IsAccountOnlineAnywhereAsync(
+        int accountId,
+        int excludeCharServerId,
+        CancellationToken cancellationToken = default);
+
     Task<AccountDataResponse?> RequestFullAccountDataAsync(
         int accountId,
         CancellationToken cancellationToken = default);

@@ -27,6 +27,7 @@ service LoginService {
   rpc UpdateGlobalAccountRegisters (GlobalAccRegUpdateRequest) returns (GlobalAccRegUpdateResponse);
   rpc GetGlobalAccountRegisters (GlobalAccRegFetchRequest) returns (GlobalAccRegFetchResponse);
   rpc RequestVipData (AccountVipDataRequest) returns (AccountVipDataResponse);
+  rpc IsAccountOnlineAnywhere (AccountOnlineAnywhereRequest) returns (AccountOnlineAnywhereResponse);
 }
 
 message ValidateSessionRequest {
@@ -313,4 +314,18 @@ message AccountVipDataResponse {
   uint32 char_vip = 9;
   uint32 old_group = 10;
   string error_message = 11;
+}
+
+// rAthena online_db cross-server lookup. The login server tracks which char
+// server each account is online on (via NotifyAccountStatus). This RPC lets
+// any char server ask: is this account online elsewhere? Used to enforce
+// duplicate-online rejection across servers (char_auth_ok in rAthena).
+message AccountOnlineAnywhereRequest {
+  int32 account_id = 1;
+  int32 exclude_char_server_id = 2;  // typically the calling server's own ID
+}
+
+message AccountOnlineAnywhereResponse {
+  bool is_online = 1;
+  int32 char_server_id = 2;  // server holding the live session, or 0
 }

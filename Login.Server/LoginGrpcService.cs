@@ -861,4 +861,21 @@ public class LoginGrpcService : LoginService.LoginServiceBase
             }
         }
     }
+
+    public override Task<AccountOnlineAnywhereResponse> IsAccountOnlineAnywhere(
+        AccountOnlineAnywhereRequest request,
+        ServerCallContext context)
+    {
+        var online = _loginDataRepository.GetOnlineUser(request.AccountId);
+        if (online is null || online.CharServer == request.ExcludeCharServerId)
+        {
+            return Task.FromResult(new AccountOnlineAnywhereResponse { IsOnline = false });
+        }
+
+        return Task.FromResult(new AccountOnlineAnywhereResponse
+        {
+            IsOnline = true,
+            CharServerId = online.CharServer
+        });
+    }
 }

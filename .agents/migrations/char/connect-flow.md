@@ -57,13 +57,7 @@ End-to-end client connect handshake, from `CH_REQ_TO_CONNECT (0x65)` through log
 
 ## Pending ⚠️
 
-### Duplicate-online — cross-server gap
 
-- C# only checks the local char server's live sessions ([ClientConnectHandler.cs:213-223](../../../Char.Server/Handlers/ClientConnectHandler.cs) `HasDuplicateLiveAccountSession`). rAthena additionally queries the login server's `online_char_db` to catch the same account online on a *different* char server. Add an RPC to login to query global online state, or have the login server reject the auth at step 4.
-
-### PC-ban check missing
-
-rAthena consults `login_log` for an active PC ban during connect; C# has no equivalent. (See also [../login/status.md](../login/status.md).)
 
 ### Test gaps
 
@@ -71,6 +65,9 @@ rAthena consults `login_log` for an active PC ban during connect; C# has no equi
 
 ## History
 
+- **2026-05-16** — **P3 connect-flow items closed:**
+  - Cross-server duplicate-online check wired: [ClientConnectHandler.cs](../../../Char.Server/Handlers/ClientConnectHandler.cs) now calls `IsAccountOnlineAnywhereAsync` after the local duplicate-session guard. If positive, kicks the older session via `NotifyAccountStatusAsync(online: false)` so login fans out a force-disconnect to the other char server.
+  - PC-ban check resolved as won't-fix (no such mechanism in rAthena; existing `IsIpBannedAsync` already mirrors `ipban_check`).
 - **2026-05-16** — **P2 connect-flow items closed:**
   - Pincode state machine now fully matches rAthena. Renamed enum to align with `char.hpp` (`NotSet`=2, `New`=4 was previously `NewV2`). New `ComputeStartState` helper in [`PincodeFlowSupport`](../../../Char.Server/Services/PincodeFlowSupport.cs) implements `chlogif_pincode_start` parity: disabled→Passed; no-pin+force→New; no-pin+!force→Passed; pin+expired→MustChange; pin+verified→Passed; else Ask. `pincode_force` config now honored. `ChangeTime` expiration now checked.
   - Three call sites in `CharacterListFlowService` / `CharacterSelectHandler` / `PincodeWindowHandler` updated to use the shared computer.

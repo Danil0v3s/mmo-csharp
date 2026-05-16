@@ -37,6 +37,30 @@ public class LoginServerIpcService(
         }, cancellationToken: cancellationToken);
     }
 
+    public async Task<AccountOnlineAnywhereResponse?> IsAccountOnlineAnywhereAsync(
+        int accountId,
+        int excludeCharServerId,
+        CancellationToken cancellationToken = default)
+    {
+        var session = GetLoginSession();
+        if (session?.IsConnected != true) return null;
+
+        var client = new LoginService.LoginServiceClient(session.Channel);
+        try
+        {
+            return await client.IsAccountOnlineAnywhereAsync(new AccountOnlineAnywhereRequest
+            {
+                AccountId = accountId,
+                ExcludeCharServerId = excludeCharServerId
+            }, cancellationToken: cancellationToken);
+        }
+        catch (Grpc.Core.RpcException ex)
+        {
+            logger.LogWarning(ex, "IsAccountOnlineAnywhere RPC failed for account {AccountId}", accountId);
+            return null;
+        }
+    }
+
     public async Task NotifyAccountStatusAsync(
         int accountId,
         int charServerId,
