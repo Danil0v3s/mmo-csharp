@@ -127,9 +127,10 @@ Map.Server/Session/
 
 - **2026-05-16** — Plan written. No implementation yet.
 - **2026-05-16** — Enter-map handshake + walk + per-tick disconnect cleanup shipped. 5 tests in [Map.Server.Tests/Session/](../../../Map.Server.Tests/Session/). Spawn map is currently the first configured map (saved-map name resolution lands when a shared map-index table arrives — `CharacterDataResponse.map_id` is an opaque int with no name today).
+- **2026-05-16** — `CharacterDataResponse.map_name` added to the proto and populated from `CharEntity.LastMap`; `SpawnMapResolver` (extracted from `WantToConnectionHandler`) now picks the saved map if it's loaded on this server, otherwise falls back to the first configured map. Six resolver tests cover saved/.gat-suffix/fallback/empty cases. Pre-existing `Core.Server.Tests/Integration` files (`DeferredLoginServerRuntime`, `LoginSessionPacketUseCase`) excluded from build — they reference long-removed types and were only masking under earlier `CZ_ENTER` errors.
 
 ## Known follow-ups
 
-- **Saved-map resolution.** Today the player always spawns on the map server's first configured map. To honor the character's last logout map, the `CharacterDataResponse` proto (or a parallel lookup) needs to carry the map *name*, and the entity registry's `mapId` convention needs to be a real index instead of `(uint)name.GetHashCode()`.
 - **WantToConnectionHandler + Lifecycle integration tests.** Need a `StubCharServerIpcService` to exercise the auth + leave-map IPC paths in-process; deferred until we either decompose `ICharServerIpcService` into smaller capability interfaces or add a mocking dependency.
 - **gRPC `MapGrpcService.EnterMap`.** Now vestigial. Remove or repurpose once we're sure no caller (proto-test, integration script) depends on it.
+- **mapId still hashed.** The entity registry / movement / spawn services key off `(uint)mapName.GetHashCode()`. That's fine within a single map server but conflates with the proto's `map_id` int. A shared map-index table lands when cross-server warp does.

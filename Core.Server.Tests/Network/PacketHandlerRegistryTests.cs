@@ -48,7 +48,7 @@ public class PacketHandlerRegistryTests
         // but only one handler per packet type is registered (duplicates are rejected)
         Assert.True(registry.HasHandler(PacketHeader.CA_LOGIN), "Should find CA_LOGIN handler");
         Assert.True(registry.HasHandler(PacketHeader.CH_REQ_CHARLIST), "Should find CH_REQ_CHARLIST handler");
-        Assert.True(registry.HasHandler(PacketHeader.CZ_ENTER), "Should find CZ_ENTER handler");
+        Assert.True(registry.HasHandler(PacketHeader.CZ_WANT_TO_CONNECTION), "Should find CZ_WANT_TO_CONNECTION handler");
         Assert.Equal(3, registry.HandlerCount);
     }
 
@@ -173,7 +173,7 @@ public class PacketHandlerRegistryTests
         }
     }
 
-    [PacketHandler(PacketHeader.CZ_ENTER)]
+    [PacketHandler(PacketHeader.CZ_WANT_TO_CONNECTION)]
     public class TestMapHandler : IPacketHandler<ClientSession, CZ_HEARTBEAT>
     {
         public static bool WasCalled { get; private set; }

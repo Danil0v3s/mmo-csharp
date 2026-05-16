@@ -53,7 +53,7 @@ public class CrossServerPacketTests
     {
         // Arrange
         var (registry, session, logger) = CreateLoginServerContext();
-        var mapPacket = new MockIncomingPacket(PacketHeader.CZ_ENTER);
+        var mapPacket = new MockIncomingPacket(PacketHeader.CZ_WANT_TO_CONNECTION);
 
         // Act - Send map server packet to login server
         session.IncomingPackets.Enqueue(mapPacket);
@@ -106,7 +106,7 @@ public class CrossServerPacketTests
     {
         // Arrange
         var (registry, session, logger) = CreateCharServerContext();
-        var mapPacket = new MockIncomingPacket(PacketHeader.CZ_ENTER);
+        var mapPacket = new MockIncomingPacket(PacketHeader.CZ_WANT_TO_CONNECTION);
 
         // Act - Send map server packet to char server
         session.IncomingPackets.Enqueue(mapPacket);
@@ -124,10 +124,10 @@ public class CrossServerPacketTests
         var (registry, session, logger) = CreateMapServerContext();
         
         // Verify the handler is registered
-        Assert.True(registry.HasHandler(PacketHeader.CZ_ENTER), 
-            "MapServer should have handler for CZ_ENTER");
+        Assert.True(registry.HasHandler(PacketHeader.CZ_WANT_TO_CONNECTION), 
+            "MapServer should have handler for CZ_WANT_TO_CONNECTION");
         
-        var packet = new MockIncomingPacket(PacketHeader.CZ_ENTER);
+        var packet = new MockIncomingPacket(PacketHeader.CZ_WANT_TO_CONNECTION);
 
         // Act
         session.IncomingPackets.Enqueue(packet);
@@ -197,7 +197,7 @@ public class CrossServerPacketTests
             "Login server should NOT handle char server packets");
 
         // Assert - Map server packets
-        Assert.False(registry.HasHandler(PacketHeader.CZ_ENTER), 
+        Assert.False(registry.HasHandler(PacketHeader.CZ_WANT_TO_CONNECTION), 
             "Login server should NOT handle map server packets");
         Assert.False(registry.HasHandler(PacketHeader.CZ_REQUEST_MOVE), 
             "Login server should NOT handle map server packets");
@@ -246,7 +246,7 @@ public class CrossServerPacketTests
 
         var registry = new PacketHandlerRegistry(services, logger);
         // Manually register only MAP handlers (not all handlers in assembly)
-        registry.RegisterHandler(PacketHeader.CZ_ENTER, new MockMapHandler());
+        registry.RegisterHandler(PacketHeader.CZ_WANT_TO_CONNECTION, new MockMapHandler());
 
         var session = new MockClientSession(logger);
         return (registry, session, logger);
@@ -285,7 +285,7 @@ public class CrossServerPacketTests
         }
     }
 
-    [PacketHandler(PacketHeader.CZ_ENTER)]
+    [PacketHandler(PacketHeader.CZ_WANT_TO_CONNECTION)]
     public class MockMapHandler : IPacketHandler<ClientSession, CZ_HEARTBEAT>
     {
         public Task HandleAsync(ClientSession session, CZ_HEARTBEAT packet)

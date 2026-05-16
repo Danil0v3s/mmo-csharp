@@ -172,6 +172,10 @@ message CharacterDataResponse {
   float position_x = 3;
   float position_y = 4;
   float position_z = 5;
+  // rAthena's last_point.map name (e.g. "prontera"). The map_id field is
+  // an opaque integer with no shared lookup table yet; map servers
+  // resolve the spawn map by name via IMapWorldRegistry.
+  string map_name = 6;
 }
 
 // rAthena parity for chmapif_parse_reqchangemapserv (0x2b05)

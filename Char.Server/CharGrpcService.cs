@@ -4329,6 +4329,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         {
             Character = ToCharacterInfo(character),
             MapId = 0,
+            MapName = character.LastMap ?? string.Empty,
             PositionX = character.LastX,
             PositionY = character.LastY,
             PositionZ = 0

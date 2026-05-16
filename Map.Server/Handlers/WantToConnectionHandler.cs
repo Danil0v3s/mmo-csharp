@@ -57,13 +57,20 @@ public class WantToConnectionHandler(
         }
 
         var character = auth.CharacterData;
-        var spawnMap = ResolveSpawnMap();
+        var spawnMap = SpawnMapResolver.Resolve(worldRegistry, configuration.Maps, character?.MapName);
         if (spawnMap == null)
         {
             logger.LogError("No spawn map available — server has no loaded maps");
             session.EnqueuePacket(new ZC_REFUSE_ENTER_ZONE { ErrorCode = 1 });
             session.Disconnect(DisconnectReason.Kicked);
             return;
+        }
+        if (!string.IsNullOrEmpty(character?.MapName)
+            && !MapNamesMatch(character.MapName, spawnMap.Name))
+        {
+            logger.LogWarning(
+                "Character's saved map '{Saved}' not loaded on this server; falling back to {Fallback}",
+                character.MapName, spawnMap.Name);
         }
 
         var spawnX = character != null && character.PositionX > 0
@@ -99,16 +106,10 @@ public class WantToConnectionHandler(
             session.CharacterName, packet.AccountId, packet.CharacterId, spawnMap.Name, spawnX, spawnY);
     }
 
-    private MapData? ResolveSpawnMap()
+    private static bool MapNamesMatch(string a, string b)
     {
-        // Pick the first configured map that's actually loaded. Per-character
-        // saved-map resolution lands when we add a shared map-index table
-        // (see world.md / session.md history).
-        foreach (var name in configuration.Maps)
-        {
-            var map = worldRegistry.Get(name);
-            if (map != null) return map;
-        }
-        return worldRegistry.All.FirstOrDefault();
+        if (a.EndsWith(".gat", StringComparison.OrdinalIgnoreCase)) a = a[..^4];
+        if (b.EndsWith(".gat", StringComparison.OrdinalIgnoreCase)) b = b[..^4];
+        return string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
     }
 }
