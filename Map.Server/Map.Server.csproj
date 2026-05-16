@@ -10,6 +10,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
         <ProjectReference Include="..\Core.Timer\Core.Timer.csproj" />
+        <ProjectReference Include="..\Core.Database\Core.Database.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -18,7 +19,6 @@
         <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
         <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.0" />
-        <PackageReference Include="YamlDotNet" Version="16.2.1" />
     </ItemGroup>
 
     <ItemGroup>

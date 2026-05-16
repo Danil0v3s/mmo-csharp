@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using Core.Database;
 using Core.Server;
 using Core.Server.IPC;
 using Core.Server.Network;
@@ -57,12 +58,14 @@ builder.Services.AddSingleton<IMapWorldRegistry>(sp =>
     return MapWorldRegistry.Load(serverConfig.MapDataPath, serverConfig.Maps, logger);
 });
 
-// Mob database: rAthena mob_db.yml (+ mob_db2.yml overrides) parsed once at
-// startup (see .agents/migrations/map/mob-db.md).
-builder.Services.AddSingleton<IMobDb>(sp => new MobDb(
-    serverConfig.MobDbPath,
-    string.IsNullOrEmpty(serverConfig.MobDbOverridePath) ? null : serverConfig.MobDbOverridePath,
-    sp.GetRequiredService<ILogger<MobDb>>()));
+// Static catalogs hydrated from Core.Database (rAthena use_sql_db: yes parity).
+// IMobRepository / IItemRepository are Scoped; MobDb / IItemCatalog take
+// IServiceScopeFactory and create scopes internally on load + Reload.
+var dbConnectionString = configuration.GetConnectionString("GameDatabase")
+    ?? throw new InvalidOperationException(
+        "Missing connection string 'GameDatabase' in appsettings.json");
+builder.Services.AddGameDatabase(dbConnectionString);
+builder.Services.AddSingleton<IMobDb, MobDb>();
 
 // Register server state separately to avoid circular dependencies
 builder.Services.AddSingleton<MapServerState>();

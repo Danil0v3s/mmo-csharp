@@ -38,15 +38,4 @@ public class MapServerConfiguration : ServerConfiguration
     /// only the maps listed in <see cref="Maps"/> are kept in memory.
     /// </summary>
     public string MapDataPath { get; set; } = "/Volumes/1TB/Projetos/rathena/db/re/map_cache.dat";
-
-    /// <summary>
-    /// Path to rAthena's renewal <c>mob_db.yml</c>. Loaded once at startup.
-    /// </summary>
-    public string MobDbPath { get; set; } = "/Volumes/1TB/Projetos/rathena/db/re/mob_db.yml";
-
-    /// <summary>
-    /// Optional override file applied on top of <see cref="MobDbPath"/>
-    /// (rAthena <c>mob_db2.yml</c>). Missing file is silently skipped.
-    /// </summary>
-    public string MobDbOverridePath { get; set; } = "/Volumes/1TB/Projetos/rathena/db/re/mob_db2.yml";
 }
