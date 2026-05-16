@@ -30,7 +30,16 @@ Visibility decides who sees whom and triggers the right entry/exit packets. In r
 
 ## Done
 
-Nothing.
+- [VisibilityConfig](../../../Map.Server/Visibility/VisibilityConfig.cs) — `AreaSize = 14`.
+- [SendTarget](../../../Map.Server/Visibility/SendTarget.cs) — `Self`, `Area`, `AreaWos`.
+- [IPacketDispatcher](../../../Map.Server/Visibility/IPacketDispatcher.cs) + [SessionPacketDispatcher](../../../Map.Server/Visibility/SessionPacketDispatcher.cs) — abstraction so visibility doesn't take a hard dep on `SessionManager` (and tests don't need a real socket stack).
+- [IVisibilityService](../../../Map.Server/Visibility/IVisibilityService.cs) / [VisibilityService](../../../Map.Server/Visibility/VisibilityService.cs):
+  - `SendToSelf`, `SendToArea(target)`.
+  - `NewlyVisible` / `NewlyInvisible` view-diff over the spatial index.
+  - `NotifySpawnedToArea` (PC only for MS1; throws on mob/npc), `NotifyVanishedToArea`, `NotifyMoveToArea`.
+- 9 tests in [Map.Server.Tests/Visibility/](../../../Map.Server.Tests/Visibility/) covering edge-of-range, source-exclusion, view-diff, and packet shape.
+
+Pending: integration with [session.md](session.md) (spawn/despawn) and per-step view diff in [movement.md](movement.md). The visibility primitives are ready; the callers wire them in as MS1.session and the movement step callback land.
 
 ## Pending
 
@@ -93,3 +102,4 @@ Map.Server/Visibility/
 ## History
 
 - **2026-05-16** — Plan written. No implementation yet.
+- **2026-05-16** — Service + tests delivered. AOI iteration, view-diff helpers, PC standentry/vanish/move broadcasts. Wired into DI in [Program.cs](../../../Map.Server/Program.cs). Callers (movement / session) wire-up still pending.
