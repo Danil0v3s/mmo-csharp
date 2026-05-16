@@ -32,7 +32,18 @@ The first big MS3 work. Combat ties together attack actions, damage formulas, st
 
 ## Done
 
-Nothing.
+**Scaffolding slice (MS3 first pass — the HP-mutation pipeline that everything else plugs into):**
+
+- HP / MaxHp surfaced on entities:
+  - [`PlayerEntity`](../../../../Map.Server/Entities/PlayerEntity.cs) carries `Hp` / `MaxHp` (defaults 40/40 — placeholder until status recalc lands).
+  - [`MobEntity`](../../../../Map.Server/Entities/MobEntity.cs) gained an explicit `MaxHp` (mirrors `DbEntry.Hp` at spawn) alongside the existing current-HP setter.
+- [`ZC_NOTIFY_ACT3`](../../../../Core.Server/Packets/Out/ZC/ZC_NOTIFY_ACT3.cs) (0x08c8, 34 bytes) — renewal 32-bit damage packet. Includes the `DamageActionType` enum (`Normal`, `Flee`, `Critical`, …) so future damage paths just set the right code.
+- [`IDamageService`](../../../../Map.Server/Combat/IDamageService.cs) / [`DamageService`](../../../../Map.Server/Combat/DamageService.cs):
+  - `ApplyDamage(target, amount, source?)` → clamps to remaining HP, mutates HP, broadcasts `ZC_NOTIFY_ACT3` to AOI, fires the death pipeline on HP=0.
+  - Mob death routes through `IMobSpawnService.KillMob` (reuses the existing vanish broadcast + respawn schedule).
+  - PC death: vanish broadcast + registry removal. Savepoint warp / corpse-revive UX lands with the broader respawn flow.
+- [`@damage <amount>`](../../../../Map.Server/Gm/Commands/DamageCommand.cs) (GroupId ≥ 60) — applies flat damage to the nearest mob in AOI; lets the pipeline be exercised end-to-end without auto-attack timing.
+- 5 tests in [Map.Server.Tests/Combat/](../../../../Map.Server.Tests/Combat/) covering HP-clamp, ACT broadcast, mob death routing, PC death, and the flee/zero-damage branch.
 
 ## Pending
 
@@ -47,7 +58,7 @@ Nothing.
 
 4. **Death + exp distribution.** Last-hit-wins for MS3; mob's exp pool split between party (if any) per rAthena rules. Calls `SetCharacterOnline` lifecycle update (the char might not log off but stats change; that's the inventory IPC).
 
-5. **Drops.** On mob death, roll its drop table (`mob_db.Drops`) and instantiate `ItemEntity` on the map (items doc).
+5. **Drops.** On mob death, roll its drop table (`mob_db.Drops`) and instantiate `ItemEntity` on the map. Needs an item_db parser so the aegis names in `mob_db` resolve to numeric `itemId`s — that's the natural next pillar after this scaffolding.
 
 ### Acceptance
 - A player can auto-attack a Poring next to them; HP ticks down on both sides; mob dies; player receives exp.
@@ -56,3 +67,4 @@ Nothing.
 
 ## History
 - **2026-05-16** — Plan stub.
+- **2026-05-16** — Scaffolding slice shipped: HP on entities, ZC_NOTIFY_ACT3 wire format, IDamageService.ApplyDamage with HP-mutation + death pipeline, @damage GM command, 5 unit tests. Drop rolling / damage formula / auto-attack loop / EXP distribution remain queued.

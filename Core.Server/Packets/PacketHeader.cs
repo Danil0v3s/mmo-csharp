@@ -96,6 +96,7 @@ public enum PacketHeader : short
     ZC_ITEM_ENTRY = 0x009d,                // floor item already on map; entering view
     ZC_ITEM_FALL_ENTRY = 0x0add,           // floor item just dropped; PACKETVER >= 20180418
     ZC_ITEM_DISAPPEAR = 0x00a1,            // floor item picked up / despawned
+    ZC_NOTIFY_ACT3 = 0x08c8,               // combat action / damage (renewal 32-bit damage)
 
     // Client -> Zone (CZ)
     CZ_NOTIFY_ACTORINIT = 0x007d,          // LoadEndAck — client ready to spawn

@@ -4,6 +4,7 @@ using Core.Server.IPC;
 using Core.Server.Network;
 using Core.Server.Packets;
 using Map.Server;
+using Map.Server.Combat;
 using Map.Server.Entities;
 using Map.Server.Gm;
 using Map.Server.Gm.Commands;
@@ -98,12 +99,18 @@ builder.Services.AddSingleton<IMobSpawnService, MobSpawnService>();
 // despawn). Inventory persistence + item_db catalog land later.
 builder.Services.AddSingleton<IItemDropService, ItemDropService>();
 
+// Combat scaffolding (see .agents/migrations/map/adjacent/combat.md). MS3
+// first slice: HP-mutation + death pipeline. Auto-attack loop and the
+// full damage formula plug in later.
+builder.Services.AddSingleton<IDamageService, DamageService>();
+
 // GM commands. Each IGmCommand is registered as a singleton; the registry
 // indexes them by Name at construction. ChatMessageHandler discovers them
 // via DI.
 builder.Services.AddSingleton<IGmCommand, WhereCommand>();
 builder.Services.AddSingleton<IGmCommand, KillMobCommand>();
 builder.Services.AddSingleton<IGmCommand, WarpCommand>();
+builder.Services.AddSingleton<IGmCommand, DamageCommand>();
 builder.Services.AddSingleton<IGmCommandRegistry, GmCommandRegistry>();
 
 // Core services

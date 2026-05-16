@@ -22,6 +22,10 @@ public class MobEntity : Entity
 
     /// <summary>Current HP. Set to <c>DbEntry.Hp</c> at spawn.</summary>
     public int Hp { get; set; }
+
+    /// <summary>Maximum HP, mirrors <c>DbEntry.Hp</c>. Set once at spawn.</summary>
+    public int MaxHp { get; private set; }
+
     public int Sp { get; set; }
 
     /// <summary>
@@ -48,6 +52,7 @@ public class MobEntity : Entity
         Origin = origin;
         Name = string.IsNullOrEmpty(origin.DisplayName) ? dbEntry.Name : origin.DisplayName!;
         Hp = dbEntry.Hp;
+        MaxHp = dbEntry.Hp;
         Sp = dbEntry.Sp;
         Speed = dbEntry.WalkSpeed > 0 ? dbEntry.WalkSpeed : Speed;
     }

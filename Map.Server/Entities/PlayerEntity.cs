@@ -15,6 +15,20 @@ public sealed class PlayerEntity : Entity
     public string Name { get; }
     public Guid SessionId { get; }
 
+    /// <summary>
+    /// Current HP. Defaults to <see cref="MaxHp"/> at spawn; mutated by
+    /// <see cref="Items.IItemDropService"/>-adjacent damage path in
+    /// MS3 combat. Will be hydrated from the char-side persistence once
+    /// the inventory/status IPC carries the full stats payload.
+    /// </summary>
+    public int Hp { get; set; } = 40;
+
+    /// <summary>
+    /// Maximum HP. Level-1 default mirrors rAthena's pre-status-recalc
+    /// baseline (40); MS3 status will recompute from Vit + class + level.
+    /// </summary>
+    public int MaxHp { get; set; } = 40;
+
     public override EntityType Type => EntityType.Pc;
 
     public PlayerEntity(
