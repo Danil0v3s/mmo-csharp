@@ -1,10 +1,10 @@
-﻿using System.Collections.Concurrent;
-using System.Reflection;
+﻿using System.Reflection;
 using Core.Server;
 using Core.Server.IPC;
 using Core.Server.Network;
 using Core.Server.Packets;
 using Map.Server;
+using Map.Server.Entities;
 using Map.Server.Services;
 using Map.Server.World;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -55,9 +55,9 @@ builder.Services.AddSingleton<IMapServerState>(sp => sp.GetRequiredService<MapSe
 // Register MapServerImpl
 builder.Services.AddSingleton<MapServerImpl>();
 
-// Legacy dictionaries for handlers that still use them directly
-builder.Services.AddSingleton<ConcurrentDictionary<long, PlayerEntity>>();
-builder.Services.AddSingleton<ConcurrentDictionary<Guid, long>>();
+// Entity infrastructure for MS1 gameplay (see .agents/migrations/map/entities.md).
+builder.Services.AddSingleton<EntityIdAllocator>();
+builder.Services.AddSingleton<IEntityRegistry, EntityRegistry>();
 
 // Core services
 builder.Services.AddSingleton<SessionManager>();

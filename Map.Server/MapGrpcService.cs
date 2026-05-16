@@ -88,13 +88,17 @@ public class MapGrpcService : MapService.MapServiceBase
             posZ = characterData.PositionZ;
         }
 
-        _playerMapService.AddPlayerToMap(
-            request.CharacterId,
-            request.AccountId,
-            (uint)mapId,
-            posX,
-            posY,
-            posZ);
+        // Hand off into the entity registry. The TCP-side spawn flow ([session.md])
+        // is where the player gets its Name + SessionId; for now we register a
+        // placeholder so IPC-only flows can find the player by character id.
+        _playerMapService.AddPlayer(
+            characterId: (int)request.CharacterId,
+            accountId: request.AccountId,
+            name: string.Empty,
+            sessionId: Guid.Empty,
+            mapId: (uint)mapId,
+            x: (short)posX,
+            y: (short)posY);
 
         // P6 post-auth wiring (rAthena chrif post-load equivalents): with the auth ticket
         // accepted, pull state owned by char server and mark online. Each call is best-effort
@@ -154,7 +158,7 @@ public class MapGrpcService : MapService.MapServiceBase
     {
         // P6 disconnect wiring (rAthena chrif logout equivalents): persist final state
         // owned by the map server, then clear the online flag on the char server.
-        var player = _playerMapService.RemovePlayerAndGet(request.CharacterId);
+        var player = _playerMapService.RemoveAndGet((int)request.CharacterId);
         if (player != null && player.AccountId > 0)
         {
             try
@@ -205,10 +209,10 @@ public class MapGrpcService : MapService.MapServiceBase
             response.Players.Add(new PlayerInfo
             {
                 CharacterId = player.CharacterId,
-                Name = $"Char{player.CharacterId}",
-                PositionX = player.PositionX,
-                PositionY = player.PositionY,
-                PositionZ = player.PositionZ
+                Name = string.IsNullOrEmpty(player.Name) ? $"Char{player.CharacterId}" : player.Name,
+                PositionX = player.X,
+                PositionY = player.Y,
+                PositionZ = 0,
             });
         }
 
@@ -245,7 +249,7 @@ public class MapGrpcService : MapService.MapServiceBase
         MapWhisperNotification request,
         ServerCallContext context)
     {
-        var delivered = _playerMapService.IsPlayerOnAnyMap(request.TargetCharacterId);
+        var delivered = _playerMapService.IsPlayerOnAnyMap((int)request.TargetCharacterId);
         _logger.LogInformation(
             "Received whisper for {TargetName} (char={CharId}) from {Source}; delivered={Delivered}",
             request.TargetName, request.TargetCharacterId, request.SourceName, delivered);
@@ -284,14 +288,14 @@ public class MapGrpcService : MapService.MapServiceBase
         MapForceDisconnectNotification request,
         ServerCallContext context)
     {
-        var victims = _playerMapService.GetAllPlayers()
-            .Where(p => p.AccountId == request.AccountId)
+        var victims = _playerMapService
+            .GetByAccountId(request.AccountId)
             .Select(p => p.CharacterId)
             .ToList();
 
         foreach (var charId in victims)
         {
-            _playerMapService.RemovePlayerFromMap(charId);
+            _playerMapService.RemovePlayer(charId);
         }
 
         _logger.LogInformation(

@@ -239,13 +239,7 @@ public class MapServerImpl : GameLoopServer
     }
 }
 
-public class PlayerEntity
-{
-    public long CharacterId { get; set; }
-    public int AccountId { get; set; }
-    public uint MapId { get; set; }
-    public float PositionX { get; set; }
-    public float PositionY { get; set; }
-    public float PositionZ { get; set; }
-    public Guid SessionId { get; set; }
-}
+// The legacy PlayerEntity that lived here has been replaced by
+// Map.Server.Entities.PlayerEntity (which inherits from Entity and integrates
+// with IEntityRegistry's spatial index). IPlayerMapService is now a facade
+// over IEntityRegistry for IPC-driven code paths.
