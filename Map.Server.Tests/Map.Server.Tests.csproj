@@ -19,6 +19,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Map.Server\Map.Server.csproj" />
+    <ProjectReference Include="..\Tools.PacketReplay\Tools.PacketReplay.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Replay\Fixtures\*.log">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

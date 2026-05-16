@@ -28,6 +28,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Login.Server.Tests", "Login
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Map.Server.Tests", "Map.Server.Tests\Map.Server.Tests.csproj", "{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tools.PacketReplay", "Tools.PacketReplay\Tools.PacketReplay.csproj", "{D8B0AD3B-9A51-46D2-BE54-039E779851B6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -170,6 +172,18 @@ Global
 		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Release|x64.Build.0 = Release|Any CPU
 		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Release|x86.ActiveCfg = Release|Any CPU
 		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Release|x86.Build.0 = Release|Any CPU
+		{D8B0AD3B-9A51-46D2-BE54-039E779851B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D8B0AD3B-9A51-46D2-BE54-039E779851B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D8B0AD3B-9A51-46D2-BE54-039E779851B6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D8B0AD3B-9A51-46D2-BE54-039E779851B6}.Debug|x64.Build.0 = Debug|Any CPU
+		{D8B0AD3B-9A51-46D2-BE54-039E779851B6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D8B0AD3B-9A51-46D2-BE54-039E779851B6}.Debug|x86.Build.0 = Debug|Any CPU
+		{D8B0AD3B-9A51-46D2-BE54-039E779851B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D8B0AD3B-9A51-46D2-BE54-039E779851B6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D8B0AD3B-9A51-46D2-BE54-039E779851B6}.Release|x64.ActiveCfg = Release|Any CPU
+		{D8B0AD3B-9A51-46D2-BE54-039E779851B6}.Release|x64.Build.0 = Release|Any CPU
+		{D8B0AD3B-9A51-46D2-BE54-039E779851B6}.Release|x86.ActiveCfg = Release|Any CPU
+		{D8B0AD3B-9A51-46D2-BE54-039E779851B6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
