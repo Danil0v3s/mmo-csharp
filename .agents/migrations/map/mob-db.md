@@ -30,7 +30,12 @@ The mob db is the static catalog of monster definitions: stats, sprite ids, drop
 
 ## Done
 
-Nothing. There's no mob system in `Map.Server`.
+- [`MobDbEntry`](../../../Map.Server/MobDb/MobDbEntry.cs) + [`MobDrop`](../../../Map.Server/MobDb/MobDbEntry.cs) records — full rAthena mob_db.yml field surface (stats, drops, race-groups, modes). Combat-side fields stored but unused until MS3.
+- [`MobDbYamlReader`](../../../Map.Server/MobDb/MobDbYamlReader.cs) — event-driven YAML parser. Switched from YamlDotNet's representation model after the real renewal data tripped a duplicate-key check (mob 22055's `RaceGroups: EP172ALPHA: true` appears twice — rAthena tolerates it silently and we now do too).
+- [`IMobDb`](../../../Map.Server/MobDb/IMobDb.cs) + [`MobDb`](../../../Map.Server/MobDb/MobDb.cs) — singleton, two-file loader (primary + optional override), id + aegis-name indexes, `Reload()` swaps an immutable snapshot.
+- Config knobs `MobDbPath` / `MobDbOverridePath` on [`MapServerConfiguration`](../../../Map.Server/MapServerConfiguration.cs), wired into DI in [`Program.cs`](../../../Map.Server/Program.cs).
+- 10 tests in [Map.Server.Tests/MobDb/](../../../Map.Server.Tests/MobDb/) including a smoke test that loads the live rAthena `mob_db.yml` (2555 entries) in < 200 ms and verifies Poring's fields.
+- Namespace is `Map.Server.Mob` (not `Map.Server.MobDb`) so tests inside the same project don't get a class-vs-namespace collision on the bare name `MobDb`.
 
 ## Pending
 
@@ -82,3 +87,4 @@ Map.Server/MobDb/
 ## History
 
 - **2026-05-16** — Plan written. No implementation yet.
+- **2026-05-16** — Reader + singleton shipped. 2555-mob renewal db loads in < 200 ms; Poring (1002) round-trips. Modes / race-groups stored opaquely as `Dictionary<string,bool>` until MS3 mob AI types them.
