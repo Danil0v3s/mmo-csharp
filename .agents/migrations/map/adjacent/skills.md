@@ -10,14 +10,14 @@ Skills are the largest single gameplay system. rAthena's [skill.cpp](/Volumes/1T
 
 - [rathena/src/map/skill.cpp](/Volumes/1TB/Projetos/rathena/src/map/skill.cpp) — skill cast / unit (e.g. magnus, ice wall) / damage / heal / status
 - [rathena/src/map/skill.hpp](/Volumes/1TB/Projetos/rathena/src/map/skill.hpp) — `enum e_skill_id`, `skill_db` schema
-- [rathena/db/re/skill_db.yml](/Volumes/1TB/Projetos/rathena/db/re/skill_db.yml) — static catalog (1500+ skills)
+- [rathena/db/re/skill_db.yml](/Volumes/1TB/Projetos/rathena/db/re/skill_db.yml) — static catalog (1500+ skills) — **note:** like mob_db / item_db, we'll load from the equivalent SQL table (rAthena's `use_sql_db` path) once the seed/repository lands rather than parsing this YAML.
 - [rathena/db/re/skill_tree.yml](/Volumes/1TB/Projetos/rathena/db/re/skill_tree.yml) — class skill tree
 - [rathena/db/re/mob_skill_db.yml](/Volumes/1TB/Projetos/rathena/db/re/mob_skill_db.yml) — mob skill assignment + use conditions
 
 ## Scope (MS3 first pass)
 
 **In scope:**
-- `skill_db.yml` parser → `ISkillDb` catalog.
+- `ISkillDb` catalog hydrated from a `skill_db` repository (DB-backed; mirrors the mob_db / item_db pattern). When the schema and seed land in `Core.Database`, the catalog reads from there; until then this subsystem is blocked on that DB work.
 - Skill tree parsing → which skills which classes can learn.
 - Skill use flow: `CZ_USE_SKILL (0x0113)` / `CZ_USE_SKILL_TOID (0x0438)` → cast time → damage / status / unit emission → cooldown set.
 - Skill cooldown persistence via existing IPC (`SaveSkillCooldown` / `LoadSkillCooldown`) — already wired in P6.

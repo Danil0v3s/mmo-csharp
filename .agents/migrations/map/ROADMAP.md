@@ -59,7 +59,7 @@ Goal: NPCs and mobs appear on map at the right locations, players see them on `Z
 
 | Subsystem | Doc | Depends on | rAthena ref |
 |---|---|---|---|
-| mob_db parser + data model | [mob-db.md](mob-db.md) | entities | `mob.cpp`, `db/mob_db.yml` |
+| mob_db catalog (DB-backed via `IMobRepository`) | [mob-db.md](mob-db.md) | entities, Core.Database | `mob.cpp` `mob_read_sqldb`, `mob_db_re` table |
 | NPC system (parser, dialog) | [npc.md](npc.md) | world, visibility | `npc.cpp`, `script.cpp` |
 | Spawn manager + respawn timers | [spawn.md](spawn.md) | mob-db, world | `mob.cpp` `mob_spawn`, `db/mob_spawn.txt` |
 
@@ -91,7 +91,8 @@ Everything else, after MS1+MS2 are usable. These can largely run in parallel. De
 
 ## Cross-cutting conventions
 
-- **Renewal only.** All data files come from `/Volumes/1TB/Projetos/rathena/db/re/`. Damage formulas, stat curves, defense behavior, MATK split, etc. all follow rAthena renewal. Pre-renewal is permanently out of scope.
+- **Renewal only.** All data follows rAthena renewal. Damage formulas, stat curves, defense behavior, MATK split, etc. mirror `db/re/` and the `_re` SQL tables. Pre-renewal is permanently out of scope.
+- **Static catalogs come from the database.** mob_db, item_db, skill_db, and friends are loaded once at map-server startup from `Core.Database` repositories (`IMobRepository`, `IItemRepository`, …). This matches rAthena's `use_sql_db: yes` mode in `conf/inter_athena.conf`; the seeded SQL schema in [Core.Database/Seeds/Scripts/](../../../Core.Database/Seeds/Scripts/) is column-for-column parity with `item_db_re` / `mob_db_re`. The YAML parsers under `db/re/*.yml` are reference material, not a runtime source — the map server doesn't ship a YAML reader.
 - **Source of truth is rAthena.** Every new subsystem file links to the relevant `.cpp` files. When in doubt, read those, not invent.
 - **DB schemas are already in `Core.Database`.** 74 entities + configurations. No new entities for MS1/MS2 should be needed; for MS3 some new tables may be required (e.g. a server-side cell-aux table for mob spawn state — TBD).
 - **Char-side IPC is the persistence boundary.** Map.Server must never write to the DB directly except via the gRPC surface owned by Char.Server. (P6 already wired the lifecycle calls; gameplay-triggered calls — party/guild/mail/etc. — are stub-call-ready in `Map.Server/Services/CharServerIpcService.*.cs`.)
@@ -128,3 +129,4 @@ Everything else, after MS1+MS2 are usable. These can largely run in parallel. De
 
 - **2026-05-16** — Renewal locked as the only supported mode. All data sources, formulas, and packet handling target rAthena renewal exclusively; pre-renewal removed from scope across `world.md`, `combat.md`, `packets.md`.
 - **2026-05-16** — Roadmap created after P8 closed the pre-gameplay IPC audit. User priority: enter map + walk first, NPCs + mobs second, adjacent systems planned but lower priority. Subsystem files written same day.
+- **2026-05-16** — Switched static-catalog source from rAthena's YAML to the seeded `Core.Database` tables (rAthena's `use_sql_db: yes` parity). The YAML mob-db reader shipped in MS2 is being replaced by an `IMobRepository`-backed loader; item_db / skill_db follow the same pattern. The 28K+ rows under `Core.Database/Seeds/Scripts/seed_{item,mob}_db_*.sql` become the runtime authority.
