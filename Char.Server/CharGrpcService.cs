@@ -2240,9 +2240,22 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
                 .Where(c => charIds.Contains(c.CharId))
                 .ToDictionaryAsync(c => c.CharId, c => c.AccountId, context.CancellationToken);
 
+        var mailIds = mails.Select(m => m.Id).ToList();
+        var attachmentsByMailId = mailIds.Count == 0
+            ? new Dictionary<long, List<MailAttachmentEntity>>()
+            : (await _dbContext.MailAttachments
+                .AsNoTracking()
+                .Where(a => mailIds.Contains(a.Id))
+                .ToListAsync(context.CancellationToken))
+                .GroupBy(a => a.Id)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
         foreach (var mail in mails)
         {
-            response.Mails.Add(ToMailMessageData(mail, accountsByCharId));
+            var attachments = attachmentsByMailId.TryGetValue(mail.Id, out var list)
+                ? (IEnumerable<MailAttachmentEntity>)list
+                : Array.Empty<MailAttachmentEntity>();
+            response.Mails.Add(ToMailMessageData(mail, accountsByCharId, attachments));
         }
 
         return response;
@@ -2269,10 +2282,15 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             .Where(c => c.CharId == mail.SendId || c.CharId == mail.DestId)
             .ToDictionaryAsync(c => c.CharId, c => c.AccountId, context.CancellationToken);
 
+        var attachments = await _dbContext.MailAttachments
+            .AsNoTracking()
+            .Where(a => a.Id == mail.Id)
+            .ToListAsync(context.CancellationToken);
+
         return new MailReadResponse
         {
             Success = true,
-            Mail = ToMailMessageData(mail, accountsByCharId)
+            Mail = ToMailMessageData(mail, accountsByCharId, attachments)
         };
     }
 
@@ -2291,14 +2309,28 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
 
         var zeny = mail.Zeny;
         mail.Zeny = 0;
+
+        var attachments = await _dbContext.MailAttachments
+            .Where(a => a.Id == request.MailId)
+            .ToListAsync(context.CancellationToken);
+        if (attachments.Count > 0)
+        {
+            _dbContext.MailAttachments.RemoveRange(attachments);
+        }
+
         await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        return new MailGetAttachmentResponse
+        var response = new MailGetAttachmentResponse
         {
             Success = true,
             Zeny = zeny,
             Attachment = Google.Protobuf.ByteString.Empty
         };
+        foreach (var att in attachments)
+        {
+            response.Items.Add(ToMailAttachmentItem(att));
+        }
+        return response;
     }
 
     public override async Task<MailDeleteResponse> MailDelete(
@@ -2431,15 +2463,17 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         _dbContext.Mails.Add(mail);
         await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        // Keep current behavior: attachment raw bytes are accepted by API but there is no raw blob column.
-        // Persist attachment rows only when caller sends empty payload-compatible state (default no-item mail).
-        if (request.Attachment.Length == 0)
+        if (request.Items.Count > 0)
         {
-            return new MailSendResponse
+            foreach (var item in request.Items)
             {
-                Success = true,
-                MailId = mail.Id
-            };
+                if (item.NameId == 0 || item.Amount == 0)
+                {
+                    continue;
+                }
+                _dbContext.MailAttachments.Add(ToMailAttachmentEntity(mail.Id, item));
+            }
+            await _dbContext.SaveChangesAsync(context.CancellationToken);
         }
 
         return new MailSendResponse
@@ -2643,6 +2677,27 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
                 RefundZeny = request.Bid,
                 Result = 9
             };
+        }
+
+        if (auction.BuyerId > 0)
+        {
+            var refundBody = auction.BuyerId == (int)request.CharacterId
+                ? "You have placed a higher bid. The amount of zeny you offered has been returned to you."
+                : "Someone has placed a higher bid. The amount of zeny you offered has been returned to you.";
+
+            _dbContext.Mails.Add(new MailEntity
+            {
+                SendId = 0,
+                SendName = "Auction Manager",
+                DestId = auction.BuyerId,
+                DestName = auction.BuyerName,
+                Title = "Auction",
+                Message = refundBody,
+                Zeny = auction.Price,
+                Time = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Status = 0,
+                Type = 0
+            });
         }
 
         auction.BuyerId = (int)request.CharacterId;
@@ -2947,11 +3002,13 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         _dbContext.Homunculi.Add(entity);
         await _dbContext.SaveChangesAsync(context.CancellationToken);
 
+        await SaveHomunculusSkillsAsync(entity.HomunId, request.Homunculus.Skills, context.CancellationToken);
+
         return new HomunculusCreateResponse
         {
             Success = true,
             AccountId = request.AccountId,
-            Homunculus = ToHomunculusData(entity)
+            Homunculus = ToHomunculusData(entity, request.Homunculus.Skills)
         };
     }
 
@@ -2967,11 +3024,16 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             return new HomunculusLoadResponse { Success = false, AccountId = request.AccountId };
         }
 
+        var skills = await _dbContext.SkillHomunculi
+            .AsNoTracking()
+            .Where(s => s.HomunId == entity.HomunId)
+            .ToListAsync(context.CancellationToken);
+
         return new HomunculusLoadResponse
         {
             Success = true,
             AccountId = request.AccountId,
-            Homunculus = ToHomunculusData(entity)
+            Homunculus = ToHomunculusData(entity, skills)
         };
     }
 
@@ -3025,6 +3087,9 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         }
 
         await _dbContext.SaveChangesAsync(context.CancellationToken);
+
+        await SaveHomunculusSkillsAsync(incoming.HomunId, request.Homunculus.Skills, context.CancellationToken);
+
         return new HomunculusSaveResponse { Success = true, AccountId = request.AccountId };
     }
 
@@ -3039,9 +3104,53 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             return new HomunculusDeleteResponse { Success = false };
         }
 
+        var skills = await _dbContext.SkillHomunculi
+            .Where(s => s.HomunId == request.HomunculusId)
+            .ToListAsync(context.CancellationToken);
+        if (skills.Count > 0)
+        {
+            _dbContext.SkillHomunculi.RemoveRange(skills);
+        }
+
         _dbContext.Homunculi.Remove(entity);
         await _dbContext.SaveChangesAsync(context.CancellationToken);
         return new HomunculusDeleteResponse { Success = true };
+    }
+
+    private async Task SaveHomunculusSkillsAsync(
+        int homunId,
+        Google.Protobuf.Collections.RepeatedField<HomunculusSkillEntry> skills,
+        CancellationToken ct)
+    {
+        if (homunId <= 0)
+        {
+            return;
+        }
+
+        var existing = await _dbContext.SkillHomunculi
+            .Where(s => s.HomunId == homunId)
+            .ToListAsync(ct);
+        if (existing.Count > 0)
+        {
+            _dbContext.SkillHomunculi.RemoveRange(existing);
+        }
+
+        foreach (var skill in skills)
+        {
+            if (skill.Id <= 0 || skill.Lv == 0)
+            {
+                continue;
+            }
+
+            _dbContext.SkillHomunculi.Add(new SkillHomunculusEntity
+            {
+                HomunId = homunId,
+                Id = skill.Id,
+                Lv = (short)Math.Clamp(skill.Lv, short.MinValue, short.MaxValue)
+            });
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
     }
 
     public override Task<HomunculusRenameResponse> HomunculusRename(
@@ -3355,8 +3464,14 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     }
 
     private static MailMessageData ToMailMessageData(MailEntity mail, IReadOnlyDictionary<int, int> accountsByCharId)
+        => ToMailMessageData(mail, accountsByCharId, Array.Empty<MailAttachmentEntity>());
+
+    private static MailMessageData ToMailMessageData(
+        MailEntity mail,
+        IReadOnlyDictionary<int, int> accountsByCharId,
+        IEnumerable<MailAttachmentEntity> attachments)
     {
-        return new MailMessageData
+        var data = new MailMessageData
         {
             MailId = mail.Id,
             SenderAccountId = accountsByCharId.GetValueOrDefault(mail.SendId, 0),
@@ -3370,6 +3485,83 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             Zeny = mail.Zeny,
             Attachment = Google.Protobuf.ByteString.Empty,
             Opened = mail.Status != 0
+        };
+
+        foreach (var att in attachments)
+        {
+            data.Items.Add(ToMailAttachmentItem(att));
+        }
+        return data;
+    }
+
+    private static MailAttachmentEntity ToMailAttachmentEntity(long mailId, MailAttachmentItem item)
+    {
+        return new MailAttachmentEntity
+        {
+            Id = mailId,
+            Index = (ushort)Math.Clamp(item.Index, 0u, ushort.MaxValue),
+            NameId = item.NameId,
+            Amount = item.Amount,
+            Refine = (byte)Math.Clamp(item.Refine, 0u, byte.MaxValue),
+            Attribute = (byte)Math.Clamp(item.Attribute, 0u, byte.MaxValue),
+            Identify = (short)Math.Clamp(item.Identify, short.MinValue, short.MaxValue),
+            Card0 = item.Card0,
+            Card1 = item.Card1,
+            Card2 = item.Card2,
+            Card3 = item.Card3,
+            OptionId0 = (short)Math.Clamp(item.OptionId0, short.MinValue, short.MaxValue),
+            OptionVal0 = (short)Math.Clamp(item.OptionVal0, short.MinValue, short.MaxValue),
+            OptionParm0 = (sbyte)Math.Clamp(item.OptionParm0, sbyte.MinValue, sbyte.MaxValue),
+            OptionId1 = (short)Math.Clamp(item.OptionId1, short.MinValue, short.MaxValue),
+            OptionVal1 = (short)Math.Clamp(item.OptionVal1, short.MinValue, short.MaxValue),
+            OptionParm1 = (sbyte)Math.Clamp(item.OptionParm1, sbyte.MinValue, sbyte.MaxValue),
+            OptionId2 = (short)Math.Clamp(item.OptionId2, short.MinValue, short.MaxValue),
+            OptionVal2 = (short)Math.Clamp(item.OptionVal2, short.MinValue, short.MaxValue),
+            OptionParm2 = (sbyte)Math.Clamp(item.OptionParm2, sbyte.MinValue, sbyte.MaxValue),
+            OptionId3 = (short)Math.Clamp(item.OptionId3, short.MinValue, short.MaxValue),
+            OptionVal3 = (short)Math.Clamp(item.OptionVal3, short.MinValue, short.MaxValue),
+            OptionParm3 = (sbyte)Math.Clamp(item.OptionParm3, sbyte.MinValue, sbyte.MaxValue),
+            OptionId4 = (short)Math.Clamp(item.OptionId4, short.MinValue, short.MaxValue),
+            OptionVal4 = (short)Math.Clamp(item.OptionVal4, short.MinValue, short.MaxValue),
+            OptionParm4 = (sbyte)Math.Clamp(item.OptionParm4, sbyte.MinValue, sbyte.MaxValue),
+            UniqueId = item.UniqueId,
+            Bound = (byte)Math.Clamp(item.Bound, 0u, byte.MaxValue),
+            EnchantGrade = (byte)Math.Clamp(item.EnchantGrade, 0u, byte.MaxValue)
+        };
+    }
+
+    private static MailAttachmentItem ToMailAttachmentItem(MailAttachmentEntity att)
+    {
+        return new MailAttachmentItem
+        {
+            Index = att.Index,
+            NameId = att.NameId,
+            Amount = att.Amount,
+            Refine = att.Refine,
+            Attribute = att.Attribute,
+            Identify = att.Identify,
+            Card0 = att.Card0,
+            Card1 = att.Card1,
+            Card2 = att.Card2,
+            Card3 = att.Card3,
+            OptionId0 = att.OptionId0,
+            OptionVal0 = att.OptionVal0,
+            OptionParm0 = att.OptionParm0,
+            OptionId1 = att.OptionId1,
+            OptionVal1 = att.OptionVal1,
+            OptionParm1 = att.OptionParm1,
+            OptionId2 = att.OptionId2,
+            OptionVal2 = att.OptionVal2,
+            OptionParm2 = att.OptionParm2,
+            OptionId3 = att.OptionId3,
+            OptionVal3 = att.OptionVal3,
+            OptionParm3 = att.OptionParm3,
+            OptionId4 = att.OptionId4,
+            OptionVal4 = att.OptionVal4,
+            OptionParm4 = att.OptionParm4,
+            UniqueId = att.UniqueId,
+            Bound = att.Bound,
+            EnchantGrade = att.EnchantGrade
         };
     }
 
@@ -3554,8 +3746,11 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     }
 
     private static HomunculusData ToHomunculusData(HomunculusEntity hom)
+        => ToHomunculusData(hom, Array.Empty<SkillHomunculusEntity>());
+
+    private static HomunculusData ToHomunculusData(HomunculusEntity hom, IEnumerable<SkillHomunculusEntity> skills)
     {
-        return new HomunculusData
+        var data = new HomunculusData
         {
             HomunculusId = hom.HomunId,
             CharacterId = hom.CharId,
@@ -3571,6 +3766,23 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             MaxSp = (int)Math.Min(hom.MaxSp, int.MaxValue),
             Payload = Google.Protobuf.ByteString.Empty
         };
+
+        foreach (var skill in skills)
+        {
+            data.Skills.Add(new HomunculusSkillEntry { Id = skill.Id, Lv = skill.Lv });
+        }
+
+        return data;
+    }
+
+    private static HomunculusData ToHomunculusData(HomunculusEntity hom, Google.Protobuf.Collections.RepeatedField<HomunculusSkillEntry> skills)
+    {
+        var data = ToHomunculusData(hom);
+        foreach (var skill in skills)
+        {
+            data.Skills.Add(new HomunculusSkillEntry { Id = skill.Id, Lv = skill.Lv });
+        }
+        return data;
     }
 
     private static HomunculusEntity ToHomunculusEntity(HomunculusData hom)

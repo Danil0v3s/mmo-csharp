@@ -1070,6 +1070,38 @@ message MailMessageData {
   int64 zeny = 10;
   bytes attachment = 11;
   bool opened = 12;
+  repeated MailAttachmentItem items = 13;
+}
+
+message MailAttachmentItem {
+  uint32 index = 1;
+  uint32 name_id = 2;
+  uint32 amount = 3;
+  uint32 refine = 4;
+  uint32 attribute = 5;
+  int32 identify = 6;
+  uint32 card0 = 7;
+  uint32 card1 = 8;
+  uint32 card2 = 9;
+  uint32 card3 = 10;
+  int32 option_id0 = 11;
+  int32 option_val0 = 12;
+  int32 option_parm0 = 13;
+  int32 option_id1 = 14;
+  int32 option_val1 = 15;
+  int32 option_parm1 = 16;
+  int32 option_id2 = 17;
+  int32 option_val2 = 18;
+  int32 option_parm2 = 19;
+  int32 option_id3 = 20;
+  int32 option_val3 = 21;
+  int32 option_parm3 = 22;
+  int32 option_id4 = 23;
+  int32 option_val4 = 24;
+  int32 option_parm4 = 25;
+  uint64 unique_id = 26;
+  uint32 bound = 27;
+  uint32 enchant_grade = 28;
 }
 
 message MailRequestInboxRequest {
@@ -1103,6 +1135,7 @@ message MailGetAttachmentResponse {
   bool success = 1;
   int64 zeny = 2;
   bytes attachment = 3;
+  repeated MailAttachmentItem items = 4;
 }
 
 message MailDeleteRequest {
@@ -1136,6 +1169,7 @@ message MailSendRequest {
   string body = 8;
   int64 zeny = 9;
   bytes attachment = 10;
+  repeated MailAttachmentItem items = 11;
 }
 
 message MailSendResponse {
@@ -1377,6 +1411,12 @@ message HomunculusData {
   int32 sp = 11;
   int32 max_sp = 12;
   bytes payload = 13;
+  repeated HomunculusSkillEntry skills = 14;
+}
+
+message HomunculusSkillEntry {
+  int32 id = 1;
+  int32 lv = 2;
 }
 
 message HomunculusCreateRequest {

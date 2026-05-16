@@ -1,250 +1,86 @@
-# Game Server Architecture
+# Architecture
 
-## Overview
+C# port of an rAthena-style MMO server. Four processes communicate over TCP (client-facing) and gRPC (server-to-server).
 
-This is a C# game server system with 4 server types:
-- **LoginServer** (TCP, 20 FPS) - Handles authentication
-- **CharServer** (TCP, 20 FPS) - Manages character selection/creation
-- **MapServer** (TCP, 60 FPS) - Real-time gameplay
-- **WebServer** (REST API) - Web-based management and API
+## Process layout
 
-## Architecture Hierarchy
+| Server | TCP port | gRPC port | Target FPS | Heartbeat timeout | Project |
+|---|---|---|---|---|---|
+| Login  | 6900 | 6001 | 20 | 30 s | `Login.Server` |
+| Char   | 6121 | 6002 | 20 | 30 s | `Char.Server` |
+| Map    | 5191 | 6003 | 60 | 15 s | `Map.Server` |
+| Web    | 5000 | —    | —  | —    | `Web.Server` |
 
-```
-IServer (interface)
-  └── AbstractServer (base class)
-      ├── GameLoopServer (abstract, adds game loop)
-      │   ├── LoginServer
-      │   ├── CharServer
-      │   └── MapServer
-      └── WebServer (no game loop, REST API only)
-```
+Ports and timeouts live in each project's `appsettings.json` under `Server.*`. The Web server has no game loop and no client TCP socket — it's an ASP.NET Core REST API (Swagger at `http://localhost:5000/swagger`).
 
-## Key Components
+MariaDB is provisioned by [docker-compose.yml](docker-compose.yml) on `:3306`; the C# processes are launched manually (`dotnet run --project <Server>`).
 
-### Core.Server Infrastructure
-
-**IServer Interface**
-- Defines `Start/Stop/Restart` operations
-- `ServerState` enum for lifecycle tracking
-
-**AbstractServer**
-- Common lifecycle management
-- IPC client (gRPC) for inter-server communication
-- Logging integration
-- Configuration management
-
-**GameLoopServer**
-- Fixed-update loop at configurable FPS
-- High-precision timing with `Stopwatch`
-- Heartbeat monitoring per client
-- Delta time calculation
-- Non-blocking packet processing
-
-### TCP Protocol
-
-**Packet Format:**
-- Fixed-length: `[2 bytes: Packet ID]`
-- Variable-length: `[2 bytes: Packet ID][2 bytes: Size][Body]`
-
-**Heartbeat:**
-- Packet ID: `0x0001`
-- Fixed-length (no body)
-- Client must send every 15-20 seconds
-- Server disconnects on timeout
-
-### Client Session Management
-
-**ClientSession**
-- Async receive loop per client
-- TCP stream reassembly with `PacketBuffer`
-- Incoming/outgoing packet queues
-- Heartbeat tracking with high-precision timestamps
-- Graceful disconnect with reasons
-
-**SessionManager**
-- Thread-safe session collection
-- Heartbeat timeout checking
-- Bulk disconnect support
-
-### Packet Handling
-
-**PacketBuffer**
-- Zero-copy parsing with `Memory<byte>` and `Span<byte>`
-- ArrayPool for buffer management
-- Automatic stream reassembly
-- Compact operation to prevent memory waste
-
-**PacketReader/Writer**
-- `ref struct` for stack allocation
-- No GC pressure in hot paths
-- Support for primitives and strings
-
-### Inter-Process Communication
-
-**gRPC Services:**
-- `LoginService` - Session validation, account info
-- `CharacterService` - Character CRUD operations
-- `MapService` - Map entry/exit, player info
-
-**ServerConnectionManager:**
-- Track server connections by type (Login, Char, Map, Web)
-- Health check monitoring (5s interval, 3 missed checks = timeout)
-- Automatic cleanup of dead connections
-- Query servers by type for iteration
-- Thread-safe concurrent connection management
-
-**ServerSession:**
-- Represents a single server connection
-- Automatic health monitoring
-- Connection state tracking
-- gRPC channel management
-
-**IpcClient (Legacy):**
-- Backward-compatible wrapper around ServerConnectionManager
-- Automatic server type detection from endpoint names
-
-## Server Configurations
-
-### LoginServer (Port 5001, gRPC 6001)
-- 20 FPS game loop
-- 30 second heartbeat timeout
-- Validates credentials
-- Issues session tokens
-
-### CharServer (Port 5002, gRPC 6002)
-- 20 FPS game loop
-- 30 second heartbeat timeout
-- Validates sessions via LoginServer gRPC
-- Character management
-
-### MapServer (Port 5003, gRPC 6003)
-- **60 FPS game loop** for real-time gameplay
-- 15 second heartbeat timeout (stricter)
-- Player position updates
-- Chat broadcasting
-- Uses object pooling for packets
-
-### WebServer (Port 5000)
-- REST API with Swagger UI
-- Account registration/login
-- Server status monitoring
-- No game loop needed
-
-## Performance Optimizations
-
-### MapServer (60 FPS)
-- Minimize allocations in game loop
-- `ArrayPool` for packet buffers
-- `Span<T>` and `Memory<T>` for zero-copy
-- Single-threaded game state
-- Thread-safe queues for I/O
-
-### All Servers
-- Async socket I/O
-- Separate async task per client for reading
-- Main loop processes queued packets synchronously
-- Proper TCP stream reassembly
-- ConcurrentCollections for thread safety
-
-## Socket I/O Strategy
-
-**Async/Await Hybrid:**
-1. Each `ClientSession` has async receive loop
-2. Packets queued to `ConcurrentQueue`
-3. Main game loop processes queued packets synchronously
-4. Outgoing packets queued and flushed per frame
-
-**Benefits:**
-- Non-blocking socket operations
-- Thread-safe without locks in hot path
-- Game state remains single-threaded
-
-## Game Loop Implementation
+## Class hierarchy
 
 ```
-while (running):
-    1. Process incoming packets (from queues)
-    2. Update game logic (AI, physics, etc.)
-    3. Check client heartbeats
-    4. Flush outgoing packets
-    5. Sleep to maintain target FPS
+IServer                                    Core.Server/IServer.cs
+  └── AbstractServer                       Core.Server/AbstractServer.cs
+        ├── GameLoopServer (abstract)      Core.Server/GameLoopServer.cs
+        │     ├── LoginServerImpl
+        │     ├── CharServerImpl
+        │     └── MapServerImpl
+        └── WebServerImpl
 ```
 
-**Timing:**
-- Uses `Stopwatch` for high-precision timing
-- Calculates actual delta time each frame
-- Sleeps remainder to hit target FPS
+`AbstractServer` owns lifecycle, logging, configuration, and the IPC client. `GameLoopServer` adds the fixed-FPS tick loop, heartbeat checks, and packet pumps.
 
-## Error Handling
+## Client TCP protocol
 
-**Disconnect Reasons:**
-- `ClientDisconnect` - Normal close
-- `HeartbeatTimeout` - No heartbeat received
-- `SocketError` - Network error
-- `ServerShutdown` - Graceful shutdown
-- `Kicked` - Administrative action
+Packets are length-prefixed binaries originating from the rAthena packet set.
 
-**Graceful Shutdown:**
-1. Cancel server token
-2. Disconnect all clients
-3. Notify other servers
-4. Stop game loop
-5. Close listener socket
-6. Dispose resources
+- **Fixed-length packet:** `[2 bytes: packet id][body…]` where the body length is derived from the registered packet size.
+- **Variable-length packet:** `[2 bytes: packet id][2 bytes: total size][body…]`.
 
-## Key Design Decisions
+Packet definitions live in [Core.Server/Packets](Core.Server/Packets). Registered sizes for variable packets come from [Core.Server/Packets/appsettings.packets.json](Core.Server/Packets/appsettings.packets.json).
 
-### Why Async Receive + Sync Game Loop?
-- Prevents blocking on socket I/O
-- Game state remains deterministic
-- No locking needed in game logic
-- Easy to reason about
+Heartbeats:
+- **Map ↔ client:** `CZ_HEARTBEAT = 0x0360`, fixed-length, no body. See [Core.Server/Packets/In/CZ_HEARTBEAT.cs](Core.Server/Packets/In/CZ_HEARTBEAT.cs).
+- **Char ↔ client:** `CH_KEEP_ALIVE = 0x0187`, fixed-length, account-id payload. Handled by [Char.Server/Handlers/CharKeepAliveHandler.cs](Char.Server/Handlers/CharKeepAliveHandler.cs).
 
-### Why Different FPS per Server?
-- LoginServer: Low frequency, I/O bound
-- CharServer: Low frequency, DB queries
-- MapServer: High frequency, real-time gameplay
+The server drops the connection if no heartbeat arrives within the per-server `HeartbeatTimeout` window.
 
-### Why gRPC for IPC?
-- Type-safe contracts
-- HTTP/2 performance
-- Built-in connection pooling
-- Easy to add new services
+### I/O model
 
-### Why Separate WebServer?
-- Different threading model (ASP.NET Core)
-- REST API for web clients
-- Swagger documentation
-- No game loop overhead
+Each `ClientSession` runs an async `ReceiveLoopAsync` that reads from the socket, reassembles packets via [PacketBuffer](Core.Server/Network/PacketBuffer.cs) (`ArrayPool<byte>`-backed, zero-copy with `Memory<byte>` / `Span<byte>`), and enqueues `IncomingPacket` to a `ConcurrentQueue`. The game-loop thread drains that queue per tick and dispatches to handlers via [PacketHandlerRegistry](Core.Server/Network/PacketHandlerRegistry.cs). Outgoing packets are queued per session and flushed at end-of-tick. Game state stays single-threaded; only the I/O boundary is concurrent.
 
-## Potential Pitfalls
+## Inter-server communication
 
-1. **TCP Stream Reassembly**: Must handle partial packets correctly
-2. **Heartbeat Precision**: Use high-precision timing, not DateTime
-3. **Buffer Reuse**: Copy data from buffers before reuse
-4. **Session Cleanup**: Always dispose on disconnect
-5. **FPS Consistency**: Account for processing time in sleep calculation
-6. **GC Pressure**: Use ArrayPool and avoid allocations in hot paths
+All cross-server calls go over gRPC. See [Ipc.md](Ipc.md) for the connection manager, health checks, and DI surface. Proto contracts live in [Core.Server/Protos](Core.Server/Protos) (`login_service.proto`, `char_service.proto`, `map_service.proto`).
 
-## Running the Servers
+## Persistence
 
-Each server has its own `appsettings.json` for configuration.
+MySQL 8 / MariaDB via Pomelo EF Core. Shared in [Core.Database](Core.Database). Entities ([Entities/](Core.Database/Entities), 74 files), configurations ([Configurations/](Core.Database/Configurations)), repositories ([Repositories/Api/](Core.Database/Repositories/Api)), migrations in [Core.Database/Migrations](Core.Database/Migrations). Each consuming server calls `services.AddGameDatabase(...)` from [ServiceCollectionExtensions.cs](Core.Database/ServiceCollectionExtensions.cs).
 
-Start in order:
-1. `dotnet run --project Login.Server`
-2. `dotnet run --project Char.Server`
-3. `dotnet run --project Map.Server`
-4. `dotnet run --project Web.Server`
+Migration usage: [Core.Database/MIGRATIONS.md](Core.Database/MIGRATIONS.md). Repository injection pattern: [Core.Database/USAGE_EXAMPLES.md](Core.Database/USAGE_EXAMPLES.md).
 
-Access WebServer Swagger UI at: `http://localhost:5000/swagger`
+## rAthena parity
 
-## Future Enhancements
+Parity progress tracked in [.agents/migrations/](.agents/migrations/), organized by server:
+- [.agents/migrations/README.md](.agents/migrations/README.md) — index + status table
+- [.agents/migrations/char/](.agents/migrations/char/) — client packets, gRPC server, connect flow
+- [.agents/migrations/login/](.agents/migrations/login/) — login server status
+- [.agents/migrations/map/](.agents/migrations/map/) — map-side IPC integration
+- [.agents/migrations/inter/](.agents/migrations/inter/) — `inter.cpp` base + per-module flows
 
-- Database integration (Entity Framework Core)
-- Redis for session storage
-- Load balancing multiple MapServers
-- Metrics and monitoring (Prometheus)
-- Player authentication with JWT
-- Packet encryption (TLS/SSL)
+The Login server packet/auth surface is largely complete: IP bans, DNSBL, client-hash, MD5 / double-MD5 passwords, character-server registration over gRPC. See [Login.Server/UseCase/LoginMmoAuth.cs](Login.Server/UseCase/LoginMmoAuth.cs) and [Login.Server/Security/LoginSecurityService.cs](Login.Server/Security/LoginSecurityService.cs).
 
+## Disconnect reasons
+
+Defined alongside session code in [Core.Server/Network](Core.Server/Network). Common values: `ClientDisconnect`, `HeartbeatTimeout`, `SocketError`, `ServerShutdown`, `Kicked`, `UnhandledPacket`, `PacketHandlerError`.
+
+## Running locally
+
+1. `docker compose up -d` (starts MariaDB on 3306, user/password `ragnarok`).
+2. `dotnet ef database update --project Core.Database` once, to apply migrations.
+3. Start the servers in any order — they retry IPC connections:
+   ```
+   dotnet run --project Login.Server
+   dotnet run --project Char.Server
+   dotnet run --project Map.Server
+   dotnet run --project Web.Server
+   ```

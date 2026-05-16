@@ -1,0 +1,60 @@
+# rAthena → C# migration tracking
+
+Living status of the port from rAthena C++ (`/Volumes/1TB/Projetos/rathena`) to this C# stack. Each doc tracks **what's done**, **what's pending**, and **history** of significant changes.
+
+## Status legend
+
+- ✅ Done — implementation matches rAthena behavior, tested where applicable
+- ⚠️ Partial — exists but has gaps, edge cases, or known divergences
+- ❌ Missing — no implementation, or stub-only
+- 🔁 Pending integration — code exists but unused (most common in map/)
+
+## Server status at a glance
+
+| Server | Coverage | Critical gaps |
+|---|---|---|
+| [Login](login/status.md) | ✅ ~95% | Cross-server account-online sync, PC-ban check from `login_log` |
+| [Char (packets)](char/packets.md) | ✅ ~95% | Minor parity drift on `CH_KEEP_ALIVE` and rename burst |
+| [Char (gRPC server)](char/grpc.md) | ✅ ~95% | Server-side stubs (PartyShareLevel, UpdateFame, KeepAlive); P1 data-loss bugs closed |
+| [Char (connect flow)](char/connect-flow.md) | ⚠️ ~90% | Pincode `MustChange`/expiration, `pincode_force` config, cross-server dup-online |
+| [Map (IPC integration)](map/ipc-integration.md) | ❌ ~2% | **Map server doesn't invoke 106 of 118 char RPCs**; no save-on-logout, no module ops |
+| [Inter base](inter/base.md) | ⚠️ ~50% | Broadcast/whisper don't route; name change is TODO |
+| [Inter modules](inter/modules.md) | ✅ Char side ~98% / 🔁 Map side 0% | Map-side callers missing; one minor `PartyShareLevel` stub |
+
+## Roadmap
+
+**Start here:** [ROADMAP.md](ROADMAP.md) — the sequenced 7-phase plan to complete Login + Char + Interop parity before any map-server gameplay work. Phases ordered by dependency, with explicit acceptance criteria.
+
+Short version of phase ordering:
+
+1. **P1** — Fix three char data-loss bugs (mail attach, auction refund, homun skills).
+2. **P2** — Complete char server (pincode states, server stubs, reject codes, test gaps).
+3. **P3** — Complete login server (PC-ban check, global online registry, address sync).
+4. **P4** — Cross-server duplicate-online check (bridges P2 + P3).
+5. **P5** — Inter-base routing (broadcast / whisper / name change actually deliver).
+6. **P6** — Map → Char IPC wiring (infrastructure lifecycle triggers; module wrappers without triggers).
+7. **P7** — End-to-end verification, soak, doc sweep.
+
+After P7, map-server gameplay work begins against a stable interop surface.
+
+## Conventions for these docs
+
+- **Each entry cites file paths** with line ranges so changes can be re-verified against current code.
+- **Pending items are actionable** — they name the function/file to change, not just "do X better."
+- **History is reverse-chronological** at the bottom of each doc. New work appends an entry with the date.
+- **The rAthena reference path** (`/Volumes/1TB/Projetos/rathena/src/...`) is the source of truth for behavioral parity decisions.
+- **When you finish a pending item**, move it from Pending → Done and append a History entry. Don't delete the Pending line silently.
+
+## Reference
+
+- rAthena source: `/Volumes/1TB/Projetos/rathena/src/`
+  - `login/` — login server
+  - `char/` — char server (`char_clif.cpp`, `char_mapif.cpp`, `char_logif.cpp`, `inter.cpp`, `int_*.cpp`)
+  - `map/` — map server
+- Proto contracts: [Core.Server/Protos/](../../Core.Server/Protos/)
+- DB entities: [Core.Database/Entities/](../../Core.Database/Entities/)
+
+## History
+
+- **2026-05-16** — **P1 complete.** Three char-side data-loss bugs fixed (mail attachments, auction refund, homunculus skills). Added EF Core InMemory test infrastructure; 9 new regression tests in `CharGrpcDataIntegrityTests.cs`. Full Char.Server.Tests suite green at 119 tests. See [char/grpc.md](char/grpc.md) and [inter/modules.md](inter/modules.md) for details.
+- **2026-05-15** — Audited all four legacy `CHAR_*_PLAN.md` files against actual implementation; found that map-side gRPC callers were ~98% absent despite docs claiming complete. Split monolithic plans into per-server focused docs (this structure).

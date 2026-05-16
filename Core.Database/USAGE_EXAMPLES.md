@@ -153,70 +153,6 @@ public class GuildService
 }
 ```
 
-### Example 4: Using Optional IUnitOfWork (Alternative)
-
-If you prefer a dedicated transaction wrapper, you can use `IUnitOfWork`:
-
-```csharp
-public class GuildService
-{
-    private readonly IGuildRepository _guilds;
-    private readonly IGuildMemberRepository _guildMembers;
-    private readonly ICharacterRepository _characters;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public GuildService(
-        IGuildRepository guilds,
-        IGuildMemberRepository guildMembers,
-        ICharacterRepository characters,
-        IUnitOfWork unitOfWork)
-    {
-        _guilds = guilds;
-        _guildMembers = guildMembers;
-        _characters = characters;
-        _unitOfWork = unitOfWork;
-    }
-
-    public async Task<GuildEntity> CreateGuildAsync(
-        string guildName,
-        int masterCharId,
-        CancellationToken ct = default)
-    {
-        await _unitOfWork.BeginTransactionAsync(ct);
-        try
-        {
-            var guild = new GuildEntity
-            {
-                Name = guildName,
-                CharId = masterCharId,
-                Master = (await _characters.GetByIdAsync(masterCharId, ct))?.Name ?? "",
-                GuildLv = 1,
-                MaxMember = 16
-            };
-            await _guilds.AddAsync(guild, ct);
-            await _unitOfWork.SaveChangesAsync(ct);
-
-            var member = new GuildMemberEntity
-            {
-                GuildId = guild.GuildId,
-                CharId = masterCharId,
-                Position = 0
-            };
-            await _guildMembers.AddAsync(member, ct);
-            await _unitOfWork.SaveChangesAsync(ct);
-
-            await _unitOfWork.CommitTransactionAsync(ct);
-            return guild;
-        }
-        catch
-        {
-            await _unitOfWork.RollbackTransactionAsync(ct);
-            throw;
-        }
-    }
-}
-```
-
 ## 📋 Testing Examples
 
 ### Example: Unit Test with Mocked Repository
@@ -259,51 +195,6 @@ public class CharacterServiceTests
 4. **No Service Locator**: No hidden dependencies
 5. **Better Performance**: No lazy initialization overhead
 6. **Clear Intent**: Code clearly shows its data access needs
-
-## 🚫 Anti-Pattern to Avoid
-
-**DON'T do this:**
-```csharp
-// ❌ BAD: Service has access to all 25+ repositories
-public class CharacterService
-{
-    private readonly IUnitOfWork _unitOfWork;
-    
-    public CharacterService(IUnitOfWork unitOfWork)
-    {
-        _unitOfWork = unitOfWork;
-    }
-    
-    public async Task GetCharacterAsync(int id)
-    {
-        // Uses only 1 repository but has access to 25+
-        return await _unitOfWork.Characters.GetByIdAsync(id);
-    }
-}
-```
-
-**DO this instead:**
-```csharp
-// ✅ GOOD: Service has access only to what it needs
-public class CharacterService
-{
-    private readonly ICharacterRepository _characters;
-    private readonly GameDbContext _dbContext;
-    
-    public CharacterService(
-        ICharacterRepository characters,
-        GameDbContext dbContext)
-    {
-        _characters = characters;
-        _dbContext = dbContext;
-    }
-    
-    public async Task GetCharacterAsync(int id)
-    {
-        return await _characters.GetByIdAsync(id);
-    }
-}
-```
 
 ## 🌱 Database Seeding
 
