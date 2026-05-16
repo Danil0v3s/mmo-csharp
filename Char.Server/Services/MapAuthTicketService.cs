@@ -54,10 +54,15 @@ public class MapAuthTicketService : IMapAuthTicketService
                 return false;
             }
 
+            // rAthena's modern CZ_WANT_TO_CONNECTION packet does not carry
+            // login_id2 (only login_id1 + client_tick + sex). The map server
+            // therefore passes 0 as loginId2 — treat that as "skip the check"
+            // so the auth ticket flow remains login_id1-keyed, matching how
+            // rAthena's chrif_authreq validates only the primary auth key.
             if (ticket.ExpiresAtUtc < DateTime.UtcNow ||
                 ticket.CharacterId != characterId ||
                 ticket.LoginId1 != loginId1 ||
-                ticket.LoginId2 != loginId2)
+                (loginId2 != 0 && ticket.LoginId2 != loginId2))
             {
                 _tickets.Remove(accountId);
                 sex = 0;

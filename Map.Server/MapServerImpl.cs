@@ -5,6 +5,7 @@ using Core.Server.IPC;
 using Core.Server.Network;
 using Core.Server.Packets;
 using Map.Server.Services;
+using Map.Server.Session;
 
 namespace Map.Server;
 
@@ -15,6 +16,7 @@ public class MapServerImpl : GameLoopServer
     private readonly MapServerState _serverState;
     private readonly IPlayerMapService _playerMapService;
     private readonly ICharServerIpcService _charServerIpc;
+    private readonly MapSessionLifecycle _lifecycle;
     private readonly MapServerConfiguration _mapConfiguration;
     private DateTime _nextRegistrationAttemptUtc = DateTime.MinValue;
     private DateTime _nextKeepAliveUtc = DateTime.MinValue;
@@ -32,7 +34,8 @@ public class MapServerImpl : GameLoopServer
         ServerConnectionService connectionService,
         MapServerState serverState,
         IPlayerMapService playerMapService,
-        ICharServerIpcService charServerIpc)
+        ICharServerIpcService charServerIpc,
+        MapSessionLifecycle lifecycle)
         : base("MapServer", configuration, logger, packetSystem, sessionManager)
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
@@ -40,6 +43,7 @@ public class MapServerImpl : GameLoopServer
         _serverState = serverState;
         _playerMapService = playerMapService;
         _charServerIpc = charServerIpc;
+        _lifecycle = lifecycle;
         _mapConfiguration = (MapServerConfiguration)configuration;
 
         // Wire up the connection service to use this server's connection manager
@@ -139,6 +143,10 @@ public class MapServerImpl : GameLoopServer
         await SendKeepAliveIfDueAsync(cancellationToken);
         await SyncUserCountIfDueAsync(cancellationToken);
         await AutosaveIfDueAsync(cancellationToken);
+        // Sweep dead client sessions before the SessionManager removes them so
+        // we can broadcast vanish + run LeaveMap IPC while the EntityId is
+        // still bound. Idempotent; sets MapSessionData.CleanupCompleted.
+        await _lifecycle.SweepAsync(cancellationToken);
     }
 
     private async Task EnsureRegisteredOnCharServerAsync(CancellationToken cancellationToken)

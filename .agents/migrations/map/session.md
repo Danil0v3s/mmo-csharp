@@ -27,9 +27,18 @@ Bridges what's already wired (char→map gRPC handoff in P6) to actual gameplay:
 
 ## Done
 
-Map server has a TCP listener ([MapServerImpl.cs](../../../Map.Server/MapServerImpl.cs)) and a `MapSessionData` ([Map.Server/MapSessionData.cs](../../../Map.Server/MapSessionData.cs)) that's mostly empty. There's a placeholder `EnterMapHandler` ([Map.Server/Handlers/EnterMapHandler.cs](../../../Map.Server/Handlers/EnterMapHandler.cs)) that listens on `CZ_HEARTBEAT` (wrong packet) and does fake spawning.
+- [`MapSessionData`](../../../Map.Server/MapSessionData.cs) now carries auth state (`Unauthenticated → Authenticated → Spawned`), account/char/login/sex, the bound `EntityId`, and a `CleanupCompleted` idempotency flag.
+- [`MapAuthState`](../../../Map.Server/Session/MapAuthState.cs) enum.
+- Handlers:
+  - [`WantToConnectionHandler`](../../../Map.Server/Handlers/WantToConnectionHandler.cs) — validates the auth ticket via gRPC, hydrates spawn state, sends `ZC_AID` + `ZC_ACCEPT_ENTER_ZONE`.
+  - [`NotifyActorInitHandler`](../../../Map.Server/Handlers/NotifyActorInitHandler.cs) — registers the `PlayerEntity`, broadcasts STANDENTRY to viewers, sends each viewer's STANDENTRY back to the spawning player.
+  - [`RequestMoveHandler`](../../../Map.Server/Handlers/RequestMoveHandler.cs) — starts a walk through `IMovementService`, echoes `ZC_NOTIFY_PLAYERMOVE`, broadcasts `ZC_NOTIFY_MOVE` to AOI.
+  - [`RequestTimeHandler`](../../../Map.Server/Handlers/RequestTimeHandler.cs), [`ReqQuitHandler`](../../../Map.Server/Handlers/ReqQuitHandler.cs) — keep-alive and client quit.
+- [`MapSessionLifecycle`](../../../Map.Server/Session/MapSessionLifecycle.cs) — polled per map tick: removes the bound `PlayerEntity`, broadcasts `ZC_NOTIFY_VANISH`, fires `SaveCharacterState` + `SetCharacterOffline` IPC. Idempotent via `CleanupCompleted`.
+- [`IVisibilityService.SendCurrentViewToSelf`](../../../Map.Server/Visibility/IVisibilityService.cs) — initial-spawn helper to flood STANDENTRY for everyone already in view.
+- Char-side ticket validation ([`MapAuthTicketService`](../../../Char.Server/Services/MapAuthTicketService.cs)) now treats `loginId2 == 0` as "skip" so the modern `CZ_WANT_TO_CONNECTION` (which carries only `login_id1`) authenticates.
 
-The gRPC-level `EnterMap` flow ([MapGrpcService.cs](../../../Map.Server/MapGrpcService.cs)) is wired but represents the **char→map handoff**, not the **client→map TCP connect**. They're different events; today they're conflated.
+The gRPC `EnterMap` ([MapGrpcService.cs](../../../Map.Server/MapGrpcService.cs)) is now vestigial — nothing invokes it and the TCP handshake fully replaces it. Cleanup deferred to a later pass.
 
 ## Pending
 
@@ -117,3 +126,10 @@ Map.Server/Session/
 ## History
 
 - **2026-05-16** — Plan written. No implementation yet.
+- **2026-05-16** — Enter-map handshake + walk + per-tick disconnect cleanup shipped. 5 tests in [Map.Server.Tests/Session/](../../../Map.Server.Tests/Session/). Spawn map is currently the first configured map (saved-map name resolution lands when a shared map-index table arrives — `CharacterDataResponse.map_id` is an opaque int with no name today).
+
+## Known follow-ups
+
+- **Saved-map resolution.** Today the player always spawns on the map server's first configured map. To honor the character's last logout map, the `CharacterDataResponse` proto (or a parallel lookup) needs to carry the map *name*, and the entity registry's `mapId` convention needs to be a real index instead of `(uint)name.GetHashCode()`.
+- **WantToConnectionHandler + Lifecycle integration tests.** Need a `StubCharServerIpcService` to exercise the auth + leave-map IPC paths in-process; deferred until we either decompose `ICharServerIpcService` into smaller capability interfaces or add a mocking dependency.
+- **gRPC `MapGrpcService.EnterMap`.** Now vestigial. Remove or repurpose once we're sure no caller (proto-test, integration script) depends on it.

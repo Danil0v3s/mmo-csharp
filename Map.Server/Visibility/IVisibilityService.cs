@@ -66,4 +66,12 @@ public interface IVisibilityService
         short fromX, short fromY,
         short toX, short toY,
         uint startTime);
+
+    /// <summary>
+    /// On initial spawn, send a <see cref="ZC_NOTIFY_STANDENTRY"/> for every
+    /// entity already in view to <paramref name="self"/>'s session. MS1 only
+    /// emits packets for PC viewers; mob/npc entries are skipped (they land
+    /// in MS2 with their own packet shapes).
+    /// </summary>
+    void SendCurrentViewToSelf(PlayerEntity self);
 }

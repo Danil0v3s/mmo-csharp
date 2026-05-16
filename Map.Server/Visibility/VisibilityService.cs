@@ -112,6 +112,17 @@ public sealed class VisibilityService : IVisibilityService
         SendToArea(walker, packet, SendTarget.AreaWos);
     }
 
+    public void SendCurrentViewToSelf(PlayerEntity self)
+    {
+        var neighbors = _entities.ForEachInRange(
+            self.MapId, self.X, self.Y, VisibilityConfig.AreaSize, EntityType.Pc);
+        foreach (var e in neighbors)
+        {
+            if (e.Id == self.Id) continue;
+            _dispatcher.TrySend(self.SessionId, BuildStandEntry(e));
+        }
+    }
+
     internal static OutgoingPacket BuildStandEntry(Entity entity) => entity switch
     {
         PlayerEntity p => new ZC_NOTIFY_STANDENTRY

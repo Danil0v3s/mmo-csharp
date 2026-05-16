@@ -7,6 +7,7 @@ using Map.Server;
 using Map.Server.Entities;
 using Map.Server.Movement;
 using Map.Server.Services;
+using Map.Server.Session;
 using Map.Server.Visibility;
 using Map.Server.World;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -68,6 +69,11 @@ builder.Services.AddSingleton<IMovementService, MovementService>();
 // Visibility / AOI broadcast (see .agents/migrations/map/visibility.md).
 builder.Services.AddSingleton<IPacketDispatcher, SessionPacketDispatcher>();
 builder.Services.AddSingleton<IVisibilityService, VisibilityService>();
+
+// Session lifecycle: detects dead TCP sessions, tears down the bound
+// PlayerEntity, broadcasts vanish, and fires the char-server LeaveMap IPC.
+// Polled once per map tick from MapServerImpl.UpdateGameLogicAsync.
+builder.Services.AddSingleton<MapSessionLifecycle>();
 
 // Core services
 builder.Services.AddSingleton<SessionManager>();
