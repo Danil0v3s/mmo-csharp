@@ -5,6 +5,8 @@ using Core.Server.Network;
 using Core.Server.Packets;
 using Map.Server;
 using Map.Server.Entities;
+using Map.Server.Gm;
+using Map.Server.Gm.Commands;
 using Map.Server.Items;
 using Map.Server.Mob;
 using Map.Server.Movement;
@@ -95,6 +97,14 @@ builder.Services.AddSingleton<IMobSpawnService, MobSpawnService>();
 // MS3 first slice: the entity-on-the-floor lifecycle (drop, pickup, TTL
 // despawn). Inventory persistence + item_db catalog land later.
 builder.Services.AddSingleton<IItemDropService, ItemDropService>();
+
+// GM commands. Each IGmCommand is registered as a singleton; the registry
+// indexes them by Name at construction. ChatMessageHandler discovers them
+// via DI.
+builder.Services.AddSingleton<IGmCommand, WhereCommand>();
+builder.Services.AddSingleton<IGmCommand, KillMobCommand>();
+builder.Services.AddSingleton<IGmCommand, WarpCommand>();
+builder.Services.AddSingleton<IGmCommandRegistry, GmCommandRegistry>();
 
 // Core services
 builder.Services.AddSingleton<SessionManager>();

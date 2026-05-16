@@ -402,6 +402,26 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
 
         var characterData = ToCharacterDataResponse(character);
 
+        // Fetch account group id from login server so the map server can gate
+        // GM commands ([adjacent/chat.md]'s @killmob/@warp). Best-effort —
+        // unreachable login server falls back to 0 (no GM access).
+        uint groupId = 0;
+        try
+        {
+            var accountInfo = await _loginServerIpc.RequestDetailedAccountInfoAsync(
+                request.AccountId, context.CancellationToken);
+            if (accountInfo?.Success == true && accountInfo.GroupId > 0)
+            {
+                groupId = (uint)accountInfo.GroupId;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex,
+                "Failed to fetch account info for {AccountId}; GroupId defaults to 0",
+                request.AccountId);
+        }
+
         return new CharacterMapAuthResponse
         {
             Success = true,
@@ -410,7 +430,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             LoginId1 = request.LoginId1,
             LoginId2 = request.LoginId2,
             ExpirationTime = 0,
-            GroupId = 0,
+            GroupId = groupId,
             ChangingMapServers = true,
             CharacterData = characterData
         };

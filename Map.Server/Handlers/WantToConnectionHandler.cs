@@ -84,6 +84,7 @@ public class WantToConnectionHandler(
         session.CharacterId = packet.CharacterId;
         session.LoginId1 = packet.LoginId1;
         session.Sex = packet.Sex;
+        session.GroupId = auth.GroupId;
         session.CharacterName = character?.Character?.Name ?? string.Empty;
         session.MapId = (uint)spawnMap.Name.GetHashCode();
         session.SpawnX = spawnX;

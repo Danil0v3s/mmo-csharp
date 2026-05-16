@@ -23,6 +23,14 @@ public class MapSessionData(
     public byte Sex { get; set; }
 
     /// <summary>
+    /// Account group id (rAthena <c>account_data.group_id</c>). Drives GM
+    /// command authorization in <c>ChatCommandHandler</c>; 0 = no GM
+    /// privileges. Populated from <c>CharacterMapAuthResponse.group_id</c>
+    /// on auth.
+    /// </summary>
+    public uint GroupId { get; set; }
+
+    /// <summary>
     /// Internal mapId (hash of map name) the player is currently bound to.
     /// Set when the auth ticket resolves; the spawn happens on
     /// <c>CZ_NOTIFY_ACTORINIT</c>.

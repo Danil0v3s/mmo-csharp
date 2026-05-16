@@ -87,6 +87,7 @@ public enum PacketHeader : short
     ZC_NPCACK_MAPMOVE = 0x0091,
     ZC_ENTITY_LIST = 0x0099,
     ZC_NOTIFY_CHAT = 0x008d,
+    ZC_NOTIFY_PLAYERCHAT = 0x008e,         // self-only system message (clif_displaymessage)
     ZC_NOTIFY_HP_TO_GROUPM = 0x0106,
     ZC_AID = 0x0283,
     ZC_ACCEPT_ENTER_ZONE = 0x02eb,         // PACKETVER >= 20160330 zone-server variant
