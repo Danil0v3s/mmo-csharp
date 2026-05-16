@@ -59,6 +59,26 @@ public class MapServerIpcService(
         await FanOutAsync(notification, (client, n, ct) => client.NotifyAddressSyncAsync(n, cancellationToken: ct), cancellationToken);
     }
 
+    public async Task<int> ForceDisconnectAccountOnMapsAsync(int accountId, CancellationToken cancellationToken = default)
+    {
+        var total = 0;
+        var notification = new MapForceDisconnectNotification { AccountId = accountId };
+        foreach (var session in GetConnectedMaps())
+        {
+            try
+            {
+                var client = new MapService.MapServiceClient(session.Channel);
+                var ack = await client.ForceDisconnectAccountAsync(notification, cancellationToken: cancellationToken);
+                total += ack.DisconnectedCount;
+            }
+            catch (RpcException ex)
+            {
+                logger.LogWarning(ex, "ForceDisconnectAccount push failed on map server {Name}", session.ServerName);
+            }
+        }
+        return total;
+    }
+
     private async Task FanOutAsync<TNotification>(
         TNotification notification,
         Func<MapService.MapServiceClient, TNotification, CancellationToken, AsyncUnaryCall<MapBroadcastAck>> call,

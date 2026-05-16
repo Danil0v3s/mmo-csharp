@@ -19,6 +19,11 @@ service MapService {
   rpc ReceiveWhisperToGm (MapWhisperToGmNotification) returns (MapBroadcastAck);
   rpc NotifyNameChange (MapNameChangeNotification) returns (MapBroadcastAck);
   rpc NotifyAddressSync (MapAddressSyncNotification) returns (MapBroadcastAck);
+
+  // Force disconnect a specific account from this map server (login-driven kick, dup
+  // session resolution, ban, etc.). rAthena equivalent: chrif sends 0x2734 to map and
+  // map drops the corresponding player session.
+  rpc ForceDisconnectAccount (MapForceDisconnectNotification) returns (MapForceDisconnectAck);
 }
 
 message EnterMapRequest {
@@ -109,6 +114,15 @@ message MapNameChangeNotification {
 message MapAddressSyncNotification {
   // Empty payload; receiver re-resolves its own address. Mirrors rAthena 0x2b1e
   // (chmapif_sendall(0x2b1e) chained off chlogif_parse_updip).
+}
+
+message MapForceDisconnectNotification {
+  int32 account_id = 1;
+}
+
+message MapForceDisconnectAck {
+  bool success = 1;
+  int32 disconnected_count = 2;
 }
 
 message MapBroadcastAck {

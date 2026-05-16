@@ -29,4 +29,11 @@ public interface IMapServerIpcService
 
     /// <summary>Fan out an address-sync request so each map server re-resolves its own address.</summary>
     Task NotifyAddressSyncAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ask every map server to drop any sessions for the given account. Returns the total
+    /// number disconnected across all maps. Used by char-side ForceDisconnectAccount to
+    /// cascade the kick into gameplay sessions.
+    /// </summary>
+    Task<int> ForceDisconnectAccountOnMapsAsync(int accountId, CancellationToken cancellationToken = default);
 }

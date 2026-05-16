@@ -4483,11 +4483,15 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         ForceDisconnectAccountRequest request,
         ServerCallContext context)
     {
+        // Kick the char-server session list locally...
         var disconnected = await _charServer.ForceDisconnectAccountAsync(request.AccountId);
+        // ...and cascade to every connected map server so any in-game session is dropped.
+        var mapDisconnected = await _mapServerIpc.ForceDisconnectAccountOnMapsAsync(
+            request.AccountId, context.CancellationToken);
         return new ForceDisconnectAccountResponse
         {
             Success = true,
-            DisconnectedSessions = disconnected
+            DisconnectedSessions = disconnected + mapDisconnected
         };
     }
 

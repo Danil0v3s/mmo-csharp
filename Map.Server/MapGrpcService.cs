@@ -90,10 +90,57 @@ public class MapGrpcService : MapService.MapServiceBase
 
         _playerMapService.AddPlayerToMap(
             request.CharacterId,
+            request.AccountId,
             (uint)mapId,
             posX,
             posY,
             posZ);
+
+        // P6 post-auth wiring (rAthena chrif post-load equivalents): with the auth ticket
+        // accepted, pull state owned by char server and mark online. Each call is best-effort
+        // — failures log and proceed, since char-server unreachability is handled by the
+        // periodic save/keepalive loop.
+        if (request.AccountId > 0 && request.CharacterId > 0)
+        {
+            try
+            {
+                await _charServerIpc.SetCharacterOnlineAsync(
+                    request.AccountId,
+                    request.CharacterId,
+                    context.CancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "SetCharacterOnline failed for char {CharId}", request.CharacterId);
+            }
+
+            try
+            {
+                _ = await _charServerIpc.LoadSkillCooldownAsync(request.CharacterId, context.CancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "LoadSkillCooldown failed for char {CharId}", request.CharacterId);
+            }
+
+            try
+            {
+                _ = await _charServerIpc.RequestStatusChangeDataAsync(request.CharacterId, context.CancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "RequestStatusChangeData failed for char {CharId}", request.CharacterId);
+            }
+
+            try
+            {
+                _ = await _charServerIpc.GetBonusScriptAsync(request.CharacterId, context.CancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "GetBonusScript failed for char {CharId}", request.CharacterId);
+            }
+        }
 
         return new EnterMapResponse
         {
@@ -101,16 +148,46 @@ public class MapGrpcService : MapService.MapServiceBase
         };
     }
 
-    public override Task<LeaveMapResponse> LeaveMap(
-        LeaveMapRequest request, 
+    public override async Task<LeaveMapResponse> LeaveMap(
+        LeaveMapRequest request,
         ServerCallContext context)
     {
-        _playerMapService.RemovePlayerFromMap(request.CharacterId);
+        // P6 disconnect wiring (rAthena chrif logout equivalents): persist final state
+        // owned by the map server, then clear the online flag on the char server.
+        var player = _playerMapService.RemovePlayerAndGet(request.CharacterId);
+        if (player != null && player.AccountId > 0)
+        {
+            try
+            {
+                await _charServerIpc.SaveCharacterStateAsync(
+                    player.AccountId,
+                    player.CharacterId,
+                    setOfflineAfterSave: false,
+                    finalSave: true,
+                    context.CancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Final SaveCharacterState failed for char {CharId}", player.CharacterId);
+            }
 
-        return Task.FromResult(new LeaveMapResponse
+            try
+            {
+                await _charServerIpc.SetCharacterOfflineAsync(
+                    player.AccountId,
+                    player.CharacterId,
+                    context.CancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "SetCharacterOffline failed for char {CharId}", player.CharacterId);
+            }
+        }
+
+        return new LeaveMapResponse
         {
             Success = true
-        });
+        };
     }
 
     public override Task<MapInfoResponse> GetMapInfo(
@@ -201,5 +278,30 @@ public class MapGrpcService : MapService.MapServiceBase
     {
         _logger.LogInformation("Received address-sync notification from char server");
         return Task.FromResult(new MapBroadcastAck { Success = true });
+    }
+
+    public override Task<MapForceDisconnectAck> ForceDisconnectAccount(
+        MapForceDisconnectNotification request,
+        ServerCallContext context)
+    {
+        var victims = _playerMapService.GetAllPlayers()
+            .Where(p => p.AccountId == request.AccountId)
+            .Select(p => p.CharacterId)
+            .ToList();
+
+        foreach (var charId in victims)
+        {
+            _playerMapService.RemovePlayerFromMap(charId);
+        }
+
+        _logger.LogInformation(
+            "ForceDisconnectAccount: removed {Count} sessions for account {AccountId}",
+            victims.Count, request.AccountId);
+
+        return Task.FromResult(new MapForceDisconnectAck
+        {
+            Success = true,
+            DisconnectedCount = victims.Count
+        });
     }
 }

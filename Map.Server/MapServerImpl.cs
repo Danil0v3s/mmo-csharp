@@ -14,6 +14,14 @@ public class MapServerImpl : GameLoopServer
     private readonly PacketHandlerRegistry _handlerRegistry;
     private readonly MapServerState _serverState;
     private readonly IPlayerMapService _playerMapService;
+    private readonly ICharServerIpcService _charServerIpc;
+    private readonly MapServerConfiguration _mapConfiguration;
+    private DateTime _nextRegistrationAttemptUtc = DateTime.MinValue;
+    private DateTime _nextKeepAliveUtc = DateTime.MinValue;
+    private DateTime _nextUserCountSyncUtc = DateTime.MinValue;
+    private DateTime _nextAutosaveUtc = DateTime.MinValue;
+    private volatile bool _registered;
+    private int _lastReportedUserCount = -1;
 
     public MapServerImpl(
         ServerConfiguration configuration,
@@ -23,13 +31,16 @@ public class MapServerImpl : GameLoopServer
         SessionManager sessionManager,
         ServerConnectionService connectionService,
         MapServerState serverState,
-        IPlayerMapService playerMapService)
+        IPlayerMapService playerMapService,
+        ICharServerIpcService charServerIpc)
         : base("MapServer", configuration, logger, packetSystem, sessionManager)
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
         _handlerRegistry.DiscoverAndRegisterFromCallingAssembly();
         _serverState = serverState;
         _playerMapService = playerMapService;
+        _charServerIpc = charServerIpc;
+        _mapConfiguration = (MapServerConfiguration)configuration;
 
         // Wire up the connection service to use this server's connection manager
         connectionService.SetConnectionManager(ServerConnections);
@@ -43,6 +54,21 @@ public class MapServerImpl : GameLoopServer
 
     public override async Task StopAsync(CancellationToken cancellationToken = default)
     {
+        // P6 — graceful shutdown: batch-save any online players, then tell the char server
+        // to clear online flags for everyone on this map server.
+        await SaveAllOnlinePlayersAsync(cancellationToken);
+        if (_registered)
+        {
+            try
+            {
+                await _charServerIpc.SetAllCharactersOfflineAsync(_mapConfiguration.ServerId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to SetAllCharactersOffline on shutdown");
+            }
+        }
+
         await base.StopAsync(cancellationToken);
         _serverState.SetState(State);
     }
@@ -104,10 +130,104 @@ public class MapServerImpl : GameLoopServer
 
     protected override async Task UpdateGameLogicAsync(double deltaTime, CancellationToken cancellationToken)
     {
-        // Update game logic (AI, physics, etc.)
-        // This runs at 60 FPS for MapServer
-        
-        await Task.CompletedTask;
+        // P6 infrastructure timers (rAthena chrif equivalents):
+        //   1. Register maps once on first reachable char server (chmapif_parse_getmapname)
+        //   2. Periodic KeepAlive (chmapif_parse_keepalive)
+        //   3. Periodic user-count sync (chmapif_parse_regmapuser / getusercount)
+        //   4. Periodic autosave of online characters (chrif_save loop)
+        await EnsureRegisteredOnCharServerAsync(cancellationToken);
+        await SendKeepAliveIfDueAsync(cancellationToken);
+        await SyncUserCountIfDueAsync(cancellationToken);
+        await AutosaveIfDueAsync(cancellationToken);
+    }
+
+    private async Task EnsureRegisteredOnCharServerAsync(CancellationToken cancellationToken)
+    {
+        if (_registered || DateTime.UtcNow < _nextRegistrationAttemptUtc) return;
+        _nextRegistrationAttemptUtc = DateTime.UtcNow.AddSeconds(5);
+
+        try
+        {
+            var response = await _charServerIpc.RegisterMapServerMapsAsync(
+                _mapConfiguration.ServerId,
+                _mapConfiguration.Maps,
+                cancellationToken);
+            if (response?.Success == true)
+            {
+                _registered = true;
+                Logger.LogInformation(
+                    "Registered {Count} maps with char server (server id {ServerId})",
+                    _mapConfiguration.Maps.Count, _mapConfiguration.ServerId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Char server not reachable for map registration; will retry");
+        }
+    }
+
+    private async Task SendKeepAliveIfDueAsync(CancellationToken cancellationToken)
+    {
+        if (!_registered || DateTime.UtcNow < _nextKeepAliveUtc) return;
+        _nextKeepAliveUtc = DateTime.UtcNow.AddSeconds(Math.Max(_mapConfiguration.KeepAliveInterval, 5));
+
+        try
+        {
+            await _charServerIpc.KeepAliveAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "KeepAlive to char server failed");
+        }
+    }
+
+    private async Task SyncUserCountIfDueAsync(CancellationToken cancellationToken)
+    {
+        if (!_registered || DateTime.UtcNow < _nextUserCountSyncUtc) return;
+        _nextUserCountSyncUtc = DateTime.UtcNow.AddSeconds(Math.Max(_mapConfiguration.UserCountSyncInterval, 5));
+
+        var count = _playerMapService.Count;
+        if (count == _lastReportedUserCount) return;
+
+        try
+        {
+            await _charServerIpc.RegisterMapServerUserCountAsync(_mapConfiguration.ServerId, count, cancellationToken);
+            _lastReportedUserCount = count;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "User-count sync to char server failed");
+        }
+    }
+
+    private async Task AutosaveIfDueAsync(CancellationToken cancellationToken)
+    {
+        if (!_registered || DateTime.UtcNow < _nextAutosaveUtc) return;
+        _nextAutosaveUtc = DateTime.UtcNow.AddSeconds(Math.Max(_mapConfiguration.AutosaveInterval, 30));
+
+        await SaveAllOnlinePlayersAsync(cancellationToken);
+    }
+
+    private async Task SaveAllOnlinePlayersAsync(CancellationToken cancellationToken)
+    {
+        foreach (var player in _playerMapService.GetAllPlayers())
+        {
+            try
+            {
+                await _charServerIpc.SaveCharacterStateAsync(
+                    player.AccountId,
+                    player.CharacterId,
+                    setOfflineAfterSave: false,
+                    finalSave: false,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex,
+                    "Autosave failed for character {CharId} (acc {AccountId})",
+                    player.CharacterId, player.AccountId);
+            }
+        }
     }
 
     protected override async Task FlushOutgoingPacketsAsync(CancellationToken cancellationToken)
@@ -122,6 +242,7 @@ public class MapServerImpl : GameLoopServer
 public class PlayerEntity
 {
     public long CharacterId { get; set; }
+    public int AccountId { get; set; }
     public uint MapId { get; set; }
     public float PositionX { get; set; }
     public float PositionY { get; set; }
