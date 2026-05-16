@@ -27,4 +27,8 @@
         </None>
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="Login.Server.Tests" />
+    </ItemGroup>
+
 </Project>

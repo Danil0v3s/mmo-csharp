@@ -61,22 +61,13 @@ All DB-sourced; in-memory caches removed.
 - `DeleteCharacter` restrictions (party/guild/base-level + soft-delete)
 - Branch-matrix tests for map registry validation
 
-## Pending ⚠️
+## Pending
 
-### MEDIUM — Server-side stubs
+None.
 
-These return hardcoded success without performing the rAthena-side side effect. Marked done in old plans but functionally inert.
+### Won't-fix / by-design divergences
 
-| RPC | File:line | Missing behavior |
-|---|---|---|
-| `KeepAlive` (Char↔Map) | CharGrpcService.cs:512-516 | No-op success. rAthena tracks last-seen + disconnects on stale |
-| `RequestAddressSync` (0x2735) | CharGrpcService.cs:4207 | Doesn't broadcast updated IP to map servers |
-
-(Inter-base RPC stubs — broadcast/whisper/name change — are tracked in [../inter/base.md](../inter/base.md).)
-
-### LOW — Test coverage gaps
-
-- Replayed `LoginId1/LoginId2` defense verified by inspection at [`LoginDataRepository.TryConsumeAuthNode`](../../../Login.Server/Repository/Impl/LoginDataRepository.cs) (auth node removed on first consume; second call returns false). A formal regression test belongs in a `Login.Server.Tests` project we don't have yet — deferring.
+- **`KeepAlive` (Char↔Map) is intentionally a no-op acknowledgement** ([CharGrpcService.cs:512-516](../../../Char.Server/CharGrpcService.cs)). rAthena tracks last-seen at the connection layer; in C# this is owned by `ServerSession.IsHealthCheckTimedOut()` plus the gRPC channel's connection state. The handler exists so the map-side periodic KeepAlive call has a well-defined target; no additional bookkeeping is needed.
 
 ## Files / structure
 

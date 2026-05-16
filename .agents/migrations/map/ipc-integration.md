@@ -30,7 +30,10 @@ Per-module typed wrappers live in [Map.Server/Services/CharServerIpcService.*.cs
 
 Map server reads `ServerId`, `Maps`, `KeepAliveInterval`, `UserCountSyncInterval`, `AutosaveInterval` from [Map.Server/appsettings.json](../../../Map.Server/appsettings.json). Defaults match rAthena (`KeepAliveInterval` 30s, `UserCountSyncInterval` 10s, `AutosaveInterval` 300s).
 
-## Pending — by category
+## Deferred to map gameplay phase
+
+These items have wrappers ready but no triggers — the trigger points live in gameplay code (party invite, friend removal, item drops with floor lifetime, etc.) that isn't part of the pre-map roadmap. None block the pre-map milestone.
+
 
 ### 🟠 Lifecycle work — gameplay-required wrappers (no triggers yet)
 

@@ -55,13 +55,9 @@ End-to-end client connect handshake, from `CH_REQ_TO_CONNECT (0x65)` through log
 - [CharacterSelectPacketFlowTests.cs](../../../Char.Server.Tests/Services/CharacterSelectPacketFlowTests.cs) — `CH_SELECT_CHAR` map handoff: success `HC_SEND_MAP_DATA` + map-auth ticket; reject `SC_NOTIFY_BAN` / `HC_REFUSE_ENTER`.
 - [CharacterListFlowServiceGateTests.cs](../../../Char.Server.Tests/Services/CharacterListFlowServiceGateTests.cs) — maintenance / capacity / group gates.
 
-## Pending ⚠️
+## Pending
 
-
-
-### Test gaps
-
-- **Replayed `LoginId1/LoginId2` on a new TCP connection** — verified by inspection at [`LoginDataRepository.TryConsumeAuthNode`](../../../Login.Server/Repository/Impl/LoginDataRepository.cs); a formal test belongs in a `Login.Server.Tests` project we don't have yet (deferred).
+None.
 
 ## History
 
