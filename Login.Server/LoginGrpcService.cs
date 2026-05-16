@@ -138,7 +138,12 @@ public class LoginGrpcService : LoginService.LoginServiceBase
             PincodeChange = account.PincodeChange,
             IsVip = isVip,
             CharVip = vipSlotsIncrease,
-            MaxBilling = 3
+            // MaxBilling = the billing-tier extra slot count. rAthena's
+            // default for accounts without a billing entitlement is 0; the
+            // previous hard-coded 3 leaked a non-zero value into every
+            // account's HC_BLOCK_CHARACTER slot row. Real billing-tier
+            // wiring lands when premium accounts are supported.
+            MaxBilling = 0
         };
     }
 

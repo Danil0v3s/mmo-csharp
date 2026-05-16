@@ -19,9 +19,13 @@ public class CharacterListFlowService(
     SessionManager sessionManager
 ) : ICharacterListFlowService
 {
-    private const int DefaultCharSlots = 3;
-    private const byte MinimumCharacterSlots = 3;
-    private const byte MaximumCharacterSlots = 9;
+    // rAthena defaults: 15 char slots, no billing tier, no premium tier.
+    // These should eventually be plumbed from `configuration.Char.CharPerAccount`
+    // and session-tier overrides — captured here as constants until that
+    // refactor lands. See replay diff at line 6 / HC_BLOCK_CHARACTER bytes 4-8.
+    private const int DefaultCharSlots = 15;
+    private const byte MinimumCharacterSlots = 15;
+    private const byte MaximumCharacterSlots = 15;
 
     public async Task<bool> TrySendInitialCharacterWindowAsync(CharSessionData session, CancellationToken cancellationToken = default)
     {

@@ -19,7 +19,8 @@ public class ClientConnectHandler(
     ICharacterListFlowService characterListFlowService
 ) : IPacketHandler<CharSessionData, CH_REQ_TO_CONNECT>
 {
-    private const int DefaultCharSlots = 3;
+    // rAthena default: 15 char slots (matches CharacterListFlowService).
+    private const int DefaultCharSlots = 15;
     private const int ConnectRpcTimeoutMs = 3000;
 
     public async Task HandleAsync(CharSessionData session, CH_REQ_TO_CONNECT packet)
