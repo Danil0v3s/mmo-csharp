@@ -60,3 +60,6 @@ Thumbs.db
 *.db
 *.sqlite
 
+
+# Packet-replay test fixtures are SOURCE captures, not runtime logs.
+!Map.Server.Tests/Replay/Fixtures/*.log

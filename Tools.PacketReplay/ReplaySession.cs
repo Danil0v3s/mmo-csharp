@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using Tools.PacketReplay.Tokens;
 
 namespace Tools.PacketReplay;
 
@@ -21,15 +22,21 @@ public sealed class ReplaySession : IAsyncDisposable
     private readonly string _host;
     private readonly IReadOnlyDictionary<int, int> _portRemap;
     private readonly TimeSpan _readTimeout;
+    private readonly TokenRewriter? _rewriter;
     private TcpClient? _client;
     private NetworkStream? _stream;
     private int _currentPort;
 
-    public ReplaySession(string host, IReadOnlyDictionary<int, int> portRemap, TimeSpan readTimeout)
+    public ReplaySession(
+        string host,
+        IReadOnlyDictionary<int, int> portRemap,
+        TimeSpan readTimeout,
+        TokenRewriter? rewriter = null)
     {
         _host = host;
         _portRemap = portRemap;
         _readTimeout = readTimeout;
+        _rewriter = rewriter;
     }
 
     public async Task<ReplayCapture> ReplayAsync(PacketLogFile file, CancellationToken ct = default)
@@ -51,7 +58,12 @@ public sealed class ReplaySession : IAsyncDisposable
 
                 if (ev.Direction == ReplayDirection.Send)
                 {
-                    await _stream!.WriteAsync(ev.Bytes.AsMemory(), ct);
+                    // Rewrite stale captured tokens (AID, login_id1/2, …)
+                    // to the values our server actually returned so that
+                    // every subsequent auth gate validates against live
+                    // state, not the originator's session.
+                    var toSend = _rewriter?.Apply(ev.Bytes) ?? ev.Bytes;
+                    await _stream!.WriteAsync(toSend.AsMemory(), ct);
                     await _stream.FlushAsync(ct);
                 }
                 else
@@ -65,6 +77,9 @@ public sealed class ReplaySession : IAsyncDisposable
                                    + $"(expected {ev.Bytes.Length}B, got {actualBytes.Length}B)";
                         break;
                     }
+                    // Let the rewriter sniff token-bearing packets so the
+                    // next S| chunk can be rewritten in place.
+                    _rewriter?.OnReceived(ev.Bytes, actualBytes);
                 }
             }
             catch (IOException ex) when (IsConnectionDrop(ex))

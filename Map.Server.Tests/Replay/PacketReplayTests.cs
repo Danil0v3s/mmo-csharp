@@ -1,5 +1,6 @@
 using Core.Server.Packets;
 using Tools.PacketReplay;
+using Tools.PacketReplay.Tokens;
 using Xunit.Abstractions;
 
 namespace Map.Server.Tests.Replay;
@@ -44,12 +45,21 @@ public sealed class PacketReplayTests : IClassFixture<ServerStackFixture>
             [5121] = 5191, // map: rAthena default 5121 → our 5191
         };
 
+        var rewriter = new TokenRewriter(packets.Registry);
         await using var session = new ReplaySession(
-            "127.0.0.1", portMap, TimeSpan.FromSeconds(5));
+            "127.0.0.1", portMap, TimeSpan.FromSeconds(5), rewriter);
         var capture = await session.ReplayAsync(file);
         var report = comparer.Compare(capture);
 
         _output.WriteLine(report.Render());
+        if (rewriter.Substitutions.Count > 0)
+        {
+            _output.WriteLine($"token substitutions ({rewriter.Substitutions.Count}):");
+            foreach (var s in rewriter.Substitutions)
+            {
+                _output.WriteLine($"  {s.Name}: {BitConverter.ToString(s.From)} → {BitConverter.ToString(s.To)}");
+            }
+        }
         _output.WriteLine($"server logs: {_fixture.LogDirectory}");
 
         Assert.True(report.Passed, $"Replay diverged for {fixtureFileName} — see test output for details.");
