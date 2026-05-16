@@ -42,7 +42,7 @@ public interface IItemDropService
     /// downstream IPC).
     /// </summary>
     PickupResult TryPickup(PlayerEntity picker, EntityId itemEntityId,
-        out ItemEntity? item);
+        out FloorItemEntity? item);
 
     /// <summary>
     /// Per-tick sweep: items older than the configured TTL are removed and

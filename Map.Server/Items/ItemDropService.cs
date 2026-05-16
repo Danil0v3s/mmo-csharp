@@ -31,7 +31,7 @@ public sealed class ItemDropService : IItemDropService
         uint mapId, short x, short y, int itemId, short amount,
         byte subX = 0, byte subY = 0, bool identified = true)
     {
-        var item = new ItemEntity(
+        var item = new FloorItemEntity(
             _ids.NextItem(),
             itemId, amount,
             mapId, x, y,
@@ -55,9 +55,9 @@ public sealed class ItemDropService : IItemDropService
     }
 
     public IItemDropService.PickupResult TryPickup(
-        PlayerEntity picker, EntityId itemEntityId, out ItemEntity? item)
+        PlayerEntity picker, EntityId itemEntityId, out FloorItemEntity? item)
     {
-        item = _entities.Get(itemEntityId) as ItemEntity;
+        item = _entities.Get(itemEntityId) as FloorItemEntity;
         if (item == null)
         {
             return IItemDropService.PickupResult.ItemNotFound;
@@ -83,12 +83,12 @@ public sealed class ItemDropService : IItemDropService
     public void Tick()
     {
         var now = Environment.TickCount64;
-        List<ItemEntity>? expired = null;
+        List<FloorItemEntity>? expired = null;
         foreach (var entity in _entities.All())
         {
-            if (entity is not ItemEntity item) continue;
+            if (entity is not FloorItemEntity item) continue;
             if (now - item.DroppedAtTick < _lifetimeMs) continue;
-            (expired ??= new List<ItemEntity>()).Add(item);
+            (expired ??= new List<FloorItemEntity>()).Add(item);
         }
         if (expired == null) return;
 

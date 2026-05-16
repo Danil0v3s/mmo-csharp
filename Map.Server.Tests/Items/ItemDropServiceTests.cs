@@ -18,7 +18,7 @@ public class ItemDropServiceTests
 
         var itemId = ctx.Service.DropOnFloor(ctx.MapId, 50, 50, itemId: 501, amount: 5);
 
-        var entity = ctx.Entities.Get(itemId) as ItemEntity;
+        var entity = ctx.Entities.Get(itemId) as FloorItemEntity;
         Assert.NotNull(entity);
         Assert.Equal(501, entity!.ItemId);
         Assert.Equal((short)5, entity.Amount);

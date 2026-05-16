@@ -10,7 +10,7 @@ namespace Map.Server.Entities;
 /// owners, drop options, and bound/refined attributes come with the full
 /// inventory model.
 /// </summary>
-public sealed class ItemEntity : Entity
+public sealed class FloorItemEntity : Entity
 {
     public int ItemId { get; }
     public short Amount { get; private set; }
@@ -26,7 +26,7 @@ public sealed class ItemEntity : Entity
 
     public override EntityType Type => EntityType.Item;
 
-    public ItemEntity(
+    public FloorItemEntity(
         EntityId id,
         int itemId,
         short amount,

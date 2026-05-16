@@ -194,7 +194,7 @@ public sealed class VisibilityService : IVisibilityService
             X = m.X, Y = m.Y, Dir = m.Dir,
             Name = m.Name,
         },
-        ItemEntity i => new ZC_ITEM_ENTRY
+        FloorItemEntity i => new ZC_ITEM_ENTRY
         {
             EntityId = i.Id.Value,
             ItemId = i.ItemId,
@@ -215,7 +215,7 @@ public sealed class VisibilityService : IVisibilityService
     /// </summary>
     internal static OutgoingPacket BuildExitViewPacket(Entity entity, VanishReason reason) => entity switch
     {
-        ItemEntity i => new ZC_ITEM_DISAPPEAR { EntityId = i.Id.Value },
+        FloorItemEntity i => new ZC_ITEM_DISAPPEAR { EntityId = i.Id.Value },
         _ => new ZC_NOTIFY_VANISH { EntityId = entity.Id.Value, Reason = reason },
     };
 
