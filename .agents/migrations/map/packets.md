@@ -76,7 +76,26 @@ We pick the 20211103 shape; if we ever change the pinned version, the packet cla
 
 ## Done
 
-The repo has packet header constants and base classes in [Core.Server/Packets/](../../../Core.Server/Packets/). The Char.Server already implements many `HC_` packets for char-select. None of the map gameplay packets above exist yet.
+- `PACKETVER = 20211103` pinned in [Core.Server/Packets/PacketVersion.cs](../../../Core.Server/Packets/PacketVersion.cs).
+- [Core.Server/Packets/PositionPacker.cs](../../../Core.Server/Packets/PositionPacker.cs) — shared WBUFPOS / WBUFPOS2 encoders for 3-byte and 6-byte packed positions.
+- Incoming (handlers TBD in [session.md](session.md)/[movement.md](movement.md)):
+  - [CZ_WANT_TO_CONNECTION](../../../Core.Server/Packets/In/CZ/CZ_WANT_TO_CONNECTION.cs)
+  - [CZ_NOTIFY_ACTORINIT](../../../Core.Server/Packets/In/CZ/CZ_NOTIFY_ACTORINIT.cs)
+  - [CZ_REQUEST_MOVE](../../../Core.Server/Packets/In/CZ/CZ_REQUEST_MOVE.cs)
+  - [CZ_REQUEST_TIME](../../../Core.Server/Packets/In/CZ/CZ_REQUEST_TIME.cs)
+  - [CZ_REQ_QUIT](../../../Core.Server/Packets/In/CZ/CZ_REQ_QUIT.cs)
+- Outgoing:
+  - [ZC_AID](../../../Core.Server/Packets/Out/ZC/ZC_AID.cs)
+  - [ZC_ACCEPT_ENTER_ZONE](../../../Core.Server/Packets/Out/ZC/ZC_ACCEPT_ENTER_ZONE.cs)
+  - [ZC_REFUSE_ENTER_ZONE](../../../Core.Server/Packets/Out/ZC/ZC_REFUSE_ENTER_ZONE.cs)
+  - [ZC_NOTIFY_TIME](../../../Core.Server/Packets/Out/ZC/ZC_NOTIFY_TIME.cs)
+  - [ZC_NOTIFY_VANISH](../../../Core.Server/Packets/Out/ZC/ZC_NOTIFY_VANISH.cs)
+  - [ZC_NPCACK_MAPMOVE](../../../Core.Server/Packets/Out/ZC/ZC_NPCACK_MAPMOVE.cs)
+  - [ZC_NOTIFY_PLAYERMOVE](../../../Core.Server/Packets/Out/ZC/ZC_NOTIFY_PLAYERMOVE.cs)
+  - [ZC_NOTIFY_MOVE](../../../Core.Server/Packets/Out/ZC/ZC_NOTIFY_MOVE.cs)
+  - [ZC_STOPMOVE](../../../Core.Server/Packets/Out/ZC/ZC_STOPMOVE.cs)
+  - [ZC_NOTIFY_STANDENTRY](../../../Core.Server/Packets/Out/ZC/ZC_NOTIFY_STANDENTRY.cs) — 108-byte `idle_unit` skeleton; cosmetic fields zeroed for MS1, filled out in MS3.
+- 26 round-trip / wire-shape tests in [Map.Server.Tests/Packets/](../../../Map.Server.Tests/Packets/) (all passing).
 
 ## Pending
 
@@ -137,3 +156,4 @@ For each packet, a round-trip test in `Core.Server.Tests/Packets/` (or `Map.Serv
 ## History
 
 - **2026-05-16** — Plan written. No implementation yet. `PACKETVER` not yet pinned.
+- **2026-05-16** — All 14 MS1 packets + `PacketVersion` + `PositionPacker` shipped. 26 round-trip / wire-shape tests in [Map.Server.Tests/Packets/](../../../Map.Server.Tests/Packets/) — all passing. Handlers/wire-up still pending (covered by session.md and movement.md).
