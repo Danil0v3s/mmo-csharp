@@ -12,7 +12,7 @@ The map server can't do anything until it knows what a "map" is: a grid of cells
 - [rathena/src/map/map.cpp](/Volumes/1TB/Projetos/rathena/src/map/map.cpp) `map_readallmaps`, `map_setcell`, `map_getcell`, `map_addnpc`
 - [rathena/src/map/map.hpp](/Volumes/1TB/Projetos/rathena/src/map/map.hpp) — `cell_t`, `map_data`, cell flags
 - [rathena/src/tool/mapcache.cpp](/Volumes/1TB/Projetos/rathena/src/tool/mapcache.cpp) — the offline tool that bakes `.gat` files into `mapcache.dat`
-- [rathena/db/](/Volumes/1TB/Projetos/rathena/db/) — `map_index.txt`, `re/map_cache.dat`, `pre-re/map_cache.dat`
+- [rathena/db/re/](/Volumes/1TB/Projetos/rathena/db/re/) — `map_index.txt`, `map_cache.dat` (renewal). Pre-renewal data is out of scope.
 
 ## Scope (MS1)
 
@@ -44,7 +44,7 @@ Nothing yet. The `Map.Server` project has no map-loading code.
 
    Recommendation: **option A**. The format is small and well-documented. Write the parser once, done.
 
-2. **Locate `mapcache.dat`** — rAthena keeps it at `/Volumes/1TB/Projetos/rathena/db/{re,pre-re}/map_cache.dat`. Pin the renewal/pre-renewal choice via config (`appsettings.json` already has `Maps` array; add `RenewalMode: re|pre-re`).
+2. **Locate `mapcache.dat`** — renewal only: `/Volumes/1TB/Projetos/rathena/db/re/map_cache.dat`. Add `MapDataPath` to `MapServerConfiguration` pointing at it. No renewal/pre-renewal switch; the project is renewal exclusively.
 
 3. **Port the mapcache binary parser** to `Core.Database` or a new `Map.Server/World/` namespace. The file layout (per rAthena `mapcache.cpp`):
    ```
@@ -70,8 +70,6 @@ Nothing yet. The `Map.Server` project has no map-loading code.
 
 8. **Cell-based warp lookup**: `MapData.GetWarpAt(x, y)` returns the destination or null. Used by [movement.md](movement.md) when the player walks into a warp cell.
 
-9. **Renewal vs pre-renewal**: pin via config. rAthena ships two map_cache files; pick one at startup, load it, log which mode is active.
-
 ### File layout
 
 ```
@@ -84,7 +82,7 @@ Map.Server/World/
 ├── MapIndex.cs              — name ↔ id ↔ MapData
 ├── Warp.cs                  — Warp record (src map+box, dst map+cell)
 ├── WarpDb.cs                — parse warp script files, build per-map warp table
-└── WorldConfiguration.cs    — RenewalMode, paths to map_cache + map_index + warps
+└── WorldConfiguration.cs    — paths to map_cache + map_index + warps (renewal)
 ```
 
 ### Tests (Map.Server.Tests project — to be created)
@@ -96,7 +94,6 @@ Map.Server/World/
 
 ### Open decisions
 
-- **Renewal vs pre-renewal**: the C# stack hasn't picked one. Default to renewal (rAthena's `re/`). Config knob to override.
 - **Where to physically locate the data files**: bind via config to rAthena's `/db/re/` so we don't duplicate the data. Map.Server's `appsettings.json` already has `Maps` array; add `MapDataPath: "/Volumes/1TB/Projetos/rathena/db/re/map_cache.dat"`.
 - **Path resolution for warp scripts**: rAthena scatters them across `npc/warps/{city,fields,dungeons,...}/*.txt`. We'll need a recursive scanner; pick a `WarpScriptRoot` config.
 
@@ -105,7 +102,7 @@ Map.Server/World/
 - `MapWorldRegistry` loads the configured map list (`prontera`, `new_1-1`, `lasa_fild01` per current appsettings) from `map_cache.dat`.
 - Each loaded map exposes its cell grid; `IsWalkable(x, y)` returns the expected value for sampled coordinates.
 - Warp lookup works for at least one known warp (e.g. `prontera (273, 354)` → `prt_fild05 (170, 32)`).
-- Startup log shows map count, total cell count, renewal mode.
+- Startup log shows map count, total cell count.
 
 ## History
 

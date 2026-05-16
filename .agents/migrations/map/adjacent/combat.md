@@ -17,7 +17,7 @@ The first big MS3 work. Combat ties together attack actions, damage formulas, st
 
 **In scope:**
 - Auto-attack (continuous melee): `CZ_REQUEST_ACT (0x0089)` from client → walk to target if out of range → swing at `ASPD` rate.
-- Damage calculation: rAthena pre-renewal **or** renewal formula (must pin a mode, same as packetver decision).
+- Damage calculation: rAthena **renewal** formula (defense as %, ATK/MATK split, etc.). Pre-renewal is out of scope.
 - Hit / flee / crit / perfect dodge.
 - Damage type: melee, ranged, magic.
 - Element + race + size modifiers.
@@ -36,20 +36,18 @@ Nothing.
 
 ## Pending
 
-1. **Pin combat formula version.** Renewal vs pre-renewal damage formulas differ wildly (defense as %, MATK split, etc.). Same source-of-truth decision as `RenewalMode` config. Match the [world.md](../world.md) renewal pick.
+1. **`UnitData` extension** on `Entity`: ATK, MATK, DEF, MDEF, HIT, FLEE, CRI, ASPD, attack range. Players read from inventory + bonuses (items doc); mobs from `MobDbEntry`. All formulas follow rAthena renewal.
 
-2. **`UnitData` extension** on `Entity`: ATK, MATK, DEF, MDEF, HIT, FLEE, CRI, ASPD, attack range. Players read from inventory + bonuses (items doc); mobs from `MobDbEntry`.
-
-3. **`AttackService`:**
+2. **`AttackService`:**
    - `TryStartAttack(attacker, target)` — validates target alive + in attack range, sets `attacker.AttackState = (target, nextSwingAt)`.
    - `Tick` — for each entity with an active attack, if `nextSwingAt <= now`, perform damage calc + emit packets, schedule next swing.
    - Continuous attack: keeps swinging until target dies or moves out of range or attacker stops.
 
-4. **`DamageCalculator`** — port rAthena's `battle_calc_attack` (the function that returns a `Damage` struct with hits, total damage, flags). This is the gnarly center of combat math.
+3. **`DamageCalculator`** — port rAthena's `battle_calc_attack` (the function that returns a `Damage` struct with hits, total damage, flags). Renewal formula only.
 
-5. **Death + exp distribution.** Last-hit-wins for MS3; mob's exp pool split between party (if any) per rAthena rules. Calls `SetCharacterOnline` lifecycle update (the char might not log off but stats change; that's the inventory IPC).
+4. **Death + exp distribution.** Last-hit-wins for MS3; mob's exp pool split between party (if any) per rAthena rules. Calls `SetCharacterOnline` lifecycle update (the char might not log off but stats change; that's the inventory IPC).
 
-6. **Drops.** On mob death, roll its drop table (`mob_db.Drops`) and instantiate `ItemEntity` on the map (items doc).
+5. **Drops.** On mob death, roll its drop table (`mob_db.Drops`) and instantiate `ItemEntity` on the map (items doc).
 
 ### Acceptance
 - A player can auto-attack a Poring next to them; HP ticks down on both sides; mob dies; player receives exp.

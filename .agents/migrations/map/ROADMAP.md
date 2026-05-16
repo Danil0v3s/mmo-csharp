@@ -91,6 +91,7 @@ Everything else, after MS1+MS2 are usable. These can largely run in parallel. De
 
 ## Cross-cutting conventions
 
+- **Renewal only.** All data files come from `/Volumes/1TB/Projetos/rathena/db/re/`. Damage formulas, stat curves, defense behavior, MATK split, etc. all follow rAthena renewal. Pre-renewal is permanently out of scope.
 - **Source of truth is rAthena.** Every new subsystem file links to the relevant `.cpp` files. When in doubt, read those, not invent.
 - **DB schemas are already in `Core.Database`.** 74 entities + configurations. No new entities for MS1/MS2 should be needed; for MS3 some new tables may be required (e.g. a server-side cell-aux table for mob spawn state — TBD).
 - **Char-side IPC is the persistence boundary.** Map.Server must never write to the DB directly except via the gRPC surface owned by Char.Server. (P6 already wired the lifecycle calls; gameplay-triggered calls — party/guild/mail/etc. — are stub-call-ready in `Map.Server/Services/CharServerIpcService.*.cs`.)
@@ -125,4 +126,5 @@ Everything else, after MS1+MS2 are usable. These can largely run in parallel. De
 
 ## History
 
+- **2026-05-16** — Renewal locked as the only supported mode. All data sources, formulas, and packet handling target rAthena renewal exclusively; pre-renewal removed from scope across `world.md`, `combat.md`, `packets.md`.
 - **2026-05-16** — Roadmap created after P8 closed the pre-gameplay IPC audit. User priority: enter map + walk first, NPCs + mobs second, adjacent systems planned but lower priority. Subsystem files written same day.

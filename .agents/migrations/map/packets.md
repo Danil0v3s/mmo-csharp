@@ -16,10 +16,11 @@ The map server speaks the Ragnarok client protocol. rAthena's `clif.cpp` is 25K 
 
 **Decision needed.** rAthena supports ~30 packet versions stretching from 2004 to 2024. We pick one and stick to it. Candidates:
 
-- **20180620** — kRO Zero pre-renewal target, widely tested in private servers.
 - **20180621** — kRO main, broad community client support.
 - **20200902** — Modern kRO Zero (popular pservers, more packets but more bug-fixes).
 - **20211103** — Recent kRO main; many UI updates.
+
+(Pre-renewal client targets like 20180620 zero are excluded — this project is renewal-only.)
 
 **Recommendation:** `PACKETVER = 20211103` — recent enough to have all the modern char-select/map handoff packets we already emit on the char side; old enough that there's well-known rAthena baseline behavior to mirror.
 
