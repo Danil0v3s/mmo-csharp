@@ -5,6 +5,7 @@ using Core.Server.Network;
 using Core.Server.Packets;
 using Map.Server;
 using Map.Server.Entities;
+using Map.Server.Items;
 using Map.Server.Mob;
 using Map.Server.Movement;
 using Map.Server.Services;
@@ -89,6 +90,11 @@ builder.Services.AddSingleton<MapSessionLifecycle>();
 // idle wander, and respawn timing.
 builder.Services.AddSingleton<IMobSpawnRegistry, MobSpawnRegistry>();
 builder.Services.AddSingleton<IMobSpawnService, MobSpawnService>();
+
+// Floor-item drop / pickup (see .agents/migrations/map/adjacent/items.md).
+// MS3 first slice: the entity-on-the-floor lifecycle (drop, pickup, TTL
+// despawn). Inventory persistence + item_db catalog land later.
+builder.Services.AddSingleton<IItemDropService, ItemDropService>();
 
 // Core services
 builder.Services.AddSingleton<SessionManager>();

@@ -4,6 +4,7 @@ using Core.Server;
 using Core.Server.IPC;
 using Core.Server.Network;
 using Core.Server.Packets;
+using Map.Server.Items;
 using Map.Server.Services;
 using Map.Server.Session;
 using Map.Server.Spawn;
@@ -19,6 +20,7 @@ public class MapServerImpl : GameLoopServer
     private readonly ICharServerIpcService _charServerIpc;
     private readonly MapSessionLifecycle _lifecycle;
     private readonly IMobSpawnService _mobSpawn;
+    private readonly IItemDropService _itemDrops;
     private readonly MapServerConfiguration _mapConfiguration;
     private DateTime _nextRegistrationAttemptUtc = DateTime.MinValue;
     private DateTime _nextKeepAliveUtc = DateTime.MinValue;
@@ -38,7 +40,8 @@ public class MapServerImpl : GameLoopServer
         IPlayerMapService playerMapService,
         ICharServerIpcService charServerIpc,
         MapSessionLifecycle lifecycle,
-        IMobSpawnService mobSpawn)
+        IMobSpawnService mobSpawn,
+        IItemDropService itemDrops)
         : base("MapServer", configuration, logger, packetSystem, sessionManager)
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
@@ -48,6 +51,7 @@ public class MapServerImpl : GameLoopServer
         _charServerIpc = charServerIpc;
         _lifecycle = lifecycle;
         _mobSpawn = mobSpawn;
+        _itemDrops = itemDrops;
         _mapConfiguration = (MapServerConfiguration)configuration;
 
         // Wire up the connection service to use this server's connection manager
@@ -158,6 +162,8 @@ public class MapServerImpl : GameLoopServer
         await _lifecycle.SweepAsync(cancellationToken);
         // Mob wander + pending respawn promotion.
         _mobSpawn.Tick();
+        // Floor-item auto-despawn.
+        _itemDrops.Tick();
     }
 
     private async Task EnsureRegisteredOnCharServerAsync(CancellationToken cancellationToken)

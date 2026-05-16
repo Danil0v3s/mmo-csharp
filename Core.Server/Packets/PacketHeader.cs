@@ -92,6 +92,9 @@ public enum PacketHeader : short
     ZC_ACCEPT_ENTER_ZONE = 0x02eb,         // PACKETVER >= 20160330 zone-server variant
     ZC_REFUSE_ENTER_ZONE = 0x0074,         // alias of HC_REFUSE_ENTER for zone-server clarity
     ZC_NOTIFY_STANDENTRY = 0x09ff,         // idle_unit at PACKETVER >= 20150513
+    ZC_ITEM_ENTRY = 0x009d,                // floor item already on map; entering view
+    ZC_ITEM_FALL_ENTRY = 0x0add,           // floor item just dropped; PACKETVER >= 20180418
+    ZC_ITEM_DISAPPEAR = 0x00a1,            // floor item picked up / despawned
 
     // Client -> Zone (CZ)
     CZ_NOTIFY_ACTORINIT = 0x007d,          // LoadEndAck — client ready to spawn
@@ -101,5 +104,6 @@ public enum PacketHeader : short
     CZ_REQUEST_CHAT = 0x008c,
     CZ_REQ_QUIT = 0x018a,
     CZ_HEARTBEAT = 0x0360,
+    CZ_ITEM_PICKUP = 0x0362,               // CZ_ITEM_PICKUP2 (modern, 4-byte entity id)
     CZ_WANT_TO_CONNECTION = 0x0436,        // modern post-charselect connect
 }

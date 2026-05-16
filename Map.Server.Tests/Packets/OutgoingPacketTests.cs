@@ -182,6 +182,66 @@ public class OutgoingPacketTests
         Assert.Equal("TestPlayer", name);
     }
 
+    [Fact]
+    public void ZC_ITEM_ENTRY_Emits19Bytes()
+    {
+        var packet = new ZC_ITEM_ENTRY
+        {
+            EntityId = 2_000_000_001,
+            ItemId = 501,
+            Identified = 1,
+            X = 156, Y = 191,
+            Amount = 5,
+            SubX = 2, SubY = 3,
+        };
+        var bytes = WritePacket(packet);
+
+        Assert.Equal(19, bytes.Length);
+        Assert.Equal(0x009d, BitConverter.ToInt16(bytes, 0));
+        Assert.Equal(2_000_000_001, BitConverter.ToInt32(bytes, 2));
+        Assert.Equal(501, BitConverter.ToInt32(bytes, 6));
+        Assert.Equal((byte)1, bytes[10]);
+        Assert.Equal((short)156, BitConverter.ToInt16(bytes, 11));
+        Assert.Equal((short)191, BitConverter.ToInt16(bytes, 13));
+        Assert.Equal((short)5, BitConverter.ToInt16(bytes, 15));
+        Assert.Equal((byte)2, bytes[17]);
+        Assert.Equal((byte)3, bytes[18]);
+    }
+
+    [Fact]
+    public void ZC_ITEM_FALL_ENTRY_Emits24Bytes()
+    {
+        var packet = new ZC_ITEM_FALL_ENTRY
+        {
+            EntityId = 2_000_000_001,
+            ItemId = 501,
+            ItemType = 0,
+            Identified = 1,
+            X = 156, Y = 191,
+            SubX = 2, SubY = 3,
+            Amount = 5,
+            ShowDropEffect = 0,
+            DropEffectMode = 0,
+        };
+        var bytes = WritePacket(packet);
+
+        Assert.Equal(24, bytes.Length);
+        Assert.Equal(unchecked((short)0x0add), BitConverter.ToInt16(bytes, 0));
+        Assert.Equal(2_000_000_001, BitConverter.ToInt32(bytes, 2));
+        Assert.Equal(501, BitConverter.ToInt32(bytes, 6));
+    }
+
+    [Fact]
+    public void ZC_ITEM_DISAPPEAR_Emits6Bytes()
+    {
+        var packet = new ZC_ITEM_DISAPPEAR { EntityId = 2_000_000_001 };
+        var bytes = WritePacket(packet);
+
+        Assert.Equal(6, bytes.Length);
+        Assert.Equal(0x00a1, BitConverter.ToInt16(bytes, 0));
+        Assert.Equal(2_000_000_001, BitConverter.ToInt32(bytes, 2));
+    }
+
     private static byte[] WritePacket(OutgoingPacket packet)
     {
         using var ms = new MemoryStream();

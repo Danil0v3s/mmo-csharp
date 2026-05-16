@@ -88,12 +88,8 @@ public sealed class VisibilityService : IVisibilityService
 
     public void NotifyVanishedToArea(Entity gone, VanishReason reason)
     {
-        var packet = new ZC_NOTIFY_VANISH
-        {
-            EntityId = gone.Id.Value,
-            Reason = reason,
-        };
-        SendToArea(gone, packet, SendTarget.AreaWos);
+        // Floor items use ZC_ITEM_DISAPPEAR; everything else uses ZC_NOTIFY_VANISH.
+        SendToArea(gone, BuildExitViewPacket(gone, reason), SendTarget.AreaWos);
     }
 
     public void NotifyMoveToArea(
@@ -114,12 +110,16 @@ public sealed class VisibilityService : IVisibilityService
 
     public void SendCurrentViewToSelf(PlayerEntity self)
     {
+        // Surface every visible entity (PCs, mobs, floor items) — each gets
+        // the packet shape appropriate to its block-list type. Items use
+        // ZC_ITEM_ENTRY instead of STANDENTRY; non-PC entities have no
+        // session so the "tell them about me" half is skipped.
         var neighbors = _entities.ForEachInRange(
-            self.MapId, self.X, self.Y, VisibilityConfig.AreaSize, EntityType.Pc);
+            self.MapId, self.X, self.Y, VisibilityConfig.AreaSize, EntityType.All);
         foreach (var e in neighbors)
         {
             if (e.Id == self.Id) continue;
-            _dispatcher.TrySend(self.SessionId, BuildStandEntry(e));
+            _dispatcher.TrySend(self.SessionId, BuildEnterViewPacket(e));
         }
     }
 
@@ -133,22 +133,22 @@ public sealed class VisibilityService : IVisibilityService
         var gained = NewlyVisible(walker.MapId, fromX, fromY, toX, toY, EntityType.All);
         var lost = NewlyInvisible(walker.MapId, fromX, fromY, toX, toY, EntityType.All);
 
-        // Pre-build the walker's STANDENTRY / VANISH once; both are
+        // Pre-build the walker's enter / exit packet once; both are
         // recipient-agnostic for a given walker.
-        OutgoingPacket? walkerStandEntry = null;
-        ZC_NOTIFY_VANISH? walkerVanish = null;
+        OutgoingPacket? walkerEnter = null;
+        OutgoingPacket? walkerExit = null;
 
         foreach (var other in gained)
         {
             if (other.Id == walker.Id) continue;
             if (walker is PlayerEntity pcWalker)
             {
-                _dispatcher.TrySend(pcWalker.SessionId, BuildStandEntry(other));
+                _dispatcher.TrySend(pcWalker.SessionId, BuildEnterViewPacket(other));
             }
             if (other is PlayerEntity pcOther)
             {
-                walkerStandEntry ??= BuildStandEntry(walker);
-                _dispatcher.TrySend(pcOther.SessionId, walkerStandEntry);
+                walkerEnter ??= BuildEnterViewPacket(walker);
+                _dispatcher.TrySend(pcOther.SessionId, walkerEnter);
             }
         }
         foreach (var other in lost)
@@ -156,25 +156,23 @@ public sealed class VisibilityService : IVisibilityService
             if (other.Id == walker.Id) continue;
             if (walker is PlayerEntity pcWalker)
             {
-                _dispatcher.TrySend(pcWalker.SessionId, new ZC_NOTIFY_VANISH
-                {
-                    EntityId = other.Id.Value,
-                    Reason = VanishReason.Outsight,
-                });
+                _dispatcher.TrySend(pcWalker.SessionId, BuildExitViewPacket(other, VanishReason.Outsight));
             }
             if (other is PlayerEntity pcOther)
             {
-                walkerVanish ??= new ZC_NOTIFY_VANISH
-                {
-                    EntityId = walker.Id.Value,
-                    Reason = VanishReason.Outsight,
-                };
-                _dispatcher.TrySend(pcOther.SessionId, walkerVanish);
+                walkerExit ??= BuildExitViewPacket(walker, VanishReason.Outsight);
+                _dispatcher.TrySend(pcOther.SessionId, walkerExit);
             }
         }
     }
 
-    internal static OutgoingPacket BuildStandEntry(Entity entity) => entity switch
+    /// <summary>
+    /// Pick the right "entity entering your view" packet for the given
+    /// block-list type. PCs and mobs share <see cref="ZC_NOTIFY_STANDENTRY"/>
+    /// with different <c>ObjectType</c> / sprite ids; floor items use
+    /// <see cref="ZC_ITEM_ENTRY"/>.
+    /// </summary>
+    internal static OutgoingPacket BuildEnterViewPacket(Entity entity) => entity switch
     {
         PlayerEntity p => new ZC_NOTIFY_STANDENTRY
         {
@@ -196,7 +194,32 @@ public sealed class VisibilityService : IVisibilityService
             X = m.X, Y = m.Y, Dir = m.Dir,
             Name = m.Name,
         },
+        ItemEntity i => new ZC_ITEM_ENTRY
+        {
+            EntityId = i.Id.Value,
+            ItemId = i.ItemId,
+            Identified = i.Identified,
+            X = i.X, Y = i.Y,
+            Amount = i.Amount,
+            SubX = i.SubX,
+            SubY = i.SubY,
+        },
         _ => throw new NotSupportedException(
-            $"NotifySpawnedToArea: {entity.Type} not supported yet (NPC lands in MS2 npc.md).")
+            $"BuildEnterViewPacket: {entity.Type} not supported yet (NPC lands later).")
     };
+
+    /// <summary>
+    /// Sibling of <see cref="BuildEnterViewPacket"/> for the leaving-view
+    /// case. Items dispatch <see cref="ZC_ITEM_DISAPPEAR"/>; everything else
+    /// uses <see cref="ZC_NOTIFY_VANISH"/> with the supplied reason.
+    /// </summary>
+    internal static OutgoingPacket BuildExitViewPacket(Entity entity, VanishReason reason) => entity switch
+    {
+        ItemEntity i => new ZC_ITEM_DISAPPEAR { EntityId = i.Id.Value },
+        _ => new ZC_NOTIFY_VANISH { EntityId = entity.Id.Value, Reason = reason },
+    };
+
+    // Back-compat alias: callers that explicitly want the unit-style entry
+    // (mob/PC) still target the same builder.
+    internal static OutgoingPacket BuildStandEntry(Entity entity) => BuildEnterViewPacket(entity);
 }

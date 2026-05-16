@@ -31,7 +31,24 @@ Items thread through every gameplay system. The Char server already owns persist
 
 ## Done
 
-Char IPC wrappers exist for inventory operations (P6). Inventory is per-character in the DB and loaded on character data fetch.
+- Char IPC wrappers exist for inventory operations (P6). Inventory is per-character in the DB and loaded on character data fetch.
+- **Floor-item entity lifecycle (MS3 first slice):**
+  - [`ItemEntity`](../../../../Map.Server/Entities/ItemEntity.cs) — `ItemId`, `Amount`, `Identified`, `SubX/SubY`, `DroppedAtTick`. EntityType.Item.
+  - Packets: [`CZ_ITEM_PICKUP`](../../../../Core.Server/Packets/In/CZ/CZ_ITEM_PICKUP.cs) (0x0362, modern), [`ZC_ITEM_ENTRY`](../../../../Core.Server/Packets/Out/ZC/ZC_ITEM_ENTRY.cs) (0x009d, item already on floor entering view), [`ZC_ITEM_FALL_ENTRY`](../../../../Core.Server/Packets/Out/ZC/ZC_ITEM_FALL_ENTRY.cs) (0x0add, just-dropped animation; PACKETVER_RE ≥ 20180704), [`ZC_ITEM_DISAPPEAR`](../../../../Core.Server/Packets/Out/ZC/ZC_ITEM_DISAPPEAR.cs) (0x00a1).
+  - [`IItemDropService`](../../../../Map.Server/Items/IItemDropService.cs) + [`ItemDropService`](../../../../Map.Server/Items/ItemDropService.cs):
+    - `DropOnFloor(map, x, y, itemId, amount)` → registers the entity and broadcasts `ZC_ITEM_FALL_ENTRY` to PC viewers in AOI.
+    - `TryPickup(picker, itemEntityId)` → range/map validation (2-cell pickup range matches rAthena), broadcasts `ZC_ITEM_DISAPPEAR`.
+    - `Tick()` → per-map-tick despawn sweep at 60s TTL (rAthena's `flooritem_lifetime` default).
+  - [`PickupHandler`](../../../../Map.Server/Handlers/PickupHandler.cs) routes `CZ_ITEM_PICKUP` → `TryPickup`.
+  - Visibility refactor: `BuildEnterViewPacket` / `BuildExitViewPacket` now dispatch the right packet per entity type (STANDENTRY for PC/Mob, ITEM_ENTRY/DISAPPEAR for items). `SendCurrentViewToSelf` now surfaces all entity types on spawn (not just PCs).
+  - 15 tests: 3 packet wire-shape, 6 `ItemDropService`, plus the existing visibility/spawn coverage still green.
+
+### Pending (deferred)
+
+- `item_db.yml` parser + `IItemDb` catalog (mirrors `IMobDb` pattern). Today `ZC_ITEM_FALL_ENTRY.ItemType` is hard-coded to 0; once item_db lands we'll populate it from the loaded catalog.
+- `Inventory` model on the session + char-server IPC for persistence (already wired in P6, just needs the runtime model).
+- Equip/unequip / consumable use / drop-from-inventory flows. Drop service is a building block for these.
+- Loot protection (owner + party id), bound items, refined items.
 
 ## Pending
 
@@ -50,3 +67,4 @@ Char IPC wrappers exist for inventory operations (P6). Inventory is per-characte
 
 ## History
 - **2026-05-16** — Plan stub.
+- **2026-05-16** — Floor-item lifecycle first slice shipped: ItemEntity + 4 packets + drop/pickup/despawn service + PickupHandler + visibility per-type packet dispatch. Inventory persistence remains queued.
