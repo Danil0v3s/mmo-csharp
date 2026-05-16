@@ -135,6 +135,12 @@ None. All HIGH/MEDIUM bugs closed in P1; LOW `PartyShareLevel` closed in P2.
 
 ## History
 
+- **2026-05-16** — **P8 cascade & persistence fixes** (pre-gameplay audit closed 4 gaps):
+  - **PartyLeave**: when the leader leaves, party now fully disbands (clears all members' `party_id` + removes the party row) matching rAthena's `mapif_parse_PartyLeave` → `mapif_parse_BreakParty` chain in `int_party.cpp:633`. Non-leader leaves still just remove that member.
+  - **GuildBreak**: now cascades cleanup to `guild_member`, `guild_position`, `guild_skill`, `guild_alliance` (both sides), `guild_expulsion`, and `guild_storage_payload`. `guild_castle` rows are kept but `guild_id` is cleared (rAthena parity — castles re-capturable, not deleted).
+  - **MercenarySave**: now persists skill cooldowns via new `MercenarySkillCooldown` proto message + repeated `cooldowns` field on `MercenaryData`. Uses rAthena `mapif_mercenary_save` DELETE-all + INSERT-non-zero pattern.
+  - **MercenaryDelete**: now cascades to `skill_cooldown_mercenary` AND `mercenary_owner` AND `mercenary` (matches rAthena `mercenary_owner_delete` cascade).
+  - 8 new cascade regression tests in [CharGrpcModuleCascadeTests.cs](../../../Char.Server.Tests/Services/CharGrpcModuleCascadeTests.cs). Suite 148/148.
 - **2026-05-16** — **P2 closed for Party.** `PartyShareLevel` now persists via `CharServerState.PartyShareLevel` (rAthena `inter.cpp` global parity).
 - **2026-05-16** — **P1 closed for Mail / Auction / Homunculus.**
   - Mail attachments persisted via typed `MailAttachmentItem` proto rows on send, returned + cleared on `MailGetAttachment`, included in inbox/read responses.

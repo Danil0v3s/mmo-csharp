@@ -1451,27 +1451,38 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             return new PartyLeaveResponse { Success = false };
         }
 
+        // rAthena `mapif_parse_PartyLeave` (int_party.cpp:633): if the leader leaves,
+        // the entire party is disbanded (calls mapif_parse_BreakParty internally). All
+        // remaining members' party_id is cleared and the party row is removed.
+        if (party.LeaderChar == request.CharacterId)
+        {
+            var allMembers = await _dbContext.Characters
+                .Where(c => c.PartyId == request.PartyId)
+                .ToListAsync(context.CancellationToken);
+            foreach (var member in allMembers)
+            {
+                member.PartyId = 0;
+            }
+            _dbContext.Parties.Remove(party);
+            await _dbContext.SaveChangesAsync(context.CancellationToken);
+            return new PartyLeaveResponse { Success = true };
+        }
+
+        // Non-leader: remove only that member.
         character.PartyId = 0;
         await _dbContext.SaveChangesAsync(context.CancellationToken);
 
-        var remainingMembers = await _dbContext.Characters
+        // If that was the last non-leader member AND the party is somehow empty (shouldn't
+        // happen given leader still present, but defensive), clean up the row.
+        var anyLeft = await _dbContext.Characters
             .AsNoTracking()
-            .Where(c => c.PartyId == request.PartyId && c.DeleteDate == 0)
-            .OrderBy(c => c.CharId)
-            .Select(c => new { c.CharId, c.AccountId })
-            .ToListAsync(context.CancellationToken);
-
-        if (remainingMembers.Count == 0)
+            .AnyAsync(c => c.PartyId == request.PartyId && c.DeleteDate == 0, context.CancellationToken);
+        if (!anyLeft)
         {
             _dbContext.Parties.Remove(party);
-        }
-        else if (party.LeaderChar == request.CharacterId)
-        {
-            party.LeaderChar = remainingMembers[0].CharId;
-            party.LeaderId = remainingMembers[0].AccountId;
+            await _dbContext.SaveChangesAsync(context.CancellationToken);
         }
 
-        await _dbContext.SaveChangesAsync(context.CancellationToken);
         return new PartyLeaveResponse { Success = true };
     }
 
@@ -1873,6 +1884,9 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             return new GuildBreakResponse { Success = false };
         }
 
+        // rAthena `mapif_parse_BreakGuild` (int_guild.cpp): cascades cleanup across
+        // all guild-related tables so guild_id can be safely reused without orphaned
+        // rows returning stale state on the next gameplay query.
         var members = await _dbContext.Characters
             .Where(c => c.GuildId == request.GuildId)
             .ToListAsync(context.CancellationToken);
@@ -1880,6 +1894,46 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         {
             member.GuildId = 0;
         }
+
+        var guildMembers = await _dbContext.GuildMembers
+            .Where(m => m.GuildId == request.GuildId)
+            .ToListAsync(context.CancellationToken);
+        if (guildMembers.Count > 0) _dbContext.GuildMembers.RemoveRange(guildMembers);
+
+        var positions = await _dbContext.GuildPositions
+            .Where(p => p.GuildId == request.GuildId)
+            .ToListAsync(context.CancellationToken);
+        if (positions.Count > 0) _dbContext.GuildPositions.RemoveRange(positions);
+
+        var skills = await _dbContext.GuildSkills
+            .Where(s => s.GuildId == request.GuildId)
+            .ToListAsync(context.CancellationToken);
+        if (skills.Count > 0) _dbContext.GuildSkills.RemoveRange(skills);
+
+        var alliances = await _dbContext.GuildAlliances
+            .Where(a => a.GuildId == request.GuildId || a.AllianceId == request.GuildId)
+            .ToListAsync(context.CancellationToken);
+        if (alliances.Count > 0) _dbContext.GuildAlliances.RemoveRange(alliances);
+
+        var expulsions = await _dbContext.GuildExpulsions
+            .Where(e => e.GuildId == request.GuildId)
+            .ToListAsync(context.CancellationToken);
+        if (expulsions.Count > 0) _dbContext.GuildExpulsions.RemoveRange(expulsions);
+
+        var castles = await _dbContext.GuildCastles
+            .Where(c => c.GuildId == request.GuildId)
+            .ToListAsync(context.CancellationToken);
+        // Castles aren't deleted on guild break — rAthena clears guild_id and resets
+        // the castle so any future guild can capture it.
+        foreach (var castle in castles)
+        {
+            castle.GuildId = 0;
+        }
+
+        var storagePayloads = await _dbContext.GuildStoragePayloads
+            .Where(s => s.GuildId == request.GuildId)
+            .ToListAsync(context.CancellationToken);
+        if (storagePayloads.Count > 0) _dbContext.GuildStoragePayloads.RemoveRange(storagePayloads);
 
         _dbContext.Guilds.Remove(guild);
         await _dbContext.SaveChangesAsync(context.CancellationToken);
@@ -3324,6 +3378,14 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         }
 
         await _dbContext.SaveChangesAsync(context.CancellationToken);
+
+        // rAthena `mapif_mercenary_save` also persists skill cooldowns. Use the same
+        // DELETE-all + INSERT-non-zero pattern used for homunculus skills.
+        await SaveMercenarySkillCooldownsAsync(
+            request.Mercenary.MercenaryId,
+            request.Mercenary.Cooldowns,
+            context.CancellationToken);
+
         return new MercenarySaveResponse { Success = true };
     }
 
@@ -3338,9 +3400,62 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             return new MercenaryDeleteResponse { Success = false };
         }
 
+        // rAthena `mercenary_owner_delete` cascades to skillcooldown_mercenary_db AND
+        // mercenary_owner_db AND mercenary_db. Mirror the full cascade.
+        var cooldowns = await _dbContext.SkillCooldownMercenaries
+            .Where(s => s.MerId == request.MercenaryId)
+            .ToListAsync(context.CancellationToken);
+        if (cooldowns.Count > 0)
+        {
+            _dbContext.SkillCooldownMercenaries.RemoveRange(cooldowns);
+        }
+
+        var owners = await _dbContext.MercenaryOwners
+            .Where(o => o.CharId == entity.CharId)
+            .ToListAsync(context.CancellationToken);
+        if (owners.Count > 0)
+        {
+            _dbContext.MercenaryOwners.RemoveRange(owners);
+        }
+
         _dbContext.Mercenaries.Remove(entity);
         await _dbContext.SaveChangesAsync(context.CancellationToken);
         return new MercenaryDeleteResponse { Success = true };
+    }
+
+    private async Task SaveMercenarySkillCooldownsAsync(
+        int merId,
+        Google.Protobuf.Collections.RepeatedField<MercenarySkillCooldown> cooldowns,
+        CancellationToken ct)
+    {
+        if (merId <= 0)
+        {
+            return;
+        }
+
+        var existing = await _dbContext.SkillCooldownMercenaries
+            .Where(s => s.MerId == merId)
+            .ToListAsync(ct);
+        if (existing.Count > 0)
+        {
+            _dbContext.SkillCooldownMercenaries.RemoveRange(existing);
+        }
+
+        foreach (var cd in cooldowns)
+        {
+            if (cd.Skill == 0)
+            {
+                continue;
+            }
+            _dbContext.SkillCooldownMercenaries.Add(new SkillCooldownMercenaryEntity
+            {
+                MerId = merId,
+                Skill = (ushort)Math.Clamp(cd.Skill, 0u, ushort.MaxValue),
+                Tick = cd.Tick
+            });
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
     }
 
     public override async Task<ElementalCreateResponse> ElementalCreate(

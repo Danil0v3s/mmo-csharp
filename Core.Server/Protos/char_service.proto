@@ -1481,6 +1481,12 @@ message MercenaryData {
   int32 kill_count = 6;
   int64 life_time = 7;
   bytes payload = 8;
+  repeated MercenarySkillCooldown cooldowns = 9;
+}
+
+message MercenarySkillCooldown {
+  uint32 skill = 1;
+  int64 tick = 2;
 }
 
 message MercenaryCreateRequest {
