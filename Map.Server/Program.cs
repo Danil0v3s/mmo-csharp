@@ -6,6 +6,7 @@ using Core.Server.Network;
 using Core.Server.Packets;
 using Map.Server;
 using Map.Server.Services;
+using Map.Server.World;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Serilog;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
@@ -39,6 +40,13 @@ builder.Services.AddSingleton<ServerConnectionService>();
 builder.Services.AddSingleton<IServerConnectionService>(sp => sp.GetRequiredService<ServerConnectionService>());
 builder.Services.AddSingleton<ICharServerIpcService, CharServerIpcService>();
 builder.Services.AddSingleton<IPlayerMapService, PlayerMapService>();
+
+// World data: load the configured maps once at startup and expose via IMapWorldRegistry.
+builder.Services.AddSingleton<IMapWorldRegistry>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Program>>();
+    return MapWorldRegistry.Load(serverConfig.MapDataPath, serverConfig.Maps, logger);
+});
 
 // Register server state separately to avoid circular dependencies
 builder.Services.AddSingleton<MapServerState>();

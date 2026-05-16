@@ -26,6 +26,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tools.LoginTcpClient", "Too
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Login.Server.Tests", "Login.Server.Tests\Login.Server.Tests.csproj", "{6E6457D2-ABAE-45C7-A853-CF10F597EE31}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Map.Server.Tests", "Map.Server.Tests\Map.Server.Tests.csproj", "{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -156,6 +158,18 @@ Global
 		{6E6457D2-ABAE-45C7-A853-CF10F597EE31}.Release|x64.Build.0 = Release|Any CPU
 		{6E6457D2-ABAE-45C7-A853-CF10F597EE31}.Release|x86.ActiveCfg = Release|Any CPU
 		{6E6457D2-ABAE-45C7-A853-CF10F597EE31}.Release|x86.Build.0 = Release|Any CPU
+		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Debug|x64.Build.0 = Debug|Any CPU
+		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Debug|x86.Build.0 = Debug|Any CPU
+		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Release|x64.ActiveCfg = Release|Any CPU
+		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Release|x64.Build.0 = Release|Any CPU
+		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Release|x86.ActiveCfg = Release|Any CPU
+		{1CBD7642-7DE2-43EE-9C10-D1C310EC7BA0}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

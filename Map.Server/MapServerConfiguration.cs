@@ -32,4 +32,10 @@ public class MapServerConfiguration : ServerConfiguration
     /// Periodic batch save of online character state (seconds). rAthena default autosave=300s.
     /// </summary>
     public int AutosaveInterval { get; set; } = 300;
+
+    /// <summary>
+    /// Filesystem path to rAthena's renewal mapcache.dat. Loaded once at startup;
+    /// only the maps listed in <see cref="Maps"/> are kept in memory.
+    /// </summary>
+    public string MapDataPath { get; set; } = "/Volumes/1TB/Projetos/rathena/db/re/map_cache.dat";
 }

@@ -26,4 +26,8 @@
         </None>
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="Map.Server.Tests" />
+    </ItemGroup>
+
 </Project>

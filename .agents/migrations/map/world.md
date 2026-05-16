@@ -32,78 +32,56 @@ The map server can't do anything until it knows what a "map" is: a grid of cells
 
 ## Done
 
-Nothing yet. The `Map.Server` project has no map-loading code.
+- **`CellFlags` enum + `FromGat(byte)`** ([Map.Server/World/CellFlags.cs](../../../Map.Server/World/CellFlags.cs)) — mirrors rAthena's `map_gat2cell` mapping (gat 0,2,4,6 → walkable+shootable; 1 → blocked; 3 → walkable water; 5 → shootable but not walkable).
+- **`MapData`** ([Map.Server/World/MapData.cs](../../../Map.Server/World/MapData.cs)) — per-map cell grid, `GetCell` / `IsWalkable` / `IsShootable` / `IsWater`; out-of-bounds returns `None` (rAthena boundary parity).
+- **`MapCacheReader`** ([Map.Server/World/MapCacheReader.cs](../../../Map.Server/World/MapCacheReader.cs)) — binary parser for rAthena's `mapcache.dat`. Handles the 8-byte main header (uint32 file_size + uint16 map_count + 2 bytes C struct alignment padding), the 20-byte per-map info, and ZLib-decompresses the cell payload (`System.IO.Compression.ZLibStream`).
+- **`IMapWorldRegistry` + `MapWorldRegistry`** ([Map.Server/World/MapWorldRegistry.cs](../../../Map.Server/World/MapWorldRegistry.cs)) — singleton catalog loaded once at startup; logs warning + skips any configured map missing from the cache.
+- **Wired into Map.Server startup** ([Map.Server/Program.cs](../../../Map.Server/Program.cs)) — registered as `IMapWorldRegistry` DI singleton; reads `MapDataPath` from config (default `/Volumes/1TB/Projetos/rathena/db/re/map_cache.dat`).
+- **`MapServerConfiguration.MapDataPath`** + appsettings entry.
+- **`Map.Server.Tests` project created** with 21 tests covering: gat→flags mapping table, MapData boundary behavior, MapCacheReader synthetic round-trips, and smoke tests against the real rAthena renewal cache. Full suite 185 (148 char + 16 login + 21 map).
 
-## Pending
+## Pending — future expansion
 
-### Items, in suggested order
+Not blocking MS1.entities / session — those can start now against the existing `IMapWorldRegistry`.
 
-1. **Decide on map data source format.** Two options:
-   - **(A) Reuse rAthena's `mapcache.dat`** binary file. Pros: zero data conversion, ships with every rAthena server. Cons: opaque binary; need a faithful parser.
-   - **(B) Bake to a more C#-friendly format** at startup (e.g. one `.gz` per map with width/height + cell bitmap). Pros: easier to read. Cons: requires a converter tool.
+1. **Map index / name lookup** — rAthena uses an integer `map_id` internally and a string name for the wire protocol. Parse `map_index.txt`. Required for any packet that carries a map_id.
 
-   Recommendation: **option A**. The format is small and well-documented. Write the parser once, done.
+2. **Warp portals.** Static portal table from rAthena's `npc/warps/*.txt`. Format is simple `mapname,x,y,xs,ys<TAB>warp<TAB>name<TAB>destmap,destx,desty`. [npc.md](npc.md) will share the parser infrastructure.
 
-2. **Locate `mapcache.dat`** — renewal only: `/Volumes/1TB/Projetos/rathena/db/re/map_cache.dat`. Add `MapDataPath` to `MapServerConfiguration` pointing at it. No renewal/pre-renewal switch; the project is renewal exclusively.
+3. **Cell-based warp lookup**: `MapData.GetWarpAt(x, y)` returns the destination or null. Used by [movement.md](movement.md) when the player walks into a warp cell.
 
-3. **Port the mapcache binary parser** to `Core.Database` or a new `Map.Server/World/` namespace. The file layout (per rAthena `mapcache.cpp`):
-   ```
-   header { uint32 version; uint32 file_size; uint16 map_count; }
-   for each map {
-     char name[12]; int16 xs; int16 ys; int32 len;
-     byte[len] cells // RLE-compressed walkability byte per cell
-   }
-   ```
-   Decompress with rAthena's encoding (run-length on consecutive identical cells).
+4. **Dynamic cell flags** (MS3) — Ice Wall, Land Protector, Basilica set runtime flags on individual cells. `MapData` stores the base grid immutably; the dynamic layer lives on top (per-cell delta map). Defer until skills system.
 
-4. **`MapData` class** with the cell grid + size + a `CellFlags` enum. Fast `GetCell(x, y)` and `IsWalkable(x, y)`. Public read-only API; mutation lives behind `SetCell(x, y, flag, set)` for MS3 dynamic cells.
-
-5. **`IMapDataRegistry`** singleton: load all configured maps at startup, hand out `MapData` by name. The existing `IMapServerRegistryService` in **Char.Server** is a different thing (registers map servers with the char server) — name this differently. Suggested: `IMapWorldRegistry` in `Map.Server.World`.
-
-6. **Map index / name lookup.** rAthena uses an integer `map_id` internally and a string name for the wire protocol. Both need to round-trip. Parse `map_index.txt` (one map name per line; line number is map_id starting at 1).
-
-7. **Warp portals.** rAthena loads warps from script files (`npc/warps/*.txt`). For MS1 we only need the static portal table: source map + cell range + destination map + dest cell. Two options:
-   - **(A)** Port the warp-portion of rAthena's script parser (minimal — warps are very simple `mapname,x,y,xs,ys<TAB>warp<TAB>name<TAB>destmap,destx,desty` syntax).
-   - **(B)** Bake warps into a JSON / SQL table for our convenience.
-
-   Recommendation: **option A** — the format is tiny and we'll need NPC/mob parsing later anyway; share infrastructure.
-
-8. **Cell-based warp lookup**: `MapData.GetWarpAt(x, y)` returns the destination or null. Used by [movement.md](movement.md) when the player walks into a warp cell.
-
-### File layout
+### Current file layout (delivered)
 
 ```
 Map.Server/World/
+├── CellFlags.cs             — enum + FromGat() mapping
 ├── MapData.cs               — per-map cell grid, walkability API
-├── CellFlags.cs             — enum of static cell flags
 ├── IMapWorldRegistry.cs     — interface
-├── MapWorldRegistry.cs      — singleton implementation
-├── MapCacheReader.cs        — binary parser for mapcache.dat
-├── MapIndex.cs              — name ↔ id ↔ MapData
-├── Warp.cs                  — Warp record (src map+box, dst map+cell)
-├── WarpDb.cs                — parse warp script files, build per-map warp table
-└── WorldConfiguration.cs    — paths to map_cache + map_index + warps (renewal)
+├── MapWorldRegistry.cs      — singleton implementation + Load() factory
+└── MapCacheReader.cs        — binary parser for mapcache.dat
 ```
 
-### Tests (Map.Server.Tests project — to be created)
+### Future file additions (warps + map index)
 
-1. `MapCacheReaderTests` — round-trip a small synthetic mapcache buffer; verify per-cell walkability.
-2. `MapDataTests` — `GetCell` boundary cases (negative coords, beyond xs/ys), walkability returns false outside bounds.
-3. `WarpDbTests` — parse a few synthetic warp script lines; lookup by cell returns the destination; non-warp cell returns null.
-4. Smoke: load the real `prontera` from rAthena's renewal `map_cache.dat`, verify cell at `(156, 191)` is walkable (well-known prontera spawn).
+```
+Map.Server/World/
+├── MapIndex.cs              — name ↔ id ↔ MapData
+├── Warp.cs                  — Warp record (src map+box, dst map+cell)
+└── WarpDb.cs                — parse warp script files, build per-map warp table
+```
 
-### Open decisions
+### Tests (Map.Server.Tests project)
 
-- **Where to physically locate the data files**: bind via config to rAthena's `/db/re/` so we don't duplicate the data. Map.Server's `appsettings.json` already has `Maps` array; add `MapDataPath: "/Volumes/1TB/Projetos/rathena/db/re/map_cache.dat"`.
-- **Path resolution for warp scripts**: rAthena scatters them across `npc/warps/{city,fields,dungeons,...}/*.txt`. We'll need a recursive scanner; pick a `WarpScriptRoot` config.
+Delivered; 21 passing. Coverage:
+- `CellFlagsTests` — gat→flags mapping for all 7 known types + unknown-fallback parity with rAthena.
+- `MapDataTests` — constructor validation, out-of-bounds reads return `None`, in-bounds reads match injected cells.
+- `MapCacheReaderTests` — header parsing, single + multi-map synthetic round-trips, missing-map returns null, real renewal cache parses cleanly.
 
-### Acceptance
-
-- `MapWorldRegistry` loads the configured map list (`prontera`, `new_1-1`, `lasa_fild01` per current appsettings) from `map_cache.dat`.
-- Each loaded map exposes its cell grid; `IsWalkable(x, y)` returns the expected value for sampled coordinates.
-- Warp lookup works for at least one known warp (e.g. `prontera (273, 354)` → `prt_fild05 (170, 32)`).
-- Startup log shows map count, total cell count.
+Future tests once warps land: `WarpDbTests` for the script parser; `MapDataTests.GetWarpAt`.
 
 ## History
 
+- **2026-05-16** — **MS1.world cell loading shipped.** Implemented `CellFlags`, `MapData`, `MapCacheReader`, `IMapWorldRegistry` + `MapWorldRegistry`. Wired into `Map.Server/Program.cs` startup via DI singleton reading `MapDataPath` from config. Created `Map.Server.Tests` project with 21 tests; full suite now 185 green. Real rAthena `db/re/map_cache.dat` parses cleanly. Important wrinkle discovered during implementation: C struct `main_header { uint32; uint16; }` is `sizeof = 8`, not 6 — the trailing 2-byte alignment padding is part of the on-disk format. Documented in code comments. Warp portals + map_index.txt parsing deferred to next iteration; not blocking MS1.entities/session.
 - **2026-05-16** — Plan written. No implementation yet.
