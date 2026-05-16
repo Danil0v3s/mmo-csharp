@@ -9,6 +9,7 @@ using Map.Server.Mob;
 using Map.Server.Movement;
 using Map.Server.Services;
 using Map.Server.Session;
+using Map.Server.Spawn;
 using Map.Server.Visibility;
 using Map.Server.World;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -82,6 +83,12 @@ builder.Services.AddSingleton<IVisibilityService, VisibilityService>();
 // PlayerEntity, broadcasts vanish, and fires the char-server LeaveMap IPC.
 // Polled once per map tick from MapServerImpl.UpdateGameLogicAsync.
 builder.Services.AddSingleton<MapSessionLifecycle>();
+
+// Mob spawn (see .agents/migrations/map/spawn.md). Registry is the
+// collection of declared spawn entries; service drives initial spawn,
+// idle wander, and respawn timing.
+builder.Services.AddSingleton<IMobSpawnRegistry, MobSpawnRegistry>();
+builder.Services.AddSingleton<IMobSpawnService, MobSpawnService>();
 
 // Core services
 builder.Services.AddSingleton<SessionManager>();

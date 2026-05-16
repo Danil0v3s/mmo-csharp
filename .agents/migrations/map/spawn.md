@@ -33,7 +33,21 @@ rAthena unifies "scripted mob spawn lines" with `monster` script command. We do 
 
 ## Done
 
-Nothing.
+- [`MobSpawnEntry`](../../../Map.Server/Spawn/MobSpawnEntry.cs) — static declaration of one spawn slot (class, map, box, amount, respawn delay+jitter).
+- [`MobEntity`](../../../Map.Server/Entities/MobEntity.cs) upgraded with a `MobDbEntry` reference, current Hp/Sp, the `Origin` spawn entry, and `NextWanderTick`. Speed mirrors `mob_db.WalkSpeed`.
+- [`IMobSpawnRegistry`](../../../Map.Server/Spawn/IMobSpawnRegistry.cs) + [`MobSpawnRegistry`](../../../Map.Server/Spawn/MobSpawnRegistry.cs) — concurrency-safe collector indexed by mapId. NPC parser plugs into this in [npc.md](npc.md).
+- [`IMobSpawnService`](../../../Map.Server/Spawn/IMobSpawnService.cs) + [`MobSpawnService`](../../../Map.Server/Spawn/MobSpawnService.cs):
+  - `SpawnInitial()` — places mobs per entry, broadcasts STANDENTRY, called once from `MapServerImpl.StartAsync`.
+  - `Tick()` — per-tick wander + respawn promotion; called from `UpdateGameLogicAsync`.
+  - `KillMob(EntityId)` — death entry point: VANISH broadcast, registry removal, respawn scheduled per entry (delay + random jitter).
+- Visibility's `BuildStandEntry` now emits a mob-shaped `ZC_NOTIFY_STANDENTRY` (objecttype=5, Job=classId, name from mob_db / spawn override).
+- 9 tests in [Map.Server.Tests/Spawn/](../../../Map.Server.Tests/Spawn/) covering amount/box placement, broadcasts, unknown-class skip, kill flow, zero-delay respawn, and wander start.
+
+### Pending (deferred)
+
+- Spawn entries are populated programmatically today; the NPC parser feeds them automatically once [npc.md](npc.md) lands.
+- GM `@killmob` packet handler — `MobSpawnService.KillMob` is the entry point but no client/admin packet calls it yet.
+- Wander algorithm is the simple "random walkable cell within 7 cells"; rAthena's `MOB_LAZYMOVEPERC` cadence + 1–3 cell hops can land alongside the broader mob AI in MS3.
 
 ## Pending
 
@@ -119,3 +133,4 @@ Map.Server/Spawn/
 ## History
 
 - **2026-05-16** — Plan written. No implementation yet.
+- **2026-05-16** — Registry + service shipped. Initial spawn / wander / kill-and-respawn cover the MS2 acceptance criteria. NPC-driven entry population and GM kill packet remain follow-ups.

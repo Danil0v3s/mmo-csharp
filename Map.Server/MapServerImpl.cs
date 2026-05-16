@@ -6,6 +6,7 @@ using Core.Server.Network;
 using Core.Server.Packets;
 using Map.Server.Services;
 using Map.Server.Session;
+using Map.Server.Spawn;
 
 namespace Map.Server;
 
@@ -17,6 +18,7 @@ public class MapServerImpl : GameLoopServer
     private readonly IPlayerMapService _playerMapService;
     private readonly ICharServerIpcService _charServerIpc;
     private readonly MapSessionLifecycle _lifecycle;
+    private readonly IMobSpawnService _mobSpawn;
     private readonly MapServerConfiguration _mapConfiguration;
     private DateTime _nextRegistrationAttemptUtc = DateTime.MinValue;
     private DateTime _nextKeepAliveUtc = DateTime.MinValue;
@@ -35,7 +37,8 @@ public class MapServerImpl : GameLoopServer
         MapServerState serverState,
         IPlayerMapService playerMapService,
         ICharServerIpcService charServerIpc,
-        MapSessionLifecycle lifecycle)
+        MapSessionLifecycle lifecycle,
+        IMobSpawnService mobSpawn)
         : base("MapServer", configuration, logger, packetSystem, sessionManager)
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
@@ -44,6 +47,7 @@ public class MapServerImpl : GameLoopServer
         _playerMapService = playerMapService;
         _charServerIpc = charServerIpc;
         _lifecycle = lifecycle;
+        _mobSpawn = mobSpawn;
         _mapConfiguration = (MapServerConfiguration)configuration;
 
         // Wire up the connection service to use this server's connection manager
@@ -54,6 +58,11 @@ public class MapServerImpl : GameLoopServer
     {
         await base.StartAsync(cancellationToken);
         _serverState.SetState(State);
+
+        // Initial mob population per the configured spawn registry. Idempotent
+        // — re-runs on tick wouldn't double-spawn, but we do it once at boot to
+        // pre-fill the map before any client connects.
+        _mobSpawn.SpawnInitial();
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken = default)
@@ -147,6 +156,8 @@ public class MapServerImpl : GameLoopServer
         // we can broadcast vanish + run LeaveMap IPC while the EntityId is
         // still bound. Idempotent; sets MapSessionData.CleanupCompleted.
         await _lifecycle.SweepAsync(cancellationToken);
+        // Mob wander + pending respawn promotion.
+        _mobSpawn.Tick();
     }
 
     private async Task EnsureRegisteredOnCharServerAsync(CancellationToken cancellationToken)

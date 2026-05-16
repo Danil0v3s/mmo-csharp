@@ -135,7 +135,17 @@ public sealed class VisibilityService : IVisibilityService
             X = p.X, Y = p.Y, Dir = p.Dir,
             Name = p.Name,
         },
+        MobEntity m => new ZC_NOTIFY_STANDENTRY
+        {
+            ObjectType = 5, // MOB (clif_bl_type)
+            AccountId = m.Id.Value,
+            CharacterOrEntityId = m.Id.Value,
+            Speed = (short)m.Speed,
+            Job = (short)m.ClassId,           // sprite class
+            X = m.X, Y = m.Y, Dir = m.Dir,
+            Name = m.Name,
+        },
         _ => throw new NotSupportedException(
-            $"NotifySpawnedToArea: {entity.Type} not supported until MS2 (mob/npc spawns).")
+            $"NotifySpawnedToArea: {entity.Type} not supported yet (NPC lands in MS2 npc.md).")
     };
 }

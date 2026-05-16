@@ -137,13 +137,22 @@ public class VisibilityServiceTests
     }
 
     [Fact]
-    public void NotifySpawnedToArea_ForNonPlayerEntity_Throws()
+    public void NotifySpawnedToArea_ForMob_SendsMobStandEntry()
     {
         var ctx = NewContext();
         var mob = new MobEntity(new EntityId(400_000_001), 1002, "Poring", ctx.MapId, 100, 100);
         ctx.Registry.Add(mob);
+        var viewer = ctx.AddPlayer(105, 100, charId: 9);
 
-        Assert.Throws<NotSupportedException>(() => ctx.Service.NotifySpawnedToArea(mob));
+        ctx.Service.NotifySpawnedToArea(mob);
+
+        var p = (ZC_NOTIFY_STANDENTRY)ctx.Dispatcher.Sent
+            .Single(s => s.packet is ZC_NOTIFY_STANDENTRY && s.sessionId == viewer.SessionId)
+            .packet;
+        Assert.Equal((byte)5, p.ObjectType);
+        Assert.Equal(400_000_001, p.AccountId);
+        Assert.Equal((short)1002, p.Job);
+        Assert.Equal("Poring", p.Name);
     }
 
     private static TestContext NewContext()
