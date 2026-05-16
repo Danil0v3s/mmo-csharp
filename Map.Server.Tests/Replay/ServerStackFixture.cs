@@ -30,6 +30,34 @@ public sealed class ServerStackFixture : IAsyncLifetime
         await StartAsync(repoRoot, "Char.Server", port: 6121);
         // Note: capture says 5121 but our config says 5191.
         await StartAsync(repoRoot, "Map.Server", port: 5191);
+
+        // Char registers itself with Login asynchronously after both TCP
+        // listeners are up. Login refuses logins with SC_NOTIFY_BAN until
+        // at least one char server is registered. Wait for that line before
+        // declaring the stack ready, otherwise the first replay races the
+        // registration and fails on a healthy-but-still-warming stack.
+        await WaitForLogLineAsync(
+            Path.Combine(_logDir, "login.log"),
+            "Character server registration request",
+            TimeSpan.FromSeconds(15));
+    }
+
+    private static async Task WaitForLogLineAsync(string path, string needle, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (File.Exists(path))
+            {
+                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var reader = new StreamReader(fs);
+                var content = await reader.ReadToEndAsync();
+                if (content.Contains(needle, StringComparison.Ordinal)) return;
+            }
+            await Task.Delay(250);
+        }
+        throw new TimeoutException(
+            $"Did not see '{needle}' in {path} within {timeout.TotalSeconds}s");
     }
 
     public Task DisposeAsync()
