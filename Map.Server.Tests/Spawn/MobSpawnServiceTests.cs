@@ -1,5 +1,6 @@
 using Core.Server.Packets.Out.ZC;
 using Map.Server.Entities;
+using Map.Server.Items;
 using Map.Server.Mob;
 using Map.Server.Movement;
 using Map.Server.Spawn;
@@ -7,6 +8,7 @@ using Map.Server.Tests.Visibility;
 using Map.Server.Visibility;
 using Map.Server.World;
 using Microsoft.Extensions.Logging.Abstractions;
+using DbItem = Core.Database.Entities.ItemEntity;
 
 namespace Map.Server.Tests.Spawn;
 
@@ -149,6 +151,65 @@ public class MobSpawnServiceTests
         Assert.NotNull(mob.Walk);
     }
 
+    [Fact]
+    public void KillMob_RollsDropsAndCreatesFloorItems()
+    {
+        // Seeded RNG (0) gives us deterministic Next(10000) outputs. Set the
+        // first drop's Rate above whatever Random(0).Next(10_000) returns
+        // and the second below to assert both branches in one go.
+        var ctx = NewContext(seed: 0);
+        ctx.ItemCatalog.Add(909, "Jellopy");
+        ctx.ItemCatalog.Add(501, "Red_Potion");
+
+        // Inject a DbEntry with two drops so we exercise the loop.
+        var poringEntry = new MobDbEntry
+        {
+            Id = 1002, AegisName = "PORING", Name = "Poring", Hp = 55,
+            Drops = new[]
+            {
+                new MobDrop("Jellopy", Rate: 10_000), // always
+                new MobDrop("Red_Potion", Rate: 0),    // never
+            },
+        };
+        var spawnEntry = new MobSpawnEntry
+        {
+            MobClassId = 1002, MapId = ctx.MapId, X = 30, Y = 30,
+            Amount = 1, RespawnDelayMs = 5000,
+        };
+        var mob = new MobEntity(new EntityId(400_000_500), poringEntry, spawnEntry, ctx.MapId, 30, 30);
+        ctx.Entities.Add(mob);
+
+        Assert.True(ctx.Service.KillMob(mob.Id));
+
+        var droppedItems = ctx.Entities.All().OfType<FloorItemEntity>().ToList();
+        Assert.Single(droppedItems);
+        Assert.Equal(909, droppedItems[0].ItemId);
+    }
+
+    [Fact]
+    public void KillMob_UnknownItemNameLogsAndSkips()
+    {
+        var ctx = NewContext();
+        // ItemCatalog deliberately empty — drops should be silently skipped.
+
+        var poringEntry = new MobDbEntry
+        {
+            Id = 1002, AegisName = "PORING", Name = "Poring", Hp = 55,
+            Drops = new[] { new MobDrop("Mystery_Item", Rate: 10_000) },
+        };
+        var spawnEntry = new MobSpawnEntry
+        {
+            MobClassId = 1002, MapId = ctx.MapId, X = 30, Y = 30,
+            Amount = 1, RespawnDelayMs = 5000,
+        };
+        var mob = new MobEntity(new EntityId(400_000_501), poringEntry, spawnEntry, ctx.MapId, 30, 30);
+        ctx.Entities.Add(mob);
+
+        Assert.True(ctx.Service.KillMob(mob.Id));
+
+        Assert.Empty(ctx.Entities.All().OfType<FloorItemEntity>());
+    }
+
     // ---- helpers ----
 
     private static MobSpawnEntry NewEntry(
@@ -181,17 +242,22 @@ public class MobSpawnServiceTests
             new MobDbEntry { Id = 1002, AegisName = "PORING", Name = "Poring", Hp = 55, WalkSpeed = 400 },
             new MobDbEntry { Id = 1004, AegisName = "HORNET", Name = "Hornet", Hp = 169, WalkSpeed = 150 },
         });
+        var itemCatalog = new StubItemCatalog();
+        var itemDrops = new ItemDropService(
+            entities, idAlloc, visibility, NullLogger<ItemDropService>.Instance);
         var service = new MobSpawnService(
             spawnRegistry,
             entities,
             world,
             mobDb,
+            itemCatalog,
+            itemDrops,
             movement,
             visibility,
             idAlloc,
             NullLogger<MobSpawnService>.Instance,
             new Random(seed));
-        return new TestContext(service, spawnRegistry, entities, dispatcher, (uint)mapName.GetHashCode());
+        return new TestContext(service, spawnRegistry, entities, dispatcher, itemCatalog, itemDrops, (uint)mapName.GetHashCode());
     }
 
     private sealed record TestContext(
@@ -199,6 +265,8 @@ public class MobSpawnServiceTests
         MobSpawnRegistry SpawnRegistry,
         EntityRegistry Entities,
         RecordingDispatcher Dispatcher,
+        StubItemCatalog ItemCatalog,
+        IItemDropService ItemDrops,
         uint MapId);
 
     private sealed class StubWorldRegistry : IMapWorldRegistry
@@ -228,6 +296,20 @@ public class MobSpawnServiceTests
         public MobDbEntry? GetByAegisName(string aegisName) =>
             _byName.GetValueOrDefault(aegisName);
         public IEnumerable<MobDbEntry> All() => _byId.Values;
+        public void Reload() { }
+    }
+
+    private sealed class StubItemCatalog : IItemCatalog
+    {
+        private Dictionary<string, DbItem> _byName = new(StringComparer.OrdinalIgnoreCase);
+        public int Count => _byName.Count;
+        public void Add(uint id, string aegis) =>
+            _byName[aegis] = new DbItem { Id = id, NameAegis = aegis, NameEnglish = aegis };
+        public DbItem? Get(uint itemId) =>
+            _byName.Values.FirstOrDefault(i => i.Id == itemId);
+        public DbItem? GetByAegisName(string aegisName) =>
+            _byName.GetValueOrDefault(aegisName ?? string.Empty);
+        public IEnumerable<DbItem> All() => _byName.Values;
         public void Reload() { }
     }
 }

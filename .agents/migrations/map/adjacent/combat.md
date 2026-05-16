@@ -58,7 +58,7 @@ The first big MS3 work. Combat ties together attack actions, damage formulas, st
 
 4. **Death + exp distribution.** Last-hit-wins for MS3; mob's exp pool split between party (if any) per rAthena rules. Calls `SetCharacterOnline` lifecycle update (the char might not log off but stats change; that's the inventory IPC).
 
-5. **Drops.** On mob death, roll its drop table (`mob_db.Drops`) and instantiate `ItemEntity` on the map. Needs an item_db parser so the aegis names in `mob_db` resolve to numeric `itemId`s — that's the natural next pillar after this scaffolding.
+5. **Drops.** ~~On mob death, roll its drop table…~~ **Done.** `MobSpawnService.RollAndDropLoot` rolls each `mob_db.Drops` entry against its rate, resolves aegis names through `IItemCatalog`, and spawns floor items via `IItemDropService`. MVP drops + party share + `battle_config.item_rate_*` modifiers still queued — they need the damage-tracking work (last-hit / top-damager attribution).
 
 ### Acceptance
 - A player can auto-attack a Poring next to them; HP ticks down on both sides; mob dies; player receives exp.
@@ -68,3 +68,4 @@ The first big MS3 work. Combat ties together attack actions, damage formulas, st
 ## History
 - **2026-05-16** — Plan stub.
 - **2026-05-16** — Scaffolding slice shipped: HP on entities, ZC_NOTIFY_ACT3 wire format, IDamageService.ApplyDamage with HP-mutation + death pipeline, @damage GM command, 5 unit tests. Drop rolling / damage formula / auto-attack loop / EXP distribution remain queued.
+- **2026-05-16** — Drop rolling closed via `IItemCatalog` (DB-backed item_db) → `MobSpawnService.RollAndDropLoot` → `IItemDropService.DropOnFloor`. Damage formula, auto-attack loop, EXP distribution, MVP/party rules still queued.

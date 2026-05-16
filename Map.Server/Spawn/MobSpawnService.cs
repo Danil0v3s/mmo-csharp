@@ -1,5 +1,6 @@
 using Core.Server.Packets.Out.ZC;
 using Map.Server.Entities;
+using Map.Server.Items;
 using Map.Server.Mob;
 using Map.Server.Movement;
 using Map.Server.Visibility;
@@ -19,6 +20,8 @@ public sealed class MobSpawnService : IMobSpawnService
     private readonly IEntityRegistry _entities;
     private readonly IMapWorldRegistry _worldRegistry;
     private readonly IMobDb _mobDb;
+    private readonly IItemCatalog _itemCatalog;
+    private readonly IItemDropService _itemDrops;
     private readonly IMovementService _movement;
     private readonly IVisibilityService _visibility;
     private readonly EntityIdAllocator _idAllocator;
@@ -35,6 +38,8 @@ public sealed class MobSpawnService : IMobSpawnService
         IEntityRegistry entities,
         IMapWorldRegistry worldRegistry,
         IMobDb mobDb,
+        IItemCatalog itemCatalog,
+        IItemDropService itemDrops,
         IMovementService movement,
         IVisibilityService visibility,
         EntityIdAllocator idAllocator,
@@ -45,6 +50,8 @@ public sealed class MobSpawnService : IMobSpawnService
         _entities = entities;
         _worldRegistry = worldRegistry;
         _mobDb = mobDb;
+        _itemCatalog = itemCatalog;
+        _itemDrops = itemDrops;
         _movement = movement;
         _visibility = visibility;
         _idAllocator = idAllocator;
@@ -139,6 +146,11 @@ public sealed class MobSpawnService : IMobSpawnService
         var entity = _entities.Get(id);
         if (entity is not MobEntity mob) return false;
 
+        // Roll the mob's drop table BEFORE removing it so drop coordinates
+        // align with the corpse cell. ItemDropService broadcasts each fall
+        // entry independently; the order doesn't matter to clients.
+        RollAndDropLoot(mob);
+
         _visibility.NotifyVanishedToArea(mob, VanishReason.Died);
         _entities.Remove(id);
 
@@ -162,6 +174,41 @@ public sealed class MobSpawnService : IMobSpawnService
     }
 
     // ---- helpers ----
+
+    /// <summary>
+    /// Iterate the mob's drop table; each entry has an independent
+    /// <c>rng &lt; rate/10000</c> roll. Survivors get spawned as floor items
+    /// at the mob's death cell with a random sub-cell offset (rAthena's
+    /// visual jitter so multiple drops don't overlap exactly). MVP-only
+    /// drops, exp distribution, party share, and rate modifiers all live
+    /// with the broader combat work in <c>adjacent/combat.md</c>.
+    /// </summary>
+    private void RollAndDropLoot(MobEntity mob)
+    {
+        if (mob.DbEntry == null || mob.DbEntry.Drops.Count == 0) return;
+
+        foreach (var drop in mob.DbEntry.Drops)
+        {
+            if (drop.Rate <= 0) continue;
+            if (_rng.Next(10_000) >= drop.Rate) continue;
+
+            var itemRow = _itemCatalog.GetByAegisName(drop.Item);
+            if (itemRow == null)
+            {
+                _logger.LogWarning(
+                    "Mob {Class} drops unknown item '{Item}' (no row in item_db)",
+                    mob.ClassId, drop.Item);
+                continue;
+            }
+
+            _itemDrops.DropOnFloor(
+                mob.MapId, mob.X, mob.Y,
+                itemId: (int)itemRow.Id,
+                amount: 1,
+                subX: (byte)_rng.Next(0, 16),
+                subY: (byte)_rng.Next(0, 16));
+        }
+    }
 
     private bool TrySpawnOne(MobSpawnEntry entry, MobDbEntry dbEntry, MapData map)
     {

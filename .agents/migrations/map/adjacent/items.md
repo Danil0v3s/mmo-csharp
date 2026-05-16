@@ -43,14 +43,15 @@ Items thread through every gameplay system. The Char server already owns persist
   - [`PickupHandler`](../../../../Map.Server/Handlers/PickupHandler.cs) routes `CZ_ITEM_PICKUP` → `TryPickup`.
   - Visibility refactor: `BuildEnterViewPacket` / `BuildExitViewPacket` now dispatch the right packet per entity type (STANDENTRY for PC/Mob, ITEM_ENTRY/DISAPPEAR for items). `SendCurrentViewToSelf` surfaces all entity types on spawn (not just PCs).
   - 15 tests: 3 packet wire-shape, 6 `ItemDropService`, plus existing visibility/spawn coverage.
+- **`IItemCatalog` over `IItemRepository`** ([IItemCatalog.cs](../../../../Map.Server/Items/IItemCatalog.cs) / [ItemCatalog.cs](../../../../Map.Server/Items/ItemCatalog.cs)) — DB-backed snapshot loaded once at boot (~28K rows). `Get(uint)`, `GetByAegisName(string)`, `All()`, `Reload()`. Returns `Core.Database.Entities.ItemEntity` directly.
+- **Mob drop rolling on death** ([MobSpawnService.RollAndDropLoot](../../../../Map.Server/Spawn/MobSpawnService.cs)) — `KillMob` now iterates `mob.DbEntry.Drops`, rolls `rng.Next(10_000) < drop.Rate` per entry, resolves the aegis name via `IItemCatalog.GetByAegisName`, and spawns the floor item with a random sub-cell offset. Closes the spawn → kill → drop → pickup loop end-to-end. Two new tests in `MobSpawnServiceTests` cover the always-drop, never-drop, and unknown-item-name branches.
 
 ## Pending
 
-1. **`IItemCatalog` DB loader.** Hydrate from `IItemRepository.GetAllAsync()` at boot. API: `Get(uint id)`, `GetByAegisName(string)`, `All()`, `Reload()`. ~28K rows in memory is well within reach (item_db is the bulky one; mob_db ~2.5K).
-2. **Mob drop rolling on death.** In `MobSpawnService.KillMob` (or a dedicated `IDeathService`), iterate `mob.DbEntry.Drops`, roll `rng.Next(10_000) < drop.Rate`, look up `IItemCatalog.GetByAegisName(drop.Item)` to get the numeric id, and call `IItemDropService.DropOnFloor`. Closes the spawn → death → drop → pickup loop.
-3. **Inventory model** on the session + char-server IPC for persistence (P6 wrappers already exist).
-4. **Equip / unequip / consumable use / drop-from-inventory flows.** `ItemDropService` is a building block for these.
-5. **Loot protection** (owner + party id), bound items, refined items.
+1. **Inventory model** on the session + char-server IPC for persistence (P6 wrappers already exist).
+2. **Equip / unequip / consumable use / drop-from-inventory flows.** `ItemDropService` is a building block for these.
+3. **MVP drops + party share + drop-rate modifiers.** Today `RollAndDropLoot` uses raw `mob_db` rates and only rolls the regular `Drops` list. MVP drops (top-damager-only) and rAthena's `battle_config.item_rate_*` modifiers land alongside the combat damage-tracking work.
+4. **Loot protection** (owner + party id), bound items, refined items.
 
 ### Acceptance
 - Mob drops items on death; players see them on the floor and can pick them up within 2 cells.
@@ -62,3 +63,4 @@ Items thread through every gameplay system. The Char server already owns persist
 - **2026-05-16** — Plan stub.
 - **2026-05-16** — Floor-item lifecycle first slice shipped: ItemEntity + 4 packets + drop/pickup/despawn service + PickupHandler + visibility per-type packet dispatch. Inventory persistence remains queued.
 - **2026-05-16** — Plan re-aimed at DB-backed catalog (`IItemCatalog` over `IItemRepository`) instead of a YAML parser, matching rAthena's `use_sql_db` alternate path and the existing 28K-row seed in `Core.Database/Seeds/Scripts/seed_item_db_*.sql`. The floor-item runtime class is being renamed `ItemEntity` → `FloorItemEntity` to avoid a collision with the DB row.
+- **2026-05-16** — Rename + ItemCatalog shipped. Mob death now rolls drops via `IItemCatalog.GetByAegisName(...)`; the spawn → kill → drop → pickup loop is end-to-end demonstrable. 177 Map.Server tests green.

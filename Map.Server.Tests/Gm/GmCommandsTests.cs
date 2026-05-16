@@ -2,6 +2,7 @@ using Core.Server.Packets.Out.ZC;
 using Map.Server.Entities;
 using Map.Server.Gm;
 using Map.Server.Gm.Commands;
+using Map.Server.Items;
 using Map.Server.Mob;
 using Map.Server.Movement;
 using Map.Server.Spawn;
@@ -9,6 +10,7 @@ using Map.Server.Tests.Visibility;
 using Map.Server.Visibility;
 using Map.Server.World;
 using Microsoft.Extensions.Logging.Abstractions;
+using DbItem = Core.Database.Entities.ItemEntity;
 
 namespace Map.Server.Tests.Gm;
 
@@ -126,9 +128,12 @@ public class GmCommandsTests
         var movement = new MovementService(entities, world, visibility, NullLogger<MovementService>.Instance);
         var mobDb = new StubMobDb();
         var spawnRegistry = new MobSpawnRegistry();
+        var ids = new EntityIdAllocator();
+        var itemCatalog = new EmptyItemCatalog();
+        var itemDrops = new ItemDropService(entities, ids, visibility, NullLogger<ItemDropService>.Instance);
         var spawn = new MobSpawnService(
-            spawnRegistry, entities, world, mobDb, movement, visibility,
-            new EntityIdAllocator(), NullLogger<MobSpawnService>.Instance, new Random(0));
+            spawnRegistry, entities, world, mobDb, itemCatalog, itemDrops, movement, visibility,
+            ids, NullLogger<MobSpawnService>.Instance, new Random(0));
         return new TestContext(
             entities, dispatcher, visibility, world, spawn, (uint)mapName.GetHashCode());
     }
@@ -166,6 +171,15 @@ public class GmCommandsTests
         public MobDbEntry? Get(int classId) => null;
         public MobDbEntry? GetByAegisName(string aegisName) => null;
         public IEnumerable<MobDbEntry> All() => Array.Empty<MobDbEntry>();
+        public void Reload() { }
+    }
+
+    private sealed class EmptyItemCatalog : IItemCatalog
+    {
+        public int Count => 0;
+        public DbItem? Get(uint itemId) => null;
+        public DbItem? GetByAegisName(string aegisName) => null;
+        public IEnumerable<DbItem> All() => Array.Empty<DbItem>();
         public void Reload() { }
     }
 }

@@ -1,6 +1,7 @@
 using Core.Server.Packets.Out.ZC;
 using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Items;
 using Map.Server.Mob;
 using Map.Server.Movement;
 using Map.Server.Spawn;
@@ -8,6 +9,7 @@ using Map.Server.Tests.Visibility;
 using Map.Server.Visibility;
 using Map.Server.World;
 using Microsoft.Extensions.Logging.Abstractions;
+using DbItem = Core.Database.Entities.ItemEntity;
 
 namespace Map.Server.Tests.Combat;
 
@@ -106,8 +108,10 @@ public class DamageServiceTests
         var mobDb = new StubMobDb();
         var spawnRegistry = new MobSpawnRegistry();
         var ids = new EntityIdAllocator();
+        var itemCatalog = new EmptyItemCatalog();
+        var itemDrops = new ItemDropService(entities, ids, visibility, NullLogger<ItemDropService>.Instance);
         var mobSpawn = new MobSpawnService(
-            spawnRegistry, entities, world, mobDb, movement, visibility,
+            spawnRegistry, entities, world, mobDb, itemCatalog, itemDrops, movement, visibility,
             ids, NullLogger<MobSpawnService>.Instance, new Random(0));
         var service = new DamageService(visibility, mobSpawn, entities, NullLogger<DamageService>.Instance);
         return new TestContext(service, entities, dispatcher, ids, (uint)mapName.GetHashCode());
@@ -152,6 +156,15 @@ public class DamageServiceTests
         public MobDbEntry? Get(int classId) => null;
         public MobDbEntry? GetByAegisName(string aegisName) => null;
         public IEnumerable<MobDbEntry> All() => Array.Empty<MobDbEntry>();
+        public void Reload() { }
+    }
+
+    private sealed class EmptyItemCatalog : IItemCatalog
+    {
+        public int Count => 0;
+        public DbItem? Get(uint itemId) => null;
+        public DbItem? GetByAegisName(string aegisName) => null;
+        public IEnumerable<DbItem> All() => Array.Empty<DbItem>();
         public void Reload() { }
     }
 }
