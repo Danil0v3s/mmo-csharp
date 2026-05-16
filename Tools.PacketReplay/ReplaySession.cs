@@ -22,6 +22,7 @@ public sealed class ReplaySession : IAsyncDisposable
     private readonly string _host;
     private readonly IReadOnlyDictionary<int, int> _portRemap;
     private readonly TimeSpan _readTimeout;
+    private readonly TimeSpan _quietPeriod;
     private readonly TokenRewriter? _rewriter;
     private TcpClient? _client;
     private NetworkStream? _stream;
@@ -31,11 +32,17 @@ public sealed class ReplaySession : IAsyncDisposable
         string host,
         IReadOnlyDictionary<int, int> portRemap,
         TimeSpan readTimeout,
-        TokenRewriter? rewriter = null)
+        TokenRewriter? rewriter = null,
+        TimeSpan? quietPeriod = null)
     {
         _host = host;
         _portRemap = portRemap;
         _readTimeout = readTimeout;
+        // After this gap of socket silence we stop waiting for the rest of
+        // the expected chunk and let the comparer surface a length diff.
+        // Keeps the report honest when our server sends fewer bytes than
+        // the capture expected.
+        _quietPeriod = quietPeriod ?? TimeSpan.FromMilliseconds(250);
         _rewriter = rewriter;
     }
 
@@ -71,10 +78,15 @@ public sealed class ReplaySession : IAsyncDisposable
                     var actualBytes = await ReadExactAsync(ev.Bytes.Length, ct);
                     expected.Add(new ReplayChunk(ev.SourceLine, ev.Port, ev.Bytes));
                     actual.Add(new ReplayChunk(ev.SourceLine, ev.Port, actualBytes));
-                    if (actualBytes.Length < ev.Bytes.Length)
+                    // Surface ONLY connection drops as "early close" —
+                    // shorter-than-expected reads (server returned less
+                    // than the capture) are real divergences but the
+                    // session keeps going so the comparer can render the
+                    // length diff and any subsequent chunks.
+                    if (actualBytes.Length == 0 && ev.Bytes.Length > 0)
                     {
-                        earlyClose = $"server closed connection on port {ev.Port} mid-read at capture line {ev.SourceLine} "
-                                   + $"(expected {ev.Bytes.Length}B, got {actualBytes.Length}B)";
+                        earlyClose = $"server closed connection on port {ev.Port} at capture line {ev.SourceLine} "
+                                   + $"(expected {ev.Bytes.Length}B, server sent nothing)";
                         break;
                     }
                     // Let the rewriter sniff token-bearing packets so the
@@ -119,17 +131,51 @@ public sealed class ReplaySession : IAsyncDisposable
         _currentPort = capturePort;
     }
 
+    /// <summary>
+    /// Adaptive read: drain up to <paramref name="count"/> bytes from the
+    /// stream. Two-phase deadlines so we don't either block forever or bail
+    /// before the server has a chance to respond:
+    ///
+    ///   Phase 1 (before any bytes arrive): wait up to <c>_readTimeout</c>.
+    ///   Phase 2 (after the first byte):    wait up to <c>_quietPeriod</c>
+    ///                                      between successive reads.
+    ///
+    /// This lets the comparer surface "got fewer than expected" as a regular
+    /// length-mismatch diff once the server's response goes idle, instead of
+    /// blocking on the full ReadTimeout every time our response is shorter
+    /// than the captured one.
+    ///
+    /// Three terminal states:
+    ///   1. We read the full <paramref name="count"/> bytes — return them.
+    ///   2. The server closed the connection — return what we have.
+    ///   3. Phase 1 timed out (no response at all) OR phase 2 went quiet —
+    ///      return what we have, comparer reports the length diff.
+    /// </summary>
     private async Task<byte[]> ReadExactAsync(int count, CancellationToken ct)
     {
         var buffer = new byte[count];
         var read = 0;
         while (read < count)
         {
-            var n = await _stream!.ReadAsync(buffer.AsMemory(read, count - read), ct);
+            var deadline = read == 0 ? _readTimeout : _quietPeriod;
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(deadline);
+            int n;
+            try
+            {
+                n = await _stream!.ReadAsync(buffer.AsMemory(read, count - read), cts.Token);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                // Either no bytes ever arrived (phase 1) or stream went
+                // quiet after a partial response (phase 2). Either way,
+                // bail with what we have; comparer surfaces the diff.
+                Array.Resize(ref buffer, read);
+                return buffer;
+            }
             if (n == 0)
             {
-                // Connection closed before all expected bytes arrived; return
-                // what we got so the comparer surfaces the length mismatch.
+                // Connection actually closed (FIN). Same partial return.
                 Array.Resize(ref buffer, read);
                 return buffer;
             }

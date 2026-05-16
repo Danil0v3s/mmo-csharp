@@ -333,7 +333,11 @@ public class CharServerImpl : GameLoopServer, ICharServerRuntime
             $"{_charConfiguration.CharIp}:{_charConfiguration.Port}",
             (ushort)_charConfiguration.Port,
             (uint)_charConfiguration.CharMaintenance,
-            _charConfiguration.CharNew,
+            // CharNewDisplay drives the cosmetic "new server" badge in the
+            // client server-list (AC_ACCEPT_LOGIN.CharServers[].New). It's a
+            // separate concern from CharNew (which gates char *creation* in
+            // CharacterCreateHandler); the two were previously conflated.
+            _charConfiguration.CharNewDisplay != 0,
             cancellationToken);
 
         if (response?.Success == true)

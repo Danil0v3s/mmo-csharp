@@ -74,9 +74,14 @@ public sealed class PacketFramer
                 packetLength = BitConverter.ToInt16(bytes[(offset + 2)..(offset + 4)]);
                 if (packetLength < 4)
                 {
-                    throw new InvalidDataException(
-                        $"Variable packet {header} (0x{(short)header:X4}) at offset {offset} "
-                        + $"declared length {packetLength} (must be ≥ 4)");
+                    // Malformed length field. This usually means a packet
+                    // classified as variable in the registry is actually
+                    // fixed (no length prefix) on the wire — the framer
+                    // has misinterpreted bytes 2-3 as a length. Surface as
+                    // an unknown-packet tail so the comparer can name it.
+                    unknown.Add(new UnknownPacket(header, offset, bytes[offset..].ToArray()));
+                    offset = bytes.Length;
+                    break;
                 }
             }
 
