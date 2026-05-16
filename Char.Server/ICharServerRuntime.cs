@@ -10,6 +10,13 @@ public interface ICharServerState
     ServerState State { get; }
     int RegisteredServerId { get; }
     bool IsRegisteredToLoginServer { get; }
+
+    /// <summary>
+    /// Max level difference for party exp/item sharing. Matches rAthena's process-global
+    /// `party_share_level` (inter.cpp). Updated at runtime via the PartyShareLevel RPC.
+    /// </summary>
+    uint PartyShareLevel { get; }
+    void SetPartyShareLevel(uint shareLevel);
 }
 
 /// <summary>

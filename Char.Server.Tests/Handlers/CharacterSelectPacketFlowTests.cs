@@ -161,6 +161,44 @@ public class CharacterSelectPacketFlowTests
     }
 
     [Fact]
+    public async Task HandleAsync_WhenAccountDataNotLoaded_ShouldRejectAsOutOfOrder()
+    {
+        // Regression for "out-of-order char-select before charlist": when CH_SELECT_CHAR
+        // arrives after auth but before the account-data continuation completes, the
+        // handler must reject with HC_REFUSE_ENTER. Mirrors the charlist precondition
+        // check (CharacterListFlowService.IsOutOfOrderCharlistRequest).
+        using var sockets = CreateSocketPair();
+        var loggerFactory = LoggerFactory.Create(_ => { });
+        var packetSystem = new PacketSystem();
+        var session = new CharSessionData(
+            sockets.ServerSide,
+            heartbeatTimeout: 30000,
+            packetSystem.Factory,
+            packetSystem.Registry,
+            loggerFactory.CreateLogger("session"));
+
+        session.AccountId = 2000003;
+        session.IsAuthenticated = true;
+        session.AccountDataLoaded = false; // auth done, account data NOT yet loaded
+        session.PincodeVerified = true;
+
+        var handler = new CharacterSelectHandler(
+            loggerFactory.CreateLogger<CharacterSelectHandler>(),
+            new InMemoryCharacterRepository([]),
+            new MapAuthTicketService(),
+            new FakeServerConnectionService(hasMapConnection: true),
+            new FakeMapServerRegistryService(hasMaps: []),
+            new CharServerConfiguration());
+
+        await handler.HandleAsync(session, BuildSelectPacket(slot: 0));
+        await session.FlushPacketsAsync();
+
+        var payload = ReceiveSinglePacket(sockets.ClientSide);
+        Assert.Equal((short)PacketHeader.HC_REFUSE_ENTER, BitConverter.ToInt16(payload, 0));
+        Assert.False(session.IsAlive);
+    }
+
+    [Fact]
     public async Task HandleAsync_Unauthenticated_ShouldSendRefuseEnterAndDisconnect()
     {
         using var sockets = CreateSocketPair();

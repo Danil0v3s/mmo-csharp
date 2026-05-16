@@ -255,4 +255,5 @@ After P7 lands, the next phase is map-server gameplay — combat, skills, AI, NP
 
 ## History
 
+- **2026-05-16** — **P1 and P2 complete.** Char-server side now ~100% rAthena parity (modulo a few stubs deferred to P6 map wiring). Test suite 129/129. See per-doc Histories for specifics. Next: P3 (Login completeness).
 - **2026-05-15** — Roadmap created. Sequenced after audit found Map.Server invokes only 2 of 118 char RPCs; user directive is to complete Login + Char + Interop (incl. map→char) before any map gameplay work.

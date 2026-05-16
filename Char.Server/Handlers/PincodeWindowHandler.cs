@@ -30,8 +30,6 @@ public class PincodeWindowHandler(
             return;
         }
 
-        PincodeFlowSupport.SendState(
-            session,
-            string.IsNullOrEmpty(session.Pincode) ? PincodeState.New : PincodeState.Ask);
+        PincodeFlowSupport.SendState(session, PincodeFlowSupport.ComputeWindowState(session));
     }
 }

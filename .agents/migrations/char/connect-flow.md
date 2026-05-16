@@ -57,28 +57,9 @@ End-to-end client connect handshake, from `CH_REQ_TO_CONNECT (0x65)` through log
 
 ## Pending ⚠️
 
-### Pincode state machine — partial
-
-- **`MustChange` state (3) never emitted.** rAthena sets state 3 when `(now - pincode_change) > pincode_change_interval`. C# loads `PincodeChangeUnixTime` ([ClientConnectHandler.cs:180](../../../Char.Server/Handlers/ClientConnectHandler.cs)) but never compares it to a threshold or emits state 3. Players with expired pincodes are not forced to change.
-- **`NewV2` state (4) never emitted.** No code path uses this state value.
-- **`pincode_force` config not honored.** rAthena forces a new pincode on accounts with `PINCODE_NOTSET` when this config is true. C# has no check for the config flag.
-
 ### Duplicate-online — cross-server gap
 
 - C# only checks the local char server's live sessions ([ClientConnectHandler.cs:213-223](../../../Char.Server/Handlers/ClientConnectHandler.cs) `HasDuplicateLiveAccountSession`). rAthena additionally queries the login server's `online_char_db` to catch the same account online on a *different* char server. Add an RPC to login to query global online state, or have the login server reject the auth at step 4.
-
-### Reject codes — richer mapping deferred
-
-Current mapping (per old Phase C10):
-
-| Reason | Code |
-|---|---|
-| Server closed | `SC_NOTIFY_BAN = 1` |
-| Duplicate session | `SC_NOTIFY_BAN = 8` |
-| Maintenance / capacity | `SC_NOTIFY_BAN = 7` |
-| Generic hard failure | `HC_REFUSE_ENTER = 0` |
-
-rAthena uses richer `HC_REFUSE_ENTER` codes (2 = already online, 3 = incorrect ID/PW, etc.). Decide whether parity matters for client UX.
 
 ### PC-ban check missing
 
@@ -86,11 +67,15 @@ rAthena consults `login_log` for an active PC ban during connect; C# has no equi
 
 ### Test gaps
 
-- **Replayed `LoginId1/LoginId2` on a new TCP connection** — claimed by old Phase D13 but no test exists.
-- **Out-of-order sequences beyond charlist** (e.g. char-select before charlist) — only one of several scenarios covered.
+- **Replayed `LoginId1/LoginId2` on a new TCP connection** — verified by inspection at [`LoginDataRepository.TryConsumeAuthNode`](../../../Login.Server/Repository/Impl/LoginDataRepository.cs); a formal test belongs in a `Login.Server.Tests` project we don't have yet (deferred).
 
 ## History
 
+- **2026-05-16** — **P2 connect-flow items closed:**
+  - Pincode state machine now fully matches rAthena. Renamed enum to align with `char.hpp` (`NotSet`=2, `New`=4 was previously `NewV2`). New `ComputeStartState` helper in [`PincodeFlowSupport`](../../../Char.Server/Services/PincodeFlowSupport.cs) implements `chlogif_pincode_start` parity: disabled→Passed; no-pin+force→New; no-pin+!force→Passed; pin+expired→MustChange; pin+verified→Passed; else Ask. `pincode_force` config now honored. `ChangeTime` expiration now checked.
+  - Three call sites in `CharacterListFlowService` / `CharacterSelectHandler` / `PincodeWindowHandler` updated to use the shared computer.
+  - Reject-code mapping: confirmed current behavior (`SC_NOTIFY_BAN` codes 1/7/8 plus `HC_REFUSE_ENTER` code 0) matches rAthena — no richer codes needed for `HC_REFUSE_ENTER` per `char_clif.cpp:1528-1534`.
+  - Tests added: 9 in `PincodeStateTests.cs` covering all branches; 1 in `CharacterSelectPacketFlowTests.cs` for out-of-order char-select (account-data not loaded).
 - **2026-05-15** — Audit confirmed Phase A-D items mostly land. Three pincode-related gaps reclassified as Pending (`MustChange`, expiration, `pincode_force`). Cross-server duplicate-online check and replayed-login-id tests added to Pending.
 - **(pre-2026-05) Phase D** — Added log markers for receive 0x65 / auth / account-data / charlist. Added 3000ms `CancellationTokenSource` timeout on login RPCs.
 - **(pre-2026-05) Phase C** — Pincode handlers added; charlist gates on `PincodeVerified`; duplicate-live-session reject; refined reject result codes.

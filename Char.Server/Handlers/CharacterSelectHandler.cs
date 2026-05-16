@@ -34,7 +34,7 @@ public class CharacterSelectHandler(
         {
             PincodeFlowSupport.SendState(
                 session,
-                string.IsNullOrEmpty(session.Pincode) ? PincodeState.New : PincodeState.Ask);
+                PincodeFlowSupport.ComputeStartState(session, configuration.Pincode));
             return;
         }
 

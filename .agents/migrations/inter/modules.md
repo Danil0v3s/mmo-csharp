@@ -24,7 +24,7 @@ Per-feature inter-server modules: party, guild, storage, mail, auction, quest, a
 | `BreakParty` | 0x3026 | DB delete + clear char.party_id |
 | `PartyMessage` | 0x3027 | Forward (route to map members) |
 | `PartyLeaderChange` | 0x3029 | DB update |
-| `PartyShareLevel` | 0x302A | ⚠️ **STUB** — returns success without persisting ([CharGrpcService.cs:1474-1482](../../../Char.Server/CharGrpcService.cs)) |
+| `PartyShareLevel` | 0x302A | Persists to `CharServerState.PartyShareLevel` (process-global, matches rAthena `inter.cpp:party_share_level`) |
 
 ## Guild (`int_guild.cpp`) ✅ char side
 
@@ -125,9 +125,7 @@ Skills round-trip via `skill_homunculus` using rAthena's DELETE-all + INSERT-non
 
 ## Summary of remaining char-side bugs
 
-1. **LOW — `PartyShareLevel` is a no-op stub** (see Party section)
-
-(All HIGH/MEDIUM bugs closed in P1 — see History.)
+None. All HIGH/MEDIUM bugs closed in P1; LOW `PartyShareLevel` closed in P2.
 
 ## Files / structure
 
@@ -137,6 +135,7 @@ Skills round-trip via `skill_homunculus` using rAthena's DELETE-all + INSERT-non
 
 ## History
 
+- **2026-05-16** — **P2 closed for Party.** `PartyShareLevel` now persists via `CharServerState.PartyShareLevel` (rAthena `inter.cpp` global parity).
 - **2026-05-16** — **P1 closed for Mail / Auction / Homunculus.**
   - Mail attachments persisted via typed `MailAttachmentItem` proto rows on send, returned + cleared on `MailGetAttachment`, included in inbox/read responses.
   - Auction bid refunds the outbid prior buyer via auto-generated mail (rAthena `mail_sendmail` parity).

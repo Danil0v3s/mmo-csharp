@@ -49,11 +49,7 @@ rAthena's `chclif_parse` (lines 1588-1632) rejects non-whitelisted packets while
 
 ## Pending ⚠️
 
-### Minor divergences (low priority — current behavior is safe but not exact)
-
-- **`CH_KEEP_ALIVE 0x187` is stricter than rAthena.** rAthena ignores the account_id field on keep-alive ([char_clif.cpp:1328](/Volumes/1TB/Projetos/rathena/src/char/char_clif.cpp)); C# disconnects on mismatch ([CharKeepAliveHandler.cs:12](../../../Char.Server/Handlers/CharKeepAliveHandler.cs)). Decide whether to relax or document the divergence.
-
-- **`CH_REQ_CHANGE_CHARNAME 0x8fc` resend burst differs.** rAthena calls `chclif_mmo_char_send` (full char list); C# calls `ResendCharacterWindowAsync` ([CharacterRenameApplyHandler.cs:146-164](../../../Char.Server/Handlers/CharacterRenameApplyHandler.cs)) which sends `HC_ACCEPT_ENTER` + `HC_CHARLIST_NOTIFY` + `HC_BLOCK_CHARACTER`. Functionally equivalent, structurally different. Verify clients accept both.
+None. P2 closed the two minor divergence items as deliberate decisions — see History.
 
 ## Tests
 
@@ -61,5 +57,8 @@ Per-handler tests in [Char.Server.Tests/Handlers/](../../../Char.Server.Tests/Ha
 
 ## History
 
+- **2026-05-16** — **P2 closed for packets:**
+  - `CH_KEEP_ALIVE 0x187` stricter check (validate account_id, disconnect on mismatch) kept as a **deliberate divergence** — catches forged keep-alive packets that rAthena lets through. Marked won't-fix.
+  - `CH_REQ_CHANGE_CHARNAME 0x8fc` resend burst: re-audited [`CharacterRenameApplyHandler.cs:74-113`](../../../Char.Server/Handlers/CharacterRenameApplyHandler.cs) against rAthena `chclif_mmo_char_send` ([char_clif.cpp:440-453](/Volumes/1TB/Projetos/rathena/src/char/char_clif.cpp)). Both send the same 4 packets in order: `HC_ACCEPT_ENTER2` + `HC_ACCEPT_ENTER` + `HC_CHARLIST_NOTIFY` + `HC_BLOCK_CHARACTER`. Earlier audit was wrong; no change needed.
 - **2026-05-15** — Audited all 17 handlers against rAthena `char_clif.cpp`. 15 are exact matches, 2 have benign divergences logged in Pending.
 - **(undated, pre-2026-05)** — Initial parity fixes for accessible-map, online-state ordering, move-slot ACK, keep-alive validation, rename early-return, map endpoint resolution, pincode disable/malformed, delete2 ACK trim, new-char normalization, name case rules. Parser-level pincode gate added.

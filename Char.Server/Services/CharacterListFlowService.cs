@@ -90,7 +90,7 @@ public class CharacterListFlowService(
         {
             PincodeFlowSupport.SendState(
                 session,
-                string.IsNullOrEmpty(session.Pincode) ? PincodeState.New : PincodeState.Ask);
+                PincodeFlowSupport.ComputeStartState(session, configuration.Pincode));
         }
 
         logger.LogInformation(
@@ -115,7 +115,7 @@ public class CharacterListFlowService(
         {
             PincodeFlowSupport.SendState(
                 session,
-                string.IsNullOrEmpty(session.Pincode) ? PincodeState.New : PincodeState.Ask);
+                PincodeFlowSupport.ComputeStartState(session, configuration.Pincode));
             return false;
         }
 

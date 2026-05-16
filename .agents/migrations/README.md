@@ -14,12 +14,12 @@ Living status of the port from rAthena C++ (`/Volumes/1TB/Projetos/rathena`) to 
 | Server | Coverage | Critical gaps |
 |---|---|---|
 | [Login](login/status.md) | ✅ ~95% | Cross-server account-online sync, PC-ban check from `login_log` |
-| [Char (packets)](char/packets.md) | ✅ ~95% | Minor parity drift on `CH_KEEP_ALIVE` and rename burst |
-| [Char (gRPC server)](char/grpc.md) | ✅ ~95% | Server-side stubs (PartyShareLevel, UpdateFame, KeepAlive); P1 data-loss bugs closed |
-| [Char (connect flow)](char/connect-flow.md) | ⚠️ ~90% | Pincode `MustChange`/expiration, `pincode_force` config, cross-server dup-online |
+| [Char (packets)](char/packets.md) | ✅ 100% | Two minor divergences resolved in P2 (deliberate / not-real) |
+| [Char (gRPC server)](char/grpc.md) | ✅ ~98% | Remaining: KeepAlive + RequestAddressSync stubs (deferred to P6 map wiring) |
+| [Char (connect flow)](char/connect-flow.md) | ✅ ~95% | Cross-server dup-online (P4) and PC-ban (P3) remain |
 | [Map (IPC integration)](map/ipc-integration.md) | ❌ ~2% | **Map server doesn't invoke 106 of 118 char RPCs**; no save-on-logout, no module ops |
 | [Inter base](inter/base.md) | ⚠️ ~50% | Broadcast/whisper don't route; name change is TODO |
-| [Inter modules](inter/modules.md) | ✅ Char side ~98% / 🔁 Map side 0% | Map-side callers missing; one minor `PartyShareLevel` stub |
+| [Inter modules](inter/modules.md) | ✅ Char side 100% / 🔁 Map side 0% | Map-side callers missing (P6) |
 
 ## Roadmap
 
@@ -56,5 +56,6 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-16** — **P2 complete.** Char-server completeness closed. Pincode state machine fully aligned with rAthena (`MustChange`, expiration, `pincode_force`, enum naming). `PartyShareLevel` persisted to `CharServerState`. Verified `UpdateFame` was already implemented, that reject codes/rename burst already match rAthena, and that the replay-login defense is correctly in `TryConsumeAuthNode` (formal test deferred). Added `PincodeStateTests.cs` (9 tests) + 1 out-of-order char-select test. Suite now 129 tests, all green.
 - **2026-05-16** — **P1 complete.** Three char-side data-loss bugs fixed (mail attachments, auction refund, homunculus skills). Added EF Core InMemory test infrastructure; 9 new regression tests in `CharGrpcDataIntegrityTests.cs`. Full Char.Server.Tests suite green at 119 tests. See [char/grpc.md](char/grpc.md) and [inter/modules.md](inter/modules.md) for details.
 - **2026-05-15** — Audited all four legacy `CHAR_*_PLAN.md` files against actual implementation; found that map-side gRPC callers were ~98% absent despite docs claiming complete. Split monolithic plans into per-server focused docs (this structure).

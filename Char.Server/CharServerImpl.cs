@@ -23,6 +23,8 @@ public class CharServerImpl : GameLoopServer, ICharServerRuntime
     public ServerState State => _serverState.State;
     public int RegisteredServerId => _serverState.RegisteredServerId;
     public bool IsRegisteredToLoginServer => _serverState.IsRegisteredToLoginServer;
+    public uint PartyShareLevel => _serverState.PartyShareLevel;
+    public void SetPartyShareLevel(uint shareLevel) => _serverState.SetPartyShareLevel(shareLevel);
 
     public CharServerImpl(
         ServerConfiguration configuration,

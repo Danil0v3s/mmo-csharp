@@ -71,14 +71,12 @@ These return hardcoded success without performing the rAthena-side side effect. 
 |---|---|---|
 | `KeepAlive` (Char↔Map) | CharGrpcService.cs:512-516 | No-op success. rAthena tracks last-seen + disconnects on stale |
 | `RequestAddressSync` (0x2735) | CharGrpcService.cs:4207 | Doesn't broadcast updated IP to map servers |
-| `PartyShareLevel` (0x302A) | CharGrpcService.cs:1474-1482 | Returns success without persisting |
-| `UpdateFame` (0x2b10) | _missing entirely_ | No server impl found; proto present |
 
 (Inter-base RPC stubs — broadcast/whisper/name change — are tracked in [../inter/base.md](../inter/base.md).)
 
 ### LOW — Test coverage gaps
 
-- No test covers **replayed `LoginId1/LoginId2` on a new connection** — claimed by Phase D13 of old plan.
+- Replayed `LoginId1/LoginId2` defense verified by inspection at [`LoginDataRepository.TryConsumeAuthNode`](../../../Login.Server/Repository/Impl/LoginDataRepository.cs) (auth node removed on first consume; second call returns false). A formal regression test belongs in a `Login.Server.Tests` project we don't have yet — deferring.
 
 ## Files / structure
 
@@ -89,6 +87,13 @@ These return hardcoded success without performing the rAthena-side side effect. 
 
 ## History
 
+- **2026-05-16** — **P2 complete.** Char-server completeness closed:
+  - `PartyShareLevel` now persists to a process-global `CharServerState.PartyShareLevel` (rAthena's `inter.cpp:party_share_level` parity). Default 10.
+  - `UpdateFame` impl was already DB-backed at [CharGrpcService.cs:920-946](../../../Char.Server/CharGrpcService.cs); audit doc was wrong about it being missing.
+  - `PartyShareLevel`, `UpdateFame` removed from server-side-stubs Pending list.
+  - Reject codes: confirmed rAthena's `chclif_reject` always uses `HC_REFUSE_ENTER` error code 0; richer reasons go through `RejectAuthResult`/`SC_NOTIFY_BAN` which C# already does correctly. Plan item was based on a misread; no change needed.
+  - Rename burst: confirmed C# `ResendCharacterWindowAsync` already sends the same 4-packet burst (`HC_ACCEPT_ENTER2` + `HC_ACCEPT_ENTER` + `HC_CHARLIST_NOTIFY` + `HC_BLOCK_CHARACTER`) as rAthena's `chclif_mmo_char_send`. No change needed.
+  - `CH_KEEP_ALIVE`: kept C# stricter behavior (validates account_id, disconnects on mismatch) as a deliberate divergence — catches forged packets that rAthena lets through.
 - **2026-05-16** — **P1 complete.** Three data-loss bugs fixed:
   - Homunculus skills now load/save/delete with the homun entity. Added `HomunculusSkillEntry` proto message. `SaveHomunculusSkillsAsync` helper applies rAthena DELETE-all + INSERT-non-zero pattern.
   - `AuctionBid` now inserts a refund mail to the prior bidder before overwriting (rAthena `mail_sendmail` parity). Sender 0/"Auction Manager", body differs for same-bidder vs different-bidder refund.

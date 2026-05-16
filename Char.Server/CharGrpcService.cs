@@ -50,7 +50,6 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     private readonly GameDbContext _dbContext;
     private readonly CharServerConfiguration _configuration;
     private readonly ILogger<CharGrpcService> _logger;
-    private uint _partyShareLevel = 0;
 
     public CharGrpcService(
         CharServerImpl charServer,
@@ -1475,7 +1474,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         PartyShareLevelRequest request,
         ServerCallContext context)
     {
-        _partyShareLevel = request.ShareLevel;
+        _charServer.SetPartyShareLevel(request.ShareLevel);
         return Task.FromResult(new PartyShareLevelResponse { Success = true });
     }
 
