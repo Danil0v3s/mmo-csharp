@@ -66,6 +66,7 @@ var dbConnectionString = configuration.GetConnectionString("GameDatabase")
         "Missing connection string 'GameDatabase' in appsettings.json");
 builder.Services.AddGameDatabase(dbConnectionString);
 builder.Services.AddSingleton<IMobDb, MobDb>();
+builder.Services.AddSingleton<IItemCatalog, ItemCatalog>();
 
 // Register server state separately to avoid circular dependencies
 builder.Services.AddSingleton<MapServerState>();
