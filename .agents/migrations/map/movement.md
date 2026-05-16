@@ -33,26 +33,35 @@ The whole MS1 acceptance ("walk around") is this doc. Two pieces: compute a path
 
 ## Done
 
-Nothing.
+- **`Direction` enum + `Dx()`/`Dy()`/`IsDiagonal()`/`FromDelta()`** ([Map.Server/Movement/Direction.cs](../../../Map.Server/Movement/Direction.cs)) — rAthena `enum directions` parity (NORTH=0, NW=1, W=2, SW=3, S=4, SE=5, E=6, NE=7). dx/dy tables match path.cpp's `walk_choices`.
+- **`Pathfinder.Search`** ([Map.Server/Movement/Pathfinder.cs](../../../Map.Server/Movement/Pathfinder.cs)) — A* port of rAthena `path_search`. `PriorityQueue<TElement, TPriority>` open set, `Dictionary<cellKey, gCost>` closed set, Manhattan heuristic. `MOVE_COST = 10`, `MOVE_DIAGONAL_COST = 14`, `MaxWalkPath = 32`. Anti-corner-cutting rule (diagonal step requires both cardinal neighbors walkable) matches path.cpp `chk_dir`.
+- **`Pathfinder.HasStraightLine`** — Bresenham walkability test; rAthena `path_search_long` equivalent. Useful for line-of-sight queries in MS3 combat.
+- **`WalkState`** ([Map.Server/Movement/WalkState.cs](../../../Map.Server/Movement/WalkState.cs)) — per-entity `Queue<Direction>` + target cell + active `TimerId` for cancellation. Stored as `Entity.Walk` (null when standing).
+- **`Entity.Walk` / `Entity.Speed`** ([Map.Server/Entities/Entity.cs](../../../Map.Server/Entities/Entity.cs)) — walk state slot + per-cell step delay (default 150ms for players, mob_db.MoveSpeed for mobs in MS2).
+- **`IMovementService` + `MovementService`** ([Map.Server/Movement/MovementService.cs](../../../Map.Server/Movement/MovementService.cs)) — `TryStartWalk(entity, tx, ty)` + `CancelWalk(entity)`. Each step is scheduled via `Core.Timer.Scheduler.Schedule`; the callback advances the entity by one cell (`IEntityRegistry.Move`), updates direction, and schedules the next step. Diagonal step delay = `Speed * 14 / 10` (rAthena parity). Re-checks cell walkability before each step so dynamic obstacles (MS3) abort the walk cleanly. Timer-id comparison guards against stale callbacks firing after cancellation.
+- **Wired into Map.Server DI** ([Map.Server/Program.cs](../../../Map.Server/Program.cs)) — registered as `IMovementService` singleton.
+- **39 new tests** in `Map.Server.Tests/Movement/`:
+  - `DirectionTests` — 24 cases covering Dx/Dy table, Center semantics, IsDiagonal, FromDelta round-trip.
+  - `PathfinderTests` — straight line, diagonal, around-wall detour, no-path, destination-not-walkable, same-cell, MaxWalkPath cap, anti-corner-cut, HasStraightLine open + blocked.
+  - `MovementServiceTests` — arrival on open map, diagonal walk, no-path returns false, interrupt-restart, cancel, spatial index sync after walk completes. Uses tiny `Speed=1` so walks finish inside the test polling window.
 
-## Pending
+**Core.Timer adapter design.** Walk steps go through `Scheduler.Schedule(callback, entityId, dueTime)`. Callbacks fire on the Scheduler's thread pool, but every state mutation goes through `IEntityRegistry.Move` (thread-safe via `MapSpatialIndex`'s coarse lock + `ConcurrentDictionary` by-id store), so no separate game-loop queue is needed for MS1. When deterministic single-threaded gameplay matters (skill resolution, combat damage), MS3 can add an MPSC queue drained on the 60 FPS tick.
 
-### Items, in suggested order
+Full suite after this commit: 148 char + 16 login + 79 map = **243 green**.
 
-1. **Port `path_search`.** rAthena uses A* with the heap implemented as a small flat array (max OPEN list ~256 entries — that's the documented limit). The cell cost function is:
-   - Cardinal step: `MOVE_COST = 10`
-   - Diagonal step: `MOVE_DIAGONAL_COST = 14`
-   - Plus a manhattan heuristic.
+## Pending — wired in subsequent MS1 steps
 
-   Port faithfully — corner-cutting rules matter (rAthena disallows squeezing between two diagonal walls, see `path_check_distance` / `path_blownpos`).
+Items below depend on packets / handlers landing — they're queued for [session.md](session.md) (`CZ_REQUEST_MOVE` handler) and [visibility.md](visibility.md) (broadcast on step) but the underlying movement engine is ready.
 
-2. **Port `path_search_long`.** Bresenham line-walk from `(x0, y0)` to `(x1, y1)` checking each cell is walkable. Used by line-of-sight tests in MS3 but useful to land now.
+1. **`CZ_REQUEST_MOVE` / `CZ_REQUEST_MOVE2` handlers** — packet parsing + call `MovementService.TryStartWalk`. Reject if not authenticated / not spawned / etc. Depends on [session.md](session.md) and [packets.md](packets.md).
 
-3. **`PathResult` model.** A queue of `(cx, cy, dir, stepCostMs)` tuples. The walk timer pops one per tick interval.
+2. **`ZC_NOTIFY_PLAYERMOVE` / `ZC_NOTIFY_MOVE` emission** on walk start. Depends on [visibility.md](visibility.md) for the AREA broadcast helper. The walk-start packet includes start coords + end coords + server time; clients interpolate locally between steps so we only emit once per walk-start (not per step), unless interrupted.
 
-4. **Walk speed.** Player base speed in rAthena is `pc->speed = 150` (ms per cell). Diagonal steps cost `speed * 14/10`. For MS1, hard-code base speed on `PlayerEntity`; status-modified speed comes in MS3.
+3. **Walk-into-warp detection** — when a walker arrives at a cell that has a warp ([world.md](world.md) Pending), trigger the map-change handshake. Cross-map-server warps use the existing `RequestMapServerChange` IPC (P6).
 
-5. **Walk state on `Entity`:**
+4. **Re-pathing on dynamic obstruction** — if a previously walkable cell becomes blocked mid-walk (MS3 Ice Wall, Land Protector), recompute the path or abort. The current code aborts cleanly; re-path is a follow-up.
+
+5. **(Legacy plan items, kept for historical context — all delivered above):**
    ```csharp
    public class WalkState
    {
@@ -130,4 +139,5 @@ Map.Server/Handlers/
 
 ## History
 
+- **2026-05-16** — **MS1.movement shipped.** Direction enum (rAthena parity), Pathfinder (A* with anti-corner-cut, Bresenham HasStraightLine), WalkState on Entity, MovementService driven by `Core.Timer.Scheduler` (user direction: adapt to existing scheduler rather than fork a timer). Speed defaults to 150ms/cell (rAthena `pc->speed`); diagonal cost = 14/10 of cardinal. 39 new tests covering direction tables, path correctness, walk-loop integration. Visibility broadcast (`ZC_NOTIFY_*MOVE`) and `CZ_REQUEST_MOVE` handler are queued for [session.md](session.md)/[visibility.md](visibility.md); the engine itself is complete and unit-tested. Full suite 243 green.
 - **2026-05-16** — Plan written. No implementation yet.

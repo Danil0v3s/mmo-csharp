@@ -5,6 +5,7 @@ using Core.Server.Network;
 using Core.Server.Packets;
 using Map.Server;
 using Map.Server.Entities;
+using Map.Server.Movement;
 using Map.Server.Services;
 using Map.Server.World;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -58,6 +59,10 @@ builder.Services.AddSingleton<MapServerImpl>();
 // Entity infrastructure for MS1 gameplay (see .agents/migrations/map/entities.md).
 builder.Services.AddSingleton<EntityIdAllocator>();
 builder.Services.AddSingleton<IEntityRegistry, EntityRegistry>();
+
+// Movement (see .agents/migrations/map/movement.md). Walk steps are scheduled
+// through Core.Timer's Scheduler; the service binds entities → walk timers.
+builder.Services.AddSingleton<IMovementService, MovementService>();
 
 // Core services
 builder.Services.AddSingleton<SessionManager>();

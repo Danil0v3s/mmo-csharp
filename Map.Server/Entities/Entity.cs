@@ -1,3 +1,5 @@
+using Map.Server.Movement;
+
 namespace Map.Server.Entities;
 
 /// <summary>
@@ -6,7 +8,8 @@ namespace Map.Server.Entities;
 /// the spatial index and visibility checks; subclasses add per-type state.
 ///
 /// Coordinates are cell-based <see cref="short"/> values matching the wire
-/// protocol; direction is the rAthena 8-direction enum (0=N, 1=NE, …, 7=NW).
+/// protocol; direction is the rAthena 8-direction enum (0=N, 1=NW, 2=W, 3=SW,
+/// 4=S, 5=SE, 6=E, 7=NE; see <see cref="Movement.Direction"/>).
 /// </summary>
 public abstract class Entity
 {
@@ -16,6 +19,19 @@ public abstract class Entity
     public short X { get; internal set; }
     public short Y { get; internal set; }
     public byte Dir { get; internal set; }
+
+    /// <summary>
+    /// Non-null while this entity is walking. Owned by <c>IMovementService</c>;
+    /// gameplay code reads but does not mutate.
+    /// </summary>
+    public WalkState? Walk { get; internal set; }
+
+    /// <summary>
+    /// Per-cell step delay in milliseconds (cardinal). Diagonal cells cost
+    /// <c>Speed * 14 / 10</c>. PlayerEntity default = 150 (rAthena pc->speed
+    /// baseline); mobs override from mob_db.MoveSpeed in MS2.
+    /// </summary>
+    public int Speed { get; internal set; } = 150;
 
     protected Entity(EntityId id, uint mapId, short x, short y)
     {
