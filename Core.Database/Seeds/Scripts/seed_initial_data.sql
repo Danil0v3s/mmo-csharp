@@ -27,13 +27,7 @@ INSERT INTO `clan_alliance` (clan_id, opposition, alliance_id, name) VALUES (4, 
 -- INSECURE: Change password in production!
 INSERT INTO `login` (account_id, userid, user_pass, sex, email) VALUES ('1', 's1', 'p1', 'S', 'athena@athena.com');
 ALTER TABLE `login` AUTO_INCREMENT = 2000000;
-
--- ============================================
--- Replay test account
--- ============================================
--- Backing for Map.Server.Tests/Replay/Fixtures/dhxj.log. Matches the username
--- and password the capture sends (line 3: CA_LOGIN "danilo"/"123456").
--- web_auth_token is explicitly NULL because the column has a UNIQUE index
--- and the default value '0' would collide with the s1 row above.
-INSERT INTO `login` (account_id, userid, user_pass, sex, email, group_id, web_auth_token)
-VALUES (2000001, 'danilo', '123456', 'M', 'danilo@local', 0, NULL);
+-- Replay-test accounts (mmocsharp etc.) are NOT seeded here. The capture
+-- exercises rAthena's "create account on login" flow (CA_LOGIN with the
+-- _M / _F userid suffix), so the DB must start without those rows for
+-- the create path to run as captured.
