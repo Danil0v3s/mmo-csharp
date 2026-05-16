@@ -1,5 +1,6 @@
 using System.Text;
 using Core.Server.Packets;
+using Tools.PacketReplay.Decoders;
 
 namespace Tools.PacketReplay;
 
@@ -22,10 +23,12 @@ namespace Tools.PacketReplay;
 public sealed class PacketComparer
 {
     private readonly PacketFramer _framer;
+    private readonly DecoderRegistry _decoders;
 
-    public PacketComparer(IPacketSizeRegistry sizes)
+    public PacketComparer(IPacketSizeRegistry sizes, DecoderRegistry? decoders = null)
     {
         _framer = new PacketFramer(sizes);
+        _decoders = decoders ?? new DecoderRegistry();
     }
 
     public ComparisonReport Compare(ReplayCapture capture)
@@ -73,7 +76,7 @@ public sealed class PacketComparer
         return primary;
     }
 
-    private static IReadOnlyList<PacketDiff> ComparePackets(
+    private IReadOnlyList<PacketDiff> ComparePackets(
         IReadOnlyList<FramedPacket> expected, IReadOnlyList<FramedPacket> actual)
     {
         var diffs = new List<PacketDiff>();
@@ -85,26 +88,77 @@ public sealed class PacketComparer
 
             if (exp == null)
             {
-                diffs.Add(new PacketDiff(i, PacketDiffKind.Extra, exp, act, ByteDiffs: Array.Empty<ByteDiff>()));
+                diffs.Add(new PacketDiff(i, PacketDiffKind.Extra, exp, act, ByteDiffs: Array.Empty<ByteDiff>(), FieldDiffs: Array.Empty<FieldDiff>()));
                 continue;
             }
             if (act == null)
             {
-                diffs.Add(new PacketDiff(i, PacketDiffKind.Missing, exp, act, ByteDiffs: Array.Empty<ByteDiff>()));
+                diffs.Add(new PacketDiff(i, PacketDiffKind.Missing, exp, act, ByteDiffs: Array.Empty<ByteDiff>(), FieldDiffs: Array.Empty<FieldDiff>()));
                 continue;
             }
             if (exp.Header != act.Header)
             {
-                diffs.Add(new PacketDiff(i, PacketDiffKind.HeaderMismatch, exp, act, ByteDiffs: Array.Empty<ByteDiff>()));
+                diffs.Add(new PacketDiff(i, PacketDiffKind.HeaderMismatch, exp, act, ByteDiffs: Array.Empty<ByteDiff>(), FieldDiffs: Array.Empty<FieldDiff>()));
                 continue;
             }
+
+            // Prefer the structural decoder when one is registered; that
+            // gives us per-field tolerance for stochastic values (random
+            // session tokens, server tick, etc.).
+            if (_decoders.TryGet(exp.Header, out var decoder))
+            {
+                var fieldDiffs = DiffFields(decoder, exp.Body, act.Body);
+                if (fieldDiffs.Count > 0)
+                {
+                    diffs.Add(new PacketDiff(i, PacketDiffKind.FieldMismatch, exp, act,
+                        ByteDiffs: Array.Empty<ByteDiff>(), FieldDiffs: fieldDiffs));
+                }
+                continue;
+            }
+
             var byteDiffs = DiffBytes(exp.Body, act.Body);
             if (byteDiffs.Count > 0)
             {
-                diffs.Add(new PacketDiff(i, PacketDiffKind.BodyMismatch, exp, act, byteDiffs));
+                diffs.Add(new PacketDiff(i, PacketDiffKind.BodyMismatch, exp, act, byteDiffs, FieldDiffs: Array.Empty<FieldDiff>()));
             }
         }
         return diffs;
+    }
+
+    private static IReadOnlyList<FieldDiff> DiffFields(IPacketDecoder decoder, byte[] expected, byte[] actual)
+    {
+        DecodedPacket exp, act;
+        try { exp = decoder.Decode(expected); }
+        catch (Exception ex) { return new[] { new FieldDiff("(decoder)", "(threw on expected)", ex.Message, false) }; }
+        try { act = decoder.Decode(actual); }
+        catch (Exception ex) { return new[] { new FieldDiff("(decoder)", "(threw on actual)", ex.Message, false) }; }
+
+        var byName = exp.Fields.ToDictionary(f => f.Name);
+        var diffs = new List<FieldDiff>();
+        foreach (var actualField in act.Fields)
+        {
+            if (!byName.TryGetValue(actualField.Name, out var expectedField))
+            {
+                diffs.Add(new FieldDiff(actualField.Name, "(missing)", actualField.Value, Tolerant: false));
+                continue;
+            }
+            if (!Equals(expectedField.Value, actualField.Value))
+            {
+                diffs.Add(new FieldDiff(
+                    Name: actualField.Name,
+                    Expected: expectedField.Value,
+                    Actual: actualField.Value,
+                    Tolerant: expectedField.Tolerant));
+            }
+            byName.Remove(actualField.Name);
+        }
+        foreach (var leftover in byName.Values)
+        {
+            diffs.Add(new FieldDiff(leftover.Name, leftover.Value, "(missing in actual)", Tolerant: leftover.Tolerant));
+        }
+        // Strip tolerant-only diffs from the failure surface; surface only the
+        // ones that should drive a test red.
+        return diffs.Where(d => !d.Tolerant).ToList();
     }
 
     private static IReadOnlyList<ByteDiff> DiffBytes(byte[] expected, byte[] actual)
@@ -173,6 +227,14 @@ public sealed record ComparisonReport(IReadOnlyList<ChunkDiff> Chunks, string? E
         return sb.ToString();
     }
 
+    private static string FormatValue(object? v) => v switch
+    {
+        null => "(null)",
+        string s => $"\"{s}\"",
+        byte[] b => "[" + string.Join(" ", b.Take(16).Select(x => x.ToString("X2"))) + (b.Length > 16 ? "…" : "") + "]",
+        _ => v.ToString() ?? "(?)"
+    };
+
     private static string RenderPacketDiff(PacketDiff d)
     {
         switch (d.Kind)
@@ -194,6 +256,15 @@ public sealed record ComparisonReport(IReadOnlyList<ChunkDiff> Chunks, string? E
                 }
                 if (d.ByteDiffs.Count > 16) lines.AppendLine($"           …{d.ByteDiffs.Count - 16} more byte diffs omitted");
                 return lines.ToString().TrimEnd();
+            case PacketDiffKind.FieldMismatch:
+                var fname = d.Expected!.Header.ToString();
+                var fl = new StringBuilder();
+                fl.AppendLine($"  [{d.Index}] FIELDS:  0x{(short)d.Expected!.Header:X4} ({fname}) field values differ");
+                foreach (var f in d.FieldDiffs)
+                {
+                    fl.AppendLine($"           {f.Name}: expected={FormatValue(f.Expected)} actual={FormatValue(f.Actual)}");
+                }
+                return fl.ToString().TrimEnd();
             default:
                 return $"  [{d.Index}] {d.Kind}";
         }
@@ -220,8 +291,11 @@ public sealed record PacketDiff(
     PacketDiffKind Kind,
     FramedPacket? Expected,
     FramedPacket? Actual,
-    IReadOnlyList<ByteDiff> ByteDiffs);
+    IReadOnlyList<ByteDiff> ByteDiffs,
+    IReadOnlyList<FieldDiff> FieldDiffs);
 
-public enum PacketDiffKind { BodyMismatch, HeaderMismatch, Missing, Extra }
+public enum PacketDiffKind { BodyMismatch, HeaderMismatch, Missing, Extra, FieldMismatch }
 
 public sealed record ByteDiff(int Offset, byte? ExpectedByte, byte? ActualByte, string? Note);
+
+public sealed record FieldDiff(string Name, object? Expected, object? Actual, bool Tolerant);
