@@ -103,3 +103,4 @@ Map.Server/Visibility/
 
 - **2026-05-16** — Plan written. No implementation yet.
 - **2026-05-16** — Service + tests delivered. AOI iteration, view-diff helpers, PC standentry/vanish/move broadcasts. Wired into DI in [Program.cs](../../../Map.Server/Program.cs). Callers (movement / session) wire-up still pending.
+- **2026-05-16** — `IVisibilityService.NotifyMoveDiff` added (symmetric `clif_insight` / `clif_outsight` equivalent). `MovementService` now invokes it after each walk step so two entities walking past each other trigger exactly one STANDENTRY pair on the view boundary, and one VANISH pair on the way out. Mob STANDENTRY (objecttype=5, Job=classId) supported too. Closes the MS1 acceptance gap "two players see each other walk into / out of view range".

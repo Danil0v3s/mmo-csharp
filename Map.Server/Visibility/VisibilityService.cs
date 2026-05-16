@@ -123,6 +123,57 @@ public sealed class VisibilityService : IVisibilityService
         }
     }
 
+    public void NotifyMoveDiff(Entity walker, short fromX, short fromY, short toX, short toY)
+    {
+        // Bail when the walker hasn't actually changed cells — saves an AOI
+        // scan and prevents the spurious "everyone in view appears again"
+        // when callers pass the same coords twice.
+        if (fromX == toX && fromY == toY) return;
+
+        var gained = NewlyVisible(walker.MapId, fromX, fromY, toX, toY, EntityType.All);
+        var lost = NewlyInvisible(walker.MapId, fromX, fromY, toX, toY, EntityType.All);
+
+        // Pre-build the walker's STANDENTRY / VANISH once; both are
+        // recipient-agnostic for a given walker.
+        OutgoingPacket? walkerStandEntry = null;
+        ZC_NOTIFY_VANISH? walkerVanish = null;
+
+        foreach (var other in gained)
+        {
+            if (other.Id == walker.Id) continue;
+            if (walker is PlayerEntity pcWalker)
+            {
+                _dispatcher.TrySend(pcWalker.SessionId, BuildStandEntry(other));
+            }
+            if (other is PlayerEntity pcOther)
+            {
+                walkerStandEntry ??= BuildStandEntry(walker);
+                _dispatcher.TrySend(pcOther.SessionId, walkerStandEntry);
+            }
+        }
+        foreach (var other in lost)
+        {
+            if (other.Id == walker.Id) continue;
+            if (walker is PlayerEntity pcWalker)
+            {
+                _dispatcher.TrySend(pcWalker.SessionId, new ZC_NOTIFY_VANISH
+                {
+                    EntityId = other.Id.Value,
+                    Reason = VanishReason.Outsight,
+                });
+            }
+            if (other is PlayerEntity pcOther)
+            {
+                walkerVanish ??= new ZC_NOTIFY_VANISH
+                {
+                    EntityId = walker.Id.Value,
+                    Reason = VanishReason.Outsight,
+                };
+                _dispatcher.TrySend(pcOther.SessionId, walkerVanish);
+            }
+        }
+    }
+
     internal static OutgoingPacket BuildStandEntry(Entity entity) => entity switch
     {
         PlayerEntity p => new ZC_NOTIFY_STANDENTRY

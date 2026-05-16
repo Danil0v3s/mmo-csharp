@@ -173,7 +173,7 @@ public class MobSpawnServiceTests
         var entities = new EntityRegistry(world);
         var dispatcher = new RecordingDispatcher();
         var visibility = new VisibilityService(entities, dispatcher);
-        var movement = new MovementService(entities, world, NullLogger<MovementService>.Instance);
+        var movement = new MovementService(entities, world, visibility, NullLogger<MovementService>.Instance);
         var spawnRegistry = new MobSpawnRegistry();
         var idAlloc = new EntityIdAllocator();
         var mobDb = new StubMobDb(new[]

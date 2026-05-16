@@ -137,6 +137,107 @@ public class VisibilityServiceTests
     }
 
     [Fact]
+    public void NotifyMoveDiff_WhenWalkerStaysInPlace_DoesNothing()
+    {
+        var ctx = NewContext();
+        var walker = ctx.AddPlayer(100, 100, charId: 1);
+        var viewer = ctx.AddPlayer(102, 100, charId: 2);
+
+        ctx.Service.NotifyMoveDiff(walker, 100, 100, 100, 100);
+
+        Assert.Empty(ctx.Dispatcher.Sent);
+    }
+
+    [Fact]
+    public void NotifyMoveDiff_WalkingIntoView_TriggersStandEntryBothDirections()
+    {
+        // Walker at (100,100), other PC at (115,100) → distance 15 (out of range).
+        // Walker steps one cell east → distance 14 (in range). Each side should
+        // get exactly one STANDENTRY about the other.
+        var ctx = NewContext();
+        var walker = ctx.AddPlayer(100, 100, charId: 1, name: "Walker");
+        var other = ctx.AddPlayer(115, 100, charId: 2, name: "Other");
+        // Move walker in the registry to the new cell so the diff scan
+        // sees the new spatial position.
+        ctx.Registry.Move(walker.Id, 101, 100);
+
+        ctx.Service.NotifyMoveDiff(walker, 100, 100, 101, 100);
+
+        var toWalker = ctx.Dispatcher.Sent
+            .Where(s => s.sessionId == walker.SessionId && s.packet is ZC_NOTIFY_STANDENTRY)
+            .ToList();
+        var toOther = ctx.Dispatcher.Sent
+            .Where(s => s.sessionId == other.SessionId && s.packet is ZC_NOTIFY_STANDENTRY)
+            .ToList();
+        Assert.Single(toWalker);
+        Assert.Single(toOther);
+        Assert.Equal(other.CharacterId, ((ZC_NOTIFY_STANDENTRY)toWalker[0].packet).CharacterOrEntityId);
+        Assert.Equal(walker.CharacterId, ((ZC_NOTIFY_STANDENTRY)toOther[0].packet).CharacterOrEntityId);
+    }
+
+    [Fact]
+    public void NotifyMoveDiff_WalkingOutOfView_TriggersVanishBothDirections()
+    {
+        // Walker at (101,100) starts within range (14) of other at (115,100).
+        // Walker steps west to (100,100) → distance 15, out of range. Both
+        // sides get exactly one VANISH.
+        var ctx = NewContext();
+        var walker = ctx.AddPlayer(101, 100, charId: 1);
+        var other = ctx.AddPlayer(115, 100, charId: 2);
+        ctx.Registry.Move(walker.Id, 100, 100);
+
+        ctx.Service.NotifyMoveDiff(walker, 101, 100, 100, 100);
+
+        var toWalker = ctx.Dispatcher.Sent
+            .Where(s => s.sessionId == walker.SessionId && s.packet is ZC_NOTIFY_VANISH)
+            .Select(s => (ZC_NOTIFY_VANISH)s.packet).ToList();
+        var toOther = ctx.Dispatcher.Sent
+            .Where(s => s.sessionId == other.SessionId && s.packet is ZC_NOTIFY_VANISH)
+            .Select(s => (ZC_NOTIFY_VANISH)s.packet).ToList();
+        Assert.Single(toWalker);
+        Assert.Single(toOther);
+        Assert.Equal(VanishReason.Outsight, toWalker[0].Reason);
+        Assert.Equal(VanishReason.Outsight, toOther[0].Reason);
+        Assert.Equal(other.Id.Value, toWalker[0].EntityId);
+        Assert.Equal(walker.Id.Value, toOther[0].EntityId);
+    }
+
+    [Fact]
+    public void NotifyMoveDiff_StayingInView_BroadcastsNothing()
+    {
+        // Both players stay well within view. One step shouldn't trigger
+        // anything since the view sets are identical.
+        var ctx = NewContext();
+        var walker = ctx.AddPlayer(100, 100, charId: 1);
+        var stayer = ctx.AddPlayer(102, 100, charId: 2);
+        ctx.Registry.Move(walker.Id, 101, 100);
+
+        ctx.Service.NotifyMoveDiff(walker, 100, 100, 101, 100);
+
+        Assert.Empty(ctx.Dispatcher.Sent);
+    }
+
+    [Fact]
+    public void NotifyMoveDiff_NonPcWalkerMovingIntoView_NotifiesViewersOnly()
+    {
+        // Mob walks into a viewer's range. Viewer gets STANDENTRY; mob
+        // (no session) gets nothing.
+        var ctx = NewContext();
+        var mob = new MobEntity(new EntityId(400_000_001), 1002, "Poring", ctx.MapId, 100, 100);
+        ctx.Registry.Add(mob);
+        var viewer = ctx.AddPlayer(115, 100, charId: 2);
+        ctx.Registry.Move(mob.Id, 101, 100);
+
+        ctx.Service.NotifyMoveDiff(mob, 100, 100, 101, 100);
+
+        var standEntries = ctx.Dispatcher.Sent
+            .Where(s => s.packet is ZC_NOTIFY_STANDENTRY).ToList();
+        Assert.Single(standEntries);
+        Assert.Equal(viewer.SessionId, standEntries[0].sessionId);
+        Assert.Equal((byte)5, ((ZC_NOTIFY_STANDENTRY)standEntries[0].packet).ObjectType); // mob
+    }
+
+    [Fact]
     public void NotifySpawnedToArea_ForMob_SendsMobStandEntry()
     {
         var ctx = NewContext();

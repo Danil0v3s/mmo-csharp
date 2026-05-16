@@ -74,4 +74,19 @@ public interface IVisibilityService
     /// in MS2 with their own packet shapes).
     /// </summary>
     void SendCurrentViewToSelf(PlayerEntity self);
+
+    /// <summary>
+    /// Per-step view-diff broadcast. Mirrors rAthena's <c>clif_outsight</c> /
+    /// <c>clif_insight</c> pair: any entity that the walker can newly see
+    /// receives a <c>ZC_NOTIFY_STANDENTRY</c> (and vice-versa for the walker
+    /// who sees it for the first time); any entity that drops out of mutual
+    /// view receives a <c>ZC_NOTIFY_VANISH</c> with reason
+    /// <see cref="VanishReason.Outsight"/>.
+    ///
+    /// Call this once per walk step, after the entity registry has been
+    /// updated to the new cell, so the spatial-index scan at the new
+    /// position is accurate. Walking past someone at the edge of view range
+    /// triggers exactly one STANDENTRY pair; staying in view does nothing.
+    /// </summary>
+    void NotifyMoveDiff(Entity walker, short fromX, short fromY, short toX, short toY);
 }

@@ -1,5 +1,6 @@
 using Core.Timer;
 using Map.Server.Entities;
+using Map.Server.Visibility;
 using Map.Server.World;
 
 namespace Map.Server.Movement;
@@ -11,23 +12,27 @@ namespace Map.Server.Movement;
 /// thread pool; mutations to entity position go through
 /// <see cref="IEntityRegistry.Move"/> which is thread-safe.
 ///
-/// Visibility broadcasts (ZC_NOTIFY_PLAYERMOVE / ZC_NOTIFY_MOVE) are emitted
-/// later in MS1 once packets land — for now the registry is updated and the
-/// path advances, which is enough for cell-grid correctness tests.
+/// After each step the per-cell view-diff in <see cref="IVisibilityService"/>
+/// fires the rAthena <c>clif_outsight</c> / <c>clif_insight</c> pair:
+/// STANDENTRY for entities the walker just brought into mutual view, VANISH
+/// for those that just dropped out.
 /// </summary>
 public sealed class MovementService : IMovementService
 {
     private readonly IEntityRegistry _registry;
     private readonly IMapWorldRegistry _worldRegistry;
+    private readonly IVisibilityService _visibility;
     private readonly ILogger<MovementService> _logger;
 
     public MovementService(
         IEntityRegistry registry,
         IMapWorldRegistry worldRegistry,
+        IVisibilityService visibility,
         ILogger<MovementService> logger)
     {
         _registry = registry;
         _worldRegistry = worldRegistry;
+        _visibility = visibility;
         _logger = logger;
     }
 
@@ -124,6 +129,8 @@ public sealed class MovementService : IMovementService
             return ValueTask.CompletedTask;
         }
 
+        var fromX = entity.X;
+        var fromY = entity.Y;
         try
         {
             _registry.Move(id, nextX, nextY);
@@ -135,6 +142,10 @@ public sealed class MovementService : IMovementService
             entity.Walk = null;
             return ValueTask.CompletedTask;
         }
+
+        // AOI edge update — anyone walking into / out of view of the entity
+        // (or vice versa) gets exactly one STANDENTRY or VANISH per step.
+        _visibility.NotifyMoveDiff(entity, fromX, fromY, nextX, nextY);
 
         if (walk.RemainingPath.Count == 0)
         {

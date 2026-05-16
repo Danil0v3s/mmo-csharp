@@ -76,7 +76,7 @@ public class RequestMoveHandlerTests
         var registry = new EntityRegistry(world);
         var dispatcher = new RecordingDispatcher();
         var visibility = new VisibilityService(registry, dispatcher);
-        var movement = new MovementService(registry, world, NullLogger<MovementService>.Instance);
+        var movement = new MovementService(registry, world, visibility, NullLogger<MovementService>.Instance);
         return new TestContext(registry, movement, visibility, dispatcher, (uint)mapName.GetHashCode());
     }
 

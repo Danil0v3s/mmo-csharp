@@ -117,8 +117,16 @@ public class MovementServiceTests
         var world = new StubWorldRegistry(map);
         var registry = new EntityRegistry(world);
         var loggerFactory = LoggerFactory.Create(_ => { });
-        var service = new MovementService(registry, world, loggerFactory.CreateLogger<MovementService>());
+        var visibility = new Map.Server.Visibility.VisibilityService(
+            registry, new NoopDispatcher());
+        var service = new MovementService(
+            registry, world, visibility, loggerFactory.CreateLogger<MovementService>());
         return (service, registry, (uint)map.Name.GetHashCode());
+    }
+
+    private sealed class NoopDispatcher : Map.Server.Visibility.IPacketDispatcher
+    {
+        public bool TrySend(Guid sessionId, Core.Server.Packets.OutgoingPacket packet) => true;
     }
 
     private static PlayerEntity NewPlayer(int charId, uint mapId, short x, short y)
