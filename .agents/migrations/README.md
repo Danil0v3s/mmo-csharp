@@ -19,6 +19,7 @@ Living status of the port from rAthena C++ (`/Volumes/1TB/Projetos/rathena`) to 
 | [Char (connect flow)](char/connect-flow.md) | ✅ 100% | Cross-server dup-online wired in P3 |
 | [Map (IPC integration)](map/ipc-integration.md) | ✅ Infrastructure 100% / 🔁 Gameplay ops 0% | All lifecycle triggers wired (startup/timers/connect/disconnect/shutdown); module ops gameplay-wait |
 | [Map (replay baseline)](map/replay-baseline.md) | ⚠️ Whole connect flow structurally matched | 19 remaining diffs are all gameplay-content placeholders (inventory items, skill data, achievements, NPC-script output) — each unblocks when its parent subsystem ports |
+| [Map (declarative catalogs)](map/declarative-catalogs.md) | ✅ Data seeded | 1,279 warps / 2,950 mob spawns / 2,251 mapflags ported from rAthena npc/re/. Runtime consumers (warp lookup, spawn loader, mapflag applier) pending. |
 | [Inter base](inter/base.md) | ✅ 100% | All routing wired (P5); map-side client emission is gameplay work |
 | [Inter modules](inter/modules.md) | ✅ Char side 100% / 🔁 Map side 0% | Map-side callers missing (P6) |
 
@@ -57,6 +58,7 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-17** — **Declarative map catalogs ported.** New tables `warp`, `mob_spawn`, `map_flag` + EF entities + migration + seed-import tool (`Tools.RathenaImporter`). 1,279 warps / 2,950 mob spawns / 2,251 mapflags loaded from rAthena `npc/re/{warps,mobs,mapflag}`. Script-bodied content (NPCs, instances) deferred until the script engine ports. See [map/declarative-catalogs.md](map/declarative-catalogs.md).
 - **2026-05-17** — **Status-broadcast cascade complete.** All six deliverables from [`map/initial-status-broadcast.md`](map/initial-status-broadcast.md) shipped (commits `d766c6b` / `db85ebe` / `30ed3b1`). `BroadcastStatusCalcFirst` mirrors rAthena `status_calc_pc(SCO_FIRST)` byte-for-byte (line 13). `BroadcastLoadEndAck` mirrors `clif_parse_LoadEndAck` (line 24). Renewal formulas for `Hit/Flee/Critical/SoftDef/SoftMdef/Batk/MaxHp/MaxSp` are capture-verified. `CharacterDataResponse` proto extended with 29 saved-stat fields. Replay diff count: **98 → 19** — all remaining diffs are gameplay-content placeholders (item bytes, skill data, achievement entries, NPC-script-triggered packets) in subsystems not yet ported.
 - **2026-05-17** — **Replay-baseline harness shipped and driving parity work.** Captured rAthena packet log (`dhxj.log`) replays end-to-end against our stack; the framework (token rewriter, per-packet decoders, internal-ping healthcheck, multi-cache loading, OOB spawn randomize, rAthena `pc_authok` packet order) drove a wave of parity fixes across Login/Char/Map. See [map/replay-baseline.md](map/replay-baseline.md) for the current state.
 - **2026-05-16** — **Map gameplay plan written.** [map/ROADMAP.md](map/ROADMAP.md) + 9 detailed MS1/MS2 subsystem docs + 7 MS3 adjacent stubs. Phase order: MS1 (enter map + walk around — world, entities, session, movement, visibility, packets) → MS2 (mob-db, npc, spawn) → MS3 adjacent (combat, skills, items, status, chat, trade, gameplay-modules).

@@ -36,6 +36,7 @@ rAthena unifies "scripted mob spawn lines" with `monster` script command. We do 
 - [`MobSpawnEntry`](../../../Map.Server/Spawn/MobSpawnEntry.cs) — static declaration of one spawn slot (class, map, box, amount, respawn delay+jitter).
 - [`MobEntity`](../../../Map.Server/Entities/MobEntity.cs) upgraded with a `MobDbEntry` reference, current Hp/Sp, the `Origin` spawn entry, and `NextWanderTick`. Speed mirrors `mob_db.WalkSpeed`.
 - [`IMobSpawnRegistry`](../../../Map.Server/Spawn/IMobSpawnRegistry.cs) + [`MobSpawnRegistry`](../../../Map.Server/Spawn/MobSpawnRegistry.cs) — concurrency-safe collector indexed by mapId. NPC parser plugs into this in [npc.md](npc.md).
+- **DB source of truth**: 2,950 spawn entries seeded from rAthena `npc/re/mobs/` into the `mob_spawn` table — see [declarative-catalogs.md](declarative-catalogs.md). The spawn service still hardcodes its fixtures; loading from the DB is the next concrete step.
 - [`IMobSpawnService`](../../../Map.Server/Spawn/IMobSpawnService.cs) + [`MobSpawnService`](../../../Map.Server/Spawn/MobSpawnService.cs):
   - `SpawnInitial()` — places mobs per entry, broadcasts STANDENTRY, called once from `MapServerImpl.StartAsync`.
   - `Tick()` — per-tick wander + respawn promotion; called from `UpdateGameLogicAsync`.

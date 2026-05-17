@@ -47,9 +47,9 @@ Not blocking MS1.entities / session — those can start now against the existing
 
 1. **Map index / name lookup** — rAthena uses an integer `map_id` internally and a string name for the wire protocol. Parse `map_index.txt`. Required for any packet that carries a map_id.
 
-2. **Warp portals.** Static portal table from rAthena's `npc/warps/*.txt`. Format is simple `mapname,x,y,xs,ys<TAB>warp<TAB>name<TAB>destmap,destx,desty`. [npc.md](npc.md) will share the parser infrastructure.
+2. ✅ **Warp portal data shipped** as the `warp` DB table — see [declarative-catalogs.md](declarative-catalogs.md). 1,279 portals seeded from rAthena `npc/re/warps/`. Runtime consumer (cell-based lookup on player walk) still pending.
 
-3. **Cell-based warp lookup**: `MapData.GetWarpAt(x, y)` returns the destination or null. Used by [movement.md](movement.md) when the player walks into a warp cell.
+3. **Cell-based warp lookup**: query the `warp` table by `(src_map, src_x, src_y)` when the player enters a cell. Used by [movement.md](movement.md). Best implemented as a `WarpService` that loads the rows for each registered map at boot into a `Dictionary<(map, x, y), Warp>` for O(1) lookup, since the table is read-mostly.
 
 4. **Dynamic cell flags** (MS3) — Ice Wall, Land Protector, Basilica set runtime flags on individual cells. `MapData` stores the base grid immutably; the dynamic layer lives on top (per-cell delta map). Defer until skills system.
 
