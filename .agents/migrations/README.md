@@ -18,7 +18,7 @@ Living status of the port from rAthena C++ (`/Volumes/1TB/Projetos/rathena`) to 
 | [Char (gRPC server)](char/grpc.md) | ✅ ~98% | Remaining: KeepAlive + RequestAddressSync stubs (deferred to P6 map wiring) |
 | [Char (connect flow)](char/connect-flow.md) | ✅ 100% | Cross-server dup-online wired in P3 |
 | [Map (IPC integration)](map/ipc-integration.md) | ✅ Infrastructure 100% / 🔁 Gameplay ops 0% | All lifecycle triggers wired (startup/timers/connect/disconnect/shutdown); module ops gameplay-wait |
-| [Map (replay baseline)](map/replay-baseline.md) | ⚠️ 6/7 capture chunks passing | Trailing `status_calc_pc` cascade (ZC_PAR_CHANGE) unmatched — next slice |
+| [Map (replay baseline)](map/replay-baseline.md) | ⚠️ 6/7 capture chunks passing | Trailing `status_calc_pc` cascade (ZC_PAR_CHANGE) unmatched — scoped in [initial-status-broadcast.md](map/initial-status-broadcast.md) |
 | [Inter base](inter/base.md) | ✅ 100% | All routing wired (P5); map-side client emission is gameplay work |
 | [Inter modules](inter/modules.md) | ✅ Char side 100% / 🔁 Map side 0% | Map-side callers missing (P6) |
 

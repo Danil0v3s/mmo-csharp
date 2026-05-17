@@ -102,11 +102,14 @@ These are *not* gameplay logic — they're a deterministic projection of the sav
 
 ### Suggested scope for the next slice
 
-1. **`StatusBroadcaster` service** in `Map.Server/Status/` that takes a `CharEntity` + the spawn `PlayerEntity` and enqueues the rAthena-equivalent ordered list of `ZC_PAR_CHANGE` / `ZC_COUPLESTATUS` / `ZC_LONGPAR_CHANGE` packets the client expects on first login. Mirrors rAthena `clif_initialstatus` (clif.cpp).
-2. **`SP_*` enum** ([Core.Server/Packets/ParamId.cs](../../../Core.Server/Packets/)) — the parameter IDs rAthena defines in `status.hpp`. Even MS1 doesn't run status changes, but every wire emit references these constants.
-3. **`ZC_SPRITE_CHANGE2` cascade** — emitted from `clif_changelook` for each equipped slot. For a fresh Novice with empty equip this collapses to maybe 1–2 packets (weapon=0). Once items land, this triggers from `pc_equipitem`.
-4. **Decoders** for `0x00B0`, `0x0141`, `0x00B1`, `0x01D7` — so the comparer surfaces field-level diffs once we start emitting. Most fields should be strict; only `gid`/`AID`-bearing IDs need tolerance.
-5. **`ZC_PAR_4JOB_CHANGE` (0x0B25)** — gate behind PACKETVER ≥ 20200916; emits power/sta/wis/spl/con/crt for renewal 4-job UI.
+**Full enumeration with rAthena source cites and the exact wire-byte order is in [initial-status-broadcast.md](initial-status-broadcast.md).** Summary:
+
+1. **`SP_*` enum** ([Core.Server/Packets/ParamId.cs](../../../Core.Server/Packets/)) — parameter IDs from rAthena `map.hpp`.
+2. **~25 new wire packet classes** — `ZC_PAR_CHANGE`, `ZC_COUPLESTATUS`, `ZC_LONGLONGPAR_CHANGE`, `ZC_STATUS`, `ZC_SPRITE_CHANGE2`, `ZC_NOTIFY_STANDENTRY11`, `ZC_SKILLINFO_LIST`, `ZC_SHORTCUT_KEY_LIST`, `ZC_INVENTORY_*`, etc.
+3. **`StatusBroadcaster` service** — `BroadcastStatusCalcFirst` (line 13 cascade) + `BroadcastInitialStatus` (line 24's `clif_initialstatus` block) + `BroadcastLoadEndAckUpdates`.
+4. **Renewal stat formulas** — `Hit`, `Flee`, `ASPD`, `Def1/2`, `Mdef1/2`, `Atk1/2`, `Matk1/2`, `Critical`. Subset needed to make a Novice Lv1's captured values match.
+5. **Trigger points** — `WantToConnectionHandler` invokes the line-13 cascade synchronously after `ZC_NPCACK_MAPMOVE`; `NotifyActorInitHandler` invokes the line-24 cascade on LoadEndAck.
+6. **Decoders** for every new packet so the replay surfaces field-level diffs as we build.
 
 ### Why this is the *right* next step
 
@@ -127,4 +130,5 @@ When you ship a parity fix that the replay flagged, append a one-line entry to t
 
 ## History
 
+- **2026-05-17** — [initial-status-broadcast.md](initial-status-broadcast.md) scope doc written. Decoded line 13 trailing (41 packets, 535 B) and line 24 partial (49 packets, ~1414 B of 1732) packet-by-packet. Full trigger chain traced through rAthena `pc_reg_received → intif_parse_StorageReceived → status_calc_pc(SCO_FIRST)` for line 13 and `clif_parse_LoadEndAck` for line 24. Six deliverables enumerated with rAthena source citations.
 - **2026-05-17** — Wrote this doc. Replay state captured: lines 2/4/6/9/11 ✓, line 13 with 7 packets matching + trailing `status_calc_pc` unmatched, line 24 unreached. All scaffolding (decoders, token rewriter, readiness ping, multi-cache loading, `pc_setpos` OOB randomize, rAthena `pc_authok` packet order) committed.
