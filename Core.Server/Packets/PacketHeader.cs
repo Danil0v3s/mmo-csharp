@@ -111,6 +111,41 @@ public enum PacketHeader : short
     ZC_EXTEND_BODYITEM_SIZE = 0x0b18,      // inventory-expansion info; rAthena clif_inventory_expansion_info
     ZC_FRIENDS_LIST = 0x0201,              // rAthena clif_friendslist_send, variable length
 
+    // === Status broadcast cascade (post-handoff via pc_authok / status_calc_pc) ===
+    // See .agents/migrations/map/initial-status-broadcast.md for the full enumeration.
+    ZC_PAR_CHANGE         = 0x00b0,        // clif_par_change — i16 varId + i32 value
+    ZC_LONGPAR_CHANGE     = 0x00b1,        // clif_longpar_change — same shape as 0x00B0 (legacy long path)
+    ZC_STATUS             = 0x00bd,        // clif_initialstatus full snapshot, 44B
+    ZC_STATUS_CHANGE      = 0x00be,        // clif_zc_status_change — i16 statusId + u8 value
+    ZC_SKILLINFO_LIST     = 0x010f,        // clif_skillinfoblock, variable
+    ZC_ATTACK_RANGE       = 0x013a,        // clif_attackrange, 4B
+    ZC_COUPLESTATUS       = 0x0141,        // SP_STR..LUK / renewal stats — u32 statusType + base + plus
+    ZC_SPRITE_CHANGE2     = 0x01d7,        // clif_changelook for PACKETVER ≥ 20181121, 15B
+    ZC_PARTY_CONFIG       = 0x02c9,        // clif_partyinvitationstate, 3B
+    ZC_CONFIG             = 0x02d9,        // clif_configuration / clif_equipcheckbox, 10B
+    ZC_CONFIG_NOTIFY      = 0x02da,        // clif_equipcheckbox (PACKETVER ≥ 20070918), 3B
+    ZC_ITEM_THROW_ACK     = 0x00af,        // legacy/unused in PACKETVER 20211103, 6B (header + index + count)
+    ZC_CLOSE_DIALOG       = 0x00b6,        // clif_close_dialog, 6B (header + uint32 npcId)
+    ZC_BROADCAST2         = 0x01c3,        // intif_broadcast2 (coloured GM-style messages), variable
+    ZC_QUEST_NOTIFY_EFFECT = 0x0446,       // clif_quest_show_event (NPC quest icon), 14B
+    ZC_MAPPROPERTY_R2     = 0x099b,        // clif_map_property, 8B
+    ZC_NAVIGATION_TO      = 0x08e2,        // clif_navigateTo (PACKETVER ≥ 20111010), 27B
+    ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B
+    ZC_NOTIFY_UNREADMAIL  = 0x09e7,        // mail load reply, 3B
+    ZC_ALL_ACH_LIST       = 0x0a23,        // clif_achievement_list_all, variable
+    ZC_ACH_UPDATE         = 0x0a24,        // clif_achievement_update, 66B
+    ZC_EQUIPSWITCH_LIST   = 0x0a9b,        // clif_equipswitch_list, variable
+    ZC_MAIL_NEW_NOTIFY    = 0x0ac2,        // mail / rodex update (PACKETVER ≥ 20170419), 5B
+    ZC_LONGLONGPAR_CHANGE = 0x0acb,        // clif_longlongpar_change for SP_BASEEXP/JOBEXP at PACKETVER ≥ 20170830, 12B
+    ZC_OVERWEIGHT_PERCENT = 0x0ade,        // pc_updateweightstatus, 6B
+    ZC_INVENTORY_START    = 0x0b08,        // clif_inventorystart, variable
+    ZC_INVENTORYLIST_NORMAL_V6 = 0x0b09,   // normal-items chunk, variable
+    ZC_INVENTORY_END      = 0x0b0b,        // clif_inventoryend, 4B
+    ZC_SHORTCUT_KEY_LIST  = 0x0b20,        // clif_hotkeys_send for PACKETVER ≥ 20190522, fixed 271B
+    ZC_PAR_4JOB_CHANGE    = 0x0b25,        // 4-job stat coupled change, 14B
+    ZC_REPUTATION_LIST    = 0x0b8d,        // clif_reputation_list (rAthena name: ZC_REPUTE_INFO), variable
+    ZC_INVENTORYLIST_EQUIP_V6 = 0x0b39,    // equip-items chunk, variable
+
     // Internal — health-check packets used by the test harness to wait for a
     // server to finish booting. NOT part of the rAthena packet set; picked
     // from the 0x75xx range which rAthena never uses for client packets.
