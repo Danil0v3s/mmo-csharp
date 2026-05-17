@@ -105,6 +105,10 @@ public class WantToConnectionHandler(
         session.LoginId1 = packet.LoginId1;
         session.Sex = packet.Sex;
         session.GroupId = auth.GroupId;
+        // Cache the character snapshot so the LoadEndAck cascade
+        // (NotifyActorInitHandler) can re-emit stats without another
+        // IPC roundtrip.
+        session.CharacterData = character;
         session.CharacterName = character?.Character?.Name ?? string.Empty;
         session.MapId = (uint)spawnMap.Name.GetHashCode();
         session.SpawnX = spawnX;

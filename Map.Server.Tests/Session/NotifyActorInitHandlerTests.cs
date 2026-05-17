@@ -6,6 +6,7 @@ using Map.Server;
 using Map.Server.Entities;
 using Map.Server.Handlers;
 using Map.Server.Session;
+using Map.Server.Status;
 using Map.Server.Tests.Visibility;
 using Map.Server.Visibility;
 using Map.Server.World;
@@ -22,7 +23,7 @@ public class NotifyActorInitHandlerTests
         var session = ctx.NewSession(authState: MapAuthState.Unauthenticated);
 
         var handler = new NotifyActorInitHandler(
-            ctx.Registry, ctx.Visibility, NullLogger<NotifyActorInitHandler>.Instance);
+            ctx.Registry, ctx.Visibility, new StatusBroadcaster(), NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
 
@@ -47,7 +48,7 @@ public class NotifyActorInitHandlerTests
         ctx.Registry.Add(viewer);
 
         var handler = new NotifyActorInitHandler(
-            ctx.Registry, ctx.Visibility, NullLogger<NotifyActorInitHandler>.Instance);
+            ctx.Registry, ctx.Visibility, new StatusBroadcaster(), NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
 
@@ -80,7 +81,7 @@ public class NotifyActorInitHandlerTests
             name: "Hero");
 
         var handler = new NotifyActorInitHandler(
-            ctx.Registry, ctx.Visibility, NullLogger<NotifyActorInitHandler>.Instance);
+            ctx.Registry, ctx.Visibility, new StatusBroadcaster(), NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
 

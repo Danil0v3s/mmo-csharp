@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using Core.Server.IPC;
 using Core.Server.Network;
 using Core.Server.Packets;
 using Map.Server.Entities;
@@ -40,6 +41,15 @@ public class MapSessionData(
     public short SpawnY { get; set; }
     public byte SpawnDir { get; set; }
     public string? CharacterName { get; set; }
+
+    /// <summary>
+    /// The full character snapshot received from char server during
+    /// <c>CZ_WANT_TO_CONNECTION</c>. Cached so the LoadEndAck cascade
+    /// (<see cref="Map.Server.Handlers.NotifyActorInitHandler"/>) can
+    /// reuse it without a second IPC roundtrip. Cleared at session
+    /// teardown.
+    /// </summary>
+    public CharacterDataResponse? CharacterData { get; set; }
 
     /// <summary>
     /// Block-list id of the live <see cref="PlayerEntity"/>, populated once

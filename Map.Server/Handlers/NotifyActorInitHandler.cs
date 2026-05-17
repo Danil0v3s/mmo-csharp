@@ -3,6 +3,7 @@ using Core.Server.Packets;
 using Core.Server.Packets.In.CZ;
 using Map.Server.Entities;
 using Map.Server.Session;
+using Map.Server.Status;
 using Map.Server.Visibility;
 
 namespace Map.Server.Handlers;
@@ -18,6 +19,7 @@ namespace Map.Server.Handlers;
 public class NotifyActorInitHandler(
     IEntityRegistry registry,
     IVisibilityService visibility,
+    StatusBroadcaster statusBroadcaster,
     ILogger<NotifyActorInitHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_NOTIFY_ACTORINIT>
 {
@@ -64,6 +66,16 @@ public class NotifyActorInitHandler(
         // Tell other players in view about us; then tell us about them.
         visibility.NotifySpawnedToArea(player);
         visibility.SendCurrentViewToSelf(player);
+
+        // LoadEndAck cascade — sprite changes, inventory, weight, map
+        // property, self-spawn, skill info, hotkeys, exp, initial-status,
+        // party/config/reputation. Mirrors clif_parse_LoadEndAck
+        // (clif.cpp:10723+). Source data is the CharacterDataResponse
+        // cached on the session by WantToConnectionHandler.
+        if (session.CharacterData != null)
+        {
+            statusBroadcaster.BroadcastLoadEndAck(session, session.CharacterData, (uint)accountId);
+        }
 
         logger.LogInformation(
             "Player {Name} (char {CharId}) spawned at ({X},{Y}) on map 0x{MapId:X8}",
