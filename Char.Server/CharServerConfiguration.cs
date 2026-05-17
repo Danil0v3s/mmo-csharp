@@ -254,9 +254,10 @@ public class CharServerConfiguration : ServerConfiguration
     public List<StartItem> StartItemsDoram { get; set; } = new();
     
     /// <summary>
-    /// Starting status points
+    /// Starting status points granted to a freshly created character.
+    /// rAthena `charserv_config.start_status_points` default (char.cpp:2794).
     /// </summary>
-    public uint StartStatusPoints { get; set; } = 0;
+    public uint StartStatusPoints { get; set; } = 48;
     
     /// <summary>
     /// Console enabled

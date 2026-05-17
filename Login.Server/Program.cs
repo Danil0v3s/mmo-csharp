@@ -53,6 +53,7 @@ builder.Services.AddSingleton<ILoginServerRuntime>(sp => sp.GetRequiredService<L
 
 // Register LoginServerImpl - now with clean dependencies
 builder.Services.AddSingleton<LoginServerImpl>();
+builder.Services.AddSingleton<IServerReadiness>(sp => sp.GetRequiredService<LoginServerImpl>());
 
 builder.Services.AddGameServerRuntime();
 

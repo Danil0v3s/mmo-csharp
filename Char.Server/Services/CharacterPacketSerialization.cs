@@ -75,7 +75,10 @@ internal static class CharacterPacketSerialization
             CharNum = character.CharNum,
             HairColor = ClampByte(character.HairColor),
             IsChangedCharName = character.Rename > 0 ? (short)0 : (short)1,
-            MapName = character.LastMap,
+            // rAthena appends ".gat" to the map name when serializing for
+            // the client (clif_char_info writes "<map>.gat" into the 16-byte
+            // name slot). Mirror that here so the wire shape matches.
+            MapName = AppendGatSuffix(character.LastMap),
             DelRevDate = ClampInt(character.DeleteDate),
             RobePalette = character.Robe,
             ChrSlotChangeCnt = ClampInt(character.Moves),
@@ -95,6 +98,14 @@ internal static class CharacterPacketSerialization
 
     private static byte ToSex(string sex) =>
         string.Equals(sex, "F", StringComparison.OrdinalIgnoreCase) ? (byte)0 : (byte)1;
+
+    private static string AppendGatSuffix(string? mapName)
+    {
+        if (string.IsNullOrEmpty(mapName)) return string.Empty;
+        return mapName.EndsWith(".gat", StringComparison.OrdinalIgnoreCase)
+            ? mapName
+            : mapName + ".gat";
+    }
 
     private static uint ClampUInt(int value) => value < 0 ? 0u : (uint)value;
 

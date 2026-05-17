@@ -113,6 +113,8 @@ Everything else, after MS1+MS2 are usable. These can largely run in parallel. De
 - Inter-base routing receivers (broadcast/whisper/etc.) — log+ack stubs awaiting gameplay
 - `ForceDisconnectAccount` map-side handler ✅
 - Per-module typed IPC wrappers ready in [Map.Server/Services/CharServerIpcService.*.cs](../../../Map.Server/Services/)
+- **`pc_authok` post-auth flow (replay-validated)** — `WantToConnectionHandler` emits ZC_AID + ZC_EXTEND_BODYITEM_SIZE + ZC_ACCEPT_ENTER_ZONE + ZC_FRIENDS_LIST + version chat + MOTD + ZC_NPCACK_MAPMOVE in rAthena's order. `pc_setpos` OOB/non-walkable spawn randomize. Multi-cache map loading (`MapDataPaths`). See [replay-baseline.md](replay-baseline.md).
+- **Replay harness driving parity** — `Tools.PacketReplay` + `Map.Server.Tests/Replay/PacketReplayTests` runs a captured rAthena session against the live stack with token rewriting + tolerant decoders. 6 of 7 chunks pass; the missing piece is the `status_calc_pc` cascade. See [replay-baseline.md](replay-baseline.md).
 
 ## What's NOT in place
 

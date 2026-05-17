@@ -11,8 +11,16 @@ using Login.Server.Security;
 
 namespace Login.Server;
 
-public class LoginServerImpl : GameLoopServer
+public class LoginServerImpl : GameLoopServer, IServerReadiness
 {
+    /// <summary>
+    /// Login has no peer-registration dependency: once the game loop is
+    /// running (TCP listener bound, DB/IP-ban warmup done), it's ready.
+    /// Char + Map will only flip their own readiness once they've talked
+    /// to us, so this needs to be true first.
+    /// </summary>
+    public bool IsReady => State == ServerState.Running;
+
     private Socket? _listenerSocket;
     private readonly PacketHandlerRegistry _handlerRegistry;
     private readonly ILoginSecurityService _loginSecurityService;

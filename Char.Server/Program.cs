@@ -49,6 +49,7 @@ builder.Services.AddSingleton<ICharServerState>(sp => sp.GetRequiredService<Char
 
 // Register CharServerImpl - also provides ICharServerRuntime for gRPC service
 builder.Services.AddSingleton<CharServerImpl>();
+builder.Services.AddSingleton<IServerReadiness>(sp => sp.GetRequiredService<CharServerImpl>());
 
 // Register database services used by character list/select handlers.
 var connectionString = configuration.GetConnectionString("GameDatabase")

@@ -47,11 +47,20 @@ public sealed class MapCacheReader
     /// Read every map from the cache file. Returns a dictionary keyed by
     /// map name. Use this once at startup; subsequent lookups go through
     /// <see cref="IMapWorldRegistry"/>.
+    ///
+    /// Pass <paramref name="logger"/> to get a per-map line as the cache is
+    /// parsed (name, xs, ys, compressed payload size). Useful when a map
+    /// the server expects "should be in the cache" but the warmup is
+    /// dropping it — the log tells you whether the parser ever saw it.
     /// </summary>
-    public IReadOnlyDictionary<string, MapData> ReadAll(string cacheFilePath)
+    public IReadOnlyDictionary<string, MapData> ReadAll(string cacheFilePath, ILogger? logger = null)
     {
         var bytes = File.ReadAllBytes(cacheFilePath);
-        var (mapCount, _) = ParseMainHeader(bytes);
+        var (mapCount, fileSize) = ParseMainHeader(bytes);
+        logger?.LogInformation(
+            "Parsing mapcache: {MapCount} maps declared, file_size={FileSize}, bytes_on_disk={BytesOnDisk} ({Path})",
+            mapCount, fileSize, bytes.Length, cacheFilePath);
+
         var result = new Dictionary<string, MapData>(mapCount, StringComparer.OrdinalIgnoreCase);
 
         var offset = MainHeaderSize;
@@ -61,6 +70,9 @@ public sealed class MapCacheReader
             offset += MapInfoSize;
             var cells = DecodeCells(bytes.AsSpan(offset, info.Len), info.Xs, info.Ys);
             offset += info.Len;
+            logger?.LogInformation(
+                "  [{Index}/{Count}] {Name}: xs={Xs} ys={Ys} cells={Cells} compressed={Compressed}B",
+                i + 1, mapCount, info.Name, info.Xs, info.Ys, cells.Length, info.Len);
             result[info.Name] = new MapData(info.Name, info.Xs, info.Ys, cells);
         }
 

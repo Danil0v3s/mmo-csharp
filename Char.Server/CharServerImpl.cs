@@ -8,8 +8,17 @@ using Core.Server.Packets;
 
 namespace Char.Server;
 
-public class CharServerImpl : GameLoopServer, ICharServerRuntime
+public class CharServerImpl : GameLoopServer, ICharServerRuntime, IServerReadiness
 {
+    /// <summary>
+    /// Char is "ready" only once the game loop is ticking AND it has
+    /// successfully registered with the login server. Map servers can't
+    /// register their maps with char until char itself is registered, and
+    /// the client login flow won't proceed past AC_ACCEPT_LOGIN if no
+    /// char server is registered with login.
+    /// </summary>
+    public bool IsReady => State == ServerState.Running && _serverState.IsRegisteredToLoginServer;
+
     private Socket? _listenerSocket;
     private readonly PacketHandlerRegistry _handlerRegistry;
     private readonly CharServerConfiguration _charConfiguration;

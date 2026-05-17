@@ -108,4 +108,12 @@ public enum PacketHeader : short
     CZ_HEARTBEAT = 0x0360,
     CZ_ITEM_PICKUP = 0x0362,               // CZ_ITEM_PICKUP2 (modern, 4-byte entity id)
     CZ_WANT_TO_CONNECTION = 0x0436,        // modern post-charselect connect
+    ZC_EXTEND_BODYITEM_SIZE = 0x0b18,      // inventory-expansion info; rAthena clif_inventory_expansion_info
+    ZC_FRIENDS_LIST = 0x0201,              // rAthena clif_friendslist_send, variable length
+
+    // Internal — health-check packets used by the test harness to wait for a
+    // server to finish booting. NOT part of the rAthena packet set; picked
+    // from the 0x75xx range which rAthena never uses for client packets.
+    CZ_INTERNAL_PING = 0x7530,
+    ZC_INTERNAL_PONG = 0x7531,
 }

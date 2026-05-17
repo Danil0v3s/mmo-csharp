@@ -13,6 +13,14 @@ public class MapServerConfiguration : ServerConfiguration
     public int ServerId { get; set; } = 1;
 
     /// <summary>
+    /// Client-facing IPv4 address this map server advertises to the char server
+    /// after registering its map list. Char uses this when building
+    /// HC_SEND_MAP_DATA so the client knows where to connect next. Default
+    /// suits single-host development; production deployments override.
+    /// </summary>
+    public string MapIp { get; set; } = "127.0.0.1";
+
+    /// <summary>
     /// List of map names this server is authoritative for (rAthena `chmapif_parse_getmapname`
     /// payload). Pushed to the char server on startup via RegisterMapServerMaps.
     /// </summary>
@@ -34,8 +42,37 @@ public class MapServerConfiguration : ServerConfiguration
     public int AutosaveInterval { get; set; } = 300;
 
     /// <summary>
-    /// Filesystem path to rAthena's renewal mapcache.dat. Loaded once at startup;
-    /// only the maps listed in <see cref="Maps"/> are kept in memory.
+    /// One or more rAthena <c>map_cache.dat</c> files, searched in order at
+    /// startup. Mirrors rAthena <c>map.cpp:3798-3802</c>: import → re/pre-re
+    /// → root. The first cache containing a configured map name wins, so
+    /// list narrower / per-mode caches first.
     /// </summary>
-    public string MapDataPath { get; set; } = "/Volumes/1TB/Projetos/rathena/db/re/map_cache.dat";
+    public List<string> MapDataPaths { get; set; } = new();
+
+    /// <summary>
+    /// Whether to display the server version string to the client at login.
+    /// Mirrors rAthena <c>battle_config.display_version</c>; when enabled
+    /// the player sees a single self-message after spawn. Defaults to true
+    /// since rAthena's default for display_version is 1.
+    /// </summary>
+    public bool DisplayVersion { get; set; } = true;
+
+    /// <summary>
+    /// Version string sent to the client when <see cref="DisplayVersion"/>
+    /// is true. rAthena emits "Cannot determine SVN/Git version." when
+    /// <c>get_git_hash()</c> fails — same default here so a fresh checkout
+    /// matches the capture without extra config.
+    /// </summary>
+    public string VersionMessage { get; set; } = "Cannot determine SVN/Git version.";
+
+    /// <summary>
+    /// Lines emitted to the client after login (rAthena MOTD, read from
+    /// <c>conf/motd.txt</c>). Inlined here for parity with the captured
+    /// server. Empty lines and comment lines starting with <c>//</c> are
+    /// skipped, mirroring rAthena's parser.
+    /// </summary>
+    public List<string> MotdLines { get; set; } = new()
+    {
+        "Welcome to rAthena! Enjoy! Please report any bugs you find."
+    };
 }

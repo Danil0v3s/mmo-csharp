@@ -12,7 +12,7 @@ namespace Tools.PacketReplay.Decoders;
 ///   int16 packetType        2  ← header (skipped in decode)
 ///   int16 packetLength      2  ← variable-length prefix (skipped)
 ///   uint32 login_id1        4  ← TOLERANT (per-session random token)
-///   uint32 AID              4
+///   uint32 AID              4  ← TOLERANT (auto_increment offset differs per DB)
 ///   uint32 login_id2        4  ← TOLERANT (per-session random token)
 ///   uint32 last_ip          4  ← TOLERANT (host-dependent)
 ///   char   last_login[26]   26 ← TOLERANT (timestamp text)
@@ -35,7 +35,7 @@ public sealed class AcAcceptLoginDecoder : IPacketDecoder
         var fields = new List<DecodedField>
         {
             new("LoginId1", r.ReadUInt32(), Tolerant: true),
-            new("AID", r.ReadUInt32()),
+            new("AID", r.ReadUInt32(), Tolerant: true),
             new("LoginId2", r.ReadUInt32(), Tolerant: true),
             new("LastIp", r.ReadUInt32(), Tolerant: true),
             new("LastLogin", ReadFixedString(r, 26), Tolerant: true),

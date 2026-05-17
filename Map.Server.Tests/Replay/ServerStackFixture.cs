@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Net.Sockets;
+using MySqlConnector;
 
 namespace Map.Server.Tests.Replay;
 
@@ -26,38 +27,129 @@ public sealed class ServerStackFixture : IAsyncLifetime
         _logDir = Path.Combine(Path.GetTempPath(), $"mmo-replay-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_logDir);
 
+        // The captured fixture exercises rAthena's "create account on login"
+        // flow (CA_LOGIN with the _M / _F suffix). For that path to run, the
+        // target account must not already exist in `login`. Wipe replay-test
+        // accounts (and any characters they own) so consecutive runs start
+        // from the same fresh state the capture was recorded against.
+        await CleanReplayAccountsAsync();
+
         await StartAsync(repoRoot, "Login.Server", port: 6900);
         await StartAsync(repoRoot, "Char.Server", port: 6121);
         // Note: capture says 5121 but our config says 5191.
         await StartAsync(repoRoot, "Map.Server", port: 5191);
 
-        // Char registers itself with Login asynchronously after both TCP
-        // listeners are up. Login refuses logins with SC_NOTIFY_BAN until
-        // at least one char server is registered. Wait for that line before
-        // declaring the stack ready, otherwise the first replay races the
-        // registration and fails on a healthy-but-still-warming stack.
-        await WaitForLogLineAsync(
-            Path.Combine(_logDir, "login.log"),
-            "Character server registration request",
-            TimeSpan.FromSeconds(15));
+        // Each server exposes a CZ_INTERNAL_PING handler that responds with
+        // its own IServerReadiness state. We block here until every server
+        // reports Ready=1, which is stronger than "TCP port accepts":
+        //   - Login: state == Running.
+        //   - Char:  + registered with Login server.
+        //   - Map:   + map list registered with Char server.
+        // Without this, the replay races against char→login registration
+        // and (more painfully) the map server's mob_db / item_db / world
+        // cache load, which all run after the TCP listener binds.
+        await WaitForServerReadyAsync(port: 6900, name: "Login", timeout: TimeSpan.FromSeconds(30));
+        await WaitForServerReadyAsync(port: 6121, name: "Char",  timeout: TimeSpan.FromSeconds(30));
+        await WaitForServerReadyAsync(port: 5191, name: "Map",   timeout: TimeSpan.FromSeconds(120));
     }
 
-    private static async Task WaitForLogLineAsync(string path, string needle, TimeSpan timeout)
+    private const string DbConnectionString =
+        "Server=localhost;Port=3306;Database=ragnarok;Uid=ragnarok;Pwd=ragnarok;CharSet=utf8mb4;";
+
+    /// <summary>
+    /// Names that may appear as `userid` in the replay captures. Anything
+    /// matching these is removed so the fresh-account flow runs as captured.
+    /// </summary>
+    private static readonly string[] ReplayAccountNames = { "mmocsharp", "danilo3" };
+
+    private static async Task CleanReplayAccountsAsync()
+    {
+        await using var conn = new MySqlConnection(DbConnectionString);
+        await conn.OpenAsync();
+
+        // Resolve account ids first so we can fan out to dependent tables
+        // without relying on FKs (the char schema deliberately avoids most).
+        var ids = new List<int>();
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT account_id FROM login WHERE userid IN ("
+                              + string.Join(",", ReplayAccountNames.Select((_, i) => $"@n{i}")) + ")";
+            for (var i = 0; i < ReplayAccountNames.Length; i++)
+            {
+                cmd.Parameters.AddWithValue($"@n{i}", ReplayAccountNames[i]);
+            }
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync()) ids.Add(reader.GetInt32(0));
+        }
+
+        if (ids.Count == 0) return;
+
+        var idList = string.Join(",", ids);
+        // Delete in dependency order: characters owned by these accounts,
+        // then the accounts themselves. Anything that fans out from `char`
+        // (inventory, skills, etc.) is left to ON DELETE cascades where
+        // configured; otherwise it's orphan rows that don't affect the
+        // login → connect flow under test.
+        foreach (var sql in new[]
+        {
+            $"DELETE FROM `char` WHERE account_id IN ({idList})",
+            $"DELETE FROM login WHERE account_id IN ({idList})"
+        })
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            await cmd.ExecuteNonQueryAsync();
+        }
+    }
+
+    // CZ_INTERNAL_PING / ZC_INTERNAL_PONG wire format (see PacketHeader.cs):
+    //   ping  = [0x30 0x75]                  (header only)
+    //   pong  = [0x31 0x75 <Ready:1>]        (header + 1-byte ready flag)
+    // Custom IDs in the 0x75xx range that rAthena never uses for clients.
+    private const ushort CZ_INTERNAL_PING = 0x7530;
+    private const ushort ZC_INTERNAL_PONG = 0x7531;
+    private static readonly byte[] PingBytes = { (byte)(CZ_INTERNAL_PING & 0xFF), (byte)(CZ_INTERNAL_PING >> 8) };
+
+    private static async Task WaitForServerReadyAsync(int port, string name, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
+        Exception? lastError = null;
         while (DateTime.UtcNow < deadline)
         {
-            if (File.Exists(path))
+            try
             {
-                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                using var reader = new StreamReader(fs);
-                var content = await reader.ReadToEndAsync();
-                if (content.Contains(needle, StringComparison.Ordinal)) return;
+                using var client = new TcpClient();
+                using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                await client.ConnectAsync("127.0.0.1", port, connectCts.Token);
+                using var stream = client.GetStream();
+                stream.ReadTimeout = 2000;
+
+                await stream.WriteAsync(PingBytes);
+                await stream.FlushAsync();
+
+                var response = new byte[3];
+                var read = 0;
+                while (read < response.Length)
+                {
+                    var n = await stream.ReadAsync(response.AsMemory(read, response.Length - read));
+                    if (n == 0) break;
+                    read += n;
+                }
+
+                if (read == 3
+                    && BitConverter.ToUInt16(response, 0) == ZC_INTERNAL_PONG
+                    && response[2] == 1)
+                {
+                    return;
+                }
             }
-            await Task.Delay(250);
+            catch (Exception ex) { lastError = ex; }
+
+            await Task.Delay(500);
         }
         throw new TimeoutException(
-            $"Did not see '{needle}' in {path} within {timeout.TotalSeconds}s");
+            $"{name} server (port {port}) did not report ready within {timeout.TotalSeconds}s"
+            + (lastError != null ? $". Last error: {lastError.GetType().Name}: {lastError.Message}" : "."));
     }
 
     public Task DisposeAsync()

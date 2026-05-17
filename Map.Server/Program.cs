@@ -55,7 +55,7 @@ builder.Services.AddSingleton<IPlayerMapService, PlayerMapService>();
 builder.Services.AddSingleton<IMapWorldRegistry>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Program>>();
-    return MapWorldRegistry.Load(serverConfig.MapDataPath, serverConfig.Maps, logger);
+    return MapWorldRegistry.Load(serverConfig.MapDataPaths, serverConfig.Maps, logger);
 });
 
 // Static catalogs hydrated from Core.Database (rAthena use_sql_db: yes parity).
@@ -74,6 +74,7 @@ builder.Services.AddSingleton<IMapServerState>(sp => sp.GetRequiredService<MapSe
 
 // Register MapServerImpl
 builder.Services.AddSingleton<MapServerImpl>();
+builder.Services.AddSingleton<IServerReadiness>(sp => sp.GetRequiredService<MapServerImpl>());
 
 // Entity infrastructure for MS1 gameplay (see .agents/migrations/map/entities.md).
 builder.Services.AddSingleton<EntityIdAllocator>();

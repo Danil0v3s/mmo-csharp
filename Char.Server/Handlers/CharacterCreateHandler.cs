@@ -66,6 +66,16 @@ public class CharacterCreateHandler(
         }
 
         var startPoint = configuration.StartPoint.FirstOrDefault() ?? new StartPoint { Map = "prontera", X = 156, Y = 191 };
+
+        // rAthena `make_new_char_sql` formulas (char.cpp:1496-1501):
+        //   max_hp = hp = 40 * (100 + vit) / 100
+        //   max_sp = sp = 11 * (100 + int) / 100
+        // With the starting Vit=1, Int=1 these collapse to 40/11 — the same
+        // values the captured rAthena writes into HC_ACCEPT_MAKECHAR.
+        const byte StartStr = 1, StartAgi = 1, StartVit = 1, StartInt = 1, StartDex = 1, StartLuk = 1;
+        var maxHp = (uint)(40 * (100 + StartVit) / 100);
+        var maxSp = (uint)(11 * (100 + StartInt) / 100);
+
         var character = new CharEntity
         {
             AccountId = session.AccountId.Value,
@@ -74,12 +84,18 @@ public class CharacterCreateHandler(
             Class = (ushort)Math.Min(packet.StartingJob, ushort.MaxValue),
             BaseLevel = 1,
             JobLevel = 1,
-            Str = 1,
-            Agi = 1,
-            Vit = 1,
-            Int = 1,
-            Dex = 1,
-            Luk = 1,
+            Str = StartStr,
+            Agi = StartAgi,
+            Vit = StartVit,
+            Int = StartInt,
+            Dex = StartDex,
+            Luk = StartLuk,
+            StatusPoint = configuration.StartStatusPoints,
+            Zeny = (uint)Math.Max(configuration.StartZeny, 0),
+            MaxHp = maxHp,
+            Hp = maxHp,
+            MaxSp = maxSp,
+            Sp = maxSp,
             Hair = (byte)Math.Min(packet.HairStyle, byte.MaxValue),
             HairColor = packet.HairColor,
             Sex = packet.Sex == 0 ? "F" : "M",

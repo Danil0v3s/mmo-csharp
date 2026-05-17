@@ -18,6 +18,7 @@ Living status of the port from rAthena C++ (`/Volumes/1TB/Projetos/rathena`) to 
 | [Char (gRPC server)](char/grpc.md) | ✅ ~98% | Remaining: KeepAlive + RequestAddressSync stubs (deferred to P6 map wiring) |
 | [Char (connect flow)](char/connect-flow.md) | ✅ 100% | Cross-server dup-online wired in P3 |
 | [Map (IPC integration)](map/ipc-integration.md) | ✅ Infrastructure 100% / 🔁 Gameplay ops 0% | All lifecycle triggers wired (startup/timers/connect/disconnect/shutdown); module ops gameplay-wait |
+| [Map (replay baseline)](map/replay-baseline.md) | ⚠️ 6/7 capture chunks passing | Trailing `status_calc_pc` cascade (ZC_PAR_CHANGE) unmatched — next slice |
 | [Inter base](inter/base.md) | ✅ 100% | All routing wired (P5); map-side client emission is gameplay work |
 | [Inter modules](inter/modules.md) | ✅ Char side 100% / 🔁 Map side 0% | Map-side callers missing (P6) |
 
@@ -56,6 +57,7 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-17** — **Replay-baseline harness shipped and driving parity work.** Captured rAthena packet log (`dhxj.log`) replays end-to-end against our stack; 6 of 7 chunks pass, line 13 has 7 packets matching plus a trailing `status_calc_pc` cascade we don't yet emit. The framework (token rewriter, per-packet decoders, internal-ping healthcheck, multi-cache loading, OOB spawn randomize, rAthena `pc_authok` packet order) drove a wave of parity fixes across Login/Char/Map. See [map/replay-baseline.md](map/replay-baseline.md) for the current state and what the capture says is next (status broadcast: `ZC_PAR_CHANGE` / `ZC_COUPLESTATUS` / `ZC_SPRITE_CHANGE2` cascade from rAthena `clif_initialstatus`).
 - **2026-05-16** — **Map gameplay plan written.** [map/ROADMAP.md](map/ROADMAP.md) + 9 detailed MS1/MS2 subsystem docs + 7 MS3 adjacent stubs. Phase order: MS1 (enter map + walk around — world, entities, session, movement, visibility, packets) → MS2 (mob-db, npc, spawn) → MS3 adjacent (combat, skills, items, status, chat, trade, gameplay-modules).
 - **2026-05-16** — **P8 pre-gameplay cascade audit.** Deep audit of every char_service RPC against rAthena `int_*.cpp` found 4 persistence/cascade gaps that would have been silent corruption during gameplay: PartyLeave leader-departure cascade, GuildBreak related-table cleanup (skills/positions/alliances/expulsions/storage/castle reset), MercenarySave skill cooldown persistence, MercenaryDelete cascade to cooldowns + owner. All four fixed; 8 new regression tests added. Suite at 148 + 16 = 164.
 - **2026-05-16** — **P7 complete. Pre-map parity surface is done.** Created `Login.Server.Tests` project (16 tests). Added `LoginDataRepositoryTests` exercising the global online registry (state machinery for cross-server dup-online), `LoginGrpcServiceCrossServerTests` exercising the gRPC contract char servers depend on, and `AuthNodeReplayTests` proving the replay defense (deferred from P2.7). Doc sweep: every `Pending` section is now empty or explicitly deferred-to-gameplay. **P1–P7 done; the char/login/interop side is locked in. Map-server gameplay work can begin.**

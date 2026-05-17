@@ -90,12 +90,17 @@ public class CharacterListFlowService(
             BlockInfo = Array.Empty<CharacterBlockInfo>()
         });
 
-        if (configuration.Pincode.Enabled && !session.PincodeVerified)
-        {
-            PincodeFlowSupport.SendState(
-                session,
-                PincodeFlowSupport.ComputeStartState(session, configuration.Pincode));
-        }
+        // rAthena always emits HC_SECOND_PASSWD_LOGIN after the slot
+        // summary (chlogif_pincode_start in char_logif.cpp). When pincode
+        // is disabled it sends state=PassedOrDisabled so the client knows
+        // to skip the pincode dialog and proceed. Skipping the emit makes
+        // newer clients hang waiting for it. Emit unconditionally — the
+        // state field signals the client what to do, and ClientConnectHandler
+        // pre-marks PincodeVerified=true when pincode is disabled, which
+        // would otherwise suppress this emit.
+        PincodeFlowSupport.SendState(
+            session,
+            PincodeFlowSupport.ComputeStartState(session, configuration.Pincode));
 
         logger.LogInformation(
             "Sent initial character window payload for account {AccountId} (session {SessionId}) (bytes={PayloadBytes})",

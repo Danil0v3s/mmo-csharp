@@ -11,8 +11,18 @@ using Map.Server.Spawn;
 
 namespace Map.Server;
 
-public class MapServerImpl : GameLoopServer
+public class MapServerImpl : GameLoopServer, IServerReadiness
 {
+    /// <summary>
+    /// Map is "ready" only once it has finished its DB-heavy boot (mob_db,
+    /// item_db, world cache), its game loop is ticking, the map list is
+    /// registered with the char server, AND the client-facing address
+    /// (MapIp:Port) is pushed to char — without the address the char
+    /// server has the map registered but can't build HC_SEND_MAP_DATA, so
+    /// CH_SELECT_CHAR falls through to RejectAuthResult.
+    /// </summary>
+    public bool IsReady => State == ServerState.Running && _registered && _addressSynced;
+
     private Socket? _listenerSocket;
     private readonly PacketHandlerRegistry _handlerRegistry;
     private readonly MapServerState _serverState;
@@ -27,6 +37,7 @@ public class MapServerImpl : GameLoopServer
     private DateTime _nextUserCountSyncUtc = DateTime.MinValue;
     private DateTime _nextAutosaveUtc = DateTime.MinValue;
     private volatile bool _registered;
+    private volatile bool _addressSynced;
     private int _lastReportedUserCount = -1;
 
     public MapServerImpl(
@@ -168,27 +179,73 @@ public class MapServerImpl : GameLoopServer
 
     private async Task EnsureRegisteredOnCharServerAsync(CancellationToken cancellationToken)
     {
-        if (_registered || DateTime.UtcNow < _nextRegistrationAttemptUtc) return;
+        if (_registered && _addressSynced) return;
+        if (DateTime.UtcNow < _nextRegistrationAttemptUtc) return;
         _nextRegistrationAttemptUtc = DateTime.UtcNow.AddSeconds(5);
 
         try
         {
-            var response = await _charServerIpc.RegisterMapServerMapsAsync(
-                _mapConfiguration.ServerId,
-                _mapConfiguration.Maps,
-                cancellationToken);
-            if (response?.Success == true)
+            if (!_registered)
             {
-                _registered = true;
-                Logger.LogInformation(
-                    "Registered {Count} maps with char server (server id {ServerId})",
-                    _mapConfiguration.Maps.Count, _mapConfiguration.ServerId);
+                var response = await _charServerIpc.RegisterMapServerMapsAsync(
+                    _mapConfiguration.ServerId,
+                    _mapConfiguration.Maps,
+                    cancellationToken);
+                if (response?.Success == true)
+                {
+                    _registered = true;
+                    Logger.LogInformation(
+                        "Registered {Count} maps with char server (server id {ServerId})",
+                        _mapConfiguration.Maps.Count, _mapConfiguration.ServerId);
+                }
+            }
+
+            // Address sync: char needs MapIp:Port to populate HC_SEND_MAP_DATA
+            // when the client picks a character whose last_map lives on this
+            // server. Without it the registry has the map name but no endpoint,
+            // and the select handler falls through to RejectAuthResult.
+            if (_registered && !_addressSynced)
+            {
+                if (!TryConvertIpv4ToUInt(_mapConfiguration.MapIp, out var ip))
+                {
+                    Logger.LogWarning(
+                        "Cannot sync map server address: MapIp '{MapIp}' is not a valid IPv4",
+                        _mapConfiguration.MapIp);
+                }
+                else
+                {
+                    var addressResponse = await _charServerIpc.UpdateMapServerAddressAsync(
+                        _mapConfiguration.ServerId,
+                        ip,
+                        (uint)_mapConfiguration.Port,
+                        cancellationToken);
+                    if (addressResponse?.Success == true)
+                    {
+                        _addressSynced = true;
+                        Logger.LogInformation(
+                            "Synced map server address {Ip}:{Port} with char server (server id {ServerId})",
+                            _mapConfiguration.MapIp, _mapConfiguration.Port, _mapConfiguration.ServerId);
+                    }
+                }
             }
         }
         catch (Exception ex)
         {
             Logger.LogDebug(ex, "Char server not reachable for map registration; will retry");
         }
+    }
+
+    private static bool TryConvertIpv4ToUInt(string ipAddress, out uint ip)
+    {
+        ip = 0;
+        if (!IPAddress.TryParse(ipAddress, out var parsed) || parsed.AddressFamily != AddressFamily.InterNetwork)
+        {
+            return false;
+        }
+
+        var bytes = parsed.GetAddressBytes();
+        ip = ((uint)bytes[0] << 24) | ((uint)bytes[1] << 16) | ((uint)bytes[2] << 8) | bytes[3];
+        return true;
     }
 
     private async Task SendKeepAliveIfDueAsync(CancellationToken cancellationToken)
