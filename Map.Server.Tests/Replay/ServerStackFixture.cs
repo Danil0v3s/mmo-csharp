@@ -67,6 +67,24 @@ public sealed class ServerStackFixture : IAsyncLifetime
         await using var conn = new MySqlConnection(DbConnectionString);
         await conn.OpenAsync();
 
+        // Clear login security state first: the replay capture's first
+        // login attempt ("danilo3") is *expected* to fail with refuse=0
+        // (unknown account). Consecutive test runs accumulate failed
+        // logins in `loginlog`; after `DynamicPassFailureBanLimit` hits,
+        // the next failure refuses with code 3 (banned) instead of 0,
+        // which makes line 2 of the capture diverge. Clearing both
+        // tables every run keeps the assertion stable.
+        foreach (var sql in new[]
+        {
+            "DELETE FROM loginlog WHERE user = 'danilo3'",
+            "DELETE FROM ipbanlist WHERE list IN ('127.*.*.*', '127.0.*.*', '127.0.0.*', '127.0.0.1')",
+        })
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            await cmd.ExecuteNonQueryAsync();
+        }
+
         // Resolve account ids first so we can fan out to dependent tables
         // without relying on FKs (the char schema deliberately avoids most).
         var ids = new List<int>();

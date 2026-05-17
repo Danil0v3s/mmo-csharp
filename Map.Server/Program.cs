@@ -99,6 +99,12 @@ builder.Services.AddSingleton<MapSessionLifecycle>();
 builder.Services.AddSingleton<IMobSpawnRegistry, MobSpawnRegistry>();
 builder.Services.AddSingleton<IMobSpawnService, MobSpawnService>();
 
+// Status broadcast cascade (post-handoff). See
+// .agents/migrations/map/initial-status-broadcast.md. The broadcaster
+// emits the rAthena pc_authok / status_calc_pc(SCO_FIRST) packet stream
+// matching the captured wire order.
+builder.Services.AddSingleton<Map.Server.Status.StatusBroadcaster>();
+
 // Floor-item drop / pickup (see .agents/migrations/map/adjacent/items.md).
 // MS3 first slice: the entity-on-the-floor lifecycle (drop, pickup, TTL
 // despawn). Inventory persistence + item_db catalog land later.

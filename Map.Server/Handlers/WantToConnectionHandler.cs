@@ -4,6 +4,7 @@ using Core.Server.Packets.In.CZ;
 using Core.Server.Packets.Out.ZC;
 using Map.Server.Services;
 using Map.Server.Session;
+using Map.Server.Status;
 using Map.Server.World;
 
 namespace Map.Server.Handlers;
@@ -21,6 +22,7 @@ public class WantToConnectionHandler(
     ICharServerIpcService charServerIpc,
     IMapWorldRegistry worldRegistry,
     MapServerConfiguration configuration,
+    StatusBroadcaster statusBroadcaster,
     ILogger<WantToConnectionHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_WANT_TO_CONNECTION>
 {
@@ -154,6 +156,16 @@ public class WantToConnectionHandler(
             X = spawnX,
             Y = spawnY,
         });
+
+        // Status cascade — emits SP_MAXWEIGHT through the achievement
+        // tail. rAthena fires this from the inventory-IPC reply path
+        // (intif_parse_StorageReceived → status_calc_pc(SCO_FIRST)),
+        // not directly from pc_authok. Our auth ticket already carries
+        // the character's saved stats, so we can run it synchronously.
+        if (character != null)
+        {
+            statusBroadcaster.BroadcastStatusCalcFirst(session, character);
+        }
 
         logger.LogInformation(
             "Map auth accepted for {CharName} (acc {AccountId}, char {CharId}) on {Map} at ({X},{Y})",
