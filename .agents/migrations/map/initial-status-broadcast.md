@@ -81,9 +81,11 @@ The source-of-truth is the byte-decoded `dhxj.log` capture; rAthena source paths
              ├─ clif_equipcheckbox                   → ZC_CONFIG (0x02d9)
              ├─ clif_pet_autofeed_status
              ├─ clif_configuration(CONFIG_CALL)      → ZC_CONFIG (0x02d9)
-             ├─ clif_reputation_list                 → ZC_REPUTATION_LIST
+             ├─ clif_reputation_list                 → ZC_REPUTATION_LIST   [NOT EMITTED — see note below]
              └─ guild/bg/night/duel hooks            [skipped — fresh char with no guild]
 ```
+
+> **Note on `ZC_REPUTATION_LIST` (0x0B8D)**: rAthena emits this at the end of `clif_parse_LoadEndAck` and the replay capture contains it, but we intentionally omit it. The live target client (DHXJ, PACKETVER 20220401) doesn't register `0x0B8D` in its `g_packetLenMap`; sending it makes the client default to a 2-byte packet size and desync every subsequent id by 67 bytes. Confirmed via `dhxj_trace.log:347` (`[PKT_MISS] WILL DESYNC!`). The emit at [`StatusBroadcaster.cs:220`](../../../Map.Server/Status/StatusBroadcaster.cs) is commented out. Re-enable behind a packet-version gate when a client build that knows `0x0B8D` is in use.
 
 ## Exact wire order — captured
 

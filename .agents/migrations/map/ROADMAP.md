@@ -102,8 +102,9 @@ Everything else, after MS1+MS2 are usable. These can largely run in parallel. De
 
 ---
 
-## What's already in place (from P1–P8)
+## What's already in place
 
+### Pre-gameplay (P1–P8)
 - TCP listener for clients on map's port 5191 ([MapServerImpl.cs](../../../Map.Server/MapServerImpl.cs))
 - gRPC server for IPC from char/login on port 6003
 - Periodic timers (registration, keep-alive, user-count sync, autosave) ✅
@@ -113,22 +114,30 @@ Everything else, after MS1+MS2 are usable. These can largely run in parallel. De
 - Inter-base routing receivers (broadcast/whisper/etc.) — log+ack stubs awaiting gameplay
 - `ForceDisconnectAccount` map-side handler ✅
 - Per-module typed IPC wrappers ready in [Map.Server/Services/CharServerIpcService.*.cs](../../../Map.Server/Services/)
-- **`pc_authok` post-auth flow (replay-validated)** — `WantToConnectionHandler` emits ZC_AID + ZC_EXTEND_BODYITEM_SIZE + ZC_ACCEPT_ENTER_ZONE + ZC_FRIENDS_LIST + version chat + MOTD + ZC_NPCACK_MAPMOVE in rAthena's order. `pc_setpos` OOB/non-walkable spawn randomize. Multi-cache map loading (`MapDataPaths`). See [replay-baseline.md](replay-baseline.md).
-- **Replay harness driving parity** — `Tools.PacketReplay` + `Map.Server.Tests/Replay/PacketReplayTests` runs a captured rAthena session against the live stack with token rewriting + tolerant decoders. 6 of 7 chunks pass; the missing piece is the `status_calc_pc` cascade. See [replay-baseline.md](replay-baseline.md).
+
+### MS1 (enter map + walk) — replay-validated AND live-client validated
+- **World cell loading** — `mapcache.dat` parsed, multi-cache fallback, `MapWorldRegistry` singleton. See [world.md](world.md).
+- **Entity model + spatial index** — block list, AOI buckets, lifetime. See [entities.md](entities.md).
+- **Session lifecycle** — TCP enter → `WantToConnectionHandler` (replay-validated `pc_authok` cascade) → `NotifyActorInitHandler` (`LoadEndAck` cascade), with bidirectional `CZ_REQUEST_TIME (0x0363)` heartbeat. See [session.md](session.md), [initial-status-broadcast.md](initial-status-broadcast.md).
+- **Movement** — `CZ_REQUEST_MOVE (0x035f)` pathfinding + walk loop + AOI move-diff. See [movement.md](movement.md).
+- **Visibility** — view-range entry/exit broadcast. See [visibility.md](visibility.md).
+- **Warp trigger detection** — `CellFlags.NpcTrigger` overlay set at boot per `warp` table; checked O(1) per tile step in `MovementService`. Actual teleport (`pc_setpos`) still pending. See [declarative-catalogs.md](declarative-catalogs.md).
+- **Declarative catalogs** — `warp` / `mob_spawn` / `map_flag` tables seeded (1,279 / 2,950 / 2,251 rows). See [declarative-catalogs.md](declarative-catalogs.md).
+- **Replay harness** — `Tools.PacketReplay` + `Map.Server.Tests/Replay/PacketReplayTests` drives a captured rAthena session against the live stack. 6 of 7 chunks pass; remaining 19 diffs in chunk 7 are gameplay-content placeholders (see [replay-baseline.md](replay-baseline.md)).
+- **Live OG-client end-to-end validated** — DHXJ client (PACKETVER 20220401) autologins → autocreates account → autocreates character → spawns at `prontera (150, 150)` → renders the world → walks on map. Verified 2026-05-17 across the full cascade with sustained 75+ s heartbeat and `CZ_REQUEST_MOVE (0x035f)` round-trip. Three client-compat fixes shipped to get here: packet-shuffle IDs for MOVE/ACTION/CHAT/TIME, omit `ZC_REPUTATION_LIST` (`0x0B8D` not in client's size table), and start point swap to prontera (iz_int03 rendered as a black void in this client build).
+- **Self-healing IPC mesh** — active health probe + 5 s reconcile loop + auth-based stale-registration eviction. End-to-end recovery after any single peer restart: ~15 s, fully autonomous. See [Ipc.md](../../../Ipc.md).
 
 ## What's NOT in place
 
-- No map cell data loading — see [world.md](world.md)
-- No client TCP packet handlers beyond the placeholder `CZ_HEARTBEAT` — see [packets.md](packets.md)
-- No spatial entity tracking — see [entities.md](entities.md)
-- No pathfinding — see [movement.md](movement.md)
-- No NPCs or mobs — see [mob-db.md](mob-db.md), [npc.md](npc.md), [spawn.md](spawn.md)
-- No combat, skills, items, status — see [adjacent/](adjacent/)
+- **No `pc_setpos` teleport** — warp cells *detect* the player arriving but the `WarpDispatcher` is a stub (logs the destination, clears the walk). Same-map and cross-map teleport land next. See [declarative-catalogs.md](declarative-catalogs.md).
+- **No NPCs or mobs visible** — `mob_spawn` table seeded but `MobSpawnService` is hardcoded; `npc.md` script-engine subset is unstarted. See [mob-db.md](mob-db.md), [npc.md](npc.md), [spawn.md](spawn.md).
+- **No combat, skills, items, status** — see [adjacent/](adjacent/).
 
 ---
 
 ## History
 
+- **2026-05-17** — **Live OG-client end-to-end validated.** Full chain works against DHXJ (PACKETVER 20220401): autologin → auto-account-create → auto-char-create → char-select → map handoff → spawn at `prontera (150, 150)` → world renders → walk-clicks route through `MovementService`. Three client-compat fixes landed: (a) packet-shuffle IDs for `CZ_REQUEST_MOVE`/`ACTION`/`CHAT`/`TIME` (commit `fc5dac2`), (b) drop `ZC_REPUTATION_LIST` emit (`0x0B8D` unknown to the client — desync killer, commit `9f43697`), (c) `CZ_REQUEST_TIME = 0x0363` for heartbeats (commit `3a77d82`). Also shipped self-healing IPC mesh — active probe + 5 s reconcile loop + auth-based stale-registration eviction so any single server can restart without bringing the rest down (commit `958a83e`).
 - **2026-05-16** — Renewal locked as the only supported mode. All data sources, formulas, and packet handling target rAthena renewal exclusively; pre-renewal removed from scope across `world.md`, `combat.md`, `packets.md`.
 - **2026-05-16** — Roadmap created after P8 closed the pre-gameplay IPC audit. User priority: enter map + walk first, NPCs + mobs second, adjacent systems planned but lower priority. Subsystem files written same day.
 - **2026-05-16** — Switched static-catalog source from rAthena's YAML to the seeded `Core.Database` tables (rAthena's `use_sql_db: yes` parity). The YAML mob-db reader shipped in MS2 is being replaced by an `IMobRepository`-backed loader; item_db / skill_db follow the same pattern. The 28K+ rows under `Core.Database/Seeds/Scripts/seed_{item,mob}_db_*.sql` become the runtime authority.

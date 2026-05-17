@@ -34,14 +34,23 @@ Each server lists peer endpoints in `appsettings.json` under `Server.OtherServer
 
 The key name is matched case-insensitively to detect `ServerType`: `Login*` → `Login`, `Char*` → `Char`, `Map*` → `Map`, `Web*` → `Web`.
 
-## Health checking
+## Health checking & self-healing
 
 Per-session loop in [`ServerSession`](Core.Server/IPC/ServerSession.cs):
-- Probes every **5 s** (`HealthCheckInterval = 5000`).
-- After **3 consecutive misses** (~15 s), `IsConnected` flips to `false` and the manager evicts the session.
-- Reconnection is attempted on the next bootstrap pass.
+- **Active probe every 5 s** (`HealthCheckInterval = 5000`). The loop calls `Channel.ConnectAsync` with a short timeout — passive `Channel.State` polling missed idle-peer death because gRPC channels don't transition to `TransientFailure` until someone actually issues an RPC.
+- On probe failure (timeout, exception, or terminal state) → `IsConnected = false`.
+- After **3 consecutive misses** (~15 s), `IsHealthCheckTimedOut()` also returns true so callers can gate critical RPCs on freshness.
+- `ServerConnectionManager.MonitorConnectionsAsync` evicts disconnected/timed-out sessions every 5 s.
 
-`ServerSession.IsHealthCheckTimedOut()` lets callers gate critical RPCs on freshness.
+Recovery is driven by [`IpcClient.RunReconcileLoopAsync`](Core.Server/IPC/IpcClient.cs), kicked off in [`AbstractServer.StartAsync`](Core.Server/AbstractServer.cs) as a background task:
+- Every **5 s** (`ReconcileInterval`), iterates configured peer endpoints.
+- For each, if no healthy session exists, removes any zombie entry and re-dials.
+- Logs `<server> reconciled connection to <peer> at <endpoint>` on each successful re-establish.
+- End-to-end recovery after a peer restart: typically ~15 s (5 s active-probe detect + 5 s monitor evict + 5 s reconcile re-dial).
+
+### Char server registration on Login
+
+[`CharServerConnectionHandler.RegisterCharacterServerAsync`](Login.Server/Handlers/CharServerConnectionHandler.cs) handles same-id re-registration by **eviction on successful auth**. When a `RegisterCharacterServer` request authenticates against `LoginMmoAuth` for a server id that already has a registration, the existing entry is removed and the new request is accepted. Auth = proof of credential ownership; this is stronger than the prior endpoint-probe approach, which got fooled when a successor process bound the same TCP port immediately after a restart.
 
 ## Service-side wrappers
 

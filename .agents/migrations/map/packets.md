@@ -36,9 +36,10 @@ Just the minimum to support enter + walk + see-other-players. Each row maps to a
 |---|---|---|---|
 | `0x0436` | `CZ_WANT_TO_CONNECTION` (modern) | post char-select TCP connect | [session.md](session.md) |
 | `0x007d` | `CZ_NOTIFY_ACTORINIT` | load-end-ack (client ready to spawn) | [session.md](session.md) |
-| `0x035f` | `CZ_REQUEST_MOVE2` | walk request (modern) | [movement.md](movement.md) |
-| `0x0085` | `CZ_REQUEST_MOVE` | walk request (legacy fallback) | [movement.md](movement.md) |
-| `0x007e` | `CZ_REQUEST_TIME` (`PING`) | client keep-alive | TBD — likely echo `ZC_NOTIFY_TIME` |
+| `0x035f` | `CZ_REQUEST_MOVE` | walk request (PACKETVER ≥ 20180307 shuffle) | [movement.md](movement.md) |
+| `0x0437` | `CZ_REQUEST_ACTION` | attack / sit / stand (PACKETVER ≥ 20180307 shuffle, was `0x0089`) | combat (MS3) |
+| `0x00f3` | `CZ_REQUEST_CHAT` | global chat (PACKETVER 20220401 shuffle, was `0x008c`) | [adjacent/chat.md](adjacent/chat.md) |
+| `0x0363` | `CZ_REQUEST_TIME` | client keep-alive / ticksend (PACKETVER ≥ 20220401, was `0x007e`) | [RequestTimeHandler](../../../Map.Server/Handlers/RequestTimeHandler.cs) — calls `session.UpdateHeartbeat()` and echoes `ZC_NOTIFY_TIME` |
 | `0x0187` | (already used by char) | ignore on map | — |
 | `0x00a2` | `CZ_REQ_QUIT` | client-initiated quit (ALT+E) | Disconnect path |
 

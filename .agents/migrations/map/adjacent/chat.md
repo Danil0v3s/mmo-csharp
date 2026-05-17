@@ -15,7 +15,7 @@ Most of chat is already wired at the IPC layer (P5 inter-base routing). The map 
 ## Scope (MS3 first pass)
 
 **In scope:**
-- Public chat (`CZ_REQUEST_CHAT (0x008c)`) → emit `ZC_NOTIFY_PLAYERCHAT` to view-range.
+- Public chat (`CZ_REQUEST_CHAT (0x00f3)` — PACKETVER 20220401 shuffle, was `0x008c`) → emit `ZC_NOTIFY_PLAYERCHAT` to view-range.
 - Whisper (`CZ_WHISPER (0x0096)`) → look up target name via existing IPC; if local map, deliver direct; if remote, route via `InterWhisper`.
 - Party chat / Guild chat: scoped broadcast via party/guild member lookups (Char IPC for member lists).
 - Server broadcast (`/b`, `/nb`): GM command → `InterBroadcast` → fan-out.

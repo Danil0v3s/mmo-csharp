@@ -20,7 +20,7 @@ The whole MS1 acceptance ("walk around") is this doc. Two pieces: compute a path
 - Per-entity walk state: target cell, current path (queue of cells), step timer.
 - Walk timer driven by the 60 FPS game loop: each tick, advance any entity whose step deadline has passed; remove from old spatial-index bucket, insert at new.
 - Client packets:
-  - `CZ_REQUEST_MOVE (0x35f)` / `CZ_REQUEST_MOVE2` — player asks to walk to (x, y).
+  - `CZ_REQUEST_MOVE (0x035f)` — player asks to walk to (x, y). This is the post-20180307 shuffle id used by our target client (PACKETVER 20220401); the pre-shuffle id was `0x0085`.
   - `ZC_NOTIFY_PLAYERMOVE (0x87)` — server echoes the accepted move to the moving player.
   - `ZC_NOTIFY_MOVE (0x86)` — other players in view see this entity move.
 - Walk-into-warp detection: when the walk ends on a warp cell, trigger the map change.

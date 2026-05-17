@@ -111,7 +111,8 @@ The 19 remaining diffs are all gameplay-content placeholders. Each unblocks when
 | 24 | `ZC_INVENTORYLIST_EQUIP_V6` | Empty body; capture has Knife + Cotton Shirt entries | Item / equip system port |
 | 24 | `ZC_NOTIFY_STANDENTRY` × 2 | Self-spawn shape correct, but cosmetic fields (head, hair, equip view IDs, guild emblem) are zero; capture has real values | Item / equip + cosmetic systems |
 | 24 | `ZC_SKILLINFO_LIST` | 37 zero-bytes; capture has the Novice's `NV_BASIC` skill tree entry | Skill system port |
-| 24 | `ZC_REPUTATION_LIST` | 65 zero-bytes; capture has rAthena's default reputation factions | Reputation system port |
+
+`ZC_REPUTATION_LIST` (0x0B8D) is **intentionally not emitted** even though the capture has it — our target live client (DHXJ, PACKETVER 20220401) doesn't register `0x0B8D` in `g_packetLenMap`, so sending it desyncs the wire stream (client defaults to 2-byte size, every subsequent packet id misaligns by 67 bytes). See [StatusBroadcaster.cs:220](../../../Map.Server/Status/StatusBroadcaster.cs) for the guard. The replay test reports this as a MISSING diff at line 24[54]; re-enable behind a packet-version gate when a client build that knows `0x0B8D` is in use.
 
 ### Remaining MISSING (9) — NPC-script-triggered packets
 
