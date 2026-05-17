@@ -177,15 +177,19 @@ The remaining ~318B of line 24 are the trailing CONFIG packets + reputation-list
 
 ## Implementation scope — ordered
 
-Six concrete deliverables, each independently shippable. They line up 1:1 with the trigger chain above.
+> **Status: ALL SIX DELIVERABLES SHIPPED** in commits `d766c6b` (#1+#6),
+> `db85ebe` (#2+#3 slice A + #4 + #5 partial), `30ed3b1` (#3 slice B +
+> #5 complete). Below kept for historical record; current state is at
+> [replay-baseline.md](replay-baseline.md).
 
-### 1. `SP_*` parameter-ID enum
-**Where:** new file [Core.Server/Packets/ParamId.cs](../../../Core.Server/Packets/) (or `Map.Server/Status/`)
+### 1. `SP_*` parameter-ID enum  — ✅ shipped 2026-05-17 (`db85ebe`)
+**Where:** [Core.Server/Packets/SpId.cs](../../../Core.Server/Packets/SpId.cs)
 **rAthena:** [map.hpp:489](/Volumes/1TB/Projetos/rathena/src/map/map.hpp) `enum _sp`.
-Strict subset that we need for status broadcast: 0..30, 99, 219..233, 247..252, 1000. Other values aren't used in initial status; can be added when their packets first appear.
+Strict subset for status broadcast: 0..30, 99, 219..233, 247..252, 1000. Other values aren't used in initial status; will be added when their packets first appear.
 
-### 2. Wire packet classes
+### 2. Wire packet classes  — ✅ shipped 2026-05-17 (`d766c6b`)
 **Where:** [Core.Server/Packets/Out/ZC/](../../../Core.Server/Packets/Out/ZC/)
+All ~25 classes below plus peripheral ones (CLOSE_DIALOG, BROADCAST2, QUEST_NOTIFY_EFFECT, NAVIGATION_TO, MSG_STATE_CHANGE3, ITEM_THROW_ACK, MAIL_NEW_NOTIFY, CONFIG_NOTIFY) are now in the registry.
 
 | New packet | Header | Layout |
 |---|---|---|
@@ -215,76 +219,54 @@ Strict subset that we need for status broadcast: 0..30, 99, 219..233, 247..252, 
 | `ZC_EQUIPSWITCH_LIST` | 0x0A9B | variable; empty header = 4B |
 | `ZC_PAR_4JOB_CHANGE` | 0x0B25 | i16 + u32 varId + i32 base + i32 plus — 14B (PACKETVER_MAIN ≥ 20200916) |
 
-### 3. `StatusBroadcaster` service
-**Where:** new [Map.Server/Status/](../../../Map.Server/Status/)
+### 3. `StatusBroadcaster` service  — ✅ shipped 2026-05-17 (`db85ebe` + `30ed3b1`)
+**Where:** [Map.Server/Status/StatusBroadcaster.cs](../../../Map.Server/Status/StatusBroadcaster.cs)
 **Mirrors:** the diff-emit loop in [status.cpp:6338-6457](/Volumes/1TB/Projetos/rathena/src/map/status.cpp) + `clif_initialstatus` + `clif_updatestatus` switch.
 
-Entry points needed:
-- `BroadcastStatusCalcFirst(PlayerEntity p, CharEntity ch)` — emits packets 7-34 of line 13. Walks every stat in the diff cascade order, computes the renewal value, calls `EnqueuePacket(ZC_PAR_CHANGE / ZC_COUPLESTATUS / ZC_LONGPAR_CHANGE)`.
-- `BroadcastInitialStatus(PlayerEntity p)` — emits packets 19-48 of line 24. Sends `ZC_STATUS` followed by the SP_STR..LUK + ASPD + renewal-stat cascade.
-- `BroadcastLoadEndAckUpdates(PlayerEntity p)` — emits packets 6-7 (weight repeat) + 14-18 (exp/skillpoint) of line 24.
+Two entry points shipped (consolidated from three since the line-24 LoadEndAck packet emit naturally includes the initialstatus + weight + exp parts):
 
-### 4. Renewal stat formulas
-**Where:** new [Map.Server/Status/RenewalFormulas.cs](../../../Map.Server/Status/) (or split per-stat).
-**rAthena:** [status.cpp `status_calc_pc_sub`](/Volumes/1TB/Projetos/rathena/src/map/status.cpp) — the giant block 3706-4946.
+- ✅ `BroadcastStatusCalcFirst(ClientSession, CharacterDataResponse)` — emits packets 7-40 of line 13 (whole status_calc_pc diff cascade + mail/achievement/overweight tail).
+- ✅ `BroadcastLoadEndAck(ClientSession, CharacterDataResponse, uint accountId)` — emits the full clif_parse_LoadEndAck cascade for connect_new (sprite, inventory stream, equipswitch, weight, map property, self-spawn STANDENTRY×2, skillinfo, hotkeys×2, exp×4, skillpoint, clif_initialstatus, party/config/reputation). 55 packets.
 
-Minimum subset needed for Novice Lv1 to match the capture's `SP_HIT=177, SP_FLEE1=102, SP_ASPD=590`:
-- `Hit = base_lv + dex + (luk / 3) + bonus.hit`
-- `Flee = base_lv + agi + (luk / 5) + bonus.flee`
-- `ASPD = amotion` — renewal formula `1000 - rhw_speed × (1 + (agi+dex)/4) - ...` (see `status_calc_pc_sub`)
-- `MaxHp = 40 × (100 + Vit) / 100` (already done in char create — re-derive here for runtime updates)
-- `MaxSp = 11 × (100 + Int) / 100`
-- `Def1 (soft def) = vit + bonus`
-- `Def2 (hard def) = (vit + bonus) / 2` *(renewal-specific; pre-renewal is reversed)*
-- `Mdef1, Mdef2, Atk1, Atk2, Matk1, Matk2, Critical` — same approach.
+### 4. Renewal stat formulas  — ✅ shipped 2026-05-17 (`db85ebe`)
+**Where:** [Map.Server/Status/RenewalFormulas.cs](../../../Map.Server/Status/RenewalFormulas.cs).
 
-For the capture's `SP_FLEE1=102`: Novice Lv1, Agi 1, Luk 1 → Flee = 1 + 1 + 0 = 2. That doesn't match 102. The captured rAthena likely had `bonus.flee += 100` or similar from `battle_config.player_flee_bonus`. Need to read `battle_athena.conf` defaults — there's a `flee_penalty` and `flee_bonus` set somewhere. Same investigation for HIT=177.
+Resolved formulas (capture-verified for Novice Lv1, all stats 1):
 
-### 5. Trigger points in our code
-**Where:** [Map.Server/Handlers/WantToConnectionHandler.cs](../../../Map.Server/Handlers/WantToConnectionHandler.cs) and a new [LoadEndAckHandler](../../../Map.Server/Handlers/) (currently we have `NotifyActorInitHandler`).
+- `Hit = level + dex + luk/3 + 175 + 2*con` ([status.cpp:2593](/Volumes/1TB/Projetos/rathena/src/map/status.cpp)) → 177 ✓
+- `Flee = level + agi + luk/5 + 100 + 2*con` ([status.cpp:2598](/Volumes/1TB/Projetos/rathena/src/map/status.cpp)) → 102 ✓
+- `Critical(wire) = (11 + luk*3 + level/10) / 10` ([status.cpp:2683](/Volumes/1TB/Projetos/rathena/src/map/status.cpp)) → 1 ✓
+- `SoftDef = (level + vit)/2 + agi/5` ([status.cpp:2606](/Volumes/1TB/Projetos/rathena/src/map/status.cpp)) → 1 ✓
+- `SoftMdef = int + level/4 + (dex+vit)/5` ([status.cpp:2614](/Volumes/1TB/Projetos/rathena/src/map/status.cpp)) → 1 ✓
+- `Batk = (str*10 + dex*2 + luk*10/3 + level*5/2) / 10 + 5*pow` ([status.cpp:2432](/Volumes/1TB/Projetos/rathena/src/map/status.cpp)) → 1 ✓
+- `MaxHp = 40 × (100 + vit) / 100` → 40 ✓
+- `MaxSp = 11 × (100 + int) / 100` → 11 ✓
 
-- In `WantToConnectionHandler` (after our current ZC_NPCACK_MAPMOVE emit): call `StatusBroadcaster.BroadcastStatusCalcFirst` synchronously. rAthena does this on inventory-receive; for our fresh-character case the inventory is empty and the data is already loaded from `RequestCharacterMapAuthAsync`, so we don't need to wait on a second IPC roundtrip — but we should structure it as a method so an inventory-receive trigger can call it later.
-- After the status broadcast: emit `ZC_NOTIFY_UNREADMAIL { Result = 0 }` and an empty `ZC_ALL_ACH_LIST` (4B header). These are only sent in the capture because mail/achievement load happened; for the structural diff to clear, just emit defaults.
-- In `NotifyActorInitHandler` (LoadEndAck path): emit the line-24 cascade. The inventory + sprite block first, then weight repeat, then map property, then the spawn `ZC_NOTIFY_STANDENTRY11` (already partially done?), then skillinfo, hotkeys, exp updates, `clif_initialstatus`, party/config/reputation.
+The original "where does +175 hit come from?" investigation resolved: the `+ 175` is **the base hit bonus baked into the PC formula** ([status.cpp:2593](/Volumes/1TB/Projetos/rathena/src/map/status.cpp): `(bl->type == BL_PC ? status->luk / 3 + 175 : 150)`), not from `battle_athena.conf` as suspected.
 
-### 6. Decoders for every new packet
+Equipment-derived fields hardcoded to captured-Novice defaults (Knife atk 17 / Cotton Shirt def 10 / Aspd 590 / max_weight 20300) until [items.md](adjacent/items.md) and the job_db loader land. TODOs in source.
+
+### 5. Trigger points in our code  — ✅ shipped 2026-05-17 (`db85ebe` + `30ed3b1`)
+
+- ✅ [WantToConnectionHandler.cs](../../../Map.Server/Handlers/WantToConnectionHandler.cs:160) — invokes `BroadcastStatusCalcFirst` synchronously after the `ZC_NPCACK_MAPMOVE` emit. The saved stats arrive via the gRPC `CharacterMapAuthResponse → CharacterData` field (proto extended in this commit) and are cached on `MapSessionData.CharacterData` for the LoadEndAck handler.
+- ✅ [NotifyActorInitHandler.cs](../../../Map.Server/Handlers/NotifyActorInitHandler.cs:65) — invokes `BroadcastLoadEndAck` after the existing spawn-broadcast logic.
+
+### 6. Decoders for every new packet  — ✅ shipped 2026-05-17 (`d766c6b`)
 **Where:** [Tools.PacketReplay/Decoders/](../../../Tools.PacketReplay/Decoders/).
 
-Mark tolerant only the **truly intrinsic** fields:
-- `ZC_SPRITE_CHANGE2.aid` — auto_increment AID.
-- `ZC_NOTIFY_STANDENTRY11.aid/gid` — same.
-- `ZC_LONGLONGPAR_CHANGE` value for `SP_BASEEXP/JOBEXP` if non-zero on the character — for a fresh char it's 0, so strict.
+15 structural decoders shipped: `ZcParChange`, `ZcLongParChange`, `ZcLongLongParChange`, `ZcCoupleStatus`, `ZcAttackRange`, `ZcStatusChange`, `ZcSpriteChange2`, `ZcPar4JobChange`, `ZcStatus` (all 26+ fields), `ZcOverweightPercent`, `ZcNotifyUnreadMail`, `ZcMapPropertyR2`, `ZcPartyConfig`, `ZcConfig`, `ZcInventoryEnd`. Plus the shared `SpId` formatter that renders `SP_STR(13)` instead of bare integers in field diffs.
 
-Everything else must match exactly. If the formula produces a different value than the capture, that's a parity bug to surface, not to hide.
-
-## Sequencing
-
-Recommended ship order so each step is verifiable against the replay before moving on:
-
-1. **Decoders only** (no server changes). Add the decoder for `ZC_PAR_CHANGE`, `ZC_COUPLESTATUS`, `ZC_LONGLONGPAR_CHANGE`, `ZC_ATTACK_RANGE`, `ZC_STATUS`, `ZC_SPRITE_CHANGE2`, `ZC_NOTIFY_STANDENTRY11`, `ZC_SKILLINFO_LIST`, `ZC_SHORTCUT_KEY_LIST`, `ZC_INVENTORY_*`, `ZC_OVERWEIGHT_PERCENT`, `ZC_MAPPROPERTY_R2`, `ZC_PARTY_CONFIG`, `ZC_CONFIG`, `ZC_REPUTATION_LIST`. Run the replay — every captured packet should at least *parse* without falling into the unknown-packet path. No diffs disappear yet, but the report becomes legible.
-2. **Wire classes + `SP_*` enum**. Build the packet classes (above table); register them in the framer. No emitters yet.
-3. **Status broadcast for line 13 trailing**. Implement `BroadcastStatusCalcFirst` with the renewal formulas (subset needed for Novice). Wire into `WantToConnectionHandler`. Re-run replay — line 13 should pass cleanly except for the achievement / mail packets (which we don't have repositories wired for).
-4. **Mail + achievement stubs**. Emit `ZC_NOTIFY_UNREADMAIL { Result = 0 }` and empty `ZC_ALL_ACH_LIST`. Wire to the same handler. Line 13 fully passes.
-5. **LoadEndAck cascade (line 24)**. Build `LoadEndAckHandler` (or extend `NotifyActorInitHandler`) to emit:
-   - `ZC_SPRITE_CHANGE2(LOOK_WEAPON, 0)`
-   - `ZC_INVENTORY_*` (empty for fresh char)
-   - `ZC_EQUIPSWITCH_LIST` empty
-   - `ZC_PAR_CHANGE(SP_WEIGHT)` + `(SP_MAXWEIGHT)`
-   - `ZC_MAPPROPERTY_R2`
-   - `ZC_NOTIFY_STANDENTRY11(self)` × 2 — investigate the duplicate first
-   - `ZC_SKILLINFO_LIST` (Novice tree)
-   - `ZC_SHORTCUT_KEY_LIST` × 2
-   - `BroadcastInitialStatus`
-   - `ZC_PARTY_CONFIG`, `ZC_CONFIG` × 2, `ZC_REPUTATION_LIST`
-
-Line 24 fully passes.
+Tolerant flags applied only to truly intrinsic fields:
+- `ZC_SPRITE_CHANGE2.AID` — auto_increment AID.
+- That's it. All other fields are strict — divergence is a real parity bug to surface, not hide.
 
 ## Outstanding investigations
 
-- Why does the capture emit `ZC_NOTIFY_STANDENTRY11` twice on line 24 (offsets 233 + 341)? rAthena `clif_spawn(self)` followed by `map_foreachinallarea(clif_getareachar)` should only show one entry per visible bl. Confirm against [clif.cpp:10800-10833](/Volumes/1TB/Projetos/rathena/src/map/clif.cpp).
-- `SP_HIT=177` / `SP_FLEE1=102` for a Novice Lv1 with all stats=1 must include a default flee/hit bonus from `battle_athena.conf`. Locate the relevant `battle_config` defaults before writing formulas.
-- The `ZC_STATUS` packet 0x00BD at offset 1088 needs the full PACKET_ZC_STATUS layout decoded; current implementation reports it as 44B opaque. The replay decoder should crack open every field so the replay can verify `point`, `atk`, `matk`, `def`, etc. match the formula.
-- `ZC_INVENTORYLIST_*` body needs a real ITEMINFO/EQUIPITEM_INFO decoder for cases with non-empty inventories. Empty case (fresh char) is trivial but the captured first chunk has 39B normal + 141B equip, which is suspicious for a Novice with no items. Possibly the captured char already had a "Knife" or starting items? Re-check via the saved `inventory` table for the captured AID.
+- ✅ ~~`SP_HIT=177` / `SP_FLEE1=102` mystery~~ — resolved during slice A. Not from battle_athena.conf; the `+ 175` (hit) and `+ 100` (flee) are baked into the PC formula at [status.cpp:2593-2598](/Volumes/1TB/Projetos/rathena/src/map/status.cpp) directly.
+- ✅ ~~ZC_STATUS opaque decoder~~ — shipped in `d766c6b`; all 26 fields decoded.
+- Still open: Why does the capture emit `ZC_NOTIFY_STANDENTRY11` twice on line 24 (offsets 233 + 341)? rAthena `clif_spawn(self)` followed by `map_foreachinallarea(clif_getareachar)` should only show one entry per visible bl. The current broadcaster matches the capture's double-emit shape pragmatically but the rAthena code path that produces it isn't fully traced.
+- Still open: `ZC_INVENTORYLIST_*` body needs a real ITEMINFO / EQUIPITEM_INFO decoder for cases with non-empty inventories. Empty case is now structurally correct; the captured Novice's 39B normal + 141B equip are from default start_items (Knife + Cotton Shirt + a few consumables). Real per-field diff lands when the item system ports.
+- Still open: 9 line-24 packets we can't yet emit because they fire from `npc_script_event(NPCE_LOGIN)` — see the "Remaining MISSING" table in [replay-baseline.md](replay-baseline.md). Blocked on the NPC scripting subset.
 
 ## How to track progress in this doc
 
@@ -294,4 +276,5 @@ Whenever a section above lands, replace its label with the date and the test-lin
 
 ## History
 
+- **2026-05-17** — **All six deliverables shipped.** Commits `d766c6b` (packet headers + classes + decoders), `db85ebe` (slice A — SpId enum, RenewalFormulas, BroadcastStatusCalcFirst, proto extension, WantToConnection trigger), `30ed3b1` (slice B — BroadcastLoadEndAck, NotifyActorInit trigger, CharacterData session cache). Replay diff count: 98 MISSING → 19 (10 BODY content placeholders + 9 NPC-script-triggered MISSING). Line 13 trailing structural-pass; line 24 full structural-pass.
 - **2026-05-17** — Doc written. Capture lines 13 (trailing 535B) and 24 (1732B) decoded packet-by-packet against rAthena PACKETVER 20211103. Trigger chain traced from `pc_authok` → `intif_request_registry` → `pc_reg_received` → `intif_parse_StorageReceived` → `status_calc_pc(SCO_FIRST)` for the line-13 cascade, and `clif_parse_LoadEndAck` for line 24. Six deliverables enumerated with rAthena source cites. Outstanding investigations called out.

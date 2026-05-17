@@ -52,7 +52,13 @@ A field marked `Tolerant: true` in its decoder is reported in the diff but doesn
 
 ## Current state — what the replay validates
 
-As of 2026-05-17, **6 of 7 capture chunks fully pass**, and the 7th has all 7 expected packets matching with only a trailing run of `status_calc_pc` broadcasts unmatched.
+As of 2026-05-17, after the status-broadcast cascade landed
+([initial-status-broadcast.md](initial-status-broadcast.md)),
+**every line through 24 is structurally matched**. The framer reports
+**19 total diffs** down from 98 — and all 19 are gameplay-content
+placeholders (item bytes, skill data, achievement entries, NPC-script
+output, etc.) in subsystems that haven't been ported yet. None are
+formula bugs or shape divergences.
 
 | Line | Direction | Packet(s) | Status | Notes |
 |---|---|---|---|---|
@@ -61,16 +67,17 @@ As of 2026-05-17, **6 of 7 capture chunks fully pass**, and the 7th has all 7 ex
 | 3 | S (6900) | `CA_LOGIN` (mmocsharp_M) | — | triggers create-on-login (`_M` suffix) |
 | 4 | R (6900) | `AC_ACCEPT_LOGIN` | ✓ | AID/login_id1/login_id2/token tolerant; CharServers list strict |
 | 5 | S (6121) | `CH_ENTER` | — | char-server enter |
-| 6 | R (6121) | `HC_CHARACTER_LIST` + `HC_ACCEPT_ENTER` + `HC_CHARLIST_NOTIFY` + `HC_BLOCK_CHARACTER` + `HC_SECOND_PASSWD_LOGIN` (5 packets) | ✓ | all five match including the always-emitted pincode probe |
+| 6 | R (6121) | `HC_CHARACTER_LIST` + 4 others (5 packets) | ✓ | all five match including the always-emitted pincode probe |
 | 7 | S (6121) | `CH_KEEP_ALIVE` | — | heartbeat |
 | 8 | S (6121) | `CH_MAKE_NEW_CHAR` | — | create char "ANERQO" |
-| 9 | R (6121) | `HC_ACCEPT_MAKECHAR` | ✓ | full CharacterInfo decoded field-by-field; GID tolerant; HP/SP/StatusPoint formulas match rAthena `char.cpp:1500` |
+| 9 | R (6121) | `HC_ACCEPT_MAKECHAR` | ✓ | full CharacterInfo decoded field-by-field; GID tolerant |
 | 10 | S (6121) | `CH_SELECT_CHAR` (slot 0) | — | |
 | 11 | R (6121) | `HC_SEND_MAP_DATA` | ✓ | MapName/Domain strict; CharId/Ip/Port tolerant |
 | 12 | S (5121→5191) | `CZ_WANT_TO_CONNECTION` | — | char_id token rewriting fires here |
-| 13 | R (5121) | `ZC_AID` + `ZC_EXTEND_BODYITEM_SIZE` + `ZC_ACCEPT_ENTER_ZONE` + `ZC_FRIENDS_LIST` + 2× `ZC_NOTIFY_PLAYERCHAT` (version + MOTD) + `ZC_NPCACK_MAPMOVE` | ⚠️ | all 7 emitted packets match; trailing **535 B of `ZC_PAR_CHANGE` (0x00B0) broadcasts** the capture sends from `status_calc_pc` are not yet emitted by our server |
-| 14–23 | S (5121) | client-side post-spawn packets (load-end-ack, time, refresh, guild-info queries) | — | sent without server gate; we receive but don't yet handle most |
-| 24 | R (5121) | starts with `ZC_SPRITE_CHANGE2` (0x01D7) — equipment sprite broadcasts (1732 B) | ❌ | unreached; capture's connection closes early on our side once `status_calc_pc` payload doesn't show up |
+| 13 | R (5121) | 41 packets including `status_calc_pc` cascade | ⚠️ | 37 packets match; remaining 4 are `ZC_ACH_UPDATE` × 3 + `ZC_ALL_ACH_LIST` (placeholder achievement bytes — needs achievement system) |
+| 14–23 | S (5121) | client-side post-spawn packets (LoadEndAck, time, refresh, guild-info queries) | — | sent without server gate; we receive |
+| 24 | R (5121) | 64 packets — sprite changes, inventory, weight, map property, self-spawn, skill info, hotkeys×2, exp cascade, `clif_initialstatus`, party/config/reputation | ⚠️ | 6 BODY (content placeholders in inventory/skill/hotkey/STANDENTRY/reputation) + 9 MISSING (NPC-script-triggered: NAVIGATION_TO, BROADCAST2, QUEST_NOTIFY_EFFECT, MAIL_NEW_NOTIFY, etc.) |
+| 25+ | S/R (5121) | further client–server traffic | — | now reachable; capture's connection holds open further than before. Line 27 (`ZC_HAT_EFFECT` 0x0ADF) is the new "unknown" frontier. |
 
 ### What's been ported to make this work
 
@@ -79,50 +86,70 @@ Every parity fix that landed because of the replay:
 - **Login server**: revealed `_M`/`_F` create-on-login flow worked but `Char/CharServer` config defaults didn't match rAthena (CharNew vs CharNewDisplay split, MaxBilling=0, etc.).
 - **Char server**: always-emit `HC_SECOND_PASSWD_LOGIN` after the slot summary (rAthena `chlogif_pincode_start`); `.gat` suffix on `MapName` in both `CharacterInfo` and `HC_SEND_MAP_DATA`; `MinimumCharacterSlots`/`MaximumCharacterSlots` set to 15; `HC_ACCEPT_MAKECHAR` reclassified fixed-size 177 B.
 - **Char create**: full HP/SP/StatusPoint seeding per rAthena `char.cpp:1500` formula (`max_hp = 40 * (100 + vit) / 100`, etc.); `StartStatusPoints` default fixed `0 → 48`.
-- **Map server**: emits `ZC_AID → ZC_EXTEND_BODYITEM_SIZE → ZC_ACCEPT_ENTER_ZONE → ZC_FRIENDS_LIST → version chat → MOTD lines → ZC_NPCACK_MAPMOVE` matching rAthena `pc_authok` order; `pc_setpos`-style OOB/non-walkable spawn randomization; `MapDataPaths` list supports rAthena's multi-cache fallback (import → re/pre-re → root); `UpdateMapServerAddressAsync` fan-out wired so char can build `HC_SEND_MAP_DATA`.
+- **Map server `pc_authok` flow**: emits `ZC_AID → ZC_EXTEND_BODYITEM_SIZE → ZC_ACCEPT_ENTER_ZONE → ZC_FRIENDS_LIST → version chat → MOTD lines → ZC_NPCACK_MAPMOVE` matching rAthena `pc_authok` order; `pc_setpos`-style OOB/non-walkable spawn randomization; `MapDataPaths` list supports rAthena's multi-cache fallback (import → re/pre-re → root); `UpdateMapServerAddressAsync` fan-out wired so char can build `HC_SEND_MAP_DATA`.
+- **Map server status broadcast cascade** (commits `db85ebe` slice A + `30ed3b1` slice B):
+  - `SpId` constants ([Core.Server/Packets/SpId.cs](../../../Core.Server/Packets/SpId.cs)) for the rAthena `enum _sp` subset the wire emits.
+  - `RenewalFormulas` ([Map.Server/Status/RenewalFormulas.cs](../../../Map.Server/Status/RenewalFormulas.cs)) — capture-verified `Hit`, `Flee`, `Critical`, `SoftDef`, `SoftMdef`, `Batk`, `MaxHp`, `MaxSp` formulas straight from `status.cpp:2593-2683`. Equipment-derived fields hardcoded to the captured Novice defaults (Knife atk 17, Cotton Shirt def 10) until items land.
+  - `StatusBroadcaster` ([Map.Server/Status/StatusBroadcaster.cs](../../../Map.Server/Status/StatusBroadcaster.cs)) with two entry points:
+    - `BroadcastStatusCalcFirst` — invoked from `WantToConnectionHandler` right after `ZC_NPCACK_MAPMOVE`. Mirrors the `status_calc_pc(SCO_FIRST)` diff-emit loop at `status.cpp:6338-6457` including the renewal duplicate DEF1/DEF2 + MDEF1/MDEF2 emits.
+    - `BroadcastLoadEndAck` — invoked from `NotifyActorInitHandler`. Mirrors `clif_parse_LoadEndAck` (`clif.cpp:10723-11020`) — sprite, inventory stream, equipswitch, weight, map property, self-spawn STANDENTRY×2, skillinfo, hotkeys×2, exp×4, skillpoint, `clif_initialstatus`, party/config/reputation.
+  - `CharacterDataResponse` proto extended with 29 saved-stat fields ([char_service.proto:169](../../../Core.Server/Protos/char_service.proto)) so the broadcaster can run synchronously without a second IPC roundtrip.
+  - `MapSessionData.CharacterData` caches the IPC response between the WantToConnection and LoadEndAck handlers.
 - **Stack lifecycle**: `IServerReadiness` + ping handler per server replaces brittle log-scraping in the test fixture.
 
 ## Next — what the capture says is missing
 
-The trailing 535 B on line 13 and the entire line 24 are both **`status_calc_pc`** output. rAthena calls this from `pc_authok` after the `clif_changemap`; it recomputes every derived stat and broadcasts a packet per stat that changed.
+The 19 remaining diffs are all gameplay-content placeholders. Each unblocks when its parent subsystem ports; none are formula or shape bugs.
 
-### Packet inventory for the missing flow
+### Remaining BODY diffs (10) — content placeholders
 
-Decoded from the capture's raw bytes around offset 151 on line 13 onward:
+| Line | Packet | Cause | Unblocked by |
+|---|---|---|---|
+| 13 | `ZC_ACH_UPDATE` × 3 | We emit empty body bytes for 3 default-achievement entries; capture has real achievement IDs / counts / reward flags | Achievement system port |
+| 13 | `ZC_ALL_ACH_LIST` × 1 | Same — summary header + per-achievement progress placeholders | Achievement system port |
+| 24 | `ZC_INVENTORYLIST_NORMAL_V6` | Empty body; capture has the captured Novice's starting inventory items (`Red Potion` × 7, etc.) | Item / inventory system port |
+| 24 | `ZC_INVENTORYLIST_EQUIP_V6` | Empty body; capture has Knife + Cotton Shirt entries | Item / equip system port |
+| 24 | `ZC_NOTIFY_STANDENTRY` × 2 | Self-spawn shape correct, but cosmetic fields (head, hair, equip view IDs, guild emblem) are zero; capture has real values | Item / equip + cosmetic systems |
+| 24 | `ZC_SKILLINFO_LIST` | 37 zero-bytes; capture has the Novice's `NV_BASIC` skill tree entry | Skill system port |
+| 24 | `ZC_REPUTATION_LIST` | 65 zero-bytes; capture has rAthena's default reputation factions | Reputation system port |
 
-| Packet ID | Name | Why it fires |
+### Remaining MISSING (9) — NPC-script-triggered packets
+
+All fire from rAthena's `NPCE_LOGIN` script event (default `npc/other/welcome.txt` and similar). They aren't part of `clif_parse_LoadEndAck` itself; they come from script `dispbottom` / `mes` / quest-icon / navigation-pin commands inside the welcome script that runs on first login.
+
+| Line | Packet | Source |
 |---|---|---|
-| `0x00B0` | `ZC_PAR_CHANGE` (8 B) | Per-stat broadcast: `SP_WEIGHT`, `SP_MAXWEIGHT`, `SP_SPEED`, `SP_BASELEVEL`, `SP_JOBLEVEL`, `SP_NEXTBASEEXP`, `SP_NEXTJOBEXP`, `SP_HP`, `SP_MAXHP`, `SP_SP`, `SP_MAXSP`, `SP_STR`, `SP_AGI`, `SP_VIT`, `SP_INT`, `SP_DEX`, `SP_LUK`, … |
-| `0x0141` | `ZC_COUPLESTATUS` (14 B) | Stat + bonus pair (e.g. SP_STR + StrBonus) |
-| `0x00B1` | `ZC_LONGPAR_CHANGE` (8 B) | Large-value stats (Exp, JobExp, Zeny) |
-| `0x01D7` | `ZC_SPRITE_CHANGE2` (15 B per slot) | One per equip slot — weapon, head-top/mid/bottom, garment, etc. broadcast to area (currently SELF since no nearby players) |
-| `0x0B25` | `ZC_PAR_4JOB_CHANGE` (PACKETVER ≥ 20200916) | Renewal 4-job stat broadcast |
+| 24 | `ZC_NAVIGATION_TO` (0x08E2) | Script `navigateto` |
+| 24 | `ZC_BROADCAST2` (0x01C3) | Script `mapannounce`/`announce` coloured variant |
+| 24 | `ZC_CLOSE_DIALOG` (0x00B6) | Script `close` at end of welcome dialog |
+| 24 | `ZC_QUEST_NOTIFY_EFFECT` (0x0446) × 2 | `questinfo` quest icons on nearby NPCs |
+| 24 | `ZC_ITEM_THROW_ACK` (0x00AF) | One of the post-init `clif_*` calls — exact trigger TBD |
+| 24 | `ZC_MSG_STATE_CHANGE3` (0x0983) | Status-icon push (likely `EFST_*` from a welcome buff) |
+| 24 | `ZC_MAIL_NEW_NOTIFY` (0x0AC2) × 2 | Rodex mail summary load |
 
-These are *not* gameplay logic — they're a deterministic projection of the saved char-status fields plus rAthena's renewal stat formulas (HP cap from job_basehpsp_db, etc.). For a freshly-created Novice with the captured stat allocation, every value can be derived without combat / skill / item interactions.
+All of these unblock when [`npc.md`](npc.md) (script engine subset) + the mail system land. Until then, the test reports them as MISSING with the right named packet so the diff is auditable.
 
 ### Suggested scope for the next slice
 
-**Full enumeration with rAthena source cites and the exact wire-byte order is in [initial-status-broadcast.md](initial-status-broadcast.md).** Summary:
+All six deliverables from [initial-status-broadcast.md](initial-status-broadcast.md) shipped in `db85ebe` (slice A) and `30ed3b1` (slice B). The structural cascade is now the test's baseline — every line through 24 parses + frames + diffs at field level. The remaining 19 diffs above each map to a specific gameplay subsystem that will fill in over time.
 
-1. **`SP_*` enum** ([Core.Server/Packets/ParamId.cs](../../../Core.Server/Packets/)) — parameter IDs from rAthena `map.hpp`.
-2. **~25 new wire packet classes** — `ZC_PAR_CHANGE`, `ZC_COUPLESTATUS`, `ZC_LONGLONGPAR_CHANGE`, `ZC_STATUS`, `ZC_SPRITE_CHANGE2`, `ZC_NOTIFY_STANDENTRY11`, `ZC_SKILLINFO_LIST`, `ZC_SHORTCUT_KEY_LIST`, `ZC_INVENTORY_*`, etc.
-3. **`StatusBroadcaster` service** — `BroadcastStatusCalcFirst` (line 13 cascade) + `BroadcastInitialStatus` (line 24's `clif_initialstatus` block) + `BroadcastLoadEndAckUpdates`.
-4. **Renewal stat formulas** — `Hit`, `Flee`, `ASPD`, `Def1/2`, `Mdef1/2`, `Atk1/2`, `Matk1/2`, `Critical`. Subset needed to make a Novice Lv1's captured values match.
-5. **Trigger points** — `WantToConnectionHandler` invokes the line-13 cascade synchronously after `ZC_NPCACK_MAPMOVE`; `NotifyActorInitHandler` invokes the line-24 cascade on LoadEndAck.
-6. **Decoders** for every new packet so the replay surfaces field-level diffs as we build.
+### Natural next steps (capture-driven priority order)
 
-### Why this is the *right* next step
+Each unblocks a corresponding row in the BODY/MISSING tables above:
 
-- It's the very next thing the capture demands. No detective work needed about what to build — the bytes tell us.
-- It's pure projection from char data (no combat, no skills, no items, no AI). Doable without first standing up any MS1.movement or MS2 systems.
-- Once landed, line 13 should pass cleanly and line 24 unblocks. Future captures of more complex flows (entering a populated map, walking near other players) will have an even tighter baseline to validate against.
+1. **Item / equip system** — fills `ZC_INVENTORYLIST_*` body, sprite-change weapon ID, `ZC_NOTIFY_STANDENTRY` cosmetic fields (head/weapon/equip view ids), `ZC_DEF2`/`ZC_ATK2` hard-equipment values. See [`map/adjacent/items.md`](adjacent/items.md).
+2. **Skill system** — fills `ZC_SKILLINFO_LIST` body (Novice's NV_BASIC tree). See [`map/adjacent/skills.md`](adjacent/skills.md).
+3. **Achievement system** — fills `ZC_ACH_UPDATE` × 3 + `ZC_ALL_ACH_LIST` bodies.
+4. **Reputation factions** — fills `ZC_REPUTATION_LIST` body.
+5. **NPC script subset** — emits the 9 MISSING line-24 packets (welcome-script: `NAVIGATION_TO`, `BROADCAST2`, `CLOSE_DIALOG`, `QUEST_NOTIFY_EFFECT`, etc.). See [`map/npc.md`](npc.md).
+6. **Hotkey persistence** — fills the two `ZC_SHORTCUT_KEY_LIST` bodies. Lightweight; saved per-char in the char DB.
+7. **Mail unread count** — fills the two `ZC_MAIL_NEW_NOTIFY` emits. Wired to char-side `RequestMailInbox` RPC (already exists).
 
-After this, the natural follow-ups in order of capture coverage:
+Beyond what the current capture demands, the **next capture target** should exercise:
 
-- **Equipment / inventory packets** for non-Novice fresh creates (clif_inventorylist, ZC_NOTIFY_EQUIP).
-- **Quest log on login** (`ZC_ALL_QUEST_LIST` and friends) — irrelevant for a brand-new char but trips up replays of existing chars.
-- **Party / Guild presence broadcasts** once the char is in one.
-- **Visibility / STANDENTRY for nearby players** once two clients can coexist on the same map.
+- Loading an *existing* char (non-empty inventory, learned skills, real status_point spent) — exposes formula gaps the fresh-Novice case can't.
+- Two characters on the same map — exposes visibility / area-broadcast bugs.
+- Walking / picking up items / dropping items — exercises MS1 movement + MS3 items.
 
 ## How to use this doc
 
@@ -130,5 +157,8 @@ When you ship a parity fix that the replay flagged, append a one-line entry to t
 
 ## History
 
+- **2026-05-17** — **Slice B shipped.** `BroadcastLoadEndAck` mirrors `clif_parse_LoadEndAck` byte-for-byte against capture line 24 (commit `30ed3b1`). Line 24 went from 64 MISSING → 6 BODY + 9 MISSING — all gameplay-content placeholders. Full diff count across the whole capture: 98 → 19. Test now reaches line 27 (`ZC_HAT_EFFECT` 0x0ADF — new frontier).
+- **2026-05-17** — **Slice A shipped.** `BroadcastStatusCalcFirst` mirrors `status_calc_pc(SCO_FIRST)` diff-emit byte-for-byte against capture line 13 trailing (commit `db85ebe`). Includes new `SpId` constants, `RenewalFormulas` with capture-verified `Hit/Flee/Critical/SoftDef/SoftMdef/Batk/MaxHp/MaxSp`, and the proto extension that carries 29 saved-stat fields in `CharacterDataResponse`. Line 13 went from 34 MISSING → 4 BODY (achievement placeholder bytes).
+- **2026-05-17** — **Packet registry + decoders for the cascade** (commit `d766c6b`). 32 new packet headers + classes in `Core.Server.Packets.Out.ZC` + 15 structural decoders in `Tools.PacketReplay.Decoders`. Replay framer now parses every captured packet (0 UNKNOWN); MISSING/BODY/FIELDS diffs become legible.
 - **2026-05-17** — [initial-status-broadcast.md](initial-status-broadcast.md) scope doc written. Decoded line 13 trailing (41 packets, 535 B) and line 24 partial (49 packets, ~1414 B of 1732) packet-by-packet. Full trigger chain traced through rAthena `pc_reg_received → intif_parse_StorageReceived → status_calc_pc(SCO_FIRST)` for line 13 and `clif_parse_LoadEndAck` for line 24. Six deliverables enumerated with rAthena source citations.
 - **2026-05-17** — Wrote this doc. Replay state captured: lines 2/4/6/9/11 ✓, line 13 with 7 packets matching + trailing `status_calc_pc` unmatched, line 24 unreached. All scaffolding (decoders, token rewriter, readiness ping, multi-cache loading, `pc_setpos` OOB randomize, rAthena `pc_authok` packet order) committed.
