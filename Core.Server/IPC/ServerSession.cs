@@ -63,23 +63,49 @@ public class ServerSession : IDisposable
     {
         // Wait a bit before starting health checks
         await Task.Delay(HealthCheckInterval, cancellationToken);
-        
+
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
                 await Task.Delay(HealthCheckInterval, cancellationToken);
-                
+
                 if (!IsConnected)
                     continue;
 
-                // Perform basic connectivity check
-                var state = Channel.State;
-                
-                if (state == ConnectivityState.TransientFailure || state == ConnectivityState.Shutdown)
+                // Active probe — passive Channel.State doesn't transition
+                // for idle channels when the peer dies (the socket close
+                // is invisible until someone actually issues an RPC). We
+                // force a state refresh by calling ConnectAsync with a
+                // short timeout; if it throws or the channel ends up in
+                // TransientFailure / Shutdown, mark disconnected so the
+                // ConnectionManager evicts the session and the IpcClient
+                // reconcile loop can re-dial.
+                using var probeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                probeCts.CancelAfter(TimeSpan.FromMilliseconds(HealthCheckInterval / 2));
+
+                var connected = false;
+                try
                 {
-                    _logger.LogWarning("{ServerType} server '{ServerName}' is in state {State}, marking as disconnected",
-                        ServerType, ServerName, state);
+                    await Channel.ConnectAsync(probeCts.Token);
+                    connected = Channel.State == ConnectivityState.Ready ||
+                                Channel.State == ConnectivityState.Idle;
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    // Probe timed out — peer unreachable.
+                    connected = false;
+                }
+                catch
+                {
+                    connected = false;
+                }
+
+                if (!connected)
+                {
+                    _logger.LogWarning(
+                        "{ServerType} server '{ServerName}' health probe failed (state={State}), marking as disconnected",
+                        ServerType, ServerName, Channel.State);
                     IsConnected = false;
                 }
                 else

@@ -44,21 +44,27 @@ public class CharServerGrpcHandler(
 
             if (result.ResultCode == -1 && sessionData.Sex == 'S' && sessionData.AccountId < 5) // MAX_SERVERS = 5
             {
-                // Verify that the character server ID isn't already in use
+                // Auth succeeded for this server-id. If a registration
+                // exists for the same id, the caller has proven credential
+                // ownership and is therefore the authoritative owner — the
+                // pre-existing entry must be stale (a previous instance
+                // that died without un-registering). Evict it and accept
+                // the new registration.
+                //
+                // The earlier behavior (TryClearStaleServerRegistrationAsync)
+                // probed the old endpoint via raw IP:port. That probe gets
+                // fooled when a successor process binds the same port
+                // immediately after the old one dies (typical for an
+                // in-place restart), causing "Server ID already in use"
+                // refusals every time the char server restarts. Auth is
+                // a stronger ownership proof than a TCP probe.
                 var existingServer = charServerRegistry.GetCharServer(sessionData.AccountId);
                 if (existingServer != null && !string.IsNullOrEmpty(existingServer.Name))
                 {
-                    var staleRegistrationCleared = await TryClearStaleServerRegistrationAsync(sessionData.AccountId, existingServer);
-                    if (!staleRegistrationCleared)
-                    {
-                        logger.LogWarning("Character server registration refused: server ID {ServerId} already in use", sessionData.AccountId);
-                        return new CharacterServerRegistrationResponse
-                        {
-                            Success = false,
-                            ErrorMessage = "Server ID already in use",
-                            ResultCode = 3
-                        };
-                    }
+                    logger.LogInformation(
+                        "Evicting stale char server registration for ID {ServerId} (old: '{OldName}') — new request authenticated successfully",
+                        sessionData.AccountId, existingServer.Name);
+                    await RemoveServerRegistrationAsync(sessionData.AccountId);
                 }
 
                 // Parse the server IP address
@@ -136,39 +142,10 @@ public class CharServerGrpcHandler(
         throw new FormatException("Character server registration missing a valid socket port.");
     }
 
-    private async Task<bool> TryClearStaleServerRegistrationAsync(int serverId, CharServerData existingServer)
-    {
-        if (existingServer.Port <= 0 || existingServer.Ip == 0)
-        {
-            logger.LogWarning("Clearing stale char server registration for ID {ServerId}: missing endpoint data", serverId);
-            await RemoveServerRegistrationAsync(serverId);
-            return true;
-        }
-
-        var endpointReachable = await IsServerEndpointReachableAsync(existingServer.Ip, existingServer.Port);
-        if (endpointReachable)
-        {
-            return false;
-        }
-
-        logger.LogWarning(
-            "Clearing stale char server registration for ID {ServerId}: endpoint {Endpoint} is unreachable",
-            serverId,
-            EndpointProbe.FormatEndpoint(existingServer.Ip, existingServer.Port));
-
-        await RemoveServerRegistrationAsync(serverId);
-        return true;
-    }
-
     private async Task RemoveServerRegistrationAsync(int serverId)
     {
         await loginDataRepository.RemoveOnlineUsersByCharServer(serverId);
         charServerRegistry.RemoveCharServer(serverId);
-    }
-
-    private static async Task<bool> IsServerEndpointReachableAsync(uint ip, int port)
-    {
-        return await EndpointProbe.TryConnectAsync(ip, port, TimeSpan.FromSeconds(1));
     }
 }
 

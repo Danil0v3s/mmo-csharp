@@ -9,6 +9,7 @@ public abstract class AbstractServer : IServer
     protected readonly ServerConfiguration Configuration;
     protected readonly IpcClient IpcClient;
     protected CancellationTokenSource? ServerCts;
+    private Task? _ipcReconcileTask;
 
     public string ServerName { get; }
     public ServerState State { get; protected set; }
@@ -42,10 +43,21 @@ public abstract class AbstractServer : IServer
         try
         {
             ServerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            
+
             await OnStartingAsync(ServerCts.Token);
-            IpcClient.ConnectToServersAsync(ServerCts.Token);
-            
+
+            // Initial peer dial. Failures aren't fatal — the reconcile
+            // loop below will keep retrying.
+            await IpcClient.ConnectToServersAsync(ServerCts.Token);
+
+            // Periodic re-dial of any peer that went away (e.g. after
+            // a restart). Without this, the bootstrap pass above is
+            // one-shot and every peer restart leaves the outbound
+            // link permanently dead.
+            _ipcReconcileTask = Task.Run(
+                () => IpcClient.RunReconcileLoopAsync(ServerCts.Token),
+                ServerCts.Token);
+
             State = ServerState.Running;
             Logger.LogInformation("{ServerName} started successfully", ServerName);
         }
@@ -72,8 +84,15 @@ public abstract class AbstractServer : IServer
         {
             ServerCts?.Cancel();
             await OnStoppingAsync(cancellationToken);
+
+            if (_ipcReconcileTask != null)
+            {
+                try { await _ipcReconcileTask; } catch (OperationCanceledException) { }
+                _ipcReconcileTask = null;
+            }
+
             await IpcClient.DisconnectAsync();
-            
+
             State = ServerState.Stopped;
             Logger.LogInformation("{ServerName} stopped successfully", ServerName);
         }
