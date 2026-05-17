@@ -216,8 +216,18 @@ public sealed class StatusBroadcaster
 
         // 54. clif.cpp:11020 — clif_reputation_list, empty for fresh char.
         // Wire shape: header (2) + packetLength (2) + success (1) + entries[]
-        // — 65B body matches capture's 69B (4B header + 65B body).
-        session.EnqueuePacket(new ZC_REPUTATION_LIST { Body = new byte[65] });
+        // — 65B body, 69B total. INTENTIONALLY NOT EMITTED for client
+        // compatibility: this client build's packet-length table doesn't
+        // register 0x0B8D (HEADER_ZC_REPUTE_INFO is commented out in
+        // rathena_ZC.h:3061), so when we send the packet the client
+        // defaults to a 2-byte size and the stream desyncs — every
+        // subsequent packet ID misaligns by 67 bytes, the client can't
+        // dispatch anything, and the connection eventually drops.
+        // Confirmed via dhxj_trace.log:347 ("Unknown packet 0x0B8D —
+        // defaulting to 2 bytes (WILL DESYNC!)"). The reputation feature
+        // is empty for fresh chars anyway; re-enable behind a packet-
+        // version gate once a client build that knows 0x0B8D is in use.
+        // session.EnqueuePacket(new ZC_REPUTATION_LIST { Body = new byte[65] });
     }
 
     /// <summary>
