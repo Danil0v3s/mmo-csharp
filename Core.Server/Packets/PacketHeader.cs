@@ -100,9 +100,14 @@ public enum PacketHeader : short
 
     // Client -> Zone (CZ)
     CZ_NOTIFY_ACTORINIT = 0x007d,          // LoadEndAck — client ready to spawn
-    CZ_REQUEST_MOVE = 0x0085,
-    CZ_REQUEST_ACTION = 0x0089,
-    CZ_REQUEST_CHAT = 0x008c,
+    // CZ_REQUEST_MOVE / ACTION / USE_SKILL all underwent the "20180307 shuffle"
+    // in the rAthena packet ladder — the IDs below match what our target DHXJ
+    // client (PACKETVER 20220401) actually sends. Old pre-shuffle ids: MOVE
+    // 0x0085, ACTION 0x0089, CHAT 0x008c. Confirmed via the live
+    // dhxj_trace.log packet-type histogram.
+    CZ_REQUEST_MOVE = 0x035f,              // shuffle (was 0x0085)
+    CZ_REQUEST_ACTION = 0x0437,            // shuffle (was 0x0089)
+    CZ_REQUEST_CHAT = 0x00f3,              // shuffle (was 0x008c)
     CZ_REQ_QUIT = 0x018a,
     CZ_HEARTBEAT = 0x0360,
     CZ_ITEM_PICKUP = 0x0362,               // CZ_ITEM_PICKUP2 (modern, 4-byte entity id)
