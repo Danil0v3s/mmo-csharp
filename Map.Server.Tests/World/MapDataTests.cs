@@ -52,4 +52,44 @@ public class MapDataTests
         var map = new MapData("x", 12, 7, new byte[12 * 7]);
         Assert.Equal(84, map.CellCount);
     }
+
+    [Fact]
+    public void SetDynamicFlag_NpcTrigger_RoundTrips()
+    {
+        var map = new MapData("x", 5, 5, new byte[25]); // all walkable
+        Assert.False(map.HasNpcTrigger(2, 2));
+        map.SetDynamicFlag(2, 2, CellFlags.NpcTrigger, true);
+        Assert.True(map.HasNpcTrigger(2, 2));
+        Assert.True(map.IsWalkable(2, 2)); // terrain unchanged
+        // GetCell returns the union of terrain + dynamic flags.
+        var flags = map.GetCell(2, 2);
+        Assert.True((flags & CellFlags.Walkable) != 0);
+        Assert.True((flags & CellFlags.NpcTrigger) != 0);
+
+        map.SetDynamicFlag(2, 2, CellFlags.NpcTrigger, false);
+        Assert.False(map.HasNpcTrigger(2, 2));
+    }
+
+    [Fact]
+    public void SetDynamicFlag_OutOfBounds_IsNoOp()
+    {
+        var map = new MapData("x", 3, 3, new byte[9]);
+        map.SetDynamicFlag(-1, 0, CellFlags.NpcTrigger, true);
+        map.SetDynamicFlag(3, 0, CellFlags.NpcTrigger, true);
+        map.SetDynamicFlag(0, 3, CellFlags.NpcTrigger, true);
+        // No throw; in-bounds cell remains clean.
+        Assert.False(map.HasNpcTrigger(0, 0));
+    }
+
+    [Fact]
+    public void SetDynamicFlag_RejectsTerrainBits()
+    {
+        var map = new MapData("x", 3, 3, new byte[9]);
+        Assert.Throws<ArgumentException>(() =>
+            map.SetDynamicFlag(0, 0, CellFlags.Walkable, true));
+        Assert.Throws<ArgumentException>(() =>
+            map.SetDynamicFlag(0, 0, CellFlags.Shootable, true));
+        Assert.Throws<ArgumentException>(() =>
+            map.SetDynamicFlag(0, 0, CellFlags.Water, true));
+    }
 }

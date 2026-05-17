@@ -1,6 +1,7 @@
 using Core.Timer;
 using Map.Server.Entities;
 using Map.Server.Visibility;
+using Map.Server.Warps;
 using Map.Server.World;
 
 namespace Map.Server.Movement;
@@ -22,17 +23,23 @@ public sealed class MovementService : IMovementService
     private readonly IEntityRegistry _registry;
     private readonly IMapWorldRegistry _worldRegistry;
     private readonly IVisibilityService _visibility;
+    private readonly IWarpService _warps;
+    private readonly IWarpDispatcher _warpDispatcher;
     private readonly ILogger<MovementService> _logger;
 
     public MovementService(
         IEntityRegistry registry,
         IMapWorldRegistry worldRegistry,
         IVisibilityService visibility,
+        IWarpService warps,
+        IWarpDispatcher warpDispatcher,
         ILogger<MovementService> logger)
     {
         _registry = registry;
         _worldRegistry = worldRegistry;
         _visibility = visibility;
+        _warps = warps;
+        _warpDispatcher = warpDispatcher;
         _logger = logger;
     }
 
@@ -146,6 +153,30 @@ public sealed class MovementService : IMovementService
         // AOI edge update — anyone walking into / out of view of the entity
         // (or vice versa) gets exactly one STANDENTRY or VANISH per step.
         _visibility.NotifyMoveDiff(entity, fromX, fromY, nextX, nextY);
+
+        // rAthena unit.cpp:619 — at every tile-step arrival, check the
+        // cell's CELL_NPC bit (set by npc_setcells for warps + OnTouch
+        // scripts). If set, dispatch via npc_touch_area_allnpc; the warp
+        // case calls pc_setpos which resets ud->walktimer.
+        //
+        // Only PlayerEntity fires warps — mob / NPC walk loops do not
+        // call npc_touch_area_allnpc in rAthena.
+        if (entity is PlayerEntity player && map.HasNpcTrigger(nextX, nextY))
+        {
+            var warp = _warps.TryGetWarpAt(map.Name, nextX, nextY);
+            if (warp != null)
+            {
+                // rAthena pc_setpos clears the walk timer as part of the
+                // teleport; replicate that here before the dispatcher
+                // runs so a cancelled walk doesn't reschedule below.
+                // Done by MovementService (not the dispatcher) to break
+                // the DI cycle WarpDispatcher → MovementService → WarpDispatcher.
+                entity.Walk = null;
+                _warpDispatcher.OnEnterWarp(player, warp);
+                return ValueTask.CompletedTask;
+            }
+            // NpcTrigger covers OnTouch scripts too; those land later.
+        }
 
         if (walk.RemainingPath.Count == 0)
         {

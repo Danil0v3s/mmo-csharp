@@ -1,5 +1,6 @@
 using Map.Server.Entities;
 using Map.Server.Movement;
+using Map.Server.Tests.Warps;
 using Map.Server.World;
 using Microsoft.Extensions.Logging;
 
@@ -120,7 +121,9 @@ public class MovementServiceTests
         var visibility = new Map.Server.Visibility.VisibilityService(
             registry, new NoopDispatcher());
         var service = new MovementService(
-            registry, world, visibility, loggerFactory.CreateLogger<MovementService>());
+            registry, world, visibility,
+            new NoOpWarpService(), new NoOpWarpDispatcher(),
+            loggerFactory.CreateLogger<MovementService>());
         return (service, registry, (uint)map.Name.GetHashCode());
     }
 

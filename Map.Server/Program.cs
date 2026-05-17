@@ -16,6 +16,7 @@ using Map.Server.Services;
 using Map.Server.Session;
 using Map.Server.Spawn;
 using Map.Server.Visibility;
+using Map.Server.Warps;
 using Map.Server.World;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Serilog;
@@ -79,6 +80,14 @@ builder.Services.AddSingleton<IServerReadiness>(sp => sp.GetRequiredService<MapS
 // Entity infrastructure for MS1 gameplay (see .agents/migrations/map/entities.md).
 builder.Services.AddSingleton<EntityIdAllocator>();
 builder.Services.AddSingleton<IEntityRegistry, EntityRegistry>();
+
+// Warps (see .agents/migrations/map/declarative-catalogs.md). At boot the
+// service loads every warp row for hosted maps, marks NpcTrigger on each
+// trigger-box cell (rAthena npc_setcells), and exposes O(1) lookup for the
+// movement hot path. Must be registered before MovementService so the
+// movement walk loop can resolve IWarpService.
+builder.Services.AddSingleton<IWarpService, WarpService>();
+builder.Services.AddSingleton<IWarpDispatcher, WarpDispatcher>();
 
 // Movement (see .agents/migrations/map/movement.md). Walk steps are scheduled
 // through Core.Timer's Scheduler; the service binds entities → walk timers.

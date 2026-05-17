@@ -6,6 +6,7 @@ using Map.Server.Handlers;
 using Map.Server.Movement;
 using Map.Server.Session;
 using Map.Server.Tests.Visibility;
+using Map.Server.Tests.Warps;
 using Map.Server.Visibility;
 using Map.Server.World;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -76,7 +77,7 @@ public class RequestMoveHandlerTests
         var registry = new EntityRegistry(world);
         var dispatcher = new RecordingDispatcher();
         var visibility = new VisibilityService(registry, dispatcher);
-        var movement = new MovementService(registry, world, visibility, NullLogger<MovementService>.Instance);
+        var movement = new MovementService(registry, world, visibility, new NoOpWarpService(), new NoOpWarpDispatcher(), NullLogger<MovementService>.Instance);
         return new TestContext(registry, movement, visibility, dispatcher, (uint)mapName.GetHashCode());
     }
 

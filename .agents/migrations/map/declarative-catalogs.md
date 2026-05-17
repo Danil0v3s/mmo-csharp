@@ -126,13 +126,14 @@ When rAthena's source changes (or you point at a different fork):
 
 ## What still needs to be done
 
-The tables and the seed data exist; runtime consumption does not yet:
+The tables and the seed data exist; runtime consumption is partial:
 
-- **Warp dispatch — port rAthena's cell-flag approach, NOT per-step DB lookup.** See "rAthena warp dispatch — research findings" below for the exact mechanism. Implementation plan:
-  1. Extend `CellFlags` with a runtime-mutable `NpcTrigger` bit (matches rAthena's `CELL_NPC`).
-  2. At map load, after `MapWorldRegistry.Load` builds the `MapData` set, walk the `warp` table for each loaded map. For every warp, mark `CellFlags.NpcTrigger` on each cell in its trigger box `(x ± xs, y ± ys)` — skipping non-walkable cells (rAthena `CELL_CHKNOPASS` check, `npc.cpp:4967`).
-  3. Build an in-memory `Dictionary<(string map, short x, short y), WarpEntity>` for O(1) lookup once a trigger bit fires.
-  4. In `MovementService`, on each completed tile step (`MovementService.AdvanceWalk` / equivalent), check `map.GetCell(x, y).HasFlag(NpcTrigger)`. If set, look up the warp entry and call `pc_setpos`-equivalent (already exists at [`WantToConnectionHandler.PickRandomWalkableCell`](../../../Map.Server/Handlers/WantToConnectionHandler.cs) — factor it out into a shared helper).
+- ✅ **Warp trigger detection — cell-flag dispatch shipped.** See "rAthena warp dispatch — research findings" below for the exact mechanism. Delivered pieces:
+  - [`CellFlags.NpcTrigger`](../../../Map.Server/World/CellFlags.cs) bit (mirrors rAthena `CELL_NPC`).
+  - [`MapData`](../../../Map.Server/World/MapData.cs) split into immutable terrain + mutable dynamic-flag overlay; `HasNpcTrigger` + `SetDynamicFlag` round-trip.
+  - [`WarpService`](../../../Map.Server/Warps/WarpService.cs) — loads the `warp` table for every hosted map at boot, walks each warp's `(x ± xs, y ± ys)` trigger box, marks `NpcTrigger` on walkable cells (skipping `CELL_CHKNOPASS`), and exposes O(1) `TryGetWarpAt(map, x, y)`.
+  - [`MovementService.OnStepCallback`](../../../Map.Server/Movement/MovementService.cs) — on each tile-step arrival, checks the cell's `NpcTrigger` bit and (when set) resolves the warp + invokes `IWarpDispatcher`. rAthena `unit.cpp:619` parity.
+- **Teleport (`pc_setpos`) — still pending.** [`WarpDispatcher`](../../../Map.Server/Warps/WarpDispatcher.cs) currently logs the destination and clears `entity.Walk`; the full `pc_setpos` cascade (saved-coord update, cross-server map re-auth, `ZC_NPCACK_MAPMOVE` for cross-map / `ZC_TELEPORT` for same-map, view-range clear + STANDENTRY of new view) is its own slice. `WantToConnectionHandler.PickRandomWalkableCell` should be factored into a shared `SetposService` then.
 - **Mob spawn manager.** [`IMobSpawnService`](../../../Map.Server/Spawn/) already exists but is hardcoded; needs to load from `mob_spawn` at startup and respect `(span_xs, span_ys, delay1, delay2)` per row.
 - **Map flag application.** No code yet reads `map_flag`. When MS3 PvP/restricted/town-mode systems land, `MapData` gains a `Flags` dictionary populated from `map_flag` rows at startup.
 
@@ -194,18 +195,22 @@ The cell-bit approach is **cheaper and more faithful**:
 - The dictionary lookup only happens on the rare cells flagged as NPC triggers.
 - When script-NPCs land later, the same cell-bit fires; the dispatcher just gets a second case to handle.
 
-### What we need to add
+### Delivered files
 
 ```
-Map.Server/World/CellFlags.cs       — add NpcTrigger bit
-Map.Server/World/MapData.cs         — terrain immutable, dynamic-flag overlay byte[] (or split fields)
-Map.Server/Warps/IWarpService.cs    — TryGetWarpAt(map, x, y) → WarpEntity?
-Map.Server/Warps/WarpService.cs     — loads from DB at boot, sets NpcTrigger bits, exposes lookup
-Map.Server/Movement/MovementService — at tile-step arrival, check NpcTrigger, call WarpService → SetposService
+Map.Server/World/CellFlags.cs       — NpcTrigger bit + terrain/dynamic split docs ✅
+Map.Server/World/MapData.cs         — _dynamic[] overlay, SetDynamicFlag, HasNpcTrigger ✅
+Map.Server/Warps/IWarpService.cs    — TryGetWarpAt(map, x, y) → WarpEntity? ✅
+Map.Server/Warps/WarpService.cs     — DB load + cell marking + lookup dictionary ✅
+Map.Server/Warps/IWarpDispatcher.cs — interface for the teleport step ✅
+Map.Server/Warps/WarpDispatcher.cs  — MS1 stub: logs the destination (pc_setpos pending) ✅
+Map.Server/Movement/MovementService — NpcTrigger check + dispatch on tile-step arrival ✅
 ```
 
-(`SetposService` already exists as inline logic in `WantToConnectionHandler.PickRandomWalkableCell`; factor it out so warp-triggered teleports go through the same code path.)
+The actual teleport — `SetposService` (factor out `WantToConnectionHandler.PickRandomWalkableCell` + the cross-map `ZC_NPCACK_MAPMOVE` cascade) — is the next slice and is what swaps `WarpDispatcher` from "log + cancel walk" to "actually move the player."
 
 ## History
 
+- **2026-05-17** — **Warp trigger detection shipped (cell-flag dispatch).** Implemented `CellFlags.NpcTrigger`, `MapData` terrain/dynamic split (`SetDynamicFlag`, `HasNpcTrigger`), `IWarpRepository` + `WarpRepository`, `WarpService` (loads per-hosted-map, marks trigger-box cells skipping `CELL_CHKNOPASS`, O(1) lookup), `IWarpDispatcher` + stub `WarpDispatcher` (logs destination, walk cancelled upstream in `MovementService`), and the `MovementService.OnStepCallback` hook. 9 new tests (3 MapData dynamic-flag round-trips, 6 WarpService load/skip/lookup). Suite: 437/438 — same one pre-existing replay diff. `pc_setpos` cascade still pending; that's the next slice. Walk cancellation done in `MovementService` (not the dispatcher) to break the would-be DI cycle `WarpDispatcher → IMovementService → IWarpDispatcher`.
+- **2026-05-17** — Researched rAthena warp dispatch — cell-bit, not DB lookup. Documented the `CELL_NPC` mechanism, the `struct mapcell` terrain/dynamic split, the five `npc_touch_area_allnpc` callers, and the corrected port plan (commit `dcf0a98`).
 - **2026-05-17** — Initial port. Tables + EF entities + migration + importer tool + first seed snapshot (1279 warps / 2950 mob spawns / 2251 map flags). No runtime consumers yet.

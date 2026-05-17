@@ -6,6 +6,7 @@ using Map.Server.Mob;
 using Map.Server.Movement;
 using Map.Server.Spawn;
 using Map.Server.Tests.Visibility;
+using Map.Server.Tests.Warps;
 using Map.Server.Visibility;
 using Map.Server.World;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -104,7 +105,7 @@ public class DamageServiceTests
         var entities = new EntityRegistry(world);
         var dispatcher = new RecordingDispatcher();
         var visibility = new VisibilityService(entities, dispatcher);
-        var movement = new MovementService(entities, world, visibility, NullLogger<MovementService>.Instance);
+        var movement = new MovementService(entities, world, visibility, new NoOpWarpService(), new NoOpWarpDispatcher(), NullLogger<MovementService>.Instance);
         var mobDb = new StubMobDb();
         var spawnRegistry = new MobSpawnRegistry();
         var ids = new EntityIdAllocator();
