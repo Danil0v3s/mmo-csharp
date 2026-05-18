@@ -129,6 +129,7 @@ public partial class CharServerIpcService
         int loginId1,
         int loginId2,
         uint ip,
+        uint sex,
         CancellationToken cancellationToken = default)
     {
         var client = GetClient();
@@ -139,7 +140,8 @@ public partial class CharServerIpcService
             AccountId = accountId,
             LoginId1 = loginId1,
             LoginId2 = loginId2,
-            Ip = ip
+            Ip = ip,
+            Sex = sex
         }, cancellationToken: cancellationToken);
     }
 

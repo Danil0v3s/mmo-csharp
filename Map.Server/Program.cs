@@ -123,6 +123,12 @@ builder.Services.AddSingleton<ScriptHost>();
 builder.Services.AddSingleton<INpcSpawnService, NpcSpawnService>();
 builder.Services.AddSingleton<Map.Server.Scripting.Dialog.IDialogDispatcher, Map.Server.Scripting.Dialog.DialogDispatcher>();
 
+// Persistence: writes core character state (zeny / hp / sp / levels) and
+// the three persistent var-reg scopes (perm / account / accountGlobal) to
+// the DB. Map server writes directly via Core.Database; char-server IPC
+// is no longer the route for player-state mutations.
+builder.Services.AddSingleton<Map.Server.Persistence.IPlayerStateService, Map.Server.Persistence.PlayerStateService>();
+
 // Status broadcast cascade (post-handoff). See
 // .agents/migrations/map/initial-status-broadcast.md. The broadcaster
 // emits the rAthena pc_authok / status_calc_pc(SCO_FIRST) packet stream

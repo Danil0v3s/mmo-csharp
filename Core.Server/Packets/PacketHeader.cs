@@ -108,7 +108,10 @@ public enum PacketHeader : short
     CZ_REQUEST_MOVE = 0x035f,              // shuffle (was 0x0085)
     CZ_REQUEST_ACTION = 0x0437,            // shuffle (was 0x0089)
     CZ_REQUEST_CHAT = 0x00f3,              // shuffle (was 0x008c)
-    CZ_REQ_QUIT = 0x018a,
+    CZ_REQ_QUIT = 0x018a,                  // clif_parse_QuitGame, 4B (reserved). ALT+E.
+    ZC_DISCONNECT_ACK = 0x018b,            // clif_disconnect_ack, 4B (result). 0=ok-to-quit, 1=refused.
+    CZ_RESTART = 0x00b2,                   // clif_parse_Restart, 3B (type). 0=respawn, 1=char-select.
+    ZC_RESTART_ACK = 0x00b3,               // clif_charselectok, 3B (type). 1=disconnect-and-charselect.
     CZ_HEARTBEAT = 0x0360,
     CZ_ITEM_PICKUP = 0x0362,               // CZ_ITEM_PICKUP2 (modern, 4-byte entity id)
     CZ_REQUEST_TIME = 0x0363,              // PACKETVER ≥ 20220401 ticksend / heartbeat (rAthena moved it from 0x007e to 0x0363). Doubles as the keep-alive on our target client; the handler resets HeartbeatTimeout on receipt.

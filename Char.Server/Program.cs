@@ -40,6 +40,7 @@ builder.Services.AddSingleton<IServerConnectionService>(sp => sp.GetRequiredServ
 builder.Services.AddSingleton<ILoginServerIpcService, LoginServerIpcService>();
 builder.Services.AddSingleton<IMapServerIpcService, MapServerIpcService>();
 builder.Services.AddSingleton<IMapAuthTicketService, MapAuthTicketService>();
+builder.Services.AddSingleton<IReturningClientAuthService, ReturningClientAuthService>();
 builder.Services.AddSingleton<IMapServerRegistryService, MapServerRegistryService>();
 builder.Services.AddTransient<ICharacterListFlowService, CharacterListFlowService>();
 

@@ -14,6 +14,7 @@ public class ClientConnectHandler(
     ILogger<ClientConnectHandler> logger,
     ICharServerState charServerState,
     ILoginServerIpcService loginServerIpc,
+    IReturningClientAuthService returningClientAuth,
     CharServerConfiguration configuration,
     SessionManager sessionManager,
     ICharacterListFlowService characterListFlowService
@@ -64,52 +65,71 @@ public class ClientConnectHandler(
             return;
         }
 
-        logger.LogInformation(
-            "ConnectFlow: requesting login auth for account {AccountId} (session {SessionId})",
-            packet.AccountId,
-            session.SessionId);
-
-        CharacterServerAuthResponse? authResponse;
-        using (var authCts = new CancellationTokenSource(ConnectRpcTimeoutMs))
-        {
-            try
-            {
-                authResponse = await loginServerIpc.AuthenticateAccountAsync(
-                    (int)packet.AccountId,
-                    (int)packet.LoginId1,
-                    (int)packet.LoginId2,
-                    packet.Sex,
-                    requestId: (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % int.MaxValue),
-                    charServerState.RegisteredServerId,
-                    authCts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                logger.LogWarning(
-                    "ConnectFlow: login auth request timed out for account {AccountId} (session {SessionId})",
-                    packet.AccountId,
-                    session.SessionId);
-                CharRejectFlow.RejectEnter(session, errorCode: 0);
-                return;
-            }
-        }
-
-        if (authResponse?.Success != true)
+        // rAthena chclif_parse_reqtoconnect parity: first try the local
+        // auth_db (populated by chmapif_parse_reqcharselect) for clients
+        // returning from a map server. If found, skip the login-server
+        // round-trip — login's auth_node for this account was already
+        // consumed by the initial char→map handoff.
+        if (returningClientAuth.TryConsume(
+                accountId: (int)packet.AccountId,
+                loginId1: (int)packet.LoginId1,
+                sex: packet.Sex))
         {
             logger.LogInformation(
-                "Char auth rejected for account {AccountId} (session {SessionId})",
+                "ConnectFlow: returning client {AccountId} from map server — bypassing login auth",
+                packet.AccountId);
+            // session.AccountId/LoginId1/LoginId2/Sex were already populated
+            // above from the packet; nothing else to copy.
+        }
+        else
+        {
+            logger.LogInformation(
+                "ConnectFlow: requesting login auth for account {AccountId} (session {SessionId})",
                 packet.AccountId,
                 session.SessionId);
 
-            CharRejectFlow.RejectEnter(session, errorCode: 0);
-            return;
-        }
+            CharacterServerAuthResponse? authResponse;
+            using (var authCts = new CancellationTokenSource(ConnectRpcTimeoutMs))
+            {
+                try
+                {
+                    authResponse = await loginServerIpc.AuthenticateAccountAsync(
+                        (int)packet.AccountId,
+                        (int)packet.LoginId1,
+                        (int)packet.LoginId2,
+                        packet.Sex,
+                        requestId: (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % int.MaxValue),
+                        charServerState.RegisteredServerId,
+                        authCts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    logger.LogWarning(
+                        "ConnectFlow: login auth request timed out for account {AccountId} (session {SessionId})",
+                        packet.AccountId,
+                        session.SessionId);
+                    CharRejectFlow.RejectEnter(session, errorCode: 0);
+                    return;
+                }
+            }
 
-        session.AccountId = authResponse.AccountId;
-        session.LoginId1 = authResponse.LoginId1;
-        session.LoginId2 = authResponse.LoginId2;
-        session.Sex = (byte)authResponse.Sex;
-        session.ClientType = authResponse.ClientType;
+            if (authResponse?.Success != true)
+            {
+                logger.LogInformation(
+                    "Char auth rejected for account {AccountId} (session {SessionId})",
+                    packet.AccountId,
+                    session.SessionId);
+
+                CharRejectFlow.RejectEnter(session, errorCode: 0);
+                return;
+            }
+
+            session.AccountId = authResponse.AccountId;
+            session.LoginId1 = authResponse.LoginId1;
+            session.LoginId2 = authResponse.LoginId2;
+            session.Sex = (byte)authResponse.Sex;
+            session.ClientType = authResponse.ClientType;
+        }
 
         // rAthena char_auth_ok parity: reject new connect when another live char session
         // for this account already exists on this char-server.

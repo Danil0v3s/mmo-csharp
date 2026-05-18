@@ -77,4 +77,12 @@ public class MapSessionData(
     /// lifetime is tied to the session, reset on disconnect.
     /// </summary>
     public Microsoft.ClearScript.PropertyBag? ScriptSessionVars { get; set; }
+
+    /// <summary>
+    /// Persistent variable-register scopes (perm / account / accountGlobal)
+    /// loaded from the DB during the connect flow. Saved on autosave +
+    /// disconnect via <c>IPlayerStateService.SaveAsync</c>. Null until
+    /// the load completes.
+    /// </summary>
+    public Map.Server.Persistence.PlayerVarRegs? VarRegs { get; set; }
 }

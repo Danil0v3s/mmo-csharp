@@ -2,6 +2,7 @@ using Core.Server.Network;
 using Core.Server.Packets;
 using Core.Server.Packets.In.CZ;
 using Core.Server.Packets.Out.ZC;
+using Map.Server.Persistence;
 using Map.Server.Services;
 using Map.Server.Session;
 using Map.Server.Status;
@@ -23,6 +24,7 @@ public class WantToConnectionHandler(
     IMapWorldRegistry worldRegistry,
     MapServerConfiguration configuration,
     StatusBroadcaster statusBroadcaster,
+    IPlayerStateService playerState,
     ILogger<WantToConnectionHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_WANT_TO_CONNECTION>
 {
@@ -103,7 +105,11 @@ public class WantToConnectionHandler(
         session.AccountId = packet.AccountId;
         session.CharacterId = packet.CharacterId;
         session.LoginId1 = packet.LoginId1;
-        session.Sex = packet.Sex;
+        // The CZ_WANT_TO_CONNECTION sex byte is unreliable on some
+        // PACKETVERs (observed as garbage like 221 from the current
+        // client). The char-server's auth response carries the
+        // authoritative value from the ticket / DB — trust that instead.
+        session.Sex = (byte)auth.Sex;
         session.GroupId = auth.GroupId;
         // Cache the character snapshot so the LoadEndAck cascade
         // (NotifyActorInitHandler) can re-emit stats without another
@@ -115,6 +121,20 @@ public class WantToConnectionHandler(
         session.SpawnY = spawnY;
         session.SpawnDir = 0;
         session.AuthState = MapAuthState.Authenticated;
+
+        // Load the persistent var-reg scopes (perm / account / accountGlobal)
+        // so the script API has them when the first NPC interaction happens.
+        // Logged at debug; failure is non-fatal (we serve empty bags + log).
+        try
+        {
+            await playerState.LoadAsync(session);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to load var-regs for char {CharId} (acc {AccountId}); proceeding with empty scopes",
+                session.CharacterId, session.AccountId);
+        }
 
         session.EnqueuePacket(new ZC_AID { AccountId = packet.AccountId });
 

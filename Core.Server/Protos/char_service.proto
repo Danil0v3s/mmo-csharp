@@ -258,6 +258,12 @@ message CharacterMapAuthResponse {
   uint32 group_id = 8;
   bool changing_map_servers = 9;
   CharacterDataResponse character_data = 10;
+  // Authoritative sex from the auth ticket (or DB on autotrade). The
+  // CZ_WANT_TO_CONNECTION sex byte the client sends is unreliable across
+  // PACKETVERs — using this avoids a downstream mismatch when we later
+  // pre-register the player on char-server for char-select-back.
+  // 0 = female, 1 = male.
+  uint32 sex = 11;
 }
 
 // rAthena parity for chmapif_parse_reqsavechar (0x2b01)
@@ -280,6 +286,9 @@ message CharacterSelectAuthOkRequest {
   int32 login_id1 = 2;
   int32 login_id2 = 3;
   uint32 ip = 4;
+  // Player sex, needed for the returning-client auth match on char-server
+  // (same byte the client sends in CH_REQ_TO_CONNECT). 0 = female, 1 = male.
+  uint32 sex = 5;
 }
 
 message CharacterSelectAuthOkResponse {

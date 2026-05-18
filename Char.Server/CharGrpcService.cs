@@ -43,6 +43,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     ];
     private readonly CharServerImpl _charServer;
     private readonly IMapAuthTicketService _mapAuthTicketService;
+    private readonly IReturningClientAuthService _returningClientAuth;
     private readonly IMapServerRegistryService _mapServerRegistry;
     private readonly ILoginServerIpcService _loginServerIpc;
     private readonly IMapServerIpcService _mapServerIpc;
@@ -55,6 +56,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     public CharGrpcService(
         CharServerImpl charServer,
         IMapAuthTicketService mapAuthTicketService,
+        IReturningClientAuthService returningClientAuth,
         IMapServerRegistryService mapServerRegistry,
         ILoginServerIpcService loginServerIpc,
         IMapServerIpcService mapServerIpc,
@@ -66,6 +68,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     {
         _charServer = charServer;
         _mapAuthTicketService = mapAuthTicketService;
+        _returningClientAuth = returningClientAuth;
         _mapServerRegistry = mapServerRegistry;
         _loginServerIpc = loginServerIpc;
         _mapServerIpc = mapServerIpc;
@@ -363,7 +366,8 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
                 ExpirationTime = 0,
                 GroupId = 0,
                 ChangingMapServers = false,
-                CharacterData = ToCharacterDataResponse(autotradeCharacter)
+                CharacterData = ToCharacterDataResponse(autotradeCharacter),
+                Sex = SexCharToByte(autotradeCharacter.Sex)
             };
         }
 
@@ -432,7 +436,8 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             ExpirationTime = 0,
             GroupId = groupId,
             ChangingMapServers = true,
-            CharacterData = characterData
+            CharacterData = characterData,
+            Sex = sex
         };
     }
 
@@ -524,6 +529,15 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
                 ErrorMessage = "Char server not ready"
             });
         }
+
+        // rAthena chmapif_parse_reqcharselect parity: stash an auth_db entry
+        // so the imminent CH_REQ_TO_CONNECT from the returning client is
+        // accepted without re-auth against the login server (whose auth_node
+        // for this account was consumed by the initial char→map handoff).
+        _returningClientAuth.Allow(
+            accountId: request.AccountId,
+            loginId1: request.LoginId1,
+            sex: (byte)request.Sex);
 
         return Task.FromResult(new CharacterSelectAuthOkResponse
         {
@@ -4341,6 +4355,13 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
                 ? new DateTimeOffset(character.LastLogin.Value).ToUnixTimeSeconds()
                 : 0
         };
+    }
+
+    // rAthena stores sex as char ('M'/'F'/'S'/'U'); the wire protocol uses
+    // 0 = female, 1 = male (everything non-M maps to 0).
+    private static uint SexCharToByte(string sex)
+    {
+        return string.Equals(sex, "M", StringComparison.OrdinalIgnoreCase) ? 1u : 0u;
     }
 
     private static CharacterDataResponse ToCharacterDataResponse(CharEntity character)

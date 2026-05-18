@@ -34,6 +34,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly IItemDropService _itemDrops;
     private readonly ScriptHost _scriptHost;
     private readonly INpcSpawnService _npcSpawn;
+    private readonly Persistence.IPlayerStateService _playerState;
     private readonly MapServerConfiguration _mapConfiguration;
     private DateTime _nextRegistrationAttemptUtc = DateTime.MinValue;
     private DateTime _nextKeepAliveUtc = DateTime.MinValue;
@@ -57,7 +58,9 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         IMobSpawnService mobSpawn,
         IItemDropService itemDrops,
         ScriptHost scriptHost,
-        INpcSpawnService npcSpawn)
+        INpcSpawnService npcSpawn,
+        Persistence.IPlayerStateService playerState,
+        ILoggerFactory loggerFactory)
         : base("MapServer", configuration, logger, packetSystem, sessionManager)
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
@@ -70,7 +73,12 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _itemDrops = itemDrops;
         _scriptHost = scriptHost;
         _npcSpawn = npcSpawn;
+        _playerState = playerState;
         _mapConfiguration = (MapServerConfiguration)configuration;
+
+        // Hand the scripting-stub helper its logger so unfinished bindings
+        // can announce themselves at call time.
+        Map.Server.Scripting.Dialog.ScriptStub.Configure(loggerFactory);
 
         // Wire up the connection service to use this server's connection manager
         connectionService.SetConnectionManager(ServerConnections);
@@ -307,22 +315,24 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
 
     private async Task SaveAllOnlinePlayersAsync(CancellationToken cancellationToken)
     {
-        foreach (var player in _playerMapService.GetAllPlayers())
+        // Iterate sessions rather than entities — the persistence service
+        // needs the full session (CharacterData + VarRegs) and writes to
+        // the DB directly. Char-server IPC is still notified (online flag,
+        // legacy parity) but the actual state lands via PlayerStateService.
+        foreach (var session in SessionManager.GetAllSessions())
         {
+            if (session is not MapSessionData mapSession) continue;
+            if (mapSession.AuthState != MapAuthState.Spawned) continue;
+
             try
             {
-                await _charServerIpc.SaveCharacterStateAsync(
-                    player.AccountId,
-                    player.CharacterId,
-                    setOfflineAfterSave: false,
-                    finalSave: false,
-                    cancellationToken);
+                await _playerState.SaveAsync(mapSession, finalSave: false, cancellationToken);
             }
             catch (Exception ex)
             {
                 Logger.LogWarning(ex,
                     "Autosave failed for character {CharId} (acc {AccountId})",
-                    player.CharacterId, player.AccountId);
+                    mapSession.CharacterId, mapSession.AccountId);
             }
         }
     }

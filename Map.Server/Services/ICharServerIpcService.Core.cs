@@ -55,6 +55,7 @@ public interface ICharServerIpcServiceCore
         int loginId1,
         int loginId2,
         uint ip,
+        uint sex,
         CancellationToken cancellationToken = default);
 
     Task<CharacterKeepAliveResponse?> KeepAliveAsync(

@@ -1,6 +1,7 @@
 using Core.Server.Network;
 using Core.Server.Packets.Out.ZC;
 using Map.Server.Entities;
+using Map.Server.Persistence;
 using Map.Server.Services;
 using Map.Server.Visibility;
 
@@ -24,6 +25,7 @@ public sealed class MapSessionLifecycle
     private readonly IEntityRegistry _entities;
     private readonly IVisibilityService _visibility;
     private readonly ICharServerIpcService _charServerIpc;
+    private readonly IPlayerStateService _playerState;
     private readonly ILogger<MapSessionLifecycle> _logger;
 
     public MapSessionLifecycle(
@@ -31,12 +33,14 @@ public sealed class MapSessionLifecycle
         IEntityRegistry entities,
         IVisibilityService visibility,
         ICharServerIpcService charServerIpc,
+        IPlayerStateService playerState,
         ILogger<MapSessionLifecycle> logger)
     {
         _sessions = sessions;
         _entities = entities;
         _visibility = visibility;
         _charServerIpc = charServerIpc;
+        _playerState = playerState;
         _logger = logger;
     }
 
@@ -75,6 +79,17 @@ public sealed class MapSessionLifecycle
 
         if (session.AccountId is { } accountId && session.CharacterId is { } charId)
         {
+            try
+            {
+                // Persist final state (zeny / hp / sp / dirty var-regs) directly
+                // to DB before telling char-server to mark offline.
+                await _playerState.SaveAsync(session, finalSave: true, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Final PlayerState save failed for char {CharId}", charId);
+            }
+
             try
             {
                 await _charServerIpc.SaveCharacterStateAsync(

@@ -58,6 +58,20 @@ public class NotifyActorInitHandler(
             x: session.SpawnX,
             y: session.SpawnY);
         player.Dir = session.SpawnDir;
+
+        // Hydrate the live HP/SP/MaxHP/MaxSP from the loaded char snapshot.
+        // Without this, PlayerEntity stays at the class defaults (40/40 +
+        // 11/11) and any saved damage / spent SP visually reverts on relog —
+        // the DB row has the correct value, but the in-memory entity wipes
+        // it on next autosave because the script sees the default.
+        if (session.CharacterData is { } ch)
+        {
+            player.Hp = (int)Math.Min(ch.Hp, int.MaxValue);
+            player.MaxHp = (int)Math.Min(ch.MaxHp, int.MaxValue);
+            player.Sp = (int)Math.Min(ch.Sp, int.MaxValue);
+            player.MaxSp = (int)Math.Min(ch.MaxSp, int.MaxValue);
+        }
+
         registry.Add(player);
 
         session.EntityId = player.Id;
