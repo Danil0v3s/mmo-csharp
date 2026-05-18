@@ -13,22 +13,36 @@
 
 declare global {
     // ===== Registrars =======================================================
+    //
+    // Every registrar takes *varargs*. The idiomatic pattern is:
+    //
+    //     // kafra.ts
+    //     export const kafra: NpcRegistration = { map: "prontera", ... };
+    //
+    //     // index.ts
+    //     import { kafra } from "./kafra";
+    //     import { guards } from "./guards";           // NpcRegistration[]
+    //     import { libraryCurator } from "./library_curator";
+    //     registerNpc(kafra, libraryCurator, ...guards);
+    //
+    // The single-arg form `registerNpc(kafra)` still works (varargs with one
+    // entry). Spreading arrays — `...guards` — registers every element.
 
-    /** Scripted NPC with a world position and one or more event hooks. */
-    function registerNpc(npc: NpcRegistration): void;
+    /** Scripted NPCs with world positions and event hooks. */
+    function registerNpc(...npcs: NpcRegistration[]): void;
 
-    /** Event-only script with no world position. Hooks only. Replaces
-     *  rAthena's `-` map sentinel for floating script blocks. */
-    function registerFloatingNpc(npc: FloatingNpcRegistration): void;
+    /** Event-only scripts with no world position. Replaces rAthena's `-`
+     *  map sentinel for floating script blocks. */
+    function registerFloatingNpc(...npcs: FloatingNpcRegistration[]): void;
 
-    /** Declarative shop. The `kind` discriminator selects payment mode. */
-    function registerShop(shop: ShopRegistration): void;
+    /** Declarative shops. The `kind` discriminator selects payment mode. */
+    function registerShop(...shops: ShopRegistration[]): void;
 
-    /** Declarative warp portal. Trigger area teleports the player. */
-    function registerWarp(warp: WarpRegistration): void;
+    /** Declarative warp portals. */
+    function registerWarp(...warps: WarpRegistration[]): void;
 
-    /** Declarative mob spawn point. */
-    function registerSpawn(spawn: SpawnRegistration): void;
+    /** Declarative mob spawn points. */
+    function registerSpawn(...spawns: SpawnRegistration[]): void;
 }
 
 // ===== Registration shapes =================================================

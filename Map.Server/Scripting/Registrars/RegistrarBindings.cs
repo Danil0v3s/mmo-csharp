@@ -9,17 +9,65 @@ namespace Map.Server.Scripting.Registrars;
 /// Injects the five host-side <c>register*</c> functions into a Jint engine.
 /// Called once per <see cref="ScriptHost"/> evaluation pass, after a fresh
 /// engine is created and before <c>main.js</c> runs.
+///
+/// Every registrar accepts *varargs* — <c>registerNpc(a, b, c)</c> registers
+/// three NPCs in one call. Spreading an array works too:
+/// <c>registerNpc(...arrayOfNpcs)</c>. This lets authors write each NPC as
+/// a pure <c>export const</c> in its own file and aggregate them in an
+/// index that calls each registrar once.
+///
+/// Jint's <c>DelegateWrapper</c> checks each delegate parameter for
+/// <c>ParamArrayAttribute</c> to decide whether to spread JS args into an
+/// array or marshal a single JS value. C# only emits that attribute for
+/// methods declared with <c>params</c> — lambdas don't carry it. So the
+/// register* functions live as real instance methods on this dispatcher
+/// class; Jint then sees the <c>params</c> and behaves correctly.
 /// </summary>
-internal static class RegistrarBindings
+internal sealed class RegistrarBindings
 {
+    private readonly INpcRegistry _registry;
+
+    private RegistrarBindings(INpcRegistry registry) => _registry = registry;
+
     public static void Bind(Engine engine, INpcRegistry registry)
     {
-        engine.SetValue("registerNpc",         new Action<JsValue>(v => RegisterNpc(v, registry)));
-        engine.SetValue("registerFloatingNpc", new Action<JsValue>(v => RegisterFloatingNpc(v, registry)));
-        engine.SetValue("registerShop",        new Action<JsValue>(v => RegisterShop(v, registry)));
-        engine.SetValue("registerWarp",        new Action<JsValue>(v => RegisterWarp(v, registry)));
-        engine.SetValue("registerSpawn",       new Action<JsValue>(v => RegisterSpawn(v, registry)));
+        var binder = new RegistrarBindings(registry);
+        engine.SetValue("registerNpc",         (Action<JsValue[]>)binder.registerNpc);
+        engine.SetValue("registerFloatingNpc", (Action<JsValue[]>)binder.registerFloatingNpc);
+        engine.SetValue("registerShop",        (Action<JsValue[]>)binder.registerShop);
+        engine.SetValue("registerWarp",        (Action<JsValue[]>)binder.registerWarp);
+        engine.SetValue("registerSpawn",       (Action<JsValue[]>)binder.registerSpawn);
     }
+
+    // The lowercase names match the JS identifiers exactly; the params
+    // modifier on each is what makes Jint treat them as variadic.
+
+    // ReSharper disable InconsistentNaming
+    public void registerNpc(params JsValue[] args)
+    {
+        foreach (var arg in args) RegisterNpc(arg, _registry);
+    }
+
+    public void registerFloatingNpc(params JsValue[] args)
+    {
+        foreach (var arg in args) RegisterFloatingNpc(arg, _registry);
+    }
+
+    public void registerShop(params JsValue[] args)
+    {
+        foreach (var arg in args) RegisterShop(arg, _registry);
+    }
+
+    public void registerWarp(params JsValue[] args)
+    {
+        foreach (var arg in args) RegisterWarp(arg, _registry);
+    }
+
+    public void registerSpawn(params JsValue[] args)
+    {
+        foreach (var arg in args) RegisterSpawn(arg, _registry);
+    }
+    // ReSharper restore InconsistentNaming
 
     private static void RegisterNpc(JsValue raw, INpcRegistry registry)
     {

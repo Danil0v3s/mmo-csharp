@@ -43,6 +43,65 @@ public class ScriptHostTests
     }
 
     [Fact]
+    public void RegisterNpc_varargs_registers_each_item()
+    {
+        var (host, registry, dir) = Build(@"
+            ""use strict"";
+            (() => {
+                const a = { map: ""prontera"", x: 1, y: 1, sprite: 1, name: ""A"" };
+                const b = { map: ""prontera"", x: 2, y: 2, sprite: 1, name: ""B"" };
+                const c = { map: ""prontera"", x: 3, y: 3, sprite: 1, name: ""C"" };
+                registerNpc(a, b, c);
+            })();
+        ");
+        try
+        {
+            host.LoadEntryPoint();
+            Assert.Equal(3, registry.NpcCount);
+            Assert.NotNull(registry.GetNpcByName("A"));
+            Assert.NotNull(registry.GetNpcByName("B"));
+            Assert.NotNull(registry.GetNpcByName("C"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void RegisterNpc_spread_from_array_registers_each_item()
+    {
+        var (host, registry, dir) = Build(@"
+            ""use strict"";
+            (() => {
+                const npcs = [
+                    { map: ""prontera"", x: 1, y: 1, sprite: 1, name: ""A1"" },
+                    { map: ""prontera"", x: 2, y: 2, sprite: 1, name: ""A2"" },
+                ];
+                registerNpc(...npcs);
+            })();
+        ");
+        try
+        {
+            host.LoadEntryPoint();
+            Assert.Equal(2, registry.NpcCount);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void RegisterNpc_zero_args_is_a_no_op()
+    {
+        var (host, registry, dir) = Build(@"
+            ""use strict"";
+            (() => { registerNpc(); })();
+        ");
+        try
+        {
+            host.LoadEntryPoint();
+            Assert.Equal(0, registry.NpcCount);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
     public void RegisterNpc_populates_registry()
     {
         var (host, registry, dir) = Build(@"

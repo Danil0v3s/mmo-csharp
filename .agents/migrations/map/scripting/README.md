@@ -43,11 +43,27 @@ Each kind of script-managed content has its own registrar. No polymorphic `regis
 
 | Registrar | For | Shape |
 |---|---|---|
-| `registerNpc` | Scripted NPC with a world position. Has hooks (`onClick`, `onTouch`, `onInit`, `onTimer`, `onPCDeath`, …). | Closures + position + sprite |
-| `registerFloatingNpc` | Event-only script with no world position. Hooks only (`onInit`, `onTimer`, `onClock`, `onPCLogin`, …). Replaces rAthena's `-` map sentinel. | Closures only, name-keyed for cross-script `doevent` dispatch |
-| `registerShop` | Declarative shop (zeny / cash / item / point / market via `kind` discriminator). No closures. | Position + item list + cost discriminator |
-| `registerWarp` | Declarative warp portal. No closures. | From / to / trigger area |
-| `registerSpawn` | Declarative mob spawn. No closures (per-mob `onDeath` event labels handled by Phase 6). | Map + area + mob + amount + respawn |
+| `registerNpc(...npcs)` | Scripted NPCs with a world position. Hooks (`onClick`, `onTouch`, `onInit`, `onTimer`, `onPCDeath`, …). | Closures + position + sprite |
+| `registerFloatingNpc(...npcs)` | Event-only scripts with no world position. Hooks only (`onInit`, `onTimer`, `onClock`, `onPCLogin`, …). Replaces rAthena's `-` map sentinel. | Closures only, name-keyed for cross-script `doevent` dispatch |
+| `registerShop(...shops)` | Declarative shops (zeny / cash / item / point / market via `kind` discriminator). No closures. | Position + item list + cost discriminator |
+| `registerWarp(...warps)` | Declarative warp portals. No closures. | From / to / trigger area |
+| `registerSpawn(...spawns)` | Declarative mob spawns. No closures (per-mob `onDeath` event labels handled by Phase 6). | Map + area + mob + amount + respawn |
+
+**Every registrar takes varargs.** Idiomatic pattern: each NPC lives in its own file as an `export const`, and an `index.ts` aggregates them:
+
+```ts
+// scripts/npcs/cities/prontera/kafra.ts
+import type { NpcRegistration } from "@server/api";
+export const kafra: NpcRegistration = { map: "prontera", x: 146, y: 90, ... };
+
+// scripts/npcs/cities/prontera/index.ts
+import { kafra } from "./kafra";
+import { libraryCurator } from "./library_curator";
+import { guards } from "./guards";  // NpcRegistration[]
+registerNpc(kafra, libraryCurator, ...guards);
+```
+
+Each NPC becomes a pure data value — testable, inspectable, mergeable as JSON. Registration is the orchestration step that an aggregator file owns. Single-arg form `registerNpc(kafra)` still works (varargs with one entry).
 
 Global helper functions are **plain TS exports**, imported normally — no special registrar.
 

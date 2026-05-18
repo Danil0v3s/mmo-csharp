@@ -45,19 +45,25 @@ Map.Server/Visibility/VisibilityService.cs  — add NpcEntity arm to BuildEnterV
 
 ```
 scripts/
-├── package.json                     — devDependency: typescript; scripts: "build", "watch"
-├── tsconfig.json                    — target ES2022, module ES2022, strict, outDir ./dist
+├── package.json                     — esbuild bundler, tsc as type-check gate
+├── tsconfig.json                    — ES2022 strict; path alias @server/api
 ├── types/api.d.ts                   — THE contract (hand-authored for Phase 1)
 ├── lib/                             — empty for Phase 1; first occupant in Phase 2 (kafraDialog)
 ├── npcs/
 │   ├── index.ts                     — `import "./_dev_test";` (Phase 2+: import the real tree)
-│   └── _dev_test.ts                 — 2–3 test NPCs at known prontera coords
+│   └── _dev_test/                   — Phase 1 acceptance fixtures, each NPC in its own file
+│       ├── index.ts                 — imports the consts + a single registerNpc(a, b, c) call
+│       ├── phase1_test.ts           — export const phase1Test: NpcRegistration
+│       ├── kafra_test.ts            — export const kafraTest: NpcRegistration
+│       └── event_manager.ts         — export const eventManager: FloatingNpcRegistration
 ├── shops/index.ts                   — empty for Phase 1
 ├── warps/index.ts                   — empty for Phase 1
 ├── spawns/index.ts                  — empty for Phase 1
-├── main.ts                          — `import "./npcs"; import "./shops"; import "./warps"; import "./spawns";`
-└── dist/                            — tsc output; gitignored
+├── main.ts                          — `import "./npcs"; import "./shops"; ...`
+└── dist/                            — esbuild output (single IIFE); gitignored
 ```
+
+The `_dev_test/` shape is the template for every content area going forward: each NPC / shop / warp / spawn is a pure `export const` in its own file; an `index.ts` per directory imports them and makes one `register*(a, b, c, ...)` call. NPCs become data values; registration is orchestration.
 
 ## Implementation order
 

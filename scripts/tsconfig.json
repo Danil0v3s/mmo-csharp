@@ -17,6 +17,10 @@
     "outDir": "./dist",
     "declaration": false,
     "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@server/api": ["./types/api"]
+    },
     "types": ["./types/api"]
   },
   "include": ["./**/*.ts", "./types/**/*.d.ts"],
