@@ -1,14 +1,11 @@
-using Jint;
-using Jint.Native;
-using Jint.Native.Object;
-using Jint.Runtime;
+using Microsoft.ClearScript;
 using Map.Server.Scripting.Records;
 
 namespace Map.Server.Scripting.Registrars;
 
 /// <summary>
-/// Reusable accessors for pulling fields off a Jint <see cref="ObjectInstance"/>
-/// with sensible error messages. Every registrar uses these.
+/// Reusable accessors for pulling fields off a ClearScript <see cref="ScriptObject"/>.
+/// Every registrar uses these.
 ///
 /// All <c>RequireXxx</c> overloads throw <see cref="ScriptRegistrationException"/>
 /// when the field is missing, wrong type, or out of range; all <c>OptionalXxx</c>
@@ -16,102 +13,102 @@ namespace Map.Server.Scripting.Registrars;
 /// </summary>
 internal static class JsObjectReader
 {
-    public static ObjectInstance RequireObject(JsValue value, string registrarName)
+    public static ScriptObject RequireObject(object? value, string registrarName)
     {
-        if (value is ObjectInstance obj) return obj;
+        if (value is ScriptObject obj) return obj;
         throw new ScriptRegistrationException(
-            $"{registrarName}() requires an object literal; got {value.Type}.");
+            $"{registrarName}() requires an object literal; got {DescribeType(value)}.");
     }
 
-    public static string RequireString(ObjectInstance obj, string field, string context)
+    public static string RequireString(ScriptObject obj, string field, string context)
     {
-        var v = obj.Get(field);
-        if (v.IsUndefined() || v.IsNull())
+        var v = obj.GetProperty(field);
+        if (IsUndefinedOrNull(v))
         {
             throw new ScriptRegistrationException($"{context}: required field '{field}' is missing.");
         }
-        if (!v.IsString())
+        if (v is not string s)
         {
             throw new ScriptRegistrationException(
-                $"{context}: field '{field}' must be a string; got {v.Type}.");
+                $"{context}: field '{field}' must be a string; got {DescribeType(v)}.");
         }
-        return v.AsString();
+        return s;
     }
 
-    public static string? OptionalString(ObjectInstance obj, string field)
+    public static string? OptionalString(ScriptObject obj, string field)
     {
-        var v = obj.Get(field);
-        if (v.IsUndefined() || v.IsNull()) return null;
-        if (!v.IsString())
+        var v = obj.GetProperty(field);
+        if (IsUndefinedOrNull(v)) return null;
+        if (v is not string s)
         {
             throw new ScriptRegistrationException(
-                $"Field '{field}' must be a string when set; got {v.Type}.");
+                $"Field '{field}' must be a string when set; got {DescribeType(v)}.");
         }
-        return v.AsString();
+        return s;
     }
 
-    public static int RequireInt(ObjectInstance obj, string field, string context)
+    public static int RequireInt(ScriptObject obj, string field, string context)
     {
-        var v = obj.Get(field);
-        if (v.IsUndefined() || v.IsNull())
+        var v = obj.GetProperty(field);
+        if (IsUndefinedOrNull(v))
         {
             throw new ScriptRegistrationException($"{context}: required field '{field}' is missing.");
         }
-        if (!v.IsNumber())
-        {
-            throw new ScriptRegistrationException(
-                $"{context}: field '{field}' must be a number; got {v.Type}.");
-        }
-        return (int)v.AsNumber();
+        return CoerceInt(v, field, context);
     }
 
-    public static int OptionalInt(ObjectInstance obj, string field, int fallback)
+    public static int OptionalInt(ScriptObject obj, string field, int fallback)
     {
-        var v = obj.Get(field);
-        if (v.IsUndefined() || v.IsNull()) return fallback;
-        if (!v.IsNumber())
-        {
-            throw new ScriptRegistrationException(
-                $"Field '{field}' must be a number when set; got {v.Type}.");
-        }
-        return (int)v.AsNumber();
+        var v = obj.GetProperty(field);
+        if (IsUndefinedOrNull(v)) return fallback;
+        return CoerceInt(v, field, $"Field '{field}'");
     }
 
-    public static bool OptionalBool(ObjectInstance obj, string field, bool fallback)
+    public static bool OptionalBool(ScriptObject obj, string field, bool fallback)
     {
-        var v = obj.Get(field);
-        if (v.IsUndefined() || v.IsNull()) return fallback;
-        if (!v.IsBoolean())
+        var v = obj.GetProperty(field);
+        if (IsUndefinedOrNull(v)) return fallback;
+        if (v is not bool b)
         {
             throw new ScriptRegistrationException(
-                $"Field '{field}' must be a boolean when set; got {v.Type}.");
+                $"Field '{field}' must be a boolean when set; got {DescribeType(v)}.");
         }
-        return v.AsBoolean();
+        return b;
     }
 
-    public static ObjectInstance? OptionalObject(ObjectInstance obj, string field)
+    public static ScriptObject? OptionalObject(ScriptObject obj, string field)
     {
-        var v = obj.Get(field);
-        if (v.IsUndefined() || v.IsNull()) return null;
-        if (v is not ObjectInstance child)
+        var v = obj.GetProperty(field);
+        if (IsUndefinedOrNull(v)) return null;
+        if (v is not ScriptObject child)
         {
             throw new ScriptRegistrationException(
-                $"Field '{field}' must be an object when set; got {v.Type}.");
+                $"Field '{field}' must be an object when set; got {DescribeType(v)}.");
         }
         return child;
     }
 
-    public static ScriptHandle? OptionalHandle(ObjectInstance obj, string field, string sourceContext)
+    /// <summary>
+    /// Capture a hook property as a <see cref="ScriptHandle"/>. Validates
+    /// that the value is invocable; throws with a useful pointer if the
+    /// author passed e.g. a string instead of a function.
+    /// </summary>
+    public static ScriptHandle? OptionalHandle(ScriptObject obj, string field, string sourceContext)
     {
-        var v = obj.Get(field);
-        if (v.IsUndefined() || v.IsNull()) return null;
-        if (v is not Jint.Native.Function.Function)
+        var v = obj.GetProperty(field);
+        if (IsUndefinedOrNull(v)) return null;
+        if (v is not ScriptObject fn)
         {
             throw new ScriptRegistrationException(
-                $"Hook '{field}' in {sourceContext} must be a function; got {v.Type}. " +
-                "Make sure you wrote `onClick(ctx) { ... }` or `onClick: async (ctx) => ...` — not a string or constant.");
+                $"Hook '{field}' in {sourceContext} must be a function; got {DescribeType(v)}. " +
+                "Make sure you wrote `async onClick(ctx) { ... }` or `onClick: async (ctx) => ...`.");
         }
-        return new ScriptHandle(v, $"{sourceContext}.{field}");
+        // ClearScript exposes functions as ScriptObjects with a callable
+        // semantic; the only way to truly verify "is this callable" is to
+        // try to invoke it, which we don't want at registration time. We
+        // accept any ScriptObject and let the dispatcher's invocation
+        // surface bad inputs.
+        return new ScriptHandle(fn, $"{sourceContext}.{field}");
     }
 
     /// <summary>
@@ -119,20 +116,19 @@ internal static class JsObjectReader
     /// where keys are integers and values are functions.
     /// </summary>
     public static IReadOnlyDictionary<int, ScriptHandle>? OptionalIntKeyedHandles(
-        ObjectInstance obj, string field, string sourceContext)
+        ScriptObject obj, string field, string sourceContext)
     {
         var bag = OptionalObject(obj, field);
         if (bag == null) return null;
         var result = new Dictionary<int, ScriptHandle>();
-        foreach (var key in bag.GetOwnPropertyKeys(Types.String))
+        foreach (var key in bag.PropertyNames)
         {
-            var keyStr = key.AsString();
-            if (!int.TryParse(keyStr, out var keyInt))
+            if (!int.TryParse(key, out var keyInt))
             {
                 throw new ScriptRegistrationException(
-                    $"{sourceContext}.{field}: key '{keyStr}' must be an integer (milliseconds).");
+                    $"{sourceContext}.{field}: key '{key}' must be an integer (milliseconds).");
             }
-            var handle = OptionalHandle(bag, keyStr, $"{sourceContext}.{field}[{keyStr}]");
+            var handle = OptionalHandle(bag, key, $"{sourceContext}.{field}[{key}]");
             if (handle != null) result[keyInt] = handle;
         }
         return result.Count == 0 ? null : result;
@@ -142,17 +138,46 @@ internal static class JsObjectReader
     /// Record-shaped optional field with string keys (<c>onClock: { "0000": fn }</c>).
     /// </summary>
     public static IReadOnlyDictionary<string, ScriptHandle>? OptionalStringKeyedHandles(
-        ObjectInstance obj, string field, string sourceContext)
+        ScriptObject obj, string field, string sourceContext)
     {
         var bag = OptionalObject(obj, field);
         if (bag == null) return null;
         var result = new Dictionary<string, ScriptHandle>(StringComparer.Ordinal);
-        foreach (var key in bag.GetOwnPropertyKeys(Types.String))
+        foreach (var key in bag.PropertyNames)
         {
-            var keyStr = key.AsString();
-            var handle = OptionalHandle(bag, keyStr, $"{sourceContext}.{field}[\"{keyStr}\"]");
-            if (handle != null) result[keyStr] = handle;
+            var handle = OptionalHandle(bag, key, $"{sourceContext}.{field}[\"{key}\"]");
+            if (handle != null) result[key] = handle;
         }
         return result.Count == 0 ? null : result;
     }
+
+    // ---- helpers ----
+
+    private static bool IsUndefinedOrNull(object? v) =>
+        v is null || v is Undefined;
+
+    private static int CoerceInt(object value, string field, string context)
+    {
+        return value switch
+        {
+            int i => i,
+            long l => (int)l,
+            double d => (int)d,
+            float f => (int)f,
+            _ => throw new ScriptRegistrationException(
+                $"{context}: field '{field}' must be a number; got {DescribeType(value)}."),
+        };
+    }
+
+    private static string DescribeType(object? v) => v switch
+    {
+        null => "null",
+        Undefined => "undefined",
+        string => "string",
+        bool => "boolean",
+        int or long or double or float => "number",
+        ScriptObject so when so.GetType().Name.Contains("Function") => "function",
+        ScriptObject => "object",
+        _ => v.GetType().Name,
+    };
 }

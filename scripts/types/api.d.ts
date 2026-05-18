@@ -144,34 +144,24 @@ export interface SpawnRegistration {
 // ===== Hook signature ======================================================
 
 /**
- * NPC hook handlers are JS generator functions. Author writes
- * `function* onClick(ctx) { ... }` (or `*onClick(ctx) { ... }` in object
- * shorthand) and yields each step of the dialog.
+ * NPC hook handlers are async functions. Author writes
+ * `async onClick(ctx) { ... }` or `onClick: async (ctx) => { ... }` and
+ * awaits each step of the dialog directly:
  *
- * Why generators instead of async/await: Jint 4.0.3's Promise event-loop
- * is experimental and hangs `Engine.Execute` when a script awaits a
- * Promise the host hasn't resolved yet. Generators sidestep that machinery
- * — the host calls `iter.next()` to advance one step at a time.
+ *     async onClick(ctx) {
+ *         await ctx.mes("Welcome");
+ *         await ctx.next();
+ *         const choice = await ctx.select(["A", "B"]);
+ *         if (choice === 1) await ctx.mes("Picked A");
+ *         await ctx.close();
+ *     }
  *
- * The yielded value is the return of a `ctx.<method>(...)` call. Each
- * method returns a tagged step descriptor; the dispatcher reads `kind`
- * and sends the matching packet.
- *
- * Note: do NOT write `const choice = yield ctx.select(...)`. Jint drops
- * the yielded value when `yield` is the RHS of an assignment. Instead,
- * yield the step, then read `ctx.lastSelection` in a separate statement:
- *
- *     yield ctx.select(["A", "B"]);
- *     const choice = ctx.lastSelection;  // 1-based; 0 if Escaped
+ * The runtime (ClearScript V8) marshals C# `Task<T>` to JS `Promise<T>`,
+ * so each suspending host call is a real Promise the script awaits. The
+ * dispatcher resolves the Promise when the client sends the matching
+ * packet.
  */
-export type NpcHandler = (ctx: NpcContext) => Generator<DialogStep, void, void>;
-
-/** Discriminated union returned by ctx.<method>(...). Opaque to authors. */
-export type DialogStep =
-    | { kind: "mes"; text: string }
-    | { kind: "next" }
-    | { kind: "menu"; options: string[] }
-    | { kind: "close" };
+export type NpcHandler = (ctx: NpcContext) => Promise<void> | void;
 
 // ===== Runtime context types ===============================================
 //
@@ -188,35 +178,22 @@ export interface NpcContext {
     /** World-level queries and broadcasts. */
     world: WorldOps;
 
-    /**
-     * Result of the most recent `yield ctx.select(...)` / `yield ctx.menu(...)`.
-     * 1-based; 0 if the player closed the menu (Escape). Read this AFTER the
-     * yield — never inside the yield expression (see DialogStep / NpcHandler
-     * for the Jint quirk that motivates this shape).
-     */
-    lastSelection: number;
+    // --- Dialog primitives. Each returns a Promise; author writes
+    //     `await ctx.<method>(...)` to suspend until the client responds.
 
-    // --- Yielding dialog primitives (Phase 2) ---
-    //
-    // Each method returns a tagged DialogStep that the author yields:
-    //   yield ctx.mes("hello");
-    //   yield ctx.next();
-    //   yield ctx.select(["A", "B"]);
-    //   const choice = ctx.lastSelection;
-    //   yield ctx.close();
-
-    /** Append a line of dialog text. Does NOT suspend on its own — yields
-     *  return immediately. Multi-line dialog is several `mes` yields. */
-    mes(text: string): DialogStep;
-    /** Show a "Next" button; suspends until the client clicks Next. */
-    next(): DialogStep;
-    /** Show a menu of options. After the yield, `ctx.lastSelection` holds
-     *  the 1-based pick (0 if Escaped). */
-    menu(options: string[]): DialogStep;
-    /** Alias of `menu`. Both yield a `{ kind: "menu" }` step. */
-    select(options: string[]): DialogStep;
-    /** Show a "Close" button; suspends, then ends the dialog. */
-    close(): DialogStep;
+    /** Append a line of dialog text. Resolves immediately — author still
+     *  `await`s for ordering, but no client round-trip. */
+    mes(text: string): Promise<void>;
+    /** Show a "Next" button; resolves when the client clicks Next. */
+    next(): Promise<void>;
+    /** Show a menu of options. Resolves with the 1-based selection
+     *  (0 if the player Escaped). */
+    menu(options: string[]): Promise<number>;
+    /** Alias of `menu`. Both render as the same `ZC_MENU_LIST` packet. */
+    select(options: string[]): Promise<number>;
+    /** Show a "Close" button; resolves when the client clicks Close. The
+     *  dialog ends after the script returns. */
+    close(): Promise<void>;
 }
 
 export interface NpcInfo {

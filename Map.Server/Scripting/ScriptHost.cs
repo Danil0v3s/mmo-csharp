@@ -1,26 +1,28 @@
-using Jint;
+using Microsoft.ClearScript;
+using Microsoft.ClearScript.JavaScript;
+using Microsoft.ClearScript.V8;
 using Map.Server.Scripting.Registrars;
 
 namespace Map.Server.Scripting;
 
 /// <summary>
-/// Owns the Jint engine for the lifetime of the map server. At boot it
-/// evaluates <c>{ScriptsRoot}/{EntryFile}</c> (default <c>../scripts/dist/main.js</c>),
-/// which side-effect-imports the rest of the TS bundle and triggers every
-/// <c>register*()</c> call. Phase 1 stops there: the registry is populated,
-/// hook closures are captured as opaque <c>JsValue</c>s, and the engine sits
-/// idle until Phase 2 wires the dispatcher that actually invokes them.
+/// Owns the V8 JavaScript engine for the lifetime of the map server. At
+/// boot it evaluates <c>{ScriptsRoot}/{EntryFile}</c> (default
+/// <c>../scripts/dist/main.js</c>), which side-effect-imports the rest of
+/// the TS bundle and triggers every <c>register*()</c> call.
 ///
-/// The engine is created with CLR interop disabled (scripts cannot reach
-/// arbitrary .NET types), recursion limited, and a generous statement budget
-/// for the one-time registration pass.
+/// V8 has native <c>async</c>/<c>await</c>, so hook closures are real async
+/// functions; the dispatcher awaits the returned Promise. Suspending host
+/// functions return <see cref="System.Threading.Tasks.Task"/> — ClearScript
+/// auto-marshals these to JS Promises, and resolving the Task wakes the
+/// awaiting JS function.
 /// </summary>
-public sealed class ScriptHost
+public sealed class ScriptHost : IDisposable
 {
     private readonly INpcRegistry _registry;
     private readonly ScriptHostOptions _options;
     private readonly ILogger<ScriptHost> _logger;
-    private Engine? _engine;
+    private V8ScriptEngine? _engine;
 
     public ScriptHost(INpcRegistry registry, ScriptHostOptions options, ILogger<ScriptHost> logger)
     {
@@ -29,7 +31,7 @@ public sealed class ScriptHost
         _logger = logger;
     }
 
-    public Engine Engine => _engine
+    public V8ScriptEngine Engine => _engine
         ?? throw new InvalidOperationException("ScriptHost has not loaded a bundle yet.");
 
     public void LoadEntryPoint()
@@ -42,7 +44,6 @@ public sealed class ScriptHost
                 "Run `npm run build` in the scripts/ directory. " +
                 "The map server will start with no NPCs / shops / warps / spawns from the script side.",
                 entryPath);
-            // Build an empty engine so callers that depend on ScriptHost can still resolve.
             _engine = BuildEngine();
             return;
         }
@@ -51,12 +52,16 @@ public sealed class ScriptHost
         _engine = BuildEngine();
         try
         {
-            _engine.Execute(source, entryPath);
+            _engine.Execute(new DocumentInfo(new Uri(entryPath)), source);
         }
         catch (ScriptRegistrationException)
         {
-            // Already carries a useful message; re-throw to fail boot.
             throw;
+        }
+        catch (ScriptEngineException ex)
+        {
+            throw new ScriptRegistrationException(
+                $"Failed to evaluate scripting bundle '{entryPath}': {ex.Message}\n{ex.ErrorDetails}", ex);
         }
         catch (Exception ex)
         {
@@ -79,34 +84,24 @@ public sealed class ScriptHost
         return Path.Combine(root, _options.EntryFile);
     }
 
-    private Engine BuildEngine()
+    private V8ScriptEngine BuildEngine()
     {
-        var engine = new Engine(opts =>
-        {
-            // AllowClr is opt-in — by NOT calling it, scripts have no access to
-            // System.IO.File / arbitrary .NET types. Keep it that way; if Phase 2+
-            // needs a controlled host surface, expose specific objects via SetValue,
-            // never the CLR.
-            opts.LimitRecursion(100);
-            opts.MaxStatements(10_000_000);       // generous; registration is one-time
-            opts.Strict();
-            // Phase 2 dialog dispatch is driven by generator functions
-            // (function* / yield). Suspension model is: the host pulls one
-            // DialogStep at a time via iter.next(), sends the corresponding
-            // packet, and resumes when the client responds.
-            //
-            // KNOWN JINT QUIRK (4.0.3): the yielded value of a `yield`
-            // expression is dropped when the yield is the RHS of an
-            // assignment — both `const a = yield x` and `a = yield x` yield
-            // {value: undefined} instead of {value: x}. Workaround pattern:
-            // never put `yield` inside an assignment; if you need to read
-            // a client response, the host stashes it on `ctx.lastSelection`
-            // (or `ctx.lastInput`) before resuming the generator, and the
-            // author reads it via a plain `const x = ctx.lastSelection`
-            // AFTER the yield.
-            opts.ExperimentalFeatures = ExperimentalFeature.Generators;
-        });
+        // Strict-mode JS, no host CLR exposure beyond what we explicitly add.
+        // DisableGlobalMembers prevents scripts from accidentally reaching
+        // the global host. EnableTaskPromiseConversion is the magic that
+        // turns C# `Task<T>` into JS `Promise<T>`, which is what makes
+        // `await ctx.mes(...)` work natively.
+        var flags = V8ScriptEngineFlags.DisableGlobalMembers
+                  | V8ScriptEngineFlags.EnableTaskPromiseConversion
+                  | V8ScriptEngineFlags.EnableValueTaskPromiseConversion;
+        var engine = new V8ScriptEngine("mmo-scripts", flags);
         RegistrarBindings.Bind(engine, _registry);
         return engine;
+    }
+
+    public void Dispose()
+    {
+        _engine?.Dispose();
+        _engine = null;
     }
 }

@@ -1,79 +1,101 @@
-using Jint;
-using Jint.Native;
-using Jint.Native.Object;
+using Core.Server.Packets.Out.ZC;
 using Map.Server.Entities;
-// JsObject lives in Jint.Native; ObjectInstance in Jint.Native.Object.
-using JsObject = Jint.Native.JsObject;
+using Map.Server.Session;
 
 namespace Map.Server.Scripting.Dialog;
 
 /// <summary>
-/// The object exposed to TS authors as <c>ctx</c> inside a hook closure. JS
-/// authors call <c>yield ctx.mes(...)</c> / <c>yield ctx.select(...)</c> etc.;
-/// each call returns a tagged descriptor that the dispatcher unwraps to
-/// decide what packet to send.
+/// The object exposed to TS authors as <c>ctx</c> inside a hook closure.
+/// Methods return <see cref="Task"/> / <see cref="Task{T}"/>; ClearScript
+/// auto-marshals these to JS Promises, so authors write idiomatic
+/// <c>await ctx.mes("...")</c> / <c>const choice = await ctx.select([...])</c>.
 ///
-/// Mutable fields like <see cref="LastSelection"/> exist because Jint 4.0.3
-/// drops the yielded value when <c>yield</c> is the RHS of an assignment
-/// expression. To read a client response, authors yield the menu/input
-/// descriptor first, then read the stashed result in a separate statement:
-/// <code>
-///   yield ctx.select(["A", "B"]);
-///   const choice = ctx.lastSelection;  // 1-based
-/// </code>
-///
-/// Lowercase method names match the JS contract; Jint's ObjectWrapper is
-/// case-sensitive when mapping <c>ctx.foo()</c> to a CLR method.
+/// Lowercase method names match the JS contract; ClearScript's host-object
+/// binding is case-sensitive when mapping <c>ctx.foo()</c> to a CLR method.
 /// </summary>
 public sealed class DialogContext
 {
-    private readonly Engine _engine;
+    private readonly MapSessionData _session;
+    private readonly DialogSession _dialog;
 
-    /// <summary>The NPC this dialog is bound to. Available to script as <c>ctx.npc</c>.</summary>
+    /// <summary>NPC info exposed to script as <c>ctx.npc</c>.</summary>
     public NpcInfo npc { get; }
 
-    /// <summary>
-    /// 1-based selection from the last <c>yield ctx.select(...)</c>. 0 if no menu
-    /// has been answered yet. Author reads this AFTER the yield (never as RHS
-    /// of an assignment that contains the yield itself — see class summary).
-    /// </summary>
-    public int lastSelection { get; internal set; }
-
-    public DialogContext(Engine engine, NpcEntity entity)
+    public DialogContext(MapSessionData session, DialogSession dialog, NpcEntity entity)
     {
-        _engine = engine;
+        _session = session;
+        _dialog = dialog;
         npc = new NpcInfo(entity);
     }
 
-    // ---- methods the script yields ----
+    // ---- Non-suspending: send and return. ClearScript marshals Task →
+    //      Promise, and an already-completed Task resolves immediately so
+    //      the script's `await ctx.mes(...)` just continues.
 
-    public ObjectInstance mes(string text) => Step(DialogStepKind.Mes, text);
-    public ObjectInstance next() => Step(DialogStepKind.Next);
-    public ObjectInstance select(JsValue options) => Step(DialogStepKind.Menu, options: options);
-    public ObjectInstance menu(JsValue options) => Step(DialogStepKind.Menu, options: options);
-    public ObjectInstance close() => Step(DialogStepKind.Close);
-
-    private ObjectInstance Step(DialogStepKind kind, string? text = null, JsValue? options = null)
+    public Task mes(string text)
     {
-        var obj = new JsObject(_engine);
-        obj.FastSetDataProperty("kind", kind switch
+        _session.EnqueuePacket(new ZC_SAY_DIALOG
         {
-            DialogStepKind.Mes => "mes",
-            DialogStepKind.Next => "next",
-            DialogStepKind.Menu => "menu",
-            DialogStepKind.Close => "close",
-            _ => throw new ArgumentOutOfRangeException(),
+            NpcId = (uint)_dialog.Npc.Id.Value,
+            Message = text ?? string.Empty,
         });
-        if (text != null) obj.FastSetDataProperty("text", text);
-        if (options != null) obj.FastSetDataProperty("options", options);
-        return obj;
+        return Task.CompletedTask;
+    }
+
+    // ---- Suspending: send packet, return Task that the resume handler
+    //      will complete via the TCS stored on PendingWait.
+
+    public Task next()
+    {
+        _session.EnqueuePacket(new ZC_WAIT_DIALOG { NpcId = (uint)_dialog.Npc.Id.Value });
+        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _dialog.Pending = new PendingWait.Next(tcs);
+        return tcs.Task;
+    }
+
+    public Task<int> select(object options)
+    {
+        var menuStr = JoinOptions(options);
+        _session.EnqueuePacket(new ZC_MENU_LIST
+        {
+            NpcId = (uint)_dialog.Npc.Id.Value,
+            Menu = menuStr,
+        });
+        var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _dialog.Pending = new PendingWait.Menu(tcs);
+        return tcs.Task;
+    }
+
+    /// <summary>Alias for <see cref="select"/>; both yield a menu-kind step.</summary>
+    public Task<int> menu(object options) => select(options);
+
+    public Task close()
+    {
+        _session.EnqueuePacket(new ZC_CLOSE_DIALOG { NpcId = (uint)_dialog.Npc.Id.Value });
+        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _dialog.Pending = new PendingWait.Close(tcs);
+        return tcs.Task;
+    }
+
+    private static string JoinOptions(object options)
+    {
+        // ClearScript hands us a Microsoft.ClearScript.ScriptObject for a JS
+        // array. We can iterate via the length + index properties — same
+        // shape JsObjectReader uses elsewhere.
+        if (options is not Microsoft.ClearScript.ScriptObject arr) return string.Empty;
+        var lenProp = arr.GetProperty("length");
+        if (lenProp is not int and not double) return string.Empty;
+        var len = Convert.ToInt32(lenProp);
+        var parts = new string[len];
+        for (var i = 0; i < len; i++)
+        {
+            parts[i] = arr.GetProperty(i)?.ToString() ?? string.Empty;
+        }
+        return string.Join(":", parts);
     }
 }
 
-/// <summary>
-/// Read-only NPC info exposed to script as <c>ctx.npc</c>. Lowercase method
-/// names match the JS contract.
-/// </summary>
+/// <summary>Read-only NPC info exposed to script as <c>ctx.npc</c>. Lowercase names match the JS contract.</summary>
 public sealed class NpcInfo
 {
     public string map { get; }
@@ -85,10 +107,8 @@ public sealed class NpcInfo
 
     public NpcInfo(NpcEntity entity)
     {
-        // entity.MapId is the runtime numeric id — for the script-facing name
-        // we'd want the map_index string. The NpcRegistration carries this
-        // through; for now expose what we have (Phase 3 will swap once
-        // MapId→name lookup lands).
+        // entity.MapId is the runtime hashed id; script-facing string name
+        // will land in Phase 3 once MapId→name lookup is wired.
         map = string.Empty;
         x = entity.X;
         y = entity.Y;

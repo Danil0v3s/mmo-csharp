@@ -1,81 +1,84 @@
-using Jint;
-using Jint.Native;
-using Jint.Native.Object;
+using Microsoft.ClearScript;
+using Microsoft.ClearScript.V8;
 using Map.Server.Scripting.Records;
 
 namespace Map.Server.Scripting.Registrars;
 
 /// <summary>
-/// Injects the five host-side <c>register*</c> functions into a Jint engine.
+/// Injects the five host-side <c>register*</c> functions into a V8 engine.
 /// Called once per <see cref="ScriptHost"/> evaluation pass, after a fresh
 /// engine is created and before <c>main.js</c> runs.
 ///
 /// Every registrar accepts *varargs* — <c>registerNpc(a, b, c)</c> registers
-/// three NPCs in one call. Spreading an array works too:
-/// <c>registerNpc(...arrayOfNpcs)</c>. This lets authors write each NPC as
-/// a pure <c>export const</c> in its own file and aggregate them in an
-/// index that calls each registrar once.
-///
-/// Jint's <c>DelegateWrapper</c> checks each delegate parameter for
-/// <c>ParamArrayAttribute</c> to decide whether to spread JS args into an
-/// array or marshal a single JS value. C# only emits that attribute for
-/// methods declared with <c>params</c> — lambdas don't carry it. So the
-/// register* functions live as real instance methods on this dispatcher
-/// class; Jint then sees the <c>params</c> and behaves correctly.
+/// three NPCs in one call. ClearScript binds JS positional args to a C#
+/// method's <c>params object[]</c> parameter automatically.
 /// </summary>
-internal sealed class RegistrarBindings
+public sealed class RegistrarBindings
 {
     private readonly INpcRegistry _registry;
 
     private RegistrarBindings(INpcRegistry registry) => _registry = registry;
 
-    public static void Bind(Engine engine, INpcRegistry registry)
+    public static void Bind(V8ScriptEngine engine, INpcRegistry registry)
     {
         var binder = new RegistrarBindings(registry);
-        engine.SetValue("registerNpc",         (Action<JsValue[]>)binder.registerNpc);
-        engine.SetValue("registerFloatingNpc", (Action<JsValue[]>)binder.registerFloatingNpc);
-        engine.SetValue("registerShop",        (Action<JsValue[]>)binder.registerShop);
-        engine.SetValue("registerWarp",        (Action<JsValue[]>)binder.registerWarp);
-        engine.SetValue("registerSpawn",       (Action<JsValue[]>)binder.registerSpawn);
+        // AddHostObject exposes the binder under each of the five names. Because
+        // ClearScript invokes methods by name, we add the same object under all
+        // five aliases — JS sees a callable global at each registrar name that
+        // dispatches to the corresponding method.
+        //
+        // To get TRUE bare globals (not `binder.registerNpc(...)` but just
+        // `registerNpc(...)`), we ExecuteCommand to install each name as a
+        // function reference on the global object.
+        engine.AddHostObject("__registrarBinder", binder);
+        engine.Execute(@"
+            globalThis.registerNpc         = (...args) => __registrarBinder.registerNpc(...args);
+            globalThis.registerFloatingNpc = (...args) => __registrarBinder.registerFloatingNpc(...args);
+            globalThis.registerShop        = (...args) => __registrarBinder.registerShop(...args);
+            globalThis.registerWarp        = (...args) => __registrarBinder.registerWarp(...args);
+            globalThis.registerSpawn       = (...args) => __registrarBinder.registerSpawn(...args);
+        ");
     }
 
-    // The lowercase names match the JS identifiers exactly; the params
-    // modifier on each is what makes Jint treat them as variadic.
-
     // ReSharper disable InconsistentNaming
-    public void registerNpc(params JsValue[] args)
+    // Each method takes an `object[]` (the JS spread array). Lowercase names
+    // match the JS-side dispatch shim above.
+
+    public void registerNpc(params object[] args)
     {
         foreach (var arg in args) RegisterNpc(arg, _registry);
     }
 
-    public void registerFloatingNpc(params JsValue[] args)
+    public void registerFloatingNpc(params object[] args)
     {
         foreach (var arg in args) RegisterFloatingNpc(arg, _registry);
     }
 
-    public void registerShop(params JsValue[] args)
+    public void registerShop(params object[] args)
     {
         foreach (var arg in args) RegisterShop(arg, _registry);
     }
 
-    public void registerWarp(params JsValue[] args)
+    public void registerWarp(params object[] args)
     {
         foreach (var arg in args) RegisterWarp(arg, _registry);
     }
 
-    public void registerSpawn(params JsValue[] args)
+    public void registerSpawn(params object[] args)
     {
         foreach (var arg in args) RegisterSpawn(arg, _registry);
     }
     // ReSharper restore InconsistentNaming
 
-    private static void RegisterNpc(JsValue raw, INpcRegistry registry)
+    // ---- per-item registrars ----
+
+    private static void RegisterNpc(object raw, INpcRegistry registry)
     {
         var obj = JsObjectReader.RequireObject(raw, "registerNpc");
         var name = JsObjectReader.RequireString(obj, "name", "registerNpc");
         var ctx = $"registerNpc('{name}')";
 
-        var reg = new NpcRegistration
+        registry.AddNpc(new NpcRegistration
         {
             Map = JsObjectReader.RequireString(obj, "map", ctx),
             X = (short)JsObjectReader.RequireInt(obj, "x", ctx),
@@ -85,21 +88,19 @@ internal sealed class RegistrarBindings
             Name = name,
             TriggerArea = ReadTriggerArea(obj),
             Hooks = ReadNpcHooks(obj, ctx),
-        };
-        registry.AddNpc(reg);
+        });
     }
 
-    private static void RegisterFloatingNpc(JsValue raw, INpcRegistry registry)
+    private static void RegisterFloatingNpc(object raw, INpcRegistry registry)
     {
         var obj = JsObjectReader.RequireObject(raw, "registerFloatingNpc");
         var name = JsObjectReader.RequireString(obj, "name", "registerFloatingNpc");
         var ctx = $"registerFloatingNpc('{name}')";
 
-        // World-position fields must NOT be present — floating means floating.
         foreach (var bad in new[] { "map", "x", "y", "sprite", "triggerArea" })
         {
-            var v = obj.Get(bad);
-            if (!v.IsUndefined() && !v.IsNull())
+            var v = obj.GetProperty(bad);
+            if (v is not null && v is not Undefined)
             {
                 throw new ScriptRegistrationException(
                     $"{ctx}: floating NPCs have no world position; remove '{bad}'. " +
@@ -107,15 +108,14 @@ internal sealed class RegistrarBindings
             }
         }
 
-        var reg = new FloatingNpcRegistration
+        registry.AddFloatingNpc(new FloatingNpcRegistration
         {
             Name = name,
             Hooks = ReadFloatingHooks(obj, ctx),
-        };
-        registry.AddFloatingNpc(reg);
+        });
     }
 
-    private static void RegisterShop(JsValue raw, INpcRegistry registry)
+    private static void RegisterShop(object raw, INpcRegistry registry)
     {
         var obj = JsObjectReader.RequireObject(raw, "registerShop");
         var name = JsObjectReader.RequireString(obj, "name", "registerShop");
@@ -136,15 +136,9 @@ internal sealed class RegistrarBindings
         int? costItem = null;
         string? costVariable = null;
         if (kind == ShopKind.Item)
-        {
             costItem = JsObjectReader.RequireInt(obj, "costItem", ctx);
-        }
         else if (kind == ShopKind.Point)
-        {
             costVariable = JsObjectReader.RequireString(obj, "costVariable", ctx);
-        }
-
-        var items = ReadShopItems(obj, kind, ctx);
 
         registry.AddShop(new ShopRegistration
         {
@@ -157,15 +151,14 @@ internal sealed class RegistrarBindings
             Name = name,
             CostItem = costItem,
             CostVariable = costVariable,
-            Items = items,
+            Items = ReadShopItems(obj, kind, ctx),
         });
     }
 
-    private static void RegisterWarp(JsValue raw, INpcRegistry registry)
+    private static void RegisterWarp(object raw, INpcRegistry registry)
     {
         var obj = JsObjectReader.RequireObject(raw, "registerWarp");
         var ctx = "registerWarp";
-
         var from = JsObjectReader.OptionalObject(obj, "from")
             ?? throw new ScriptRegistrationException($"{ctx}: missing required 'from' object.");
         var to = JsObjectReader.OptionalObject(obj, "to")
@@ -187,7 +180,7 @@ internal sealed class RegistrarBindings
         });
     }
 
-    private static void RegisterSpawn(JsValue raw, INpcRegistry registry)
+    private static void RegisterSpawn(object raw, INpcRegistry registry)
     {
         var obj = JsObjectReader.RequireObject(raw, "registerSpawn");
         var ctx = "registerSpawn";
@@ -228,7 +221,7 @@ internal sealed class RegistrarBindings
 
     // ---- helpers ----
 
-    private static (short Xs, short Ys)? ReadTriggerArea(ObjectInstance obj)
+    private static (short Xs, short Ys)? ReadTriggerArea(ScriptObject obj)
     {
         var area = JsObjectReader.OptionalObject(obj, "triggerArea");
         if (area == null) return null;
@@ -237,18 +230,18 @@ internal sealed class RegistrarBindings
             (short)JsObjectReader.RequireInt(area, "ys", "triggerArea"));
     }
 
-    private static NpcHooks ReadNpcHooks(ObjectInstance obj, string ctx) => new(
+    private static NpcHooks ReadNpcHooks(ScriptObject obj, string ctx) => new(
         OnClick:    JsObjectReader.OptionalHandle(obj, "onClick",   ctx),
         OnTouch:    JsObjectReader.OptionalHandle(obj, "onTouch",   ctx),
         OnInit:     JsObjectReader.OptionalHandle(obj, "onInit",    ctx),
         OnTimer:    JsObjectReader.OptionalIntKeyedHandles(obj, "onTimer", ctx),
-        OnClock:    null,  // onClock is floating-only
+        OnClock:    null,
         OnPCLogin:  JsObjectReader.OptionalHandle(obj, "onPCLogin", ctx),
         OnPCDeath:  JsObjectReader.OptionalHandle(obj, "onPCDeath", ctx),
         OnPCKill:   JsObjectReader.OptionalHandle(obj, "onPCKill",  ctx),
         OnNPCKill:  JsObjectReader.OptionalHandle(obj, "onNPCKill", ctx));
 
-    private static NpcHooks ReadFloatingHooks(ObjectInstance obj, string ctx) => new(
+    private static NpcHooks ReadFloatingHooks(ScriptObject obj, string ctx) => new(
         OnClick:    null,
         OnTouch:    null,
         OnInit:     JsObjectReader.OptionalHandle(obj, "onInit",    ctx),
@@ -259,22 +252,26 @@ internal sealed class RegistrarBindings
         OnPCKill:   null,
         OnNPCKill:  null);
 
-    private static IReadOnlyList<ShopItem> ReadShopItems(ObjectInstance obj, ShopKind kind, string ctx)
+    private static IReadOnlyList<ShopItem> ReadShopItems(ScriptObject obj, ShopKind kind, string ctx)
     {
-        var arr = obj.Get("items");
-        if (arr is not ObjectInstance items || !items.IsArray())
+        var arr = obj.GetProperty("items");
+        if (arr is not ScriptObject items)
         {
             throw new ScriptRegistrationException($"{ctx}: 'items' must be an array.");
         }
+        var lenProp = items.GetProperty("length");
+        if (lenProp is not int and not double)
+        {
+            throw new ScriptRegistrationException($"{ctx}: 'items' must be an array.");
+        }
+        var len = Convert.ToInt32(lenProp);
         var result = new List<ShopItem>();
-        var len = (int)items.Get("length").AsNumber();
         for (var i = 0; i < len; i++)
         {
-            var entry = items.Get(i.ToString());
-            if (entry is not ObjectInstance item)
+            var entry = items.GetProperty(i);
+            if (entry is not ScriptObject item)
             {
-                throw new ScriptRegistrationException(
-                    $"{ctx}.items[{i}] must be an object literal.");
+                throw new ScriptRegistrationException($"{ctx}.items[{i}] must be an object literal.");
             }
             var itemCtx = $"{ctx}.items[{i}]";
             int? stock = null;
@@ -282,18 +279,22 @@ internal sealed class RegistrarBindings
             {
                 stock = JsObjectReader.RequireInt(item, "stock", itemCtx);
             }
-            else if (!item.Get("stock").IsUndefined())
+            else
             {
-                throw new ScriptRegistrationException(
-                    $"{itemCtx}: 'stock' is only valid in kind='market' shops.");
+                var stockProp = item.GetProperty("stock");
+                if (stockProp is not null && stockProp is not Undefined)
+                {
+                    throw new ScriptRegistrationException(
+                        $"{itemCtx}: 'stock' is only valid in kind='market' shops.");
+                }
             }
             int? discount = null;
             if (kind is ShopKind.Item or ShopKind.Point)
             {
-                var d = item.Get("discount");
-                if (!d.IsUndefined() && !d.IsNull())
+                var d = item.GetProperty("discount");
+                if (d is not null && d is not Undefined)
                 {
-                    discount = (int)d.AsNumber();
+                    discount = Convert.ToInt32(d);
                 }
             }
             result.Add(new ShopItem(
