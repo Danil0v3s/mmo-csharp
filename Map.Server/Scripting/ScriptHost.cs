@@ -90,6 +90,21 @@ public sealed class ScriptHost
             opts.LimitRecursion(100);
             opts.MaxStatements(10_000_000);       // generous; registration is one-time
             opts.Strict();
+            // Phase 2 dialog dispatch is driven by generator functions
+            // (function* / yield). Suspension model is: the host pulls one
+            // DialogStep at a time via iter.next(), sends the corresponding
+            // packet, and resumes when the client responds.
+            //
+            // KNOWN JINT QUIRK (4.0.3): the yielded value of a `yield`
+            // expression is dropped when the yield is the RHS of an
+            // assignment — both `const a = yield x` and `a = yield x` yield
+            // {value: undefined} instead of {value: x}. Workaround pattern:
+            // never put `yield` inside an assignment; if you need to read
+            // a client response, the host stashes it on `ctx.lastSelection`
+            // (or `ctx.lastInput`) before resuming the generator, and the
+            // author reads it via a plain `const x = ctx.lastSelection`
+            // AFTER the yield.
+            opts.ExperimentalFeatures = ExperimentalFeature.Generators;
         });
         RegistrarBindings.Bind(engine, _registry);
         return engine;

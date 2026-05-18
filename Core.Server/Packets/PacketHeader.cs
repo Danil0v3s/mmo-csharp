@@ -114,6 +114,19 @@ public enum PacketHeader : short
     CZ_REQUEST_TIME = 0x0363,              // PACKETVER ≥ 20220401 ticksend / heartbeat (rAthena moved it from 0x007e to 0x0363). Doubles as the keep-alive on our target client; the handler resets HeartbeatTimeout on receipt.
     CZ_WANT_TO_CONNECTION = 0x0436,        // modern post-charselect connect
     CZ_CONTACTNPC = 0x0090,                // clif_parse_NpcClicked, 7B (header + npcId(4) + type(1)). Not part of the 20180307 shuffle.
+    CZ_CHOOSE_MENU = 0x00b8,               // clif_parse_ChooseMenu, 7B (npcId + selection). 1-based; 255=Escape.
+    CZ_REQ_NEXT_SCRIPT = 0x00b9,           // clif_parse_NextScript, 6B (npcId).
+    CZ_CLOSE_DIALOG = 0x0146,              // clif_parse_CloseScript, 6B (npcId). NOTE: distinct from outgoing ZC_CLOSE_DIALOG=0x00b6.
+
+    // Dialog packets. dhxj is pre-20220504 — it knows 0x00b4 / 0x00b5 in
+    // its packet length table (parses them with correct length) but its UI
+    // handler doesn't render the dialog on receipt. The post-20220504 IDs
+    // 0x0972 / 0x0973 are completely unknown to dhxj (desync). Pending a
+    // network trace of a working dhxj↔real-server NPC conversation to see
+    // what the real protocol is.
+    ZC_SAY_DIALOG = 0x00b4,                // clif_scriptmes, variable (npcId + asciz message).
+    ZC_WAIT_DIALOG = 0x00b5,               // clif_scriptnext, 6B (npcId). Shows the "Next" button.
+    ZC_MENU_LIST = 0x00b7,                 // clif_scriptmenu, variable (npcId + colon-joined options).
     ZC_EXTEND_BODYITEM_SIZE = 0x0b18,      // inventory-expansion info; rAthena clif_inventory_expansion_info
     ZC_FRIENDS_LIST = 0x0201,              // rAthena clif_friendslist_send, variable length
 

@@ -63,4 +63,11 @@ public class MapSessionData(
     /// periodic lifecycle sweep doesn't double-broadcast vanish.
     /// </summary>
     public bool CleanupCompleted { get; set; }
+
+    /// <summary>
+    /// Active NPC dialog state, set by the scripting dispatcher between
+    /// <c>CZ_CONTACTNPC</c> and the final <c>CZ_CLOSE_DIALOG</c>. Null when
+    /// the player is not in a dialog.
+    /// </summary>
+    public Map.Server.Scripting.Dialog.DialogSession? Dialog { get; set; }
 }

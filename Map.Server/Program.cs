@@ -121,6 +121,7 @@ builder.Services.AddSingleton(scriptOptions);
 builder.Services.AddSingleton<INpcRegistry, NpcRegistry>();
 builder.Services.AddSingleton<ScriptHost>();
 builder.Services.AddSingleton<INpcSpawnService, NpcSpawnService>();
+builder.Services.AddSingleton<Map.Server.Scripting.Dialog.IDialogDispatcher, Map.Server.Scripting.Dialog.DialogDispatcher>();
 
 // Status broadcast cascade (post-handoff). See
 // .agents/migrations/map/initial-status-broadcast.md. The broadcaster

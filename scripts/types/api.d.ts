@@ -143,7 +143,35 @@ export interface SpawnRegistration {
 
 // ===== Hook signature ======================================================
 
-export type NpcHandler = (ctx: NpcContext) => Promise<void> | void;
+/**
+ * NPC hook handlers are JS generator functions. Author writes
+ * `function* onClick(ctx) { ... }` (or `*onClick(ctx) { ... }` in object
+ * shorthand) and yields each step of the dialog.
+ *
+ * Why generators instead of async/await: Jint 4.0.3's Promise event-loop
+ * is experimental and hangs `Engine.Execute` when a script awaits a
+ * Promise the host hasn't resolved yet. Generators sidestep that machinery
+ * — the host calls `iter.next()` to advance one step at a time.
+ *
+ * The yielded value is the return of a `ctx.<method>(...)` call. Each
+ * method returns a tagged step descriptor; the dispatcher reads `kind`
+ * and sends the matching packet.
+ *
+ * Note: do NOT write `const choice = yield ctx.select(...)`. Jint drops
+ * the yielded value when `yield` is the RHS of an assignment. Instead,
+ * yield the step, then read `ctx.lastSelection` in a separate statement:
+ *
+ *     yield ctx.select(["A", "B"]);
+ *     const choice = ctx.lastSelection;  // 1-based; 0 if Escaped
+ */
+export type NpcHandler = (ctx: NpcContext) => Generator<DialogStep, void, void>;
+
+/** Discriminated union returned by ctx.<method>(...). Opaque to authors. */
+export type DialogStep =
+    | { kind: "mes"; text: string }
+    | { kind: "next" }
+    | { kind: "menu"; options: string[] }
+    | { kind: "close" };
 
 // ===== Runtime context types ===============================================
 //
@@ -160,28 +188,35 @@ export interface NpcContext {
     /** World-level queries and broadcasts. */
     world: WorldOps;
 
-    // --- Suspending dialog primitives (Phase 2) ---
+    /**
+     * Result of the most recent `yield ctx.select(...)` / `yield ctx.menu(...)`.
+     * 1-based; 0 if the player closed the menu (Escape). Read this AFTER the
+     * yield — never inside the yield expression (see DialogStep / NpcHandler
+     * for the Jint quirk that motivates this shape).
+     */
+    lastSelection: number;
 
-    /** Append a line of dialog text. Multi-line dialog is several `mes` calls. */
-    mes(text: string): Promise<void>;
-    /** Show a "Next" button; suspends until the client clicks. */
-    next(): Promise<void>;
-    /** Show a menu; returns the 1-based index of the chosen option. */
-    menu(options: string[]): Promise<number>;
-    /** Like `menu` but renders as the modern select widget. 1-based. */
-    select(options: string[]): Promise<number>;
-    /** Numeric input. Optional clamp range. */
-    input(opts?: { min?: number; max?: number }): Promise<number>;
-    /** Text input. Optional maximum length. */
-    inputString(opts?: { maxLength?: number }): Promise<string>;
+    // --- Yielding dialog primitives (Phase 2) ---
+    //
+    // Each method returns a tagged DialogStep that the author yields:
+    //   yield ctx.mes("hello");
+    //   yield ctx.next();
+    //   yield ctx.select(["A", "B"]);
+    //   const choice = ctx.lastSelection;
+    //   yield ctx.close();
+
+    /** Append a line of dialog text. Does NOT suspend on its own — yields
+     *  return immediately. Multi-line dialog is several `mes` yields. */
+    mes(text: string): DialogStep;
+    /** Show a "Next" button; suspends until the client clicks Next. */
+    next(): DialogStep;
+    /** Show a menu of options. After the yield, `ctx.lastSelection` holds
+     *  the 1-based pick (0 if Escaped). */
+    menu(options: string[]): DialogStep;
+    /** Alias of `menu`. Both yield a `{ kind: "menu" }` step. */
+    select(options: string[]): DialogStep;
     /** Show a "Close" button; suspends, then ends the dialog. */
-    close(): Promise<void>;
-    /** Show a "Close" button; suspends, then the script *continues*. */
-    close2(): Promise<void>;
-    /** Suspend the script for `ms` milliseconds. */
-    sleep(ms: number): Promise<void>;
-    /** Show a client-side progress bar for `ms` milliseconds. */
-    progressBar(ms: number, color?: string): Promise<void>;
+    close(): DialogStep;
 }
 
 export interface NpcInfo {
