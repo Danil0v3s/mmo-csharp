@@ -1,0 +1,30 @@
+// Auto-generated from rAthena dungeons/ra_san.txt.
+// Re-generate with: python3 scripts/tools/import_rathena.py
+
+registerSpawn(
+    { map: "ra_san01", mobId: 1771, amount: 82, name: "Vanberk" },
+    { map: "ra_san01", mobId: 1772, amount: 36, name: "Isilla" },
+    { map: "ra_san01", mobId: 1632, amount: 10, name: "Gremlin" },
+    { map: "ra_san01", mobId: 1633, amount: 6, name: "Beholder" },
+    { map: "ra_san01", mobId: 1773, amount: 6, name: "Hodremlin" },
+    { map: "ra_san02", mobId: 1772, amount: 110, name: "Isilla" },
+    { map: "ra_san02", mobId: 1771, amount: 38, name: "Vanberk" },
+    { map: "ra_san02", mobId: 1632, amount: 12, name: "Gremlin" },
+    { map: "ra_san02", mobId: 1633, amount: 12, name: "Beholder" },
+    { map: "ra_san02", mobId: 1773, amount: 3, name: "Hodremlin" },
+    { map: "ra_san02", mobId: 1774, amount: 2, name: "Seeker" },
+    { map: "ra_san03", mobId: 1773, amount: 86, name: "Hodremlin" },
+    { map: "ra_san03", mobId: 1774, amount: 57, name: "Seeker" },
+    { map: "ra_san03", mobId: 1632, amount: 7, name: "Gremlin" },
+    { map: "ra_san03", mobId: 1633, amount: 7, name: "Beholder" },
+    { map: "ra_san04", mobId: 1770, amount: 62, name: "Echio" },
+    { map: "ra_san04", mobId: 1769, amount: 20, name: "Agav" },
+    { map: "ra_san04", mobId: 1774, amount: 10, name: "Seeker" },
+    { map: "ra_san04", mobId: 1773, amount: 10, name: "Hodremlin" },
+    { map: "ra_san05", mobId: 1769, amount: 84, name: "Agav" },
+    { map: "ra_san05", mobId: 1770, amount: 31, name: "Echio" },
+    { map: "ra_san05", mobId: 1774, amount: 21, name: "Seeker" },
+    { map: "ra_san05", mobId: 1773, amount: 21, name: "Hodremlin" },
+    { map: "ra_san05", mobId: 1772, amount: 10, name: "Isilla" },
+    { map: "ra_san05", mobId: 1768, amount: 1, respawn: { baseMs: 18000000, jitterMs: 600000 }, boss: true, name: "Gloom Under Night" },
+);

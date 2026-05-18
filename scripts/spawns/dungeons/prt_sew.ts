@@ -1,0 +1,30 @@
+// Auto-generated from rAthena dungeons/prt_sew.txt.
+// Re-generate with: python3 scripts/tools/import_rathena.py
+
+registerSpawn(
+    { map: "prt_sewb1", mobId: 1051, amount: 40, name: "Thief Bug" },
+    { map: "prt_sewb1", mobId: 1048, amount: 106, name: "Thief Bug Egg" },
+    { map: "prt_sewb1", mobId: 1175, amount: 13, name: "Tarou" },
+    { map: "prt_sewb1", mobId: 1005, amount: 66, name: "Familiar" },
+    { map: "prt_sewb2", mobId: 1051, amount: 70, name: "Thief Bug" },
+    { map: "prt_sewb2", mobId: 1175, amount: 60, name: "Tarou" },
+    { map: "prt_sewb2", mobId: 1161, amount: 5, name: "Plankton" },
+    { map: "prt_sewb2", mobId: 1048, amount: 20, name: "Thief Bug Egg" },
+    { map: "prt_sewb2", mobId: 1014, amount: 20, name: "Spore" },
+    { map: "prt_sewb2", mobId: 1053, amount: 10, name: "Thief Bug Female" },
+    { map: "prt_sewb2", mobId: 1005, amount: 10, name: "Familiar" },
+    { map: "prt_sewb3", mobId: 1053, amount: 65, name: "Thief Bug Female" },
+    { map: "prt_sewb3", mobId: 1054, amount: 65, name: "Thief Bug Male" },
+    { map: "prt_sewb3", mobId: 1051, amount: 20, name: "Thief Bug" },
+    { map: "prt_sewb3", mobId: 1005, amount: 20, name: "Familiar" },
+    { map: "prt_sewb3", mobId: 1175, amount: 15, name: "Tarou" },
+    { map: "prt_sewb3", mobId: 1077, amount: 15, name: "Poison Spore" },
+    { map: "prt_sewb3", mobId: 1048, amount: 10, name: "Thief Bug Egg" },
+    { map: "prt_sewb4", mobId: 1054, amount: 70, name: "Thief Bug Male" },
+    { map: "prt_sewb4", mobId: 1051, amount: 20, name: "Thief Bug" },
+    { map: "prt_sewb4", mobId: 1053, amount: 20, name: "Thief Bug Female" },
+    { map: "prt_sewb4", mobId: 1111, amount: 20, name: "Drainliar" },
+    { map: "prt_sewb4", mobId: 1048, amount: 10, name: "Thief Bug Egg" },
+    { map: "prt_sewb4", mobId: 1209, amount: 5, name: "Cramp" },
+    { map: "prt_sewb4", mobId: 1086, amount: 1, respawn: { baseMs: 3600000, jitterMs: 600000 }, boss: true, name: "Golden Thief Bug" },
+);

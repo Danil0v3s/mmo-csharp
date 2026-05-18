@@ -1,0 +1,30 @@
+// Auto-generated from rAthena dungeons/abyss.txt.
+// Re-generate with: python3 scripts/tools/import_rathena.py
+
+registerSpawn(
+    { map: "abyss_01", mobId: 1717, amount: 55, name: "Ferus" },
+    { map: "abyss_01", mobId: 1216, amount: 30, name: "Penomena" },
+    { map: "abyss_01", mobId: 1714, amount: 30, name: "Ferus" },
+    { map: "abyss_01", mobId: 1191, amount: 10, name: "Mimic" },
+    { map: "abyss_01", mobId: 1699, amount: 10, name: "Ancient Mimic" },
+    { map: "abyss_01", mobId: 1715, amount: 9, name: "Novus" },
+    { map: "abyss_01", mobId: 1718, amount: 9, name: "Novus" },
+    { map: "abyss_01", mobId: 1721, amount: 8, name: "Dragon Egg" },
+    { map: "abyss_02", mobId: 1716, amount: 60, name: "Acidus" },
+    { map: "abyss_02", mobId: 1714, amount: 50, name: "Ferus" },
+    { map: "abyss_02", mobId: 1721, amount: 10, name: "Dragon Egg" },
+    { map: "abyss_02", mobId: 1191, amount: 10, name: "Mimic" },
+    { map: "abyss_02", mobId: 1713, amount: 10, name: "Acidus" },
+    { map: "abyss_02", mobId: 1699, amount: 10, name: "Ancient Mimic" },
+    { map: "abyss_02", mobId: 1715, amount: 5, name: "Novus" },
+    { map: "abyss_02", mobId: 1718, amount: 5, name: "Novus" },
+    { map: "abyss_03", mobId: 1713, amount: 60, name: "Acidus" },
+    { map: "abyss_03", mobId: 1721, amount: 10, name: "Dragon Egg" },
+    { map: "abyss_03", mobId: 1191, amount: 10, name: "Mimic" },
+    { map: "abyss_03", mobId: 1716, amount: 10, name: "Acidus" },
+    { map: "abyss_03", mobId: 1699, amount: 10, name: "Ancient Mimic" },
+    { map: "abyss_03", mobId: 1714, amount: 10, name: "Ferus" },
+    { map: "abyss_03", mobId: 1717, amount: 10, name: "Ferus" },
+    { map: "abyss_03", mobId: 1720, amount: 3, name: "Hydrolancer" },
+    { map: "abyss_03", mobId: 1719, amount: 1, respawn: { baseMs: 10800000, jitterMs: 600000 }, boss: true, name: "Detardeurus" },
+);

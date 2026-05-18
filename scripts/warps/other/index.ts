@@ -2,13 +2,15 @@
 // hand — re-run the importer to refresh. Imports every sibling .ts
 // file in this directory plus every sub-directory's index.
 
-import "./academy";
-import "./championmobs";
-import "./int_land";
-import "./prt_cas";
+import "./arena";
+import "./ba_2whs";
+import "./ba_maison";
+import "./ba_pw";
+import "./dimensional_gap";
+import "./jobquests";
+import "./paradise";
+import "./s_workshop";
+import "./sign";
 import "./special_border_area";
-import "./towns";
-import "./tra_fild";
+import "./un_myst";
 import "./verus";
-import "./dungeons";
-import "./fields";

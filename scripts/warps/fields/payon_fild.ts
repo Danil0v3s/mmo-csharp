@@ -1,0 +1,31 @@
+// Auto-generated from rAthena fields/payon_fild.txt.
+// Re-generate with: python3 scripts/tools/import_rathena.py
+
+registerWarp(
+    { from: { map: "pay_fild01", x: 13, y: 152 }, area: { xs: 2, ys: 7 }, to: { map: "moc_fild03", x: 299, y: 170 } },
+    { from: { map: "pay_fild01", x: 278, y: 14 }, area: { xs: 13, ys: 2 }, to: { map: "pay_fild02", x: 83, y: 382 } },
+    { from: { map: "pay_fild01", x: 353, y: 14 }, area: { xs: 20, ys: 3 }, to: { map: "pay_fild02", x: 160, y: 381 } },
+    { from: { map: "pay_fild01", x: 379, y: 201 }, area: { xs: 2, ys: 6 }, to: { map: "pay_fild07", x: 23, y: 207 } },
+    { from: { map: "pay_fild02", x: 167, y: 390 }, area: { xs: 20, ys: 3 }, to: { map: "pay_fild01", x: 354, y: 18 } },
+    { from: { map: "pay_fild02", x: 284, y: 108 }, area: { xs: 2, ys: 7 }, to: { map: "pay_fild03", x: 20, y: 110 } },
+    { from: { map: "pay_fild02", x: 83, y: 386 }, area: { xs: 13, ys: 2 }, to: { map: "pay_fild01", x: 278, y: 18 } },
+    { from: { map: "pay_fild03", x: 15, y: 110 }, area: { xs: 2, ys: 10 }, to: { map: "pay_fild02", x: 280, y: 108 } },
+    { from: { map: "pay_fild03", x: 172, y: 281 }, area: { xs: 5, ys: 2 }, to: { map: "pay_fild07", x: 167, y: 20 } },
+    { from: { map: "pay_fild03", x: 313, y: 16 }, area: { xs: 4, ys: 2 }, to: { map: "pay_fild06", x: 305, y: 372 } },
+    { from: { map: "pay_fild03", x: 392, y: 63 }, area: { xs: 2, ys: 7 }, to: { map: "alberta", x: 19, y: 233 } },
+    { from: { map: "pay_fild04", x: 17, y: 165 }, area: { xs: 2, ys: 8 }, to: { map: "moc_fild01", x: 376, y: 162 } },
+    { from: { map: "pay_fild04", x: 194, y: 17 }, area: { xs: 7, ys: 2 }, to: { map: "moc_fild02", x: 350, y: 336 } },
+    { from: { map: "pay_fild06", x: 305, y: 375 }, area: { xs: 6, ys: 2 }, to: { map: "pay_fild03", x: 313, y: 19 } },
+    { from: { map: "pay_fild07", x: 16, y: 200 }, area: { xs: 3, ys: 3 }, to: { map: "pay_fild01", x: 371, y: 205 } },
+    { from: { map: "pay_fild07", x: 163, y: 17 }, area: { xs: 5, ys: 2 }, to: { map: "pay_fild03", x: 177, y: 275 } },
+    { from: { map: "pay_fild07", x: 280, y: 382 }, area: { xs: 4, ys: 2 }, to: { map: "pay_fild08", x: 160, y: 19 } },
+    { from: { map: "pay_fild07", x: 382, y: 290 }, area: { xs: 2, ys: 5 }, to: { map: "pay_fild10", x: 19, y: 290 } },
+    { from: { map: "pay_fild08", x: 160, y: 16 }, area: { xs: 4, ys: 2 }, to: { map: "pay_fild07", x: 280, y: 379 } },
+    { from: { map: "pay_fild08", x: 17, y: 75 }, area: { xs: 1, ys: 1 }, to: { map: "payon", x: 265, y: 92 } },
+    { from: { map: "pay_fild08", x: 262, y: 91 }, area: { xs: 2, ys: 4 }, to: { map: "pay_fild09", x: 19, y: 91 } },
+    { from: { map: "pay_fild09", x: 112, y: 16 }, area: { xs: 4, ys: 2 }, to: { map: "pay_fild10", x: 112, y: 379 } },
+    { from: { map: "pay_fild09", x: 16, y: 91 }, area: { xs: 2, ys: 4 }, to: { map: "pay_fild08", x: 259, y: 91 } },
+    { from: { map: "pay_fild10", x: 112, y: 382 }, area: { xs: 3, ys: 2 }, to: { map: "pay_fild09", x: 112, y: 19 } },
+    { from: { map: "pay_fild10", x: 16, y: 290 }, area: { xs: 2, ys: 5 }, to: { map: "pay_fild07", x: 379, y: 290 } },
+    { from: { map: "pay_fild10", x: 99, y: 13 }, area: { xs: 1, ys: 1 }, to: { map: "pay_fild10", x: 148, y: 252 } },
+);
