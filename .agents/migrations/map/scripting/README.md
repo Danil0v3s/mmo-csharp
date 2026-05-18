@@ -4,6 +4,7 @@ This subdir tracks the port of rAthena's NPC script system to a TypeScript-autho
 
 - [rathena-reference.md](rathena-reference.md) — distilled enumeration of rAthena's scripting language & runtime. Reference, not plan.
 - [phase-1-loader.md](phase-1-loader.md) — **current focus.** Engine + entity placement. NPCs render but `onClick` is stubbed; closures are captured for Phase 2.
+- [rathena-import.md](rathena-import.md) — inventory of what the rAthena → TS importer pulls in (warps / mob spawns / mapflags / inline shops) and what's deferred to the script-engine port (`duplicate(...)`, empty-body decoratives, full scripted NPCs).
 
 The original sketch at [../npc.md](../npc.md) (hand-rolled mini-AST over rAthena syntax) is **superseded** by the decisions below.
 
