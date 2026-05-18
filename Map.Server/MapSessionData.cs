@@ -70,4 +70,11 @@ public class MapSessionData(
     /// the player is not in a dialog.
     /// </summary>
     public Map.Server.Scripting.Dialog.DialogSession? Dialog { get; set; }
+
+    /// <summary>
+    /// Memory-only variable bag for the script-side <c>ctx.player.session</c>
+    /// scope (rAthena <c>@var</c>). Allocated lazily on first script access;
+    /// lifetime is tied to the session, reset on disconnect.
+    /// </summary>
+    public Microsoft.ClearScript.PropertyBag? ScriptSessionVars { get; set; }
 }

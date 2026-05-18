@@ -29,6 +29,16 @@ public sealed class PlayerEntity : Entity
     /// </summary>
     public int MaxHp { get; set; } = 40;
 
+    /// <summary>
+    /// Current SP. Same lifecycle as <see cref="Hp"/>: default at spawn,
+    /// mutated by skill / heal paths, hydrated from char-side persistence
+    /// once the IPC carries the full stats payload.
+    /// </summary>
+    public int Sp { get; set; } = 11;
+
+    /// <summary>Maximum SP. Level-1 default mirrors rAthena's baseline (11).</summary>
+    public int MaxSp { get; set; } = 11;
+
     public override EntityType Type => EntityType.Pc;
 
     public PlayerEntity(

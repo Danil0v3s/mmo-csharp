@@ -208,12 +208,54 @@ export interface NpcInfo {
     vars: Record<string, unknown>;
 }
 
-/** Player surface. Field list lands in Phase 3 alongside the corresponding
- *  builtins; for now authors should treat this as opaque. */
+/**
+ * Player surface — what scripts can read and mutate about the player who
+ * clicked the NPC. Reads project from the loaded char-state snapshot and
+ * the in-memory entity. Writes broadcast a ZC_PAR_CHANGE so the client UI
+ * updates immediately.
+ *
+ * Persistence: mutating fields that live on the loaded char snapshot
+ * (zeny in this slice) take effect for the player's current session but
+ * are NOT yet pushed back to the char-server / DB on save — the
+ * SaveCharacterState IPC currently only flags Online. Persistence is a
+ * follow-up slice. Authors should write against this surface; durability
+ * comes later.
+ */
 export interface PlayerContext {
+    // Identity / loaded snapshot — read-only this slice.
     readonly id: number;
     readonly accountId: number;
-    name: string;
+    readonly name: string;
+    readonly sex: number;        // 0 = female, 1 = male (rAthena convention)
+    readonly classId: number;    // job id, e.g. JOB_NOVICE = 0
+    readonly baseLevel: number;
+    readonly jobLevel: number;
+    readonly str: number;
+    readonly agi: number;
+    readonly vit: number;
+    readonly int: number;        // mapped to `intStat` on the host (TS reserves `int`)
+    readonly dex: number;
+    readonly luk: number;
+    readonly hp: number;
+    readonly maxHp: number;
+    readonly sp: number;
+    readonly maxSp: number;
+
+    /** Currency. Setter broadcasts SP_ZENY; clamps to ≥ 0. */
+    zeny: number;
+
+    /**
+     * Memory-only variable bag (rAthena `@var` scope). Properties survive
+     * for the player's connected session and reset on disconnect.
+     * Authors write `ctx.player.session.visits = 1` and read it back.
+     */
+    session: Record<string, unknown>;
+
+    /** Restore HP and optionally SP. Both clamp to their max. */
+    heal(hp: number, sp?: number): Promise<void>;
+
+    /** Send a self-only system chat line to the player (debug / quick feedback). */
+    message(text: string): Promise<void>;
 }
 
 /** World-level operations. Surface lands in Phase 3. */

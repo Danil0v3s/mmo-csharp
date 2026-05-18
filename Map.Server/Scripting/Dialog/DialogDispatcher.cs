@@ -8,11 +8,13 @@ namespace Map.Server.Scripting.Dialog;
 public sealed class DialogDispatcher : IDialogDispatcher
 {
     private readonly ScriptHost _scriptHost;
+    private readonly IEntityRegistry _entities;
     private readonly ILogger<DialogDispatcher> _logger;
 
-    public DialogDispatcher(ScriptHost scriptHost, ILogger<DialogDispatcher> logger)
+    public DialogDispatcher(ScriptHost scriptHost, IEntityRegistry entities, ILogger<DialogDispatcher> logger)
     {
         _scriptHost = scriptHost;
+        _entities = entities;
         _logger = logger;
     }
 
@@ -29,8 +31,14 @@ public sealed class DialogDispatcher : IDialogDispatcher
             session.Dialog = null;
         }
 
+        // Resolve the player entity from the session so the script's
+        // ctx.player surface can read/write live state.
+        var playerEntity = session.EntityId is { } eid
+            ? _entities.Get(eid) as PlayerEntity
+            : null;
+
         var dialog = new DialogSession(npc);
-        var ctx = new DialogContext(session, dialog, npc);
+        var ctx = new DialogContext(session, dialog, npc, playerEntity);
         dialog.Context = ctx;
         session.Dialog = dialog;
 

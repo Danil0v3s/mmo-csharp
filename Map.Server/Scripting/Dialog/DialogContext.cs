@@ -21,11 +21,21 @@ public sealed class DialogContext
     /// <summary>NPC info exposed to script as <c>ctx.npc</c>.</summary>
     public NpcInfo npc { get; }
 
-    public DialogContext(MapSessionData session, DialogSession dialog, NpcEntity entity)
+    /// <summary>
+    /// Player surface exposed to script as <c>ctx.player</c>. Always non-null
+    /// while the dialog is active (a dialog is only initiated by a player
+    /// click). Null projection is OK in the type signature for symmetry with
+    /// non-click hook flavours (onInit/onTimer/onClock) — Phase 5 will use
+    /// the same DialogContext shape there with player = null.
+    /// </summary>
+    public PlayerContext? player { get; }
+
+    public DialogContext(MapSessionData session, DialogSession dialog, NpcEntity entity, PlayerEntity? playerEntity)
     {
         _session = session;
         _dialog = dialog;
         npc = new NpcInfo(entity);
+        player = playerEntity != null ? new PlayerContext(session, playerEntity) : null;
     }
 
     // ---- Non-suspending: send and return. ClearScript marshals Task →

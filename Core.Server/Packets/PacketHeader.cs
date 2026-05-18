@@ -117,6 +117,10 @@ public enum PacketHeader : short
     CZ_CHOOSE_MENU = 0x00b8,               // clif_parse_ChooseMenu, 7B (npcId + selection). 1-based; 255=Escape.
     CZ_REQ_NEXT_SCRIPT = 0x00b9,           // clif_parse_NextScript, 6B (npcId).
     CZ_CLOSE_DIALOG = 0x0146,              // clif_parse_CloseScript, 6B (npcId). NOTE: distinct from outgoing ZC_CLOSE_DIALOG=0x00b6.
+    CZ_REQNAME = 0x0368,                   // clif_parse_SolveCharName, 6B (entityId). Sent on hover / click; expects an ACK_REQNAMEALL[_NPC] in reply. PACKETVER 20180307 shuffle ID.
+
+    ZC_ACK_REQNAMEALL = 0x0a30,            // clif_name for PC, 106B (gid + char[24] + party[24] + guild[24] + position[24] + titleId(4)). PACKETVER ≥ 20150225.
+    ZC_ACK_REQNAMEALL_NPC = 0x0adf,        // clif_name for NPC, 58B (gid + groupId(4) + name[24] + title[24]). PACKETVER ≥ 20180207.
 
     // Dialog packets. dhxj is pre-20220504 — it knows 0x00b4 / 0x00b5 in
     // its packet length table (parses them with correct length) but its UI
