@@ -5,9 +5,12 @@ using Map.Server.Scripting.Records;
 namespace Map.Server.Scripting.Registrars;
 
 /// <summary>
-/// Injects the five host-side <c>register*</c> functions into a V8 engine.
+/// Injects the host-side <c>register*</c> functions into a V8 engine.
 /// Called once per <see cref="ScriptHost"/> evaluation pass, after a fresh
 /// engine is created and before <c>main.js</c> runs.
+///
+/// Warps, mob spawns, and map flags live in DB catalogs (see commit
+/// 96443ef); only NPCs / floating NPCs / shops are script-driven.
 ///
 /// Every registrar accepts *varargs* — <c>registerNpc(a, b, c)</c> registers
 /// three NPCs in one call. ClearScript binds JS positional args to a C#
@@ -35,8 +38,6 @@ public sealed class RegistrarBindings
             globalThis.registerNpc         = (...args) => __registrarBinder.registerNpc(...args);
             globalThis.registerFloatingNpc = (...args) => __registrarBinder.registerFloatingNpc(...args);
             globalThis.registerShop        = (...args) => __registrarBinder.registerShop(...args);
-            globalThis.registerWarp        = (...args) => __registrarBinder.registerWarp(...args);
-            globalThis.registerSpawn       = (...args) => __registrarBinder.registerSpawn(...args);
         ");
     }
 
@@ -57,16 +58,6 @@ public sealed class RegistrarBindings
     public void registerShop(params object[] args)
     {
         foreach (var arg in args) RegisterShop(arg, _registry);
-    }
-
-    public void registerWarp(params object[] args)
-    {
-        foreach (var arg in args) RegisterWarp(arg, _registry);
-    }
-
-    public void registerSpawn(params object[] args)
-    {
-        foreach (var arg in args) RegisterSpawn(arg, _registry);
     }
     // ReSharper restore InconsistentNaming
 
@@ -152,70 +143,6 @@ public sealed class RegistrarBindings
             CostItem = costItem,
             CostVariable = costVariable,
             Items = ReadShopItems(obj, kind, ctx),
-        });
-    }
-
-    private static void RegisterWarp(object raw, INpcRegistry registry)
-    {
-        var obj = JsObjectReader.RequireObject(raw, "registerWarp");
-        var ctx = "registerWarp";
-        var from = JsObjectReader.OptionalObject(obj, "from")
-            ?? throw new ScriptRegistrationException($"{ctx}: missing required 'from' object.");
-        var to = JsObjectReader.OptionalObject(obj, "to")
-            ?? throw new ScriptRegistrationException($"{ctx}: missing required 'to' object.");
-        var area = JsObjectReader.OptionalObject(obj, "area")
-            ?? throw new ScriptRegistrationException($"{ctx}: missing required 'area' object.");
-
-        registry.AddWarp(new WarpRegistration
-        {
-            FromMap = JsObjectReader.RequireString(from, "map", $"{ctx}.from"),
-            FromX = (short)JsObjectReader.RequireInt(from, "x", $"{ctx}.from"),
-            FromY = (short)JsObjectReader.RequireInt(from, "y", $"{ctx}.from"),
-            AreaXs = (short)JsObjectReader.RequireInt(area, "xs", $"{ctx}.area"),
-            AreaYs = (short)JsObjectReader.RequireInt(area, "ys", $"{ctx}.area"),
-            ToMap = JsObjectReader.RequireString(to, "map", $"{ctx}.to"),
-            ToX = (short)JsObjectReader.RequireInt(to, "x", $"{ctx}.to"),
-            ToY = (short)JsObjectReader.RequireInt(to, "y", $"{ctx}.to"),
-            Type = JsObjectReader.OptionalString(obj, "type") ?? "warp",
-        });
-    }
-
-    private static void RegisterSpawn(object raw, INpcRegistry registry)
-    {
-        var obj = JsObjectReader.RequireObject(raw, "registerSpawn");
-        var ctx = "registerSpawn";
-
-        (short, short, short, short)? area = null;
-        if (JsObjectReader.OptionalObject(obj, "area") is { } a)
-        {
-            area = (
-                (short)JsObjectReader.RequireInt(a, "x", $"{ctx}.area"),
-                (short)JsObjectReader.RequireInt(a, "y", $"{ctx}.area"),
-                (short)JsObjectReader.RequireInt(a, "xs", $"{ctx}.area"),
-                (short)JsObjectReader.RequireInt(a, "ys", $"{ctx}.area"));
-        }
-
-        var respawnBase = 5_000;
-        var respawnJitter = 2_000;
-        if (JsObjectReader.OptionalObject(obj, "respawn") is { } r)
-        {
-            respawnBase = JsObjectReader.OptionalInt(r, "baseMs", 5_000);
-            respawnJitter = JsObjectReader.OptionalInt(r, "jitterMs", 2_000);
-        }
-
-        registry.AddSpawn(new SpawnRegistration
-        {
-            Map = JsObjectReader.RequireString(obj, "map", ctx),
-            Area = area,
-            MobId = JsObjectReader.RequireInt(obj, "mobId", ctx),
-            Amount = JsObjectReader.RequireInt(obj, "amount", ctx),
-            RespawnBaseMs = respawnBase,
-            RespawnJitterMs = respawnJitter,
-            Boss = JsObjectReader.OptionalBool(obj, "boss", false),
-            DisplayName = JsObjectReader.OptionalString(obj, "name"),
-            OnDeathEvent = JsObjectReader.OptionalString(obj, "onDeath"),
-            Size = JsObjectReader.OptionalInt(obj, "size", 0),
-            Ai = JsObjectReader.OptionalInt(obj, "ai", 0),
         });
     }
 

@@ -70,10 +70,10 @@ public sealed class ScriptHost : IDisposable
         }
 
         _logger.LogInformation(
-            "Scripts loaded from {Path}: {Npcs} NPCs / {Floating} floating / {Shops} shops / {Warps} warps / {Spawns} spawns",
+            "Scripts loaded from {Path}: {Npcs} NPCs / {Floating} floating / {Shops} shops",
             entryPath,
             _registry.NpcCount, _registry.FloatingCount,
-            _registry.ShopCount, _registry.WarpCount, _registry.SpawnCount);
+            _registry.ShopCount);
     }
 
     private string ResolveEntryPath()

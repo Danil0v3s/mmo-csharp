@@ -36,8 +36,6 @@ public class ScriptHostTests
             Assert.Equal(0, registry.NpcCount);
             Assert.Equal(0, registry.FloatingCount);
             Assert.Equal(0, registry.ShopCount);
-            Assert.Equal(0, registry.WarpCount);
-            Assert.Equal(0, registry.SpawnCount);
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -199,38 +197,6 @@ public class ScriptHostTests
     }
 
     [Fact]
-    public void RegisterWarp_and_RegisterSpawn_populate_registry()
-    {
-        var (host, registry, dir) = Build(@"
-            ""use strict"";
-            (() => {
-                registerWarp({
-                    from: { map: ""prontera"", x: 156, y: 50 },
-                    area: { xs: 1, ys: 1 },
-                    to: { map: ""prt_fild05"", x: 158, y: 364 }
-                });
-                registerSpawn({
-                    map: ""prt_fild05"", mobId: 1002, amount: 50,
-                    respawn: { baseMs: 5000, jitterMs: 2000 }
-                });
-            })();
-        ");
-        try
-        {
-            host.LoadEntryPoint();
-            Assert.Equal(1, registry.WarpCount);
-            Assert.Equal(1, registry.SpawnCount);
-            var warp = registry.AllWarps().First();
-            Assert.Equal("prontera", warp.FromMap);
-            Assert.Equal("prt_fild05", warp.ToMap);
-            var spawn = registry.AllSpawns().First();
-            Assert.Equal(1002, spawn.MobId);
-            Assert.Equal(50, spawn.Amount);
-        }
-        finally { Directory.Delete(dir, recursive: true); }
-    }
-
-    [Fact]
     public void Duplicate_npc_name_throws()
     {
         var (host, _, dir) = Build(@"
@@ -298,7 +264,7 @@ public class ScriptHostTests
             $"Expected at least 2 NPCs from scripts/dist/main.js, got {registry.NpcCount}");
         Assert.True(registry.FloatingCount >= 1,
             $"Expected at least 1 floating NPC from scripts/dist/main.js, got {registry.FloatingCount}");
-        Assert.NotNull(registry.GetNpcByName("Phase 1 Test"));
+        Assert.NotNull(registry.GetNpcByName("Persistence Probe"));
         Assert.NotNull(registry.GetNpcByName("Kafra Test"));
         Assert.NotNull(registry.GetFloatingByName("EventManager"));
     }
