@@ -1,5 +1,5 @@
-using Core.Database.Entities;
 using Map.Server.Entities;
+using Map.Server.Scripting.Records;
 
 namespace Map.Server.Warps;
 
@@ -19,6 +19,6 @@ public interface IWarpDispatcher
 {
     /// <summary>Player <paramref name="entity"/> just arrived on a cell
     /// flagged with <see cref="World.CellFlags.NpcTrigger"/>; the resolved
-    /// warp row is <paramref name="warp"/>.</summary>
-    void OnEnterWarp(PlayerEntity entity, WarpEntity warp);
+    /// warp record is <paramref name="warp"/>.</summary>
+    void OnEnterWarp(PlayerEntity entity, WarpRegistration warp);
 }

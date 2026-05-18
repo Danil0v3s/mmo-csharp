@@ -94,7 +94,7 @@ Everything else, after MS1+MS2 are usable. These can largely run in parallel. De
 - **Renewal only.** All data follows rAthena renewal. Damage formulas, stat curves, defense behavior, MATK split, etc. mirror `db/re/` and the `_re` SQL tables. Pre-renewal is permanently out of scope.
 - **Static catalogs come from the database.** mob_db, item_db, skill_db, and friends are loaded once at map-server startup from `Core.Database` repositories (`IMobRepository`, `IItemRepository`, …). This matches rAthena's `use_sql_db: yes` mode in `conf/inter_athena.conf`; the seeded SQL schema in [Core.Database/Seeds/Scripts/](../../../Core.Database/Seeds/Scripts/) is column-for-column parity with `item_db_re` / `mob_db_re`. The YAML parsers under `db/re/*.yml` are reference material, not a runtime source — the map server doesn't ship a YAML reader.
 - **Source of truth is rAthena.** Every new subsystem file links to the relevant `.cpp` files. When in doubt, read those, not invent.
-- **DB schemas are already in `Core.Database`.** 74 + 3 entities + configurations. The +3 are `warp`, `mob_spawn`, `map_flag` — declarative catalogs ported from rAthena `npc/re/`. See [declarative-catalogs.md](declarative-catalogs.md). For MS3 some new tables may be required (e.g. a server-side cell-aux table for mob spawn state — TBD).
+- **DB schemas are already in `Core.Database`.** 74 entities + configurations. No new entities for MS1/MS2 should be needed; for MS3 some new tables may be required (e.g. a server-side cell-aux table for mob spawn state — TBD).
 - **Char-side IPC is the persistence boundary.** Map.Server must never write to the DB directly except via the gRPC surface owned by Char.Server. (P6 already wired the lifecycle calls; gameplay-triggered calls — party/guild/mail/etc. — are stub-call-ready in `Map.Server/Services/CharServerIpcService.*.cs`.)
 - **Game loop is 60 FPS.** Movement, status ticks, AI, and packet flushing all run inside `MapServerImpl.UpdateGameLogicAsync`. Heavy DB work goes off the loop via the IPC service (async).
 - **Single-threaded gameplay.** The map's game state is single-threaded by design (matches rAthena). Socket I/O is concurrent at the session edge, but game state mutation happens on the tick.
@@ -121,16 +121,15 @@ Everything else, after MS1+MS2 are usable. These can largely run in parallel. De
 - **Session lifecycle** — TCP enter → `WantToConnectionHandler` (replay-validated `pc_authok` cascade) → `NotifyActorInitHandler` (`LoadEndAck` cascade), with bidirectional `CZ_REQUEST_TIME (0x0363)` heartbeat. See [session.md](session.md), [initial-status-broadcast.md](initial-status-broadcast.md).
 - **Movement** — `CZ_REQUEST_MOVE (0x035f)` pathfinding + walk loop + AOI move-diff. See [movement.md](movement.md).
 - **Visibility** — view-range entry/exit broadcast. See [visibility.md](visibility.md).
-- **Warp trigger detection** — `CellFlags.NpcTrigger` overlay set at boot per `warp` table; checked O(1) per tile step in `MovementService`. Actual teleport (`pc_setpos`) still pending. See [declarative-catalogs.md](declarative-catalogs.md).
-- **Declarative catalogs** — `warp` / `mob_spawn` / `map_flag` tables seeded (1,279 / 2,950 / 2,251 rows). See [declarative-catalogs.md](declarative-catalogs.md).
+- **Warp trigger detection** — `CellFlags.NpcTrigger` overlay set at boot from `INpcRegistry.AllWarps()`; checked O(1) per tile step in `MovementService`. Actual teleport (`pc_setpos`) still pending.
 - **Replay harness** — `Tools.PacketReplay` + `Map.Server.Tests/Replay/PacketReplayTests` drives a captured rAthena session against the live stack. 6 of 7 chunks pass; remaining 19 diffs in chunk 7 are gameplay-content placeholders (see [replay-baseline.md](replay-baseline.md)).
 - **Live OG-client end-to-end validated** — DHXJ client (PACKETVER 20220401) autologins → autocreates account → autocreates character → spawns at `prontera (150, 150)` → renders the world → walks on map. Verified 2026-05-17 across the full cascade with sustained 75+ s heartbeat and `CZ_REQUEST_MOVE (0x035f)` round-trip. Three client-compat fixes shipped to get here: packet-shuffle IDs for MOVE/ACTION/CHAT/TIME, omit `ZC_REPUTATION_LIST` (`0x0B8D` not in client's size table), and start point swap to prontera (iz_int03 rendered as a black void in this client build).
 - **Self-healing IPC mesh** — active health probe + 5 s reconcile loop + auth-based stale-registration eviction. End-to-end recovery after any single peer restart: ~15 s, fully autonomous. See [Ipc.md](../../../Ipc.md).
 
 ## What's NOT in place
 
-- **No `pc_setpos` teleport** — warp cells *detect* the player arriving but the `WarpDispatcher` is a stub (logs the destination, clears the walk). Same-map and cross-map teleport land next. See [declarative-catalogs.md](declarative-catalogs.md).
-- **No NPCs or mobs visible** — `mob_spawn` table seeded but `MobSpawnService` is hardcoded; `npc.md` script-engine subset is unstarted. See [mob-db.md](mob-db.md), [npc.md](npc.md), [spawn.md](spawn.md).
+- **No `pc_setpos` teleport** — warp cells *detect* the player arriving but the `WarpDispatcher` is a stub (logs the destination, clears the walk). Same-map and cross-map teleport land next.
+- **No NPCs or mobs visible** — `MobSpawnService` runs against an empty in-memory registry; the script-engine import of rAthena `npc/re/{warps,mobs,mapflag}` lives at [npc.md](npc.md), [spawn.md](spawn.md).
 - **No combat, skills, items, status** — see [adjacent/](adjacent/).
 
 ---

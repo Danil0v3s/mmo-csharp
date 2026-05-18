@@ -47,9 +47,9 @@ Not blocking MS1.entities / session — those can start now against the existing
 
 1. **Map index / name lookup** — rAthena uses an integer `map_id` internally and a string name for the wire protocol. Parse `map_index.txt`. Required for any packet that carries a map_id.
 
-2. ✅ **Warp portal data shipped** as the `warp` DB table — see [declarative-catalogs.md](declarative-catalogs.md). 1,279 portals seeded from rAthena `npc/re/warps/`.
+2. ✅ **Warp portal data** — script-driven via `registerWarp({...})` in the TS bundle. Records land in `INpcRegistry.AllWarps()` at boot.
 
-3. ✅ **Cell-based warp dispatch shipped (trigger detection).** Mirrors rAthena `npc_setcells` + `unit.cpp:619`: `CellFlags.NpcTrigger` bit set on every walkable cell in each warp's `(x±xs, y±ys)` trigger box at boot, checked O(1) per tile step in `MovementService`. Actual teleport (`pc_setpos`-equivalent) still pending — `WarpDispatcher` currently logs the destination and clears the walk. See [declarative-catalogs.md](declarative-catalogs.md) "rAthena warp dispatch" section.
+3. ✅ **Cell-based warp dispatch shipped (trigger detection).** Mirrors rAthena `npc_setcells` + `unit.cpp:619`: `CellFlags.NpcTrigger` bit set on every walkable cell in each warp's `(x±xs, y±ys)` trigger box at boot, checked O(1) per tile step in `MovementService`. Actual teleport (`pc_setpos`-equivalent) still pending — `WarpDispatcher` currently logs the destination and clears the walk.
 
 4. ✅ **Dynamic cell flags overlay shipped (NpcTrigger only).** `MapData` now splits into immutable terrain (loaded from `mapcache.dat`) + mutable dynamic-flag byte[] (`SetDynamicFlag` / `HasNpcTrigger`). MS3 skills (Ice Wall, Land Protector, Basilica) plug into the same overlay using their own `CellFlags` bits.
 

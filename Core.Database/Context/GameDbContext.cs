@@ -112,15 +112,8 @@ public class GameDbContext : DbContext
     public DbSet<MerchantConfigEntity> MerchantConfigs { get; set; }
     
     public DbSet<ItemEntity> ItemDb => Set<ItemEntity>();
-
+    
     public DbSet<MobEntity> MobDb => Set<MobEntity>();
-
-    // ─── Map-server declarative catalogs ───────────────────────────
-    // Ported from rAthena's npc/re/{warps,mobs,mapflag}/*.txt entries.
-    // See .agents/migrations/map/declarative-catalogs.md.
-    public DbSet<WarpEntity> Warps => Set<WarpEntity>();
-    public DbSet<MobSpawnEntity> MobSpawns => Set<MobSpawnEntity>();
-    public DbSet<MapFlagEntity> MapFlags => Set<MapFlagEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

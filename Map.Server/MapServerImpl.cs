@@ -34,6 +34,10 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly IItemDropService _itemDrops;
     private readonly ScriptHost _scriptHost;
     private readonly INpcSpawnService _npcSpawn;
+    private readonly Scripting.INpcRegistry _scriptRegistry;
+    private readonly Warps.IWarpService _warpService;
+    private readonly Spawn.IMobSpawnRegistry _mobSpawnRegistry;
+    private readonly World.IMapWorldRegistry _world;
     private readonly Persistence.IPlayerStateService _playerState;
     private readonly MapServerConfiguration _mapConfiguration;
     private DateTime _nextRegistrationAttemptUtc = DateTime.MinValue;
@@ -59,6 +63,10 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         IItemDropService itemDrops,
         ScriptHost scriptHost,
         INpcSpawnService npcSpawn,
+        Scripting.INpcRegistry scriptRegistry,
+        Warps.IWarpService warpService,
+        Spawn.IMobSpawnRegistry mobSpawnRegistry,
+        World.IMapWorldRegistry world,
         Persistence.IPlayerStateService playerState,
         ILoggerFactory loggerFactory)
         : base("MapServer", configuration, logger, packetSystem, sessionManager)
@@ -73,6 +81,10 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _itemDrops = itemDrops;
         _scriptHost = scriptHost;
         _npcSpawn = npcSpawn;
+        _scriptRegistry = scriptRegistry;
+        _warpService = warpService;
+        _mobSpawnRegistry = mobSpawnRegistry;
+        _world = world;
         _playerState = playerState;
         _mapConfiguration = (MapServerConfiguration)configuration;
 
@@ -89,18 +101,72 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         await base.StartAsync(cancellationToken);
         _serverState.SetState(State);
 
-        // Initial mob population per the configured spawn registry. Idempotent
-        // — re-runs on tick wouldn't double-spawn, but we do it once at boot to
-        // pre-fill the map before any client connects.
+        // Load the TypeScript scripting bundle FIRST. Every register*() call
+        // in the bundle populates INpcRegistry; all downstream consumers
+        // (NpcSpawnService / WarpService / MobSpawnService) read from that
+        // registry. Boot fails loudly if the bundle has bad registrations
+        // (duplicate names, missing required fields, etc.); a missing bundle
+        // is a warning + zero registrations (acceptable during early dev).
+        _scriptHost.LoadEntryPoint();
+
+        // Translate the script registry's warp + spawn records into the
+        // runtime services. WarpService builds the cell index + sets
+        // NpcTrigger dynamic flags; the mob-spawn registry receives one
+        // MobSpawnEntry per registerSpawn() call, keyed by map-name hash.
+        _warpService.Build();
+        PopulateMobSpawnRegistry();
+
+        // Initial mob population per the (now populated) spawn registry.
+        // Idempotent — re-runs on tick wouldn't double-spawn, but we do it
+        // once at boot to pre-fill the map before any client connects.
         _mobSpawn.SpawnInitial();
 
-        // Load the TypeScript scripting bundle. Every register*() call in the
-        // bundle populates INpcRegistry; NpcSpawnService then places the
-        // scripted NPCs as entities. Boot fails loudly if the bundle has bad
-        // registrations (duplicate names, missing required fields, etc.); a
-        // missing bundle is a warning + zero NPCs (acceptable during early dev).
-        _scriptHost.LoadEntryPoint();
+        // NPC placement: turns registerNpc() rows into NpcEntities on the
+        // map. Runs last so NPCs spawn into a populated world.
         _npcSpawn.SpawnInitial();
+    }
+
+    /// <summary>
+    /// Convert each <see cref="Scripting.Records.SpawnRegistration"/> in
+    /// the script registry into a <see cref="Spawn.MobSpawnEntry"/> and
+    /// add it to the in-memory registry that <see cref="IMobSpawnService"/>
+    /// reads. Map-name → mapId hash convention mirrors NpcSpawnService /
+    /// WarpService / EntityRegistry.
+    /// </summary>
+    private void PopulateMobSpawnRegistry()
+    {
+        var added = 0;
+        var skipped = 0;
+        foreach (var reg in _scriptRegistry.AllSpawns())
+        {
+            var map = _world.Get(reg.Map);
+            if (map == null)
+            {
+                skipped++;
+                continue;
+            }
+            var area = reg.Area ?? ((short)0, (short)0, (short)0, (short)0);
+            _mobSpawnRegistry.Add(new Spawn.MobSpawnEntry
+            {
+                MobClassId = reg.MobId,
+                MapId = (uint)map.Name.GetHashCode(),
+                X = area.Item1,
+                Y = area.Item2,
+                Xs = area.Item3,
+                Ys = area.Item4,
+                Amount = reg.Amount,
+                RespawnDelayMs = reg.RespawnBaseMs,
+                RespawnJitterMs = reg.RespawnJitterMs,
+                DisplayName = reg.DisplayName,
+            });
+            added++;
+        }
+        if (added > 0 || skipped > 0)
+        {
+            Logger.LogInformation(
+                "Mob spawn registry populated from script: {Added} entries; {Skipped} on unhosted maps",
+                added, skipped);
+        }
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken = default)

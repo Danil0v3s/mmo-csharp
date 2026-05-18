@@ -1,14 +1,11 @@
 // Ambient declarations for the host-injected scripting API.
 //
-// The C# map server (Map.Server/Scripting/) injects three registrars
-// (registerNpc / registerFloatingNpc / registerShop) into the global
-// scope before evaluating dist/main.js. Side-effect imports starting at
-// main.ts trigger every register*() call at module-evaluation time; the
-// accumulated registrations populate INpcRegistry and drive the at-boot
-// NpcSpawnService.
-//
-// Warps, mob spawns, and map flags live in DB catalogs (see commit
-// 96443ef "Map: declarative catalogs"); they are not script-driven.
+// The C# map server (Map.Server/Scripting/) injects five registrars
+// (registerNpc / registerFloatingNpc / registerShop / registerWarp /
+// registerSpawn) into the global scope before evaluating dist/main.js.
+// Side-effect imports starting at main.ts trigger every register*() call
+// at module-evaluation time; the accumulated registrations populate
+// INpcRegistry and drive the at-boot NpcSpawnService.
 //
 // This file is the source of truth for the author-facing API surface.
 // Drift between this file and the C# Records/ records is the highest-
@@ -49,6 +46,12 @@ declare global {
 
     /** Declarative shops. The `kind` discriminator selects payment mode. */
     function registerShop(...shops: ShopRegistration[]): void;
+
+    /** Declarative warp portals. */
+    function registerWarp(...warps: WarpRegistration[]): void;
+
+    /** Declarative mob spawn points. */
+    function registerSpawn(...spawns: SpawnRegistration[]): void;
 }
 
 // ===== Registration shapes =================================================
@@ -117,6 +120,33 @@ export interface MarketShopItem {
     price: number;
     /** Per-item stock count. Decrements on purchase. */
     stock: number;
+}
+
+export interface WarpRegistration {
+    from: { map: string; x: number; y: number };
+    /** Trigger half-extent. The active area is (x-xs..x+xs, y-ys..y+ys). */
+    area: { xs: number; ys: number };
+    to: { map: string; x: number; y: number };
+    /** `warp2` triggers for hidden players too. Default `"warp"`. */
+    type?: "warp" | "warp2";
+}
+
+export interface SpawnRegistration {
+    map: string;
+    /** Spawn area. Omit for "anywhere walkable on the map". */
+    area?: { x: number; y: number; xs: number; ys: number };
+    mobId: number;
+    amount: number;
+    respawn?: { baseMs: number; jitterMs?: number };
+    boss?: boolean;
+    /** Display name override. Empty / undefined uses mob_db name. */
+    name?: string;
+    /** Event label fired on death. */
+    onDeath?: string;
+    /** Size override. 0 = mob_db default, 1 = small, 2 = large. */
+    size?: 0 | 1 | 2;
+    /** AI mode override. */
+    ai?: number;
 }
 
 // ===== Hook signature ======================================================

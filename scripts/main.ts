@@ -8,3 +8,5 @@
 
 import "./npcs";
 import "./shops";
+import "./warps";
+import "./spawns";

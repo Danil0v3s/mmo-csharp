@@ -1,5 +1,5 @@
-using Core.Database.Entities;
 using Map.Server.Entities;
+using Map.Server.Scripting.Records;
 
 namespace Map.Server.Warps;
 
@@ -29,11 +29,11 @@ public sealed class WarpDispatcher : IWarpDispatcher
         _logger = logger;
     }
 
-    public void OnEnterWarp(PlayerEntity entity, WarpEntity warp)
+    public void OnEnterWarp(PlayerEntity entity, WarpRegistration warp)
     {
         _logger.LogInformation(
-            "Warp trigger: char {Char} entered '{WarpName}' on {SrcMap} ({Sx},{Sy}) → {DstMap} ({Dx},{Dy}) — teleport pending pc_setpos port",
-            entity.Id, warp.Name, warp.SrcMap, entity.X, entity.Y,
-            warp.DstMap, warp.DstX, warp.DstY);
+            "Warp trigger: char {Char} entered {SrcMap} ({Sx},{Sy}) → {DstMap} ({Dx},{Dy}) — teleport pending pc_setpos port",
+            entity.Id, warp.FromMap, entity.X, entity.Y,
+            warp.ToMap, warp.ToX, warp.ToY);
     }
 }
