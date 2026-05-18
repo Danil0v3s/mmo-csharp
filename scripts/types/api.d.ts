@@ -52,6 +52,9 @@ declare global {
 
     /** Declarative mob spawn points. */
     function registerSpawn(...spawns: SpawnRegistration[]): void;
+
+    /** Declarative map flags. Mirrors rAthena's `npc/re/mapflag/*.txt`. */
+    function registerMapFlag(...flags: MapFlagRegistration[]): void;
 }
 
 // ===== Registration shapes =================================================
@@ -129,6 +132,14 @@ export interface WarpRegistration {
     to: { map: string; x: number; y: number };
     /** `warp2` triggers for hidden players too. Default `"warp"`. */
     type?: "warp" | "warp2";
+}
+
+export interface MapFlagRegistration {
+    map: string;
+    /** Flag name verbatim from rAthena: `pvp`, `gvg`, `nobranch`, `night`, … */
+    flag: string;
+    /** Optional value when the flag carries one (e.g. `"100"` for `restricted`). */
+    value?: string;
 }
 
 export interface SpawnRegistration {

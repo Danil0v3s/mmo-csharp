@@ -15,12 +15,14 @@ public sealed class NpcRegistry : INpcRegistry
     private readonly List<ShopRegistration> _shops = new();
     private readonly List<WarpRegistration> _warps = new();
     private readonly List<SpawnRegistration> _spawns = new();
+    private readonly List<MapFlagRegistration> _mapFlags = new();
 
     public int NpcCount => _npcsByName.Count;
     public int FloatingCount => _floatingByName.Count;
     public int ShopCount => _shops.Count;
     public int WarpCount => _warps.Count;
     public int SpawnCount => _spawns.Count;
+    public int MapFlagCount => _mapFlags.Count;
 
     public void AddNpc(NpcRegistration registration)
     {
@@ -66,6 +68,7 @@ public sealed class NpcRegistry : INpcRegistry
     public void AddShop(ShopRegistration registration) => _shops.Add(registration);
     public void AddWarp(WarpRegistration registration) => _warps.Add(registration);
     public void AddSpawn(SpawnRegistration registration) => _spawns.Add(registration);
+    public void AddMapFlag(MapFlagRegistration registration) => _mapFlags.Add(registration);
 
     public NpcRegistration? GetNpcByName(string name) =>
         _npcsByName.GetValueOrDefault(name);
@@ -78,6 +81,7 @@ public sealed class NpcRegistry : INpcRegistry
     public IReadOnlyCollection<ShopRegistration> AllShops() => _shops;
     public IReadOnlyCollection<WarpRegistration> AllWarps() => _warps;
     public IReadOnlyCollection<SpawnRegistration> AllSpawns() => _spawns;
+    public IReadOnlyCollection<MapFlagRegistration> AllMapFlags() => _mapFlags;
 
     public void Clear()
     {
@@ -87,6 +91,7 @@ public sealed class NpcRegistry : INpcRegistry
         _shops.Clear();
         _warps.Clear();
         _spawns.Clear();
+        _mapFlags.Clear();
     }
 }
 

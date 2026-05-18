@@ -64,6 +64,27 @@ class Spawn:
     boss: bool
 
 
+@dataclass
+class MapFlag:
+    map: str
+    flag: str
+    value: str | None
+
+
+@dataclass
+class ShopEntry:
+    map: str
+    x: int
+    y: int
+    dir: int
+    kind: str       # "shop" | "cashshop" | "itemshop" | "pointshop" | "marketshop"
+    name: str
+    sprite: int
+    cost_item: int | None      # itemshop
+    cost_variable: str | None  # pointshop
+    items: list[tuple[int, int, int]]  # (item_id, price, stock-for-market)
+
+
 # rAthena warp line:
 #   srcmap,sx,sy,dir<TAB>warp|warp2<TAB>warpname<TAB>spanxs,spanys,dstmap,dstx,dsty
 WARP_RE = re.compile(
@@ -78,6 +99,25 @@ SPAWN_RE = re.compile(
     r"^\s*([^,\s]+),(\d+),(\d+)(?:,(\d+),(\d+))?\t"
     r"(monster|boss_monster)\t([^\t]+)\t"
     r"(\d+),(\d+)(?:,(\d+))?(?:,(\d+))?(?:,[^,]*)?(?:,\d+,\d+)?\s*$"
+)
+
+# rAthena mapflag line:
+#   <mapname>\tmapflag\t<flag>[\t<value>]
+# Floating mapflags (no map prefix, just `-`) are rare and not useful for us.
+MAPFLAG_RE = re.compile(
+    r"^\s*([^,\s]+)\tmapflag\t(\S+)(?:\t(.+?))?\s*$"
+)
+
+# rAthena inline shop line:
+#   <map>,<x>,<y>,<dir>\t<kind>\t<name>\t<sprite>,<item>:<price>[,<item>:<price>...]
+# pointshop variant: \t<kind>\t<name>\t<sprite>,<costvar>,<item>:<price>[,...]
+# itemshop variant : \t<kind>\t<name>\t<sprite>,<costitem>[:<discount>],<item>:<price>[,...]
+# marketshop entries: <item>:<price>:<stock>
+# Capturing the body as a single blob and parsing per-kind below is simpler
+# than one giant regex.
+SHOP_RE = re.compile(
+    r"^\s*([^,\s]+),(\d+),(\d+),(\d+)\t"
+    r"(shop|cashshop|itemshop|pointshop|marketshop)\t([^\t]+)\t(.+?)\s*$"
 )
 
 
@@ -96,6 +136,85 @@ def parse_warps(text: str) -> list[Warp]:
             area_xs=int(m.group(5)), area_ys=int(m.group(6)),
             to_map=m.group(7),
             to_x=int(m.group(8)), to_y=int(m.group(9)),
+        ))
+    return out
+
+
+def parse_mapflags(text: str) -> list[MapFlag]:
+    out: list[MapFlag] = []
+    for line in text.splitlines():
+        if line.startswith("//") or not line.strip():
+            continue
+        m = MAPFLAG_RE.match(line)
+        if not m:
+            continue
+        # Skip floating mapflags (map = `-`) — they don't pin to a real map.
+        if m.group(1) == "-":
+            continue
+        out.append(MapFlag(
+            map=m.group(1),
+            flag=m.group(2),
+            value=(m.group(3).strip() if m.group(3) else None),
+        ))
+    return out
+
+
+def parse_shops(text: str) -> list[ShopEntry]:
+    out: list[ShopEntry] = []
+    for line in text.splitlines():
+        if line.startswith("//") or not line.strip():
+            continue
+        m = SHOP_RE.match(line)
+        if not m:
+            continue
+        kind = m.group(5)
+        body = m.group(7)
+        # Body always starts with `<sprite>,...`. Split tail tokens by commas
+        # and walk per-kind.
+        tokens = [t.strip() for t in body.split(",") if t.strip()]
+        if not tokens:
+            continue
+        try:
+            sprite = int(tokens[0])
+        except ValueError:
+            # Some files use a sprite NAME (e.g. "4_M_KAGE") rather than an id.
+            # We don't have a sprite-name → id table, so skip for now.
+            continue
+        idx = 1
+        cost_item: int | None = None
+        cost_variable: str | None = None
+        if kind == "itemshop":
+            # token[1] = <costitem>[:<discount>]
+            if idx >= len(tokens):
+                continue
+            cost_part = tokens[idx]
+            cost_item = int(cost_part.split(":", 1)[0])
+            idx += 1
+        elif kind == "pointshop":
+            if idx >= len(tokens):
+                continue
+            cost_variable = tokens[idx]
+            idx += 1
+        items: list[tuple[int, int, int]] = []
+        for tok in tokens[idx:]:
+            parts = tok.split(":")
+            if len(parts) < 2:
+                continue
+            try:
+                item_id = int(parts[0])
+                price = int(parts[1])
+            except ValueError:
+                continue
+            stock = int(parts[2]) if (kind == "marketshop" and len(parts) >= 3) else -1
+            items.append((item_id, price, stock))
+        if not items:
+            continue
+        out.append(ShopEntry(
+            map=m.group(1),
+            x=int(m.group(2)), y=int(m.group(3)), dir=int(m.group(4)),
+            kind=kind, name=m.group(6).strip(), sprite=sprite,
+            cost_item=cost_item, cost_variable=cost_variable,
+            items=items,
         ))
     return out
 
@@ -142,6 +261,59 @@ def emit_warps_ts(warps: list[Warp], src_rel: Path) -> str:
             f"    {{ from: {{ map: {ts_string(w.from_map)}, x: {w.from_x}, y: {w.from_y} }}, "
             f"area: {{ xs: {w.area_xs}, ys: {w.area_ys} }}, "
             f"to: {{ map: {ts_string(w.to_map)}, x: {w.to_x}, y: {w.to_y} }}{type_field} }},"
+        )
+    lines.append(");")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def emit_mapflags_ts(flags: list[MapFlag], src_rel: Path) -> str:
+    lines = [
+        f"// Auto-generated from rAthena {src_rel}.",
+        "// Re-generate with: python3 scripts/tools/import_rathena.py",
+        "",
+        "registerMapFlag(",
+    ]
+    for f in flags:
+        value_field = f", value: {ts_string(f.value)}" if f.value else ""
+        lines.append(
+            f"    {{ map: {ts_string(f.map)}, flag: {ts_string(f.flag)}{value_field} }},"
+        )
+    lines.append(");")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def emit_shops_ts(shops: list[ShopEntry], src_rel: Path) -> str:
+    lines = [
+        f"// Auto-generated from rAthena {src_rel}.",
+        "// Re-generate with: python3 scripts/tools/import_rathena.py",
+        "",
+        "registerShop(",
+    ]
+    for s in shops:
+        if s.kind == "marketshop":
+            items_str = ", ".join(
+                f"{{ itemId: {iid}, price: {price}, stock: {stock} }}"
+                for iid, price, stock in s.items
+            )
+        else:
+            items_str = ", ".join(
+                f"{{ itemId: {iid}, price: {price} }}"
+                for iid, price, _ in s.items
+            )
+        # rAthena price -1 means "use item-db buy price"; we keep -1 verbatim
+        # so the registrar / consumer can decide what to do with it later.
+        extra = ""
+        if s.kind == "itemshop":
+            extra = f", costItem: {s.cost_item}"
+        elif s.kind == "pointshop":
+            extra = f", costVariable: {ts_string(s.cost_variable or '')}"
+        lines.append(
+            f"    {{ kind: {ts_string(s.kind.replace('shop', '') or 'shop')}, "
+            f"map: {ts_string(s.map)}, x: {s.x}, y: {s.y}, dir: {s.dir}, "
+            f"sprite: {s.sprite}, name: {ts_string(s.name)}{extra}, "
+            f"items: [{items_str}] }},"
         )
     lines.append(");")
     lines.append("")
@@ -259,7 +431,9 @@ def main() -> None:
 
     # Wipe any previously generated content so deletes propagate. We only
     # touch the auto-generated subtrees, never main.ts / npcs / shops / etc.
-    for sub in ("warps", "spawns"):
+    # NB: scripts/shops/ is hand-written + generated. We DO clear it because
+    # the importer is the sole writer of inline-shop output.
+    for sub in ("warps", "spawns", "mapflags", "shops"):
         target = SCRIPTS_DIR / sub
         if target.exists():
             for p in sorted(target.rglob("*"), reverse=True):
@@ -284,11 +458,30 @@ def main() -> None:
         emit_spawns_ts,
         "spawns",
     )
+    convert_tree(
+        rathena_root / "npc" / "re" / "mapflag",
+        SCRIPTS_DIR / "mapflags",
+        parse_mapflags,
+        emit_mapflags_ts,
+        "mapflags",
+    )
+    # Inline shops live in many subtrees, not under one canonical dir.
+    # Walk a few known parents — merchants/, quests/, jobs/, cities/, custom/.
+    for sub in ("merchants", "quests", "jobs", "cities", "custom", "kafras"):
+        convert_tree(
+            rathena_root / "npc" / "re" / sub,
+            SCRIPTS_DIR / "shops" / sub,
+            parse_shops,
+            emit_shops_ts,
+            f"shops/{sub}",
+        )
 
     print()
     print("Writing index.ts files...")
-    for sub in ("warps", "spawns"):
-        write_indexes(SCRIPTS_DIR / sub)
+    for sub in ("warps", "spawns", "mapflags", "shops"):
+        target = SCRIPTS_DIR / sub
+        if target.exists():
+            write_indexes(target)
     print("Done.")
 
 

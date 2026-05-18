@@ -19,12 +19,14 @@ public interface INpcRegistry
     int ShopCount { get; }
     int WarpCount { get; }
     int SpawnCount { get; }
+    int MapFlagCount { get; }
 
     void AddNpc(NpcRegistration registration);
     void AddFloatingNpc(FloatingNpcRegistration registration);
     void AddShop(ShopRegistration registration);
     void AddWarp(WarpRegistration registration);
     void AddSpawn(SpawnRegistration registration);
+    void AddMapFlag(MapFlagRegistration registration);
 
     NpcRegistration? GetNpcByName(string name);
     FloatingNpcRegistration? GetFloatingByName(string name);
@@ -34,6 +36,7 @@ public interface INpcRegistry
     IReadOnlyCollection<ShopRegistration> AllShops();
     IReadOnlyCollection<WarpRegistration> AllWarps();
     IReadOnlyCollection<SpawnRegistration> AllSpawns();
+    IReadOnlyCollection<MapFlagRegistration> AllMapFlags();
 
     /// <summary>Drop everything. Used by hot-reload (Phase 2+).</summary>
     void Clear();

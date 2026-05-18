@@ -1,0 +1,30 @@
+// Auto-generated from rAthena night.txt.
+// Re-generate with: python3 scripts/tools/import_rathena.py
+
+registerMapFlag(
+    { map: "dicastes01", flag: "nightenabled" },
+    { map: "dicastes02", flag: "nightenabled" },
+    { map: "dic_fild01", flag: "nightenabled" },
+    { map: "dic_fild02", flag: "nightenabled" },
+    { map: "bif_fild01", flag: "nightenabled" },
+    { map: "bif_fild02", flag: "nightenabled" },
+    { map: "dewata", flag: "nightenabled" },
+    { map: "dew_fild01", flag: "nightenabled" },
+    { map: "dew_dun02", flag: "nightenabled" },
+    { map: "malangdo", flag: "nightenabled" },
+    { map: "malaya", flag: "nightenabled" },
+    { map: "ma_fild01", flag: "nightenabled" },
+    { map: "ma_fild02", flag: "nightenabled" },
+    { map: "ma_scene01", flag: "nightenabled" },
+    { map: "eclage", flag: "nightenabled" },
+    { map: "ecl_fild01", flag: "nightenabled" },
+    { map: "ecl_hub01", flag: "nightenabled" },
+    { map: "izlude_a", flag: "nightenabled" },
+    { map: "izlude_b", flag: "nightenabled" },
+    { map: "izlude_c", flag: "nightenabled" },
+    { map: "izlude_d", flag: "nightenabled" },
+    { map: "prt_fild08a", flag: "nightenabled" },
+    { map: "prt_fild08b", flag: "nightenabled" },
+    { map: "prt_fild08c", flag: "nightenabled" },
+    { map: "prt_fild08d", flag: "nightenabled" },
+);

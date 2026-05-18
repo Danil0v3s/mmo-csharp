@@ -37,6 +37,7 @@ public sealed class RegistrarBindings
             globalThis.registerShop        = (...args) => __registrarBinder.registerShop(...args);
             globalThis.registerWarp        = (...args) => __registrarBinder.registerWarp(...args);
             globalThis.registerSpawn       = (...args) => __registrarBinder.registerSpawn(...args);
+            globalThis.registerMapFlag     = (...args) => __registrarBinder.registerMapFlag(...args);
         ");
     }
 
@@ -67,6 +68,11 @@ public sealed class RegistrarBindings
     public void registerSpawn(params object[] args)
     {
         foreach (var arg in args) RegisterSpawn(arg, _registry);
+    }
+
+    public void registerMapFlag(params object[] args)
+    {
+        foreach (var arg in args) RegisterMapFlag(arg, _registry);
     }
     // ReSharper restore InconsistentNaming
 
@@ -216,6 +222,18 @@ public sealed class RegistrarBindings
             OnDeathEvent = JsObjectReader.OptionalString(obj, "onDeath"),
             Size = JsObjectReader.OptionalInt(obj, "size", 0),
             Ai = JsObjectReader.OptionalInt(obj, "ai", 0),
+        });
+    }
+
+    private static void RegisterMapFlag(object raw, INpcRegistry registry)
+    {
+        var obj = JsObjectReader.RequireObject(raw, "registerMapFlag");
+        var ctx = "registerMapFlag";
+        registry.AddMapFlag(new MapFlagRegistration
+        {
+            Map = JsObjectReader.RequireString(obj, "map", ctx),
+            Flag = JsObjectReader.RequireString(obj, "flag", ctx),
+            Value = JsObjectReader.OptionalString(obj, "value"),
         });
     }
 

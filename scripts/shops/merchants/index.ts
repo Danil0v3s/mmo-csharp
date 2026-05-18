@@ -2,5 +2,5 @@
 // hand — re-run the importer to refresh. Imports every sibling .ts
 // file in this directory plus every sub-directory's index.
 
-import "./merchants";
-import "./quests";
+import "./Dealer_Update";
+import "./shops";
