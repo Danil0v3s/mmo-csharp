@@ -12,6 +12,7 @@ using Map.Server.Gm.Commands;
 using Map.Server.Items;
 using Map.Server.Mob;
 using Map.Server.Movement;
+using Map.Server.Scripting;
 using Map.Server.Services;
 using Map.Server.Session;
 using Map.Server.Spawn;
@@ -107,6 +108,19 @@ builder.Services.AddSingleton<MapSessionLifecycle>();
 // idle wander, and respawn timing.
 builder.Services.AddSingleton<IMobSpawnRegistry, MobSpawnRegistry>();
 builder.Services.AddSingleton<IMobSpawnService, MobSpawnService>();
+
+// Scripting (see .agents/migrations/map/scripting/). At boot the host
+// loads the esbuild bundle from scripts/dist/main.js; every register*()
+// call in the bundle populates INpcRegistry. NpcSpawnService then places
+// the scripted NPCs as entities. Phase 1 captures onClick/onTouch/...
+// closures but does NOT invoke them — ContactNpcHandler logs and closes
+// the dialog cleanly. Phase 2 wires the actual dispatcher.
+var scriptOptions = new ScriptHostOptions();
+configuration.GetSection("Scripting").Bind(scriptOptions);
+builder.Services.AddSingleton(scriptOptions);
+builder.Services.AddSingleton<INpcRegistry, NpcRegistry>();
+builder.Services.AddSingleton<ScriptHost>();
+builder.Services.AddSingleton<INpcSpawnService, NpcSpawnService>();
 
 // Status broadcast cascade (post-handoff). See
 // .agents/migrations/map/initial-status-broadcast.md. The broadcaster

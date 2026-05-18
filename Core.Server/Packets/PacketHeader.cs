@@ -113,6 +113,7 @@ public enum PacketHeader : short
     CZ_ITEM_PICKUP = 0x0362,               // CZ_ITEM_PICKUP2 (modern, 4-byte entity id)
     CZ_REQUEST_TIME = 0x0363,              // PACKETVER ≥ 20220401 ticksend / heartbeat (rAthena moved it from 0x007e to 0x0363). Doubles as the keep-alive on our target client; the handler resets HeartbeatTimeout on receipt.
     CZ_WANT_TO_CONNECTION = 0x0436,        // modern post-charselect connect
+    CZ_CONTACTNPC = 0x0090,                // clif_parse_NpcClicked, 7B (header + npcId(4) + type(1)). Not part of the 20180307 shuffle.
     ZC_EXTEND_BODYITEM_SIZE = 0x0b18,      // inventory-expansion info; rAthena clif_inventory_expansion_info
     ZC_FRIENDS_LIST = 0x0201,              // rAthena clif_friendslist_send, variable length
 

@@ -5,6 +5,7 @@ using Core.Server.IPC;
 using Core.Server.Network;
 using Core.Server.Packets;
 using Map.Server.Items;
+using Map.Server.Scripting;
 using Map.Server.Services;
 using Map.Server.Session;
 using Map.Server.Spawn;
@@ -31,6 +32,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly MapSessionLifecycle _lifecycle;
     private readonly IMobSpawnService _mobSpawn;
     private readonly IItemDropService _itemDrops;
+    private readonly ScriptHost _scriptHost;
+    private readonly INpcSpawnService _npcSpawn;
     private readonly MapServerConfiguration _mapConfiguration;
     private DateTime _nextRegistrationAttemptUtc = DateTime.MinValue;
     private DateTime _nextKeepAliveUtc = DateTime.MinValue;
@@ -52,7 +55,9 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         ICharServerIpcService charServerIpc,
         MapSessionLifecycle lifecycle,
         IMobSpawnService mobSpawn,
-        IItemDropService itemDrops)
+        IItemDropService itemDrops,
+        ScriptHost scriptHost,
+        INpcSpawnService npcSpawn)
         : base("MapServer", configuration, logger, packetSystem, sessionManager)
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
@@ -63,6 +68,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _lifecycle = lifecycle;
         _mobSpawn = mobSpawn;
         _itemDrops = itemDrops;
+        _scriptHost = scriptHost;
+        _npcSpawn = npcSpawn;
         _mapConfiguration = (MapServerConfiguration)configuration;
 
         // Wire up the connection service to use this server's connection manager
@@ -78,6 +85,14 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         // — re-runs on tick wouldn't double-spawn, but we do it once at boot to
         // pre-fill the map before any client connects.
         _mobSpawn.SpawnInitial();
+
+        // Load the TypeScript scripting bundle. Every register*() call in the
+        // bundle populates INpcRegistry; NpcSpawnService then places the
+        // scripted NPCs as entities. Boot fails loudly if the bundle has bad
+        // registrations (duplicate names, missing required fields, etc.); a
+        // missing bundle is a warning + zero NPCs (acceptable during early dev).
+        _scriptHost.LoadEntryPoint();
+        _npcSpawn.SpawnInitial();
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken = default)

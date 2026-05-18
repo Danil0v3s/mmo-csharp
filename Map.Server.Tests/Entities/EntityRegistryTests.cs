@@ -53,7 +53,8 @@ public class EntityRegistryTests
         var (registry, mapId) = NewRegistryWithMap("filter", 50, 50);
 
         var pc = NewPlayer(charId: 1, x: 10, y: 10, mapId: mapId);
-        var npc = new NpcEntity(new EntityId(800_000_001), "Bob", 100, mapId, 11, 10);
+        var npc = new NpcEntity(new EntityId(800_000_001), "Bob", 100, mapId, 11, 10,
+            dir: 0, triggerArea: null, hooks: Map.Server.Scripting.Records.NpcHooks.Empty);
         var mob = new MobEntity(new EntityId(400_000_001), 1002, "Poring", mapId, 12, 10);
         registry.Add(pc);
         registry.Add(npc);

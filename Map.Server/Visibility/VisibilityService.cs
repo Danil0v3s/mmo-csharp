@@ -204,8 +204,23 @@ public sealed class VisibilityService : IVisibilityService
             SubX = i.SubX,
             SubY = i.SubY,
         },
+        NpcEntity n => new ZC_NOTIFY_STANDENTRY
+        {
+            // rAthena's clif_bl_type uses BL_NPC_CLIF=6 for clickable script NPCs
+            // (the value labeled "BL_EVT_CLIF" in older headers). Verify against
+            // the live PACKETVER 20220401 dhxj capture if NPCs fail to render —
+            // there are two conventions in play (1 vs 6) and the client picks
+            // the sprite path from this byte.
+            ObjectType = 6,
+            AccountId = n.Id.Value,
+            CharacterOrEntityId = n.Id.Value,
+            Speed = 200,                      // NPCs are stationary; default speed
+            Job = (short)n.SpriteId,
+            X = n.X, Y = n.Y, Dir = n.Dir,
+            Name = n.Name,
+        },
         _ => throw new NotSupportedException(
-            $"BuildEnterViewPacket: {entity.Type} not supported yet (NPC lands later).")
+            $"BuildEnterViewPacket: {entity.Type} not supported yet.")
     };
 
     /// <summary>

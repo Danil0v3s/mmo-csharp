@@ -1,0 +1,15 @@
+{
+  "name": "mmo-scripts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript-authored NPC scripts for the C# map server. See .agents/migrations/map/scripting/.",
+  "scripts": {
+    "build": "esbuild main.ts --bundle --platform=neutral --target=es2022 --format=iife --outfile=dist/main.js --sourcemap",
+    "watch": "esbuild main.ts --bundle --platform=neutral --target=es2022 --format=iife --outfile=dist/main.js --sourcemap --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0",
+    "typescript": "^5.4.0"
+  }
+}

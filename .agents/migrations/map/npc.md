@@ -1,4 +1,14 @@
-# MS2 · NPC system
+# MS2 · NPC system — SUPERSEDED
+
+> **2026-05-17:** The scope decision below (Option B — hand-rolled mini-AST) is **superseded by the Lua decision** recorded in [scripting/README.md](scripting/README.md). Current plan lives in:
+>
+> - [scripting/README.md](scripting/README.md) — Lua scope + phased rollout
+> - [scripting/rathena-reference.md](scripting/rathena-reference.md) — full rAthena script-system enumeration
+> - [scripting/phase-1-loader.md](scripting/phase-1-loader.md) — **current focus.** NPC file loader + entity placement + visibility integration. No script execution yet.
+>
+> The content below is retained for context (it captures why the hand-rolled option was rejected) but the file layout, mini-AST, and DialogState pieces are no longer the plan.
+
+---
 
 **Phase:** MS2
 **Depends on:** [world.md](world.md) (cell grid for placement), [entities.md](entities.md), [visibility.md](visibility.md)
@@ -142,4 +152,5 @@ Map.Server/Handlers/
 
 ## History
 
+- **2026-05-17** — **Scope decision revised: Lua, not Option B.** The hand-rolled mini-AST plan was dropped in favour of embedding a Lua runtime (MoonSharp/NLua TBD). Lua's native coroutines map directly to rAthena's `mes/next/close` suspension model — the single hardest part of the rAthena VM to reproduce. New plan lives under [scripting/](scripting/). This doc is retained as historical context.
 - **2026-05-16** — Plan written. Scope decision recorded (Option B). No implementation yet.
