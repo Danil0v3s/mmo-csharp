@@ -85,4 +85,12 @@ public class MapSessionData(
     /// the load completes.
     /// </summary>
     public Map.Server.Persistence.PlayerVarRegs? VarRegs { get; set; }
+
+    /// <summary>
+    /// Per-character inventory loaded by <c>IInventoryService.LoadAsync</c>
+    /// during the connect flow. Null until the load completes; empty list
+    /// for fresh characters with no items. Order matches the server-side
+    /// inventory slot index used in client packets.
+    /// </summary>
+    public List<Map.Server.Inventory.InventoryItem>? Inventory { get; set; }
 }

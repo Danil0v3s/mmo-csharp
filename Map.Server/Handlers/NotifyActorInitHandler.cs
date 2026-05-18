@@ -20,6 +20,7 @@ public class NotifyActorInitHandler(
     IEntityRegistry registry,
     IVisibilityService visibility,
     StatusBroadcaster statusBroadcaster,
+    Map.Server.Inventory.IInventoryService inventory,
     ILogger<NotifyActorInitHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_NOTIFY_ACTORINIT>
 {
@@ -90,6 +91,13 @@ public class NotifyActorInitHandler(
         {
             statusBroadcaster.BroadcastLoadEndAck(session, session.CharacterData, (uint)accountId);
         }
+
+        // Inventory list — rAthena emits clif_inventorylist at the start
+        // of LoadEndAck (clif.cpp:10760) so deleted items get filtered
+        // before pc_checkitem would render them as "unknown item". We
+        // emit it after BroadcastLoadEndAck for visual ordering; the
+        // client is order-tolerant for the open-bag UI here.
+        inventory.SendInventoryList(session);
 
         logger.LogInformation(
             "Player {Name} (char {CharId}) spawned at ({X},{Y}) on map 0x{MapId:X8}",

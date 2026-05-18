@@ -29,6 +29,7 @@ public sealed partial class PlayerContext
 
     private readonly MapSessionData _session;
     private readonly PlayerEntity _entity;
+    private readonly Map.Server.Inventory.IInventoryService _inventory;
 
     /// <summary>Last-known value per dirty stat. SpId → value.</summary>
     private readonly Dictionary<ushort, int> _dirty = new();
@@ -78,10 +79,14 @@ public sealed partial class PlayerContext
     /// <summary>Mercenary surface (create/delete/heal/info).</summary>
     public PlayerMercSurface merc { get; }
 
-    public PlayerContext(MapSessionData session, PlayerEntity entity)
+    public PlayerContext(
+        MapSessionData session,
+        PlayerEntity entity,
+        Map.Server.Inventory.IInventoryService inventory)
     {
         _session = session;
         _entity = entity;
+        _inventory = inventory;
         session.ScriptSessionVars ??= new PropertyBag();
         this.session = session.ScriptSessionVars;
 

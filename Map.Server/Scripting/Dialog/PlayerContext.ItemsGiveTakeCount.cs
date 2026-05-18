@@ -9,7 +9,23 @@ namespace Map.Server.Scripting.Dialog;
 public sealed partial class PlayerContext
 {
     public Task giveItem(int itemId, int amount = 1, object? opts = null)
-        => ScriptStub.CallAsync(Cat, "giveItem", itemId, amount, opts);
+    {
+        // opts is reserved for slice 2+ (identify/refine/cards/bound/options).
+        // Slice 1 just lands clean stackable adds via IInventoryService.
+        _inventory.GiveItem(_session, (uint)itemId, amount);
+        return Task.CompletedTask;
+    }
+
+    public int countItem(int itemId, object? opts = null)
+    {
+        if (_session.Inventory is not { } items) return 0;
+        return items
+            .Where(it => it.NameId == (uint)itemId)
+            .Sum(it => (int)it.Amount);
+    }
+
+    public bool hasItem(int itemId, int amount = 1, object? opts = null)
+        => countItem(itemId, opts) >= amount;
 
     public Task giveRentItem(int itemId, int seconds, object? opts = null)
         => ScriptStub.CallAsync(Cat, "giveRentItem", itemId, seconds, opts);
@@ -29,14 +45,8 @@ public sealed partial class PlayerContext
     public Task delItemAtIndex(int index, int amount = 1)
         => ScriptStub.CallAsync(Cat, "delItemAtIndex", index, amount);
 
-    public int countItem(int itemId, object? opts = null)
-        => ScriptStub.Call(Cat, "countItem", 0, itemId, opts);
-
     public int countBound(int boundType = 0)
         => ScriptStub.Call(Cat, "countBound", 0, boundType);
-
-    public bool hasItem(int itemId, int amount = 1, object? opts = null)
-        => ScriptStub.Call(Cat, "hasItem", false, itemId, amount, opts);
 
     public Task clearItems()
         => ScriptStub.CallAsync(Cat, "clearItems");

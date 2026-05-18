@@ -11,10 +11,17 @@ public sealed class DialogDispatcher : IDialogDispatcher
     private readonly IEntityRegistry _entities;
     private readonly ILogger<DialogDispatcher> _logger;
 
-    public DialogDispatcher(ScriptHost scriptHost, IEntityRegistry entities, ILogger<DialogDispatcher> logger)
+    private readonly Map.Server.Inventory.IInventoryService _inventory;
+
+    public DialogDispatcher(
+        ScriptHost scriptHost,
+        IEntityRegistry entities,
+        Map.Server.Inventory.IInventoryService inventory,
+        ILogger<DialogDispatcher> logger)
     {
         _scriptHost = scriptHost;
         _entities = entities;
+        _inventory = inventory;
         _logger = logger;
     }
 
@@ -38,7 +45,7 @@ public sealed class DialogDispatcher : IDialogDispatcher
             : null;
 
         var dialog = new DialogSession(npc);
-        var ctx = new DialogContext(session, dialog, npc, playerEntity);
+        var ctx = new DialogContext(session, dialog, npc, playerEntity, _inventory);
         dialog.Context = ctx;
         session.Dialog = dialog;
 

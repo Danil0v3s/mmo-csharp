@@ -25,6 +25,7 @@ public class WantToConnectionHandler(
     MapServerConfiguration configuration,
     StatusBroadcaster statusBroadcaster,
     IPlayerStateService playerState,
+    Map.Server.Inventory.IInventoryService inventory,
     ILogger<WantToConnectionHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_WANT_TO_CONNECTION>
 {
@@ -133,6 +134,21 @@ public class WantToConnectionHandler(
         {
             logger.LogWarning(ex,
                 "Failed to load var-regs for char {CharId} (acc {AccountId}); proceeding with empty scopes",
+                session.CharacterId, session.AccountId);
+        }
+
+        // Load the inventory rows so they're ready for the LoadEndAck
+        // cascade in NotifyActorInitHandler. Failure here leaves the
+        // session with an empty bag (the service substitutes an empty
+        // list); a degraded login beats a refused login.
+        try
+        {
+            await inventory.LoadAsync(session);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to load inventory for char {CharId} (acc {AccountId}); proceeding with empty bag",
                 session.CharacterId, session.AccountId);
         }
 

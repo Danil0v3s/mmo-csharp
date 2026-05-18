@@ -171,6 +171,7 @@ public enum PacketHeader : short
     ZC_PAR_4JOB_CHANGE    = 0x0b25,        // 4-job stat coupled change, 14B
     ZC_REPUTATION_LIST    = 0x0b8d,        // clif_reputation_list (rAthena name: ZC_REPUTE_INFO), variable
     ZC_INVENTORYLIST_EQUIP_V6 = 0x0b39,    // equip-items chunk, variable
+    ZC_ITEM_PICKUP_ACK    = 0x0b41,        // clif_additem (PACKETVER_RE_NUM >= 20200723), 70B
 
     // Internal — health-check packets used by the test harness to wait for a
     // server to finish booting. NOT part of the rAthena packet set; picked

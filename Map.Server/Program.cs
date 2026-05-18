@@ -129,6 +129,12 @@ builder.Services.AddSingleton<Map.Server.Scripting.Dialog.IDialogDispatcher, Map
 // is no longer the route for player-state mutations.
 builder.Services.AddSingleton<Map.Server.Persistence.IPlayerStateService, Map.Server.Persistence.PlayerStateService>();
 
+// Inventory: loads each connecting character's inventory rows from the DB
+// and emits the clif_inventorylist packet cascade so the client's bag UI
+// populates. Slice 1 of the inventory/items work — see
+// .agents/migrations/map/scripting/ for the broader plan.
+builder.Services.AddSingleton<Map.Server.Inventory.IInventoryService, Map.Server.Inventory.InventoryService>();
+
 // Status broadcast cascade (post-handoff). See
 // .agents/migrations/map/initial-status-broadcast.md. The broadcaster
 // emits the rAthena pc_authok / status_calc_pc(SCO_FIRST) packet stream

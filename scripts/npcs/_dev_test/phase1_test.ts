@@ -33,6 +33,8 @@ export const phase1Test: NpcRegistration = {
         await ctx.next();
 
         const choice = await ctx.select([
+            "Give me 5 Red Potions (id 501)",
+            "Give me 1 Sword (id 1101)",
             "Give 1000 zeny (persists on logout)",
             "Damage me 10 HP (persists on logout)",
             "Set perm.title = \"Champion\"",
@@ -41,15 +43,21 @@ export const phase1Test: NpcRegistration = {
         ]);
 
         if (choice === 1) {
+            await p.giveItem(501, 5);
+            await ctx.mes(`Bag now holds ${p.countItem(501)} Red Potions.`);
+        } else if (choice === 2) {
+            await p.giveItem(1101, 1);
+            await ctx.mes(`A sword appears in your bag.`);
+        } else if (choice === 3) {
             p.zeny += 1000;
             await ctx.mes(`Zeny: ${p.zeny}. Log out and back in to verify it stuck.`);
-        } else if (choice === 2) {
+        } else if (choice === 4) {
             p.hp = Math.max(1, p.hp - 10);
             await ctx.mes(`HP: ${p.hp}/${p.maxHp}. Log out and back in to verify it stuck.`);
-        } else if (choice === 3) {
+        } else if (choice === 5) {
             p.perm.title = "Champion";
             await ctx.mes(`perm.title = "${p.perm.title}". Stored as a string in char_reg_str.`);
-        } else if (choice === 4) {
+        } else if (choice === 6) {
             const title = p.perm.title as string | undefined;
             await ctx.mes(title ? `perm.title = "${title}"` : `perm.title is unset.`);
         }

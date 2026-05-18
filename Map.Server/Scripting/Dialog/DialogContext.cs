@@ -46,12 +46,17 @@ public sealed partial class DialogContext
     /// <summary>Channel ops (create, chat, ban).</summary>
     public ChannelContext channel { get; }
 
-    public DialogContext(MapSessionData session, DialogSession dialog, NpcEntity entity, PlayerEntity? playerEntity)
+    public DialogContext(
+        MapSessionData session,
+        DialogSession dialog,
+        NpcEntity entity,
+        PlayerEntity? playerEntity,
+        Map.Server.Inventory.IInventoryService inventory)
     {
         _session = session;
         _dialog = dialog;
         npc = new NpcInfo(entity);
-        player = playerEntity != null ? new PlayerContext(session, playerEntity) : null;
+        player = playerEntity != null ? new PlayerContext(session, playerEntity, inventory) : null;
         world = new WorldContext();
         party = new PartyContext();
         guild = new GuildContext();
