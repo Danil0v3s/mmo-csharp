@@ -77,6 +77,13 @@ public sealed record MobDbEntry
 
     public IReadOnlyList<MobDrop> Drops { get; init; } = Array.Empty<MobDrop>();
     public IReadOnlyList<MobDrop> MvpDrops { get; init; } = Array.Empty<MobDrop>();
+
+    /// <summary>
+    /// Per-mob skill assignments from <c>mob_skill_db</c>. Empty until
+    /// the mob-skill loader lands. <see cref="MobAi.MobAiService"/>
+    /// consults this list at AI tick time.
+    /// </summary>
+    public IReadOnlyList<MobSkillEntry> Skills { get; init; } = Array.Empty<MobSkillEntry>();
 }
 
 /// <summary>

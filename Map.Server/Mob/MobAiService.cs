@@ -1,5 +1,6 @@
 using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Skills;
 using Map.Server.Status;
 using Microsoft.Extensions.Logging;
 
@@ -21,12 +22,23 @@ public sealed class MobAiService : IMobAiService
 
     private readonly IEntityRegistry _entities;
     private readonly IAttackService _attack;
+    private readonly ISkillCastService? _skillCast;
+    private readonly Random _rng;
     private readonly Dictionary<EntityId, long> _lastThink = new();
+    /// <summary>Per-mob, per-skill cooldown anchor (Environment.TickCount64).</summary>
+    private readonly Dictionary<(EntityId mobId, int skillIndex), long> _skillDelay = new();
 
-    public MobAiService(IEntityRegistry entities, IAttackService attack, ILogger<MobAiService> _)
+    public MobAiService(
+        IEntityRegistry entities,
+        IAttackService attack,
+        ILogger<MobAiService> _,
+        ISkillCastService? skillCast = null,
+        Random? rng = null)
     {
         _entities = entities;
         _attack = attack;
+        _skillCast = skillCast;
+        _rng = rng ?? Random.Shared;
     }
 
     public void Tick(long nowTick)
@@ -55,7 +67,12 @@ public sealed class MobAiService : IMobAiService
                 }
                 else
                 {
-                    continue; // Already engaged — let AttackService drive the swing/chase.
+                    // Engaged — give the mob a chance to cast a skill instead
+                    // of the basic swing. mobskill_use (mob.cpp:3924) MSS_BERSERK
+                    // path: a skill the mob has assigned can trigger between
+                    // normal attacks once its delay elapsed and the roll passes.
+                    TryUseMobSkill(mob, current, MobSkillState.Berserk, nowTick);
+                    continue;
                 }
             }
 
@@ -106,4 +123,55 @@ public sealed class MobAiService : IMobAiService
         MobEntity m => m.Hp > 0,
         _ => false,
     };
+
+    /// <summary>
+    /// Port of rAthena <c>mobskill_use</c> condition loop (mob.cpp:3924),
+    /// MS3 first slice — evaluates Always / MyHpLessThanRate triggers.
+    /// Returns true if a skill was cast (the caller should usually skip
+    /// the basic-swing path for this tick).
+    /// </summary>
+    private bool TryUseMobSkill(MobEntity mob, Entity target, MobSkillState state, long nowTick)
+    {
+        if (_skillCast == null) return false;
+        if (mob.DbEntry == null || mob.DbEntry.Skills.Count == 0) return false;
+        if ((mob.Stats.Mode & MobMode.NoCast) != 0) return false;
+
+        // rAthena: random starting index when MOB_AI flag 0x100 is set.
+        var start = _rng.Next(mob.DbEntry.Skills.Count);
+        for (var n = 0; n < mob.DbEntry.Skills.Count; n++)
+        {
+            var i = (start + n) % mob.DbEntry.Skills.Count;
+            var entry = mob.DbEntry.Skills[i];
+
+            // State match — only Berserk skills fire while attacking.
+            if (entry.State != MobSkillState.Any && entry.State != state) continue;
+
+            // Per-mob, per-skill cooldown.
+            var key = (mob.Id, i);
+            if (_skillDelay.TryGetValue(key, out var readyAt) && readyAt > nowTick) continue;
+
+            // Condition evaluation. Only Always + MyHpLessThanRate ported
+            // — the rest (slave counts, master-attacked, ground-attacked,
+            // etc.) plug in here as their owning subsystems land.
+            var conditionMet = entry.Condition switch
+            {
+                MobSkillCondition.Always => true,
+                MobSkillCondition.MyHpLessThanRate =>
+                    mob.MaxHp > 0 && (mob.Hp * 100 / mob.MaxHp) <= entry.Cond2,
+                _ => false,
+            };
+            if (!conditionMet) continue;
+
+            // Permillage gate (out of 10,000).
+            if (_rng.Next(10_000) >= entry.Permillage) continue;
+
+            var castResult = _skillCast.StartCast(mob, target.Id, entry.SkillId, entry.SkillLevel);
+            if (castResult == SkillCastResult.Started)
+            {
+                _skillDelay[key] = nowTick + Math.Max(1, entry.DelayMs);
+                return true;
+            }
+        }
+        return false;
+    }
 }
