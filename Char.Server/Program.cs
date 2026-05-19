@@ -42,6 +42,11 @@ builder.Services.AddSingleton<IMapServerIpcService, MapServerIpcService>();
 builder.Services.AddSingleton<IMapAuthTicketService, MapAuthTicketService>();
 builder.Services.AddSingleton<IReturningClientAuthService, ReturningClientAuthService>();
 builder.Services.AddSingleton<IMapServerRegistryService, MapServerRegistryService>();
+// Periodic char-side housekeeping: mail return / mail delete / clan
+// inactive-member cleanup. Mirrors rAthena char.cpp's three add_timer_interval
+// registrations (int_mail.cpp:mail_return_timer / mail_delete_timer +
+// char.cpp:char_clan_member_cleanup). Driven from the game loop.
+builder.Services.AddSingleton<ICharMaintenanceService, CharMaintenanceService>();
 builder.Services.AddTransient<ICharacterListFlowService, CharacterListFlowService>();
 
 // Register server state separately to avoid circular dependencies

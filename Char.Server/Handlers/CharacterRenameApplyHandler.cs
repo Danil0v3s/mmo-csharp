@@ -41,6 +41,19 @@ public class CharacterRenameApplyHandler(
             return;
         }
 
+        // rAthena char.cpp:1277 — block rename when the char is in a
+        // party / guild unless the corresponding flag allows it.
+        if (!configuration.Char.CharRenameParty && character.PartyId != 0)
+        {
+            SendAck(session, 6);
+            return;
+        }
+        if (!configuration.Char.CharRenameGuild && character.GuildId != 0)
+        {
+            SendAck(session, 5);
+            return;
+        }
+
         if (await CharacterNamePolicy.NameExistsAsync(characterRepository, targetName, configuration))
         {
             SendAck(session, 4);

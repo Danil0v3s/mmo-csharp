@@ -639,7 +639,8 @@ public class CharGrpcServiceParityTests
             sessionManager,
             new ServerConnectionService(),
             state,
-            loginIpc);
+            loginIpc,
+            new NoOpCharMaintenanceService());
 
         var ticketService = new MapAuthTicketService();
         var dbContext = new GameDbContext(new DbContextOptionsBuilder<GameDbContext>().Options);
@@ -647,6 +648,7 @@ public class CharGrpcServiceParityTests
         var grpc = new CharGrpcService(
             charServer,
             ticketService,
+            new ReturningClientAuthService(loggerFactory.CreateLogger<ReturningClientAuthService>()),
             new MapServerRegistryService(),
             loginIpc,
             new MapServerIpcService(new ServerConnectionService(), loggerFactory.CreateLogger<MapServerIpcService>()),

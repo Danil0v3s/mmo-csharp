@@ -24,6 +24,7 @@ public class CharServerImpl : GameLoopServer, ICharServerRuntime, IServerReadine
     private readonly CharServerConfiguration _charConfiguration;
     private readonly CharServerState _serverState;
     private readonly ILoginServerIpcService _loginServerIpc;
+    private readonly ICharMaintenanceService _maintenance;
     private DateTime _nextRegistrationAttemptUtc = DateTime.MinValue;
     private DateTime _nextUserCountSyncUtc = DateTime.MinValue;
     private DateTime _nextAddressSyncUtc = DateTime.MinValue;
@@ -43,7 +44,8 @@ public class CharServerImpl : GameLoopServer, ICharServerRuntime, IServerReadine
         SessionManager sessionManager,
         ServerConnectionService connectionService,
         CharServerState serverState,
-        ILoginServerIpcService loginServerIpc
+        ILoginServerIpcService loginServerIpc,
+        ICharMaintenanceService maintenance
     )
         : base("CharServer", configuration, logger, packetSystem, sessionManager)
     {
@@ -53,6 +55,7 @@ public class CharServerImpl : GameLoopServer, ICharServerRuntime, IServerReadine
             ?? throw new InvalidOperationException("CharServerImpl requires CharServerConfiguration");
         _serverState = serverState;
         _loginServerIpc = loginServerIpc;
+        _maintenance = maintenance;
 
         // Wire up the connection service to use this server's connection manager
         connectionService.SetConnectionManager(ServerConnections);
@@ -222,8 +225,17 @@ public class CharServerImpl : GameLoopServer, ICharServerRuntime, IServerReadine
         await SyncUserCountAsync(cancellationToken);
         await SyncCharacterServerAddressAsync(cancellationToken);
         await SyncOnlineAccountsAsync(cancellationToken);
-
-        await Task.CompletedTask;
+        // Periodic housekeeping (mail return / mail delete / clan inactive
+        // cleanup). The service's own deadline gates each tick so the
+        // game loop can call it every frame cheaply.
+        try
+        {
+            await _maintenance.TickAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Char maintenance tick threw — continuing");
+        }
     }
 
     protected override async Task FlushOutgoingPacketsAsync(CancellationToken cancellationToken)

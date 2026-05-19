@@ -15,7 +15,7 @@ Living status of the port from rAthena C++ (`/Volumes/1TB/Projetos/rathena`) to 
 |---|---|---|
 | [Login](login/status.md) | ✅ 100% | Final three knobs closed 2026-05-19 (IpSyncInterval, login_get_usercount colorization, disable_webtoken_delay) |
 | [Char (packets)](char/packets.md) | ✅ 100% | Two minor divergences resolved in P2 (deliberate / not-real) |
-| [Char (gRPC server)](char/grpc.md) | ✅ ~98% | Remaining: KeepAlive + RequestAddressSync stubs (deferred to P6 map wiring) |
+| [Char (gRPC server)](char/grpc.md) | ✅ 100% | Final parity knobs closed 2026-05-19 (mail return/delete timers, clan-inactive cleanup, mail-retrieve gate, allowed-job-flag, char-rename party/guild, guild-exp-rate). 4 structural divergences documented as won't-fix. |
 | [Char (connect flow)](char/connect-flow.md) | ✅ 100% | Cross-server dup-online wired in P3 |
 | [Map (IPC integration)](map/ipc-integration.md) | ✅ Infrastructure 100% / 🔁 Gameplay ops 0% | All lifecycle triggers wired (startup/timers/connect/disconnect/shutdown); module ops gameplay-wait |
 | [Map (replay baseline)](map/replay-baseline.md) | ⚠️ Whole connect flow structurally matched | 19 remaining diffs are all gameplay-content placeholders (inventory items, skill data, achievements, NPC-script output) — each unblocks when its parent subsystem ports. `ZC_REPUTATION_LIST` intentionally omitted for live-client compatibility. |

@@ -51,6 +51,16 @@ public class CharacterCreateHandler(
             return (false, -2, null);
         }
 
+        // rAthena allowed_job_flag (char.cpp:1481, PACKETVER ≥ 20151001):
+        //   bit 0 → JOB_NOVICE (id 0) allowed
+        //   bit 1 → JOB_SUMMONER (id 4218) allowed
+        // Default mask is 3 (both). Other job ids are never legal here —
+        // the client only ships novice / summoner via the create dialog.
+        if (!IsJobAllowed(packet.StartingJob, configuration.AllowedJobFlag))
+        {
+            return (false, -2, null);
+        }
+
         if (await CharacterNamePolicy.NameExistsAsync(characterRepository, characterName, configuration))
         {
             return (false, -1, null);
@@ -141,5 +151,22 @@ public class CharacterCreateHandler(
         }
 
         session.EnqueuePacket(packet);
+    }
+
+    private const ushort JobNovice = 0;
+    private const ushort JobSummoner = 4218;
+
+    internal static bool IsJobAllowed(uint startingJob, int allowedJobFlag)
+    {
+        // -1 is the C#-config sentinel meaning "no gate" (legacy default
+        // before this gate landed). rAthena's default is 3 (novice +
+        // summoner); 0 disables both.
+        if (allowedJobFlag < 0) return true;
+        if (startingJob == JobNovice) return (allowedJobFlag & 1) != 0;
+        if (startingJob == JobSummoner) return (allowedJobFlag & 2) != 0;
+        // rAthena returns -2 (Invalid job) for anything not in the
+        // novice/summoner pair; the client never offers other ids in
+        // the create dialog anyway.
+        return false;
     }
 }

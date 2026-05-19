@@ -2069,6 +2069,33 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
                     }
                 }
                 break;
+            case 3:
+                // GMI_EXP — member EXP set. rAthena int_guild.cpp:1555:
+                //   delta = new_exp - old_exp
+                //   guild_total_exp += delta * guild_exp_rate / 100
+                if (request.Data.Length >= 8)
+                {
+                    var newExp = BitConverter.ToUInt64(request.Data.ToByteArray(), 0);
+                    var oldExp = member.Exp;
+                    member.Exp = newExp;
+                    if (newExp > oldExp)
+                    {
+                        var delta = newExp - oldExp;
+                        if (_configuration.GuildExpRate != 100 && _configuration.GuildExpRate >= 0)
+                        {
+                            delta = delta * (ulong)_configuration.GuildExpRate / 100UL;
+                        }
+                        var guild = await _dbContext.Guilds
+                            .FirstOrDefaultAsync(g => g.GuildId == request.GuildId, context.CancellationToken);
+                        if (guild is not null)
+                        {
+                            // safe_addition_cap to MAX_GUILD_EXP (rAthena: uint64 max).
+                            var sum = guild.Exp + delta;
+                            guild.Exp = sum < guild.Exp ? ulong.MaxValue : sum;
+                        }
+                    }
+                }
+                break;
         }
 
         await _dbContext.SaveChangesAsync(context.CancellationToken);
@@ -2482,6 +2509,13 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
                 m => m.Id == request.MailId && m.DestId == request.CharacterId,
                 context.CancellationToken);
         if (mail is null)
+        {
+            return new MailGetAttachmentResponse { Success = false };
+        }
+        // rAthena int_mail.cpp:385 — when mail_retrieve is off, the user
+        // must read the mail before they can claim attachments.
+        // status: 0 = MAIL_NEW, 1 = MAIL_UNREAD, 2 = MAIL_READ.
+        if (_configuration.MailRetrieve == 0 && mail.Status != 2)
         {
             return new MailGetAttachmentResponse { Success = false };
         }

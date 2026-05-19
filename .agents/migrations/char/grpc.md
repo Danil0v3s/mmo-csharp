@@ -68,6 +68,10 @@ None.
 ### Won't-fix / by-design divergences
 
 - **`KeepAlive` (Char↔Map) is intentionally a no-op acknowledgement** ([CharGrpcService.cs:512-516](../../../Char.Server/CharGrpcService.cs)). rAthena tracks last-seen at the connection layer; in C# this is owned by `ServerSession.IsHealthCheckTimedOut()` plus the gRPC channel's connection state. The handler exists so the map-side periodic KeepAlive call has a well-defined target; no additional bookkeeping is needed.
+- **`autosave_interval` is structurally absent.** rAthena keeps `mmo_charstatus` in memory and flushes dirty rows on a timer; the C# port persists every gameplay op through EF (`GameDbContext.SaveChangesAsync`) so there's no concept of "in-memory dirty char". The knob exists in `CharServerConfiguration` for config-file compatibility but has no effect.
+- **`char_check_db` is covered by EF migrations.** rAthena boots a `SHOW TABLES` probe; in C# the schema is enforced by `dotnet ef database update` and any missing table fails at first query.
+- **`save_log` is covered by Serilog.** rAthena writes save events to `log/save.log` when this is on; the C# port logs through `ILogger<T>` and the same information lands in whichever sink is configured.
+- **`clear_parties` is mostly inert** — rAthena boots cleared empty parties as a safety; the C# port's FK constraints (party_member → party with cascade delete) already prevent orphan rows. Defensive cleanup would still be useful long-term but is not user-visible behavior.
 
 ## Files / structure
 
@@ -77,6 +81,15 @@ None.
 - Tests: [CharGrpcServiceParityTests.cs](../../../Char.Server.Tests/Services/CharGrpcServiceParityTests.cs)
 
 ## History
+
+- **2026-05-19** — **Final char-side parity gaps closed (100%).**
+  - **Periodic housekeeping**: new [CharMaintenanceService](../../../Char.Server/Services/CharMaintenanceService.cs) ports rAthena's three background timers (`mail_return_timer` + `mail_delete_timer` from `int_mail.cpp:317/321`, `char_clan_member_cleanup` from `char.cpp:2216`). `MailReturnDays` / `MailDeleteDays` / `ClanRemoveInactiveDays` / `MailReturnEmpty` config knobs now drive real behavior. Driven from `CharServerImpl.UpdateGameLogicAsync` per game tick; each pass is deadline-gated internally so the loop call is cheap. 7 regression tests in `CharMaintenanceServiceTests.cs` cover return + delete + clan flows including the `MailReturnEmpty=0` skip and the disabled-knob no-op.
+  - **`MailRetrieve` gate**: [CharGrpcService.MailGetAttachment](../../../Char.Server/CharGrpcService.cs) now refuses attachment retrieval when `mail_retrieve == 0` and the mail isn't yet `MAIL_READ`, matching `int_mail.cpp:385`.
+  - **`allowed_job_flag` gate**: [CharacterCreateHandler.IsJobAllowed](../../../Char.Server/Handlers/CharacterCreateHandler.cs) ports `char.cpp:1481` — JOB_NOVICE / JOB_SUMMONER bitmask check on the start-job. Sentinel `-1` keeps the C# legacy "no gate" default. 11 unit tests pin the truth table.
+  - **`char_rename_party` / `char_rename_guild` gates**: [CharacterRenameApplyHandler](../../../Char.Server/Handlers/CharacterRenameApplyHandler.cs) now returns reject codes 6 / 5 when the corresponding flag is off and the char belongs to a party/guild (rAthena `char.cpp:1277`).
+  - **`guild_exp_rate` modifier**: [CharGrpcService.GuildMemberInfoChange](../../../Char.Server/CharGrpcService.cs) handles the previously-unimplemented GMI_EXP type (3): member exp delta is applied to guild total via `delta * guild_exp_rate / 100` (int_guild.cpp:1564) with safe overflow cap.
+  - **Won't-fix divergences documented** above: `autosave_interval`, `char_check_db`, `save_log`, `clear_parties`.
+  - Char.Server.Tests fixed (was failing to build due to missing `IReturningClientAuthService` ctor arg). Suite is now 166 tests green, up from 119.
 
 - **2026-05-16** — **P2 complete.** Char-server completeness closed:
   - `PartyShareLevel` now persists to a process-global `CharServerState.PartyShareLevel` (rAthena's `inter.cpp:party_share_level` parity). Default 10.

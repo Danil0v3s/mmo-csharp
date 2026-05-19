@@ -302,7 +302,8 @@ public class CharGrpcModuleCascadeTests
             loggerFactory.CreateLogger<CharServerImpl>(),
             new ServiceCollection().BuildServiceProvider(),
             packetSystem, sessionManager,
-            new ServerConnectionService(), state, loginIpc);
+            new ServerConnectionService(), state, loginIpc,
+            new NoOpCharMaintenanceService());
 
         var dbContext = new GameDbContext(
             new DbContextOptionsBuilder<GameDbContext>()
@@ -312,6 +313,7 @@ public class CharGrpcModuleCascadeTests
         var grpc = new CharGrpcService(
             charServer,
             new MapAuthTicketService(),
+            new ReturningClientAuthService(loggerFactory.CreateLogger<ReturningClientAuthService>()),
             new MapServerRegistryService(),
             loginIpc,
             new MapServerIpcService(new ServerConnectionService(), loggerFactory.CreateLogger<MapServerIpcService>()),

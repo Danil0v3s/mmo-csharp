@@ -322,7 +322,8 @@ public class CharGrpcDataIntegrityTests
             sessionManager,
             new ServerConnectionService(),
             state,
-            loginIpc);
+            loginIpc,
+            new NoOpCharMaintenanceService());
 
         var dbContext = new GameDbContext(
             new DbContextOptionsBuilder<GameDbContext>()
@@ -332,6 +333,7 @@ public class CharGrpcDataIntegrityTests
         var grpc = new CharGrpcService(
             charServer,
             new MapAuthTicketService(),
+            new ReturningClientAuthService(loggerFactory.CreateLogger<ReturningClientAuthService>()),
             new MapServerRegistryService(),
             loginIpc,
             new MapServerIpcService(new ServerConnectionService(), loggerFactory.CreateLogger<MapServerIpcService>()),
