@@ -1,5 +1,6 @@
 using Map.Server.Entities;
 using Map.Server.Movement;
+using Map.Server.Status;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Combat;
@@ -17,17 +18,20 @@ public sealed class AttackService : IAttackService, IAttackStopper
     private readonly IEntityRegistry _entities;
     private readonly IDamageService _damage;
     private readonly IMovementService _movement;
+    private readonly IStatusChangeService? _sc;
     private readonly ILogger<AttackService> _logger;
 
     public AttackService(
         IEntityRegistry entities,
         IDamageService damage,
         IMovementService movement,
-        ILogger<AttackService> logger)
+        ILogger<AttackService> logger,
+        IStatusChangeService? sc = null)
     {
         _entities = entities;
         _damage = damage;
         _movement = movement;
+        _sc = sc;
         _logger = logger;
     }
 
@@ -38,6 +42,9 @@ public sealed class AttackService : IAttackService, IAttackStopper
         if (target == null) return false;
         if (target.MapId != source.MapId) return false;
         if (!IsAttackable(target)) return false;
+        // rAthena unit_attack: pc_cant_act gates the source. STONE / FREEZE
+        // / STUN / SLEEP all refuse the attack at unit.cpp:2615.
+        if (!source.CanAct(_sc)) return false;
 
         source.Attack = new AttackState
         {
@@ -66,6 +73,13 @@ public sealed class AttackService : IAttackService, IAttackStopper
             if (target == null || target.MapId != entity.MapId || !IsAttackable(target))
             {
                 StopAttack(entity);
+                continue;
+            }
+            // rAthena unit_attack_timer guards on pc_cant_act / status_check
+            // each tick. SC_FREEZE etc. acquired mid-fight stops the swing
+            // train but keeps the AttackState so it resumes on SC end.
+            if (!entity.CanAct(_sc))
+            {
                 continue;
             }
 

@@ -1,3 +1,5 @@
+using Map.Server.Entities;
+
 namespace Map.Server.Mob;
 
 /// <summary>
@@ -21,4 +23,15 @@ public interface IMobAiService
 {
     /// <summary>Process one game-tick across every live mob.</summary>
     void Tick(long nowTick);
+
+    /// <summary>
+    /// Called from <see cref="Combat.IDamageService.ApplyDamage"/> when a
+    /// mob takes damage from a known source. rAthena <c>mob_damage</c>
+    /// path (mob.cpp:1743): if the attacker is out of melee reach, the
+    /// mob increments <c>md->state.attacked_count</c>. When the counter
+    /// crosses <c>battle.mob_rudeattacked_count</c> the AI runs
+    /// MSC_RUDEATTACKED — if no skill matches it falls back to
+    /// <c>unit_escape</c> (walk away from the attacker).
+    /// </summary>
+    void NotifyAttacked(MobEntity mob, Entity attacker);
 }

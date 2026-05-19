@@ -31,6 +31,13 @@ public enum MobSkillCondition : byte
     MyHpLessThanRate = 1, // MSC_MYHPLTMAXRATE
     SlaveLessThan = 2,    // MSC_SLAVELT — slave count below threshold
     AttackedBy = 3,       // MSC_ATTACKED — on receiving damage
+    /// <summary>
+    /// MSC_RUDEATTACKED — fires when the mob has been hit by an
+    /// unreachable attacker more than <c>battle.mob_rudeattacked_count</c>
+    /// times (rAthena default 2; mob.cpp:1748). Triggers <c>unit_escape</c>
+    /// when no skill matches.
+    /// </summary>
+    RudeAttacked = 4,
 }
 
 /// <summary>

@@ -30,9 +30,20 @@ public sealed class ItemDropService : IItemDropService
     public EntityId DropOnFloor(
         uint mapId, short x, short y, int itemId, short amount,
         byte subX = 0, byte subY = 0, bool identified = true,
-        int ownerCharId = 0, int ownerPartyId = 0)
+        int ownerCharId = 0, int ownerPartyId = 0,
+        int ownerGuildId = 0, bool isMvpDrop = false)
     {
         var now = Environment.TickCount64;
+        // rAthena tiers are cumulative — each "until" tick stacks on the
+        // previous one. MVP-class drops swap in the longer mvp_item_*
+        // values from battle.cpp:11508.
+        var ownerMs = isMvpDrop ? IItemDropService.MvpOwnerProtectionMs : IItemDropService.OwnerProtectionMs;
+        var partyMs = isMvpDrop ? IItemDropService.MvpPartyProtectionMs : IItemDropService.PartyProtectionMs;
+        var guildMs = isMvpDrop ? IItemDropService.MvpGuildProtectionMs : IItemDropService.GuildProtectionMs;
+        var ownerUntil = ownerCharId > 0 ? now + ownerMs : 0;
+        var partyUntil = ownerPartyId > 0 ? ownerUntil + partyMs : ownerUntil;
+        var guildUntil = ownerGuildId > 0 ? partyUntil + guildMs : partyUntil;
+
         var item = new FloorItemEntity(
             _ids.NextItem(),
             itemId, amount,
@@ -43,8 +54,11 @@ public sealed class ItemDropService : IItemDropService
         {
             OwnerCharId = ownerCharId,
             OwnerPartyId = ownerPartyId,
-            OwnerProtectionUntilTick = ownerCharId > 0 ? now + IItemDropService.OwnerProtectionMs : 0,
-            PartyProtectionUntilTick = ownerPartyId > 0 ? now + IItemDropService.OwnerProtectionMs + IItemDropService.PartyProtectionMs : 0,
+            OwnerGuildId = ownerGuildId,
+            IsMvpDrop = isMvpDrop,
+            OwnerProtectionUntilTick = ownerUntil,
+            PartyProtectionUntilTick = partyUntil,
+            GuildProtectionUntilTick = guildUntil,
         };
         _entities.Add(item);
 
@@ -80,19 +94,32 @@ public sealed class ItemDropService : IItemDropService
             return IItemDropService.PickupResult.OutOfRange;
         }
 
-        // Loot-protection windows — rAthena mob_dead's first_charid /
-        // second_charid / third_charid logic collapsed into time-gated
-        // exclusivity. Owner gets ~3s, then party gets ~5s more, then
-        // anyone can grab it.
+        // Loot-protection windows — rAthena mob_dead's first/second/
+        // third_charid logic collapsed into cumulative time gates.
+        // Inside owner-only window: only the owner gets it.
+        // Past owner, inside party-only: owner OR same-party get it.
+        // Past party, inside guild-only: owner OR same-party OR
+        // same-guild get it. After all three, the drop is public.
         var now = Environment.TickCount64;
-        if (item.OwnerCharId > 0 && now < item.OwnerProtectionUntilTick && picker.CharacterId != item.OwnerCharId)
+        if (item.OwnerCharId > 0
+            && now < item.OwnerProtectionUntilTick
+            && picker.CharacterId != item.OwnerCharId)
         {
-            // Still inside owner-only window; only the owner may pick up.
             return IItemDropService.PickupResult.OwnerProtected;
         }
-        if (item.OwnerPartyId > 0 && now < item.PartyProtectionUntilTick && picker.PartyId != item.OwnerPartyId && picker.CharacterId != item.OwnerCharId)
+        if (item.OwnerPartyId > 0
+            && now < item.PartyProtectionUntilTick
+            && picker.CharacterId != item.OwnerCharId
+            && picker.PartyId != item.OwnerPartyId)
         {
-            // Inside party-priority window; only matching-party members may pick up.
+            return IItemDropService.PickupResult.OwnerProtected;
+        }
+        if (item.OwnerGuildId > 0
+            && now < item.GuildProtectionUntilTick
+            && picker.CharacterId != item.OwnerCharId
+            && picker.PartyId != item.OwnerPartyId
+            && picker.GuildId != item.OwnerGuildId)
+        {
             return IItemDropService.PickupResult.OwnerProtected;
         }
 

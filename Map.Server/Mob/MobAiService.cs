@@ -1,6 +1,7 @@
 using Map.Server.Combat;
 using Map.Server.Entities;
 using Map.Server.Mob.Conditions;
+using Map.Server.Movement;
 using Map.Server.Skills;
 using Map.Server.Status;
 using Microsoft.Extensions.Logging;
@@ -24,6 +25,7 @@ public sealed class MobAiService : IMobAiService
     private readonly IEntityRegistry _entities;
     private readonly IAttackService _attack;
     private readonly ISkillCastService? _skillCast;
+    private readonly IMovementService? _movement;
     private readonly MobSkillConditionRegistry _conditions;
     private readonly Random _rng;
     private readonly Dictionary<EntityId, long> _lastThink = new();
@@ -36,17 +38,20 @@ public sealed class MobAiService : IMobAiService
         ILogger<MobAiService> _,
         ISkillCastService? skillCast = null,
         MobSkillConditionRegistry? conditions = null,
-        Random? rng = null)
+        Random? rng = null,
+        IMovementService? movement = null)
     {
         _entities = entities;
         _attack = attack;
         _skillCast = skillCast;
+        _movement = movement;
         // Default to the standard evaluator set so existing tests don't
         // need to construct a registry by hand.
         _conditions = conditions ?? new MobSkillConditionRegistry(new IMobSkillConditionEvaluator[]
         {
             new AlwaysCondition(),
             new MyHpLessThanRateCondition(),
+            new RudeAttackedCondition(),
         });
         _rng = rng ?? Random.Shared;
     }
@@ -133,6 +138,100 @@ public sealed class MobAiService : IMobAiService
         MobEntity m => m.Hp > 0,
         _ => false,
     };
+
+    /// <summary>
+    /// rAthena <c>mob_damage</c> path (mob.cpp:1748): on each incoming hit
+    /// the mob inspects whether the attacker is in melee reach. If not,
+    /// <c>md->state.attacked_count</c> climbs. Once it crosses
+    /// <c>battle.mob_rudeattacked_count</c> (default 2) the AI tries
+    /// MSC_RUDEATTACKED — and if no skill matches, falls back to
+    /// <c>unit_escape</c> (walk away). The counter clears on the next
+    /// successful melee swing from this mob.
+    /// </summary>
+    public void NotifyAttacked(MobEntity mob, Entity attacker)
+    {
+        if (mob.Hp <= 0) return;
+
+        // Attacker reachable? Use Chebyshev distance vs the mob's attack
+        // range — a hit landing from within range isn't "rude," it's a
+        // normal melee trade.
+        var range = Math.Max(1, (int)mob.Stats.AttackRange);
+        var dist = Math.Max(Math.Abs(attacker.X - mob.X), Math.Abs(attacker.Y - mob.Y));
+        if (attacker.MapId == mob.MapId && dist <= range)
+        {
+            // In melee. Counter resets — rAthena clears attacked_count
+            // when the mob lands a swing; we do it on the hit it receives
+            // while in reach (functionally equivalent — same trip wire).
+            mob.RudeAttackedCount = 0;
+            return;
+        }
+
+        mob.RudeAttackedCount++;
+        if (mob.RudeAttackedCount < RudeAttackedCondition.DefaultThreshold) return;
+
+        // Crossed the threshold. Try MSC_RUDEATTACKED first; if the mob
+        // has no matching skill row, fall back to unit_escape.
+        var now = Environment.TickCount64;
+        var fired = TryUseMobSkill(mob, attacker, MobSkillState.Berserk, now)
+                    || TryUseMobSkillByCondition(mob, attacker, MobSkillCondition.RudeAttacked, now);
+        if (!fired)
+        {
+            Escape(mob, attacker);
+        }
+        // Reset whether we cast or escaped — give the mob a fresh window
+        // before we try again (rAthena: state.attacked_count = 0 after
+        // mobskill_use returns true OR after unit_escape).
+        mob.RudeAttackedCount = 0;
+    }
+
+    /// <summary>
+    /// Variant of <see cref="TryUseMobSkill"/> filtered to a specific
+    /// condition kind. Used by <see cref="NotifyAttacked"/> so the
+    /// rude-attacked escalation can fire even when the mob isn't yet in
+    /// the Berserk state machine (e.g. ranged-only attacker, target
+    /// undecided).
+    /// </summary>
+    private bool TryUseMobSkillByCondition(MobEntity mob, Entity target, MobSkillCondition wanted, long nowTick)
+    {
+        if (_skillCast == null) return false;
+        if (mob.DbEntry == null || mob.DbEntry.Skills.Count == 0) return false;
+        if ((mob.Stats.Mode & MobMode.NoCast) != 0) return false;
+        for (var i = 0; i < mob.DbEntry.Skills.Count; i++)
+        {
+            var entry = mob.DbEntry.Skills[i];
+            if (entry.Condition != wanted) continue;
+            var key = (mob.Id, i);
+            if (_skillDelay.TryGetValue(key, out var readyAt) && readyAt > nowTick) continue;
+            var evaluator = _conditions.Get(entry.Condition);
+            if (evaluator == null || !evaluator.IsMet(mob, target, entry)) continue;
+            if (_rng.Next(10_000) >= entry.Permillage) continue;
+            if (_skillCast.StartCast(mob, target.Id, entry.SkillId, entry.SkillLevel) != SkillCastResult.Started)
+                continue;
+            _skillDelay[key] = nowTick + Math.Max(1, entry.DelayMs);
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// rAthena <c>unit_escape</c> (unit.cpp:2240). Pick a cell roughly
+    /// opposite the attacker direction and walk to it; clear the attack
+    /// target so the mob doesn't immediately re-engage on the next tick.
+    /// Skips silently if <see cref="IMovementService"/> isn't wired (most
+    /// tests skip movement).
+    /// </summary>
+    private void Escape(MobEntity mob, Entity attacker)
+    {
+        _attack.StopAttack(mob);
+        if (_movement == null) return;
+        // Aim ~5 cells away along the (mob - attacker) vector.
+        var dx = Math.Sign(mob.X - attacker.X);
+        var dy = Math.Sign(mob.Y - attacker.Y);
+        if (dx == 0 && dy == 0) dx = 1; // attacker exactly on top — bias east.
+        var targetX = (short)Math.Clamp(mob.X + dx * 5, 0, short.MaxValue);
+        var targetY = (short)Math.Clamp(mob.Y + dy * 5, 0, short.MaxValue);
+        _movement.TryStartWalk(mob, targetX, targetY);
+    }
 
     /// <summary>
     /// Port of rAthena <c>mobskill_use</c> condition loop (mob.cpp:3924),

@@ -89,6 +89,11 @@ builder.Services.AddSingleton<IEntityRegistry, EntityRegistry>();
 // movement walk loop can resolve IWarpService.
 builder.Services.AddSingleton<IWarpService, WarpService>();
 builder.Services.AddSingleton<IWarpDispatcher, WarpDispatcher>();
+// Mapflag gates. Reads INpcRegistry.AllMapFlags() lazily and caches a
+// per-map bitmask. Consumers (DamageService, SkillCastService, the
+// drop / throw paths) call IsSet(mapName, MapFlag.X) at the relevant
+// gameplay gate to honor rAthena's mapflag rules.
+builder.Services.AddSingleton<IMapFlagService, MapFlagService>();
 
 // Movement (see .agents/migrations/map/movement.md). Walk steps are scheduled
 // through Core.Timer's Scheduler; the service binds entities → walk timers.
@@ -226,6 +231,7 @@ builder.Services.AddSingleton<Map.Server.Handlers.Actions.IActionHandler, Map.Se
 builder.Services.AddSingleton<Map.Server.Handlers.Actions.IActionHandler, Map.Server.Handlers.Actions.ContinuousAttackAction>();
 builder.Services.AddSingleton<Map.Server.Handlers.Actions.IActionHandler, Map.Server.Handlers.Actions.SitAction>();
 builder.Services.AddSingleton<Map.Server.Handlers.Actions.IActionHandler, Map.Server.Handlers.Actions.StandAction>();
+builder.Services.AddSingleton<Map.Server.Handlers.Actions.IActionHandler, Map.Server.Handlers.Actions.PickupAction>();
 builder.Services.AddSingleton<Map.Server.Handlers.Actions.ActionRegistry>();
 
 // Mob hard AI (mob.cpp:1741 mob_ai_sub_hard). Aggressive target
@@ -284,6 +290,15 @@ builder.Services.AddSingleton<IGmCommand, KillMobCommand>();
 builder.Services.AddSingleton<IGmCommand, WarpCommand>();
 builder.Services.AddSingleton<IGmCommand, DamageCommand>();
 builder.Services.AddSingleton<IGmCommand, StorageCommand>();
+// Quick-win admin commands ported from rAthena atcommand.cpp:
+//   @heal — atcommand_heal
+//   @item — atcommand_item
+//   @level — atcommand_baselevelup
+//   @reloaddb — atcommand_reloaditemdb / mobdb / skilldb collapsed.
+builder.Services.AddSingleton<IGmCommand, HealCommand>();
+builder.Services.AddSingleton<IGmCommand, ItemCommand>();
+builder.Services.AddSingleton<IGmCommand, LevelCommand>();
+builder.Services.AddSingleton<IGmCommand, ReloadDbCommand>();
 builder.Services.AddSingleton<IGmCommandRegistry, GmCommandRegistry>();
 
 // Core services

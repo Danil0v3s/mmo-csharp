@@ -39,4 +39,11 @@ public enum SkillCastResult
     UnknownSkill,
     LevelOutOfRange,
     InvalidTargetType,
+    /// <summary>Map's <c>noskill</c> flag refused the cast (rAthena mapflag).</summary>
+    MapRefused,
+    /// <summary>
+    /// Caster is silenced / stunned / frozen / asleep / confused — rAthena
+    /// <c>status_check_skilluse</c> refuses (status.cpp:1763).
+    /// </summary>
+    CannotAct,
 }

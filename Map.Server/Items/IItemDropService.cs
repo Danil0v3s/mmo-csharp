@@ -25,8 +25,16 @@ public interface IItemDropService
     /// rAthena <c>battle_config.mob_drop_idmask</c>-related loot-protection
     /// timings (default values from <c>conf/battle/drops.conf</c>).
     /// </summary>
+    // rAthena battle.cpp:11505 defaults. Tiers are cumulative — the drop
+    // is owner-only for OwnerProtectionMs, then +party-only for
+    // PartyProtectionMs, then +guild-only for GuildProtectionMs, then
+    // public. MVP-class drops use the longer Mvp* windows instead.
     public const int OwnerProtectionMs = 3_000;
-    public const int PartyProtectionMs = 5_000;
+    public const int PartyProtectionMs = 1_000;
+    public const int GuildProtectionMs = 1_000;
+    public const int MvpOwnerProtectionMs = 10_000;
+    public const int MvpPartyProtectionMs = 10_000;
+    public const int MvpGuildProtectionMs = 2_000;
 
     /// <summary>Maximum cell distance a player can be from a floor item to pick it up.</summary>
     public const int PickupRange = 2;
@@ -39,16 +47,16 @@ public interface IItemDropService
     /// <c>ZC_ITEM_FALL_ENTRY</c> to PC viewers in AOI. Returns the new
     /// entity id so callers (mob death, GM /drop) can reference it.
     ///
-    /// <paramref name="ownerCharId"/> &gt; 0 grants exclusive pickup for
-    /// the rAthena <c>battle_config.item_first_get_time</c> window
-    /// (~3s default). After that window, members of
-    /// <paramref name="ownerPartyId"/> get priority for another
-    /// <c>item_second_get_time</c> (~5s). After both windows, the drop
-    /// becomes public.
+    /// rAthena loot-priority tiers: <paramref name="ownerCharId"/> gets
+    /// the exclusive first window, <paramref name="ownerPartyId"/>
+    /// members the second, <paramref name="ownerGuildId"/> members the
+    /// third. <paramref name="isMvpDrop"/> swaps in the longer
+    /// <c>mvp_item_*_get_time</c> set.
     /// </summary>
     EntityId DropOnFloor(uint mapId, short x, short y, int itemId, short amount,
         byte subX = 0, byte subY = 0, bool identified = true,
-        int ownerCharId = 0, int ownerPartyId = 0);
+        int ownerCharId = 0, int ownerPartyId = 0,
+        int ownerGuildId = 0, bool isMvpDrop = false);
 
     /// <summary>
     /// Player picks up the item identified by <paramref name="itemEntityId"/>.

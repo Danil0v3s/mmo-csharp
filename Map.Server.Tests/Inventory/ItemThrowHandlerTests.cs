@@ -151,8 +151,31 @@ public class ItemThrowHandlerTests
         var sessions = new InMemorySessions();
         return new TestContext(
             drops, entities, sessions, world,
-            new ItemThrowHandler(entities, drops, world, NullLogger<ItemThrowHandler>.Instance),
+            new ItemThrowHandler(entities, drops, world,
+                new NoMapFlagService(),
+                new NoStatusChangeService(),
+                NullLogger<ItemThrowHandler>.Instance),
             (uint)mapName.GetHashCode());
+    }
+
+    /// <summary>Test stub — reports every mapflag as unset.</summary>
+    private sealed class NoMapFlagService : IMapFlagService
+    {
+        public bool IsSet(string mapName, MapFlag flag) => false;
+    }
+
+    /// <summary>Test stub — no active SCs so <c>CanAct</c> always returns true.</summary>
+    private sealed class NoStatusChangeService : IStatusChangeService
+    {
+        public Map.Server.Status.StatusChange? Start(
+            Entity target, StatusType type,
+            int val1, int val2, int val3, int val4,
+            int durationMs,
+            Entity? source = null,
+            long nowTick = long.MinValue) => null;
+        public bool End(Entity target, StatusType type) => false;
+        public Map.Server.Status.StatusChange? Get(Entity target, StatusType type) => null;
+        public void Tick(long nowTick) { }
     }
 
     private sealed record TestContext(

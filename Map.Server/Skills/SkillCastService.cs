@@ -2,6 +2,7 @@ using Map.Server.Combat;
 using Map.Server.Entities;
 using Map.Server.Skills.Resolvers;
 using Map.Server.Status;
+using Map.Server.World;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Skills;
@@ -28,6 +29,9 @@ public sealed class SkillCastService : ISkillCastService
     private readonly ISkillDb _db;
     private readonly IEntityRegistry _entities;
     private readonly SkillResolverRegistry _resolvers;
+    private readonly IMapFlagService? _mapFlags;
+    private readonly IMapWorldRegistry? _maps;
+    private readonly IStatusChangeService? _sc;
     private readonly ILogger<SkillCastService> _logger;
 
     private readonly List<PendingCast> _pending = new();
@@ -37,11 +41,17 @@ public sealed class SkillCastService : ISkillCastService
         ISkillDb db,
         IEntityRegistry entities,
         SkillResolverRegistry resolvers,
-        ILogger<SkillCastService> logger)
+        ILogger<SkillCastService> logger,
+        IMapFlagService? mapFlags = null,
+        IMapWorldRegistry? maps = null,
+        IStatusChangeService? sc = null)
     {
         _db = db;
         _entities = entities;
         _resolvers = resolvers;
+        _mapFlags = mapFlags;
+        _maps = maps;
+        _sc = sc;
         _logger = logger;
     }
 
@@ -74,6 +84,27 @@ public sealed class SkillCastService : ISkillCastService
         var def = _db.Get(skillId);
         if (def == null) return SkillCastResult.UnknownSkill;
         if (skillLevel < 1 || skillLevel > def.MaxLevel) return SkillCastResult.LevelOutOfRange;
+
+        // rAthena status_check_skilluse: STONE / FREEZE / STUN / SLEEP /
+        // SILENCE / CONFUSION refuse skill casts (status.cpp:1763).
+        // Mob and NPC sources bypass — their skill scripts run on engine
+        // authority.
+        if (source is PlayerEntity && !source.CanCastSkill(_sc))
+        {
+            return SkillCastResult.CannotAct;
+        }
+
+        // rAthena skill.cpp:skill_check_condition_castbegin: `noskill`
+        // mapflag refuses all skill casts on this map. Mobs / NPC scripts
+        // skip the check — they're authoritative content.
+        if (_mapFlags != null && _maps != null && source is PlayerEntity)
+        {
+            var map = _maps.All.FirstOrDefault(m => (uint)m.Name.GetHashCode() == source.MapId);
+            if (map != null && _mapFlags.IsSet(map.Name, Map.Server.World.MapFlag.NoSkill))
+            {
+                return SkillCastResult.MapRefused;
+            }
+        }
 
         // Players must have learned the skill at the requested level
         // (rAthena pc_checkskill). Mobs / NPCs bypass — they always know

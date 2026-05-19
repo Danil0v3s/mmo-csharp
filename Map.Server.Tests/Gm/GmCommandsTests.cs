@@ -42,7 +42,7 @@ public class GmCommandsTests
         var caller = ctx.AddPlayer(50, 50, charId: 1);
         var oldViewer = ctx.AddPlayer(52, 50, charId: 2); // sees caller pre-warp
         var newViewer = ctx.AddPlayer(150, 150, charId: 3); // sees caller post-warp
-        var cmd = new WarpCommand(ctx.Entities, ctx.World, ctx.Visibility);
+        var cmd = new WarpCommand(ctx.Entities, ctx.World, ctx.MapFlags, ctx.Visibility);
 
         await cmd.ExecuteAsync(caller, new[] { "150", "150" }, CancellationToken.None);
 
@@ -69,7 +69,7 @@ public class GmCommandsTests
     {
         var ctx = NewContext();
         var caller = ctx.AddPlayer(50, 50, charId: 1);
-        var cmd = new WarpCommand(ctx.Entities, ctx.World, ctx.Visibility);
+        var cmd = new WarpCommand(ctx.Entities, ctx.World, ctx.MapFlags, ctx.Visibility);
 
         await cmd.ExecuteAsync(caller, new[] { "abc" }, CancellationToken.None);
 
@@ -137,7 +137,9 @@ public class GmCommandsTests
             spawnRegistry, entities, world, mobDb, itemCatalog, itemDrops, movement, visibility,
             ids, new StatusCalcService(), NullLogger<MobSpawnService>.Instance, new Random(0));
         return new TestContext(
-            entities, dispatcher, visibility, world, spawn, (uint)mapName.GetHashCode());
+            entities, dispatcher, visibility, world, spawn,
+            new NoMapFlagService(),
+            (uint)mapName.GetHashCode());
     }
 
     private sealed record TestContext(
@@ -146,6 +148,7 @@ public class GmCommandsTests
         IVisibilityService Visibility,
         IMapWorldRegistry World,
         IMobSpawnService Spawn,
+        IMapFlagService MapFlags,
         uint MapId)
     {
         public PlayerEntity AddPlayer(short x, short y, int charId)
@@ -154,6 +157,15 @@ public class GmCommandsTests
             Entities.Add(p);
             return p;
         }
+    }
+
+    /// <summary>
+    /// Default <see cref="IMapFlagService"/> that reports every flag as
+    /// unset — none of the GM-command tests exercise mapflag-gated paths.
+    /// </summary>
+    private sealed class NoMapFlagService : IMapFlagService
+    {
+        public bool IsSet(string mapName, MapFlag flag) => false;
     }
 
     private sealed class StubWorldRegistry : IMapWorldRegistry

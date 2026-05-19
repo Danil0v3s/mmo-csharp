@@ -6,6 +6,7 @@ using Map.Server.Entities;
 using Map.Server.Inventory;
 using Map.Server.Items;
 using Map.Server.Session;
+using Map.Server.Status;
 using Map.Server.World;
 
 namespace Map.Server.Handlers.Inventory;
@@ -24,6 +25,8 @@ public class ItemThrowHandler(
     IEntityRegistry registry,
     IItemDropService drops,
     IMapWorldRegistry maps,
+    IMapFlagService mapFlags,
+    IStatusChangeService sc,
     ILogger<ItemThrowHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_ITEM_THROW>
 {
@@ -35,6 +38,8 @@ public class ItemThrowHandler(
         {
             return Task.CompletedTask;
         }
+        // rAthena pc_dropitem: pc_cant_act blocks drop (pc.cpp:6043).
+        if (!player.CanAct(sc)) return Task.CompletedTask;
 
         var serverIndex = packet.ClientIndex - 2;
         if (session.Inventory is not { } inv
@@ -59,6 +64,11 @@ public class ItemThrowHandler(
             logger.LogWarning(
                 "Drop failed: char {Char} on unknown map id {MapId}",
                 player.CharacterId, player.MapId);
+            return Task.CompletedTask;
+        }
+        // rAthena pc.cpp:6043 — `nodrop` mapflag refuses drops outright.
+        if (mapFlags.IsSet(map.Name, MapFlag.NoDrop))
+        {
             return Task.CompletedTask;
         }
 

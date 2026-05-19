@@ -34,11 +34,24 @@ public sealed class FloorItemEntity : Entity
     /// <summary>Party id whose members get the second priority window. 0 = none.</summary>
     public int OwnerPartyId { get; init; }
 
+    /// <summary>Guild id whose members get the third priority window. 0 = none.</summary>
+    public int OwnerGuildId { get; init; }
+
     /// <summary>Tick at which OwnerCharId's exclusive window expires.</summary>
     public long OwnerProtectionUntilTick { get; init; }
 
-    /// <summary>Tick at which the party's window expires (everyone after).</summary>
+    /// <summary>Tick at which the party's window expires (third tier opens).</summary>
     public long PartyProtectionUntilTick { get; init; }
+
+    /// <summary>Tick at which the guild's window expires (drop becomes public).</summary>
+    public long GuildProtectionUntilTick { get; init; }
+
+    /// <summary>
+    /// True when this floor item came from an MVP-class kill. Drives the
+    /// longer rAthena <c>mvp_item_*_get_time</c> tiers
+    /// (10000 / 10000 / 2000) instead of the standard 3000 / 1000 / 1000.
+    /// </summary>
+    public bool IsMvpDrop { get; init; }
 
     public override EntityType Type => EntityType.Item;
 

@@ -2,6 +2,7 @@ using Core.Server.Packets.Out.ZC;
 using Map.Server.Entities;
 using Map.Server.Spawn;
 using Map.Server.Visibility;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Combat;
@@ -18,6 +19,16 @@ public sealed class DamageService : IDamageService
     private readonly Status.IExpService? _exp;
     private readonly IPcDeathService? _pcDeath;
     private readonly Party.IPartyShareService? _partyShare;
+    private readonly Map.Server.World.IMapFlagService? _mapFlags;
+    private readonly Map.Server.World.IMapWorldRegistry? _maps;
+    // IMobAiService → IAttackService → IDamageService is a hard cycle at
+    // construction time. Resolve through IServiceProvider so the back-edge
+    // is established only when an actual NotifyAttacked call runs, well
+    // after every singleton is built.
+    private readonly IServiceProvider? _services;
+    private Map.Server.Mob.IMobAiService? _cachedMobAi;
+    private Map.Server.Mob.IMobAiService? MobAi
+        => _cachedMobAi ??= _services?.GetService<Map.Server.Mob.IMobAiService>();
     private readonly ILogger<DamageService> _logger;
 
     public DamageService(
@@ -28,7 +39,10 @@ public sealed class DamageService : IDamageService
         ILogger<DamageService> logger,
         Status.IExpService? exp = null,
         IPcDeathService? pcDeath = null,
-        Party.IPartyShareService? partyShare = null)
+        Party.IPartyShareService? partyShare = null,
+        Map.Server.World.IMapFlagService? mapFlags = null,
+        Map.Server.World.IMapWorldRegistry? maps = null,
+        IServiceProvider? services = null)
     {
         _visibility = visibility;
         _mobSpawn = mobSpawn;
@@ -37,11 +51,15 @@ public sealed class DamageService : IDamageService
         _exp = exp;
         _pcDeath = pcDeath;
         _partyShare = partyShare;
+        _mapFlags = mapFlags;
+        _maps = maps;
+        _services = services;
         _logger = logger;
     }
 
     public int ApplyDamage(Entity target, int damage, Entity? source = null)
     {
+        if (source != null && !CanDamage(source, target)) return 0;
         // Match rAthena clif_damage: 0 damage → miss animation (Flee),
         // >0 → normal swing. Callers with full BattleDamage in hand should
         // use PerformMeleeAttack so Critical/MultiHit aren't lost.
@@ -53,12 +71,44 @@ public sealed class DamageService : IDamageService
 
     public BattleDamage PerformMeleeAttack(Entity source, Entity target)
     {
+        if (!CanDamage(source, target)) return default;
         var damage = _battleCalc.CalcWeaponAttack(source, target);
         // Even a miss broadcasts ZC_NOTIFY_ACT3 so the client animates
         // the swing + the dodge — rAthena: clif_damage(... DMG_FLEE ...)
         // even when total = 0.
         ApplyResolved(target, source, (int)Math.Clamp(damage.Total, 0, int.MaxValue), damage.Type);
         return damage;
+    }
+
+    /// <summary>
+    /// Mirror of rAthena <c>battle_check_target</c> (battle.cpp:9450) —
+    /// returns false when:
+    ///   * source and target share party / guild (friendly fire off),
+    ///   * the source map has <c>nopvp</c> set (PC ↔ PC damage refused).
+    /// PvE (PC vs Mob / Mob vs PC / Mob vs Mob) is always allowed.
+    /// GvG zones are documented under <see cref="MapFlag.Gvg"/> but the
+    /// full GvG matrix lands when WoE ports — for now we only enforce
+    /// the no-friendly-fire / nopvp pair.
+    /// </summary>
+    private bool CanDamage(Entity source, Entity target)
+    {
+        if (source is not PlayerEntity src || target is not PlayerEntity dst) return true;
+        if (src.Id == dst.Id) return true;
+
+        // Same party / guild → never hurt each other outside GvG.
+        if (src.PartyId != 0 && src.PartyId == dst.PartyId) return false;
+        if (src.GuildId != 0 && src.GuildId == dst.GuildId) return false;
+
+        // Source map's nopvp refuses any PC↔PC damage.
+        if (_mapFlags != null && _maps != null)
+        {
+            var map = _maps.All.FirstOrDefault(m => (uint)m.Name.GetHashCode() == src.MapId);
+            if (map != null && _mapFlags.IsSet(map.Name, Map.Server.World.MapFlag.NoPvp))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private int ApplyResolved(
@@ -78,6 +128,13 @@ public sealed class DamageService : IDamageService
         if (remaining <= 0)
         {
             HandleDeath(target, source);
+        }
+        else if (target is MobEntity targetMob && source != null && MobAi is { } ai)
+        {
+            // rAthena mob_damage (mob.cpp:1743): each surviving hit feeds
+            // the rude-attacked counter so unreachable attackers can't
+            // chip a mob indefinitely.
+            ai.NotifyAttacked(targetMob, source);
         }
         return actual;
     }

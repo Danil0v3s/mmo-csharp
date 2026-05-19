@@ -49,6 +49,16 @@ public class MobEntity : Entity
     /// </summary>
     public long NextWanderTick { get; set; }
 
+    /// <summary>
+    /// rAthena <c>md-&gt;state.attacked_count</c> (mob.cpp:1748). Incremented
+    /// every time the mob takes damage from an attacker it can't reach
+    /// (out of range / pathing-blocked). Once it crosses
+    /// <c>battle.mob_rudeattacked_count</c> the AI fires MSC_RUDEATTACKED
+    /// (or escapes if no skill matches). Reset on each successful melee
+    /// swing.
+    /// </summary>
+    public int RudeAttackedCount { get; set; }
+
     public override EntityType Type => EntityType.Mob;
 
     public MobEntity(EntityId id, int classId, string name, uint mapId, short x, short y)

@@ -30,4 +30,6 @@ public enum SetposResult
     UnknownMap,
     NotWalkable,
     OffMap,
+    /// <summary>Destination map has the <c>noteleport</c> flag (rAthena mapflag).</summary>
+    MapRefused,
 }

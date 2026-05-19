@@ -106,6 +106,19 @@ public sealed class EquipService : IEquipService
         if (row.LocationRightAccessory == 1) pos |= EquipBits.AccR;
         if (row.LocationLeftAccessory == 1) pos |= EquipBits.AccL;
         if (row.LocationAmmo == 1) pos |= EquipBits.Ammo;
+        // Costume overlay slots — rAthena item_db columns
+        // location_costume_head_top / _mid / _low / _garment.
+        if (row.LocationCostumeHeadTop == 1) pos |= EquipBits.CostumeHeadTop;
+        if (row.LocationCostumeHeadMid == 1) pos |= EquipBits.CostumeHeadMid;
+        if (row.LocationCostumeHeadLow == 1) pos |= EquipBits.CostumeHeadLow;
+        if (row.LocationCostumeGarment == 1) pos |= EquipBits.CostumeGarment;
+        // Shadow gear (rAthena late-game system).
+        if (row.LocationShadowArmor == 1) pos |= EquipBits.ShadowArmor;
+        if (row.LocationShadowWeapon == 1) pos |= EquipBits.ShadowWeapon;
+        if (row.LocationShadowShield == 1) pos |= EquipBits.ShadowShield;
+        if (row.LocationShadowShoes == 1) pos |= EquipBits.ShadowShoes;
+        if (row.LocationShadowRightAccessory == 1) pos |= EquipBits.ShadowAccR;
+        if (row.LocationShadowLeftAccessory == 1) pos |= EquipBits.ShadowAccL;
         return pos;
     }
 
@@ -134,6 +147,15 @@ public sealed class EquipService : IEquipService
                 pos = SlotInUse(inv, EquipBits.HandR) && !SlotInUse(inv, EquipBits.HandL)
                     ? EquipBits.HandL
                     : EquipBits.HandR;
+        }
+        // Shadow accessory ambiguity — same shape as ACC_RL.
+        else if (allowed == EquipBits.ShadowAccRL)
+        {
+            pos = requested & EquipBits.ShadowAccRL;
+            if (pos == EquipBits.ShadowAccRL)
+                pos = SlotInUse(inv, EquipBits.ShadowAccR) && !SlotInUse(inv, EquipBits.ShadowAccL)
+                    ? EquipBits.ShadowAccL
+                    : EquipBits.ShadowAccR;
         }
         return pos;
     }
@@ -169,10 +191,12 @@ public sealed class EquipService : IEquipService
 
 /// <summary>
 /// EQP_* bit constants. Mirror rAthena <c>enum equip_pos</c>
-/// (common/mmo.hpp:336). Keep narrow for the slots this slice handles.
+/// (common/mmo.hpp:336). Covers core gear, costume (cosmetic-only
+/// overlay), and shadow-gear (the late-game extra-slot system).
 /// </summary>
 public static class EquipBits
 {
+    // --- core gear (rAthena common/mmo.hpp:337-352) ---
     public const uint HeadLow = 0x000001;
     public const uint HandR   = 0x000002;
     public const uint Garment = 0x000004;
@@ -183,9 +207,31 @@ public static class EquipBits
     public const uint AccL    = 0x000080;
     public const uint HeadTop = 0x000100;
     public const uint HeadMid = 0x000200;
+
+    // --- costume overlay (cosmetic only — no stat contribution) ---
+    public const uint CostumeHeadTop = 0x000400;
+    public const uint CostumeHeadMid = 0x000800;
+    public const uint CostumeHeadLow = 0x001000;
+    public const uint CostumeGarment = 0x002000;
+
     public const uint Ammo    = 0x008000;
 
+    // --- shadow gear (rAthena 0x010000-0x200000) ---
+    public const uint ShadowArmor  = 0x010000;
+    public const uint ShadowWeapon = 0x020000;
+    public const uint ShadowShield = 0x040000;
+    public const uint ShadowShoes  = 0x080000;
+    public const uint ShadowAccR   = 0x100000;
+    public const uint ShadowAccL   = 0x200000;
+
+    // --- combined ---
     public const uint Arms = HandR | HandL;
     public const uint AccRL = AccR | AccL;
     public const uint Helm = HeadLow | HeadMid | HeadTop;
+    public const uint CostumeHelm = CostumeHeadLow | CostumeHeadMid | CostumeHeadTop;
+    public const uint Costume = CostumeHelm | CostumeGarment;
+    public const uint ShadowArms = ShadowWeapon | ShadowShield;
+    public const uint ShadowAccRL = ShadowAccR | ShadowAccL;
+    public const uint ShadowGear = ShadowArmor | ShadowWeapon | ShadowShield
+                                 | ShadowShoes | ShadowAccR | ShadowAccL;
 }

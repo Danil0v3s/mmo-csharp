@@ -14,6 +14,7 @@ namespace Map.Server.Gm.Commands;
 public sealed class WarpCommand(
     IEntityRegistry entities,
     IMapWorldRegistry worldRegistry,
+    IMapFlagService mapFlags,
     IVisibilityService visibility
 ) : IGmCommand
 {
@@ -40,6 +41,17 @@ public sealed class WarpCommand(
             visibility.SendToSelf(caller, new ZC_NOTIFY_PLAYERCHAT
             {
                 Message = $"@warp: ({x},{y}) is not walkable.",
+            });
+            return Task.CompletedTask;
+        }
+        // rAthena atcommand.cpp:@warp refuses if the source map has
+        // noteleport set. (Cross-map @warp would also check the dest;
+        // this slice is same-map only so a single check is enough.)
+        if (mapFlags.IsSet(map.Name, MapFlag.NoTeleport))
+        {
+            visibility.SendToSelf(caller, new ZC_NOTIFY_PLAYERCHAT
+            {
+                Message = "@warp: this map has noteleport — refused.",
             });
             return Task.CompletedTask;
         }

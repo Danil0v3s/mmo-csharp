@@ -4,6 +4,7 @@ using Core.Server.Packets.In.CZ;
 using Map.Server.Entities;
 using Map.Server.Inventory;
 using Map.Server.Session;
+using Map.Server.Status;
 
 namespace Map.Server.Handlers;
 
@@ -18,6 +19,7 @@ public class UseItemHandler(
     IEntityRegistry registry,
     IItemUseService itemUse,
     Map.Server.Combat.IPcDeathService pcDeath,
+    IStatusChangeService sc,
     ILogger<UseItemHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_USE_ITEM>
 {
@@ -32,6 +34,8 @@ public class UseItemHandler(
 
         // rAthena: pc_isdead → CLR_DEAD broadcast, return.
         if (pcDeath.IsDead(player)) return Task.CompletedTask;
+        // rAthena pc_useitem: pc_cant_act refuses item use (pc.cpp:5803).
+        if (!player.CanAct(sc)) return Task.CompletedTask;
 
         // Wire index is client_index = server_index + 2.
         var serverIndex = packet.Index - 2;
