@@ -360,6 +360,7 @@ builder.Services.AddSingleton<Map.Server.Status.IPlayerLookService, Map.Server.S
 builder.Services.AddSingleton<Map.Server.Status.IPlayerOrbService, Map.Server.Status.PlayerOrbService>();
 builder.Services.AddSingleton<Map.Server.Skills.IPlayerSkillService, Map.Server.Skills.PlayerSkillService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerFameService, Map.Server.Status.PlayerFameService>();
+builder.Services.AddSingleton<Map.Server.Scripting.Vars.IPlayerVarService, Map.Server.Scripting.Vars.PlayerVarService>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MountCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CartCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.OptionCommand>();

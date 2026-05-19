@@ -195,8 +195,8 @@ groups the function list by subsystem and tracks our C# coverage.
 
 | rAthena fn | Status | C# location |
 |---|---|---|
-| `pc_readreg` / `pc_readreg2` / `pc_readregistry` | ❌ | local/account/char reg read |
-| `pc_setreg` / `pc_setreg2` / `pc_setregistry` / `pc_setregistry_str` / `pc_setregstr` | ❌ | reg write |
+| `pc_readreg` / `pc_readreg2` / `pc_readregistry` | ✅ | [IPlayerVarService.ReadNum/ReadStr](/Map.Server/Scripting/Vars/IPlayerVarService.cs) |
+| `pc_setreg` / `pc_setreg2` / `pc_setregistry` / `pc_setregistry_str` / `pc_setregstr` | ✅ | [PlayerVarService.WriteNum/WriteStr](/Map.Server/Scripting/Vars/PlayerVarService.cs) |
 | `pc_set_reg_load` | ❌ | "regs loaded" flag |
 
 ### Macro detector (anti-bot)
@@ -318,3 +318,24 @@ the bounded/expired/storage-protected logic centralises.
   reduce buy price; Overcharge (MC_OVERCHARGE) boosts sell.
 
 Coverage after this pass: ~16 done / ~30 partial / ~75 missing.
+
+### 2026-05-19 — Wave 2 (PC-8 / PC-9 / PC-10 / PC-11)
+- **PC-8** `IPlayerSkillService.Grant(skill, lv, kind)` — pc_skill
+  wraps `LearnedSkills` mutation. Honors PERMANENT / TEMP_ADDLEVEL /
+  PERMANENT_QUEST kinds.
+- **PC-9** `IPlayerFameService.AddFame` + `PlayerEntity.Fame` —
+  fame counter. Ranking aggregation stays char-server side.
+- **PC-10** `IDialogDispatcher.ForceClose` — pc_close_npc engine-side
+  cancel. Auto-fired by `PcSetposService` so warps clear stale dialog.
+- **PC-11** `PlayerLookExtensions.Disguise / Undisguise` — composes
+  on `IPlayerLookService.ChangeLook(LookType.Base, class)`.
+
+### 2026-05-19 — Wave 3 (PC-12)
+- **PC-12** `IPlayerVarService` + `PlayerVarService` — pc_setreg /
+  pc_readreg / pc_setregistry family. 4 scopes (CharTemp / Char /
+  Account / GlobalAccount) backed by the existing EF Core repos
+  (char_reg_num/str, acc_reg_num/str, global_acc_reg_num/str).
+  Read-through cache + dirty-set flushed on autosave / logout.
+  Unblocks NPC scripts that need persistent state.
+
+Coverage after this pass: ~20 done / ~28 partial / ~73 missing.
