@@ -39,6 +39,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly Skills.ISkillCastService _skillCast;
     private readonly Skills.ISkillUnitService _skillUnits;
     private readonly Status.INaturalHealService _naturalHeal;
+    private readonly Pet.IPetService _pet;
     private readonly ScriptHost _scriptHost;
     private readonly INpcSpawnService _npcSpawn;
     private readonly Scripting.INpcRegistry _scriptRegistry;
@@ -75,6 +76,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         Skills.ISkillCastService skillCast,
         Skills.ISkillUnitService skillUnits,
         Status.INaturalHealService naturalHeal,
+        Pet.IPetService pet,
         ScriptHost scriptHost,
         INpcSpawnService npcSpawn,
         Scripting.INpcRegistry scriptRegistry,
@@ -100,6 +102,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _skillCast = skillCast;
         _skillUnits = skillUnits;
         _naturalHeal = naturalHeal;
+        _pet = pet;
         _scriptHost = scriptHost;
         _npcSpawn = npcSpawn;
         _scriptRegistry = scriptRegistry;
@@ -296,6 +299,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         // and assist their target. Runs after master AI so it sees the
         // freshly-set Attack state.
         _summonAi.Tick(nowTick);
+        // Pet hunger / intimacy decay (rAthena pet_hungry / pet_data_init).
+        _pet.Tick(nowTick);
         // Continuous-attack swings (rAthena unit_attack_timer).
         _attackService.Tick(nowTick);
         // Skill cast-timer resolution (rAthena skill_castend_id).
