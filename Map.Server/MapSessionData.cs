@@ -109,4 +109,11 @@ public class MapSessionData(
     /// Null until <see cref="Map.Server.Storage.IStorageService.OpenAsync"/> hydrates.
     /// </summary>
     public Map.Server.Storage.StorageState? Storage { get; set; }
+
+    /// <summary>
+    /// Live player-trade state while a deal is in progress. Null when
+    /// not in a trade. Mirrors the rAthena <c>sd-&gt;trade_partner +
+    /// sd-&gt;state.trading + sd-&gt;deal</c> bundle.
+    /// </summary>
+    public Map.Server.Trade.TradeState? Trade { get; set; }
 }

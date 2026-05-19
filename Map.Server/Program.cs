@@ -146,6 +146,10 @@ builder.Services.AddSingleton<Map.Server.Inventory.IItemUseService, Map.Server.I
 // transfers; load/save via the existing P5 AccountStorageLoad/Save IPC.
 builder.Services.AddSingleton<Map.Server.Storage.IStorageService, Map.Server.Storage.StorageService>();
 
+// Player trade (trade.cpp). State machine over a TradeState per side;
+// atomic commit when both sides reach LockedStage == 2.
+builder.Services.AddSingleton<Map.Server.Trade.ITradeService, Map.Server.Trade.TradeService>();
+
 // Status broadcast cascade (post-handoff). See
 // .agents/migrations/map/initial-status-broadcast.md. The broadcaster
 // emits the rAthena pc_authok / status_calc_pc(SCO_FIRST) packet stream
