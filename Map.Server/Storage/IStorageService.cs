@@ -1,0 +1,30 @@
+namespace Map.Server.Storage;
+
+/// <summary>
+/// Owns the account-storage gameplay loop. Port of rAthena
+/// <c>storage.cpp</c> — <c>storage_storageopen</c> /
+/// <c>storage_storageadd</c> / <c>storage_storageget</c> /
+/// <c>storage_storageclose</c>.
+///
+/// First slice: account storage only (guild storage already has its
+/// own load/save IPC but no live transfer surface yet — added when
+/// guild gameplay ports).
+/// </summary>
+public interface IStorageService
+{
+    /// <summary>
+    /// Open account storage for <paramref name="session"/>. Loads via
+    /// <c>AccountStorageLoad</c> IPC and caches on the session. Idempotent
+    /// — returns <see cref="StorageOpResult.Ok"/> if already open.
+    /// </summary>
+    Task<StorageOpResult> OpenAsync(MapSessionData session, CancellationToken ct = default);
+
+    /// <summary>Move <paramref name="amount"/> from inventory slot <paramref name="invIndex"/> into storage.</summary>
+    StorageOpResult AddFromInventory(MapSessionData session, int invIndex, int amount);
+
+    /// <summary>Move <paramref name="amount"/> from storage slot <paramref name="storIndex"/> back to inventory.</summary>
+    StorageOpResult TakeToInventory(MapSessionData session, int storIndex, int amount);
+
+    /// <summary>Close storage. Saves via <c>AccountStorageSave</c> IPC if dirty.</summary>
+    Task<StorageOpResult> CloseAsync(MapSessionData session, CancellationToken ct = default);
+}

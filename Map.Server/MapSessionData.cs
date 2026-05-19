@@ -103,4 +103,10 @@ public class MapSessionData(
     /// EF populates the generated Id back on the runtime object.
     /// </summary>
     public List<int> RemovedInventoryIds { get; } = new();
+
+    /// <summary>
+    /// Live account-storage state while a kafra/storage window is open.
+    /// Null until <see cref="Map.Server.Storage.IStorageService.OpenAsync"/> hydrates.
+    /// </summary>
+    public Map.Server.Storage.StorageState? Storage { get; set; }
 }

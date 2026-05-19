@@ -135,10 +135,16 @@ builder.Services.AddSingleton<Map.Server.Persistence.IPlayerStateService, Map.Se
 // .agents/migrations/map/scripting/ for the broader plan.
 builder.Services.AddSingleton<Map.Server.Inventory.IInventoryService, Map.Server.Inventory.InventoryService>();
 
-// Item use (pc.cpp:6329 pc_useitem). Resolves the per-item Script
-// equivalent. Starter effect table seeds healing potions + a couple
-// buff scrolls; the full item_db Script parser lands later.
+// Item use (pc.cpp:6329 pc_useitem). Strategy-pattern dispatch via
+// ItemEffectRegistry — one handler class per item (HealHp / HealSp /
+// ApplyStatus / etc.). New items register without touching the
+// service. Full item_db Script parser lands later.
+builder.Services.AddSingleton<Map.Server.Inventory.ItemEffects.ItemEffectRegistry>();
 builder.Services.AddSingleton<Map.Server.Inventory.IItemUseService, Map.Server.Inventory.ItemUseService>();
+
+// Account storage (storage.cpp). Mediates inventory ↔ storage
+// transfers; load/save via the existing P5 AccountStorageLoad/Save IPC.
+builder.Services.AddSingleton<Map.Server.Storage.IStorageService, Map.Server.Storage.StorageService>();
 
 // Status broadcast cascade (post-handoff). See
 // .agents/migrations/map/initial-status-broadcast.md. The broadcaster
