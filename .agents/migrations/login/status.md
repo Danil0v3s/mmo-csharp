@@ -2,7 +2,7 @@
 
 Migration of rAthena's login server (`rathena/src/login/`) to [Login.Server/](../../../Login.Server/).
 
-**Coverage:** ✅ ~95%. The original `LoginServerMigrationAnalysis.md` (deleted 2026-05-15) listed many "MISSING" features that are now implemented.
+**Coverage:** ✅ 100%. The original `LoginServerMigrationAnalysis.md` (deleted 2026-05-15) listed many "MISSING" features that are now implemented. The final three knobs (`ip_sync_interval`, `login_get_usercount` colorization, `disable_webtoken_delay`) closed on 2026-05-19.
 
 ## Done ✅
 
@@ -76,6 +76,10 @@ None — P5 closed the char→map address-sync fan-out by adding `NotifyAddressS
 
 ## History
 
+- **2026-05-19** — **Final three parity knobs closed (100%).**
+  - `IpSyncInterval` config knob wired into [LoginServerImpl.RequestCharServerAddressSyncAsync](../../../Login.Server/LoginServerImpl.cs); replaces hardcoded 60-second cadence. Mirrors rAthena `loginchrif.cpp:logchrif_sync_ip_addresses` (default 10 min; 0 disables sync). The C# side asks all connected char servers to re-resolve their address via the existing `RequestAddressSync` IPC.
+  - `login_get_usercount` colorization (login.cpp:484) ported as [CharServerUserCountClassifier.Classify](../../../Login.Server/UseCase/CharServerUserCountClassifier.cs); the AC_ACCEPT_LOGIN char-server entries now ship the 0-4 status code (green/yellow/red/purple/hidden) that the client renders as a colored dot instead of the raw user count, per PACKETVER ≥ 20170726. 9 unit tests pin the boundary mapping.
+  - `disable_webtoken_delay` (account.cpp:935 / 952) wired into [LoginDataRepository.RemoveOnlineUser](../../../Login.Server/Repository/Impl/LoginDataRepository.cs); the web-token disable now runs on a `Scheduler.Schedule` timer that re-checks the in-memory online-user dictionary at fire time and only flushes the SQL update if the account is still offline. Fast disconnect+reconnect inside the window preserves the token. 4 regression tests + a counting test subclass.
 - **2026-05-16** — **P3 complete.**
   - Added `IsAccountOnlineAnywhere` RPC to `login_service.proto`. Server-side handler in [LoginGrpcService.cs](../../../Login.Server/LoginGrpcService.cs) queries the existing `OnlineLoginDataDictionary` (LoginDataRepository), excluding the calling char server. This gives any char server a global view of online accounts.
   - Wired the char-side caller into [ClientConnectHandler.cs](../../../Char.Server/Handlers/ClientConnectHandler.cs): after local duplicate check, if the account is online on a *different* char server, ask login to broadcast force-disconnect via `NotifyAccountStatusAsync(online: false)` — matches rAthena's "kick older session" behavior in `char_auth_ok`.

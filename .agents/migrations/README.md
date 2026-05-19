@@ -13,7 +13,7 @@ Living status of the port from rAthena C++ (`/Volumes/1TB/Projetos/rathena`) to 
 
 | Server | Coverage | Critical gaps |
 |---|---|---|
-| [Login](login/status.md) | ✅ ~100% | Cross-server online registry done (P3); char→map address fan-out folded into P5 |
+| [Login](login/status.md) | ✅ 100% | Final three knobs closed 2026-05-19 (IpSyncInterval, login_get_usercount colorization, disable_webtoken_delay) |
 | [Char (packets)](char/packets.md) | ✅ 100% | Two minor divergences resolved in P2 (deliberate / not-real) |
 | [Char (gRPC server)](char/grpc.md) | ✅ ~98% | Remaining: KeepAlive + RequestAddressSync stubs (deferred to P6 map wiring) |
 | [Char (connect flow)](char/connect-flow.md) | ✅ 100% | Cross-server dup-online wired in P3 |

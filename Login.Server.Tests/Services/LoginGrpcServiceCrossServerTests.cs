@@ -89,8 +89,10 @@ public class LoginGrpcServiceCrossServerTests
     {
         var loggerFactory = LoggerFactory.Create(_ => { });
         var sp = new ServiceCollection().BuildServiceProvider();
+        var cfg = new LoginServerConfiguration { DisableWebTokenDelay = 0 };
         var repo = new LoginDataRepository(
             sp.GetRequiredService<IServiceScopeFactory>(),
+            cfg,
             loggerFactory.CreateLogger<LoginDataRepository>());
 
         var db = new GameDbContext(

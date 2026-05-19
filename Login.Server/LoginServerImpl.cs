@@ -187,12 +187,18 @@ public class LoginServerImpl : GameLoopServer, IServerReadiness
 
     private async Task RequestCharServerAddressSyncAsync(CancellationToken cancellationToken)
     {
+        // Mirrors rAthena loginchrif.cpp:logchrif_sync_ip_addresses, which
+        // runs every login_config.ip_sync_interval minutes (default 10).
+        // ip_sync_interval == 0 disables periodic sync entirely.
+        var intervalMinutes = (Configuration as LoginServerConfiguration)?.IpSyncInterval ?? 10;
+        if (intervalMinutes == 0) return;
+
         if (DateTime.UtcNow < _nextCharIpSyncUtc)
         {
             return;
         }
 
-        _nextCharIpSyncUtc = DateTime.UtcNow.AddSeconds(60);
+        _nextCharIpSyncUtc = DateTime.UtcNow.AddMinutes(intervalMinutes);
         await _charServerIpcService.RequestCharServerAddressSyncAsync(cancellationToken);
     }
 

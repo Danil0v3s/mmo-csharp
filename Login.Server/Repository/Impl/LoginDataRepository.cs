@@ -10,6 +10,7 @@ namespace Login.Server.Repository.Impl;
 
 internal class LoginDataRepository(
     IServiceScopeFactory scopeFactory,
+    LoginServerConfiguration configuration,
     ILogger<LoginDataRepository> logger) : ILoginDataRepository
 {
     private static readonly Dictionary<AccountId, OnlineLoginData> OnlineLoginDataDictionary = new();
@@ -91,7 +92,44 @@ internal class LoginDataRepository(
             }
         }
 
-        await UpdateAccountWebTokenEnabled(accountId, false);
+        // rAthena account.cpp:account_db_sql_disable_webtoken schedules a
+        // timer for login_config.disable_webtoken_delay ms; the timer's
+        // callback (account_disable_webtoken_timer) re-checks
+        // login_get_online_user and only flips the column to 0 if the
+        // user is still offline. The intent is to survive a fast
+        // disconnect+reconnect without invalidating the token mid-handoff.
+        // Delay <= 0 keeps the legacy behavior (immediate flush).
+        var delayMs = configuration.DisableWebTokenDelay;
+        if (delayMs <= 0)
+        {
+            await UpdateAccountWebTokenEnabled(accountId, false);
+            return;
+        }
+
+        Scheduler.Schedule(
+            DisableWebTokenIfStillOffline,
+            state: accountId,
+            dueTime: TimeSpan.FromMilliseconds(delayMs));
+    }
+
+    private async ValueTask DisableWebTokenIfStillOffline(object? state, TimerId _, long __)
+    {
+        var accountId = (int)state!;
+        bool stillOnline;
+        lock (OnlineLoginDataDictionary)
+        {
+            stillOnline = OnlineLoginDataDictionary.ContainsKey(new AccountId(accountId));
+        }
+        if (stillOnline) return;
+        try
+        {
+            await UpdateAccountWebTokenEnabled(accountId, false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Delayed web-token disable failed for account {AccountId}", accountId);
+        }
     }
 
     public async Task<int> RemoveOnlineUsersByCharServer(int charServer)
@@ -176,7 +214,9 @@ internal class LoginDataRepository(
         }
     }
 
-    private async Task UpdateAccountWebTokenEnabled(int accountId, bool enabled)
+    // protected virtual so tests can observe disable calls without
+    // needing a DB scope; production behavior is unchanged.
+    protected virtual async Task UpdateAccountWebTokenEnabled(int accountId, bool enabled)
     {
         try
         {

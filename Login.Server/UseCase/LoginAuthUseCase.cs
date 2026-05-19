@@ -156,7 +156,9 @@ public sealed class LoginAuthUseCase(
                     Ip = charServer.Data.Ip,
                     Port = charServer.Data.Port,
                     Name = charServer.Data.Name,
-                    Users = charServer.Data.Users,
+                    // PACKETVER ≥ 20170726 reinterprets this field as a
+                    // 0-4 color code; mirrors rAthena login_get_usercount.
+                    Users = CharServerUserCountClassifier.Classify(charServer.Data.Users, loginConfig),
                     Type = charServer.Data.Type,
                     New = charServer.Data.New,
                     Unknown = new byte[128]

@@ -84,7 +84,9 @@ public class AuthNodeReplayTests
     {
         var loggerFactory = LoggerFactory.Create(_ => { });
         var sp = new ServiceCollection().BuildServiceProvider();
+        var cfg = new LoginServerConfiguration { DisableWebTokenDelay = 0 };
         return new LoginDataRepository(sp.GetRequiredService<IServiceScopeFactory>(),
+            cfg,
             loggerFactory.CreateLogger<LoginDataRepository>());
     }
 

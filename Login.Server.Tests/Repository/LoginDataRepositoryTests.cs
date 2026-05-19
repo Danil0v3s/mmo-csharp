@@ -135,7 +135,13 @@ public class LoginDataRepositoryTests
     {
         var loggerFactory = LoggerFactory.Create(_ => { });
         var sp = new ServiceCollection().BuildServiceProvider();
+        // DisableWebTokenDelay = 0 keeps the legacy immediate-flush path
+        // so existing test assertions about web_auth_token_enabled stay
+        // valid; coverage for the deferred path lives in the dedicated
+        // DisableWebTokenDelayTests below.
+        var cfg = new LoginServerConfiguration { DisableWebTokenDelay = 0 };
         return new LoginDataRepository(sp.GetRequiredService<IServiceScopeFactory>(),
+            cfg,
             loggerFactory.CreateLogger<LoginDataRepository>());
     }
 }
