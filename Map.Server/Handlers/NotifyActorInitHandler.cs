@@ -21,6 +21,7 @@ public class NotifyActorInitHandler(
     IVisibilityService visibility,
     StatusBroadcaster statusBroadcaster,
     IStatusCalcService statusCalc,
+    Map.Server.Combat.IPcDeathService pcDeath,
     Map.Server.Inventory.IInventoryService inventory,
     ILogger<NotifyActorInitHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_NOTIFY_ACTORINIT>
@@ -100,6 +101,13 @@ public class NotifyActorInitHandler(
             player.JobExp = (long)ch.JobExp;
             player.JobLevel = (int)ch.JobLevel;
             player.StatusPoints = (int)ch.StatusPoint;
+            // Register the savepoint for pc_respawn. CharacterDataResponse
+            // doesn't yet split save_point from last_point — use the last
+            // map/pos as a proxy (first-slice; proto extension is queued).
+            if (!string.IsNullOrEmpty(ch.MapName))
+            {
+                pcDeath.SetSavepoint(charId, ch.MapName, session.SpawnX, session.SpawnY);
+            }
         }
 
         registry.Add(player);

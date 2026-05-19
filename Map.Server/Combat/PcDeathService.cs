@@ -1,5 +1,6 @@
 using Core.Server.Packets.Out.ZC;
 using Map.Server.Entities;
+using Map.Server.Movement;
 using Map.Server.Visibility;
 using Microsoft.Extensions.Logging;
 
@@ -26,15 +27,31 @@ public sealed class PcDeathService : IPcDeathService
 
     private readonly IAttackService _attack;
     private readonly IVisibilityService _visibility;
+    private readonly IPcSetposService? _setpos;
     private readonly ILogger<PcDeathService> _logger;
     private readonly HashSet<int> _dead = new();
+    // Per-character savepoint snapshot — captured at session enter from
+    // the CharacterData payload, since the PlayerEntity itself doesn't
+    // (yet) carry the saved map/x/y fields.
+    private readonly Dictionary<int, Savepoint> _savepoints = new();
 
-    public PcDeathService(IAttackService attack, IVisibilityService visibility, ILogger<PcDeathService> logger)
+    public PcDeathService(
+        IAttackService attack,
+        IVisibilityService visibility,
+        ILogger<PcDeathService> logger,
+        IPcSetposService? setpos = null)
     {
         _attack = attack;
         _visibility = visibility;
+        _setpos = setpos;
         _logger = logger;
     }
+
+    /// <summary>Record this PC's savepoint (called by NotifyActorInitHandler).</summary>
+    public void SetSavepoint(int characterId, string mapName, short x, short y)
+        => _savepoints[characterId] = new Savepoint(mapName, x, y);
+
+    private readonly record struct Savepoint(string MapName, short X, short Y);
 
     public void OnPcDead(PlayerEntity pc, Entity? source)
     {
@@ -67,15 +84,25 @@ public sealed class PcDeathService : IPcDeathService
     {
         if (!_dead.Remove(pc.CharacterId)) return;
 
-        // rAthena pc_respawn(sd, CLR_OUTSIGHT) → pc_setrestartvalue(sd, 3) +
-        // pc_setpos(savepoint). pc_setpos is the next slice; here we just
-        // restore HP to MaxHp and re-broadcast the entity into AOI.
+        // pc_respawn(sd, CLR_OUTSIGHT) → pc_setrestartvalue(sd, 3) +
+        // pc_setpos(savepoint). Restore HP/SP first, then teleport.
         pc.Hp = pc.MaxHp;
         pc.Sp = pc.MaxSp;
-        _visibility.NotifySpawnedToArea(pc);
+
+        if (_setpos != null && _savepoints.TryGetValue(pc.CharacterId, out var sp))
+        {
+            _setpos.Setpos(pc, sp.MapName, sp.X, sp.Y);
+        }
+        else
+        {
+            // Fallback: stay in place, just re-broadcast. Useful for tests
+            // that don't wire IPcSetposService or for sessions that never
+            // registered a savepoint.
+            _visibility.NotifySpawnedToArea(pc);
+        }
         _logger.LogInformation(
-            "PC {Name} (char {CharId}) respawned at ({X},{Y})",
-            pc.Name, pc.CharacterId, pc.X, pc.Y);
+            "PC {Name} (char {CharId}) respawned at ({X},{Y}) on map 0x{Map:X8}",
+            pc.Name, pc.CharacterId, pc.X, pc.Y, pc.MapId);
     }
 
     public bool IsDead(PlayerEntity pc) => _dead.Contains(pc.CharacterId);

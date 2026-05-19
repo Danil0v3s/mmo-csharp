@@ -163,6 +163,11 @@ builder.Services.AddSingleton<IDamageService, DamageService>();
 // stripping the player from the registry — they linger as a dead body
 // until the client sends CZ_RESTART(type=0) → IPcDeathService.Respawn.
 builder.Services.AddSingleton<IPcDeathService, PcDeathService>();
+
+// pc_setpos (pc.cpp:6949) — canonical PC teleport. Used by warps,
+// savepoint respawn, GM @warp, item-warp scrolls. Same-map jumps stay
+// in-process; cross-server map handoff lands later.
+builder.Services.AddSingleton<IPcSetposService, PcSetposService>();
 // Auto-attack loop (rAthena unit.cpp:2615 unit_attack +
 // unit.cpp:3056 unit_attack_timer). Driven from the map game loop;
 // validates range/death/map every tick and chases via IMovementService.

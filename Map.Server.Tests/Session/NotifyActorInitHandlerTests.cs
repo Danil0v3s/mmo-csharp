@@ -25,7 +25,8 @@ public class NotifyActorInitHandlerTests
 
         var handler = new NotifyActorInitHandler(
             ctx.Registry, ctx.Visibility, new StatusBroadcaster(),
-            new StatusCalcService(), new NoOpInventoryService(),
+            new StatusCalcService(), new NoOpPcDeathService(),
+            new NoOpInventoryService(),
             NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
@@ -52,7 +53,8 @@ public class NotifyActorInitHandlerTests
 
         var handler = new NotifyActorInitHandler(
             ctx.Registry, ctx.Visibility, new StatusBroadcaster(),
-            new StatusCalcService(), new NoOpInventoryService(),
+            new StatusCalcService(), new NoOpPcDeathService(),
+            new NoOpInventoryService(),
             NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
@@ -87,7 +89,8 @@ public class NotifyActorInitHandlerTests
 
         var handler = new NotifyActorInitHandler(
             ctx.Registry, ctx.Visibility, new StatusBroadcaster(),
-            new StatusCalcService(), new NoOpInventoryService(),
+            new StatusCalcService(), new NoOpPcDeathService(),
+            new NoOpInventoryService(),
             NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
@@ -149,6 +152,14 @@ public class NotifyActorInitHandlerTests
         public Task LoadAsync(MapSessionData session, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public void SendInventoryList(MapSessionData session) { }
         public bool GiveItem(MapSessionData session, uint nameId, int amount) => true;
+    }
+
+    private sealed class NoOpPcDeathService : Map.Server.Combat.IPcDeathService
+    {
+        public void OnPcDead(PlayerEntity pc, Entity? source) { }
+        public void Respawn(PlayerEntity pc) { }
+        public bool IsDead(PlayerEntity pc) => false;
+        public void SetSavepoint(int characterId, string mapName, short x, short y) { }
     }
 
     private sealed class StubWorldRegistry : IMapWorldRegistry

@@ -1,4 +1,5 @@
 using Map.Server.Entities;
+using Map.Server.Movement;
 using Map.Server.Scripting.Records;
 
 namespace Map.Server.Warps;
@@ -22,18 +23,28 @@ namespace Map.Server.Warps;
 /// </summary>
 public sealed class WarpDispatcher : IWarpDispatcher
 {
+    private readonly IPcSetposService _setpos;
     private readonly ILogger<WarpDispatcher> _logger;
 
-    public WarpDispatcher(ILogger<WarpDispatcher> logger)
+    public WarpDispatcher(IPcSetposService setpos, ILogger<WarpDispatcher> logger)
     {
+        _setpos = setpos;
         _logger = logger;
     }
 
     public void OnEnterWarp(PlayerEntity entity, WarpRegistration warp)
     {
         _logger.LogInformation(
-            "Warp trigger: char {Char} entered {SrcMap} ({Sx},{Sy}) → {DstMap} ({Dx},{Dy}) — teleport pending pc_setpos port",
-            entity.Id, warp.FromMap, entity.X, entity.Y,
+            "Warp trigger: char {Char} entered {SrcMap} ({Sx},{Sy}) → {DstMap} ({Dx},{Dy})",
+            entity.Id.Value, warp.FromMap, entity.X, entity.Y,
             warp.ToMap, warp.ToX, warp.ToY);
+
+        var result = _setpos.Setpos(entity, warp.ToMap, warp.ToX, warp.ToY);
+        if (result != SetposResult.Ok)
+        {
+            _logger.LogWarning(
+                "Warp dispatch failed for char {Char} → {DstMap} ({Dx},{Dy}): {Result}",
+                entity.Id.Value, warp.ToMap, warp.ToX, warp.ToY, result);
+        }
     }
 }

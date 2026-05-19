@@ -29,4 +29,11 @@ public interface IPcDeathService
 
     /// <summary>True while the PC is dead and awaiting respawn.</summary>
     bool IsDead(PlayerEntity pc);
+
+    /// <summary>
+    /// Record the PC's savepoint coordinates — read from
+    /// <c>CharacterDataResponse.LastMap / LastX / LastY</c> at session
+    /// enter. Used by <see cref="Respawn"/> to call <c>pc_setpos</c>.
+    /// </summary>
+    void SetSavepoint(int characterId, string mapName, short x, short y);
 }
