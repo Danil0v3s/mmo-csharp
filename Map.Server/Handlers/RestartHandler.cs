@@ -2,6 +2,8 @@ using Core.Server.Network;
 using Core.Server.Packets;
 using Core.Server.Packets.In.CZ;
 using Core.Server.Packets.Out.ZC;
+using Map.Server.Combat;
+using Map.Server.Entities;
 using Map.Server.Persistence;
 using Map.Server.Services;
 using Map.Server.Session;
@@ -31,6 +33,8 @@ namespace Map.Server.Handlers;
 public class RestartHandler(
     IPlayerStateService playerState,
     ICharServerIpcService charServerIpc,
+    IPcDeathService pcDeath,
+    IEntityRegistry registry,
     ILogger<RestartHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_RESTART>
 {
@@ -38,10 +42,19 @@ public class RestartHandler(
     {
         if (packet.Type != 1)
         {
-            // Respawn — pending the death + pc_setpos slices.
-            logger.LogInformation(
-                "Char {CharId} requested respawn (type=0); pc_setpos cascade not yet wired",
-                session.CharacterId);
+            // Respawn — rAthena clif_parse_Restart case 0x00 → pc_respawn.
+            if (session.EntityId is { } eid
+                && registry.Get(eid) is PlayerEntity pc
+                && pcDeath.IsDead(pc))
+            {
+                pcDeath.Respawn(pc);
+            }
+            else
+            {
+                logger.LogDebug(
+                    "Char {CharId} sent respawn (type=0) but isn't in a dead state",
+                    session.CharacterId);
+            }
             return;
         }
 

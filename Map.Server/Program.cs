@@ -157,6 +157,12 @@ builder.Services.AddSingleton<IItemDropService, ItemDropService>();
 // the auto-attack loop, GM commands, and skill handlers funnel through.
 builder.Services.AddSingleton<IBattleCalculator>(_ => new BattleCalculator());
 builder.Services.AddSingleton<IDamageService, DamageService>();
+
+// PC death + respawn (pc.cpp:9633 pc_dead + pc.cpp:9515 pc_respawn).
+// Wires the corpse-state lifecycle so DamageService.HandleDeath stops
+// stripping the player from the registry — they linger as a dead body
+// until the client sends CZ_RESTART(type=0) → IPcDeathService.Respawn.
+builder.Services.AddSingleton<IPcDeathService, PcDeathService>();
 // Auto-attack loop (rAthena unit.cpp:2615 unit_attack +
 // unit.cpp:3056 unit_attack_timer). Driven from the map game loop;
 // validates range/death/map every tick and chases via IMovementService.

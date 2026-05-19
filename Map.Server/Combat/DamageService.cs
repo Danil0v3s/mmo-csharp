@@ -13,6 +13,7 @@ public sealed class DamageService : IDamageService
     private readonly IEntityRegistry _entities;
     private readonly IBattleCalculator _battleCalc;
     private readonly Status.IExpService? _exp;
+    private readonly IPcDeathService? _pcDeath;
     private readonly ILogger<DamageService> _logger;
 
     public DamageService(
@@ -21,13 +22,15 @@ public sealed class DamageService : IDamageService
         IEntityRegistry entities,
         IBattleCalculator battleCalc,
         ILogger<DamageService> logger,
-        Status.IExpService? exp = null)
+        Status.IExpService? exp = null,
+        IPcDeathService? pcDeath = null)
     {
         _visibility = visibility;
         _mobSpawn = mobSpawn;
         _entities = entities;
         _battleCalc = battleCalc;
         _exp = exp;
+        _pcDeath = pcDeath;
         _logger = logger;
     }
 
@@ -137,14 +140,21 @@ public sealed class DamageService : IDamageService
                 break;
 
             case PlayerEntity pc:
-                // PC death pipeline lands with MS3 savepoint warp. For
-                // scaffolding: just clamp HP at 0 and broadcast vanish so
-                // the corpse disappears.
-                _visibility.NotifyVanishedToArea(pc, VanishReason.Died);
-                _entities.Remove(pc.Id);
-                _logger.LogInformation(
-                    "PC {Name} (char {CharId}) died (source: {Source})",
-                    pc.Name, pc.CharacterId, source?.Id.Value);
+                if (_pcDeath != null)
+                {
+                    _pcDeath.OnPcDead(pc, source);
+                }
+                else
+                {
+                    // Pre-PcDeathService fallback: vanish + remove (loses
+                    // the corpse step but keeps the AOI clean). Used by a
+                    // handful of older tests that bypass the death service.
+                    _visibility.NotifyVanishedToArea(pc, VanishReason.Died);
+                    _entities.Remove(pc.Id);
+                    _logger.LogInformation(
+                        "PC {Name} (char {CharId}) died (source: {Source})",
+                        pc.Name, pc.CharacterId, source?.Id.Value);
+                }
                 break;
         }
     }
