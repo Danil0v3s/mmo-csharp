@@ -135,6 +135,11 @@ builder.Services.AddSingleton<Map.Server.Persistence.IPlayerStateService, Map.Se
 // .agents/migrations/map/scripting/ for the broader plan.
 builder.Services.AddSingleton<Map.Server.Inventory.IInventoryService, Map.Server.Inventory.InventoryService>();
 
+// Item use (pc.cpp:6329 pc_useitem). Resolves the per-item Script
+// equivalent. Starter effect table seeds healing potions + a couple
+// buff scrolls; the full item_db Script parser lands later.
+builder.Services.AddSingleton<Map.Server.Inventory.IItemUseService, Map.Server.Inventory.ItemUseService>();
+
 // Status broadcast cascade (post-handoff). See
 // .agents/migrations/map/initial-status-broadcast.md. The broadcaster
 // emits the rAthena pc_authok / status_calc_pc(SCO_FIRST) packet stream
