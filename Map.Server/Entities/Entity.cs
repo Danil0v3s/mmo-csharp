@@ -1,4 +1,5 @@
 using Map.Server.Movement;
+using Map.Server.Status;
 
 namespace Map.Server.Entities;
 
@@ -32,6 +33,17 @@ public abstract class Entity
     /// baseline); mobs override from mob_db.MoveSpeed in MS2.
     /// </summary>
     public int Speed { get; internal set; } = 150;
+
+    /// <summary>
+    /// Renewal battle status block. Populated by <c>IStatusCalcService</c>
+    /// at entity spawn / equip / level-up / SC apply. Always non-null —
+    /// mirror of rAthena <c>bl-&gt;status_data</c> (status.hpp:3328) which
+    /// is also always present, just zeroed for non-combat entities.
+    /// </summary>
+    public BattleStats Stats { get; } = new();
+
+    /// <summary>Renewal base level (status_calc_misc input).</summary>
+    public int Level { get; internal set; } = 1;
 
     protected Entity(EntityId id, uint mapId, short x, short y)
     {

@@ -5,6 +5,7 @@ using Core.Server.Packets.Out.ZC;
 using Map.Server;
 using Map.Server.Entities;
 using Map.Server.Handlers;
+using Map.Server.Inventory;
 using Map.Server.Session;
 using Map.Server.Status;
 using Map.Server.Tests.Visibility;
@@ -23,7 +24,9 @@ public class NotifyActorInitHandlerTests
         var session = ctx.NewSession(authState: MapAuthState.Unauthenticated);
 
         var handler = new NotifyActorInitHandler(
-            ctx.Registry, ctx.Visibility, new StatusBroadcaster(), NullLogger<NotifyActorInitHandler>.Instance);
+            ctx.Registry, ctx.Visibility, new StatusBroadcaster(),
+            new StatusCalcService(), new NoOpInventoryService(),
+            NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
 
@@ -48,7 +51,9 @@ public class NotifyActorInitHandlerTests
         ctx.Registry.Add(viewer);
 
         var handler = new NotifyActorInitHandler(
-            ctx.Registry, ctx.Visibility, new StatusBroadcaster(), NullLogger<NotifyActorInitHandler>.Instance);
+            ctx.Registry, ctx.Visibility, new StatusBroadcaster(),
+            new StatusCalcService(), new NoOpInventoryService(),
+            NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
 
@@ -81,7 +86,9 @@ public class NotifyActorInitHandlerTests
             name: "Hero");
 
         var handler = new NotifyActorInitHandler(
-            ctx.Registry, ctx.Visibility, new StatusBroadcaster(), NullLogger<NotifyActorInitHandler>.Instance);
+            ctx.Registry, ctx.Visibility, new StatusBroadcaster(),
+            new StatusCalcService(), new NoOpInventoryService(),
+            NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
 
@@ -135,6 +142,13 @@ public class NotifyActorInitHandlerTests
             };
             return session;
         }
+    }
+
+    private sealed class NoOpInventoryService : IInventoryService
+    {
+        public Task LoadAsync(MapSessionData session, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public void SendInventoryList(MapSessionData session) { }
+        public bool GiveItem(MapSessionData session, uint nameId, int amount) => true;
     }
 
     private sealed class StubWorldRegistry : IMapWorldRegistry

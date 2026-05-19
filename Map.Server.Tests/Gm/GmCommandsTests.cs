@@ -6,6 +6,7 @@ using Map.Server.Items;
 using Map.Server.Mob;
 using Map.Server.Movement;
 using Map.Server.Spawn;
+using Map.Server.Status;
 using Map.Server.Tests.Visibility;
 using Map.Server.Tests.Warps;
 using Map.Server.Visibility;
@@ -134,7 +135,7 @@ public class GmCommandsTests
         var itemDrops = new ItemDropService(entities, ids, visibility, NullLogger<ItemDropService>.Instance);
         var spawn = new MobSpawnService(
             spawnRegistry, entities, world, mobDb, itemCatalog, itemDrops, movement, visibility,
-            ids, NullLogger<MobSpawnService>.Instance, new Random(0));
+            ids, new StatusCalcService(), NullLogger<MobSpawnService>.Instance, new Random(0));
         return new TestContext(
             entities, dispatcher, visibility, world, spawn, (uint)mapName.GetHashCode());
     }

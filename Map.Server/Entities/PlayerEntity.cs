@@ -1,3 +1,5 @@
+using Map.Server.Status;
+
 namespace Map.Server.Entities;
 
 /// <summary>
@@ -16,28 +18,40 @@ public sealed class PlayerEntity : Entity
     public Guid SessionId { get; }
 
     /// <summary>
-    /// Current HP. Defaults to <see cref="MaxHp"/> at spawn; mutated by
-    /// <see cref="Items.IItemDropService"/>-adjacent damage path in
-    /// MS3 combat. Will be hydrated from the char-side persistence once
-    /// the inventory/status IPC carries the full stats payload.
+    /// Current HP. Backed by <see cref="Entity.Stats"/>; mutated by the
+    /// combat / skill / item paths. Hydrated from char-side persistence
+    /// at session enter once the inventory/status IPC lands the full
+    /// stats payload — until then defaults to the renewal Lv1 baseline.
     /// </summary>
-    public int Hp { get; set; } = 40;
+    public int Hp
+    {
+        get => Stats.Hp;
+        set => Stats.Hp = value;
+    }
 
     /// <summary>
-    /// Maximum HP. Level-1 default mirrors rAthena's pre-status-recalc
-    /// baseline (40); MS3 status will recompute from Vit + class + level.
+    /// Maximum HP. Backed by <see cref="Entity.Stats"/>; written by
+    /// <c>IStatusCalcService</c> when the stat block is rebuilt.
     /// </summary>
-    public int MaxHp { get; set; } = 40;
+    public int MaxHp
+    {
+        get => Stats.MaxHp;
+        set => Stats.MaxHp = value;
+    }
 
-    /// <summary>
-    /// Current SP. Same lifecycle as <see cref="Hp"/>: default at spawn,
-    /// mutated by skill / heal paths, hydrated from char-side persistence
-    /// once the IPC carries the full stats payload.
-    /// </summary>
-    public int Sp { get; set; } = 11;
+    /// <summary>Current SP. Backed by <see cref="Entity.Stats"/>.</summary>
+    public int Sp
+    {
+        get => Stats.Sp;
+        set => Stats.Sp = value;
+    }
 
-    /// <summary>Maximum SP. Level-1 default mirrors rAthena's baseline (11).</summary>
-    public int MaxSp { get; set; } = 11;
+    /// <summary>Maximum SP. Backed by <see cref="Entity.Stats"/>.</summary>
+    public int MaxSp
+    {
+        get => Stats.MaxSp;
+        set => Stats.MaxSp = value;
+    }
 
     public override EntityType Type => EntityType.Pc;
 
@@ -54,5 +68,12 @@ public sealed class PlayerEntity : Entity
         AccountId = accountId;
         Name = name ?? string.Empty;
         SessionId = sessionId;
+        // Renewal Lv1 Novice baseline so any entity that bypasses the calc
+        // service still has plausible HP/SP. status_calc_pc overwrites these.
+        Stats.MaxHp = 40;
+        Stats.Hp = 40;
+        Stats.MaxSp = 11;
+        Stats.Sp = 11;
+        Stats.Race = BattleRace.PlayerHuman;
     }
 }

@@ -4,6 +4,7 @@ using Map.Server.Items;
 using Map.Server.Mob;
 using Map.Server.Movement;
 using Map.Server.Spawn;
+using Map.Server.Status;
 using Map.Server.Tests.Visibility;
 using Map.Server.Tests.Warps;
 using Map.Server.Visibility;
@@ -256,6 +257,7 @@ public class MobSpawnServiceTests
             movement,
             visibility,
             idAlloc,
+            new StatusCalcService(),
             NullLogger<MobSpawnService>.Instance,
             new Random(seed));
         return new TestContext(service, spawnRegistry, entities, dispatcher, itemCatalog, itemDrops, (uint)mapName.GetHashCode());

@@ -5,6 +5,7 @@ using Map.Server.Items;
 using Map.Server.Mob;
 using Map.Server.Movement;
 using Map.Server.Spawn;
+using Map.Server.Status;
 using Map.Server.Tests.Visibility;
 using Map.Server.Tests.Warps;
 using Map.Server.Visibility;
@@ -113,7 +114,7 @@ public class DamageServiceTests
         var itemDrops = new ItemDropService(entities, ids, visibility, NullLogger<ItemDropService>.Instance);
         var mobSpawn = new MobSpawnService(
             spawnRegistry, entities, world, mobDb, itemCatalog, itemDrops, movement, visibility,
-            ids, NullLogger<MobSpawnService>.Instance, new Random(0));
+            ids, new StatusCalcService(), NullLogger<MobSpawnService>.Instance, new Random(0));
         var service = new DamageService(visibility, mobSpawn, entities, NullLogger<DamageService>.Instance);
         return new TestContext(service, entities, dispatcher, ids, (uint)mapName.GetHashCode());
     }

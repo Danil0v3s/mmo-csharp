@@ -141,6 +141,11 @@ builder.Services.AddSingleton<Map.Server.Inventory.IInventoryService, Map.Server
 // matching the captured wire order.
 builder.Services.AddSingleton<Map.Server.Status.StatusBroadcaster>();
 
+// Renewal stat recalc (status.cpp:status_calc_pc / status_calc_mob).
+// Owns BattleStats hydration for both players (at session enter / equip
+// change / SC apply) and mobs (at spawn). Consumed by combat, skill, AI.
+builder.Services.AddSingleton<Map.Server.Status.IStatusCalcService, Map.Server.Status.StatusCalcService>();
+
 // Floor-item drop / pickup (see .agents/migrations/map/adjacent/items.md).
 // MS3 first slice: the entity-on-the-floor lifecycle (drop, pickup, TTL
 // despawn). Inventory persistence + item_db catalog land later.

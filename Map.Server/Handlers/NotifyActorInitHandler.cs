@@ -20,6 +20,7 @@ public class NotifyActorInitHandler(
     IEntityRegistry registry,
     IVisibilityService visibility,
     StatusBroadcaster statusBroadcaster,
+    IStatusCalcService statusCalc,
     Map.Server.Inventory.IInventoryService inventory,
     ILogger<NotifyActorInitHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_NOTIFY_ACTORINIT>
@@ -60,17 +61,39 @@ public class NotifyActorInitHandler(
             y: session.SpawnY);
         player.Dir = session.SpawnDir;
 
-        // Hydrate the live HP/SP/MaxHP/MaxSP from the loaded char snapshot.
-        // Without this, PlayerEntity stays at the class defaults (40/40 +
-        // 11/11) and any saved damage / spent SP visually reverts on relog —
-        // the DB row has the correct value, but the in-memory entity wipes
-        // it on next autosave because the script sees the default.
+        // Hydrate full BattleStats from the loaded char snapshot — mirrors
+        // rAthena's status_calc_pc(SCO_FIRST) at chrif_authok (status.cpp:6160).
+        // Inventory/equip layered in here would come from the InventoryService;
+        // until equip parsing lands, pass the captured Novice weapon defaults so
+        // batk/hit/flee match the wire baseline in RenewalFormulas.
         if (session.CharacterData is { } ch)
         {
-            player.Hp = (int)Math.Min(ch.Hp, int.MaxValue);
-            player.MaxHp = (int)Math.Min(ch.MaxHp, int.MaxValue);
-            player.Sp = (int)Math.Min(ch.Sp, int.MaxValue);
-            player.MaxSp = (int)Math.Min(ch.MaxSp, int.MaxValue);
+            statusCalc.CalcPc(player, new PcBaseInputs(
+                BaseLevel: (int)ch.BaseLevel,
+                JobLevel: (int)ch.JobLevel,
+                Str: (int)ch.Str,
+                Agi: (int)ch.Agi,
+                Vit: (int)ch.Vit,
+                Int: (int)ch.IntStat,
+                Dex: (int)ch.Dex,
+                Luk: (int)ch.Luk,
+                Pow: (int)ch.Pow,
+                Sta: (int)ch.Sta,
+                Wis: (int)ch.Wis,
+                Spl: (int)ch.Spl,
+                Con: (int)ch.Con,
+                Crt: (int)ch.Crt,
+                // Knife + Cotton Shirt baseline mirrors the rAthena capture
+                // until inventory-driven equip processing lands.
+                WeaponAtkMin: 17,
+                WeaponAtkMax: 17,
+                EquipDef: 10,
+                EquipMdef: 0,
+                AttackRange: 1));
+            // Persisted current HP/SP from the snapshot wins over the calc-
+            // derived max so partial-HP relog doesn't reset to full.
+            player.Hp = (int)Math.Min(ch.Hp, (uint)player.MaxHp);
+            player.Sp = (int)Math.Min(ch.Sp, (uint)player.MaxSp);
         }
 
         registry.Add(player);

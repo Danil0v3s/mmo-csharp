@@ -1,5 +1,6 @@
 using Map.Server.Mob;
 using Map.Server.Spawn;
+using Map.Server.Status;
 
 namespace Map.Server.Entities;
 
@@ -20,13 +21,26 @@ public class MobEntity : Entity
     /// <summary>Spawn declaration that birthed this mob; used by respawn.</summary>
     public MobSpawnEntry? Origin { get; }
 
-    /// <summary>Current HP. Set to <c>DbEntry.Hp</c> at spawn.</summary>
-    public int Hp { get; set; }
+    /// <summary>Current HP. Backed by <see cref="Entity.Stats"/>.</summary>
+    public int Hp
+    {
+        get => Stats.Hp;
+        set => Stats.Hp = value;
+    }
 
-    /// <summary>Maximum HP, mirrors <c>DbEntry.Hp</c>. Set once at spawn.</summary>
-    public int MaxHp { get; private set; }
+    /// <summary>Maximum HP. Backed by <see cref="Entity.Stats"/>; mob_db copies in at spawn via the calc service.</summary>
+    public int MaxHp
+    {
+        get => Stats.MaxHp;
+        internal set => Stats.MaxHp = value;
+    }
 
-    public int Sp { get; set; }
+    /// <summary>Current SP. Backed by <see cref="Entity.Stats"/>.</summary>
+    public int Sp
+    {
+        get => Stats.Sp;
+        set => Stats.Sp = value;
+    }
 
     /// <summary>
     /// Earliest tick (in <see cref="Environment.TickCount64"/> units) at which
@@ -55,5 +69,8 @@ public class MobEntity : Entity
         MaxHp = dbEntry.Hp;
         Sp = dbEntry.Sp;
         Speed = dbEntry.WalkSpeed > 0 ? dbEntry.WalkSpeed : Speed;
+        Level = dbEntry.Level;
+        // IStatusCalcService.CalcMob() at spawn fills the rest from DbEntry;
+        // these defaults keep parity-test code working before that wires in.
     }
 }

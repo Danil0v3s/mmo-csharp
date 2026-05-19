@@ -3,6 +3,7 @@ using Map.Server.Entities;
 using Map.Server.Items;
 using Map.Server.Mob;
 using Map.Server.Movement;
+using Map.Server.Status;
 using Map.Server.Visibility;
 using Map.Server.World;
 using Microsoft.Extensions.Logging;
@@ -25,6 +26,7 @@ public sealed class MobSpawnService : IMobSpawnService
     private readonly IMovementService _movement;
     private readonly IVisibilityService _visibility;
     private readonly EntityIdAllocator _idAllocator;
+    private readonly IStatusCalcService _statusCalc;
     private readonly ILogger<MobSpawnService> _logger;
     private readonly Random _rng;
 
@@ -43,6 +45,7 @@ public sealed class MobSpawnService : IMobSpawnService
         IMovementService movement,
         IVisibilityService visibility,
         EntityIdAllocator idAllocator,
+        IStatusCalcService statusCalc,
         ILogger<MobSpawnService> logger,
         Random? rng = null)
     {
@@ -55,6 +58,7 @@ public sealed class MobSpawnService : IMobSpawnService
         _movement = movement;
         _visibility = visibility;
         _idAllocator = idAllocator;
+        _statusCalc = statusCalc;
         _logger = logger;
         _rng = rng ?? Random.Shared;
     }
@@ -215,6 +219,10 @@ public sealed class MobSpawnService : IMobSpawnService
         if (!TryPickSpawnCell(entry, map, out var x, out var y)) return false;
 
         var mob = new MobEntity(_idAllocator.NextMob(), dbEntry, entry, entry.MapId, x, y);
+        // Renewal stat hydration — mirrors status_calc_mob_ at mob_spawn
+        // (status.cpp:2731). Must run before the spawn broadcast so any
+        // observer reading max_hp / level on the wire sees the right values.
+        _statusCalc.CalcMob(mob);
         _entities.Add(mob);
 
         lock (_gate)
