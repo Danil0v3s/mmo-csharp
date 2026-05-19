@@ -32,6 +32,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly MapSessionLifecycle _lifecycle;
     private readonly IMobSpawnService _mobSpawn;
     private readonly IItemDropService _itemDrops;
+    private readonly Combat.IAttackService _attackService;
     private readonly ScriptHost _scriptHost;
     private readonly INpcSpawnService _npcSpawn;
     private readonly Scripting.INpcRegistry _scriptRegistry;
@@ -61,6 +62,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         MapSessionLifecycle lifecycle,
         IMobSpawnService mobSpawn,
         IItemDropService itemDrops,
+        Combat.IAttackService attackService,
         ScriptHost scriptHost,
         INpcSpawnService npcSpawn,
         Scripting.INpcRegistry scriptRegistry,
@@ -79,6 +81,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _lifecycle = lifecycle;
         _mobSpawn = mobSpawn;
         _itemDrops = itemDrops;
+        _attackService = attackService;
         _scriptHost = scriptHost;
         _npcSpawn = npcSpawn;
         _scriptRegistry = scriptRegistry;
@@ -264,6 +267,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _mobSpawn.Tick();
         // Floor-item auto-despawn.
         _itemDrops.Tick();
+        // Continuous-attack swings (rAthena unit_attack_timer).
+        _attackService.Tick(Environment.TickCount64);
     }
 
     private async Task EnsureRegisteredOnCharServerAsync(CancellationToken cancellationToken)

@@ -157,6 +157,10 @@ builder.Services.AddSingleton<IItemDropService, ItemDropService>();
 // the auto-attack loop, GM commands, and skill handlers funnel through.
 builder.Services.AddSingleton<IBattleCalculator>(_ => new BattleCalculator());
 builder.Services.AddSingleton<IDamageService, DamageService>();
+// Auto-attack loop (rAthena unit.cpp:2615 unit_attack +
+// unit.cpp:3056 unit_attack_timer). Driven from the map game loop;
+// validates range/death/map every tick and chases via IMovementService.
+builder.Services.AddSingleton<IAttackService, AttackService>();
 
 // GM commands. Each IGmCommand is registered as a singleton; the registry
 // indexes them by Name at construction. ChatMessageHandler discovers them

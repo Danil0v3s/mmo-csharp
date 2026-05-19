@@ -28,6 +28,13 @@ public abstract class Entity
     public WalkState? Walk { get; internal set; }
 
     /// <summary>
+    /// Non-null while this entity is auto-attacking. Owned by
+    /// <see cref="Combat.IAttackService"/>; mirrors the subset of rAthena
+    /// <c>unit_data</c> the attack-loop reads.
+    /// </summary>
+    public Combat.AttackState? Attack { get; internal set; }
+
+    /// <summary>
     /// Per-cell step delay in milliseconds (cardinal). Diagonal cells cost
     /// <c>Speed * 14 / 10</c>. PlayerEntity default = 150 (rAthena pc->speed
     /// baseline); mobs override from mob_db.MoveSpeed in MS2.
