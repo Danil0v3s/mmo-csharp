@@ -46,21 +46,25 @@ Items thread through every gameplay system. The Char server already owns persist
 - **`IItemCatalog` over `IItemRepository`** ([IItemCatalog.cs](../../../../Map.Server/Items/IItemCatalog.cs) / [ItemCatalog.cs](../../../../Map.Server/Items/ItemCatalog.cs)) — DB-backed snapshot loaded once at boot (~28K rows). `Get(uint)`, `GetByAegisName(string)`, `All()`, `Reload()`. Returns `Core.Database.Entities.ItemEntity` directly.
 - **Mob drop rolling on death** ([MobSpawnService.RollAndDropLoot](../../../../Map.Server/Spawn/MobSpawnService.cs)) — `KillMob` now iterates `mob.DbEntry.Drops`, rolls `rng.Next(10_000) < drop.Rate` per entry, resolves the aegis name via `IItemCatalog.GetByAegisName`, and spawns the floor item with a random sub-cell offset. Closes the spawn → kill → drop → pickup loop end-to-end. Two new tests in `MobSpawnServiceTests` cover the always-drop, never-drop, and unknown-item-name branches.
 
+## More Done (2026-05-19 wave)
+
+- **Inventory model + persistence** — `MapSessionData.Inventory` (List<InventoryItem>), loaded via `IInventoryService.LoadAsync` from `IInventoryRepository` at session enter, saved via `PlayerStateService.SaveAsync` (handles insert / update / delete via `RemovedInventoryIds`). Closes the inventory IPC loop — see [Inventory/](../../../../Map.Server/Inventory/).
+- **Equip → BattleStats** ([EquipBonusAggregator.cs](../../../../Map.Server/Inventory/EquipBonusAggregator.cs)) — walks equipped slots, sums weapon ATK + armor DEF + attack range, feeds `IStatusCalcService.CalcPc` so derived stats refresh. Mirrors the inventory pass inside rAthena `status_calc_pc_`.
+- **Item use** — `CZ_USE_ITEM` (0x00a7) + [`UseItemHandler`](../../../../Map.Server/Handlers/UseItemHandler.cs) + strategy-pattern [`ItemEffectRegistry`](../../../../Map.Server/Inventory/ItemEffects/ItemEffectRegistry.cs) with one `IItemEffectHandler` class per Script archetype. Starter set: Red/Orange/Yellow/White Potion (`HealHpHandler`), Blue Potion (`HealSpHandler`), Blessing/Increase_Agility scrolls (`ApplyStatusHandler`). New items add a class + registry line — no switch case.
+- **Pickup → inventory** — `PickupHandler` now actually deposits via `IInventoryService.GiveItem` rather than just removing the floor entity.
+- **Loot-protection windows** — `FloorItemEntity` gains `OwnerCharId` / `OwnerPartyId` / `OwnerProtectionUntilTick` / `PartyProtectionUntilTick`. `ItemDropService.TryPickup` returns `OwnerProtected` when picker is outside the 3s owner / 5s party windows. `MobSpawnService.KillMob` overload threads the last-hitter through.
+- **MVP drops + party share modifiers** — still pending (queued behind MVP rank tracking; see combat.md).
+
 ## Pending
 
-1. **Inventory model** on the session + char-server IPC for persistence (P6 wrappers already exist).
-2. **Equip / unequip / consumable use / drop-from-inventory flows.** `ItemDropService` is a building block for these.
-3. **MVP drops + party share + drop-rate modifiers.** Today `RollAndDropLoot` uses raw `mob_db` rates and only rolls the regular `Drops` list. MVP drops (top-damager-only) and rAthena's `battle_config.item_rate_*` modifiers land alongside the combat damage-tracking work.
-4. **Loot protection** (owner + party id), bound items, refined items.
-
-### Acceptance
-- Mob drops items on death; players see them on the floor and can pick them up within 2 cells.
-- Player walks over item + presses pickup key → item added to inventory + map item vanishes.
-- Player drops an item → server creates the floor entity + sends VANISH from inventory.
-- Equip/unequip changes stats (read by combat doc).
+1. **MVP drops** (top-damager only) + `battle_config.item_rate_*` modifiers.
+2. **Equip / unequip wire flow** — `CZ_REQ_WEAR_EQUIP` (0x00a9) / `CZ_REQ_TAKEOFF_EQUIP` (0x00ab). Stats refresh path is ready (just call `CalcPc` again after toggling `InventoryItem.Equip`).
+3. **Drop-from-inventory wire** — `CZ_ITEM_THROW` (0x00a2) → `ItemDropService.DropOnFloor` plumbing.
+4. **Item Script parser** — the long-tail itemheal / sc_start / bonus formulas. Today the strategy registry has 7 hand-coded entries.
 
 ## History
 - **2026-05-16** — Plan stub.
 - **2026-05-16** — Floor-item lifecycle first slice shipped: ItemEntity + 4 packets + drop/pickup/despawn service + PickupHandler + visibility per-type packet dispatch. Inventory persistence remains queued.
 - **2026-05-16** — Plan re-aimed at DB-backed catalog (`IItemCatalog` over `IItemRepository`) instead of a YAML parser, matching rAthena's `use_sql_db` alternate path and the existing 28K-row seed in `Core.Database/Seeds/Scripts/seed_item_db_*.sql`. The floor-item runtime class is being renamed `ItemEntity` → `FloorItemEntity` to avoid a collision with the DB row.
 - **2026-05-16** — Rename + ItemCatalog shipped. Mob death now rolls drops via `IItemCatalog.GetByAegisName(...)`; the spawn → kill → drop → pickup loop is end-to-end demonstrable. 177 Map.Server tests green.
+- **2026-05-19** — Inventory closes end-to-end: load + save via existing IPC, equip → BattleStats aggregator, pickup → bag deposit, ItemEffectRegistry strategy for `pc_useitem` with 7 starter entries, loot-protection windows with owner/party priority. NPC shop service + atomic player trade also shipped (see [trade.md](trade.md)).

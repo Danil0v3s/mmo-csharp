@@ -27,19 +27,25 @@ Status changes are buffs/debuffs/state effects: poison, freeze, sleep, blessing,
 
 ## Done
 
-P6 wired the IPC for save/load. The map-side engine is what's missing.
+- **StatusType enum** ([Map.Server/Status/StatusType.cs](../../../../Map.Server/Status/StatusType.cs)) — subset mirroring rAthena `enum sc_type` indices for lossless persistence round-trip.
+- **StatusChange record** ([StatusChange.cs](../../../../Map.Server/Status/StatusChange.cs)) — val1..4 + ExpiresAt + NextTick + PeriodMs (mirrors `status_change_entry`).
+- **StatusEffectRegistry + StatusEffectHandler** ([StatusEffectRegistry.cs](../../../../Map.Server/Status/StatusEffectRegistry.cs)) — strategy table: per-SC `OnStart` / `OnEnd` / `OnPeriodic` callbacks. New SCs Register() without touching the engine.
+- **StatusChangeService** ([StatusChangeService.cs](../../../../Map.Server/Status/StatusChangeService.cs)) — `Start` / `End` / `Get` / `Tick`. Refresh-on-restart matches rAthena `SCSTART_NOAVOID` default. Pumped from the map game loop BEFORE AI / attack so DoT-induced death is processed before downstream readers see the entity.
+- 5 starter SCs registered: **SC_POISON** (1.5s DoT, 1.5% MaxHp/tick), **SC_BLESSING** (+STR/INT/DEX), **SC_INCREASEAGI** / **SC_DECREASEAGI** (±AGI), **SC_HEAL_OVERTIME** (HP regen with MaxHp cap).
+- **NaturalHealService** ([NaturalHealService.cs](../../../../Map.Server/Status/NaturalHealService.cs)) — baseline HP/SP regen (renewal `status_natural_heal`). 6s/8s cadence, sitting bonus, walking gate, full-pool short-circuit.
+- 5 SC tests in [Map.Server.Tests/Status/StatusChangeServiceTests.cs](../../../../Map.Server.Tests/Status/StatusChangeServiceTests.cs) + 5 natural-heal tests.
 
 ## Pending
 
-1. `StatusEffect` record + `StatusEffectKind` enum.
-2. `StatusChangeEngine.Tick` — iterate active SCs, fire periodic events (e.g. SC_POISON → damage every N ms), expire when duration elapses.
-3. Save on logout / autosave: serialize active SCs to bytes for `SaveStatusChangeDataAsync`.
-4. Load on enter: deserialize from `RequestStatusChangeDataAsync` response, re-apply remaining duration.
+1. Long tail of SC_* (currently 5 of ~300). Add via `StatusEffectRegistry.Register` calls — engine is stable.
+2. **Persistence** — `SaveStatusChangeDataAsync` / `RequestStatusChangeDataAsync` IPC is wired (P6) but the codec for serializing the active SC list to bytes is not yet implemented. Lands with the storage-codec slice's approach (BinaryWriter-style versioned blob).
+3. **Wire SC icons to client** — `ZC_MSG_STATE_CHANGE` not yet emitted on Start/End. The handlers know enough to fire it; just needs the packet shape pinned to PACKETVER 20220401.
 
 ### Acceptance
-- Casting Blessing on a player adds SC_BLESS for the right duration; stats change.
-- Walking with Poison applied → HP ticks down at the right rate.
-- Logging out with an active SC → re-logs back in with remaining duration intact.
+- ✅ Blessing applies +N STR/INT/DEX, reverts on end / expiry.
+- ✅ Poison ticks 1.5% MaxHp damage at 1.5s cadence via the damage pipeline.
+- ⚠️ SC persistence across logout (engine ready, codec pending).
 
 ## History
 - **2026-05-16** — Plan stub.
+- **2026-05-19** — Engine + 5 starter SCs shipped. Pump runs from the map game loop ahead of AI/attack. Time source plumbed through `nowTick` so deterministic tests share the clock with the engine. Persistence codec deferred but the IPC surface for it is unchanged.

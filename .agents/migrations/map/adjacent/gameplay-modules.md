@@ -33,42 +33,57 @@ These can all parallelize. Each module's pattern is the same: receive a client p
 
 ## Done
 
-All IPC wrappers ready. Char-side persistence done (P1, P8 closed the cascade bugs).
+All IPC wrappers ready (P6). Char-side persistence done (P1, P8 closed the cascade bugs).
+
+**2026-05-19 wave:**
+
+### Party
+- `PlayerEntity.PartyId` field hydrated at session enter.
+- **`PartyShareService`** ([Party/PartyShareService.cs](../../../../Map.Server/Party/PartyShareService.cs)) — ports `party_exp_share` (party.cpp:1238). On mob kill, splits EXP across eligible same-map alive party members, applies the rAthena even-share bonus (+10% per extra member). `DamageService.HandleDeath` routes through party share first, falls back to solo `pc_gainexp` if not in a party. 5 tests.
+
+### Pet
+- **`PetEntity`** specialized `MobEntity` with intimacy / hunger / equip / pet name.
+- **`PetService`** ([Pet/PetService.cs](../../../../Map.Server/Pet/PetService.cs)) — `Summon` / `Recall` lifecycle, 60s hunger decay tick with runaway-on-hunger-zero + intimacy decay when starving.
+
+### Pet / Homun / Mercenary / Elemental — shared AI
+- **`SummonAiService`** ([Mob/SummonAiService.cs](../../../../Map.Server/Mob/SummonAiService.cs)) collapses the per-type AI loops (pet_ai / hom_ai / merc_ai / elem_ai / mob_ai_sub_hard_slavemob) into one ticker keyed by `Entity.MasterId`. Follow when far + assist master's target + despawn when master leaves map.
+
+### Trade / Shop / Storage
+See [trade.md](trade.md) — `TradeService` (atomic 1:1 exchange), `ShopService` (NPC buy/sell with 50% sell ratio), `StorageService` (kafra over P5 `AccountStorageLoad/Save` IPC).
 
 ## Pending — per module
 
-Each module gets its own focused PR/doc when we land it. Key client packets per module:
-
-### Party
-- `CZ_PARTY_INVITE2`, `CZ_PARTY_JOIN_REQ_ACK`, `CZ_REQ_LEAVE_GROUP`, `CZ_REG_EXPULSION` (kick).
-- Trigger: `PartyShareLevel` config read on tick (P2 wired the persistence — gameplay uses it for exp eligibility check on `mob_dead`).
-- Broadcast member position to other party members (mini-map dots).
+### Party (remaining)
+- `CZ_PARTY_INVITE2`, `CZ_PARTY_JOIN_REQ_ACK`, `CZ_REQ_LEAVE_GROUP`, `CZ_REG_EXPULSION` packet handlers — char-side IPC (`ICharServerIpcServiceParty`) already wired.
+- Mini-map dot broadcast.
 
 ### Guild
-- `CZ_REQ_GUILD_*` family.
-- Emblem upload/download (`CZ_REQ_GUILD_EMBLEM_IMG` / `ZC_GUILD_EMBLEM_IMG`).
-- Castle siege (WoE) — defer, big system.
+- `CZ_REQ_GUILD_*` family + emblem upload.
+- Castle siege (WoE) — separate phase.
 
 ### Mail
-- Modern RoDEX mail UI (`CZ_*_RODEX`).
-- Open inbox / read / take attachment / send / return → all via IPC.
+- Modern RoDEX mail UI (`CZ_*_RODEX`). IPC ready.
 
 ### Quest
-- Quest journal UI; tracker; quest log update on `mob_dead` if matching mob_id.
+- Quest journal UI; tracker hook on `mob_dead` if matching mob_id.
 
 ### Achievement
-- Achievement progress check on every relevant gameplay event (`mob_dead`, `pc_levelup`, `item_obtain`).
+- Progress check on `mob_dead` / `pc_levelup` / `item_obtain`.
 
 ### Clan
-- Mostly just chat (clan chat channel) and the join/leave hooks already in `ClanRequest` IPC.
+- Clan chat channel + join/leave hooks (already in `ClanRequest` IPC).
 
-### Pet / Homun / Mercenary / Elemental
-- Each is a follower entity that walks with the player and acts. Pet has affection/hunger; Homun has skill tree; Merc has timer + skills; Elemental has aura + element.
-- Spawn/despawn lifecycle hooks to char IPC (already wired).
-- Combat hooks (each can attack / be attacked) — depends on combat doc.
+### Pet (remaining)
+- Pet egg item interaction (`CZ_USE_ITEM2` for pet egg → `IPetService.Summon`).
+- Pet capture from mob (mob_egg drop table).
+- Pet feed (`CZ_COMMAND_PET`) with intimacy gain table.
+- Pet skill (`pet_attackskill`) per-pet skill use.
+- Char-server load/save on enter/leave via existing IPC.
 
-### Acceptance
-Per-module functional test against rAthena reference behavior, with the IPC round-trip verified end-to-end.
+### Homunculus / Mercenary / Elemental
+- Spawn / call / dismiss lifecycle wire packets.
+- Per-type AI quirks (homun skill tree learning, merc contract timer, elem mode switching).
 
 ## History
 - **2026-05-16** — Plan stub.
+- **2026-05-19** — Party EXP share shipped (last-hit + share + even-share bonus). Pet entity + service for hunger/intimacy. Generic SummonAiService covers pet/homun/merc/elem/slave-mob follow-and-assist. Trade / shop / storage services wired with strategy-pattern shape. Wire packets for the long tail (party invite, guild, mail, quest, etc.) defer to focused per-module slices; the IPC surface they consume is unchanged.

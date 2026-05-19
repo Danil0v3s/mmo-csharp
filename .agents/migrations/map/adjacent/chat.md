@@ -29,22 +29,22 @@ Most of chat is already wired at the IPC layer (P5 inter-base routing). The map 
 
 ## Done
 
-P5 inter-base routing for broadcast and whisper exists. The char→map `ReceiveBroadcast` / `ReceiveWhisper` handlers in [MapGrpcService.cs](../../../Map.Server/MapGrpcService.cs) currently log+ack. Gameplay must emit to clients.
+- **P5 inter-base routing** for broadcast and whisper exists (char→map). Map-side receive handlers log+ack today.
+- **Public chat** ([ChatMessageHandler.cs](../../../../Map.Server/Handlers/ChatMessageHandler.cs)) — plain text (no `@` prefix) now broadcasts [`ZC_NOTIFY_CHAT`](../../../../Core.Server/Packets/Out/ZC/ZC_NOTIFY_CHAT.cs) (0x008d) to the speaker's AOI via `IVisibilityService.SendToArea`. Wire format: `008d <packet_len>.W <src_id>.L <message>.?B`.
+- **GM `@command` parser + dispatch** — `@where`, `@killmob`, `@warp`, `@damage` shipped in [Map.Server/Gm/](../../../../Map.Server/Gm/). Permission gate via `MapSessionData.GroupId ≥ command.MinGroupId`.
 
 ## Pending
 
-1. `PublicChatHandler` (`CZ_REQUEST_CHAT`) → broadcast `ZC_NOTIFY_PLAYERCHAT` to view-range.
-2. `WhisperHandler` (`CZ_WHISPER`) → resolve recipient locally; if not found here, route via Char IPC `InterWhisper`.
-3. Receive-side from char IPC: `MapGrpcService.ReceiveWhisper` → look up recipient session locally → emit `ZC_WHISPER` to client. Already has the queue+ack stub.
-4. `@command` parser + handler dispatch. Start with: `@kill`, `@warp`, `@item`, `@heal`, `@monster`, `@kick`. Implementations vary; keep them small + GM-permission-gated.
-5. Channel system: per-server `ChannelRegistry`; subscribe / unsubscribe handlers; broadcast within channel.
+1. **Whisper** (`CZ_WHISPER 0x0096`) — wire packet not yet built; service contract is that names resolve locally first, then fall through to char-server `InterWhisper` for cross-server delivery.
+2. **Party chat / Guild chat** scoped broadcast — needs party/guild member-list lookup (existing P5 IPC). Receive-side `MapGrpcService.ReceiveWhisper` already has queue+ack stub.
+3. **`/b` server-wide broadcast** — GM command → `InterBroadcast` → fan-out. Char-side IPC ready.
+4. **Channel system** (`#main`, `#trade`) — per-server `ChannelRegistry` with subscribe/unsubscribe handlers.
 
 ### Acceptance
-- Two players in view: A types `hello` → B sees it.
-- A whispers to B (on same map server): B receives it.
-- A whispers to C (on a different map server): the message routes via Char IPC; C receives it.
-- `@warp prontera 155 191` warps the calling GM.
-- `/b Hello world` broadcasts to every player on every map server.
+- ✅ Two players in view: A types `hello` → B sees it (public chat).
+- ✅ GM uses `@warp prontera 155 191` → calling GM warps (via `IPcSetposService`).
+- ⚠️ Whisper / party / guild / broadcast / channel — service routing exists, wire emission pending.
 
 ## History
 - **2026-05-16** — Plan stub.
+- **2026-05-19** — Public chat broadcast shipped. ZC_NOTIFY_CHAT defined and emitted from ChatMessageHandler when no `@` prefix is present. Whisper / party / guild / channel still pending wire packets; routing infrastructure (P5 IPC) untouched.
