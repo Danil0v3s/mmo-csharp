@@ -64,6 +64,18 @@ public sealed class PlayerEntity : Entity
     public int StatusPoints { get; set; }
     public int SkillPoints { get; set; }
 
+    /// <summary>
+    /// rAthena <c>trait_point</c> on mmo_charstatus — renewal POW/STA/
+    /// WIS/SPL/CON/CRT allocation pool, separate from <see cref="StatusPoints"/>.
+    /// Mutated by <c>pc_traitstatusup</c>.
+    /// </summary>
+    public int TraitPoints { get; set; }
+
+    /// <summary>rAthena <c>cashPoints</c> — cash shop currency (paid).</summary>
+    public int CashPoints { get; set; }
+    /// <summary>rAthena <c>kafraPoints</c> — kafra-shop currency (earned).</summary>
+    public int KafraPoints { get; set; }
+
     /// <summary>Party id, 0 = solo. Sourced from char-server at session enter.</summary>
     public int PartyId { get; set; }
 
@@ -152,11 +164,24 @@ public sealed class PlayerEntity : Entity
     public int ChildCharId { get; set; }
 
     /// <summary>
+    /// rAthena <c>memo_point[3]</c> — Warp Portal memo slots.
+    /// Each is (mapName, x, y). Empty mapName = empty slot.
+    /// </summary>
+    public (string MapName, short X, short Y)[] MemoPoints { get; } = new (string, short, short)[3];
+
+    /// <summary>
     /// Skills learned by this character: skill_id → level. Mirrors
-    /// rAthena <c>mmo_charstatus.skill[]</c>. Hydrated from char-server
-    /// at session enter; mutated by <c>pc_skillup</c>.
+    /// rAthena <c>mmo_charstatus.skill[].lv</c>. Hydrated from
+    /// char-server at session enter; mutated by <c>pc_skillup</c>.
     /// </summary>
     public Dictionary<ushort, byte> LearnedSkills { get; } = new();
+
+    /// <summary>
+    /// Per-skill flag — rAthena <c>mmo_charstatus.skill[].flag</c>
+    /// (SKILL_FLAG_*). Default <see cref="Skills.SkillFlag.Permanent"/>
+    /// for legacy entries; CleanSkillTree only drops PermanentGranted.
+    /// </summary>
+    public Dictionary<ushort, Skills.SkillFlag> SkillFlags { get; } = new();
 
 
     public override EntityType Type => EntityType.Pc;

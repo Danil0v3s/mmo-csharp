@@ -374,7 +374,15 @@ builder.Services.AddSingleton<Map.Server.Status.IPlayerBgQueueTimerService, Map.
 builder.Services.AddSingleton<Map.Server.Status.IPlayerHateService, Map.Server.Status.PlayerHateService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerJailService, Map.Server.Status.PlayerJailService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerRelationService, Map.Server.Status.PlayerRelationService>();
-builder.Services.AddSingleton<Map.Server.Status.IPlayerAttendanceService, Map.Server.Status.PlayerAttendanceService>();
+builder.Services.AddSingleton<Map.Server.Status.AttendanceYmlLoader>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerAttendanceService>(sp =>
+{
+    var log = sp.GetRequiredService<ILogger<Map.Server.Status.PlayerAttendanceService>>();
+    var svc = new Map.Server.Status.PlayerAttendanceService(log);
+    var loader = sp.GetRequiredService<Map.Server.Status.AttendanceYmlLoader>();
+    svc.SetSchedule(loader.Load(ResolveConfigPath("attendance.yml")));
+    return svc;
+});
 builder.Services.AddSingleton<Map.Server.Status.IPlayerQuestMarkerService, Map.Server.Status.PlayerQuestMarkerService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerStealService, Map.Server.Status.PlayerStealService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerReputationService, Map.Server.Status.PlayerReputationService>();

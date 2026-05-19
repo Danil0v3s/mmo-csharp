@@ -105,6 +105,26 @@ public class MapSessionData(
     public List<int> RemovedInventoryIds { get; } = new();
 
     /// <summary>
+    /// Per-character cart inventory loaded alongside the regular
+    /// inventory. Null until <c>pc_setcart</c> activates one;
+    /// remains null for characters without the cart skill. Items
+    /// here are still <see cref="Map.Server.Inventory.InventoryItem"/> rows but
+    /// stored under <c>cart_inventory</c> in MySQL (the existing
+    /// <c>CartInventoryRepository</c>).
+    /// </summary>
+    public List<Map.Server.Inventory.InventoryItem>? Cart { get; set; }
+
+    /// <summary>
+    /// Per-session autoloot configuration. rAthena <c>sd-&gt;state.autoloot</c>
+    /// is a global %-chance gate; <c>sd-&gt;state.autoloottype</c> is a
+    /// bitmask of item types to grab; <c>sd-&gt;state.autolootid[]</c> is
+    /// a list of up to 10 whitelisted item ids.
+    /// </summary>
+    public byte AutolootRate { get; set; }
+    public uint AutolootTypeMask { get; set; }
+    public readonly List<uint> AutolootItemIds = new();
+
+    /// <summary>
     /// Live account-storage state while a kafra/storage window is open.
     /// Null until <see cref="Map.Server.Storage.IStorageService.OpenAsync"/> hydrates.
     /// </summary>

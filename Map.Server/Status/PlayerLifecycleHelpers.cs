@@ -118,25 +118,89 @@ public sealed class PlayerStatHelpers : IPlayerStatHelpers
 
     public bool TraitStatusUp(PlayerEntity pc, ushort traitId)
     {
-        // Renewal trait stat pool (POW/STA/WIS/SPL/CON/CRT) — separate
-        // pool from regular stats. Stubbed until the trait point
-        // counter joins PlayerEntity; logged for visibility.
-        _logger.LogDebug("pc_traitstatusup stub: char {Char} trait {Trait}", pc.CharacterId, traitId);
-        return false;
+        // Renewal trait stat pool — costs 1 trait point per +1 (vs the
+        // diminishing-cost regular stats). rAthena SP_POW=219, SP_STA=220,
+        // SP_WIS=221, SP_SPL=222, SP_CON=223, SP_CRT=224.
+        if (pc.TraitPoints <= 0) return false;
+        switch (traitId)
+        {
+            case 219: pc.Stats.Pow = (short)Math.Min(pc.Stats.Pow + 1, 100); break;
+            case 220: pc.Stats.Sta = (short)Math.Min(pc.Stats.Sta + 1, 100); break;
+            case 221: pc.Stats.Wis = (short)Math.Min(pc.Stats.Wis + 1, 100); break;
+            case 222: pc.Stats.Spl = (short)Math.Min(pc.Stats.Spl + 1, 100); break;
+            case 223: pc.Stats.Con = (short)Math.Min(pc.Stats.Con + 1, 100); break;
+            case 224: pc.Stats.Crt = (short)Math.Min(pc.Stats.Crt + 1, 100); break;
+            default: return false;
+        }
+        pc.TraitPoints--;
+        return true;
     }
 
-    public int MaxParameter(PlayerEntity pc, ushort spId) => 99;
-    public int MaxBaseLevel(PlayerEntity pc) => ExpTable.MaxBaseLevel;
-    public int MaxJobLevel(PlayerEntity pc) => ExpTable.MaxJobLevel;
+    public int MaxParameter(PlayerEntity pc, ushort spId)
+    {
+        // rAthena pc_maxparameter (pc.cpp:5060) — picks between
+        // battle_config.max_parameter (99) and max_third_parameter
+        // (130) based on the class. We resolve via the session's
+        // CharacterData.ClassId since the class mask isn't ported yet.
+        var session = _sessions.GetByEntityId(pc.Id);
+        if (session?.CharacterData == null) return 99;
+        var classId = (int)session.CharacterData.ClassId;
+        // Renewal 3rd-job range starts at 4030 (mainline) / 4054 (trans).
+        // 4th class is 4077+ — same cap 130. Pre-3rd → 99.
+        if (classId >= 4030 && classId <= 4076) return 130;
+        if (classId >= 4077) return 130;
+        return 99;
+    }
+
+    public int MaxBaseLevel(PlayerEntity pc)
+    {
+        // rAthena pc_maxbaselv looks up maxbase[class] in job_stats.yml.
+        // Renewal defaults:
+        //   Novice / 1st / 2nd / trans-2nd → 99
+        //   3rd jobs → 175
+        //   4th jobs → 250 (cap)
+        var session = _sessions.GetByEntityId(pc.Id);
+        if (session?.CharacterData == null) return 99;
+        var classId = (int)session.CharacterData.ClassId;
+        if (classId >= 4077) return 250;
+        if (classId >= 4030) return 175;
+        return Math.Min(99, ExpTable.MaxBaseLevel);
+    }
+
+    public int MaxJobLevel(PlayerEntity pc)
+    {
+        // Renewal defaults:
+        //   Novice → 10
+        //   1st class → 50
+        //   2nd / trans-2nd → 70
+        //   3rd job → 60
+        //   4th job → 50
+        var session = _sessions.GetByEntityId(pc.Id);
+        if (session?.CharacterData == null) return 50;
+        var classId = (int)session.CharacterData.ClassId;
+        if (classId == 0) return 10;                  // Novice
+        if (classId >= 4077) return 50;               // 4th
+        if (classId >= 4030 && classId <= 4076) return 60; // 3rd
+        if (classId >= 7 && classId <= 25) return 70; // 2nd / trans-2nd
+        if (classId >= 4001 && classId <= 4029) return 70;
+        return 50;                                    // 1st-class baseline
+    }
 
     public bool PayCash(PlayerEntity pc, int price, int pointsKafra)
     {
-        // Cash points + kafra points columns aren't on CharacterData
-        // yet. Stub returns true so callers wire; real deduction
-        // lands when the cashshop loader ports.
-        _logger.LogDebug(
-            "pc_paycash stub: char {Char} price {Price} kafra {Kafra}",
-            pc.CharacterId, price, pointsKafra);
+        // rAthena pc_paycash (pc.cpp:5475): kafra points are consumed
+        // first, remainder from cash points. Refuses on insufficient
+        // total. Both pools live on PlayerEntity.
+        if (price < 0 || pointsKafra < 0) return false;
+        var kafra = Math.Min(pointsKafra, pc.KafraPoints);
+        kafra = Math.Min(kafra, price);
+        var cashOwed = price - kafra;
+        if (cashOwed > pc.CashPoints) return false;
+        pc.KafraPoints -= kafra;
+        pc.CashPoints -= cashOwed;
+        _logger.LogInformation(
+            "pc_paycash: char {Char} paid kafra={Kafra} cash={Cash} (remaining K={K} C={C})",
+            pc.CharacterId, kafra, cashOwed, pc.KafraPoints, pc.CashPoints);
         return true;
     }
 }

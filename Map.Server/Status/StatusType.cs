@@ -41,4 +41,8 @@ public enum StatusType : short
     // Heal-over-time and damage-over-time anchors used by skills/items.
     HealOverTime = 100,
     AttackUpRate = 101,
+
+    // Ground-unit cell effects — applied while standing on a Basilica
+    // / Land Protector cell. Removed when the player steps off.
+    Basilica = 130,
 }

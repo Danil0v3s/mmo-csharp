@@ -54,15 +54,37 @@ public interface IPlayerSkillService
 }
 
 /// <summary>
-/// Mirror of rAthena <c>enum e_addskill_type</c> — controls how the
-/// caller composes with any existing skill entry.
+/// Mirror of rAthena <c>enum e_addskill_type</c> (pc.hpp:1487) —
+/// controls how <see cref="IPlayerSkillService.Grant"/> composes with
+/// an existing skill entry.
 /// </summary>
 public enum GrantKind
 {
-    /// <summary>Overwrite the slot at <c>level</c>.</summary>
-    Permanent,
-    /// <summary>Add <c>level</c> to the existing level, clamped to <c>MaxLevel</c>.</summary>
-    TemporaryAdd,
-    /// <summary>Quest-skill grant (rAthena ADDSKILL_PERMANENT_QUEST).</summary>
-    PermanentQuest,
+    /// <summary>ADDSKILL_PERMANENT — overwrite slot at <c>level</c>; lv=0 removes.</summary>
+    Permanent = 0,
+    /// <summary>ADDSKILL_TEMP — replace with level if higher; original learned-level moved to flag.</summary>
+    Temporary = 1,
+    /// <summary>ADDSKILL_TEMP_ADDLEVEL — add to existing learned, preserve original in flag.</summary>
+    TemporaryAdd = 2,
+    /// <summary>ADDSKILL_PERMANENT_GRANTED — bypass skill tree (quest/GM grant).</summary>
+    PermanentGranted = 3,
+    /// <summary>Alias retained for backwards compatibility with prior callers.</summary>
+    PermanentQuest = PermanentGranted,
+}
+
+/// <summary>
+/// Mirror of rAthena <c>SKILL_FLAG_*</c> (pc.hpp area). Per-skill
+/// metadata stored on <see cref="PlayerEntity.SkillFlags"/>; drives
+/// <c>pc_clean_skilltree</c> and SC bonus restoration on relog.
+/// </summary>
+public enum SkillFlag : byte
+{
+    /// <summary>SKILL_FLAG_PERMANENT — earned via the skill tree.</summary>
+    Permanent = 0,
+    /// <summary>SKILL_FLAG_TEMPORARY — temporary buff / script.</summary>
+    Temporary = 1,
+    /// <summary>SKILL_FLAG_PLAGIARIZED — copied via Stalker Reproduce.</summary>
+    Plagiarized = 4,
+    /// <summary>SKILL_FLAG_PERM_GRANTED — bypassed tree (GM/quest).</summary>
+    PermanentGranted = 5,
 }

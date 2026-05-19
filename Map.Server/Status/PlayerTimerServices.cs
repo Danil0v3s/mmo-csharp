@@ -98,26 +98,65 @@ public sealed class PlayerHateService : IPlayerHateService
 }
 
 /// <summary>
-/// First-slice <see cref="IPlayerJailService"/>. Tracks the jailed
-/// flag + release time. Actual warp to the jail map (sec_pri) lives
-/// in the warp service hook; the timer service can call <see cref="Unjail"/>
-/// when the duration elapses.
+/// Real <see cref="IPlayerJailService"/>. Tracks the jailed-until
+/// timestamp + warps the PC to <c>sec_pri</c> (rAthena jail map) on
+/// jail; restores them to their savepoint on unjail.
 /// </summary>
 public sealed class PlayerJailService : IPlayerJailService
 {
     private readonly ConcurrentDictionary<int, long> _jailedUntil = new();
+    /// <summary>Pre-jail savepoint so unjail can warp them home.</summary>
+    private readonly ConcurrentDictionary<int, (string Map, short X, short Y)> _preJailLocation = new();
+    private readonly Map.Server.Movement.IPcSetposService _setpos;
+    private readonly Map.Server.World.IMapWorldRegistry _maps;
     private readonly ILogger<PlayerJailService> _logger;
-    public PlayerJailService(ILogger<PlayerJailService> logger) => _logger = logger;
+
+    public PlayerJailService(
+        Map.Server.Movement.IPcSetposService setpos,
+        Map.Server.World.IMapWorldRegistry maps,
+        ILogger<PlayerJailService> logger)
+    {
+        _setpos = setpos;
+        _maps = maps;
+        _logger = logger;
+    }
 
     public bool Jail(PlayerEntity pc, int minutes, string? reason = null)
     {
         var ends = minutes <= 0 ? long.MaxValue : DateTimeOffset.UtcNow.ToUnixTimeSeconds() + minutes * 60;
         _jailedUntil[pc.CharacterId] = ends;
-        _logger.LogInformation("pc_jail: char {Char} for {Min}m reason={Reason}", pc.CharacterId, minutes, reason);
+        // Snapshot pre-jail location so unjail can restore.
+        var map = _maps.All.FirstOrDefault(m => (uint)m.Name.GetHashCode() == pc.MapId);
+        if (map != null)
+        {
+            _preJailLocation[pc.CharacterId] = (map.Name, pc.X, pc.Y);
+        }
+        // rAthena jail map = sec_pri (24,75). If unknown to our world
+        // registry, log + skip the warp (jail flag still applies).
+        if (_maps.Get("sec_pri") != null)
+        {
+            _setpos.Setpos(pc, "sec_pri", 24, 75);
+        }
+        else
+        {
+            _logger.LogWarning("pc_jail: sec_pri not loaded; char {Char} flagged but not warped", pc.CharacterId);
+        }
+        _logger.LogInformation(
+            "pc_jail: char {Char} for {Min}m reason={Reason}",
+            pc.CharacterId, minutes, reason);
         return true;
     }
 
-    public bool Unjail(PlayerEntity pc) => _jailedUntil.TryRemove(pc.CharacterId, out _);
+    public bool Unjail(PlayerEntity pc)
+    {
+        var was = _jailedUntil.TryRemove(pc.CharacterId, out _);
+        if (was && _preJailLocation.TryRemove(pc.CharacterId, out var loc))
+        {
+            _setpos.Setpos(pc, loc.Map, loc.X, loc.Y);
+        }
+        if (was) _logger.LogInformation("pc_unjail: char {Char}", pc.CharacterId);
+        return was;
+    }
 
     public bool IsJailed(PlayerEntity pc)
         => _jailedUntil.TryGetValue(pc.CharacterId, out var ends)

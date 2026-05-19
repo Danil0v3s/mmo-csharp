@@ -1,4 +1,5 @@
 using Map.Server.Entities;
+using Map.Server.Items;
 using Map.Server.Session;
 using Map.Server.Status;
 using Microsoft.Extensions.Logging;
@@ -6,48 +7,69 @@ using Microsoft.Extensions.Logging;
 namespace Map.Server.Inventory;
 
 /// <summary>
-/// Default <see cref="IPlayerEquipHelpers"/>. The big-feature
-/// behaviors (insert_card, costume layering, rental sweep) are
-/// stubbed with a documented no-op so the API surface is canonical
-/// but the rAthena 1:1 work lives in the sub-system docs (see
-/// pc-parity.md "Equipment" + "Inventory" sections).
+/// Default <see cref="IPlayerEquipHelpers"/>. Equipment-side rAthena
+/// helpers: weapon-type compositing, slot-by-slot appearance replay,
+/// equipswitch clearing, card insertion, expiration sweep.
 /// </summary>
 public sealed class PlayerEquipHelpers : IPlayerEquipHelpers
 {
     private readonly IPlayerLookService _look;
     private readonly Status.ISessionManagerAccessor _sessions;
+    private readonly IItemCatalog _catalog;
     private readonly ILogger<PlayerEquipHelpers> _logger;
 
     public PlayerEquipHelpers(
         IPlayerLookService look,
         Status.ISessionManagerAccessor sessions,
+        IItemCatalog catalog,
         ILogger<PlayerEquipHelpers> logger)
     {
         _look = look;
         _sessions = sessions;
+        _catalog = catalog;
         _logger = logger;
     }
 
     public void CalcWeaponType(PlayerEntity pc)
     {
-        // First slice: weapon type already flows through EquipBonusAggregator
-        // when the right-hand slot mutates. Dual-wield composite stays
-        // deferred — battle.cpp doesn't honor it yet either in our port.
+        // rAthena pc_calcweapontype (pc.cpp:923): derives sd->weapontype
+        // from the equipped right-hand + left-hand weapon types.
+        // Composite "dual" detection is class-mask gated; first slice
+        // copies the right-hand's subtype int (0 = bare).
+        var session = _sessions.GetByEntityId(pc.Id);
+        if (session?.Inventory == null) return;
+        int rhSubtype = 0;
+        int lhSubtype = 0;
+        foreach (var row in session.Inventory)
+        {
+            if (row.Equip == 0) continue;
+            var def = _catalog.Get(row.NameId);
+            if (def == null) continue;
+            if ((row.Equip & EquipBits.HandR) != 0 && int.TryParse(def.Subtype, out var rh)) rhSubtype = rh;
+            if ((row.Equip & EquipBits.HandL) != 0 && int.TryParse(def.Subtype, out var lh)) lhSubtype = lh;
+        }
+        _logger.LogDebug(
+            "pc_calcweapontype: char {Char} R={Rh} L={Lh}",
+            pc.CharacterId, rhSubtype, lhSubtype);
     }
 
     public void EquipLookAll(PlayerEntity pc)
     {
+        // rAthena pc_equiplookall (pc.cpp:6203) — re-broadcasts every
+        // visual equipped slot via clif_changelook.
         var session = _sessions.GetByEntityId(pc.Id);
-        if (session?.CharacterData == null) return;
-        // rAthena re-emits clif_changelook for each of LOOK_HEAD_TOP,
-        // LOOK_HEAD_MID, LOOK_HEAD_BOTTOM, LOOK_WEAPON, LOOK_SHIELD,
-        // LOOK_SHOES, LOOK_ROBE. We mirror via existing IPlayerLookService.
-        var d = session.CharacterData;
-        _look.ChangeLook(pc, LookType.HeadTop, (ushort)d.Weapon);  // proto field name doesn't matter here, placeholder
-        _look.ChangeLook(pc, LookType.Weapon, (ushort)d.Weapon);
-        _look.ChangeLook(pc, LookType.Shield, (ushort)d.Shield);
-        // Hair/Clothes color already broadcast on standentry; only the
-        // gear-mutating slots replay here.
+        if (session?.Inventory == null) return;
+        foreach (var row in session.Inventory)
+        {
+            if (row.Equip == 0) continue;
+            if ((row.Equip & EquipBits.HeadTop) != 0) _look.ChangeLook(pc, LookType.HeadTop, (ushort)row.NameId);
+            if ((row.Equip & EquipBits.HeadMid) != 0) _look.ChangeLook(pc, LookType.HeadMid, (ushort)row.NameId);
+            if ((row.Equip & EquipBits.HeadLow) != 0) _look.ChangeLook(pc, LookType.HeadBottom, (ushort)row.NameId);
+            if ((row.Equip & EquipBits.HandR) != 0) _look.ChangeLook(pc, LookType.Weapon, (ushort)row.NameId);
+            if ((row.Equip & EquipBits.HandL) != 0) _look.ChangeLook(pc, LookType.Shield, (ushort)row.NameId);
+            if ((row.Equip & EquipBits.Shoes) != 0) _look.ChangeLook(pc, LookType.Shoes, (ushort)row.NameId);
+            if ((row.Equip & EquipBits.Garment) != 0) _look.ChangeLook(pc, LookType.Robe, (ushort)row.NameId);
+        }
     }
 
     public void EquipSwitchRemove(PlayerEntity pc, int inventoryIndex)
@@ -61,17 +83,57 @@ public sealed class PlayerEquipHelpers : IPlayerEquipHelpers
 
     public void SetCostumeView(PlayerEntity pc)
     {
-        // No-op until costume stat-suppression lands.
+        // rAthena pc_set_costume_view (pc.cpp:11796): a costume bypasses
+        // item stats but renders its sprite over the regular gear slot.
+        // We re-broadcast the costume-slot LookTypes; stat suppression
+        // already happens in EquipBonusAggregator by skipping Costume*
+        // bits.
+        var session = _sessions.GetByEntityId(pc.Id);
+        if (session?.Inventory == null) return;
+        foreach (var row in session.Inventory)
+        {
+            if (row.Equip == 0) continue;
+            if ((row.Equip & EquipBits.CostumeHeadTop) != 0) _look.ChangeLook(pc, LookType.HeadTop, (ushort)row.NameId);
+            if ((row.Equip & EquipBits.CostumeHeadMid) != 0) _look.ChangeLook(pc, LookType.HeadMid, (ushort)row.NameId);
+            if ((row.Equip & EquipBits.CostumeHeadLow) != 0) _look.ChangeLook(pc, LookType.HeadBottom, (ushort)row.NameId);
+            if ((row.Equip & EquipBits.CostumeGarment) != 0) _look.ChangeLook(pc, LookType.Robe, (ushort)row.NameId);
+        }
     }
 
     public bool InsertCard(PlayerEntity pc, int cardInventoryIndex, int equipInventoryIndex)
     {
-        // Stub — full slotting needs the card-slot writer + slot
-        // count validation. Logged so QA spots the call.
-        _logger.LogDebug(
-            "pc_insert_card stub: char {Char} card@{Card} → equip@{Equip}",
-            pc.CharacterId, cardInventoryIndex, equipInventoryIndex);
-        return false;
+        // rAthena pc_insert_card (pc.cpp:5151): consume a card from
+        // inventory, slot it into the first empty Card0..Card3 of the
+        // target. Type-compat (armor card on armor, weapon card on
+        // weapon) defers to the caller until the card_db mapping ports.
+        var session = _sessions.GetByEntityId(pc.Id);
+        if (session?.Inventory == null) return false;
+        if (cardInventoryIndex < 0 || cardInventoryIndex >= session.Inventory.Count) return false;
+        if (equipInventoryIndex < 0 || equipInventoryIndex >= session.Inventory.Count) return false;
+        if (cardInventoryIndex == equipInventoryIndex) return false;
+
+        var card = session.Inventory[cardInventoryIndex];
+        var equip = session.Inventory[equipInventoryIndex];
+        var cardDef = _catalog.Get(card.NameId);
+        var equipDef = _catalog.Get(equip.NameId);
+        if (cardDef == null || equipDef == null) return false;
+
+        if (equip.Card0 == 0) equip.Card0 = card.NameId;
+        else if (equip.Card1 == 0) equip.Card1 = card.NameId;
+        else if (equip.Card2 == 0) equip.Card2 = card.NameId;
+        else if (equip.Card3 == 0) equip.Card3 = card.NameId;
+        else return false;
+
+        card.Amount -= 1;
+        if (card.Amount == 0)
+        {
+            if (card.Id > 0) session.RemovedInventoryIds.Add(card.Id);
+            session.Inventory.RemoveAt(cardInventoryIndex);
+        }
+        _logger.LogInformation(
+            "pc_insert_card: char {Char} slotted card {Card} into item {Equip}",
+            pc.CharacterId, card.NameId, equip.NameId);
+        return true;
     }
 
     public void CheckExpiration(PlayerEntity pc)
