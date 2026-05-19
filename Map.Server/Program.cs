@@ -208,7 +208,12 @@ builder.Services.AddSingleton<Map.Server.Handlers.Actions.IActionHandler, Map.Se
 builder.Services.AddSingleton<Map.Server.Handlers.Actions.ActionRegistry>();
 
 // Mob hard AI (mob.cpp:1741 mob_ai_sub_hard). Aggressive target
-// acquisition; chase + swings delegate to IAttackService.
+// acquisition; chase + swings delegate to IAttackService. Mob skill
+// conditions (mobskill_use trigger evaluation) use IMobSkillConditionEvaluator
+// strategies — one class per rAthena MSC_* condition.
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.AlwaysCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.MyHpLessThanRateCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.MobSkillConditionRegistry>();
 builder.Services.AddSingleton<Map.Server.Mob.IMobAiService, Map.Server.Mob.MobAiService>();
 
 // EXP service (pc.cpp:8314 pc_gainexp). Awards base + job EXP on mob

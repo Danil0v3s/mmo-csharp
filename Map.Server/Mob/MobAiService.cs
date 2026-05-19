@@ -1,5 +1,6 @@
 using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Mob.Conditions;
 using Map.Server.Skills;
 using Map.Server.Status;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,7 @@ public sealed class MobAiService : IMobAiService
     private readonly IEntityRegistry _entities;
     private readonly IAttackService _attack;
     private readonly ISkillCastService? _skillCast;
+    private readonly MobSkillConditionRegistry _conditions;
     private readonly Random _rng;
     private readonly Dictionary<EntityId, long> _lastThink = new();
     /// <summary>Per-mob, per-skill cooldown anchor (Environment.TickCount64).</summary>
@@ -33,11 +35,19 @@ public sealed class MobAiService : IMobAiService
         IAttackService attack,
         ILogger<MobAiService> _,
         ISkillCastService? skillCast = null,
+        MobSkillConditionRegistry? conditions = null,
         Random? rng = null)
     {
         _entities = entities;
         _attack = attack;
         _skillCast = skillCast;
+        // Default to the standard evaluator set so existing tests don't
+        // need to construct a registry by hand.
+        _conditions = conditions ?? new MobSkillConditionRegistry(new IMobSkillConditionEvaluator[]
+        {
+            new AlwaysCondition(),
+            new MyHpLessThanRateCondition(),
+        });
         _rng = rng ?? Random.Shared;
     }
 
@@ -150,17 +160,12 @@ public sealed class MobAiService : IMobAiService
             var key = (mob.Id, i);
             if (_skillDelay.TryGetValue(key, out var readyAt) && readyAt > nowTick) continue;
 
-            // Condition evaluation. Only Always + MyHpLessThanRate ported
-            // — the rest (slave counts, master-attacked, ground-attacked,
-            // etc.) plug in here as their owning subsystems land.
-            var conditionMet = entry.Condition switch
-            {
-                MobSkillCondition.Always => true,
-                MobSkillCondition.MyHpLessThanRate =>
-                    mob.MaxHp > 0 && (mob.Hp * 100 / mob.MaxHp) <= entry.Cond2,
-                _ => false,
-            };
-            if (!conditionMet) continue;
+            // Condition evaluation — strategy dispatch via
+            // MobSkillConditionRegistry. New rAthena conditions (slave
+            // counts, master-attacked, ground-attacked, etc.) ship as
+            // a new IMobSkillConditionEvaluator class.
+            var evaluator = _conditions.Get(entry.Condition);
+            if (evaluator == null || !evaluator.IsMet(mob, target, entry)) continue;
 
             // Permillage gate (out of 10,000).
             if (_rng.Next(10_000) >= entry.Permillage) continue;
