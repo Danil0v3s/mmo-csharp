@@ -4,6 +4,7 @@ using Map.Server.Entities;
 using Map.Server.Session;
 using Map.Server.Visibility;
 using Map.Server.World;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Movement;
@@ -31,7 +32,18 @@ public sealed class PcSetposService : IPcSetposService
     private readonly IMapWorldRegistry _world;
     private readonly IEntityRegistry _entities;
     private readonly IVisibilityService _visibility;
-    private readonly IAttackService _attack;
+    // Resolved lazily through the service provider because the
+    // construction chain
+    //   PcSetposService → IAttackStopper → AttackService → IDamageService
+    //   → IMobDeathSink → MobSpawnService → IMovementService → IWarpDispatcher
+    //   → IPcSetposService
+    // is a true runtime cycle. The narrow IAttackStopper / IMobDeathSink
+    // seams isolate consumers but the DI graph still recurses through
+    // every edge. Punting the IAttackStopper resolution to the first call
+    // site (StopAttack only runs when a warp actually fires) is the
+    // simplest break — at that point every singleton has been built.
+    private readonly IServiceProvider _services;
+    private Combat.IAttackStopper? _cachedAttack;
     private readonly Status.ISessionManagerAccessor _sessions;
     private readonly ILogger<PcSetposService> _logger;
 
@@ -39,17 +51,20 @@ public sealed class PcSetposService : IPcSetposService
         IMapWorldRegistry world,
         IEntityRegistry entities,
         IVisibilityService visibility,
-        IAttackService attack,
+        IServiceProvider services,
         Status.ISessionManagerAccessor sessions,
         ILogger<PcSetposService> logger)
     {
         _world = world;
         _entities = entities;
         _visibility = visibility;
-        _attack = attack;
+        _services = services;
         _sessions = sessions;
         _logger = logger;
     }
+
+    private Combat.IAttackStopper Attack
+        => _cachedAttack ??= _services.GetRequiredService<Combat.IAttackStopper>();
 
     public SetposResult Setpos(PlayerEntity pc, string mapName, short x, short y)
     {
@@ -66,7 +81,7 @@ public sealed class PcSetposService : IPcSetposService
 
         // Stop combat and movement before relocation — rAthena uses
         // unit_stop_walking(USW_FIXPOS) here.
-        _attack.StopAttack(pc);
+        Attack.StopAttack(pc);
         pc.Walk = null;
 
         var newMapId = (uint)mapName.GetHashCode();

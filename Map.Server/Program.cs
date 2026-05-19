@@ -107,7 +107,11 @@ builder.Services.AddSingleton<MapSessionLifecycle>();
 // collection of declared spawn entries; service drives initial spawn,
 // idle wander, and respawn timing.
 builder.Services.AddSingleton<IMobSpawnRegistry, MobSpawnRegistry>();
-builder.Services.AddSingleton<IMobSpawnService, MobSpawnService>();
+builder.Services.AddSingleton<MobSpawnService>();
+builder.Services.AddSingleton<IMobSpawnService>(sp => sp.GetRequiredService<MobSpawnService>());
+// Same instance, narrow seam — DamageService injects this to avoid the
+// spawn → movement → warp → setpos → attack → damage → spawn DI cycle.
+builder.Services.AddSingleton<IMobDeathSink>(sp => sp.GetRequiredService<MobSpawnService>());
 
 // Scripting (see .agents/migrations/map/scripting/). At boot the host
 // loads the esbuild bundle from scripts/dist/main.js; every register*()
@@ -206,7 +210,14 @@ builder.Services.AddSingleton<Map.Server.Party.IPartyShareService, Map.Server.Pa
 // Auto-attack loop (rAthena unit.cpp:2615 unit_attack +
 // unit.cpp:3056 unit_attack_timer). Driven from the map game loop;
 // validates range/death/map every tick and chases via IMovementService.
-builder.Services.AddSingleton<IAttackService, AttackService>();
+builder.Services.AddSingleton<AttackService>();
+builder.Services.AddSingleton<IAttackService>(sp => sp.GetRequiredService<AttackService>());
+// Narrow seam — see IAttackStopper. Setpos / death paths inject this to
+// avoid the attack → damage → setpos/death → attack DI cycle. The
+// PcSetposService resolves this lazily through IServiceProvider at
+// first call site (see comment there) so the construction-time chain
+// doesn't recurse back through itself.
+builder.Services.AddSingleton<IAttackStopper>(sp => sp.GetRequiredService<AttackService>());
 
 // CZ_REQUEST_ACTION dispatch — one IActionHandler strategy per
 // action code (single-attack, continuous-attack, sit, stand…).
@@ -225,6 +236,14 @@ builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvalua
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.MyHpLessThanRateCondition>();
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.MobSkillConditionRegistry>();
 builder.Services.AddSingleton<Map.Server.Mob.IMobAiService, Map.Server.Mob.MobAiService>();
+
+// Summon AI (mob.cpp:2030 mob_ai_sub_lazy — slave / pet / homun / merc /
+// elemental follow + assist on master). Driven from the map tick same
+// as IMobAiService.
+builder.Services.AddSingleton<Map.Server.Mob.ISummonAiService, Map.Server.Mob.SummonAiService>();
+
+// Pet system (pet.cpp). Hunger / intimacy ticks; egg-hatch + capture.
+builder.Services.AddSingleton<Map.Server.Pet.IPetService, Map.Server.Pet.PetService>();
 
 // EXP service (pc.cpp:8314 pc_gainexp). Awards base + job EXP on mob
 // kill, walks the level-up chain, full-heals + broadcasts SP_BASELEVEL

@@ -2,6 +2,7 @@ using Core.Server.Packets.Out.ZC;
 using Map.Server.Entities;
 using Map.Server.Movement;
 using Map.Server.Visibility;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Combat;
@@ -25,7 +26,14 @@ public sealed class PcDeathService : IPcDeathService
     /// </summary>
     private const int DeathPenaltyPermil = 10; // 1.0% in tenths-of-percent.
 
-    private readonly IAttackService _attack;
+    // Resolved through IServiceProvider so the cycle
+    //   DamageService → PcDeathService → IAttackStopper → AttackService
+    //   → DamageService
+    // doesn't form at construction time. StopAttack on death only runs
+    // at runtime, well after every singleton has been built.
+    private readonly IServiceProvider _services;
+    private IAttackStopper? _cachedAttack;
+    private IAttackStopper Attack => _cachedAttack ??= _services.GetRequiredService<IAttackStopper>();
     private readonly IVisibilityService _visibility;
     private readonly IPcSetposService? _setpos;
     private readonly ILogger<PcDeathService> _logger;
@@ -36,12 +44,12 @@ public sealed class PcDeathService : IPcDeathService
     private readonly Dictionary<int, Savepoint> _savepoints = new();
 
     public PcDeathService(
-        IAttackService attack,
+        IServiceProvider services,
         IVisibilityService visibility,
         ILogger<PcDeathService> logger,
         IPcSetposService? setpos = null)
     {
-        _attack = attack;
+        _services = services;
         _visibility = visibility;
         _setpos = setpos;
         _logger = logger;
@@ -58,7 +66,7 @@ public sealed class PcDeathService : IPcDeathService
         if (!_dead.Add(pc.CharacterId)) return;
 
         // Stop any in-flight activity.
-        _attack.StopAttack(pc);
+        Attack.StopAttack(pc);
         pc.Walk = null;
 
         // Death penalty — pc.cpp pc_dead doesn't subtract here directly

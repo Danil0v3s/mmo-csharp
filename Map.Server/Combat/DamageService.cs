@@ -9,7 +9,10 @@ namespace Map.Server.Combat;
 public sealed class DamageService : IDamageService
 {
     private readonly IVisibilityService _visibility;
-    private readonly IMobSpawnService _mobSpawn;
+    // Narrow seam — see IMobDeathSink. Taking the full IMobSpawnService here
+    // re-introduces the spawn → movement → warp → setpos → attack → damage
+    // DI cycle and Map.Server can't construct its root scope.
+    private readonly IMobDeathSink _mobSpawn;
     private readonly IEntityRegistry _entities;
     private readonly IBattleCalculator _battleCalc;
     private readonly Status.IExpService? _exp;
@@ -19,7 +22,7 @@ public sealed class DamageService : IDamageService
 
     public DamageService(
         IVisibilityService visibility,
-        IMobSpawnService mobSpawn,
+        IMobDeathSink mobSpawn,
         IEntityRegistry entities,
         IBattleCalculator battleCalc,
         ILogger<DamageService> logger,

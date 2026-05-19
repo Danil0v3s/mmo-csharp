@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Spawn;
 
-public sealed class MobSpawnService : IMobSpawnService
+public sealed class MobSpawnService : IMobSpawnService, IMobDeathSink
 {
     private const int WanderRange = 7;             // cells (matches plan default)
     private const int WanderMinDelayMs = 5_000;

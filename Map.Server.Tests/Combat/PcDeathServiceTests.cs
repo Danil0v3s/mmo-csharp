@@ -9,6 +9,7 @@ using Map.Server.Tests.Visibility;
 using Map.Server.Tests.Warps;
 using Map.Server.Visibility;
 using Map.Server.World;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Map.Server.Tests.Combat;
@@ -78,7 +79,10 @@ public class PcDeathServiceTests
         var damage = new DamageService(visibility, mobSpawn, entities,
             new BattleCalculator(new Random(0)), NullLogger<DamageService>.Instance);
         var attack = new AttackService(entities, damage, movement, NullLogger<AttackService>.Instance);
-        var svc = new PcDeathService(attack, visibility, NullLogger<PcDeathService>.Instance);
+        var sp = new ServiceCollection()
+            .AddSingleton<IAttackStopper>(attack)
+            .BuildServiceProvider();
+        var svc = new PcDeathService(sp, visibility, NullLogger<PcDeathService>.Instance);
 
         var pc = new PlayerEntity(1, 1, "Hero", Guid.NewGuid(), (uint)mapName.GetHashCode(), 100, 100);
         pc.MaxHp = pc.Hp = 1000;

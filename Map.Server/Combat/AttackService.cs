@@ -12,7 +12,7 @@ namespace Map.Server.Combat;
 /// rAthena semantic 1:1 because both attack-timers and game-tick run on
 /// the same single thread.
 /// </summary>
-public sealed class AttackService : IAttackService
+public sealed class AttackService : IAttackService, IAttackStopper
 {
     private readonly IEntityRegistry _entities;
     private readonly IDamageService _damage;

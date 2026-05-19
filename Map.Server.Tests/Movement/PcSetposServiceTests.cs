@@ -9,6 +9,7 @@ using Map.Server.Tests.Visibility;
 using Map.Server.Tests.Warps;
 using Map.Server.Visibility;
 using Map.Server.World;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Map.Server.Tests.Movement;
@@ -77,7 +78,10 @@ public class PcSetposServiceTests
             new BattleCalculator(new Random(0)), NullLogger<DamageService>.Instance);
         var attack = new AttackService(entities, damage, movement, NullLogger<AttackService>.Instance);
         var sessions = new NoSessions();
-        var setpos = new PcSetposService(world, entities, visibility, attack, sessions,
+        var sp = new ServiceCollection()
+            .AddSingleton<IAttackStopper>(attack)
+            .BuildServiceProvider();
+        var setpos = new PcSetposService(world, entities, visibility, sp, sessions,
             NullLogger<PcSetposService>.Instance);
         return new TestContext(setpos, entities, map, (uint)mapName.GetHashCode());
     }
