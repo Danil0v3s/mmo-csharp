@@ -47,18 +47,15 @@ The first big MS3 work. Combat ties together attack actions, damage formulas, st
 
 ## Pending
 
-1. **`UnitData` extension** on `Entity`: ATK, MATK, DEF, MDEF, HIT, FLEE, CRI, ASPD, attack range. Players read from inventory + bonuses (items doc); mobs from `MobDbEntry`. All formulas follow rAthena renewal.
+All MS3 combat / status / skill foundation items below are now **Done** — see the History block. What's left:
 
-2. **`AttackService`:**
-   - `TryStartAttack(attacker, target)` — validates target alive + in attack range, sets `attacker.AttackState = (target, nextSwingAt)`.
-   - `Tick` — for each entity with an active attack, if `nextSwingAt <= now`, perform damage calc + emit packets, schedule next swing.
-   - Continuous attack: keeps swinging until target dies or moves out of range or attacker stops.
+1. **`battle_config.item_rate_*` drop modifiers** — boss / heal / use / equip / card multipliers per `conf/battle/drops.conf`. Hook point: `MobSpawnService.RollAndDropLoot` rate clamp.
 
-3. **`DamageCalculator`** — port rAthena's `battle_calc_attack` (the function that returns a `Damage` struct with hits, total damage, flags). Renewal formula only.
+2. **MVP drops + MVP-only rewards** — `mob_db.MvpDrops` is read but not yet emitted. Needs the MVP-rank check (top damager rather than last hitter) before the drop roll.
 
-4. **Death + exp distribution.** Last-hit-wins for MS3; mob's exp pool split between party (if any) per rAthena rules. Calls `SetCharacterOnline` lifecycle update (the char might not log off but stats change; that's the inventory IPC).
+3. **Per-attacker tdmg table** — rAthena tracks damage per attacker for MVP rank, share-rules, exp scaling. Today's last-hit attribution covers basic gameplay; the full table lands with quest / achievement triggers that depend on it.
 
-5. **Drops.** ~~On mob death, roll its drop table…~~ **Done.** `MobSpawnService.RollAndDropLoot` rolls each `mob_db.Drops` entry against its rate, resolves aegis names through `IItemCatalog`, and spawns floor items via `IItemDropService`. MVP drops + party share + `battle_config.item_rate_*` modifiers still queued — they need the damage-tracking work (last-hit / top-damager attribution).
+4. **Skill damage post-defense passes** — `battle_calc_cardfix`, `battle_calc_attack_post_defense`, weapon-mastery bonuses, refine bonuses. Tightens BattleCalculator output to per-equip card/refine values once those parse.
 
 ### Acceptance
 - A player can auto-attack a Poring next to them; HP ticks down on both sides; mob dies; player receives exp.
@@ -69,3 +66,4 @@ The first big MS3 work. Combat ties together attack actions, damage formulas, st
 - **2026-05-16** — Plan stub.
 - **2026-05-16** — Scaffolding slice shipped: HP on entities, ZC_NOTIFY_ACT3 wire format, IDamageService.ApplyDamage with HP-mutation + death pipeline, @damage GM command, 5 unit tests. Drop rolling / damage formula / auto-attack loop / EXP distribution remain queued.
 - **2026-05-16** — Drop rolling closed via `IItemCatalog` (DB-backed item_db) → `MobSpawnService.RollAndDropLoot` → `IItemDropService.DropOnFloor`. Damage formula, auto-attack loop, EXP distribution, MVP/party rules still queued.
+- **2026-05-19** — **MS3 combat foundation complete.** Major slice over multiple commits. **BattleStats** (`Map.Server/Status/BattleStats.cs`) now mirrors rAthena `struct status_data` per-entity. **StatusCalcService** runs at session enter (PCs) + spawn (mobs) and ports renewal `status_calc_misc` + `status_base_atk`. **BattleCalculator** (`Map.Server/Combat/BattleCalculator.cs`) ports `battle_calc_weapon_attack` slice 1 — crit roll, hit/flee roll, base damage with rAthena renewal crit×1.4 tail, full 4-level ATTRIBUTE_DB element table, renewal RE-DEF formula `dmg*(4000+eDEF)/(4000+10*eDEF) - sDEF`. **AttackService** drives `unit_attack_timer` cadence with chase / range check / single-shot vs continuous. **ExpService** ports `pc_gainexp` + `pc_checkbaselevelup` walks for the Novice exp table; status-points awarded on level-up, full-heal on level-up. **StatusChangeService** + StatusEffectRegistry — engine for buffs/DoTs/HoTs with 5 starter SCs (Poison/Blessing/IncreaseAgi/DecreaseAgi/HealOverTime), refresh-on-restart, OnPeriodic via damage pipeline. **SkillCastService** + SkillDb — 6 starter skills (Bash/Heal/IncAgi/Blessing/FireBolt/ColdBolt) with full cast-lifecycle (range/sp/cooldown/cast time/resolve by damage-kind). **SkillUnitService** ground effects (Magnus Exorcismus / Storm Gust). **NaturalHealService** baseline regen with sitting bonus + walking gate. **PcDeathService** + **PcSetposService** — death penalty / savepoint respawn / cross-map warp. **MobAiService** aggressive target acquisition. **SummonAiService** generic follow + assist for pet/homun/merc/elem/slave. **MobSkillEntry** + Always/LowHp condition triggers for `mobskill_use`. **PartyShareService** even-share + bonus (+10% per extra member). **EquipBonusAggregator** equip→stats. Loot-protection windows (owner + party). **PetService** summon + hunger/intimacy. **CZ_USE_ITEM** + **ItemUseService** starter potion table. Pickup → InventoryService.GiveItem closes the loot loop. **CZ_STATUS_CHANGE** + StatPointTable (renewal cost formula) → pc_statusup; **CZ_UPGRADE_SKILLLEVEL** + pc_checkskill gate. **Persistence** sync: live BaseExp/Level/JobLevel/StatusPoints/SkillPoints/LastX/LastY on autosave. Test suite: 263 → 274 (all green excluding the long-standing replay-baseline failure which is unrelated to this work).
