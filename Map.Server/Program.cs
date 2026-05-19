@@ -51,6 +51,24 @@ builder.Services.AddSingleton<ILogger>(sp => sp.GetRequiredService<ILogger<Progr
 builder.Services.AddSingleton<ServerConnectionService>();
 builder.Services.AddSingleton<IServerConnectionService>(sp => sp.GetRequiredService<ServerConnectionService>());
 builder.Services.AddSingleton<ICharServerIpcService, CharServerIpcService>();
+// Each ICharServerIpcService* facet (Storage, Party, Guild, Mail, Auction,
+// Quest, Pet, Homunculus, Mercenary, Elemental, Clan, Core, Inter) is
+// implemented by the same singleton — wire each forwarder so per-facet
+// consumers (StorageService, PartyService, etc.) can take a narrow
+// dependency without re-injecting the umbrella interface.
+builder.Services.AddSingleton<ICharServerIpcServiceCore>(sp => sp.GetRequiredService<ICharServerIpcService>());
+builder.Services.AddSingleton<ICharServerIpcServiceInter>(sp => sp.GetRequiredService<ICharServerIpcService>());
+builder.Services.AddSingleton<ICharServerIpcServiceParty>(sp => sp.GetRequiredService<ICharServerIpcService>());
+builder.Services.AddSingleton<ICharServerIpcServiceGuild>(sp => sp.GetRequiredService<ICharServerIpcService>());
+builder.Services.AddSingleton<ICharServerIpcServiceStorage>(sp => sp.GetRequiredService<ICharServerIpcService>());
+builder.Services.AddSingleton<ICharServerIpcServiceMail>(sp => sp.GetRequiredService<ICharServerIpcService>());
+builder.Services.AddSingleton<ICharServerIpcServiceAuction>(sp => sp.GetRequiredService<ICharServerIpcService>());
+builder.Services.AddSingleton<ICharServerIpcServiceQuest>(sp => sp.GetRequiredService<ICharServerIpcService>());
+builder.Services.AddSingleton<ICharServerIpcServicePet>(sp => sp.GetRequiredService<ICharServerIpcService>());
+builder.Services.AddSingleton<ICharServerIpcServiceHomunculus>(sp => sp.GetRequiredService<ICharServerIpcService>());
+builder.Services.AddSingleton<ICharServerIpcServiceMercenary>(sp => sp.GetRequiredService<ICharServerIpcService>());
+builder.Services.AddSingleton<ICharServerIpcServiceElemental>(sp => sp.GetRequiredService<ICharServerIpcService>());
+builder.Services.AddSingleton<ICharServerIpcServiceClan>(sp => sp.GetRequiredService<ICharServerIpcService>());
 builder.Services.AddSingleton<IPlayerMapService, PlayerMapService>();
 
 // World data: load the configured maps once at startup and expose via IMapWorldRegistry.
