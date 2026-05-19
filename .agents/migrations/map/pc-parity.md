@@ -338,4 +338,11 @@ Coverage after this pass: ~16 done / ~30 partial / ~75 missing.
   Read-through cache + dirty-set flushed on autosave / logout.
   Unblocks NPC scripts that need persistent state.
 
-Coverage after this pass: ~20 done / ~28 partial / ~73 missing.
+### 2026-05-19 — Wave 4 (PC-13)
+- **PC-13** `IJobChangeService.Change` — pc_jobchange first slice.
+  Sets `CharacterData.ClassId`, broadcasts LOOK_BASE, recalcs +
+  full-heals, pushes the four HP/SP par-change packets. GM command
+  `@jobchange <classId>`. Out of scope (documented): upper/baby
+  trees, bard/dancer sex auto-swap, skill-tree reset.
+
+Coverage after this pass: ~21 done / ~28 partial / ~72 missing.

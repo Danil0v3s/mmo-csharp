@@ -361,7 +361,9 @@ builder.Services.AddSingleton<Map.Server.Status.IPlayerOrbService, Map.Server.St
 builder.Services.AddSingleton<Map.Server.Skills.IPlayerSkillService, Map.Server.Skills.PlayerSkillService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerFameService, Map.Server.Status.PlayerFameService>();
 builder.Services.AddSingleton<Map.Server.Scripting.Vars.IPlayerVarService, Map.Server.Scripting.Vars.PlayerVarService>();
+builder.Services.AddSingleton<Map.Server.Status.IJobChangeService, Map.Server.Status.JobChangeService>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MountCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.JobCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CartCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.OptionCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.SpiritballCommand>();
@@ -383,7 +385,7 @@ builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.SoulballCommand
         "load","hide","monster","broadcast","localbroadcast","pvpon","pvpoff",
         "gvgon","gvgoff",
         // PC-* phase
-        "mount","cart","option","spiritball","soulball",
+        "mount","cart","option","spiritball","soulball","jobchange",
     };
     foreach (var spec in Map.Server.Gm.Commands.StubCommandKinds.Specs)
     {
