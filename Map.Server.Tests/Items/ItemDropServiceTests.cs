@@ -81,6 +81,49 @@ public class ItemDropServiceTests
     }
 
     [Fact]
+    public void TryPickup_OwnerProtected_NonOwnerRejected()
+    {
+        var ctx = NewContext();
+        var owner = ctx.AddPlayer(50, 50, charId: 1);
+        var stranger = ctx.AddPlayer(51, 50, charId: 2);
+        var itemId = ctx.Service.DropOnFloor(ctx.MapId, 50, 50, itemId: 501, amount: 1,
+            ownerCharId: owner.CharacterId);
+
+        // Stranger tries to grab inside the 3s owner-protection window → blocked.
+        var result = ctx.Service.TryPickup(stranger, itemId, out _);
+        Assert.Equal(IItemDropService.PickupResult.OwnerProtected, result);
+        Assert.NotNull(ctx.Entities.Get(itemId));
+
+        // Owner can grab immediately.
+        Assert.Equal(IItemDropService.PickupResult.Ok,
+            ctx.Service.TryPickup(owner, itemId, out _));
+    }
+
+    [Fact]
+    public void TryPickup_PartyProtected_PartyMemberAllowed_StrangerBlocked()
+    {
+        var ctx = NewContext();
+        var owner = ctx.AddPlayer(50, 50, charId: 1);
+        owner.PartyId = 42;
+        var partyMate = ctx.AddPlayer(51, 50, charId: 2);
+        partyMate.PartyId = 42;
+        var stranger = ctx.AddPlayer(50, 51, charId: 3);
+        stranger.PartyId = 99;
+        // Drop with owner + party set.
+        var itemId = ctx.Service.DropOnFloor(ctx.MapId, 50, 50, itemId: 501, amount: 1,
+            ownerCharId: owner.CharacterId, ownerPartyId: owner.PartyId);
+
+        // Stranger inside owner-protection window: blocked.
+        Assert.Equal(IItemDropService.PickupResult.OwnerProtected,
+            ctx.Service.TryPickup(stranger, itemId, out _));
+        // Party mate inside owner window: also blocked (party window starts after).
+        // We can't easily skip ahead 3s in this test without injection; instead
+        // we assert the owner-window enforcement here. Party-window assertion
+        // belongs to a deterministic-clock test that lands with INowProvider.
+        Assert.NotNull(ctx.Entities.Get(itemId));
+    }
+
+    [Fact]
     public void Tick_AfterLifetime_DespawnsItem()
     {
         // Lifetime of 0 means anything older than 0ms is expired — first

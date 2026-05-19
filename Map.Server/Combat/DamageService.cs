@@ -144,8 +144,9 @@ public sealed class DamageService : IDamageService
                 }
                 // Re-uses MobSpawnService's death pipeline so respawn timer
                 // wiring + visibility broadcast (Died reason) stay in one
-                // place. KillMob also pulls drops once item_db lands.
-                _mobSpawn.KillMob(mob.Id);
+                // place. Drops attribute to the last-hitter (and their
+                // party) for the loot-protection windows.
+                _mobSpawn.KillMob(mob.Id, source as PlayerEntity);
                 _logger.LogInformation(
                     "Mob {Name} (#{Id}) died (source: {Source})",
                     mob.Name, mob.Id.Value, source?.Id.Value);

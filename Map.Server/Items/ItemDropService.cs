@@ -29,15 +29,23 @@ public sealed class ItemDropService : IItemDropService
 
     public EntityId DropOnFloor(
         uint mapId, short x, short y, int itemId, short amount,
-        byte subX = 0, byte subY = 0, bool identified = true)
+        byte subX = 0, byte subY = 0, bool identified = true,
+        int ownerCharId = 0, int ownerPartyId = 0)
     {
+        var now = Environment.TickCount64;
         var item = new FloorItemEntity(
             _ids.NextItem(),
             itemId, amount,
             mapId, x, y,
             subX, subY,
-            droppedAtTick: Environment.TickCount64,
-            identified: (byte)(identified ? 1 : 0));
+            droppedAtTick: now,
+            identified: (byte)(identified ? 1 : 0))
+        {
+            OwnerCharId = ownerCharId,
+            OwnerPartyId = ownerPartyId,
+            OwnerProtectionUntilTick = ownerCharId > 0 ? now + IItemDropService.OwnerProtectionMs : 0,
+            PartyProtectionUntilTick = ownerPartyId > 0 ? now + IItemDropService.OwnerProtectionMs + IItemDropService.PartyProtectionMs : 0,
+        };
         _entities.Add(item);
 
         // Drop animation: broadcast ZC_ITEM_FALL_ENTRY to PC viewers in AOI.
@@ -70,6 +78,22 @@ public sealed class ItemDropService : IItemDropService
             || Math.Abs(picker.Y - item.Y) > IItemDropService.PickupRange)
         {
             return IItemDropService.PickupResult.OutOfRange;
+        }
+
+        // Loot-protection windows — rAthena mob_dead's first_charid /
+        // second_charid / third_charid logic collapsed into time-gated
+        // exclusivity. Owner gets ~3s, then party gets ~5s more, then
+        // anyone can grab it.
+        var now = Environment.TickCount64;
+        if (item.OwnerCharId > 0 && now < item.OwnerProtectionUntilTick && picker.CharacterId != item.OwnerCharId)
+        {
+            // Still inside owner-only window; only the owner may pick up.
+            return IItemDropService.PickupResult.OwnerProtected;
+        }
+        if (item.OwnerPartyId > 0 && now < item.PartyProtectionUntilTick && picker.PartyId != item.OwnerPartyId && picker.CharacterId != item.OwnerCharId)
+        {
+            // Inside party-priority window; only matching-party members may pick up.
+            return IItemDropService.PickupResult.OwnerProtected;
         }
 
         // Removing first prevents a race where the broadcast scan re-finds

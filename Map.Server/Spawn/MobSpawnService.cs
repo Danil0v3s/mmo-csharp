@@ -145,7 +145,9 @@ public sealed class MobSpawnService : IMobSpawnService
         }
     }
 
-    public bool KillMob(EntityId id)
+    public bool KillMob(EntityId id) => KillMob(id, lastHitter: null);
+
+    public bool KillMob(EntityId id, PlayerEntity? lastHitter)
     {
         var entity = _entities.Get(id);
         if (entity is not MobEntity mob) return false;
@@ -153,7 +155,7 @@ public sealed class MobSpawnService : IMobSpawnService
         // Roll the mob's drop table BEFORE removing it so drop coordinates
         // align with the corpse cell. ItemDropService broadcasts each fall
         // entry independently; the order doesn't matter to clients.
-        RollAndDropLoot(mob);
+        RollAndDropLoot(mob, lastHitter);
 
         _visibility.NotifyVanishedToArea(mob, VanishReason.Died);
         _entities.Remove(id);
@@ -187,7 +189,7 @@ public sealed class MobSpawnService : IMobSpawnService
     /// drops, exp distribution, party share, and rate modifiers all live
     /// with the broader combat work in <c>adjacent/combat.md</c>.
     /// </summary>
-    private void RollAndDropLoot(MobEntity mob)
+    private void RollAndDropLoot(MobEntity mob, PlayerEntity? lastHitter)
     {
         if (mob.DbEntry == null || mob.DbEntry.Drops.Count == 0) return;
 
@@ -210,7 +212,11 @@ public sealed class MobSpawnService : IMobSpawnService
                 itemId: (int)itemRow.Id,
                 amount: 1,
                 subX: (byte)_rng.Next(0, 16),
-                subY: (byte)_rng.Next(0, 16));
+                subY: (byte)_rng.Next(0, 16),
+                // Last-hitter gets exclusive pickup priority — matches
+                // rAthena's first_charid attribution (mob.cpp:mob_dead).
+                ownerCharId: lastHitter?.CharacterId ?? 0,
+                ownerPartyId: lastHitter?.PartyId ?? 0);
         }
     }
 

@@ -17,7 +17,16 @@ public interface IItemDropService
         ItemNotFound,
         OutOfRange,
         WrongMap,
+        /// <summary>Drop is under the loot-protection window for another player / party.</summary>
+        OwnerProtected,
     }
+
+    /// <summary>
+    /// rAthena <c>battle_config.mob_drop_idmask</c>-related loot-protection
+    /// timings (default values from <c>conf/battle/drops.conf</c>).
+    /// </summary>
+    public const int OwnerProtectionMs = 3_000;
+    public const int PartyProtectionMs = 5_000;
 
     /// <summary>Maximum cell distance a player can be from a floor item to pick it up.</summary>
     public const int PickupRange = 2;
@@ -29,9 +38,17 @@ public interface IItemDropService
     /// Create a floor item at (x, y) on the given map. Broadcasts
     /// <c>ZC_ITEM_FALL_ENTRY</c> to PC viewers in AOI. Returns the new
     /// entity id so callers (mob death, GM /drop) can reference it.
+    ///
+    /// <paramref name="ownerCharId"/> &gt; 0 grants exclusive pickup for
+    /// the rAthena <c>battle_config.item_first_get_time</c> window
+    /// (~3s default). After that window, members of
+    /// <paramref name="ownerPartyId"/> get priority for another
+    /// <c>item_second_get_time</c> (~5s). After both windows, the drop
+    /// becomes public.
     /// </summary>
     EntityId DropOnFloor(uint mapId, short x, short y, int itemId, short amount,
-        byte subX = 0, byte subY = 0, bool identified = true);
+        byte subX = 0, byte subY = 0, bool identified = true,
+        int ownerCharId = 0, int ownerPartyId = 0);
 
     /// <summary>
     /// Player picks up the item identified by <paramref name="itemEntityId"/>.

@@ -24,6 +24,22 @@ public sealed class FloorItemEntity : Entity
     /// </summary>
     public long DroppedAtTick { get; }
 
+    /// <summary>
+    /// rAthena <c>flooritem_data.first_charid</c> — char id with
+    /// exclusive pickup until <see cref="OwnerProtectionUntilTick"/>.
+    /// 0 = no owner / public drop.
+    /// </summary>
+    public int OwnerCharId { get; init; }
+
+    /// <summary>Party id whose members get the second priority window. 0 = none.</summary>
+    public int OwnerPartyId { get; init; }
+
+    /// <summary>Tick at which OwnerCharId's exclusive window expires.</summary>
+    public long OwnerProtectionUntilTick { get; init; }
+
+    /// <summary>Tick at which the party's window expires (everyone after).</summary>
+    public long PartyProtectionUntilTick { get; init; }
+
     public override EntityType Type => EntityType.Item;
 
     public FloorItemEntity(

@@ -31,6 +31,14 @@ public interface IMobSpawnService
     /// </summary>
     bool KillMob(EntityId id);
 
+    /// <summary>
+    /// Same as <see cref="KillMob(EntityId)"/> but attributes drops to
+    /// <paramref name="lastHitter"/> (and their party) for the
+    /// rAthena loot-protection windows. Pass null for environmental
+    /// / GM kills where no player should get pickup priority.
+    /// </summary>
+    bool KillMob(EntityId id, PlayerEntity? lastHitter);
+
     /// <summary>Diagnostic: count of pending respawns waiting on the timer.</summary>
     int PendingRespawnCount { get; }
 }
