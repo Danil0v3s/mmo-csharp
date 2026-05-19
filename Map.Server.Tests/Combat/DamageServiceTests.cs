@@ -115,7 +115,7 @@ public class DamageServiceTests
         var mobSpawn = new MobSpawnService(
             spawnRegistry, entities, world, mobDb, itemCatalog, itemDrops, movement, visibility,
             ids, new StatusCalcService(), NullLogger<MobSpawnService>.Instance, new Random(0));
-        var service = new DamageService(visibility, mobSpawn, entities, NullLogger<DamageService>.Instance);
+        var service = new DamageService(visibility, mobSpawn, entities, new BattleCalculator(new Random(0)), NullLogger<DamageService>.Instance);
         return new TestContext(service, entities, dispatcher, ids, (uint)mapName.GetHashCode());
     }
 

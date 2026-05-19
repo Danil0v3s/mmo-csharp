@@ -151,9 +151,11 @@ builder.Services.AddSingleton<Map.Server.Status.IStatusCalcService, Map.Server.S
 // despawn). Inventory persistence + item_db catalog land later.
 builder.Services.AddSingleton<IItemDropService, ItemDropService>();
 
-// Combat scaffolding (see .agents/migrations/map/adjacent/combat.md). MS3
-// first slice: HP-mutation + death pipeline. Auto-attack loop and the
-// full damage formula plug in later.
+// Combat (see .agents/migrations/map/adjacent/combat.md). BattleCalculator
+// owns the renewal damage formula (battle.cpp:7635 battle_calc_weapon_attack
+// trimmed first slice); DamageService is the calc-then-apply façade that
+// the auto-attack loop, GM commands, and skill handlers funnel through.
+builder.Services.AddSingleton<IBattleCalculator>(_ => new BattleCalculator());
 builder.Services.AddSingleton<IDamageService, DamageService>();
 
 // GM commands. Each IGmCommand is registered as a singleton; the registry

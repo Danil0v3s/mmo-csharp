@@ -11,29 +11,56 @@ public sealed class DamageService : IDamageService
     private readonly IVisibilityService _visibility;
     private readonly IMobSpawnService _mobSpawn;
     private readonly IEntityRegistry _entities;
+    private readonly IBattleCalculator _battleCalc;
     private readonly ILogger<DamageService> _logger;
 
     public DamageService(
         IVisibilityService visibility,
         IMobSpawnService mobSpawn,
         IEntityRegistry entities,
+        IBattleCalculator battleCalc,
         ILogger<DamageService> logger)
     {
         _visibility = visibility;
         _mobSpawn = mobSpawn;
         _entities = entities;
+        _battleCalc = battleCalc;
         _logger = logger;
     }
 
     public int ApplyDamage(Entity target, int damage, Entity? source = null)
     {
-        if (damage < 0) damage = 0;
+        // Match rAthena clif_damage: 0 damage → miss animation (Flee),
+        // >0 → normal swing. Callers with full BattleDamage in hand should
+        // use PerformMeleeAttack so Critical/MultiHit aren't lost.
+        var action = damage > 0
+            ? Core.Server.Packets.Out.ZC.DamageActionType.Normal
+            : Core.Server.Packets.Out.ZC.DamageActionType.Flee;
+        return ApplyResolved(target, source, damage, action);
+    }
 
+    public BattleDamage PerformMeleeAttack(Entity source, Entity target)
+    {
+        var damage = _battleCalc.CalcWeaponAttack(source, target);
+        // Even a miss broadcasts ZC_NOTIFY_ACT3 so the client animates
+        // the swing + the dodge — rAthena: clif_damage(... DMG_FLEE ...)
+        // even when total = 0.
+        ApplyResolved(target, source, (int)Math.Clamp(damage.Total, 0, int.MaxValue), damage.Type);
+        return damage;
+    }
+
+    private int ApplyResolved(
+        Entity target,
+        Entity? source,
+        int damage,
+        Core.Server.Packets.Out.ZC.DamageActionType action)
+    {
+        if (damage < 0) damage = 0;
         var (currentHp, _) = GetHp(target);
         var actual = Math.Min(damage, currentHp);
         SetHp(target, currentHp - actual);
 
-        BroadcastAct(target, source, actual);
+        BroadcastAct(target, source, actual, action);
 
         var remaining = currentHp - actual;
         if (remaining <= 0)
@@ -59,21 +86,23 @@ public sealed class DamageService : IDamageService
         }
     }
 
-    private void BroadcastAct(Entity target, Entity? source, int damage)
+    private void BroadcastAct(Entity target, Entity? source, int damage, DamageActionType action)
     {
+        // Pull amotion from the attacker's stats (renewal ASPD-derived).
+        // Falls back to 500ms when there's no source (environmental damage).
+        ushort srcAmotion = source?.Stats.Amotion ?? 500;
+        ushort tgtDmotion = target.Stats.Dmotion;
         var packet = new ZC_NOTIFY_ACT3
         {
             SourceId = source?.Id.Value ?? 0,
             TargetId = target.Id.Value,
             ServerTick = (uint)Environment.TickCount,
-            // No real motion timing yet; placeholders satisfy the packet
-            // shape until ASPD wiring lands with the auto-attack loop.
-            SourceAmotion = 500,
-            TargetAmotion = 500,
+            SourceAmotion = srcAmotion,
+            TargetAmotion = tgtDmotion,
             Damage = damage,
             IsSpDamage = 0,
             Div = 1,
-            ActionType = damage > 0 ? DamageActionType.Normal : DamageActionType.Flee,
+            ActionType = action,
             Damage2 = 0,
         };
         // Broadcast to AOI of the target (where the visual lives). Source

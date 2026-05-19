@@ -24,4 +24,13 @@ public interface IDamageService
     /// </summary>
     /// <returns>The actual damage applied (clamped to target's remaining HP).</returns>
     int ApplyDamage(Entity target, int damage, Entity? source = null);
+
+    /// <summary>
+    /// Resolve a full melee swing (calc + apply). Calls
+    /// <see cref="IBattleCalculator.CalcWeaponAttack"/> and emits the
+    /// damage with the right action type so the client renders the right
+    /// hit/miss/crit animation. Returns the resolved <see cref="BattleDamage"/>
+    /// so the caller (auto-attack loop / GM commands) can react to it.
+    /// </summary>
+    BattleDamage PerformMeleeAttack(Entity source, Entity target);
 }
