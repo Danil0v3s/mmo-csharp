@@ -45,16 +45,18 @@ Direct trade between players + the vendor/buying-store systems that let players 
 
 ## Pending
 
-1. **Wire packets**: `CZ_REQ_EXCHANGE_ITEM`, `CZ_ACK_EXCHANGE_ITEM`, `CZ_ADD_EXCHANGE_ITEM`, `CZ_CONCLUDE_EXCHANGE_ITEM`, `CZ_CANCEL_EXCHANGE_ITEM`, `CZ_EXEC_EXCHANGE_ITEM` for trade; `CZ_NPC_BUY_LIST_REQ` / `CZ_PC_PURCHASE_ITEMLIST_FROMNPC` / `CZ_NPC_SELL_LIST_REQ` / `CZ_PC_SELL_ITEMLIST` for shop. All the gameplay invariants live in the services already.
-2. **Vending / Buying store** — different surface (sit-and-list mechanic). Defer.
-3. **Anti-cheat tail** — can't trade bound items, can't trade equipped items, can't trade while sitting/dead/moving. Hooks live in the services where validation already runs.
+1. **Vending / Buying store** — different surface (sit-and-list mechanic). Defer.
+2. **Anti-cheat tail** — can't trade bound items, can't trade equipped items, can't trade while sitting/dead/moving. Hooks live in the services where validation already runs.
 
 ### Acceptance
 - ✅ A and B exchange items + zeny atomically through `TradeService.Commit`.
 - ✅ Cancel from either side clears both sides' state.
 - ✅ Buyer cannot purchase without enough zeny; seller receives 50% of item_db buy price.
 - ✅ Storage transfers in/out merge stacks correctly.
+- ✅ Trade / shop / storage all wired end-to-end with CZ ↔ ZC handlers + outbound packet tests.
 
 ## History
 - **2026-05-16** — Plan stub.
 - **2026-05-19** — Trade + Shop + Storage services all shipped with strategy-pattern shape and atomic commits. 15 service tests green. Wire packets queued; service contract is stable.
+- **2026-05-19** — Trade and Shop wire packets shipped: 6 CZ + 7 ZC for trade, 3 CZ + 3 ZC for shop. Handlers in `Map.Server/Handlers/Trade,Shop/` + 7 wire-level tests.
+- **2026-05-19** — Storage wire packets shipped: `CZ_MOVE_ITEM_FROM_BODY_TO_STORE` (0x0364 — variant-2; legacy 0x00f3 collides with `CZ_REQUEST_CHAT` on PACKETVER 20220401), `CZ_MOVE_ITEM_FROM_STORE_TO_BODY` (0x0365), `CZ_CLOSE_STORE` (0x00f7), `ZC_ADD_ITEM_TO_STORE` (0x00f4), `ZC_DELETE_ITEM_FROM_STORE` (0x00f6), `ZC_CLOSE_STORE` (0x00f8), `ZC_NOTIFY_STOREITEM_COUNTINFO` (0x00f2). 3 handlers in `Map.Server/Handlers/Storage/` + `StorageNotifier` emit helpers + `@storage` GM command to open the kafra window without a script-bound NPC + 4 wire-level tests.

@@ -254,6 +254,7 @@ builder.Services.AddSingleton<IGmCommand, WhereCommand>();
 builder.Services.AddSingleton<IGmCommand, KillMobCommand>();
 builder.Services.AddSingleton<IGmCommand, WarpCommand>();
 builder.Services.AddSingleton<IGmCommand, DamageCommand>();
+builder.Services.AddSingleton<IGmCommand, StorageCommand>();
 builder.Services.AddSingleton<IGmCommandRegistry, GmCommandRegistry>();
 
 // Core services

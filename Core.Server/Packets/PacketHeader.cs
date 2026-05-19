@@ -133,6 +133,17 @@ public enum PacketHeader : short
     CZ_PC_SELL_ITEMLIST = 0x00c9,          // var-len. Player's sell basket.
     ZC_PC_PURCHASE_RESULT = 0x00ca,        // <result>.B (3B). Buy outcome code.
     ZC_PC_SELL_RESULT = 0x00cb,            // <result>.B (3B). Sell outcome (0=ok, 1=fail).
+    // --- Account storage (storage.cpp / clif.cpp 13595..13714) ---
+    // PACKETVER 20220401 uses the variant-2 IDs (0x0364 / 0x0365) since
+    // legacy 0x00f3 / 0x00f5 collided with CZ_REQUEST_CHAT / CZ_REQ_QUIT
+    // shuffles. rAthena clif_shuffle.hpp tracks the same shift.
+    CZ_MOVE_ITEM_FROM_BODY_TO_STORE = 0x0364, // <index>.W <amount>.L (8B). Put into storage.
+    ZC_ADD_ITEM_TO_STORE = 0x00f4,         // <index>.W <amount>.L <nameid>.W <id>.B <atb>.B <rfn>.B <c1>.W <c2>.W <c3>.W <c4>.W (21B).
+    CZ_MOVE_ITEM_FROM_STORE_TO_BODY = 0x0365, // <index>.W <amount>.L (8B). Take from storage.
+    ZC_DELETE_ITEM_FROM_STORE = 0x00f6,    // <index>.W <amount>.L (8B). Server confirms removal.
+    CZ_CLOSE_STORE = 0x00f7,               // (2B). Player closed window.
+    ZC_CLOSE_STORE = 0x00f8,               // (2B). Server ack.
+    ZC_NOTIFY_STOREITEM_COUNTINFO = 0x00f2,// <current>.W <max>.W (6B). Storage capacity HUD.
     CZ_USE_SKILL_TOGROUND = 0x0366,        // CZ_USE_SKILL_TOGROUND2 — <lv>.W <id>.W <x>.W <y>.W (10B). Shuffle of 0x0116.
     CZ_REQUEST_CHAT = 0x00f3,              // shuffle (was 0x008c)
     CZ_REQ_QUIT = 0x018a,                  // clif_parse_QuitGame, 4B (reserved). ALT+E.
