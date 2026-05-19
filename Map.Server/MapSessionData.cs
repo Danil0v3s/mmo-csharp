@@ -93,4 +93,14 @@ public class MapSessionData(
     /// inventory slot index used in client packets.
     /// </summary>
     public List<Map.Server.Inventory.InventoryItem>? Inventory { get; set; }
+
+    /// <summary>
+    /// DB row Ids that were dropped from <see cref="Inventory"/> since the
+    /// last save (item consumption, drop-on-ground, trade-out, etc.). The
+    /// next <c>SaveAsync</c> issues <c>DELETE</c> for each Id and clears
+    /// this list. Items added since load have <c>Id == 0</c> on their
+    /// runtime <c>InventoryItem</c> and get <c>INSERT</c>ed; once saved,
+    /// EF populates the generated Id back on the runtime object.
+    /// </summary>
+    public List<int> RemovedInventoryIds { get; } = new();
 }

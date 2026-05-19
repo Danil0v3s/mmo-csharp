@@ -81,7 +81,20 @@ public sealed class PlayerStateService : IPlayerStateService
             await SavePermAsync(regs.Perm, charId, db, ct);
             await SaveAccountAsync(regs.Account, accountId, db, ct);
             await SaveAccountGlobalAsync(regs.AccountGlobal, accountId, db, ct);
-            await db.SaveChangesAsync(ct);
+        }
+
+        var pendingInventoryInserts = await SaveInventoryAsync(session, charId, db, ct);
+
+        // Single SaveChanges covers var-regs + inventory: any mid-flight
+        // failure rolls back consistently, and we cut one round trip.
+        await db.SaveChangesAsync(ct);
+
+        // Copy auto-increment Ids back onto the runtime objects so the
+        // next SaveAsync treats them as UPDATEs instead of duplicate
+        // INSERTs.
+        foreach (var (runtime, entity) in pendingInventoryInserts)
+        {
+            runtime.Id = entity.Id;
         }
     }
 
@@ -117,6 +130,102 @@ public sealed class PlayerStateService : IPlayerStateService
         }
 
         await repo.UpdateAsync(entity, ct);
+    }
+
+    // ----- inventory -----
+
+    /// <summary>
+    /// Persist the session's runtime inventory back to the DB. Strategy:
+    /// <list type="bullet">
+    ///   <item>Items with <c>Id == 0</c> are new — <c>INSERT</c> and copy
+    ///     the generated Id back onto the runtime <c>InventoryItem</c>.</item>
+    ///   <item>Items with <c>Id != 0</c> are existing rows — <c>UPDATE</c>
+    ///     amount + equip + refine + grade + attribute. Cards / options /
+    ///     bound flags are immutable per slot today.</item>
+    ///   <item>Ids in <see cref="MapSessionData.RemovedInventoryIds"/> are
+    ///     <c>DELETE</c>d. Used by future delItem / consumeItem paths.</item>
+    /// </list>
+    /// Mirrors rAthena's <c>chmapif_parse_savechar</c> inventory block,
+    /// which the char-server fans out into per-row upserts.
+    /// </summary>
+    private static async Task<List<(Map.Server.Inventory.InventoryItem Runtime, InventoryEntity Entity)>> SaveInventoryAsync(
+        MapSessionData session, int charId, GameDbContext db, CancellationToken ct)
+    {
+        var pendingInserts = new List<(Map.Server.Inventory.InventoryItem Runtime, InventoryEntity Entity)>();
+        if (session.Inventory is not { } items) return pendingInserts;
+
+        // DELETEs first so a re-insert at the same slot index doesn't
+        // collide on any unique constraint we add later.
+        if (session.RemovedInventoryIds.Count > 0)
+        {
+            var ids = session.RemovedInventoryIds.ToArray();
+            var rows = await db.Inventories
+                .Where(r => r.CharId == charId && ids.Contains(r.Id))
+                .ToListAsync(ct);
+            db.Inventories.RemoveRange(rows);
+            session.RemovedInventoryIds.Clear();
+        }
+
+        // Index existing rows so we don't roundtrip per item on UPDATE.
+        var existingIds = items.Where(i => i.Id > 0).Select(i => i.Id).ToArray();
+        var existing = existingIds.Length > 0
+            ? await db.Inventories.Where(r => existingIds.Contains(r.Id)).ToDictionaryAsync(r => r.Id, ct)
+            : new Dictionary<int, InventoryEntity>();
+
+        foreach (var item in items)
+        {
+            if (item.Id == 0)
+            {
+                var entity = MapToEntity(charId, item);
+                db.Inventories.Add(entity);
+                pendingInserts.Add((item, entity));
+            }
+            else if (existing.TryGetValue(item.Id, out var entity))
+            {
+                // Mutable fields. Cards / options / bound stay as loaded.
+                entity.Amount = item.Amount;
+                entity.Equip = item.Equip;
+                entity.Identify = (short)(item.Identified ? 1 : 0);
+                entity.Refine = item.Refine;
+                entity.Attribute = item.Attribute;
+                entity.Favorite = item.Favorite;
+                entity.EquipSwitch = item.EquipSwitch;
+                entity.EnchantGrade = item.EnchantGrade;
+            }
+        }
+
+        return pendingInserts;
+    }
+
+    private static InventoryEntity MapToEntity(int charId, Map.Server.Inventory.InventoryItem item)
+    {
+        var opts = item.Options;
+        InventoryEntity e = new()
+        {
+            CharId = charId,
+            NameId = item.NameId,
+            Amount = item.Amount,
+            Equip = item.Equip,
+            Identify = (short)(item.Identified ? 1 : 0),
+            Refine = item.Refine,
+            Attribute = item.Attribute,
+            Card0 = item.Card0,
+            Card1 = item.Card1,
+            Card2 = item.Card2,
+            Card3 = item.Card3,
+            ExpireTime = item.ExpireTime,
+            Favorite = item.Favorite,
+            Bound = item.Bound,
+            UniqueId = item.UniqueId,
+            EquipSwitch = item.EquipSwitch,
+            EnchantGrade = item.EnchantGrade,
+        };
+        if (opts.Length > 0) { e.OptionId0 = opts[0].Id; e.OptionVal0 = opts[0].Value; e.OptionParm0 = opts[0].Param; }
+        if (opts.Length > 1) { e.OptionId1 = opts[1].Id; e.OptionVal1 = opts[1].Value; e.OptionParm1 = opts[1].Param; }
+        if (opts.Length > 2) { e.OptionId2 = opts[2].Id; e.OptionVal2 = opts[2].Value; e.OptionParm2 = opts[2].Param; }
+        if (opts.Length > 3) { e.OptionId3 = opts[3].Id; e.OptionVal3 = opts[3].Value; e.OptionParm3 = opts[3].Param; }
+        if (opts.Length > 4) { e.OptionId4 = opts[4].Id; e.OptionVal4 = opts[4].Value; e.OptionParm4 = opts[4].Param; }
+        return e;
     }
 
     // ----- per-scope save loops -----
