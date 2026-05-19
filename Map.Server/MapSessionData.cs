@@ -116,4 +116,11 @@ public class MapSessionData(
     /// sd-&gt;state.trading + sd-&gt;deal</c> bundle.
     /// </summary>
     public Map.Server.Trade.TradeState? Trade { get; set; }
+
+    /// <summary>
+    /// Currently-open NPC shop's entity id, or null when not shopping.
+    /// Mirrors rAthena <c>sd-&gt;npc_shopid</c>. Set when the buy/sell
+    /// list packet goes out, cleared on result.
+    /// </summary>
+    public int? OpenShopNpcId { get; set; }
 }

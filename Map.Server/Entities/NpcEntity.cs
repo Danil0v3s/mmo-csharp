@@ -17,6 +17,13 @@ public class NpcEntity : Entity
     public (short Xs, short Ys)? TriggerArea { get; }
     public NpcHooks Hooks { get; }
 
+    /// <summary>
+    /// Shop registration for vendor NPCs (rAthena NPCTYPE_SHOP /
+    /// NPCTYPE_MARKETSHOP). Null for non-shop NPCs. Set at boot from
+    /// the script registry by <see cref="Scripting.INpcSpawnService"/>.
+    /// </summary>
+    public ShopRegistration? Shop { get; init; }
+
     public override EntityType Type => EntityType.Npc;
 
     public NpcEntity(

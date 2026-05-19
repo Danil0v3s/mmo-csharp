@@ -14,13 +14,15 @@ public class ZC_NOTIFY_CHAT : OutgoingPacket
 
     public ZC_NOTIFY_CHAT() : base(PacketHeader.ZC_NOTIFY_CHAT, -1) { }
 
+    private byte[] MessageBytes()
+        => System.Text.Encoding.UTF8.GetBytes(Message + "\0");
+
+    public override int GetSize() => 2 + 2 + sizeof(int) + MessageBytes().Length;
+
     public override void Write(BinaryWriter writer)
     {
-        // rAthena terminates the body with a NUL; mirror that.
-        var bytes = System.Text.Encoding.UTF8.GetBytes(Message + "\0");
-        ushort totalLen = (ushort)(8 + bytes.Length);
-        writer.Write(totalLen);
+        // WritePacket already emitted the header + packet_len. Body only.
         writer.Write(SourceId);
-        writer.Write(bytes);
+        writer.Write(MessageBytes());
     }
 }

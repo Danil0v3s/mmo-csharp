@@ -125,6 +125,14 @@ public enum PacketHeader : short
     ZC_CONCLUDE_EXCHANGE_ITEM = 0x00ec,    // <who>.B (3B). 0=self pressed OK, 1=partner.
     ZC_CANCEL_EXCHANGE_ITEM = 0x00ee,      // (2B). Trade cancelled.
     ZC_EXEC_EXCHANGE_ITEM = 0x00f0,        // <result>.B (3B). 0=success, 1=failure.
+    // --- NPC shop (npc.cpp / clif.cpp 12230..12335) ---
+    CZ_ACK_SELECT_DEALTYPE = 0x00c5,       // <npc_id>.L <type>.B (7B). Buy/sell choice on NPC dialog.
+    ZC_PC_PURCHASE_ITEMLIST = 0x00c6,      // var-len. Send the shop catalog to the client.
+    ZC_PC_SELL_ITEMLIST = 0x00c7,          // var-len. Send the player's sellable inventory list.
+    CZ_PC_PURCHASE_ITEMLIST = 0x00c8,      // var-len. Player's buy basket.
+    CZ_PC_SELL_ITEMLIST = 0x00c9,          // var-len. Player's sell basket.
+    ZC_PC_PURCHASE_RESULT = 0x00ca,        // <result>.B (3B). Buy outcome code.
+    ZC_PC_SELL_RESULT = 0x00cb,            // <result>.B (3B). Sell outcome (0=ok, 1=fail).
     CZ_USE_SKILL_TOGROUND = 0x0366,        // CZ_USE_SKILL_TOGROUND2 — <lv>.W <id>.W <x>.W <y>.W (10B). Shuffle of 0x0116.
     CZ_REQUEST_CHAT = 0x00f3,              // shuffle (was 0x008c)
     CZ_REQ_QUIT = 0x018a,                  // clif_parse_QuitGame, 4B (reserved). ALT+E.

@@ -62,6 +62,38 @@ public sealed class NpcSpawnService : INpcSpawnService
             SpawnedCount++;
         }
 
+        // Shop NPCs come from the same scripting registry but a different
+        // record type — they don't carry click hooks, only a catalog.
+        // They render exactly like a regular NPC (sprite + position); the
+        // ShopRegistration on the entity is the discriminator.
+        foreach (var shop in _registry.AllShops())
+        {
+            var map = _world.Get(shop.Map);
+            if (map == null)
+            {
+                _logger.LogDebug(
+                    "Shop '{Name}' targets unhosted map '{Map}' — skipped",
+                    shop.Name, shop.Map);
+                SkippedUnknownMapCount++;
+                continue;
+            }
+            var mapId = (uint)map.Name.GetHashCode();
+            var entity = new NpcEntity(
+                id: _idAllocator.NextNpc(),
+                name: shop.Name,
+                spriteId: shop.Sprite,
+                mapId: mapId,
+                x: shop.X, y: shop.Y,
+                dir: shop.Dir,
+                triggerArea: null,
+                hooks: Scripting.Records.NpcHooks.Empty)
+            {
+                Shop = shop,
+            };
+            _entities.Add(entity);
+            SpawnedCount++;
+        }
+
         if (SpawnedCount > 0 || SkippedUnknownMapCount > 0)
         {
             _logger.LogInformation(
