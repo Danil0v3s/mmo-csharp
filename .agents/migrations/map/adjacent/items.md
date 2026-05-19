@@ -58,8 +58,7 @@ Items thread through every gameplay system. The Char server already owns persist
 ## Pending
 
 1. **MVP drops** (top-damager only) + `battle_config.item_rate_*` modifiers.
-2. **Drop-from-inventory wire** — `CZ_ITEM_THROW` (0x00a2) → `ItemDropService.DropOnFloor` plumbing.
-3. **Item Script parser** — the long-tail itemheal / sc_start / bonus formulas. Today the strategy registry has 7 hand-coded entries.
+2. **Item Script parser** — the long-tail itemheal / sc_start / bonus formulas. Today the strategy registry has 7 hand-coded entries.
 
 ## History
 - **2026-05-16** — Plan stub.
@@ -68,3 +67,4 @@ Items thread through every gameplay system. The Char server already owns persist
 - **2026-05-16** — Rename + ItemCatalog shipped. Mob death now rolls drops via `IItemCatalog.GetByAegisName(...)`; the spawn → kill → drop → pickup loop is end-to-end demonstrable. 177 Map.Server tests green.
 - **2026-05-19** — Inventory closes end-to-end: load + save via existing IPC, equip → BattleStats aggregator, pickup → bag deposit, ItemEffectRegistry strategy for `pc_useitem` with 7 starter entries, loot-protection windows with owner/party priority. NPC shop service + atomic player trade also shipped (see [trade.md](trade.md)).
 - **2026-05-19** — Equip / unequip wire end-to-end: `CZ_REQ_WEAR_EQUIP` (0x0998, V5 — 32-bit position) + `CZ_REQ_TAKEOFF_EQUIP` (0x00ab) → `IEquipService` resolves the EQP_* bitmask (ACC L/R + dual-wield resolution per `pc_equipitem`), drops anything already occupying the slot, triggers `IStatusCalcService.CalcPc` via `EquipBonusAggregator`, and emits `ZC_REQ_WEAR_EQUIP_ACK` (0x0999) / `ZC_REQ_TAKEOFF_EQUIP_ACK` (0x099a) with the applied wear-location + ack code. 6 wire tests in `Map.Server.Tests/Equip/`.
+- **2026-05-19** — Drop-from-inventory wire end-to-end: `CZ_ITEM_THROW` (0x00a2, 6B) → `ItemThrowHandler` validates the slot + amount, refuses equipped / in-trade items, calls `IItemDropService.DropOnFloor` with the player's char id as owner (so the standard 3s solo / 5s party loot-protection window applies), decrements the inventory stack, and emits `ZC_ITEM_THROW_ACK` (0x00af). 4 wire tests in `Map.Server.Tests/Inventory/ItemThrowHandlerTests.cs`.

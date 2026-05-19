@@ -152,6 +152,10 @@ public enum PacketHeader : short
     CZ_REQ_TAKEOFF_EQUIP = 0x00ab,         // <index>.W (4B). pc_unequipitem entry.
     ZC_REQ_WEAR_EQUIP_ACK = 0x0999,        // <index>.W <wearLocation>.L <viewid>.W <result>.B (11B).
     ZC_REQ_TAKEOFF_EQUIP_ACK = 0x099a,     // <index>.W <wearLocation>.L <flag>.B (9B).
+    // --- Drop-from-inventory (clif.cpp:12016 clif_parse_DropItem) ---
+    // Legacy 0x00a2; the 0x0363 variant (CZ_ITEM_THROW2) collides with
+    // CZ_REQUEST_TIME on PACKETVER 20220401, so we use the legacy id.
+    CZ_ITEM_THROW = 0x00a2,                // <index>.W <amount>.W (6B). pc_dropitem entry.
     CZ_USE_SKILL_TOGROUND = 0x0366,        // CZ_USE_SKILL_TOGROUND2 — <lv>.W <id>.W <x>.W <y>.W (10B). Shuffle of 0x0116.
     CZ_REQUEST_CHAT = 0x00f3,              // shuffle (was 0x008c)
     CZ_REQ_QUIT = 0x018a,                  // clif_parse_QuitGame, 4B (reserved). ALT+E.
