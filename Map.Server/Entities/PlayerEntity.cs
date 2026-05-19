@@ -111,6 +111,23 @@ public sealed class PlayerEntity : Entity
     public int AbyssBall { get; set; }
 
     /// <summary>
+    /// rAthena <c>spiritcharm</c> — Kagerou/Oboro element charm count.
+    /// Cap (MAX_SPIRITCHARM = 10) enforced by the caller; orb service
+    /// shares the same wire shape (ZC_SPIRITS).
+    /// </summary>
+    public int SpiritCharm { get; set; }
+    /// <summary>Element ID of the active spirit charm (rAthena ELE_*).</summary>
+    public int SpiritCharmType { get; set; }
+
+    /// <summary>
+    /// rAthena Stalker Reproduce — copied skill id / level. 0 = no
+    /// active copy. Set via <c>pc_skill_plagiarism</c>; resolver
+    /// substitution lands with the Stalker port.
+    /// </summary>
+    public ushort PlagiarizedSkillId { get; set; }
+    public byte PlagiarizedSkillLevel { get; set; }
+
+    /// <summary>
     /// rAthena <c>invincible_timer</c> (pc.cpp:417) — absolute tick
     /// (<see cref="Environment.TickCount64"/>) until which the PC is
     /// invulnerable. 0 = not invincible. Applied automatically on warp
@@ -124,6 +141,15 @@ public sealed class PlayerEntity : Entity
     /// persisted alongside the rest of the character row on autosave.
     /// </summary>
     public int Fame { get; set; }
+
+    /// <summary>rAthena <c>partner_id</c> — married spouse char id, 0 = unmarried.</summary>
+    public int PartnerId { get; set; }
+    /// <summary>rAthena <c>father</c> — adoptive father char id.</summary>
+    public int FatherCharId { get; set; }
+    /// <summary>rAthena <c>mother</c> — adoptive mother char id.</summary>
+    public int MotherCharId { get; set; }
+    /// <summary>rAthena <c>child</c> — adopted baby char id, 0 = no baby.</summary>
+    public int ChildCharId { get; set; }
 
     /// <summary>
     /// Skills learned by this character: skill_id → level. Mirrors

@@ -16,4 +16,19 @@ public interface IExpService
     /// player. Returns true if a base- or job-level-up occurred.
     /// </summary>
     bool GainExp(PlayerEntity player, long baseExp, long jobExp);
+
+    /// <summary>
+    /// rAthena <c>pc_lostexp</c> (pc.cpp:8425) — subtract base+job exp
+    /// without dropping below 0. Used by death penalty path + GM
+    /// commands. Returns the actual amount drained.
+    /// </summary>
+    (long BaseLost, long JobLost) LoseExp(PlayerEntity player, long baseExp, long jobExp);
+
+    /// <summary>
+    /// rAthena <c>pc_baselevelchanged</c> (pc.cpp:8499) — hook called
+    /// after every base-level mutation. Default impl runs the
+    /// dragon/eleanor/babyclass auto-grant chain; the first slice just
+    /// re-emits the SP_BASELEVEL packet so the client UI updates.
+    /// </summary>
+    void OnBaseLevelChanged(PlayerEntity player);
 }

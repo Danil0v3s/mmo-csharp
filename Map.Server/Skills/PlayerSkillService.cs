@@ -56,4 +56,49 @@ public sealed class PlayerSkillService : IPlayerSkillService
 
     public void Revoke(PlayerEntity pc, ushort skillId)
         => Grant(pc, skillId, 0, GrantKind.Permanent);
+
+    public void CalcSkillTree(PlayerEntity pc)
+    {
+        // No-op until skill_tree.yml / job_tree.yml port. LearnedSkills
+        // is hydrated from char-server at session enter, so the visible
+        // state already matches what the player paid for. Future
+        // iteration walks parent → child prereqs and auto-grants the
+        // free skills the rAthena tree marks at level 0.
+    }
+
+    public void CleanSkillTree(PlayerEntity pc)
+    {
+        // rAthena clears only PERMANENT_GRANTED entries. We don't track
+        // skill_flag yet — full implementation will iterate and drop
+        // selectively. Until then this is a documented no-op so callers
+        // (job change, GM reset) can be wired in.
+    }
+
+    public bool TryPlagiarize(PlayerEntity pc, ushort skillId, ushort skillLevel)
+    {
+        var def = _db.Get(skillId);
+        if (def == null) return false;
+        pc.PlagiarizedSkillId = skillId;
+        pc.PlagiarizedSkillLevel = (byte)skillLevel;
+        return true;
+    }
+
+    public void PlagiarismReset(PlayerEntity pc, byte type)
+    {
+        pc.PlagiarizedSkillId = 0;
+        pc.PlagiarizedSkillLevel = 0;
+    }
+
+    public bool Validate(PlayerEntity pc, ushort skillId, int level)
+    {
+        var def = _db.Get(skillId);
+        if (def == null) return false;
+        return level >= 0 && level <= def.MaxLevel;
+    }
+
+    public int CheckImperialGuard(PlayerEntity pc, ushort skillId)
+        => pc.LearnedSkills.GetValueOrDefault(skillId);
+
+    public int CheckSummoner(PlayerEntity pc, ushort skillType)
+        => pc.LearnedSkills.GetValueOrDefault(skillType);
 }

@@ -362,6 +362,29 @@ builder.Services.AddSingleton<Map.Server.Skills.IPlayerSkillService, Map.Server.
 builder.Services.AddSingleton<Map.Server.Status.IPlayerFameService, Map.Server.Status.PlayerFameService>();
 builder.Services.AddSingleton<Map.Server.Scripting.Vars.IPlayerVarService, Map.Server.Scripting.Vars.PlayerVarService>();
 builder.Services.AddSingleton<Map.Server.Status.IJobChangeService, Map.Server.Status.JobChangeService>();
+
+// pc.cpp Wave 5-13 helpers — full surface for the remaining
+// canonical rAthena entry points. Stubbed where the backend
+// subsystem hasn't ported yet (documented inline in each impl).
+builder.Services.AddSingleton<Map.Server.Inventory.IPlayerEquipHelpers, Map.Server.Inventory.PlayerEquipHelpers>();
+builder.Services.AddSingleton<Map.Server.Inventory.IPlayerInventoryHelpers, Map.Server.Inventory.PlayerInventoryHelpers>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerBonusService, Map.Server.Status.PlayerBonusService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerTimerService, Map.Server.Status.PlayerTimerService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerBgQueueTimerService, Map.Server.Status.PlayerBgQueueTimerService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerHateService, Map.Server.Status.PlayerHateService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerJailService, Map.Server.Status.PlayerJailService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerRelationService, Map.Server.Status.PlayerRelationService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerAttendanceService, Map.Server.Status.PlayerAttendanceService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerQuestMarkerService, Map.Server.Status.PlayerQuestMarkerService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerStealService, Map.Server.Status.PlayerStealService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerReputationService, Map.Server.Status.PlayerReputationService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerVersionDisplayService, Map.Server.Status.PlayerVersionDisplayService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerReviveItemService, Map.Server.Status.PlayerReviveItemService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerMacroDetectorService, Map.Server.Status.PlayerMacroDetectorService>();
+builder.Services.AddSingleton<Map.Server.Movement.IPlayerPositionHelpers, Map.Server.Movement.PlayerPositionHelpers>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerLifecycleHelpers, Map.Server.Status.PlayerLifecycleHelpers>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerStatHelpers, Map.Server.Status.PlayerStatHelpers>();
+
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MountCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.JobCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CartCommand>();

@@ -170,6 +170,28 @@ public sealed class ExpService : IExpService
         if (session == null) return;
         session.EnqueuePacket(new ZC_PAR_CHANGE { VarId = varId, Value = (int)value });
     }
+
+    public (long BaseLost, long JobLost) LoseExp(PlayerEntity player, long baseExp, long jobExp)
+    {
+        var baseTake = Math.Min(baseExp, player.BaseExp);
+        var jobTake = Math.Min(jobExp, player.JobExp);
+        player.BaseExp -= baseTake;
+        player.JobExp -= jobTake;
+        var session = _sessions.GetByEntityId(player.Id);
+        EmitLongLongPar(session, SpId.SP_BASEEXP, player.BaseExp);
+        EmitLongLongPar(session, SpId.SP_JOBEXP, player.JobExp);
+        _logger.LogDebug(
+            "pc_lostexp: char {Char} -{BaseLost} base / -{JobLost} job",
+            player.CharacterId, baseTake, jobTake);
+        return (baseTake, jobTake);
+    }
+
+    public void OnBaseLevelChanged(PlayerEntity player)
+    {
+        var session = _sessions.GetByEntityId(player.Id);
+        EmitParChange(session, SpId.SP_BASELEVEL, (uint)player.Level);
+        // Future: Dragon/Eleanor/Babyclass auto-grant chain hooks here.
+    }
 }
 
 /// <summary>
