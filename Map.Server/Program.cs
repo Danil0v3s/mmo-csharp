@@ -358,6 +358,8 @@ builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GvgOffCommand>(
 builder.Services.AddSingleton<Map.Server.Status.IPlayerOptionService, Map.Server.Status.PlayerOptionService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerLookService, Map.Server.Status.PlayerLookService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerOrbService, Map.Server.Status.PlayerOrbService>();
+builder.Services.AddSingleton<Map.Server.Skills.IPlayerSkillService, Map.Server.Skills.PlayerSkillService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerFameService, Map.Server.Status.PlayerFameService>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MountCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CartCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.OptionCommand>();

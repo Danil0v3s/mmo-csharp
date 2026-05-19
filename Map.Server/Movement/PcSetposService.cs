@@ -84,6 +84,14 @@ public sealed class PcSetposService : IPcSetposService
         Attack.StopAttack(pc);
         pc.Walk = null;
 
+        // rAthena pc_setpos also force-closes any open NPC dialog so
+        // the next ContactNpc doesn't get tangled with stale state.
+        var preWarpSession = _sessions.GetByEntityId(pc.Id);
+        if (preWarpSession != null)
+        {
+            _services.GetService<Map.Server.Scripting.Dialog.IDialogDispatcher>()?.ForceClose(preWarpSession);
+        }
+
         var newMapId = (uint)mapName.GetHashCode();
         var sameMap = pc.MapId == newMapId;
 

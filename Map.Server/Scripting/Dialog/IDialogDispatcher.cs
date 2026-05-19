@@ -28,4 +28,12 @@ public interface IDialogDispatcher
 
     /// <summary>Finalise the dialog after the client clicked "Close" (CZ_CLOSE_DIALOG).</summary>
     void ResumeClose(MapSessionData session, uint npcId);
+
+    /// <summary>
+    /// rAthena <c>pc_close_npc</c> (pc.cpp:1320) — engine-side force-end
+    /// of any open dialog. Used by warp / damage / GM kick to clear the
+    /// stale npc_id state without waiting for the client to ack the
+    /// close packet.
+    /// </summary>
+    void ForceClose(MapSessionData session);
 }

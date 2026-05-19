@@ -153,4 +153,12 @@ public sealed class DialogDispatcher : IDialogDispatcher
         session.EnqueuePacket(new ZC_CLOSE_DIALOG { NpcId = (uint)dialog.Npc.Id.Value });
         session.Dialog = null;
     }
+
+    public void ForceClose(MapSessionData session)
+    {
+        if (session.Dialog is { } d)
+        {
+            TryEnd(session, d);
+        }
+    }
 }

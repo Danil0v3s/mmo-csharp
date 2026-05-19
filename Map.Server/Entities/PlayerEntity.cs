@@ -119,6 +119,13 @@ public sealed class PlayerEntity : Entity
     public long InvincibleUntilTick { get; set; }
 
     /// <summary>
+    /// rAthena <c>fame</c> on mmo_charstatus — drives smith / alchemist
+    /// / taekwon rankings. Mutated by <c>IPlayerFameService.AddFame</c>;
+    /// persisted alongside the rest of the character row on autosave.
+    /// </summary>
+    public int Fame { get; set; }
+
+    /// <summary>
     /// Skills learned by this character: skill_id → level. Mirrors
     /// rAthena <c>mmo_charstatus.skill[]</c>. Hydrated from char-server
     /// at session enter; mutated by <c>pc_skillup</c>.
