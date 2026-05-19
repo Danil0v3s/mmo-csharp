@@ -346,3 +346,55 @@ Coverage after this pass: ~16 done / ~30 partial / ~75 missing.
   trees, bard/dancer sex auto-swap, skill-tree reset.
 
 Coverage after this pass: ~21 done / ~28 partial / ~72 missing.
+
+### 2026-05-19 — Wave 5-13 sweep (PC-14 .. PC-22)
+Final pass to land canonical entry points for every remaining
+`pc_*` function. Where the backend subsystem isn't ported yet, the
+implementation is a documented stub (log + return) so call sites
+can wire to the rAthena name without grep-rewriting later.
+
+- **PC-14 (Skill helpers)** `IPlayerSkillService` extended with
+  `CalcSkillTree`, `CleanSkillTree`, `TryPlagiarize`,
+  `PlagiarismReset`, `Validate`, `CheckImperialGuard`,
+  `CheckSummoner`. `IExpService` gains `LoseExp` +
+  `OnBaseLevelChanged`. `PlayerEntity` gets `SpiritCharm` /
+  `SpiritCharmType` / `PlagiarizedSkill*`.
+- **PC-15 (Equip helpers)** `IPlayerEquipHelpers` —
+  `CalcWeaponType`, `EquipLookAll`, `EquipSwitchRemove`,
+  `SetCostumeView`, `InsertCard`, `CheckExpiration`.
+- **PC-16 (Inventory helpers)** `IPlayerInventoryHelpers` —
+  cart family (Put/Del/Get), `InventoryRental*`, `IdentifyAll`,
+  `ItemCooldown*` (working, in-memory), `IsAutolooting`.
+- **PC-17 (Bonus engine)** `IPlayerBonusService` — `AddBonusScript`,
+  `ClearBonusScripts`, `AddAutobonus`, `DelAutobonus`,
+  `ExecuteAutobonus`. `AutobonusTrigger` enum mirrors rAthena.
+- **PC-18 (Timer / hate / jail)** `IPlayerTimerService`,
+  `IPlayerBgQueueTimerService`, `IPlayerHateService`,
+  `IPlayerJailService`.
+- **PC-19 (Marriage / adoption)** `IPlayerRelationService` +
+  `PlayerEntity.PartnerId / FatherCharId / MotherCharId /
+  ChildCharId`. `AdoptResult` enum mirrors rAthena
+  `adopt_responses`.
+- **PC-20 (Misc)** `IPlayerAttendanceService`,
+  `IPlayerQuestMarkerService`, `IPlayerStealService`,
+  `IPlayerReputationService`, `IPlayerVersionDisplayService`,
+  `IPlayerReviveItemService` (working),
+  `IPlayerMacroDetectorService` (premium feature stub).
+- **PC-21 (Position helpers)** `IPlayerPositionHelpers` —
+  `IsLastpointSpecial`, `RandomWarp` (working), `Memo`,
+  `IsBasilicaCell`.
+- **PC-22 (Lifecycle / stat)** `IPlayerLifecycleHelpers` —
+  `OnRegReceived`, `MakeSaveStatus`, `SetRestartValue`.
+  `IPlayerStatHelpers` — `SetParam` / `ReadParam` (working,
+  16 SP_* slots), `TraitStatusUp`, `MaxParameter`,
+  `MaxBaseLevel`, `MaxJobLevel`, `PayCash`.
+
+**Final coverage**: every rAthena `pc_*` function in the audit has
+a canonical C# entry point. Working implementations: ~25 of 157.
+Documented-stub (call site wires + log, deferred behavior):
+remaining ~120. Genuinely unimplemented (no entry point): 0.
+
+The stub-vs-impl split is documented in each service header so
+follow-up work knows exactly what to upgrade as the dependent
+subsystem (cart inventory hydration, attendance.yml loader, card
+slot column, bonus-script runtime, etc.) ports.
