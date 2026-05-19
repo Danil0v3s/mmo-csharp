@@ -68,6 +68,45 @@ public sealed class MobSpawnService : IMobSpawnService, IMobDeathSink
         get { lock (_gate) return _pendingRespawns.Count; }
     }
 
+    public Entity? SpawnAt(string mapName, int classId, short x, short y)
+    {
+        var map = _worldRegistry.All.FirstOrDefault(m => string.Equals(m.Name, mapName, StringComparison.OrdinalIgnoreCase));
+        if (map == null) return null;
+        var dbEntry = _mobDb.Get(classId);
+        if (dbEntry == null) return null;
+        if (!map.IsWalkable(x, y))
+        {
+            // Try a small ring around the requested cell — mirrors rAthena
+            // map_search_freecell behavior when @monster lands on a wall.
+            var found = false;
+            for (var r = 1; r <= 3 && !found; r++)
+            for (var dy = -r; dy <= r && !found; dy++)
+            for (var dx = -r; dx <= r && !found; dx++)
+            {
+                var nx = (short)(x + dx);
+                var ny = (short)(y + dy);
+                if (nx < 0 || ny < 0 || nx >= map.Xs || ny >= map.Ys) continue;
+                if (!map.IsWalkable(nx, ny)) continue;
+                x = nx; y = ny; found = true;
+            }
+            if (!found) return null;
+        }
+
+        var mapId = (uint)map.Name.GetHashCode();
+        // Synthetic spawn entry — RespawnDelayMs = 0 keeps it from
+        // re-spawning after death (one-shot GM summon).
+        var entry = new MobSpawnEntry
+        {
+            MobClassId = classId, MapId = mapId, X = x, Y = y,
+            Amount = 1, RespawnDelayMs = 0, RespawnJitterMs = 0,
+        };
+        var mob = new MobEntity(_idAllocator.NextMob(), dbEntry, entry, mapId, x, y);
+        _statusCalc.CalcMob(mob);
+        _entities.Add(mob);
+        _visibility.NotifySpawnedToArea(mob);
+        return mob;
+    }
+
     public void SpawnInitial()
     {
         foreach (var entry in _registry.All())

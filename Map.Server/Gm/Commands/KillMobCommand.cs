@@ -18,7 +18,6 @@ public sealed class KillMobCommand(
 ) : IGmCommand
 {
     public string Name => "killmob";
-    public int MinGroupId => 60;
     public string Description => "Kill the nearest mob in your view range.";
 
     public Task ExecuteAsync(PlayerEntity caller, IReadOnlyList<string> args, CancellationToken ct)

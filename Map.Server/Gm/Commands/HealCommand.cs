@@ -17,7 +17,6 @@ public sealed class HealCommand(
 ) : IGmCommand
 {
     public string Name => "heal";
-    public int MinGroupId => 60;
     public string Description => "@heal [hp] [sp] — restore HP/SP (no args = full heal).";
 
     public Task ExecuteAsync(PlayerEntity caller, IReadOnlyList<string> args, CancellationToken ct)

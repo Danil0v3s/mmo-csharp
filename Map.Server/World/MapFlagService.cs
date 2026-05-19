@@ -26,6 +26,27 @@ public sealed class MapFlagService : IMapFlagService
         return snapshot.TryGetValue(mapName, out var bits) && bits.Has(flag);
     }
 
+    /// <summary>
+    /// Mutate the cached bitmask. Used by GM commands (@pvpon, @pvpoff,
+    /// @gvgon, @gvgoff) — rAthena flips the per-map flag in-place at
+    /// runtime. Auto-creates the map entry if it isn't tracked yet.
+    /// </summary>
+    public void Set(string mapName, MapFlag flag, bool on)
+    {
+        if (string.IsNullOrEmpty(mapName)) return;
+        var snapshot = EnsureSnapshot();
+        lock (_gate)
+        {
+            if (!snapshot.TryGetValue(mapName, out var bits))
+            {
+                bits = new MapFlagBits();
+                snapshot[mapName] = bits;
+            }
+            if (on) bits.Set(flag);
+            else bits.Clear(flag);
+        }
+    }
+
     private Dictionary<string, MapFlagBits> EnsureSnapshot()
     {
         var snapshot = _byMap;
@@ -82,6 +103,7 @@ public sealed class MapFlagService : IMapFlagService
     {
         private int _bits;
         public void Set(MapFlag flag) => _bits |= 1 << (int)flag;
+        public void Clear(MapFlag flag) => _bits &= ~(1 << (int)flag);
         public bool Has(MapFlag flag) => (_bits & (1 << (int)flag)) != 0;
     }
 }

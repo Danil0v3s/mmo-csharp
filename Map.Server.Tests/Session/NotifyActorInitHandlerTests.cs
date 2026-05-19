@@ -160,6 +160,7 @@ public class NotifyActorInitHandlerTests
         public void Respawn(PlayerEntity pc) { }
         public bool IsDead(PlayerEntity pc) => false;
         public void SetSavepoint(int characterId, string mapName, short x, short y) { }
+        public bool WarpToSavepoint(PlayerEntity pc) => false;
     }
 
     private sealed class NoOpItemCatalog : Map.Server.Items.IItemCatalog

@@ -23,7 +23,6 @@ public sealed class StorageCommand(
 ) : IGmCommand
 {
     public string Name => "storage";
-    public int MinGroupId => 0; // available to everyone — same as kafra access
     public string Description => "@storage — open your account storage.";
 
     public async Task ExecuteAsync(PlayerEntity caller, IReadOnlyList<string> args, CancellationToken ct)

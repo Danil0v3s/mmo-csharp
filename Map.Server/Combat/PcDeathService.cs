@@ -114,4 +114,12 @@ public sealed class PcDeathService : IPcDeathService
     }
 
     public bool IsDead(PlayerEntity pc) => _dead.Contains(pc.CharacterId);
+
+    public bool WarpToSavepoint(PlayerEntity pc)
+    {
+        if (_setpos == null) return false;
+        if (!_savepoints.TryGetValue(pc.CharacterId, out var sp)) return false;
+        _setpos.Setpos(pc, sp.MapName, sp.X, sp.Y);
+        return true;
+    }
 }

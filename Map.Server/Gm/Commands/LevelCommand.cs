@@ -19,7 +19,6 @@ public sealed class LevelCommand(
 ) : IGmCommand
 {
     public string Name => "level";
-    public int MinGroupId => 60;
     public string Description => "@level <delta> — adjust caller's base level (negative = drop).";
 
     public Task ExecuteAsync(PlayerEntity caller, IReadOnlyList<string> args, CancellationToken ct)

@@ -20,7 +20,6 @@ public sealed class ItemCommand(
 ) : IGmCommand
 {
     public string Name => "item";
-    public int MinGroupId => 60;
     public string Description => "@item <name|id> [amount] — give item to caller.";
 
     public Task ExecuteAsync(PlayerEntity caller, IReadOnlyList<string> args, CancellationToken ct)

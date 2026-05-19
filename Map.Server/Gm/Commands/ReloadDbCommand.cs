@@ -21,7 +21,6 @@ public sealed class ReloadDbCommand(
 ) : IGmCommand
 {
     public string Name => "reloaddb";
-    public int MinGroupId => 99;
     public string Description => "@reloaddb <item|mob|skill|all> — re-hydrate the named catalog from the DB.";
 
     public Task ExecuteAsync(PlayerEntity caller, IReadOnlyList<string> args, CancellationToken ct)

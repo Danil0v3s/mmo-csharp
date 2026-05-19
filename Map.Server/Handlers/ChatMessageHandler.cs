@@ -6,6 +6,7 @@ using Map.Server.Entities;
 using Map.Server.Gm;
 using Map.Server.Session;
 using Map.Server.Visibility;
+using Map.Server.World;
 
 namespace Map.Server.Handlers;
 
@@ -22,6 +23,8 @@ public class ChatMessageHandler(
     IEntityRegistry registry,
     IGmCommandRegistry commands,
     IVisibilityService visibility,
+    IAtCommandLogger atLog,
+    IMapWorldRegistry maps,
     ILogger<ChatMessageHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_REQUEST_CHAT>
 {
@@ -57,11 +60,11 @@ public class ChatMessageHandler(
             return;
         }
 
-        if (session.GroupId < (uint)command.MinGroupId)
+        if (!commands.CanInvoke(session, command))
         {
             logger.LogWarning(
-                "Char {CharId} (group {Group}) attempted GM command @{Name} (requires group {Required})",
-                player.CharacterId, session.GroupId, command.Name, command.MinGroupId);
+                "Char {CharId} (group {Group}) refused GM command @{Name}",
+                player.CharacterId, session.GroupId, command.Name);
             visibility.SendToSelf(player, new ZC_NOTIFY_PLAYERCHAT
             {
                 Message = $"@{name}: permission denied.",
@@ -72,6 +75,14 @@ public class ChatMessageHandler(
         try
         {
             await command.ExecuteAsync(player, args, CancellationToken.None);
+            // rAthena log_atcommand: invocation logged AFTER the handler
+            // returns successfully. We capture the full chat line minus
+            // the "<name> : " prefix so the audit row matches what the
+            // player typed.
+            var mapName = maps.All.FirstOrDefault(m => (uint)m.Name.GetHashCode() == player.MapId)?.Name ?? string.Empty;
+            var sep = packet.Text.IndexOf(" : ", StringComparison.Ordinal);
+            var line = sep >= 0 ? packet.Text[(sep + 3)..] : packet.Text;
+            atLog.Log(session, player, mapName, line);
         }
         catch (Exception ex)
         {

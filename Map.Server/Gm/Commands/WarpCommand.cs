@@ -19,7 +19,6 @@ public sealed class WarpCommand(
 ) : IGmCommand
 {
     public string Name => "warp";
-    public int MinGroupId => 60;
     public string Description => "@warp <x> <y> — teleport to a cell on the current map.";
 
     public Task ExecuteAsync(PlayerEntity caller, IReadOnlyList<string> args, CancellationToken ct)

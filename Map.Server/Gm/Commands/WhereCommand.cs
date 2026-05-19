@@ -15,7 +15,6 @@ public sealed class WhereCommand(
 ) : IGmCommand
 {
     public string Name => "where";
-    public int MinGroupId => 1;
     public string Description => "Show the caller's current map and cell.";
 
     public Task ExecuteAsync(PlayerEntity caller, IReadOnlyList<string> args, CancellationToken ct)

@@ -18,7 +18,6 @@ public sealed class DamageCommand(
 ) : IGmCommand
 {
     public string Name => "damage";
-    public int MinGroupId => 60;
     public string Description => "@damage <amount> — apply flat damage to the nearest mob in view.";
 
     public Task ExecuteAsync(PlayerEntity caller, IReadOnlyList<string> args, CancellationToken ct)

@@ -317,7 +317,92 @@ builder.Services.AddSingleton<IGmCommand, HealCommand>();
 builder.Services.AddSingleton<IGmCommand, ItemCommand>();
 builder.Services.AddSingleton<IGmCommand, LevelCommand>();
 builder.Services.AddSingleton<IGmCommand, ReloadDbCommand>();
+// Meta atcommands — @help / @commands / @charcommands read from
+// conf/atcommands.yml and conf/groups.yml.
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.HelpCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CommandsCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CharCommandsCommand>();
+
+// Wave A atcommands — backend already exists.
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AliveCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.KillCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.SpeedCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ZenyCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.JobLevelCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MapInfoCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.UsersCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.TimeCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.RefreshCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MeCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.VersionCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.UptimeCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.WhoCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.JumpCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.JumpToCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.RecallCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.SaveCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.LoadCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.HideCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MonsterCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BroadcastCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.LocalBroadcastCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.PvpOnCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.PvpOffCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GvgOnCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GvgOffCommand>();
+
+// Wave B atcommand stubs — backend subsystem pending. Each is a
+// well-formed registry entry so @commands / @help still see the
+// rAthena name, but invocation replies "not yet implemented".
+// Real implementations supersede these as the backend lands.
+{
+    var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        // Names already registered above. The stub list intentionally
+        // omits these so we don't double-register the same command name.
+        "where","killmob","warp","damage","storage","heal","item","level","reloaddb",
+        "help","commands","charcommands",
+        "alive","kill","speed","zeny","joblevelup","mapinfo","users","servertime",
+        "refresh","me","version","uptime","who","jump","jumpto","recall","save",
+        "load","hide","monster","broadcast","localbroadcast","pvpon","pvpoff",
+        "gvgon","gvgoff",
+    };
+    foreach (var spec in Map.Server.Gm.Commands.StubCommandKinds.Specs)
+    {
+        if (!existing.Add(spec.Name)) continue;
+        builder.Services.AddSingleton<IGmCommand>(sp =>
+            new Map.Server.Gm.Commands.StubCommand(
+                spec.Name, spec.Subsystem,
+                sp.GetRequiredService<Map.Server.Visibility.IVisibilityService>()));
+    }
+}
+
+// atcommands.yml + groups.yml — rAthena conf/* parity. Loaded once at
+// startup. Path discovery follows the appsettings convention used by
+// MapDataPaths: try local config dir first, fall back to the rathena
+// reference tree so a dev box without a copy still boots.
+builder.Services.AddSingleton<Map.Server.Gm.Config.IAtCommandConfig>(sp =>
+{
+    var log = sp.GetRequiredService<ILogger<Map.Server.Gm.Config.AtCommandConfig>>();
+    return new Map.Server.Gm.Config.AtCommandConfig(ResolveConfigPath("atcommands.yml"), log);
+});
+builder.Services.AddSingleton<Map.Server.Gm.Config.IPlayerGroupConfig>(sp =>
+{
+    var log = sp.GetRequiredService<ILogger<Map.Server.Gm.Config.PlayerGroupConfig>>();
+    return new Map.Server.Gm.Config.PlayerGroupConfig(ResolveConfigPath("groups.yml"), log);
+});
+builder.Services.AddSingleton<Map.Server.Gm.Config.IPermissionService, Map.Server.Gm.Config.PermissionService>();
+builder.Services.AddSingleton<IAtCommandLogger, AtCommandLogger>();
+
 builder.Services.AddSingleton<IGmCommandRegistry, GmCommandRegistry>();
+
+static string ResolveConfigPath(string name)
+{
+    var local = Path.Combine(AppContext.BaseDirectory, "config", name);
+    if (File.Exists(local)) return local;
+    var rathena = Path.Combine("/Volumes/1TB/Projetos/rathena/conf", name);
+    return rathena;
+}
 
 // Core services
 builder.Services.AddSingleton<SessionManager>();

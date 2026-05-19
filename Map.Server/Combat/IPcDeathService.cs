@@ -36,4 +36,11 @@ public interface IPcDeathService
     /// enter. Used by <see cref="Respawn"/> to call <c>pc_setpos</c>.
     /// </summary>
     void SetSavepoint(int characterId, string mapName, short x, short y);
+
+    /// <summary>
+    /// rAthena <c>atcommand_load</c> primitive — warp to savepoint without
+    /// requiring the caller to be dead. Returns false if no savepoint is
+    /// recorded for this character.
+    /// </summary>
+    bool WarpToSavepoint(PlayerEntity pc);
 }

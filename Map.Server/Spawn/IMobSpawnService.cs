@@ -41,4 +41,13 @@ public interface IMobSpawnService
 
     /// <summary>Diagnostic: count of pending respawns waiting on the timer.</summary>
     int PendingRespawnCount { get; }
+
+    /// <summary>
+    /// rAthena <c>atcommand_monster</c> primitive — spawn one mob of
+    /// <paramref name="classId"/> at (<paramref name="x"/>,<paramref name="y"/>)
+    /// on <paramref name="mapName"/>. Returns the created entity or null
+    /// if the map is unknown, mob_db doesn't have the class, or no
+    /// walkable cell was free near the request point.
+    /// </summary>
+    Entity? SpawnAt(string mapName, int classId, short x, short y);
 }
