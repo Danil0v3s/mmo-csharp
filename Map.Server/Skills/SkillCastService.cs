@@ -1,5 +1,6 @@
 using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Skills.Resolvers;
 using Map.Server.Status;
 using Microsoft.Extensions.Logging;
 
@@ -26,9 +27,7 @@ public sealed class SkillCastService : ISkillCastService
 {
     private readonly ISkillDb _db;
     private readonly IEntityRegistry _entities;
-    private readonly IDamageService _damage;
-    private readonly IBattleCalculator _battle;
-    private readonly IStatusChangeService _scService;
+    private readonly SkillResolverRegistry _resolvers;
     private readonly ILogger<SkillCastService> _logger;
 
     private readonly List<PendingCast> _pending = new();
@@ -37,17 +36,37 @@ public sealed class SkillCastService : ISkillCastService
     public SkillCastService(
         ISkillDb db,
         IEntityRegistry entities,
-        IDamageService damage,
-        IBattleCalculator battle,
-        IStatusChangeService scService,
+        SkillResolverRegistry resolvers,
         ILogger<SkillCastService> logger)
     {
         _db = db;
         _entities = entities;
-        _damage = damage;
-        _battle = battle;
-        _scService = scService;
+        _resolvers = resolvers;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Test-only ctor — wires the five standard resolvers from concrete
+    /// services. Keeps the existing test surface working without DI.
+    /// </summary>
+    public SkillCastService(
+        ISkillDb db,
+        IEntityRegistry entities,
+        IDamageService damage,
+        IBattleCalculator battle,
+        IStatusChangeService scService,
+        ILogger<SkillCastService> logger)
+        : this(db, entities,
+            new SkillResolverRegistry(new ISkillResolver[]
+            {
+                new WeaponSkillResolver(battle, damage),
+                new MagicSkillResolver(damage),
+                new HealSkillResolver(),
+                new StatusSkillResolver(scService),
+                new MiscSkillResolver(damage),
+            }),
+            logger)
+    {
     }
 
     public SkillCastResult StartCast(Entity source, EntityId targetId, ushort skillId, ushort skillLevel)
@@ -121,24 +140,11 @@ public sealed class SkillCastService : ISkillCastService
         if (def == null) return false;
         if (!IsAlive(target)) return false;
 
-        switch (def.DamageKind)
-        {
-            case SkillDamageKind.Weapon:
-                ResolveWeaponSkill(source, target, def, skillLevel);
-                break;
-            case SkillDamageKind.Magic:
-                ResolveMagicSkill(source, target, def, skillLevel);
-                break;
-            case SkillDamageKind.Heal:
-                ResolveHeal(source, target, def, skillLevel);
-                break;
-            case SkillDamageKind.None:
-                ResolveStatusOnly(source, target, def, skillLevel);
-                break;
-            case SkillDamageKind.Misc:
-                ResolveMisc(source, target, def, skillLevel);
-                break;
-        }
+        // Strategy-pattern dispatch — resolvers keyed by DamageKind.
+        // New skill kinds add an ISkillResolver class + DI registration;
+        // no switch case to edit here.
+        var resolver = _resolvers.Get(def.DamageKind);
+        resolver?.Resolve(source, target, def, skillLevel);
         return true;
     }
 
@@ -161,78 +167,8 @@ public sealed class SkillCastService : ISkillCastService
         }
     }
 
-    // ---- resolve sub-paths ----
-
-    private void ResolveWeaponSkill(Entity source, Entity target, SkillDefinition def, ushort lvl)
-    {
-        var swing = _battle.CalcWeaponAttack(source, target);
-        var rate = def.DamageRate.Length > lvl ? def.DamageRate[lvl] : 100;
-        var scaled = (int)Math.Clamp(swing.Total * rate / 100, 0, int.MaxValue);
-        _damage.ApplyDamage(target, scaled, source);
-    }
-
-    private void ResolveMagicSkill(Entity source, Entity target, SkillDefinition def, ushort lvl)
-    {
-        // MATK rolled in [min, max] — status.cpp:2530 matk_max/_min path
-        // already runs at status_calc_pc time.
-        var s = source.Stats;
-        var matk = s.MatkMax > s.MatkMin
-            ? Random.Shared.Next(s.MatkMin, s.MatkMax + 1)
-            : s.MatkMin;
-
-        var rate = def.DamageRate.Length > lvl ? def.DamageRate[lvl] : 100;
-        long dmg = matk * rate / 100;
-
-        // Element table — skill carries the attacker element.
-        dmg = dmg * ElementTable.GetRate(def.Element, target.Stats.DefenseElement, target.Stats.ElementLevel) / 100;
-
-        // Renewal magic defense = mdef * (4000+mdef)/(4000+10*mdef) - mdef2.
-        // Same SIMPLE branch as weapon defense (battle.cpp:6990).
-        var mdef1 = target.Stats.Mdef;
-        var mdef2 = target.Stats.Mdef2;
-        if (mdef1 == -400) mdef1 = -399;
-        dmg = dmg * (4000L + mdef1) / (4000L + 10L * mdef1) - mdef2;
-        if (dmg < 1) dmg = 1;
-
-        _damage.ApplyDamage(target, (int)Math.Clamp(dmg, 0, int.MaxValue), source);
-    }
-
-    private void ResolveHeal(Entity source, Entity target, SkillDefinition def, ushort lvl)
-    {
-        // Renewal: heal = (base_lv + int) / 8 * (4 + lvl*8) — matches
-        // skill.cpp skill_calc_heal. We approximate with the per-level
-        // EffectAmount table (4 + lvl*8) multiplied by (level + int) / 8.
-        var multiplier = def.EffectAmount.Length > lvl ? def.EffectAmount[lvl] : 0;
-        var baseAmount = (source.Level + source.Stats.IntStat) / 8;
-        var heal = Math.Max(1, baseAmount * multiplier);
-
-        switch (target)
-        {
-            case PlayerEntity p:
-                p.Hp = Math.Min(p.MaxHp, p.Hp + heal);
-                break;
-            case MobEntity m:
-                m.Hp = Math.Min(m.MaxHp, m.Hp + heal);
-                break;
-        }
-        _logger.LogDebug("Heal: {Source} -> {Target} for {Amount}", source.Id.Value, target.Id.Value, heal);
-    }
-
-    private void ResolveStatusOnly(Entity source, Entity target, SkillDefinition def, ushort lvl)
-    {
-        if (def.StatusType == StatusType.None) return;
-        var duration = def.StatusDurationMs.Length > lvl ? def.StatusDurationMs[lvl] : 0;
-        var val1 = def.EffectAmount.Length > lvl ? def.EffectAmount[lvl] : lvl;
-        _scService.Start(target, def.StatusType, val1, 0, 0, 0, duration, source);
-    }
-
-    private void ResolveMisc(Entity source, Entity target, SkillDefinition def, ushort lvl)
-    {
-        // Misc skills (pre-computed damage). Placeholder until specific
-        // skills (e.g. Soul Strike) port their per-level formulas.
-        var amount = def.DamageRate.Length > lvl ? def.DamageRate[lvl] : 0;
-        _damage.ApplyDamage(target, amount, source);
-    }
+    // Per-DamageKind resolution lives in ISkillResolver implementations
+    // under Skills/Resolvers/. SkillResolverRegistry dispatches.
 
     private static bool IsAlive(Entity e) => e switch
     {
