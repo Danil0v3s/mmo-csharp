@@ -33,4 +33,14 @@ public sealed class MapSessionAccessor : ISessionManagerAccessor
         }
         return null;
     }
+
+    public MapSessionData? GetByAccountId(int accountId)
+    {
+        foreach (var session in _sessionManager.GetAllSessions())
+        {
+            if (session is MapSessionData m && m.AccountId == accountId)
+                return m;
+        }
+        return null;
+    }
 }

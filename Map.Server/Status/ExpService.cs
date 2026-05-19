@@ -179,4 +179,15 @@ public sealed class ExpService : IExpService
 public interface ISessionManagerAccessor
 {
     MapSessionData? GetByEntityId(EntityId entityId);
+
+    /// <summary>Look up a session by AccountId. Returns null when not online. O(N).</summary>
+    MapSessionData? GetByAccountId(int accountId)
+    {
+        // Default-interface implementation — subclasses that already index
+        // by EntityId can leave this unimplemented and fall through to the
+        // generic scan via GetAll... but most callers will want the
+        // concrete impl below. Returning null here keeps the interface
+        // optional for stub implementations.
+        return null;
+    }
 }

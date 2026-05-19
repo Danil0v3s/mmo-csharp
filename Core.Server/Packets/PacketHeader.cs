@@ -111,6 +111,20 @@ public enum PacketHeader : short
     CZ_USE_ITEM = 0x00a7,                  // <index>.W <account_id>.L (8B). Used by potions / scrolls / consumables.
     CZ_STATUS_CHANGE = 0x00bb,             // <status_id>.W <amount>.B (5B). pc_statusup spend status points on stat.
     CZ_UPGRADE_SKILLLEVEL = 0x0112,        // <skill_id>.W (4B). pc_skillup — spend skill point on a skill.
+    // --- Player trade (trade.cpp) ---
+    CZ_REQ_EXCHANGE_ITEM = 0x00e4,         // <account_id>.L (6B). trade_traderequest.
+    CZ_ACK_EXCHANGE_ITEM = 0x00e6,         // <result>.B (3B). 3=accept, 4=cancel.
+    CZ_ADD_EXCHANGE_ITEM = 0x00e8,         // <index>.W <amount>.L (8B). Index=0 means add zeny.
+    CZ_CONCLUDE_EXCHANGE_ITEM = 0x00eb,    // (2B header). Press OK (lock).
+    CZ_CANCEL_EXCHANGE_ITEM = 0x00ed,      // (2B). Press cancel.
+    CZ_EXEC_EXCHANGE_ITEM = 0x00ef,        // (2B). Press Trade (commit).
+    ZC_REQ_EXCHANGE_ITEM = 0x00e5,         // <name>.24B (26B). Show trade request popup on target.
+    ZC_ACK_EXCHANGE_ITEM = 0x00e7,         // <result>.B (3B). Trade request ack.
+    ZC_ADD_EXCHANGE_ITEM = 0x00e9,         // <amount>.L <nameid>.W <id>.B <atb>.B <rfn>.B <c1>.W <c2>.W <c3>.W <c4>.W (19B).
+    ZC_ACK_ADD_EXCHANGE_ITEM = 0x00ea,     // <index>.W <result>.B (5B).
+    ZC_CONCLUDE_EXCHANGE_ITEM = 0x00ec,    // <who>.B (3B). 0=self pressed OK, 1=partner.
+    ZC_CANCEL_EXCHANGE_ITEM = 0x00ee,      // (2B). Trade cancelled.
+    ZC_EXEC_EXCHANGE_ITEM = 0x00f0,        // <result>.B (3B). 0=success, 1=failure.
     CZ_USE_SKILL_TOGROUND = 0x0366,        // CZ_USE_SKILL_TOGROUND2 — <lv>.W <id>.W <x>.W <y>.W (10B). Shuffle of 0x0116.
     CZ_REQUEST_CHAT = 0x00f3,              // shuffle (was 0x008c)
     CZ_REQ_QUIT = 0x018a,                  // clif_parse_QuitGame, 4B (reserved). ALT+E.
