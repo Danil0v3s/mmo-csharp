@@ -150,6 +150,11 @@ builder.Services.AddSingleton<Map.Server.Storage.IStorageService, Map.Server.Sto
 // atomic commit when both sides reach LockedStage == 2.
 builder.Services.AddSingleton<Map.Server.Trade.ITradeService, Map.Server.Trade.TradeService>();
 
+// NPC shop (npc.cpp npc_buylist / npc_selllist). Buys validate against
+// the script-registered shop catalog + buyer's zeny; sells use the
+// rAthena 50% sell ratio.
+builder.Services.AddSingleton<Map.Server.Shop.IShopService, Map.Server.Shop.ShopService>();
+
 // Status broadcast cascade (post-handoff). See
 // .agents/migrations/map/initial-status-broadcast.md. The broadcaster
 // emits the rAthena pc_authok / status_calc_pc(SCO_FIRST) packet stream
