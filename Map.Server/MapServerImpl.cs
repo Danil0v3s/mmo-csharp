@@ -37,6 +37,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly Status.IStatusChangeService _scService;
     private readonly Skills.ISkillCastService _skillCast;
     private readonly Skills.ISkillUnitService _skillUnits;
+    private readonly Status.INaturalHealService _naturalHeal;
     private readonly ScriptHost _scriptHost;
     private readonly INpcSpawnService _npcSpawn;
     private readonly Scripting.INpcRegistry _scriptRegistry;
@@ -71,6 +72,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         Status.IStatusChangeService scService,
         Skills.ISkillCastService skillCast,
         Skills.ISkillUnitService skillUnits,
+        Status.INaturalHealService naturalHeal,
         ScriptHost scriptHost,
         INpcSpawnService npcSpawn,
         Scripting.INpcRegistry scriptRegistry,
@@ -94,6 +96,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _scService = scService;
         _skillCast = skillCast;
         _skillUnits = skillUnits;
+        _naturalHeal = naturalHeal;
         _scriptHost = scriptHost;
         _npcSpawn = npcSpawn;
         _scriptRegistry = scriptRegistry;
@@ -292,6 +295,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _skillCast.Tick(nowTick);
         // Skill ground-units periodic effects (rAthena skill_unit_onplace_timer).
         _skillUnits.Tick(nowTick);
+        // Out-of-combat natural HP/SP regen (rAthena status_natural_heal).
+        _naturalHeal.Tick(nowTick);
     }
 
     private async Task EnsureRegisteredOnCharServerAsync(CancellationToken cancellationToken)

@@ -192,6 +192,11 @@ builder.Services.AddSingleton<Map.Server.Skills.ISkillCastService, Map.Server.Sk
 // same lifecycle once the damage-interception hook lands.
 builder.Services.AddSingleton<Map.Server.Skills.ISkillUnitService, Map.Server.Skills.SkillUnitService>();
 
+// Natural HP/SP regen (status.cpp:status_natural_heal). Baseline
+// out-of-combat recovery for both players and mobs; walking gates
+// HP for PCs, dead/full pools skip.
+builder.Services.AddSingleton<Map.Server.Status.INaturalHealService, Map.Server.Status.NaturalHealService>();
+
 // GM commands. Each IGmCommand is registered as a singleton; the registry
 // indexes them by Name at construction. ChatMessageHandler discovers them
 // via DI.
