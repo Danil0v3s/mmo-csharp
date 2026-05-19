@@ -186,6 +186,12 @@ builder.Services.AddSingleton<Map.Server.Status.IStatusChangeService, Map.Server
 builder.Services.AddSingleton<Map.Server.Skills.ISkillDb, Map.Server.Skills.SkillDb>();
 builder.Services.AddSingleton<Map.Server.Skills.ISkillCastService, Map.Server.Skills.SkillCastService>();
 
+// Skill ground units (skill.cpp:skill_unitsetting +
+// skill_unit_onplace_timer). Starter set: Magnus Exorcismus, Storm
+// Gust. Defensive units (Safety Wall / Pneuma) layer in via the
+// same lifecycle once the damage-interception hook lands.
+builder.Services.AddSingleton<Map.Server.Skills.ISkillUnitService, Map.Server.Skills.SkillUnitService>();
+
 // GM commands. Each IGmCommand is registered as a singleton; the registry
 // indexes them by Name at construction. ChatMessageHandler discovers them
 // via DI.

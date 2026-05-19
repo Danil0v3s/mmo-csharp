@@ -36,6 +36,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly Mob.IMobAiService _mobAi;
     private readonly Status.IStatusChangeService _scService;
     private readonly Skills.ISkillCastService _skillCast;
+    private readonly Skills.ISkillUnitService _skillUnits;
     private readonly ScriptHost _scriptHost;
     private readonly INpcSpawnService _npcSpawn;
     private readonly Scripting.INpcRegistry _scriptRegistry;
@@ -69,6 +70,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         Mob.IMobAiService mobAi,
         Status.IStatusChangeService scService,
         Skills.ISkillCastService skillCast,
+        Skills.ISkillUnitService skillUnits,
         ScriptHost scriptHost,
         INpcSpawnService npcSpawn,
         Scripting.INpcRegistry scriptRegistry,
@@ -91,6 +93,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _mobAi = mobAi;
         _scService = scService;
         _skillCast = skillCast;
+        _skillUnits = skillUnits;
         _scriptHost = scriptHost;
         _npcSpawn = npcSpawn;
         _scriptRegistry = scriptRegistry;
@@ -287,6 +290,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _attackService.Tick(nowTick);
         // Skill cast-timer resolution (rAthena skill_castend_id).
         _skillCast.Tick(nowTick);
+        // Skill ground-units periodic effects (rAthena skill_unit_onplace_timer).
+        _skillUnits.Tick(nowTick);
     }
 
     private async Task EnsureRegisteredOnCharServerAsync(CancellationToken cancellationToken)

@@ -19,7 +19,9 @@ public static class SkillIds
     public const ushort AL_DECAGI = 30;     // acolyte: SC_DECREASEAGI
     public const ushort AL_BLESSING = 34;   // acolyte: SC_BLESSING
 
-    public const ushort MG_NAPALMBEAT = 11; // mage: ground magic
+    public const ushort PR_MAGNUSEXORCISMUS = 79; // priest: holy AoE skill unit
+    public const ushort WZ_STORMGUST = 89;        // wizard: wind AoE skill unit
+    public const ushort MG_NAPALMBEAT = 11;       // mage: ground magic
     public const ushort MG_COLDBOLT = 14;   // mage: water bolt
     public const ushort MG_FIREBOLT = 19;   // mage: fire bolt
     public const ushort MG_LIGHTNINGBOLT = 20; // mage: wind bolt
