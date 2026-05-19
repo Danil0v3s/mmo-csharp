@@ -36,7 +36,14 @@ public class ChatMessageHandler(
 
         if (!GmCommandParser.TryParse(packet.Text, out var name, out var args))
         {
-            // Plain chat falls here; chat broadcast lands with adjacent/chat.md.
+            // Plain chat — rAthena clif_message: broadcast ZC_NOTIFY_CHAT
+            // to the speaker's AOI. The text the client sends is already
+            // formatted as "<name>: <utterance>" by the client itself.
+            visibility.SendToArea(player, new ZC_NOTIFY_CHAT
+            {
+                SourceId = player.Id.Value,
+                Message = packet.Text,
+            });
             return;
         }
 
