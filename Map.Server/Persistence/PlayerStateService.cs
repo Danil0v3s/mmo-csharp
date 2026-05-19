@@ -121,12 +121,28 @@ public sealed class PlayerStateService : IPlayerStateService
             entity.Luk = (ushort)data.Luk;
         }
 
+        // Live runtime values from the PlayerEntity win over the snapshot
+        // from session.CharacterData when they exist — pc_gainexp,
+        // pc_checkbaselevelup, status-point grants on level-up etc. mutate
+        // the entity, not the snapshot, so without this the autosave would
+        // persist stale level/exp values.
         if (session.EntityId is { } eid && _entities.Get(eid) is PlayerEntity pc)
         {
             entity.Hp = (uint)Math.Max(0, pc.Hp);
             entity.MaxHp = (uint)Math.Max(1, pc.MaxHp);
             entity.Sp = (uint)Math.Max(0, pc.Sp);
             entity.MaxSp = (uint)Math.Max(1, pc.MaxSp);
+            entity.BaseLevel = (ushort)Math.Max(1, pc.Level);
+            entity.JobLevel = (ushort)Math.Max(1, pc.JobLevel);
+            entity.BaseExp = (ulong)Math.Max(0, pc.BaseExp);
+            entity.JobExp = (ulong)Math.Max(0, pc.JobExp);
+            entity.StatusPoint = (uint)Math.Max(0, pc.StatusPoints);
+            entity.SkillPoint = (uint)Math.Max(0, pc.SkillPoints);
+            // Per-stat runtime values land here once equip + buff stripping
+            // are wired — for now session.CharacterData carries the saved
+            // base stats unchanged (no /stat allocation packet yet).
+            entity.LastX = (ushort)pc.X;
+            entity.LastY = (ushort)pc.Y;
         }
 
         await repo.UpdateAsync(entity, ct);
