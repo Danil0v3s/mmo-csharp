@@ -1,24 +1,24 @@
 using Core.Server.Network;
 using Core.Server.Packets;
 using Core.Server.Packets.In.CZ;
-using Core.Server.Packets.Out.ZC;
-using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Handlers.Actions;
 using Map.Server.Session;
-using Map.Server.Visibility;
 
 namespace Map.Server.Handlers;
 
 /// <summary>
 /// CZ_REQUEST_ACTION dispatcher. rAthena <c>clif_parse_ActionRequest_sub</c>
-/// (clif.cpp:11671). Handles attack (single + continuous), sit / stand
-/// here on the same packet — the action byte is the discriminator.
+/// (clif.cpp:11671). The action byte is the discriminator; each
+/// action code resolves to its own <see cref="IActionHandler"/>
+/// strategy (single-attack, continuous-attack, sit, stand, pickup,
+/// etc.). Adding a new action ships a new handler class + DI line —
+/// no switch case in this handler to edit.
 /// </summary>
 [PacketHandler(PacketHeader.CZ_REQUEST_ACTION)]
 public class RequestActionHandler(
     IEntityRegistry registry,
-    IAttackService attackService,
-    IVisibilityService visibility,
+    ActionRegistry actions,
     ILogger<RequestActionHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_REQUEST_ACTION>
 {
@@ -31,65 +31,15 @@ public class RequestActionHandler(
             return Task.CompletedTask;
         }
 
-        // Action codes from rAthena (clif.cpp:11784):
-        //   0 = single attack  (DMG_NORMAL)
-        //   1 = pick up item
-        //   2 = sit down       (DMG_SIT_DOWN)
-        //   3 = stand up       (DMG_STAND_UP)
-        //   7 = continuous attack (DMG_REPEAT)
-        switch (packet.Action)
+        var handler = actions.Get(packet.Action);
+        if (handler == null)
         {
-            case 0:
-            case 7:
-                {
-                    var continuous = packet.Action == 7;
-                    if (!attackService.StartAttack(player, new EntityId(packet.TargetId), continuous))
-                    {
-                        logger.LogDebug(
-                            "Attack rejected: char {Char} → target {Target}",
-                            player.CharacterId, packet.TargetId);
-                    }
-                    break;
-                }
-
-            case 2: // sit down (rAthena DMG_SIT_DOWN, clif_sitting)
-            case 3: // stand up (rAthena DMG_STAND_UP, clif_standing)
-                {
-                    // Cancel any attack first to match rAthena.
-                    attackService.StopAttack(player);
-                    var sitting = packet.Action == 2;
-                    if (player.IsSitting == sitting) break; // no-op
-                    player.IsSitting = sitting;
-                    // rAthena emits ZC_NOTIFY_ACT (the legacy 008a packet)
-                    // with action=Sit/Stand. ZC_NOTIFY_ACT3 carries the
-                    // same shape and is the renewal client variant.
-                    visibility.SendToArea(player, new ZC_NOTIFY_ACT3
-                    {
-                        SourceId = player.Id.Value,
-                        TargetId = 0,
-                        ServerTick = (uint)Environment.TickCount,
-                        SourceAmotion = 0,
-                        TargetAmotion = 0,
-                        Damage = 0,
-                        IsSpDamage = 0,
-                        Div = 0,
-                        ActionType = sitting ? DamageActionType.Sit : DamageActionType.Stand,
-                        Damage2 = 0,
-                    });
-                    break;
-                }
-
-            case 1:
-                // Pickup is already routed via CZ_ITEM_PICKUP; this case
-                // is the client's alternate path. Nothing to do here.
-                break;
-
-            default:
-                logger.LogDebug(
-                    "Unhandled action code {Action} from char {Char}",
-                    packet.Action, player.CharacterId);
-                break;
+            logger.LogDebug(
+                "Unhandled action code {Action} from char {Char}",
+                packet.Action, player.CharacterId);
+            return Task.CompletedTask;
         }
+        handler.Apply(player, packet.TargetId);
         return Task.CompletedTask;
     }
 }

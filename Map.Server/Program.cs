@@ -198,6 +198,15 @@ builder.Services.AddSingleton<Map.Server.Party.IPartyShareService, Map.Server.Pa
 // validates range/death/map every tick and chases via IMovementService.
 builder.Services.AddSingleton<IAttackService, AttackService>();
 
+// CZ_REQUEST_ACTION dispatch — one IActionHandler strategy per
+// action code (single-attack, continuous-attack, sit, stand…).
+// Same shape as SkillResolverRegistry.
+builder.Services.AddSingleton<Map.Server.Handlers.Actions.IActionHandler, Map.Server.Handlers.Actions.SingleAttackAction>();
+builder.Services.AddSingleton<Map.Server.Handlers.Actions.IActionHandler, Map.Server.Handlers.Actions.ContinuousAttackAction>();
+builder.Services.AddSingleton<Map.Server.Handlers.Actions.IActionHandler, Map.Server.Handlers.Actions.SitAction>();
+builder.Services.AddSingleton<Map.Server.Handlers.Actions.IActionHandler, Map.Server.Handlers.Actions.StandAction>();
+builder.Services.AddSingleton<Map.Server.Handlers.Actions.ActionRegistry>();
+
 // Mob hard AI (mob.cpp:1741 mob_ai_sub_hard). Aggressive target
 // acquisition; chase + swings delegate to IAttackService.
 builder.Services.AddSingleton<Map.Server.Mob.IMobAiService, Map.Server.Mob.MobAiService>();
