@@ -156,6 +156,15 @@ public enum PacketHeader : short
     // Legacy 0x00a2; the 0x0363 variant (CZ_ITEM_THROW2) collides with
     // CZ_REQUEST_TIME on PACKETVER 20220401, so we use the legacy id.
     CZ_ITEM_THROW = 0x00a2,                // <index>.W <amount>.W (6B). pc_dropitem entry.
+    // --- Whisper / party / guild chat (clif.cpp:11835 / 13948 / 14565) ---
+    // PACKETVER 20220401 keeps the modern ZC_WHISPER variant (0x09de)
+    // which carries the sender's AID + isAdmin flag.
+    CZ_WHISPER = 0x0096,                   // <len>.W <nick>.24B <message>.?B. clif_parse_WisMessage.
+    ZC_WHISPER = 0x09de,                   // <len>.W <senderGID>.L <sender>.24B <isAdmin>.B <message>.?B.
+    CZ_REQUEST_CHAT_PARTY = 0x0108,        // <len>.W <text>.?B. clif_parse_PartyMessage.
+    ZC_NOTIFY_CHAT_PARTY = 0x0109,         // <len>.W <AID>.L <chatMsg>.?B.
+    CZ_GUILD_CHAT = 0x017e,                // <len>.W <text>.?B. clif_parse_GuildMessage.
+    ZC_GUILD_CHAT = 0x017f,                // <len>.W <message>.?B.
     CZ_USE_SKILL_TOGROUND = 0x0366,        // CZ_USE_SKILL_TOGROUND2 — <lv>.W <id>.W <x>.W <y>.W (10B). Shuffle of 0x0116.
     CZ_REQUEST_CHAT = 0x00f3,              // shuffle (was 0x008c)
     CZ_REQ_QUIT = 0x018a,                  // clif_parse_QuitGame, 4B (reserved). ALT+E.

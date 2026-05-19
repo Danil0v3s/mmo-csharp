@@ -142,6 +142,11 @@ builder.Services.AddSingleton<Map.Server.Inventory.IInventoryService, Map.Server
 builder.Services.AddSingleton<Map.Server.Inventory.ItemEffects.ItemEffectRegistry>();
 builder.Services.AddSingleton<Map.Server.Inventory.IItemUseService, Map.Server.Inventory.ItemUseService>();
 
+// Chat router (party_send_message / guild_send_message / clif_wis_message).
+// Local fan-out + char-server IPC handoff for cross-map delivery.
+builder.Services.AddSingleton<Map.Server.Chat.IChatIpcOutbound, Map.Server.Chat.ChatIpcOutbound>();
+builder.Services.AddSingleton<Map.Server.Chat.IChatService, Map.Server.Chat.ChatService>();
+
 // Equip / unequip (pc.cpp pc_equipitem / pc_unequipitem). Mediates
 // the wear-state bits on inventory rows and triggers a status recalc
 // through EquipBonusAggregator + IStatusCalcService.

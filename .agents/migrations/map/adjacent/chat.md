@@ -35,16 +35,18 @@ Most of chat is already wired at the IPC layer (P5 inter-base routing). The map 
 
 ## Pending
 
-1. **Whisper** (`CZ_WHISPER 0x0096`) — wire packet not yet built; service contract is that names resolve locally first, then fall through to char-server `InterWhisper` for cross-server delivery.
-2. **Party chat / Guild chat** scoped broadcast — needs party/guild member-list lookup (existing P5 IPC). Receive-side `MapGrpcService.ReceiveWhisper` already has queue+ack stub.
-3. **`/b` server-wide broadcast** — GM command → `InterBroadcast` → fan-out. Char-side IPC ready.
-4. **Channel system** (`#main`, `#trade`) — per-server `ChannelRegistry` with subscribe/unsubscribe handlers.
+1. **`/b` server-wide broadcast** — GM command → `InterBroadcast` → fan-out. Char-side IPC ready.
+2. **Channel system** (`#main`, `#trade`) — per-server `ChannelRegistry` with subscribe/unsubscribe handlers.
+3. **Inbound MapWhisperNotification → ZC_WHISPER fan-out** — the receive-side handler (`MapGrpcService.ReceiveWhisper`) currently logs+acks; needs to enqueue `ZC_WHISPER` on the target session so cross-server delivery completes the round trip.
 
 ### Acceptance
 - ✅ Two players in view: A types `hello` → B sees it (public chat).
-- ✅ GM uses `@warp prontera 155 191` → calling GM warps (via `IPcSetposService`).
-- ⚠️ Whisper / party / guild / broadcast / channel — service routing exists, wire emission pending.
+- ✅ GM uses `@warp prontera 155 191` → calling GM warps.
+- ✅ Whisper between two players on same map server → `ZC_WHISPER` delivered.
+- ✅ Whisper to player on a different map server → handed off to char via `InterWhisper` IPC.
+- ✅ Party / guild chat → local same-server members get the packet immediately; cross-server hop runs through `PartyMessage` / `GuildMessage` IPC.
 
 ## History
 - **2026-05-16** — Plan stub.
 - **2026-05-19** — Public chat broadcast shipped. ZC_NOTIFY_CHAT defined and emitted from ChatMessageHandler when no `@` prefix is present. Whisper / party / guild / channel still pending wire packets; routing infrastructure (P5 IPC) untouched.
+- **2026-05-19** — Whisper / party / guild chat wire end-to-end: `CZ_WHISPER` (0x0096) / `CZ_REQUEST_CHAT_PARTY` (0x0108) / `CZ_GUILD_CHAT` (0x017e) → `IChatService` (local fan-out via `IEntityRegistry`+`ISessionManagerAccessor`) → narrow `IChatIpcOutbound` adapter for the cross-server hand-off through the existing P5 IPC wrappers. Outbound: `ZC_WHISPER` (0x09de — modern PACKETVER ≥ 20131120 variant with senderGID+isAdmin), `ZC_NOTIFY_CHAT_PARTY` (0x0109), `ZC_GUILD_CHAT` (0x017f). 5 wire tests in `Map.Server.Tests/Chat/`. The narrow `IChatIpcOutbound` interface is a deliberate seam — its production adapter `ChatIpcOutbound` delegates to the wider `ICharServerIpcService*` wrappers, but tests stub just the three methods chat actually uses.
