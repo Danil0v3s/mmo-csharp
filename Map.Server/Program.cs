@@ -173,6 +173,13 @@ builder.Services.AddSingleton<Map.Server.Mob.IMobAiService, Map.Server.Mob.MobAi
 builder.Services.AddSingleton<Map.Server.Status.ISessionManagerAccessor, Map.Server.Session.MapSessionAccessor>();
 builder.Services.AddSingleton<Map.Server.Status.IExpService, Map.Server.Status.ExpService>();
 
+// Status change engine (status.cpp:9851 status_change_start +
+// status.cpp:13732 status_change_timer). Per-SC handlers live in the
+// effect registry — new SCs add a Register() call without touching
+// the engine itself.
+builder.Services.AddSingleton<Map.Server.Status.StatusEffectRegistry>();
+builder.Services.AddSingleton<Map.Server.Status.IStatusChangeService, Map.Server.Status.StatusChangeService>();
+
 // GM commands. Each IGmCommand is registered as a singleton; the registry
 // indexes them by Name at construction. ChatMessageHandler discovers them
 // via DI.

@@ -34,6 +34,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly IItemDropService _itemDrops;
     private readonly Combat.IAttackService _attackService;
     private readonly Mob.IMobAiService _mobAi;
+    private readonly Status.IStatusChangeService _scService;
     private readonly ScriptHost _scriptHost;
     private readonly INpcSpawnService _npcSpawn;
     private readonly Scripting.INpcRegistry _scriptRegistry;
@@ -65,6 +66,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         IItemDropService itemDrops,
         Combat.IAttackService attackService,
         Mob.IMobAiService mobAi,
+        Status.IStatusChangeService scService,
         ScriptHost scriptHost,
         INpcSpawnService npcSpawn,
         Scripting.INpcRegistry scriptRegistry,
@@ -85,6 +87,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _itemDrops = itemDrops;
         _attackService = attackService;
         _mobAi = mobAi;
+        _scService = scService;
         _scriptHost = scriptHost;
         _npcSpawn = npcSpawn;
         _scriptRegistry = scriptRegistry;
@@ -271,6 +274,9 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         // Floor-item auto-despawn.
         _itemDrops.Tick();
         var nowTick = Environment.TickCount64;
+        // Status changes (DoT / HoT / expiry). Tick first so DoTs that
+        // kill the entity remove it before AI / attack code reads it.
+        _scService.Tick(nowTick);
         // Mob hard AI — aggressive target scan, target validity check.
         // Must run before AttackService so newly-engaged mobs swing this tick.
         _mobAi.Tick(nowTick);
