@@ -351,6 +351,19 @@ builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.PvpOffCommand>(
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GvgOnCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GvgOffCommand>();
 
+// PC-* phase: player option / appearance / orb services + GM commands.
+// rAthena pc_setoption / pc_setcart / pc_setriding / pc_changelook
+// (pc.cpp:8702 / 8851 / 8810 / clif.cpp:3929) + the pc_addspiritball
+// family. See [pc-parity.md] for the full subsystem audit.
+builder.Services.AddSingleton<Map.Server.Status.IPlayerOptionService, Map.Server.Status.PlayerOptionService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerLookService, Map.Server.Status.PlayerLookService>();
+builder.Services.AddSingleton<Map.Server.Status.IPlayerOrbService, Map.Server.Status.PlayerOrbService>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MountCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CartCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.OptionCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.SpiritballCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.SoulballCommand>();
+
 // Wave B atcommand stubs — backend subsystem pending. Each is a
 // well-formed registry entry so @commands / @help still see the
 // rAthena name, but invocation replies "not yet implemented".
@@ -366,6 +379,8 @@ builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GvgOffCommand>(
         "refresh","me","version","uptime","who","jump","jumpto","recall","save",
         "load","hide","monster","broadcast","localbroadcast","pvpon","pvpoff",
         "gvgon","gvgoff",
+        // PC-* phase
+        "mount","cart","option","spiritball","soulball",
     };
     foreach (var spec in Map.Server.Gm.Commands.StubCommandKinds.Specs)
     {

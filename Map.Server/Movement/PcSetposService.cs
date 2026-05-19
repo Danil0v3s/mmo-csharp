@@ -132,11 +132,19 @@ public sealed class PcSetposService : IPcSetposService
             _visibility.SendCurrentViewToSelf(pc);
         }
 
+        // rAthena pc_setpos applies an invincibility window so the
+        // player can't be one-shot during the load-screen / LoadEndAck
+        // gap. battle.invincible_time default 5000 ms.
+        pc.InvincibleUntilTick = Environment.TickCount64 + PcInvincibilityMs;
+
         _logger.LogInformation(
             "pc_setpos: char {Char} → {Map} ({X},{Y}) [sameMap={Same}]",
             pc.CharacterId, mapName, x, y, sameMap);
         return SetposResult.Ok;
     }
+
+    /// <summary>rAthena <c>battle.invincible_time</c> default 5000 ms.</summary>
+    private const int PcInvincibilityMs = 5_000;
 
     private static bool TryFindNearbyWalkable(MapData map, short cx, short cy, out short outX, out short outY)
     {

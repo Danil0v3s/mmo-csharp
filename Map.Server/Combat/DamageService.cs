@@ -92,6 +92,14 @@ public sealed class DamageService : IDamageService
     /// </summary>
     private bool CanDamage(Entity source, Entity target)
     {
+        // rAthena status_damage gates on invincible_timer first — a PC
+        // mid-warp window can't take damage from any source (PvE or PvP).
+        if (target is PlayerEntity pc
+            && pc.InvincibleUntilTick > Environment.TickCount64)
+        {
+            return false;
+        }
+
         if (source is not PlayerEntity src || target is not PlayerEntity dst) return true;
         if (src.Id == dst.Id) return true;
 

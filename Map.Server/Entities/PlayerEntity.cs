@@ -74,6 +74,51 @@ public sealed class PlayerEntity : Entity
     public bool IsSitting { get; set; }
 
     /// <summary>
+    /// rAthena <c>sc.option</c> — 32-bit effect-state bitmask
+    /// (CART/RIDING/FALCON/MADOGEAR/INVISIBLE/...). Drives client
+    /// sprite + several gameplay checks (overweight gates, mount-only
+    /// skill access). Mutated via <see cref="Status.IPlayerOptionService"/>
+    /// so the wire broadcast stays consistent.
+    /// </summary>
+    public Status.PlayerOption Option { get; set; }
+
+    /// <summary>
+    /// rAthena <c>sc.opt1</c> — OPT1 group (STONE/FREEZE/STUN/SLEEP).
+    /// Broadcast as <c>bodyState</c> in <c>ZC_STATE_CHANGE3</c>.
+    /// </summary>
+    public ushort Opt1 { get; set; }
+
+    /// <summary>
+    /// rAthena <c>sc.opt2</c> — OPT2 group (POISON/CURSE/SILENCE/...).
+    /// Broadcast as <c>healthState</c> in <c>ZC_STATE_CHANGE3</c>.
+    /// </summary>
+    public ushort Opt2 { get; set; }
+
+    /// <summary>Karma flag — broadcast in <c>ZC_STATE_CHANGE3.PkMode</c>.</summary>
+    public byte Karma { get; set; }
+
+    /// <summary>
+    /// rAthena <c>spiritball</c> — Monk / Sura sphere counter
+    /// (Critical Explosion / Asura input). Capped at <c>MAX_SPIRITBALL</c>
+    /// (rAthena default 15) by the caller.
+    /// </summary>
+    public int SpiritBall { get; set; }
+    /// <summary>rAthena <c>soulball</c> — Soul Reaper soul count.</summary>
+    public int SoulBall { get; set; }
+    /// <summary>rAthena <c>servantball</c> — Servant Weapon count (Cross Slash).</summary>
+    public int ServantBall { get; set; }
+    /// <summary>rAthena <c>abyssball</c> — Abyss Chaser orb count.</summary>
+    public int AbyssBall { get; set; }
+
+    /// <summary>
+    /// rAthena <c>invincible_timer</c> (pc.cpp:417) — absolute tick
+    /// (<see cref="Environment.TickCount64"/>) until which the PC is
+    /// invulnerable. 0 = not invincible. Applied automatically on warp
+    /// / spawn (rAthena <c>battle.invincible_time</c> default 5000 ms).
+    /// </summary>
+    public long InvincibleUntilTick { get; set; }
+
+    /// <summary>
     /// Skills learned by this character: skill_id → level. Mirrors
     /// rAthena <c>mmo_charstatus.skill[]</c>. Hydrated from char-server
     /// at session enter; mutated by <c>pc_skillup</c>.

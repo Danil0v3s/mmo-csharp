@@ -216,6 +216,9 @@ public enum PacketHeader : short
     ZC_MAPPROPERTY_R2     = 0x099b,        // clif_map_property, 8B
     ZC_NAVIGATION_TO      = 0x08e2,        // clif_navigateTo (PACKETVER ≥ 20111010), 27B
     ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B
+    ZC_STATE_CHANGE3      = 0x0229,        // clif_changeoption — option (effect-state) bitmask 32-bit, 15B
+    ZC_SPIRITS            = 0x01d0,        // clif_spiritball — Monk sphere / Sura / servant / abyss count, 8B
+    ZC_SOULENERGY         = 0x0b73,        // clif_soulball — Soul Reaper soul count, 8B
     ZC_NOTIFY_UNREADMAIL  = 0x09e7,        // mail load reply, 3B
     ZC_ALL_ACH_LIST       = 0x0a23,        // clif_achievement_list_all, variable
     ZC_ACH_UPDATE         = 0x0a24,        // clif_achievement_update, 66B

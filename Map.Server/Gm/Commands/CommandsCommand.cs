@@ -2,6 +2,7 @@ using Core.Server.Packets.Out.ZC;
 using Map.Server.Entities;
 using Map.Server.Gm.Config;
 using Map.Server.Visibility;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Map.Server.Gm.Commands;
 
@@ -12,17 +13,20 @@ namespace Map.Server.Gm.Commands;
 /// </summary>
 public sealed class CommandsCommand(
     IVisibilityService visibility,
-    IGmCommandRegistry registry,
+    IServiceProvider services,
     Map.Server.Status.ISessionManagerAccessor sessions) : IGmCommand
 {
     public string Name => "commands";
     public string Description => "@commands — list every atcommand the caller can use.";
 
+    // Lazy — see HelpCommand for the same DI-cycle workaround.
+    private IGmCommandRegistry Registry => services.GetRequiredService<IGmCommandRegistry>();
+
     public Task ExecuteAsync(PlayerEntity caller, IReadOnlyList<string> args, CancellationToken ct)
     {
         var session = sessions.GetByEntityId(caller.Id);
-        var allowed = registry.All()
-            .Where(c => session == null || registry.CanInvoke(session, c))
+        var allowed = Registry.All()
+            .Where(c => session == null || Registry.CanInvoke(session, c))
             .Select(c => c.Name)
             .OrderBy(n => n, StringComparer.Ordinal)
             .ToList();

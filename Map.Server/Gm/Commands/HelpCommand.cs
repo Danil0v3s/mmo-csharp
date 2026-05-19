@@ -2,6 +2,7 @@ using Core.Server.Packets.Out.ZC;
 using Map.Server.Entities;
 using Map.Server.Gm.Config;
 using Map.Server.Visibility;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Map.Server.Gm.Commands;
 
@@ -14,19 +15,24 @@ namespace Map.Server.Gm.Commands;
 public sealed class HelpCommand(
     IVisibilityService visibility,
     IAtCommandConfig atCommands,
-    IGmCommandRegistry registry,
+    IServiceProvider services,
     Map.Server.Status.ISessionManagerAccessor sessions) : IGmCommand
 {
     public string Name => "help";
     public string Description => "@help [command] — show help; with no args lists available commands.";
+
+    // Lazy resolution — HelpCommand is itself an IGmCommand and
+    // GmCommandRegistry takes IEnumerable<IGmCommand>, so a direct
+    // ctor injection of IGmCommandRegistry forms a cycle.
+    private IGmCommandRegistry Registry => services.GetRequiredService<IGmCommandRegistry>();
 
     public Task ExecuteAsync(PlayerEntity caller, IReadOnlyList<string> args, CancellationToken ct)
     {
         if (args.Count == 0)
         {
             var session = sessions.GetByEntityId(caller.Id);
-            var allowed = registry.All()
-                .Where(c => session == null || registry.CanInvoke(session, c))
+            var allowed = Registry.All()
+                .Where(c => session == null || Registry.CanInvoke(session, c))
                 .Select(c => c.Name)
                 .OrderBy(n => n, StringComparer.Ordinal)
                 .ToList();

@@ -21,6 +21,14 @@ public sealed class ShopService : IShopService
 {
     /// <summary>rAthena <c>battle_config.sell_ratio</c> default = 50%.</summary>
     private const int SellRatioPercent = 50;
+    /// <summary>rAthena <c>battle_config.min_shop_buy</c> default = 1z.</summary>
+    private const int MinShopBuy = 1;
+    /// <summary>rAthena <c>battle_config.min_shop_sell</c> default = 0z.</summary>
+    private const int MinShopSell = 0;
+    /// <summary>rAthena skill ids — see db/re/skill_db.yml.</summary>
+    private const ushort MC_DISCOUNT = 37;
+    private const ushort MC_OVERCHARGE = 38;
+    private const ushort RG_COMPULSION = 224;
 
     private readonly IItemCatalog _catalog;
     private readonly ISessionManagerAccessor _sessions;
@@ -45,7 +53,10 @@ public sealed class ShopService : IShopService
             if (amount < 1) return ShopOpResult.InvalidQuantity;
             var listing = ShopListing(shop, itemId);
             if (listing == null) return ShopOpResult.InvalidSlot;
-            totalCost += (long)listing.Price * amount;
+            // rAthena pc_modifybuyvalue (pc.cpp:5310) — Discount /
+            // Compulsion reduce each line item independently.
+            var effective = ModifyBuyValue(buyer, listing.Price);
+            totalCost += (long)effective * amount;
         }
         if ((ulong)totalCost > session.CharacterData.Zeny) return ShopOpResult.NotEnoughZeny;
 
@@ -81,8 +92,9 @@ public sealed class ShopService : IShopService
             var row = _catalog.Get(inv[slot].NameId);
             if (row == null) return ShopOpResult.InvalidSlot;
             var buyPrice = (int)(row.PriceBuy ?? 0);
-            // Sell value = half the buy price (rAthena pc_modifysellvalue).
-            var sellPrice = buyPrice * SellRatioPercent / 100;
+            // Sell value = half the buy price + Overcharge bonus
+            // (rAthena pc_modifysellvalue, pc.cpp:5331).
+            var sellPrice = ModifySellValue(seller, buyPrice * SellRatioPercent / 100);
             totalProceeds += (long)sellPrice * amount;
         }
 
@@ -112,6 +124,36 @@ public sealed class ShopService : IShopService
             if (item.ItemId == itemId) return item;
         }
         return null;
+    }
+
+    /// <summary>
+    /// Port of rAthena <c>pc_modifybuyvalue</c> (pc.cpp:5310). Discount
+    /// (MC_DISCOUNT) and Compulsion (RG_COMPULSION) discounts apply at
+    /// the higher of the two rates. Clamped to <c>battle.min_shop_buy</c>.
+    /// </summary>
+    private static int ModifyBuyValue(PlayerEntity pc, int orig)
+    {
+        var rate1 = 0;
+        var rate2 = 0;
+        var discount = pc.LearnedSkills.GetValueOrDefault(MC_DISCOUNT);
+        if (discount > 0) rate1 = 5 + discount * 2 - (discount == 10 ? 1 : 0);
+        var compulsion = pc.LearnedSkills.GetValueOrDefault(RG_COMPULSION);
+        if (compulsion > 0) rate2 = 5 + compulsion * 4;
+        var rate = Math.Max(rate1, rate2);
+        var val = rate == 0 ? orig : (int)(orig * (100 - rate) / 100.0);
+        return Math.Max(MinShopBuy, val);
+    }
+
+    /// <summary>
+    /// Port of rAthena <c>pc_modifysellvalue</c> (pc.cpp:5331).
+    /// Overcharge (MC_OVERCHARGE) boosts the sell price linearly.
+    /// </summary>
+    private static int ModifySellValue(PlayerEntity pc, int orig)
+    {
+        var overcharge = pc.LearnedSkills.GetValueOrDefault(MC_OVERCHARGE);
+        if (overcharge == 0) return Math.Max(MinShopSell, orig);
+        var rate = 5 + overcharge * 2 - (overcharge == 10 ? 1 : 0);
+        return Math.Max(MinShopSell, (int)(orig * (100 + rate) / 100.0));
     }
 
     private static void DepositItem(MapSessionData session, uint nameId, int amount)
