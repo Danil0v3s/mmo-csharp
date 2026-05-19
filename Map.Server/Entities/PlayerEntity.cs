@@ -64,6 +64,12 @@ public sealed class PlayerEntity : Entity
     public int StatusPoints { get; set; }
     public int SkillPoints { get; set; }
 
+    /// <summary>Party id, 0 = solo. Sourced from char-server at session enter.</summary>
+    public int PartyId { get; set; }
+
+    /// <summary>Guild id, 0 = none. Sourced from char-server at session enter.</summary>
+    public int GuildId { get; set; }
+
     public override EntityType Type => EntityType.Pc;
 
     public PlayerEntity(

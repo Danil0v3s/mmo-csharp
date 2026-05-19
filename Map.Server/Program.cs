@@ -168,6 +168,11 @@ builder.Services.AddSingleton<IPcDeathService, PcDeathService>();
 // savepoint respawn, GM @warp, item-warp scrolls. Same-map jumps stay
 // in-process; cross-server map handoff lands later.
 builder.Services.AddSingleton<IPcSetposService, PcSetposService>();
+
+// Party EXP share (party.cpp:1238 party_exp_share). On mob kill,
+// DamageService checks the killer's PartyId and routes through this
+// service when set; falls back to single-player pc_gainexp otherwise.
+builder.Services.AddSingleton<Map.Server.Party.IPartyShareService, Map.Server.Party.PartyShareService>();
 // Auto-attack loop (rAthena unit.cpp:2615 unit_attack +
 // unit.cpp:3056 unit_attack_timer). Driven from the map game loop;
 // validates range/death/map every tick and chases via IMovementService.

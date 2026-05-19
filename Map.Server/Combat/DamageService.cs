@@ -14,6 +14,7 @@ public sealed class DamageService : IDamageService
     private readonly IBattleCalculator _battleCalc;
     private readonly Status.IExpService? _exp;
     private readonly IPcDeathService? _pcDeath;
+    private readonly Party.IPartyShareService? _partyShare;
     private readonly ILogger<DamageService> _logger;
 
     public DamageService(
@@ -23,7 +24,8 @@ public sealed class DamageService : IDamageService
         IBattleCalculator battleCalc,
         ILogger<DamageService> logger,
         Status.IExpService? exp = null,
-        IPcDeathService? pcDeath = null)
+        IPcDeathService? pcDeath = null,
+        Party.IPartyShareService? partyShare = null)
     {
         _visibility = visibility;
         _mobSpawn = mobSpawn;
@@ -31,6 +33,7 @@ public sealed class DamageService : IDamageService
         _battleCalc = battleCalc;
         _exp = exp;
         _pcDeath = pcDeath;
+        _partyShare = partyShare;
         _logger = logger;
     }
 
@@ -126,9 +129,18 @@ public sealed class DamageService : IDamageService
                 // (rAthena's tdmg_id table is the next iteration). If the
                 // last-hit attacker is a PC, award the mob's full base+job
                 // exp pool before tearing the mob down.
-                if (source is PlayerEntity killer && _exp != null && mob.DbEntry != null)
+                if (source is PlayerEntity killer && mob.DbEntry != null)
                 {
-                    _exp.GainExp(killer, mob.DbEntry.BaseExp, mob.DbEntry.JobExp);
+                    var awarded = false;
+                    // Try party share first (mob.cpp:mob_dead → party_exp_share).
+                    if (_partyShare != null && _partyShare.ShareKill(killer, mob.DbEntry.BaseExp, mob.DbEntry.JobExp))
+                    {
+                        awarded = true;
+                    }
+                    if (!awarded && _exp != null)
+                    {
+                        _exp.GainExp(killer, mob.DbEntry.BaseExp, mob.DbEntry.JobExp);
+                    }
                 }
                 // Re-uses MobSpawnService's death pipeline so respawn timer
                 // wiring + visibility broadcast (Died reason) stay in one
