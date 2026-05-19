@@ -112,8 +112,15 @@ public class GameDbContext : DbContext
     public DbSet<MerchantConfigEntity> MerchantConfigs { get; set; }
     
     public DbSet<ItemEntity> ItemDb => Set<ItemEntity>();
-    
+
     public DbSet<MobEntity> MobDb => Set<MobEntity>();
+
+    /// <summary>
+    /// Static skill catalog (rAthena <c>skill_db</c> table — equivalent
+    /// of <c>db/re/skill_db.yml</c> under <c>use_sql_db: yes</c>). Empty
+    /// today; consumed by <c>Map.Server.Skills.SkillDb</c> when seeded.
+    /// </summary>
+    public DbSet<SkillDbEntity> SkillDb => Set<SkillDbEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

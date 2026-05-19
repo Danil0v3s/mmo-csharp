@@ -1,4 +1,7 @@
+using Core.Database.Repositories.Api;
 using Map.Server.Status;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Skills;
 
@@ -6,22 +9,74 @@ public interface ISkillDb
 {
     SkillDefinition? Get(ushort skillId);
     int Count { get; }
+    /// <summary>Reload the catalog from the backing source (DB if seeded, else the hand-built fallback).</summary>
+    void Reload();
 }
 
 /// <summary>
-/// First-slice in-memory skill catalog. Hand-seeds the starter skill
-/// set Bash / Heal / Increase Agi / Blessing / Fire Bolt / Cold Bolt
-/// so the cast lifecycle has real entries to resolve against. The
-/// DB-backed loader (matching the mob_db / item_db pattern) lands when
-/// <c>skill_db</c> is seeded into Core.Database.
+/// In-memory skill catalog. Loads from the
+/// <see cref="ISkillDbRepository"/>-backed <c>skill_db</c> table when
+/// rows are present (rAthena <c>use_sql_db: yes</c> path); otherwise
+/// falls back to the hand-built starter set so the cast lifecycle has
+/// real entries even before the rAthena db/re/skill_db.yml → SQL seed
+/// lands. Mirror of the MobDb / ItemCatalog pattern.
 /// </summary>
 public sealed class SkillDb : ISkillDb
 {
-    private readonly Dictionary<ushort, SkillDefinition> _byId = new();
+    private readonly IServiceScopeFactory? _scopes;
+    private readonly ILogger<SkillDb>? _logger;
+    private Dictionary<ushort, SkillDefinition> _byId = new();
+
     public int Count => _byId.Count;
     public SkillDefinition? Get(ushort skillId) => _byId.GetValueOrDefault(skillId);
 
+    /// <summary>DI-friendly ctor — loads from the SQL repo at boot, falls back to the starter set.</summary>
+    public SkillDb(IServiceScopeFactory scopes, ILogger<SkillDb> logger)
+    {
+        _scopes = scopes;
+        _logger = logger;
+        Reload();
+    }
+
+    /// <summary>Test / fallback ctor — uses only the starter catalog.</summary>
     public SkillDb()
+    {
+        LoadFallback();
+    }
+
+    public void Reload()
+    {
+        var loaded = new Dictionary<ushort, SkillDefinition>();
+        if (_scopes != null)
+        {
+            try
+            {
+                using var scope = _scopes.CreateScope();
+                var repo = scope.ServiceProvider.GetRequiredService<ISkillDbRepository>();
+                var rows = repo.GetAllAsync().GetAwaiter().GetResult();
+                foreach (var row in rows)
+                {
+                    var def = SkillDbLoader.FromEntity(row);
+                    loaded[def.Id] = def;
+                }
+                if (rows.Count > 0)
+                {
+                    _byId = loaded;
+                    _logger?.LogInformation("Loaded {N} skills from skill_db SQL table", rows.Count);
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "skill_db SQL load failed — using hand-built starter catalog");
+            }
+        }
+        // Empty DB or load failure → starter catalog.
+        _byId = new Dictionary<ushort, SkillDefinition>();
+        LoadFallback();
+    }
+
+    private void LoadFallback()
     {
         // --- SM_BASH — melee damage skill. Renewal damage rates from
         // db/re/skill_db.yml; values pinned to lvl 10 = 360%.
@@ -109,3 +164,4 @@ public sealed class SkillDb : ISkillDb
 
     private void Add(SkillDefinition def) => _byId[def.Id] = def;
 }
+

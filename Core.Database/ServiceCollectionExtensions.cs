@@ -54,6 +54,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMarketRepository, MarketRepository>();
         services.AddScoped<IItemRepository, ItemRepository>();
         services.AddScoped<IMobRepository, MobRepository>();
+        services.AddScoped<ISkillDbRepository, SkillDbRepository>();
 
         return services;
     }
