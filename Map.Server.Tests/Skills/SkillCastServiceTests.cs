@@ -168,6 +168,15 @@ public class SkillCastServiceTests
             var pc = new PlayerEntity(charId, charId, $"P{charId}", Guid.NewGuid(), MapId, x, y);
             pc.Hp = pc.MaxHp = 1000;
             pc.Sp = pc.MaxSp = 100;
+            // Pre-learn the starter-set skills at max level so the new
+            // pc_checkskill gate in SkillCastService.StartCast doesn't
+            // reject test casts (real players learn via pc_skillup).
+            pc.LearnedSkills[Map.Server.Skills.SkillIds.SM_BASH] = 10;
+            pc.LearnedSkills[Map.Server.Skills.SkillIds.AL_HEAL] = 10;
+            pc.LearnedSkills[Map.Server.Skills.SkillIds.AL_INCAGI] = 10;
+            pc.LearnedSkills[Map.Server.Skills.SkillIds.AL_BLESSING] = 10;
+            pc.LearnedSkills[Map.Server.Skills.SkillIds.MG_FIREBOLT] = 10;
+            pc.LearnedSkills[Map.Server.Skills.SkillIds.MG_COLDBOLT] = 10;
             Entities.Add(pc);
             return pc;
         }

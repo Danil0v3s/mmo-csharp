@@ -73,6 +73,14 @@ public sealed class PlayerEntity : Entity
     /// <summary>True if the PC has invoked pc_setsit. Drives sitting regen bonus + action gates.</summary>
     public bool IsSitting { get; set; }
 
+    /// <summary>
+    /// Skills learned by this character: skill_id → level. Mirrors
+    /// rAthena <c>mmo_charstatus.skill[]</c>. Hydrated from char-server
+    /// at session enter; mutated by <c>pc_skillup</c>.
+    /// </summary>
+    public Dictionary<ushort, byte> LearnedSkills { get; } = new();
+
+
     public override EntityType Type => EntityType.Pc;
 
     public PlayerEntity(

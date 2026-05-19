@@ -56,6 +56,15 @@ public sealed class SkillCastService : ISkillCastService
         if (def == null) return SkillCastResult.UnknownSkill;
         if (skillLevel < 1 || skillLevel > def.MaxLevel) return SkillCastResult.LevelOutOfRange;
 
+        // Players must have learned the skill at the requested level
+        // (rAthena pc_checkskill). Mobs / NPCs bypass — they always know
+        // their skills, configured via mob_skill_db / npc scripts.
+        if (source is PlayerEntity pcSource)
+        {
+            var learned = pcSource.LearnedSkills.GetValueOrDefault(skillId);
+            if (learned < skillLevel) return SkillCastResult.LevelOutOfRange;
+        }
+
         var target = _entities.Get(targetId);
         if (target == null) return SkillCastResult.TargetUnknown;
         if (!IsAlive(target)) return SkillCastResult.TargetDead;

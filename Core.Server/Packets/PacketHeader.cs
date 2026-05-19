@@ -110,6 +110,7 @@ public enum PacketHeader : short
     CZ_USE_SKILL_TOID = 0x0438,            // CZ_USE_SKILL2 — <lv>.W <id>.W <target>.L (10B). rAthena shuffle of 0x0113.
     CZ_USE_ITEM = 0x00a7,                  // <index>.W <account_id>.L (8B). Used by potions / scrolls / consumables.
     CZ_STATUS_CHANGE = 0x00bb,             // <status_id>.W <amount>.B (5B). pc_statusup spend status points on stat.
+    CZ_UPGRADE_SKILLLEVEL = 0x0112,        // <skill_id>.W (4B). pc_skillup — spend skill point on a skill.
     CZ_USE_SKILL_TOGROUND = 0x0366,        // CZ_USE_SKILL_TOGROUND2 — <lv>.W <id>.W <x>.W <y>.W (10B). Shuffle of 0x0116.
     CZ_REQUEST_CHAT = 0x00f3,              // shuffle (was 0x008c)
     CZ_REQ_QUIT = 0x018a,                  // clif_parse_QuitGame, 4B (reserved). ALT+E.
