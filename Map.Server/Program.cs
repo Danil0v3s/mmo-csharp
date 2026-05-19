@@ -162,6 +162,10 @@ builder.Services.AddSingleton<IDamageService, DamageService>();
 // validates range/death/map every tick and chases via IMovementService.
 builder.Services.AddSingleton<IAttackService, AttackService>();
 
+// Mob hard AI (mob.cpp:1741 mob_ai_sub_hard). Aggressive target
+// acquisition; chase + swings delegate to IAttackService.
+builder.Services.AddSingleton<Map.Server.Mob.IMobAiService, Map.Server.Mob.MobAiService>();
+
 // GM commands. Each IGmCommand is registered as a singleton; the registry
 // indexes them by Name at construction. ChatMessageHandler discovers them
 // via DI.
