@@ -157,6 +157,33 @@ public class CharMaintenanceServiceTests
     }
 
     [Fact]
+    public async Task OnlineCleanup_FlipsCharsWhoseLastMapIsOnNoRegisteredMapServer()
+    {
+        var registry = new MapServerRegistryService();
+        registry.RegisterMaps(1, new[] { "prontera", "geffen" });
+
+        await using var ctx = new Harness(mapRegistry: registry);
+        var hosted = await ctx.SeedCharAsync(new CharEntity
+        {
+            Name = "Hosted", Online = 1, LastMap = "prontera",
+        });
+        var orphan = await ctx.SeedCharAsync(new CharEntity
+        {
+            Name = "Orphan", Online = 1, LastMap = "morroc",
+        });
+        var nomap = await ctx.SeedCharAsync(new CharEntity
+        {
+            Name = "Nomap", Online = 1, LastMap = string.Empty,
+        });
+
+        var n = await ctx.Service.RunOnlineCleanupTickAsync();
+        Assert.Equal(2, n);
+        Assert.Equal(1, (await ctx.ReloadCharAsync(hosted.CharId))!.Online);
+        Assert.Equal(0, (await ctx.ReloadCharAsync(orphan.CharId))!.Online);
+        Assert.Equal(0, (await ctx.ReloadCharAsync(nomap.CharId))!.Online);
+    }
+
+    [Fact]
     public async Task DisabledKnob_NoOps()
     {
         await using var ctx = new Harness(mailReturnDays: 0, mailDeleteDays: 0, clanInactiveDays: 0);
@@ -187,7 +214,8 @@ public class CharMaintenanceServiceTests
             int mailReturnDays = 15,
             int mailDeleteDays = 90,
             int clanInactiveDays = 14,
-            int returnEmpty = 1)
+            int returnEmpty = 1,
+            IMapServerRegistryService? mapRegistry = null)
         {
             _dbName = Guid.NewGuid().ToString();
             Config = new CharServerConfiguration
@@ -201,9 +229,13 @@ public class CharMaintenanceServiceTests
             services.AddDbContext<GameDbContext>(o => o.UseInMemoryDatabase(_dbName));
             var sp = services.BuildServiceProvider();
             Scopes = sp.GetRequiredService<IServiceScopeFactory>();
+            MapRegistry = mapRegistry ?? new MapServerRegistryService();
             Service = new CharMaintenanceService(
-                Scopes, Config, NullLogger<CharMaintenanceService>.Instance);
+                Scopes, Config, MapRegistry,
+                NullLogger<CharMaintenanceService>.Instance);
         }
+
+        public IMapServerRegistryService MapRegistry { get; }
 
         public async Task<MailEntity> SeedMailAsync(MailEntity mail)
         {

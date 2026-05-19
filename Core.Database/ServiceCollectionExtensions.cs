@@ -31,6 +31,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILoginRepository, LoginRepository>();
         services.AddScoped<ICharacterRepository, CharacterRepository>();
         services.AddScoped<IInventoryRepository, InventoryRepository>();
+        services.AddScoped<IHotkeyRepository, HotkeyRepository>();
         services.AddScoped<ICartInventoryRepository, CartInventoryRepository>();
         services.AddScoped<IStorageRepository, StorageRepository>();
         services.AddScoped<IGuildStorageRepository, GuildStorageRepository>();

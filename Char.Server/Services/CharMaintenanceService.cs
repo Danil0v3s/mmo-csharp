@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace Char.Server.Services;
 
 /// <summary>
-/// Periodic char-server housekeeping. Mirrors the three rAthena
+/// Periodic char-server housekeeping. Mirrors the four rAthena
 /// background timers wired in <c>char.cpp:char_set_defaults</c>:
 ///
 /// <list type="bullet">
@@ -21,6 +21,9 @@ namespace Char.Server.Services;
 ///         sets <c>clan_id = 0</c> for offline chars whose
 ///         <c>last_login</c> is older than
 ///         <c>clan_remove_inactive_days</c>.</item>
+///   <item><c>char_online_data_cleanup</c> (char.cpp:2190) — every 10 min;
+///         flips <c>online = 0</c> for chars whose <c>last_map</c> is
+///         not hosted by any currently-registered map server.</item>
 /// </list>
 ///
 /// Each tick method is idempotent and side-effect-bounded (one DB scope,
@@ -37,19 +40,23 @@ public sealed class CharMaintenanceService : ICharMaintenanceService
 
     private readonly IServiceScopeFactory _scopes;
     private readonly CharServerConfiguration _config;
+    private readonly IMapServerRegistryService _mapRegistry;
     private readonly ILogger<CharMaintenanceService> _logger;
 
     private DateTime _nextMailReturnUtc = DateTime.MinValue;
     private DateTime _nextMailDeleteUtc = DateTime.MinValue;
     private DateTime _nextClanCleanupUtc = DateTime.MinValue;
+    private DateTime _nextOnlineCleanupUtc = DateTime.MinValue;
 
     public CharMaintenanceService(
         IServiceScopeFactory scopes,
         CharServerConfiguration config,
+        IMapServerRegistryService mapRegistry,
         ILogger<CharMaintenanceService> logger)
     {
         _scopes = scopes;
         _config = config;
+        _mapRegistry = mapRegistry;
         _logger = logger;
     }
 
@@ -71,6 +78,11 @@ public sealed class CharMaintenanceService : ICharMaintenanceService
             _nextClanCleanupUtc = now.AddMinutes(60);
             await TickClanCleanupAsync(ct);
         }
+        if (now >= _nextOnlineCleanupUtc)
+        {
+            _nextOnlineCleanupUtc = now.AddMinutes(10);
+            await TickOnlineCleanupAsync(ct);
+        }
     }
 
     // --- internal tick paths (also exposed for tests via interface) ---
@@ -83,6 +95,9 @@ public sealed class CharMaintenanceService : ICharMaintenanceService
 
     public async Task<int> RunClanCleanupTickAsync(CancellationToken ct = default)
         => await TickClanCleanupAsync(ct);
+
+    public async Task<int> RunOnlineCleanupTickAsync(CancellationToken ct = default)
+        => await TickOnlineCleanupAsync(ct);
 
     private async Task<int> TickMailReturnAsync(CancellationToken ct)
     {
@@ -191,6 +206,43 @@ public sealed class CharMaintenanceService : ICharMaintenanceService
             inactive.Count, _config.ClanRemoveInactiveDays);
         return inactive.Count;
     }
+
+    private async Task<int> TickOnlineCleanupAsync(CancellationToken ct)
+    {
+        // rAthena char.cpp:char_online_data_cleanup keys off an in-memory
+        // online_char_db where each row carries the map-server id; entries
+        // marked server==-2 (set when a map server's gRPC channel drops)
+        // get GC'd here. The C# port persists Online directly on the char
+        // row and doesn't track per-char map-server id, so we infer
+        // "orphaned" from the char's LastMap not appearing in any
+        // registered map server's map list.
+        using var scope = _scopes.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<GameDbContext>();
+
+        var onlineChars = await db.Characters
+            .Where(c => c.Online == 1)
+            .Select(c => new { c.CharId, c.LastMap })
+            .ToListAsync(ct);
+        if (onlineChars.Count == 0) return 0;
+
+        var orphanIds = onlineChars
+            .Where(c => string.IsNullOrEmpty(c.LastMap)
+                || !_mapRegistry.ContainsMap(c.LastMap!))
+            .Select(c => c.CharId)
+            .ToList();
+        if (orphanIds.Count == 0) return 0;
+
+        var rows = await db.Characters
+            .Where(c => orphanIds.Contains(c.CharId))
+            .ToListAsync(ct);
+        foreach (var ch in rows) ch.Online = 0;
+        await db.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Online cleanup: flipped {Count} chars to offline (last_map not on any registered map server)",
+            rows.Count);
+        return rows.Count;
+    }
 }
 
 public interface ICharMaintenanceService
@@ -206,4 +258,7 @@ public interface ICharMaintenanceService
 
     /// <summary>Force a clan-cleanup pass regardless of deadline (tests).</summary>
     Task<int> RunClanCleanupTickAsync(CancellationToken ct = default);
+
+    /// <summary>Force an online-orphan pass regardless of deadline (tests).</summary>
+    Task<int> RunOnlineCleanupTickAsync(CancellationToken ct = default);
 }

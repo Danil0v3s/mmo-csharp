@@ -31,6 +31,7 @@ public class LoginServerImpl : GameLoopServer, IServerReadiness
     private readonly LoginServerState _serverState;
     private DateTime _nextIpBanCleanupUtc = DateTime.MinValue;
     private DateTime _nextCharIpSyncUtc = DateTime.MinValue;
+    private DateTime _nextOrphanSweepUtc = DateTime.MinValue;
 
     public LoginServerImpl(
         ServerConfiguration configuration,
@@ -173,8 +174,40 @@ public class LoginServerImpl : GameLoopServer, IServerReadiness
 
         await RequestCharServerAddressSyncAsync(cancellationToken);
         await PruneUnreachableCharServersAsync(cancellationToken);
+        await SweepOrphanOnlineEntriesAsync(cancellationToken);
 
         await Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Defensive safety-net sweep — every 10 minutes, walk the online_db
+    /// snapshot and drop entries whose char-server id is no longer in
+    /// <see cref="ICharServerRegistry"/>. Mirrors rAthena's
+    /// <c>login_online_data_cleanup</c> (login.cpp:201). Proactive prune
+    /// in <see cref="PruneUnreachableCharServersAsync"/> handles the
+    /// common case; this catches drift if a probe is missed or a
+    /// registry-removal path skips the online cleanup.
+    /// </summary>
+    private async Task SweepOrphanOnlineEntriesAsync(CancellationToken cancellationToken)
+    {
+        if (DateTime.UtcNow < _nextOrphanSweepUtc) return;
+        _nextOrphanSweepUtc = DateTime.UtcNow.AddMinutes(10);
+
+        var live = new HashSet<int>(
+            _charServerRegistry.GetActiveCharServersWithIds().Select(s => s.ServerId));
+        var orphans = _loginDataRepository.SnapshotOnlineEntries()
+            .Where(e => !live.Contains(e.CharServer))
+            .Select(e => e.AccountId)
+            .ToArray();
+        if (orphans.Length == 0) return;
+
+        foreach (var accountId in orphans)
+        {
+            await _loginDataRepository.RemoveOnlineUser(accountId);
+        }
+        Logger.LogInformation(
+            "Online-db orphan sweep removed {Count} entries pointing to dead char servers",
+            orphans.Length);
     }
 
     protected override async Task FlushOutgoingPacketsAsync(CancellationToken cancellationToken)

@@ -40,7 +40,10 @@ internal sealed class LoginMmoAuth(
 ) : ILoginMmoAuth
 {
     private static readonly object RegistrationLock = new();
-    private static readonly Queue<DateTime> RegistrationWindow = new();
+    // Per-IP sliding window. rAthena tracks new-account creation count
+    // per source IP (mod_num_regs(ip)); without per-IP scoping a single
+    // automation client at 1 req/s rate-limits the entire server.
+    private static readonly Dictionary<string, Queue<DateTime>> RegistrationWindowByIp = new();
 
     public async Task<ILoginMmoAuth.Output> ExecuteAsync(ILoginMmoAuth.Input input)
     {
@@ -369,18 +372,28 @@ internal sealed class LoginMmoAuth(
             return NewAccountCreateResult.UnregisteredId;
         }
 
+        // rAthena login.cpp:233 — count source-IP registrations within
+        // the time_allowed window; rate-limit the IP, not the world.
+        var registrationIp = ExtractRemoteIp(sessionObject)?.ToString() ?? "unknown";
         lock (RegistrationLock)
         {
             var now = DateTime.UtcNow;
-            while (RegistrationWindow.Count > 0 &&
-                   (now - RegistrationWindow.Peek()).TotalSeconds > configuration.RegistrationInterval)
+            if (!RegistrationWindowByIp.TryGetValue(registrationIp, out var window))
             {
-                RegistrationWindow.Dequeue();
+                window = new Queue<DateTime>();
+                RegistrationWindowByIp[registrationIp] = window;
+            }
+            while (window.Count > 0 &&
+                   (now - window.Peek()).TotalSeconds > configuration.RegistrationInterval)
+            {
+                window.Dequeue();
             }
 
-            if (RegistrationWindow.Count >= configuration.AllowedRegistrations)
+            if (window.Count >= configuration.AllowedRegistrations)
             {
-                logger.LogInformation("Registration limit reached, rejecting auto-create for {Account}", accountName);
+                logger.LogInformation(
+                    "Registration limit reached for IP {Ip}, rejecting auto-create for {Account}",
+                    registrationIp, accountName);
                 return NewAccountCreateResult.RejectedFromServer;
             }
         }
@@ -421,7 +434,12 @@ internal sealed class LoginMmoAuth(
 
         lock (RegistrationLock)
         {
-            RegistrationWindow.Enqueue(DateTime.UtcNow);
+            if (!RegistrationWindowByIp.TryGetValue(registrationIp, out var window))
+            {
+                window = new Queue<DateTime>();
+                RegistrationWindowByIp[registrationIp] = window;
+            }
+            window.Enqueue(DateTime.UtcNow);
         }
 
         logger.LogInformation("Account auto-created via suffix flow: {Account} ({Sex})", accountName, sexSuffix);

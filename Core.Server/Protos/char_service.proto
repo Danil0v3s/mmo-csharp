@@ -99,6 +99,8 @@ service CharacterService {
   rpc AuctionBid (AuctionBidRequest) returns (AuctionBidResponse);
   rpc QuestLoad (QuestLoadRequest) returns (QuestLoadResponse);
   rpc QuestSave (QuestSaveRequest) returns (QuestSaveResponse);
+  rpc HotkeyLoad (HotkeyLoadRequest) returns (HotkeyLoadResponse);
+  rpc HotkeySave (HotkeySaveRequest) returns (HotkeySaveResponse);
   rpc AchievementLoad (AchievementLoadRequest) returns (AchievementLoadResponse);
   rpc AchievementSave (AchievementSaveRequest) returns (AchievementSaveResponse);
   rpc AchievementReward (AchievementRewardRequest) returns (AchievementRewardResponse);
@@ -1317,6 +1319,34 @@ message QuestEntryData {
   int64 time_unix = 2;
   repeated int32 counts = 3;
   int32 state = 4;
+}
+
+message HotkeyEntry {
+  // Slot index 0..max (rAthena MAX_HOTKEYS = 38).
+  uint32 hotkey = 1;
+  // 0 = empty, 1 = item, 2 = skill (rAthena hotkey_type).
+  uint32 type = 2;
+  // Item id or skill id depending on type.
+  uint32 item_skill_id = 3;
+  uint32 skill_lvl = 4;
+}
+
+message HotkeyLoadRequest {
+  int64 character_id = 1;
+}
+
+message HotkeyLoadResponse {
+  bool success = 1;
+  repeated HotkeyEntry hotkeys = 2;
+}
+
+message HotkeySaveRequest {
+  int64 character_id = 1;
+  repeated HotkeyEntry hotkeys = 2;
+}
+
+message HotkeySaveResponse {
+  bool success = 1;
 }
 
 message QuestLoadRequest {

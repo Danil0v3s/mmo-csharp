@@ -178,6 +178,16 @@ internal class LoginDataRepository(
         return authNode;
     }
 
+    public IReadOnlyList<(int AccountId, int CharServer)> SnapshotOnlineEntries()
+    {
+        lock (OnlineLoginDataDictionary)
+        {
+            return OnlineLoginDataDictionary
+                .Select(p => (p.Key.Value, p.Value.CharServer))
+                .ToArray();
+        }
+    }
+
     public bool TryConsumeAuthNode(int accountId, int loginId1, int loginId2, char sex, out AuthNode? authNode)
     {
         lock (AuthNodeDictionary)

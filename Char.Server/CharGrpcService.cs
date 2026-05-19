@@ -2939,6 +2939,61 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         };
     }
 
+    public override async Task<HotkeyLoadResponse> HotkeyLoad(
+        HotkeyLoadRequest request,
+        ServerCallContext context)
+    {
+        if (request.CharacterId <= 0) return new HotkeyLoadResponse { Success = false };
+
+        var rows = await _dbContext.Hotkeys
+            .AsNoTracking()
+            .Where(h => h.CharId == request.CharacterId)
+            .ToListAsync(context.CancellationToken);
+
+        var response = new HotkeyLoadResponse { Success = true };
+        foreach (var h in rows)
+        {
+            response.Hotkeys.Add(new HotkeyEntry
+            {
+                Hotkey = h.Hotkey,
+                Type = h.Type,
+                ItemSkillId = h.ItemSkillId,
+                SkillLvl = h.SkillLvl,
+            });
+        }
+        return response;
+    }
+
+    public override async Task<HotkeySaveResponse> HotkeySave(
+        HotkeySaveRequest request,
+        ServerCallContext context)
+    {
+        if (request.CharacterId <= 0) return new HotkeySaveResponse { Success = false };
+        var charId = (int)request.CharacterId;
+
+        // rAthena mmo_char_tosql: DELETE all then INSERT non-empty rows.
+        var existing = await _dbContext.Hotkeys
+            .Where(h => h.CharId == charId)
+            .ToListAsync(context.CancellationToken);
+        if (existing.Count > 0) _dbContext.Hotkeys.RemoveRange(existing);
+
+        foreach (var hk in request.Hotkeys)
+        {
+            // type == 0 means "empty slot"; skip those.
+            if (hk.Type == 0) continue;
+            _dbContext.Hotkeys.Add(new HotkeyEntity
+            {
+                CharId = charId,
+                Hotkey = (byte)Math.Min(hk.Hotkey, byte.MaxValue),
+                Type = (byte)Math.Min(hk.Type, byte.MaxValue),
+                ItemSkillId = hk.ItemSkillId,
+                SkillLvl = (byte)Math.Min(hk.SkillLvl, byte.MaxValue),
+            });
+        }
+        await _dbContext.SaveChangesAsync(context.CancellationToken);
+        return new HotkeySaveResponse { Success = true };
+    }
+
     public override async Task<QuestLoadResponse> QuestLoad(
         QuestLoadRequest request,
         ServerCallContext context)

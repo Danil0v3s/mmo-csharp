@@ -395,6 +395,9 @@ public class LoginServerSocketIntegrationTests
         public void Update(OnlineLoginData onlineLoginData)
             => _onlineUsers[onlineLoginData.AccountId.Value] = onlineLoginData;
 
+        public IReadOnlyList<(int AccountId, int CharServer)> SnapshotOnlineEntries()
+            => _onlineUsers.Select(p => (p.Key, p.Value.CharServer)).ToArray();
+
         public AuthNode? GetAuthNode(int accountId)
             => _authNodes.TryGetValue(accountId, out var node) ? node : null;
 

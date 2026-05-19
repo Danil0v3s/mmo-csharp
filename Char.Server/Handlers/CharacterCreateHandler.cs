@@ -11,6 +11,7 @@ namespace Char.Server.Handlers;
 [PacketHandler(PacketHeader.CH_MAKE_NEW_CHAR)]
 public class CharacterCreateHandler(
     ICharacterRepository characterRepository,
+    IInventoryRepository inventoryRepository,
     CharServerConfiguration configuration
 ) : IPacketHandler<CharSessionData, CH_MAKE_NEW_CHAR>
 {
@@ -123,12 +124,40 @@ public class CharacterCreateHandler(
         try
         {
             character = await characterRepository.AddAsync(character);
-            return (true, 0, character);
         }
         catch
         {
             return (false, -2, null);
         }
+
+        // Starter items. rAthena make_new_char_sql inserts each entry
+        // from start_items (or start_items_doram for Summoner). Equipped
+        // items get their slot bit; ammo never auto-equips.
+        var starterItems = packet.StartingJob == JobSummoner
+            && configuration.StartItemsDoram.Count > 0
+            ? configuration.StartItemsDoram
+            : configuration.StartItems;
+        foreach (var item in starterItems)
+        {
+            if (item.ItemId <= 0 || item.Amount <= 0) continue;
+            try
+            {
+                await inventoryRepository.AddAsync(new InventoryEntity
+                {
+                    CharId = character.CharId,
+                    NameId = (uint)item.ItemId,
+                    Amount = (uint)item.Amount,
+                    Identify = 1,
+                    Equip = item.IsEquipped ? 1u : 0u,
+                });
+            }
+            catch
+            {
+                // Best-effort: a single bad starter item shouldn't block
+                // character creation. rAthena logs and continues.
+            }
+        }
+        return (true, 0, character);
     }
 
     private static void SendRefuse(CharSessionData session, int errorCode)

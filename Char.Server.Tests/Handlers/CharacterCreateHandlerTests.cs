@@ -31,6 +31,7 @@ public class CharacterCreateHandlerTests
 
         var handler = new CharacterCreateHandler(
             new InMemoryCharacterRepository([]),
+            new CountingInventoryRepository(),
             new CharServerConfiguration { CharNew = false });
 
         await handler.HandleAsync(session, BuildCreatePacket("Danilo", slot: 0, hairColor: 1, hairStyle: 2, startJob: 0, sex: 0));
@@ -63,7 +64,7 @@ public class CharacterCreateHandlerTests
             new CharEntity { CharId = 1001, AccountId = 2000000, CharNum = 0, Name = "Danilo", DeleteDate = 0 }
         ]);
 
-        var handler = new CharacterCreateHandler(repository, new CharServerConfiguration { CharNew = true });
+        var handler = new CharacterCreateHandler(repository, new CountingInventoryRepository(), new CharServerConfiguration { CharNew = true });
         await handler.HandleAsync(session, BuildCreatePacket("Danilo", slot: 1, hairColor: 1, hairStyle: 2, startJob: 0, sex: 0));
         await session.FlushPacketsAsync();
 
@@ -96,6 +97,7 @@ public class CharacterCreateHandlerTests
 
         var handler = new CharacterCreateHandler(
             repository,
+            new CountingInventoryRepository(),
             new CharServerConfiguration
             {
                 CharNew = true,
@@ -133,6 +135,7 @@ public class CharacterCreateHandlerTests
 
         var handler = new CharacterCreateHandler(
             repository,
+            new CountingInventoryRepository(),
             new CharServerConfiguration
             {
                 CharNew = true,
@@ -163,7 +166,7 @@ public class CharacterCreateHandlerTests
         };
 
         var repository = new InMemoryCharacterRepository([]);
-        var handler = new CharacterCreateHandler(repository, new CharServerConfiguration { CharNew = true });
+        var handler = new CharacterCreateHandler(repository, new CountingInventoryRepository(), new CharServerConfiguration { CharNew = true });
         await handler.HandleAsync(session, BuildCreatePacket("Danilo", slot: 0, hairColor: 1, hairStyle: 2, startJob: 0, sex: 0));
         await session.FlushPacketsAsync();
 
@@ -195,7 +198,7 @@ public class CharacterCreateHandlerTests
         };
 
         var repository = new InMemoryCharacterRepository([]);
-        var handler = new CharacterCreateHandler(repository, new CharServerConfiguration { CharNew = true });
+        var handler = new CharacterCreateHandler(repository, new CountingInventoryRepository(), new CharServerConfiguration { CharNew = true });
         await handler.HandleAsync(session, BuildCreatePacket("  New\t\tName  ", slot: 0, hairColor: 1, hairStyle: 2, startJob: 0, sex: 0));
         await session.FlushPacketsAsync();
 
@@ -226,6 +229,7 @@ public class CharacterCreateHandlerTests
         var repository = new InMemoryCharacterRepository([]);
         var handler = new CharacterCreateHandler(
             repository,
+            new CountingInventoryRepository(),
             new CharServerConfiguration
             {
                 CharNew = true,
@@ -374,5 +378,26 @@ public class CharacterCreateHandlerTests
                 Sex = source.Sex
             };
         }
+    }
+
+    /// <summary>
+    /// Counts starter-item inserts so the C-H1 regression can assert on
+    /// rAthena make_new_char_sql parity without a live DB scope.
+    /// </summary>
+    private sealed class CountingInventoryRepository : IInventoryRepository
+    {
+        public readonly List<InventoryEntity> Inserts = new();
+
+        public Task<InventoryEntity?> GetByIdAsync(int id, CancellationToken ct = default) => Task.FromResult<InventoryEntity?>(null);
+        public Task<IReadOnlyList<InventoryEntity>> GetByCharIdAsync(int charId, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<InventoryEntity>>(Array.Empty<InventoryEntity>());
+        public Task<IReadOnlyList<InventoryEntity>> GetAllAsync(CancellationToken ct = default) => Task.FromResult<IReadOnlyList<InventoryEntity>>(Array.Empty<InventoryEntity>());
+        public Task<InventoryEntity> AddAsync(InventoryEntity entity, CancellationToken ct = default)
+        {
+            Inserts.Add(entity);
+            return Task.FromResult(entity);
+        }
+        public Task UpdateAsync(InventoryEntity entity, CancellationToken ct = default) => Task.CompletedTask;
+        public Task DeleteAsync(int id, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<bool> ExistsAsync(int id, CancellationToken ct = default) => Task.FromResult(false);
     }
 }
