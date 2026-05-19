@@ -1,0 +1,191 @@
+using Map.Server.Entities;
+using Map.Server.Items;
+using Map.Server.Status;
+using Microsoft.Extensions.Logging;
+
+namespace Map.Server.Inventory;
+
+/// <summary>
+/// First-slice <see cref="IEquipService"/>. Port of rAthena
+/// <c>pc_equipitem</c> / <c>pc_unequipitem</c> covering weapon,
+/// shield, armor, headgear, garment, shoes, accessories, ammo. After
+/// every wear-state change drives a fresh <see cref="IStatusCalcService.CalcPc"/>
+/// using <see cref="EquipBonusAggregator"/> for the equipment-derived
+/// portion of <see cref="PcBaseInputs"/>.
+/// </summary>
+public sealed class EquipService : IEquipService
+{
+    private readonly IItemCatalog _catalog;
+    private readonly IEntityRegistry _entities;
+    private readonly IStatusCalcService _statusCalc;
+    private readonly ILogger<EquipService> _logger;
+
+    public EquipService(
+        IItemCatalog catalog,
+        IEntityRegistry entities,
+        IStatusCalcService statusCalc,
+        ILogger<EquipService> logger)
+    {
+        _catalog = catalog;
+        _entities = entities;
+        _statusCalc = statusCalc;
+        _logger = logger;
+    }
+
+    public EquipOpResult Equip(MapSessionData session, int serverIndex, uint requestedPos, out uint appliedPos)
+    {
+        appliedPos = 0;
+        if (session.Inventory is not { } inv) return EquipOpResult.NoSuchItem;
+        if (serverIndex < 0 || serverIndex >= inv.Count) return EquipOpResult.NoSuchItem;
+        var item = inv[serverIndex];
+        if (item.NameId == 0 || item.Amount == 0) return EquipOpResult.NoSuchItem;
+        if (!item.Identified) return EquipOpResult.NotIdentified;
+
+        var row = _catalog.Get(item.NameId);
+        if (row == null) return EquipOpResult.NotEquippable;
+        var allowed = ResolveAllowedPositions(row);
+        if (allowed == 0) return EquipOpResult.NotEquippable;
+
+        // rAthena pc_equipitem: server intersects the item's allowed
+        // bitmask with the client's request, then resolves ambiguous
+        // ACC / dual-wield cases.
+        var pos = ResolveTargetSlot(inv, allowed, requestedPos);
+        if (pos == 0 || (pos & allowed) == 0) return EquipOpResult.InvalidSlot;
+
+        // Drop anything in the slot bits we're about to occupy.
+        for (var i = 0; i < inv.Count; i++)
+        {
+            if (i == serverIndex) continue;
+            if ((inv[i].Equip & pos) != 0)
+            {
+                inv[i].Equip = 0;
+            }
+        }
+        item.Equip = pos;
+        appliedPos = pos;
+
+        TryRecalcStats(session);
+        return EquipOpResult.Ok;
+    }
+
+    public EquipOpResult Unequip(MapSessionData session, int serverIndex, out uint clearedPos)
+    {
+        clearedPos = 0;
+        if (session.Inventory is not { } inv) return EquipOpResult.NoSuchItem;
+        if (serverIndex < 0 || serverIndex >= inv.Count) return EquipOpResult.NoSuchItem;
+        var item = inv[serverIndex];
+        if (item.Equip == 0) return EquipOpResult.InvalidSlot;
+
+        clearedPos = item.Equip;
+        item.Equip = 0;
+
+        TryRecalcStats(session);
+        return EquipOpResult.Ok;
+    }
+
+    // --- helpers ---
+
+    /// <summary>
+    /// Build the EQP_* bitmask from the per-slot Location flags on the
+    /// item_db row. rAthena does this once at item_db load
+    /// (<c>itemdb_read</c>) and stashes it on <c>item_data.equip</c>;
+    /// we recompute lazily because the catalog doesn't keep the
+    /// combined value.
+    /// </summary>
+    private static uint ResolveAllowedPositions(Core.Database.Entities.ItemEntity row)
+    {
+        uint pos = 0;
+        if (row.LocationHeadLow == 1) pos |= EquipBits.HeadLow;
+        if (row.LocationHeadMid == 1) pos |= EquipBits.HeadMid;
+        if (row.LocationHeadTop == 1) pos |= EquipBits.HeadTop;
+        if (row.LocationRightHand == 1) pos |= EquipBits.HandR;
+        if (row.LocationLeftHand == 1) pos |= EquipBits.HandL;
+        if (row.LocationArmor == 1) pos |= EquipBits.Armor;
+        if (row.LocationGarment == 1) pos |= EquipBits.Garment;
+        if (row.LocationShoes == 1) pos |= EquipBits.Shoes;
+        if (row.LocationRightAccessory == 1) pos |= EquipBits.AccR;
+        if (row.LocationLeftAccessory == 1) pos |= EquipBits.AccL;
+        if (row.LocationAmmo == 1) pos |= EquipBits.Ammo;
+        return pos;
+    }
+
+    /// <summary>
+    /// Pick the actual slot bits to use. Mirrors the ACC and ARMS
+    /// resolution inside <c>pc_equipitem</c> (pc.cpp:11937).
+    /// </summary>
+    private static uint ResolveTargetSlot(IReadOnlyList<InventoryItem> inv, uint allowed, uint requested)
+    {
+        var pos = allowed & requested;
+
+        // Accessory ambiguity — item allows both L+R; pick R if free, else L.
+        if (allowed == EquipBits.AccRL)
+        {
+            pos = requested & EquipBits.AccRL;
+            if (pos == EquipBits.AccRL)
+                pos = SlotInUse(inv, EquipBits.AccR) && !SlotInUse(inv, EquipBits.AccL)
+                    ? EquipBits.AccL
+                    : EquipBits.AccR;
+        }
+        // Dual-wield: weapon allows both hand bits; pick L if R is taken (renewal).
+        else if (allowed == EquipBits.Arms)
+        {
+            pos = requested & EquipBits.Arms;
+            if (pos == EquipBits.Arms)
+                pos = SlotInUse(inv, EquipBits.HandR) && !SlotInUse(inv, EquipBits.HandL)
+                    ? EquipBits.HandL
+                    : EquipBits.HandR;
+        }
+        return pos;
+    }
+
+    private static bool SlotInUse(IReadOnlyList<InventoryItem> inv, uint bit)
+    {
+        for (var i = 0; i < inv.Count; i++) if ((inv[i].Equip & bit) != 0) return true;
+        return false;
+    }
+
+    private void TryRecalcStats(MapSessionData session)
+    {
+        if (session.EntityId is not { } eid) return;
+        if (_entities.Get(eid) is not PlayerEntity player) return;
+
+        var summary = EquipBonusAggregator.Aggregate(session.Inventory, _catalog);
+        var stats = player.Stats;
+        _statusCalc.CalcPc(player, new PcBaseInputs(
+            BaseLevel: player.Level,
+            JobLevel: player.JobLevel,
+            Str: stats.Str, Agi: stats.Agi, Vit: stats.Vit,
+            Int: stats.IntStat, Dex: stats.Dex, Luk: stats.Luk,
+            Pow: stats.Pow, Sta: stats.Sta, Wis: stats.Wis,
+            Spl: stats.Spl, Con: stats.Con, Crt: stats.Crt,
+            WeaponAtkMin: summary.WeaponAtkMin,
+            WeaponAtkMax: summary.WeaponAtkMax,
+            EquipDef: summary.EquipDef,
+            EquipMdef: summary.EquipMdef,
+            AttackRange: summary.AttackRange,
+            WeaponElement: summary.WeaponElement));
+    }
+}
+
+/// <summary>
+/// EQP_* bit constants. Mirror rAthena <c>enum equip_pos</c>
+/// (common/mmo.hpp:336). Keep narrow for the slots this slice handles.
+/// </summary>
+public static class EquipBits
+{
+    public const uint HeadLow = 0x000001;
+    public const uint HandR   = 0x000002;
+    public const uint Garment = 0x000004;
+    public const uint AccR    = 0x000008;
+    public const uint Armor   = 0x000010;
+    public const uint HandL   = 0x000020;
+    public const uint Shoes   = 0x000040;
+    public const uint AccL    = 0x000080;
+    public const uint HeadTop = 0x000100;
+    public const uint HeadMid = 0x000200;
+    public const uint Ammo    = 0x008000;
+
+    public const uint Arms = HandR | HandL;
+    public const uint AccRL = AccR | AccL;
+    public const uint Helm = HeadLow | HeadMid | HeadTop;
+}

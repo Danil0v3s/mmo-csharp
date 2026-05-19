@@ -142,6 +142,11 @@ builder.Services.AddSingleton<Map.Server.Inventory.IInventoryService, Map.Server
 builder.Services.AddSingleton<Map.Server.Inventory.ItemEffects.ItemEffectRegistry>();
 builder.Services.AddSingleton<Map.Server.Inventory.IItemUseService, Map.Server.Inventory.ItemUseService>();
 
+// Equip / unequip (pc.cpp pc_equipitem / pc_unequipitem). Mediates
+// the wear-state bits on inventory rows and triggers a status recalc
+// through EquipBonusAggregator + IStatusCalcService.
+builder.Services.AddSingleton<Map.Server.Inventory.IEquipService, Map.Server.Inventory.EquipService>();
+
 // Account storage (storage.cpp). Mediates inventory ↔ storage
 // transfers; load/save via the existing P5 AccountStorageLoad/Save IPC.
 builder.Services.AddSingleton<Map.Server.Storage.IStorageService, Map.Server.Storage.StorageService>();

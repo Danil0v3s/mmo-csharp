@@ -144,6 +144,14 @@ public enum PacketHeader : short
     CZ_CLOSE_STORE = 0x00f7,               // (2B). Player closed window.
     ZC_CLOSE_STORE = 0x00f8,               // (2B). Server ack.
     ZC_NOTIFY_STOREITEM_COUNTINFO = 0x00f2,// <current>.W <max>.W (6B). Storage capacity HUD.
+    // --- Equip / unequip (clif.cpp:12080..12167) ---
+    // PACKETVER 20220401 uses the V5/PACKETVER>=20120925 layouts:
+    // wear request takes a 32-bit position bitmask (legacy 0xa9 used 16-bit),
+    // and the ack carries the worn-slot bitmask + view-id + result code.
+    CZ_REQ_WEAR_EQUIP = 0x0998,            // <index>.W <position>.L (8B). pc_equipitem entry.
+    CZ_REQ_TAKEOFF_EQUIP = 0x00ab,         // <index>.W (4B). pc_unequipitem entry.
+    ZC_REQ_WEAR_EQUIP_ACK = 0x0999,        // <index>.W <wearLocation>.L <viewid>.W <result>.B (11B).
+    ZC_REQ_TAKEOFF_EQUIP_ACK = 0x099a,     // <index>.W <wearLocation>.L <flag>.B (9B).
     CZ_USE_SKILL_TOGROUND = 0x0366,        // CZ_USE_SKILL_TOGROUND2 — <lv>.W <id>.W <x>.W <y>.W (10B). Shuffle of 0x0116.
     CZ_REQUEST_CHAT = 0x00f3,              // shuffle (was 0x008c)
     CZ_REQ_QUIT = 0x018a,                  // clif_parse_QuitGame, 4B (reserved). ALT+E.

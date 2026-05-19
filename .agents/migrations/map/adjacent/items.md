@@ -58,9 +58,8 @@ Items thread through every gameplay system. The Char server already owns persist
 ## Pending
 
 1. **MVP drops** (top-damager only) + `battle_config.item_rate_*` modifiers.
-2. **Equip / unequip wire flow** — `CZ_REQ_WEAR_EQUIP` (0x00a9) / `CZ_REQ_TAKEOFF_EQUIP` (0x00ab). Stats refresh path is ready (just call `CalcPc` again after toggling `InventoryItem.Equip`).
-3. **Drop-from-inventory wire** — `CZ_ITEM_THROW` (0x00a2) → `ItemDropService.DropOnFloor` plumbing.
-4. **Item Script parser** — the long-tail itemheal / sc_start / bonus formulas. Today the strategy registry has 7 hand-coded entries.
+2. **Drop-from-inventory wire** — `CZ_ITEM_THROW` (0x00a2) → `ItemDropService.DropOnFloor` plumbing.
+3. **Item Script parser** — the long-tail itemheal / sc_start / bonus formulas. Today the strategy registry has 7 hand-coded entries.
 
 ## History
 - **2026-05-16** — Plan stub.
@@ -68,3 +67,4 @@ Items thread through every gameplay system. The Char server already owns persist
 - **2026-05-16** — Plan re-aimed at DB-backed catalog (`IItemCatalog` over `IItemRepository`) instead of a YAML parser, matching rAthena's `use_sql_db` alternate path and the existing 28K-row seed in `Core.Database/Seeds/Scripts/seed_item_db_*.sql`. The floor-item runtime class is being renamed `ItemEntity` → `FloorItemEntity` to avoid a collision with the DB row.
 - **2026-05-16** — Rename + ItemCatalog shipped. Mob death now rolls drops via `IItemCatalog.GetByAegisName(...)`; the spawn → kill → drop → pickup loop is end-to-end demonstrable. 177 Map.Server tests green.
 - **2026-05-19** — Inventory closes end-to-end: load + save via existing IPC, equip → BattleStats aggregator, pickup → bag deposit, ItemEffectRegistry strategy for `pc_useitem` with 7 starter entries, loot-protection windows with owner/party priority. NPC shop service + atomic player trade also shipped (see [trade.md](trade.md)).
+- **2026-05-19** — Equip / unequip wire end-to-end: `CZ_REQ_WEAR_EQUIP` (0x0998, V5 — 32-bit position) + `CZ_REQ_TAKEOFF_EQUIP` (0x00ab) → `IEquipService` resolves the EQP_* bitmask (ACC L/R + dual-wield resolution per `pc_equipitem`), drops anything already occupying the slot, triggers `IStatusCalcService.CalcPc` via `EquipBonusAggregator`, and emits `ZC_REQ_WEAR_EQUIP_ACK` (0x0999) / `ZC_REQ_TAKEOFF_EQUIP_ACK` (0x099a) with the applied wear-location + ack code. 6 wire tests in `Map.Server.Tests/Equip/`.
