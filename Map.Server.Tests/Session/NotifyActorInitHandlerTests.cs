@@ -26,7 +26,7 @@ public class NotifyActorInitHandlerTests
         var handler = new NotifyActorInitHandler(
             ctx.Registry, ctx.Visibility, new StatusBroadcaster(),
             new StatusCalcService(), new NoOpPcDeathService(),
-            new NoOpInventoryService(),
+            new NoOpInventoryService(), new NoOpItemCatalog(),
             NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
@@ -54,7 +54,7 @@ public class NotifyActorInitHandlerTests
         var handler = new NotifyActorInitHandler(
             ctx.Registry, ctx.Visibility, new StatusBroadcaster(),
             new StatusCalcService(), new NoOpPcDeathService(),
-            new NoOpInventoryService(),
+            new NoOpInventoryService(), new NoOpItemCatalog(),
             NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
@@ -90,7 +90,7 @@ public class NotifyActorInitHandlerTests
         var handler = new NotifyActorInitHandler(
             ctx.Registry, ctx.Visibility, new StatusBroadcaster(),
             new StatusCalcService(), new NoOpPcDeathService(),
-            new NoOpInventoryService(),
+            new NoOpInventoryService(), new NoOpItemCatalog(),
             NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
@@ -160,6 +160,15 @@ public class NotifyActorInitHandlerTests
         public void Respawn(PlayerEntity pc) { }
         public bool IsDead(PlayerEntity pc) => false;
         public void SetSavepoint(int characterId, string mapName, short x, short y) { }
+    }
+
+    private sealed class NoOpItemCatalog : Map.Server.Items.IItemCatalog
+    {
+        public int Count => 0;
+        public Core.Database.Entities.ItemEntity? Get(uint id) => null;
+        public Core.Database.Entities.ItemEntity? GetByAegisName(string n) => null;
+        public IEnumerable<Core.Database.Entities.ItemEntity> All() => Array.Empty<Core.Database.Entities.ItemEntity>();
+        public void Reload() { }
     }
 
     private sealed class StubWorldRegistry : IMapWorldRegistry

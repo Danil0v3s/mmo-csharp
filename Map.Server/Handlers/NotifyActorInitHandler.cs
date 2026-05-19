@@ -23,6 +23,7 @@ public class NotifyActorInitHandler(
     IStatusCalcService statusCalc,
     Map.Server.Combat.IPcDeathService pcDeath,
     Map.Server.Inventory.IInventoryService inventory,
+    Map.Server.Items.IItemCatalog itemCatalog,
     ILogger<NotifyActorInitHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_NOTIFY_ACTORINIT>
 {
@@ -69,6 +70,16 @@ public class NotifyActorInitHandler(
         // batk/hit/flee match the wire baseline in RenewalFormulas.
         if (session.CharacterData is { } ch)
         {
+            // Equip-derived weapon/armor numbers (rAthena status_calc_pc
+            // reads these from the equipped items at the same point in
+            // the cascade). Fallback to the Novice + Knife baseline if
+            // no items are equipped — keeps replay parity at first
+            // login until starter items land.
+            var equip = Map.Server.Inventory.EquipBonusAggregator
+                .Aggregate(session.Inventory, itemCatalog);
+            if (equip.WeaponAtkMin == 0) equip = equip with { WeaponAtkMin = 17, WeaponAtkMax = 17 };
+            if (equip.EquipDef == 0) equip = equip with { EquipDef = 10 };
+
             statusCalc.CalcPc(player, new PcBaseInputs(
                 BaseLevel: (int)ch.BaseLevel,
                 JobLevel: (int)ch.JobLevel,
@@ -84,13 +95,12 @@ public class NotifyActorInitHandler(
                 Spl: (int)ch.Spl,
                 Con: (int)ch.Con,
                 Crt: (int)ch.Crt,
-                // Knife + Cotton Shirt baseline mirrors the rAthena capture
-                // until inventory-driven equip processing lands.
-                WeaponAtkMin: 17,
-                WeaponAtkMax: 17,
-                EquipDef: 10,
-                EquipMdef: 0,
-                AttackRange: 1));
+                WeaponAtkMin: equip.WeaponAtkMin,
+                WeaponAtkMax: equip.WeaponAtkMax,
+                EquipDef: equip.EquipDef,
+                EquipMdef: equip.EquipMdef,
+                AttackRange: equip.AttackRange,
+                WeaponElement: equip.WeaponElement));
             // Persisted current HP/SP from the snapshot wins over the calc-
             // derived max so partial-HP relog doesn't reset to full.
             player.Hp = (int)Math.Min(ch.Hp, (uint)player.MaxHp);
