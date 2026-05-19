@@ -94,6 +94,12 @@ public class NotifyActorInitHandler(
             // derived max so partial-HP relog doesn't reset to full.
             player.Hp = (int)Math.Min(ch.Hp, (uint)player.MaxHp);
             player.Sp = (int)Math.Min(ch.Sp, (uint)player.MaxSp);
+            // Persisted EXP + level + status/skill points — needed by
+            // ExpService (pc_gainexp / pc_checkbaselevelup parity).
+            player.BaseExp = (long)ch.BaseExp;
+            player.JobExp = (long)ch.JobExp;
+            player.JobLevel = (int)ch.JobLevel;
+            player.StatusPoints = (int)ch.StatusPoint;
         }
 
         registry.Add(player);

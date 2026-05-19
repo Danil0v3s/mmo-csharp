@@ -166,6 +166,13 @@ builder.Services.AddSingleton<IAttackService, AttackService>();
 // acquisition; chase + swings delegate to IAttackService.
 builder.Services.AddSingleton<Map.Server.Mob.IMobAiService, Map.Server.Mob.MobAiService>();
 
+// EXP service (pc.cpp:8314 pc_gainexp). Awards base + job EXP on mob
+// kill, walks the level-up chain, full-heals + broadcasts SP_BASELEVEL
+// etc. on each level up. Needs a session accessor to push the ZC_PAR
+// packets back to the right client.
+builder.Services.AddSingleton<Map.Server.Status.ISessionManagerAccessor, Map.Server.Session.MapSessionAccessor>();
+builder.Services.AddSingleton<Map.Server.Status.IExpService, Map.Server.Status.ExpService>();
+
 // GM commands. Each IGmCommand is registered as a singleton; the registry
 // indexes them by Name at construction. ChatMessageHandler discovers them
 // via DI.

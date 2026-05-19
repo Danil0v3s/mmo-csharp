@@ -12,6 +12,7 @@ public sealed class DamageService : IDamageService
     private readonly IMobSpawnService _mobSpawn;
     private readonly IEntityRegistry _entities;
     private readonly IBattleCalculator _battleCalc;
+    private readonly Status.IExpService? _exp;
     private readonly ILogger<DamageService> _logger;
 
     public DamageService(
@@ -19,12 +20,14 @@ public sealed class DamageService : IDamageService
         IMobSpawnService mobSpawn,
         IEntityRegistry entities,
         IBattleCalculator battleCalc,
-        ILogger<DamageService> logger)
+        ILogger<DamageService> logger,
+        Status.IExpService? exp = null)
     {
         _visibility = visibility;
         _mobSpawn = mobSpawn;
         _entities = entities;
         _battleCalc = battleCalc;
+        _exp = exp;
         _logger = logger;
     }
 
@@ -116,6 +119,14 @@ public sealed class DamageService : IDamageService
         switch (target)
         {
             case MobEntity mob:
+                // EXP attribution — last-hit-wins for MS3 first slice
+                // (rAthena's tdmg_id table is the next iteration). If the
+                // last-hit attacker is a PC, award the mob's full base+job
+                // exp pool before tearing the mob down.
+                if (source is PlayerEntity killer && _exp != null && mob.DbEntry != null)
+                {
+                    _exp.GainExp(killer, mob.DbEntry.BaseExp, mob.DbEntry.JobExp);
+                }
                 // Re-uses MobSpawnService's death pipeline so respawn timer
                 // wiring + visibility broadcast (Died reason) stay in one
                 // place. KillMob also pulls drops once item_db lands.

@@ -53,6 +53,17 @@ public sealed class PlayerEntity : Entity
         set => Stats.MaxSp = value;
     }
 
+    /// <summary>Persisted base / job EXP. Mutated by <c>IExpService.GainExp</c>; saved by autosave.</summary>
+    public long BaseExp { get; set; }
+    public long JobExp { get; set; }
+
+    /// <summary>Persisted Job level — base level lives on <see cref="Entity.Level"/>.</summary>
+    public int JobLevel { get; set; } = 1;
+
+    /// <summary>Unspent stat / skill points. <c>pc_checkbaselevelup</c> awards status points; job levelup awards skill points.</summary>
+    public int StatusPoints { get; set; }
+    public int SkillPoints { get; set; }
+
     public override EntityType Type => EntityType.Pc;
 
     public PlayerEntity(
