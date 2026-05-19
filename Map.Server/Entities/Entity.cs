@@ -35,6 +35,13 @@ public abstract class Entity
     public Combat.AttackState? Attack { get; internal set; }
 
     /// <summary>
+    /// Owner / master EntityId for summons (pets, homunculi, mercenaries,
+    /// elementals, slave mobs). Null for free-roaming mobs and PCs.
+    /// Read by <see cref="Mob.ISummonAiService"/>; set at summon spawn.
+    /// </summary>
+    public EntityId? MasterId { get; internal set; }
+
+    /// <summary>
     /// Per-cell step delay in milliseconds (cardinal). Diagonal cells cost
     /// <c>Speed * 14 / 10</c>. PlayerEntity default = 150 (rAthena pc->speed
     /// baseline); mobs override from mob_db.MoveSpeed in MS2.

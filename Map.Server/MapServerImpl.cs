@@ -34,6 +34,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly IItemDropService _itemDrops;
     private readonly Combat.IAttackService _attackService;
     private readonly Mob.IMobAiService _mobAi;
+    private readonly Mob.ISummonAiService _summonAi;
     private readonly Status.IStatusChangeService _scService;
     private readonly Skills.ISkillCastService _skillCast;
     private readonly Skills.ISkillUnitService _skillUnits;
@@ -69,6 +70,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         IItemDropService itemDrops,
         Combat.IAttackService attackService,
         Mob.IMobAiService mobAi,
+        Mob.ISummonAiService summonAi,
         Status.IStatusChangeService scService,
         Skills.ISkillCastService skillCast,
         Skills.ISkillUnitService skillUnits,
@@ -93,6 +95,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _itemDrops = itemDrops;
         _attackService = attackService;
         _mobAi = mobAi;
+        _summonAi = summonAi;
         _scService = scService;
         _skillCast = skillCast;
         _skillUnits = skillUnits;
@@ -289,6 +292,10 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         // Mob hard AI — aggressive target scan, target validity check.
         // Must run before AttackService so newly-engaged mobs swing this tick.
         _mobAi.Tick(nowTick);
+        // Summon AI — pets / homunc / mercs / slaves follow their master
+        // and assist their target. Runs after master AI so it sees the
+        // freshly-set Attack state.
+        _summonAi.Tick(nowTick);
         // Continuous-attack swings (rAthena unit_attack_timer).
         _attackService.Tick(nowTick);
         // Skill cast-timer resolution (rAthena skill_castend_id).
