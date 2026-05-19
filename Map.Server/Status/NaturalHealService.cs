@@ -53,7 +53,7 @@ public sealed class NaturalHealService : INaturalHealService
             }
 
             // Sitting bonus only applies to PCs; mobs use the base cadence.
-            var sitting = false; // pc_setsit not ported yet — placeholder.
+            var sitting = entity is PlayerEntity pcSit && pcSit.IsSitting;
             var walking = entity.Walk != null;
             var s = entity.Stats;
 

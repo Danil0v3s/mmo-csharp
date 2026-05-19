@@ -70,6 +70,9 @@ public sealed class PlayerEntity : Entity
     /// <summary>Guild id, 0 = none. Sourced from char-server at session enter.</summary>
     public int GuildId { get; set; }
 
+    /// <summary>True if the PC has invoked pc_setsit. Drives sitting regen bonus + action gates.</summary>
+    public bool IsSitting { get; set; }
+
     public override EntityType Type => EntityType.Pc;
 
     public PlayerEntity(
