@@ -107,6 +107,8 @@ public enum PacketHeader : short
     // dhxj_trace.log packet-type histogram.
     CZ_REQUEST_MOVE = 0x035f,              // shuffle (was 0x0085)
     CZ_REQUEST_ACTION = 0x0437,            // shuffle (was 0x0089)
+    CZ_USE_SKILL_TOID = 0x0438,            // CZ_USE_SKILL2 — <lv>.W <id>.W <target>.L (10B). rAthena shuffle of 0x0113.
+    CZ_USE_SKILL_TOGROUND = 0x0366,        // CZ_USE_SKILL_TOGROUND2 — <lv>.W <id>.W <x>.W <y>.W (10B). Shuffle of 0x0116.
     CZ_REQUEST_CHAT = 0x00f3,              // shuffle (was 0x008c)
     CZ_REQ_QUIT = 0x018a,                  // clif_parse_QuitGame, 4B (reserved). ALT+E.
     ZC_DISCONNECT_ACK = 0x018b,            // clif_disconnect_ack, 4B (result). 0=ok-to-quit, 1=refused.

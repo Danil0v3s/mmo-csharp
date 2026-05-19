@@ -180,6 +180,12 @@ builder.Services.AddSingleton<Map.Server.Status.IExpService, Map.Server.Status.E
 builder.Services.AddSingleton<Map.Server.Status.StatusEffectRegistry>();
 builder.Services.AddSingleton<Map.Server.Status.IStatusChangeService, Map.Server.Status.StatusChangeService>();
 
+// Skill system (skill.cpp:skill_use_id + skill_castend_*). First slice:
+// hand-built starter catalog (Bash / Heal / Increase AGI / Blessing /
+// Fire Bolt / Cold Bolt). DB-backed skill_db loader lands later.
+builder.Services.AddSingleton<Map.Server.Skills.ISkillDb, Map.Server.Skills.SkillDb>();
+builder.Services.AddSingleton<Map.Server.Skills.ISkillCastService, Map.Server.Skills.SkillCastService>();
+
 // GM commands. Each IGmCommand is registered as a singleton; the registry
 // indexes them by Name at construction. ChatMessageHandler discovers them
 // via DI.
