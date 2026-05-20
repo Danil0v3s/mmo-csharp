@@ -3,9 +3,31 @@
 Companion to [CODE-COMPLETENESS-ROADMAP.md](CODE-COMPLETENESS-ROADMAP.md).
 
 **Status:** every rAthena map .cpp public function has a canonical C#
-entry point. Most are working; ~56 inline "data-pending" markers
-point at the remaining shallow spots. This document orders the
-close-the-gap work so it can be picked up systematically.
+entry point. The original survey counted **~56 data-pending markers**;
+post-Tier-1 sweep we're down to **23 markers across 20 files**. The
+remainder cluster around skill-specific behavior + per-shop registry
+exposure (no longer a data-availability problem; the data is in SQL
+or JSON, the consumer code just hasn't been wired through).
+
+## Tier scoreboard (re-evaluated 2026-05-20)
+
+| Tier | Theme | Status | Notes |
+|---|---|---|---|
+| T1 | Data loaders → SQL + JSON | ✅ **DONE** | 52 `_db` SQL-backed, 19 conf-JSON with schemas, IBattleConfigService overlays at boot |
+| T2.1 | Equip-bonus aggregator | ✅ **DONE** | `Map.Server/Inventory/EquipBonusAggregator.cs` — exists from PC-S4 wave |
+| T2.2 | Card modifier port | 🟡 **unblocked** | `BattleCardService.CalcCardFix` still pass-through; T2.1 done + item_db `script` column populated means cards can now flow |
+| T2.3 | Per-skill behavior | ❌ pending | 5 generic resolvers; per-skill plugins (Bash splash, Magnum Break, Storm Gust, …) untouched |
+| T2.4 | SC engine completion | 🟡 25 / ~250 SCs | `StatusType.cs` has the starter set; need to extend enum + register per-SC `IStatusEffect` |
+| T3 | Wire packets | 🟡 113 emitters exist | Per-handler audit needed; the surface is bigger than initially scoped |
+| T4 | IPC + persistence | ❌ pending | 73 `IIntifService` stubs — biggest single block of behavior gap |
+| T5 | Per-file deep audits | ❌ pending | The pc/battle/skill style tables — 38 files left |
+| T6 | Endgame content | ❌ pending | WoE, instances, BG queues, pet evolution, vending autotrade |
+
+**Where the gap is now**:
+- ~70 % of the original gap (56 → 23 data-pending markers + the big
+  SC table + all the YAML data) collapsed when Tier 1 landed.
+- The remaining ~30 % is **per-skill / per-item behavior code** — not
+  data, not infrastructure. Mostly Tier 2.3 / 2.4 / 3 / 4 work.
 
 ## Principle
 
@@ -223,36 +245,36 @@ Every `_db` consumer reads from SQL; YAML is only touched by
 With the data in place, the combat math closes. These tiers flip
 "works but ignores most modifiers" into "rAthena parity damage".
 
-### T2.1 — Equip-bonus aggregator
+### T2.1 — Equip-bonus aggregator ✅ DONE
 
-`PlayerEntity.Equip*` already lists equipment; we need a per-PC
-aggregator that walks equipment + reads each item's
-`bonus`/`bonus2`/`bonus3` script + accumulates the runtime numbers
-(card resist by race, atk vs size, drain hp, varcastrate,
-fixcastrate, addvarcast, addfixcast, skillcastrate, skillvarcast,
-skillfixcast, autospell, addrace, addclass, …).
+Shipped earlier (PC-S4 wave) at
+[Map.Server/Inventory/EquipBonusAggregator.cs](/Map.Server/Inventory/EquipBonusAggregator.cs).
+Walks equipment + reads each item's `bonus`/`bonus2`/`bonus3`
+script + accumulates the runtime numbers. Re-runs on equip /
+unequip / break / strip.
 
-- Surface as `IEquipBonusAggregator.Get(pc)` returning a
-  `EquipBonusBundle` record.
-- Re-runs on every equip / unequip / break / strip.
-- **Acceptance:** Equipping a Hunter Bow + a Hydra-carded Bow shows
-  +20 % damage vs Demi-Human in `BattleCalculator.CalcWeaponAttack`
-  test.
-- **Dependents unblocked:** `IBattleCardService` real (currently
-  pass-through), `IBattleEffectsService.Drain` real,
-  `IBattleReflectService` real, cast time bonuses in
-  `SkillCastTimingService`.
+### T2.2 — Card modifier port  🟡 unblocked
 
-### T2.2 — Card modifier port
+`battle_calc_cardfix` (battle.cpp:711) — the race/size/element/
+class accumulator. Currently
+[BattleCardService.CalcCardFix](/Map.Server/Combat/BattleCardService.cs)
+returns input damage unchanged with a "data-pending on
+EquipBonusBundle" comment.
 
-Port `battle_calc_cardfix` (battle.cpp:711) — the SC race/size/
-element/class accumulator. Currently `BattleCardService.CalcCardFix`
-returns input damage unchanged.
+**Now unblocked:** T2.1 is done, item_db's `script` column is
+populated for the full ~28k catalog from the new SQL seed. The
+remaining work is just consuming `EquipBonusBundle`:
 
-- Reads `EquipBonusBundle` indexed by race/size/element/class.
-- Honors NK flags (`SkillNk.NoCardFix` skip).
+- Add indexed bonuses to `EquipBonusBundle`:
+  `AddRace[]`, `AddSize[]`, `AddEle[]`, `AddClass[]`,
+  `SubRace[]`, `SubSize[]`, `SubEle[]`, `SubClass[]`,
+  `WeaponAtk[]` (per weapon type), `MagicAtk[]` (per element).
+- Wire `CalcCardFix` to read the bundle indexed by
+  `target.Stats.Race` / `Size` / `DefenseElement` / `Class`.
+- Honor `SkillNk.NoCardFix` skip flag.
 - **Acceptance:** Damage diff against rAthena replay reference
-  within ±2 % for 10 sample skill casts.
+  within ±2 % for 10 sample skill casts (Bash, Fire Bolt, Magnus,
+  Sonic Blow, Storm Gust).
 
 ### T2.3 — Skill resolver per-skill behavior
 
@@ -275,20 +297,50 @@ Sonic Blow chain, Storm Gust freeze, …) live in
 
 ### T2.4 — SC engine completion
 
-Wire T1.3's SC table into the cast pipeline. Plugin point:
-`StatusChangeService.Apply(SC_TYPE, val1..val4, duration)`.
+`StatusType.cs` has **25 of ~250** rAthena SCs (the starter set:
+Blessing, IncreaseAgi, DecreaseAgi, Poison, HealOverTime, …).
+The `status_yml` SQL table now ships 1,005 rAthena SC display
+rows (death penalty / dispel resist / icon mapping); the gap is
+the **per-SC behavior code** — not data.
 
-- Per-SC `IStatusEffect` modules (start, tick, end).
-- Cast-time / delay scaling reads SC table
-  (`SkillCastTimingService.CastFix` already calls SC overlay —
-  empty today; honor `SC_SUFFRAGIUM`, `SC_MEMORIZE`, `SC_SLOWCAST`,
-  `SC_PARALYSIS`, `SC_IZAYOI`).
+- Extend `StatusType` enum with every rAthena `SC_*` (~225 more).
+  Generate the enum from `status_yml` rows + the `efst_list.yml`
+  display table (both now SQL-backed).
+- Port `status_change_start` / `status_change_end` per-SC code
+  from `rathena/src/map/status.cpp:9000–13000` into per-SC
+  `IStatusEffect` modules registered with
+  `IStatusEffectRegistry`. ~30 SCs need real per-tick behavior
+  (Poison / Bleeding / Burning / ManaPower / Endure / Maximize);
+  the rest are simple {duration, stat delta, end-effect}.
+- Wire `SkillCastTimingService.CastFixSc` (currently empty
+  passthrough) to honor `SC_SUFFRAGIUM`, `SC_MEMORIZE`,
+  `SC_SLOWCAST`, `SC_PARALYSIS`, `SC_IZAYOI`.
 - **Acceptance:** Suffragium halves next cast; Slowcast doubles
-  cast; Endure refreshes on hit; Freeze drops movement.
+  cast; Endure refreshes on hit; Freeze drops movement; client
+  buff icons render correctly (depends on T3.2).
+
+### T2.5 — Per-skill behavior plugins (was T2.3, renumbered)
+
+Today's resolvers (Weapon / Magic / Misc / Heal / Status) dispatch
+by `SkillDamageKind` only. The per-skill quirks (Bowling Bash extra
+hits, Acid Bomb % damage, Magnum Break splash + fire-cloak SC,
+Sonic Blow chain, Storm Gust freeze, …) live in
+`skill_castend_damage_id` switch cases — currently absent.
+
+- Port the per-skill switch as `ISkillBehavior` plugins, one per
+  skill (or per family).
+- New `SkillBehaviorRegistry` keyed by skill id; resolver consults
+  it before falling back to the generic DamageKind dispatch.
+- Land ~20 skills per pass starting with the most-used (Bash,
+  Magnum, Bowling Bash, Sonic Blow, Acid Bomb, Storm Gust,
+  Heaven's Drive, Magnus, Holy Light, Pneuma, Safety Wall,
+  Fire Bolt chain, Bolt skills).
+- **Acceptance:** Skill replay diff ≤ ±5 %, knockback applied,
+  status proc triggered (after T2.4 lands).
 
 **Tier 2 milestone:** Combat damage matches rAthena replay to within
-5 % on the test fixture; all 56 data-pending markers in `Combat/` +
-`Skills/` resolve.
+5 % on the test fixture; the remaining `data-pending` markers in
+`Combat/` + `Skills/` clear once T2.2 + T2.4 + T2.5 land.
 
 ---
 
@@ -297,6 +349,21 @@ Wire T1.3's SC table into the cast pipeline. Plugin point:
 Combat correctness without packets is invisible to the client. Port
 the outbound `clif_*` emitters next so the player can *see* the
 work from Tiers 1–2.
+
+**Current state:** `Core.Server/Packets/Out/` already ships
+**113 emitter classes**. The visible-gameplay loop (move, attack,
+chat, NPC dialog, shop, inventory equip/unequip, trade, storage)
+is already wired end-to-end (proven by the live DHXJ client tests
+documented in `map/replay-baseline.md`). The remaining Tier 3 work
+is the **skill-side + status-broadcast surface** specifically — the
+list below is what's missing, not what's pending entirely.
+
+### T3.0 — Per-packet audit (do this first)
+
+Before adding more emitters, audit the 113 existing classes against
+`rathena/src/map/clif.cpp`'s ~780 `clif_*` outputs. Output: a
+`map/clif-parity.md` per-packet table (✅/⚠️/❌) so subsequent
+T3.* waves only build what's missing.
 
 ### T3.1 — Skill cast + result packets
 
@@ -461,6 +528,54 @@ parity bar.
 
 ---
 
+## Next concrete tasks (2026-05-20, post-Tier-1)
+
+In recommended pickup order — each is one PR-sized chunk:
+
+1. **T2.2 — Card modifier port.** ~1–2 days. Extend
+   `EquipBonusBundle` with indexed arrays + wire
+   `BattleCardService.CalcCardFix` to read them. Acceptance test:
+   Hydra-card weapon shows +20 % vs Demi-Human. **Highest gameplay
+   impact per LOC** — every PvE hit immediately reflects equipment.
+
+2. **T2.4 — SC enum expansion + per-SC modules.** ~3–5 days. Two
+   independent sub-tasks runnable in parallel:
+   - **T2.4a**: Generate the full `StatusType` enum (~225 new
+     entries) from the `status_yml` SQL table + `efst_list.yml`.
+     One-shot script change.
+   - **T2.4b**: Land ~30 of the most-used `IStatusEffect` modules
+     (Endure, Maximize, MagnumBreak, Steel Body, Concentration,
+     Reflect Shield, Auto Guard, Poison, Bleeding, Burning,
+     Curse, Sleep, Stun, Stone, Freeze, Suffragium, Memorize,
+     Slowcast, Paralysis, Izayoi, Bragi, AssumptioRule, etc.).
+
+3. **DB-7 — Wave 3 `_db` ports** (any remaining tables I missed
+   in Wave 2 — produce_db.txt, mob_chat_db, stylist, const, etc.).
+   ~half a day. Each is < 100 LOC by the established pattern.
+
+4. **DB-8 — Per-loader wiring to consume payload_json.** ~1 day.
+   The Wave 2 catalogs (item_combos, item_packages, status_yml,
+   refine, enchantgrade, …) are in SQL but their runtime services
+   still use empty stubs — wire each to deserialize the
+   `payload_json` column on Reload.
+
+5. **T3.0 — clif.cpp packet audit.** ~half a day. Run
+   `/rathena-parity clif.cpp` to produce a per-packet status table
+   under `map/clif-parity.md`. Outputs the real Tier 3 backlog,
+   replacing the optimistic T3.1-3.4 list.
+
+6. **T2.5 — Per-skill behavior plugins, first wave.** ~3–5 days.
+   `ISkillBehavior` + 15–20 concrete behaviors (Bash, Magnum,
+   Bowling Bash, Sonic Blow, Acid Bomb, Storm Gust, Heaven's
+   Drive, Magnus, Holy Light, Pneuma, Safety Wall, Fire / Cold /
+   Lightning Bolt). Depends on T2.4 for SC procs.
+
+After these six, Tier 4 (IIntifService stubs → real char-server
+IPC) becomes the dominant gap. Tier 5 / 6 remain as long-tail
+backlogs.
+
+---
+
 ## How to use this doc
 
 When picking up the next task:
@@ -569,3 +684,28 @@ hot path.
 - Every gameplay knob in `battle_*.conf` flows .conf → JSON; the
   JSON gets editor autocomplete via the generated schemas.
 - Tier 2 (combat correctness) is the next active tier.
+
+### 2026-05-20 — re-evaluation after Tier 1 land + boot test
+- Verified end-to-end boot: `dotnet build` → `dotnet ef database
+  update` → `dotnet run --project Map.Server` succeeds. Map server
+  loaded `MobDb 2,555` + `ItemCatalog 28,532` from SQL, accepted
+  TCP on 5191, gRPC on 6003, 60 FPS game loop. **The server
+  compiles and boots cleanly post-Tier-1.**
+- Data-pending markers dropped **56 → 23** across 20 files. The
+  remaining clusters are all "per-skill / per-shop / per-storage
+  consumer wiring" (Tier 2/3 work), not data-availability gaps.
+- Tier scoreboard updated at top of doc with re-evaluated status
+  per tier.
+- T2.1 (equip-bonus aggregator) flagged ✅ done — was shipped
+  earlier in the PC-S4 wave at
+  `Map.Server/Inventory/EquipBonusAggregator.cs`. Original
+  roadmap missed that prior work; corrected here.
+- T2.2 (card modifier port) reclassified 🟡 **unblocked** — the
+  blocker (EquipBonusBundle + item_db.script) is resolved.
+- T2.4 (SC engine) refined: data side is done (status_yml in SQL),
+  remaining work is enum expansion + per-SC IStatusEffect modules.
+- T3 reframed: 113 outbound packets already ship; T3.0 audit
+  pass added to scope the real remaining surface.
+- T2.3 renumbered to T2.5 since it depends on T2.4 SC table.
+- New "Next concrete tasks" section gives a 6-step pickup order
+  with PR-sized chunks and effort estimates.
