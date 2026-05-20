@@ -46,6 +46,17 @@ public class DatabaseSeeder
             await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_db_etc.sql", ct);
             await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_db_usable.sql", ct);
             await ExecuteSqlScriptAsync("Seeds/Scripts/seed_mob_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_mob_skill_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_skill_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_abra_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_magicmushroom_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_spellbook_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_quest_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_pet_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_achievement_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_homunculus_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_mercenary_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_instance_db.sql", ct);
 
             await _context.Database.ExecuteSqlRawAsync("COMMIT", ct);
 

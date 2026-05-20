@@ -55,7 +55,19 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMarketRepository, MarketRepository>();
         services.AddScoped<IItemRepository, ItemRepository>();
         services.AddScoped<IMobRepository, MobRepository>();
+        services.AddScoped<IMobSkillDbRepository, MobSkillDbRepository>();
         services.AddScoped<ISkillDbRepository, SkillDbRepository>();
+
+        // Static catalogs seeded by Tools.RathenaImporter from rAthena YAML.
+        services.AddScoped<IAbraDbRepository, AbraDbRepository>();
+        services.AddScoped<IMagicMushroomDbRepository, MagicMushroomDbRepository>();
+        services.AddScoped<ISpellbookDbRepository, SpellbookDbRepository>();
+        services.AddScoped<IQuestDbRepository, QuestDbRepository>();
+        services.AddScoped<IPetDbRepository, PetDbRepository>();
+        services.AddScoped<IAchievementDbRepository, AchievementDbRepository>();
+        services.AddScoped<IHomunculusDbRepository, HomunculusDbRepository>();
+        services.AddScoped<IMercenaryDbRepository, MercenaryDbRepository>();
+        services.AddScoped<IInstanceDbRepository, InstanceDbRepository>();
 
         return services;
     }

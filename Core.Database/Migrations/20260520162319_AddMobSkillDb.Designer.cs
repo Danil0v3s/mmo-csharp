@@ -4,6 +4,7 @@ using Core.Database.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Core.Database.Migrations
 {
     [DbContext(typeof(GameDbContext))]
-    partial class GameDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260520162319_AddMobSkillDb")]
+    partial class AddMobSkillDb
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,18 +24,6 @@ namespace Core.Database.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
-
-            modelBuilder.Entity("Core.Database.Entities.AbraDbEntity", b =>
-                {
-                    b.Property<string>("SkillName")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("skill_name");
-
-                    b.HasKey("SkillName");
-
-                    b.ToTable("abra_db", (string)null);
-                });
 
             modelBuilder.Entity("Core.Database.Entities.AccRegNumEntity", b =>
                 {
@@ -120,47 +111,6 @@ namespace Core.Database.Migrations
                     b.HasKey("AccountId");
 
                     b.ToTable("account_storage_payload", (string)null);
-                });
-
-            modelBuilder.Entity("Core.Database.Entities.AchievementDbEntity", b =>
-                {
-                    b.Property<uint>("AchievementId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int unsigned")
-                        .HasColumnName("achievement_id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<uint>("AchievementId"));
-
-                    b.Property<string>("Dependents")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("dependents");
-
-                    b.Property<string>("GroupName")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("group_name");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("name");
-
-                    b.Property<int>("Score")
-                        .HasColumnType("int")
-                        .HasColumnName("score");
-
-                    b.Property<string>("Targets")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("targets");
-
-                    b.HasKey("AchievementId");
-
-                    b.ToTable("achievement_db", (string)null);
                 });
 
             modelBuilder.Entity("Core.Database.Entities.AchievementEntity", b =>
@@ -2893,61 +2843,6 @@ namespace Core.Database.Migrations
                     b.ToTable("guild_storage_payload", (string)null);
                 });
 
-            modelBuilder.Entity("Core.Database.Entities.HomunculusDbEntity", b =>
-                {
-                    b.Property<string>("ClassAegis")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("class_aegis");
-
-                    b.Property<int?>("AttackRange")
-                        .HasColumnType("int")
-                        .HasColumnName("attack_range");
-
-                    b.Property<int?>("EleLevel")
-                        .HasColumnType("int")
-                        .HasColumnName("ele_level");
-
-                    b.Property<string>("Element")
-                        .HasMaxLength(24)
-                        .HasColumnType("varchar(24)")
-                        .HasColumnName("element");
-
-                    b.Property<string>("EvolutionClass")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("evolution_class");
-
-                    b.Property<string>("FoodItem")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("food_item");
-
-                    b.Property<int?>("HungryDelay")
-                        .HasColumnType("int")
-                        .HasColumnName("hungry_delay");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Race")
-                        .HasMaxLength(24)
-                        .HasColumnType("varchar(24)")
-                        .HasColumnName("race");
-
-                    b.Property<string>("Size")
-                        .HasMaxLength(24)
-                        .HasColumnType("varchar(24)")
-                        .HasColumnName("size");
-
-                    b.HasKey("ClassAegis");
-
-                    b.ToTable("homunculus_db", (string)null);
-                });
-
             modelBuilder.Entity("Core.Database.Entities.HomunculusEntity", b =>
                 {
                     b.Property<int>("HomunId")
@@ -3136,51 +3031,6 @@ namespace Core.Database.Migrations
                     b.HasIndex("CharacterCharId");
 
                     b.ToTable("hotkey", (string)null);
-                });
-
-            modelBuilder.Entity("Core.Database.Entities.InstanceDbEntity", b =>
-                {
-                    b.Property<uint>("InstanceId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int unsigned")
-                        .HasColumnName("instance_id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<uint>("InstanceId"));
-
-                    b.Property<string>("AdditionalMaps")
-                        .HasColumnType("text")
-                        .HasColumnName("additional_maps");
-
-                    b.Property<string>("EnterMap")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("enter_map");
-
-                    b.Property<int?>("EnterX")
-                        .HasColumnType("int")
-                        .HasColumnName("enter_x");
-
-                    b.Property<int?>("EnterY")
-                        .HasColumnType("int")
-                        .HasColumnName("enter_y");
-
-                    b.Property<int>("IdleTimeout")
-                        .HasColumnType("int")
-                        .HasColumnName("idle_timeout");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("name");
-
-                    b.Property<int>("TimeLimit")
-                        .HasColumnType("int")
-                        .HasColumnName("time_limit");
-
-                    b.HasKey("InstanceId");
-
-                    b.ToTable("instance_db", (string)null);
                 });
 
             modelBuilder.Entity("Core.Database.Entities.InterLogEntity", b =>
@@ -4099,18 +3949,6 @@ namespace Core.Database.Migrations
                     b.ToTable("loginlog", (string)null);
                 });
 
-            modelBuilder.Entity("Core.Database.Entities.MagicMushroomDbEntity", b =>
-                {
-                    b.Property<string>("SkillName")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("skill_name");
-
-                    b.HasKey("SkillName");
-
-                    b.ToTable("magicmushroom_db", (string)null);
-                });
-
             modelBuilder.Entity("Core.Database.Entities.MailAttachmentEntity", b =>
                 {
                     b.Property<long>("Id")
@@ -4479,129 +4317,6 @@ namespace Core.Database.Migrations
                     b.HasIndex("CharacterCharId");
 
                     b.ToTable("memo", (string)null);
-                });
-
-            modelBuilder.Entity("Core.Database.Entities.MercenaryDbEntity", b =>
-                {
-                    b.Property<uint>("MercId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int unsigned")
-                        .HasColumnName("merc_id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<uint>("MercId"));
-
-                    b.Property<string>("AegisName")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("aegis_name");
-
-                    b.Property<int?>("Agi")
-                        .HasColumnType("int")
-                        .HasColumnName("agi");
-
-                    b.Property<int?>("Attack")
-                        .HasColumnType("int")
-                        .HasColumnName("attack");
-
-                    b.Property<int?>("Attack2")
-                        .HasColumnType("int")
-                        .HasColumnName("attack2");
-
-                    b.Property<int?>("AttackDelay")
-                        .HasColumnType("int")
-                        .HasColumnName("attack_delay");
-
-                    b.Property<int?>("AttackMotion")
-                        .HasColumnType("int")
-                        .HasColumnName("attack_motion");
-
-                    b.Property<int?>("AttackRange")
-                        .HasColumnType("int")
-                        .HasColumnName("attack_range");
-
-                    b.Property<int?>("ChaseRange")
-                        .HasColumnType("int")
-                        .HasColumnName("chase_range");
-
-                    b.Property<int?>("DamageMotion")
-                        .HasColumnType("int")
-                        .HasColumnName("damage_motion");
-
-                    b.Property<int?>("Defense")
-                        .HasColumnType("int")
-                        .HasColumnName("defense");
-
-                    b.Property<int?>("Dex")
-                        .HasColumnType("int")
-                        .HasColumnName("dex");
-
-                    b.Property<int?>("EleLevel")
-                        .HasColumnType("int")
-                        .HasColumnName("ele_level");
-
-                    b.Property<string>("Element")
-                        .HasMaxLength(24)
-                        .HasColumnType("varchar(24)")
-                        .HasColumnName("element");
-
-                    b.Property<int?>("Hp")
-                        .HasColumnType("int")
-                        .HasColumnName("hp");
-
-                    b.Property<int?>("Intel")
-                        .HasColumnType("int")
-                        .HasColumnName("intel");
-
-                    b.Property<int?>("Level")
-                        .HasColumnType("int")
-                        .HasColumnName("level");
-
-                    b.Property<int?>("Luk")
-                        .HasColumnType("int")
-                        .HasColumnName("luk");
-
-                    b.Property<int?>("MagicDefense")
-                        .HasColumnType("int")
-                        .HasColumnName("magic_defense");
-
-                    b.Property<string>("Name")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Race")
-                        .HasMaxLength(24)
-                        .HasColumnType("varchar(24)")
-                        .HasColumnName("race");
-
-                    b.Property<string>("Size")
-                        .HasMaxLength(24)
-                        .HasColumnType("varchar(24)")
-                        .HasColumnName("size");
-
-                    b.Property<int?>("SkillRange")
-                        .HasColumnType("int")
-                        .HasColumnName("skill_range");
-
-                    b.Property<int?>("Sp")
-                        .HasColumnType("int")
-                        .HasColumnName("sp");
-
-                    b.Property<int?>("Str")
-                        .HasColumnType("int")
-                        .HasColumnName("str");
-
-                    b.Property<int?>("Vit")
-                        .HasColumnType("int")
-                        .HasColumnName("vit");
-
-                    b.Property<int?>("WalkSpeed")
-                        .HasColumnType("int")
-                        .HasColumnName("walk_speed");
-
-                    b.HasKey("MercId");
-
-                    b.ToTable("mercenary_db", (string)null);
                 });
 
             modelBuilder.Entity("Core.Database.Entities.MercenaryEntity", b =>
@@ -5781,98 +5496,6 @@ namespace Core.Database.Migrations
                     b.ToTable("party", (string)null);
                 });
 
-            modelBuilder.Entity("Core.Database.Entities.PetDbEntity", b =>
-                {
-                    b.Property<string>("MobAegis")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("mob_aegis");
-
-                    b.Property<bool?>("AllowAutoFeed")
-                        .HasColumnType("tinyint(1)")
-                        .HasColumnName("allow_auto_feed");
-
-                    b.Property<int?>("AttackRate")
-                        .HasColumnType("int")
-                        .HasColumnName("attack_rate");
-
-                    b.Property<int?>("CaptureRate")
-                        .HasColumnType("int")
-                        .HasColumnName("capture_rate");
-
-                    b.Property<int?>("ChangeTargetRate")
-                        .HasColumnType("int")
-                        .HasColumnName("change_target_rate");
-
-                    b.Property<string>("EggItem")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("egg_item");
-
-                    b.Property<string>("EquipItem")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("equip_item");
-
-                    b.Property<string>("FoodItem")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("food_item");
-
-                    b.Property<int?>("Fullness")
-                        .HasColumnType("int")
-                        .HasColumnName("fullness");
-
-                    b.Property<int?>("HungerDelay")
-                        .HasColumnType("int")
-                        .HasColumnName("hunger_delay");
-
-                    b.Property<int?>("IntimacyFed")
-                        .HasColumnType("int")
-                        .HasColumnName("intimacy_fed");
-
-                    b.Property<int?>("IntimacyHungry")
-                        .HasColumnType("int")
-                        .HasColumnName("intimacy_hungry");
-
-                    b.Property<int?>("IntimacyOverfed")
-                        .HasColumnType("int")
-                        .HasColumnName("intimacy_overfed");
-
-                    b.Property<int?>("IntimacyOwnerDie")
-                        .HasColumnType("int")
-                        .HasColumnName("intimacy_owner_die");
-
-                    b.Property<int?>("IntimacyStart")
-                        .HasColumnType("int")
-                        .HasColumnName("intimacy_start");
-
-                    b.Property<int?>("RetaliateRate")
-                        .HasColumnType("int")
-                        .HasColumnName("retaliate_rate");
-
-                    b.Property<string>("Script")
-                        .HasColumnType("text")
-                        .HasColumnName("script");
-
-                    b.Property<bool?>("SpecialPerformance")
-                        .HasColumnType("tinyint(1)")
-                        .HasColumnName("special_performance");
-
-                    b.Property<string>("SupportScript")
-                        .HasColumnType("text")
-                        .HasColumnName("support_script");
-
-                    b.Property<string>("TameItem")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("tame_item");
-
-                    b.HasKey("MobAegis");
-
-                    b.ToTable("pet_db", (string)null);
-                });
-
             modelBuilder.Entity("Core.Database.Entities.PetEntity", b =>
                 {
                     b.Property<int>("PetId")
@@ -6151,59 +5774,6 @@ namespace Core.Database.Migrations
                         .HasDatabaseName("type");
 
                     b.ToTable("picklog", (string)null);
-                });
-
-            modelBuilder.Entity("Core.Database.Entities.QuestDbEntity", b =>
-                {
-                    b.Property<uint>("QuestId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int unsigned")
-                        .HasColumnName("quest_id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<uint>("QuestId"));
-
-                    b.Property<int>("Count1")
-                        .HasColumnType("int")
-                        .HasColumnName("count1");
-
-                    b.Property<int>("Count2")
-                        .HasColumnType("int")
-                        .HasColumnName("count2");
-
-                    b.Property<int>("Count3")
-                        .HasColumnType("int")
-                        .HasColumnName("count3");
-
-                    b.Property<string>("Mob1")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("mob1");
-
-                    b.Property<string>("Mob2")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("mob2");
-
-                    b.Property<string>("Mob3")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("mob3");
-
-                    b.Property<string>("TimeLimit")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("time_limit");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("title");
-
-                    b.HasKey("QuestId");
-
-                    b.ToTable("quest_db", (string)null);
                 });
 
             modelBuilder.Entity("Core.Database.Entities.QuestEntity", b =>
@@ -6543,28 +6113,6 @@ namespace Core.Database.Migrations
                     b.HasKey("HomunId", "Id");
 
                     b.ToTable("skill_homunculus", (string)null);
-                });
-
-            modelBuilder.Entity("Core.Database.Entities.SpellbookDbEntity", b =>
-                {
-                    b.Property<string>("BookNameAegis")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("book_name_aegis");
-
-                    b.Property<int>("PreservePoints")
-                        .HasColumnType("int")
-                        .HasColumnName("preserve_points");
-
-                    b.Property<string>("SkillName")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("skill_name");
-
-                    b.HasKey("BookNameAegis");
-
-                    b.ToTable("spellbook_db", (string)null);
                 });
 
             modelBuilder.Entity("Core.Database.Entities.StorageEntity", b =>

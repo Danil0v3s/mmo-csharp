@@ -116,11 +116,29 @@ public class GameDbContext : DbContext
     public DbSet<MobEntity> MobDb => Set<MobEntity>();
 
     /// <summary>
+    /// rAthena <c>mob_skill_db</c> catalog — one row per (mob, skill)
+    /// AI rule. Seeded from rAthena's pre-generated
+    /// <c>sql-files/mob_skill_db_re.sql</c> (11,634 rows).
+    /// </summary>
+    public DbSet<MobSkillDbEntity> MobSkillDb => Set<MobSkillDbEntity>();
+
+    /// <summary>
     /// Static skill catalog (rAthena <c>skill_db</c> table — equivalent
     /// of <c>db/re/skill_db.yml</c> under <c>use_sql_db: yes</c>). Empty
     /// today; consumed by <c>Map.Server.Skills.SkillDb</c> when seeded.
     /// </summary>
     public DbSet<SkillDbEntity> SkillDb => Set<SkillDbEntity>();
+
+    // ---- Static catalogs seeded by Tools.RathenaImporter from rAthena YAML.
+    public DbSet<AbraDbEntity> AbraDb => Set<AbraDbEntity>();
+    public DbSet<MagicMushroomDbEntity> MagicMushroomDb => Set<MagicMushroomDbEntity>();
+    public DbSet<SpellbookDbEntity> SpellbookDb => Set<SpellbookDbEntity>();
+    public DbSet<QuestDbEntity> QuestDb => Set<QuestDbEntity>();
+    public DbSet<PetDbEntity> PetDb => Set<PetDbEntity>();
+    public DbSet<AchievementDbEntity> AchievementDb => Set<AchievementDbEntity>();
+    public DbSet<HomunculusDbEntity> HomunculusDb => Set<HomunculusDbEntity>();
+    public DbSet<MercenaryDbEntity> MercenaryDb => Set<MercenaryDbEntity>();
+    public DbSet<InstanceDbEntity> InstanceDb => Set<InstanceDbEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
