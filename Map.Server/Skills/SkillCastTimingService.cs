@@ -1,5 +1,6 @@
 using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills;
 
@@ -13,17 +14,20 @@ namespace Map.Server.Skills;
 /// are documented as data-pending — they flow through when the
 /// equip-bonus aggregator surfaces them on
 /// <see cref="PlayerEntity"/>. The DEX/AGI / config-rate paths are
-/// real today.
+/// real today; T2.4b wires SC overlays (Suffragium / Memorize /
+/// Slowcast / Paralysis / Izayoi / Bragi) into <see cref="CastFixSc"/>.
 /// </summary>
 public sealed class SkillCastTimingService : ISkillCastTimingService
 {
     private readonly ISkillDb _db;
     private readonly IBattleConfigService _cfg;
+    private readonly IStatusChangeService? _sc;
 
-    public SkillCastTimingService(ISkillDb db, IBattleConfigService cfg)
+    public SkillCastTimingService(ISkillDb db, IBattleConfigService cfg, IStatusChangeService? sc = null)
     {
         _db = db;
         _cfg = cfg;
+        _sc = sc;
     }
 
     // ----- skill_castfix (pre-renewal) -------------------------------
@@ -55,14 +59,66 @@ public sealed class SkillCastTimingService : ISkillCastTimingService
     }
 
     // ----- skill_castfix_sc (pre-renewal SC overlay) -----------------
+    //
+    // rAthena reference: status.cpp:skill_castfix_sc + skill.cpp's
+    // explicit SC reads. Order of operations (rAthena renewal):
+    //   1) Slowcast / Paralysis push cast time *up*
+    //   2) Suffragium / Memorize / Bragi / Izayoi push it *down*
+    //   3) Suffragium + Memorize consume one charge per cast
+    // The 'flag' param mirrors rAthena's hidden bypass bits — bit 0
+    // skips Suffragium consumption (used by chained casts that share
+    // one Suffragium); we keep the contract but currently honor only
+    // bit 0 since no caller passes anything else.
     public int CastFixSc(Entity caster, int time, byte flag = 0)
     {
         if (time < 0) return 0;
         if (caster is MobEntity or NpcEntity) return time;
+        if (_sc == null) return Math.Max(0, time);
 
-        // SC overlay path — Suffragium, Memorize, Slowcast, Paralysis,
-        // Izayoi. Data-pending on the SC table; we keep the canonical
-        // entry point so callers don't have to inline the call.
+        // Slowcast: time × (100 + 10 * val1) / 100. Stackable with
+        // Paralysis since rAthena treats them as independent debuffs.
+        var slow = _sc.Get(caster, StatusType.Slowcast);
+        if (slow != null)
+            time = time * (100 + 10 * slow.Val1) / 100;
+
+        // Paralysis (Guillotine Cross). Val3 = extra cast %.
+        var paralysis = _sc.Get(caster, StatusType.Paralysis);
+        if (paralysis != null)
+            time = time * (100 + paralysis.Val3) / 100;
+
+        // Suffragium: time × (100 - 15 * val1) / 100. Auto-consumed
+        // unless flag bit 0 says otherwise.
+        var suffr = _sc.Get(caster, StatusType.Suffragium);
+        if (suffr != null)
+        {
+            time = time * (100 - 15 * suffr.Val1) / 100;
+            if ((flag & 1) == 0) _sc.End(caster, StatusType.Suffragium);
+        }
+
+        // Memorize: halves cast for the next val1 casts; decrement
+        // and end at zero.
+        var mem = _sc.Get(caster, StatusType.Memorize);
+        if (mem != null)
+        {
+            time /= 2;
+            if ((flag & 1) == 0)
+            {
+                mem.Val1--;
+                if (mem.Val1 <= 0) _sc.End(caster, StatusType.Memorize);
+            }
+        }
+
+        // Izayoi: halves variable cast (Kagerou / Oboro). Permanent
+        // for the SC's duration — no per-cast consumption.
+        if (_sc.Get(caster, StatusType.Izayoi) != null)
+            time /= 2;
+
+        // PoemBragi (Minstrel song). Val2 = combined rate
+        // (6*lv + 3*caster_int), shaves cast and after-skill delay.
+        var bragi = _sc.Get(caster, StatusType.Poembragi);
+        if (bragi != null && bragi.Val2 > 0)
+            time = time * Math.Max(0, 100 - bragi.Val2) / 100;
+
         return Math.Max(0, time);
     }
 
