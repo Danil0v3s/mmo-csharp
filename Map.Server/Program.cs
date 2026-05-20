@@ -216,6 +216,11 @@ builder.Services.AddSingleton<Map.Server.Combat.IBattleCardService, Map.Server.C
 builder.Services.AddSingleton<Map.Server.Combat.IBattleReflectService, Map.Server.Combat.BattleReflectService>();
 builder.Services.AddSingleton<Map.Server.Combat.IZoneDamageService, Map.Server.Combat.ZoneDamageService>();
 builder.Services.AddSingleton<Map.Server.Combat.IBattleTargetService, Map.Server.Combat.BattleTargetService>();
+builder.Services.AddSingleton<Map.Server.Combat.IDelayedDamageService, Map.Server.Combat.DelayedDamageService>();
+builder.Services.AddSingleton<Map.Server.Combat.IBattleEffectsService, Map.Server.Combat.BattleEffectsService>();
+builder.Services.AddSingleton<Map.Server.Combat.IBattleElementService, Map.Server.Combat.BattleElementService>();
+builder.Services.AddSingleton<Map.Server.Combat.IBattleConfigService, Map.Server.Combat.BattleConfigService>();
+builder.Services.AddSingleton<Map.Server.Combat.IBattleZoneGateService, Map.Server.Combat.BattleZoneGateService>();
 builder.Services.AddSingleton<IBattleCalculator>(sp =>
     new BattleCalculator(rng: null, cards: sp.GetRequiredService<Map.Server.Combat.IBattleCardService>()));
 builder.Services.AddSingleton<IDamageService, DamageService>();
