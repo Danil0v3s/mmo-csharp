@@ -17,7 +17,7 @@ or JSON, the consumer code just hasn't been wired through).
 | T2.1 | Equip-bonus aggregator | ✅ **DONE** | `Map.Server/Inventory/EquipBonusAggregator.cs` — exists from PC-S4 wave |
 | T2.2 | Card modifier port | ✅ **DONE** | `BattleCardService.CalcCardFix` reads `PlayerEntity.EquipBonuses`; `EquipBonusBundle` + `BonusScriptExtractor` ship; Hydra-card test exercises +20% vs Demi-Human |
 | T2.3 | Per-skill behavior | ❌ pending | 5 generic resolvers; per-skill plugins (Bash splash, Magnum Break, Storm Gust, …) untouched |
-| T2.4 | SC engine completion | 🟡 25 / ~250 SCs | `StatusType.cs` has the starter set; need to extend enum + register per-SC `IStatusEffect` |
+| T2.4 | SC engine completion | 🟡 enum full / behavior 5 of ~250 | T2.4a done: `StatusType.cs` mirrors all 1006 rAthena `SC_*` ids at lockstep values. T2.4b pending: per-SC `IStatusEffect` modules. |
 | T3 | Wire packets | 🟡 113 emitters exist | Per-handler audit needed; the surface is bigger than initially scoped |
 | T4 | IPC + persistence | ❌ pending | 73 `IIntifService` stubs — biggest single block of behavior gap |
 | T5 | Per-file deep audits | ❌ pending | The pc/battle/skill style tables — 38 files left |
@@ -309,15 +309,26 @@ Sonic Blow chain, Storm Gust freeze, …) live in
 
 ### T2.4 — SC engine completion
 
-`StatusType.cs` has **25 of ~250** rAthena SCs (the starter set:
-Blessing, IncreaseAgi, DecreaseAgi, Poison, HealOverTime, …).
-The `status_yml` SQL table now ships 1,005 rAthena SC display
-rows (death penalty / dispel resist / icon mapping); the gap is
-the **per-SC behavior code** — not data.
+The `status_yml` SQL table ships 1,005 rAthena SC display rows
+(death penalty / dispel resist / icon mapping); the gap was the
+**per-SC behavior code** — not data.
 
-- Extend `StatusType` enum with every rAthena `SC_*` (~225 more).
-  Generate the enum from `status_yml` rows + the `efst_list.yml`
-  display table (both now SQL-backed).
+#### T2.4a — Enum expansion ✅ DONE (2026-05-20)
+
+`StatusType.cs` now mirrors **all 1006 rAthena `SC_*` ids**
+1:1 with rAthena's `enum sc_type` (status.hpp:233). Values are
+lockstep so persistence (`SaveStatusChangeDataAsync` /
+`RequestStatusChangeDataAsync`) round-trips without remapping.
+Friendly C#-only names (`HealOverTime`) parked at id 2000
+outside the rAthena range; `Basilica` (was at the wrong slot)
+split into `Basilica = 116` (Priest skill) + `BasilicaCell`
+(cell-based variant).
+
+Generator at `/tmp/gen_statustype.py` reads `status.hpp` and
+emits the enum — re-runnable on rAthena content patches.
+
+#### T2.4b — Per-SC behavior modules (pending)
+
 - Port `status_change_start` / `status_change_end` per-SC code
   from `rathena/src/map/status.cpp:9000–13000` into per-SC
   `IStatusEffect` modules registered with
@@ -544,45 +555,49 @@ parity bar.
 
 In recommended pickup order — each is one PR-sized chunk:
 
-1. **T2.2 — Card modifier port.** ~1–2 days. Extend
-   `EquipBonusBundle` with indexed arrays + wire
-   `BattleCardService.CalcCardFix` to read them. Acceptance test:
-   Hydra-card weapon shows +20 % vs Demi-Human. **Highest gameplay
-   impact per LOC** — every PvE hit immediately reflects equipment.
+1. ~~**T2.2 — Card modifier port.**~~ ✅ DONE 2026-05-20.
 
-2. **T2.4 — SC enum expansion + per-SC modules.** ~3–5 days. Two
-   independent sub-tasks runnable in parallel:
-   - **T2.4a**: Generate the full `StatusType` enum (~225 new
-     entries) from the `status_yml` SQL table + `efst_list.yml`.
-     One-shot script change.
-   - **T2.4b**: Land ~30 of the most-used `IStatusEffect` modules
-     (Endure, Maximize, MagnumBreak, Steel Body, Concentration,
-     Reflect Shield, Auto Guard, Poison, Bleeding, Burning,
-     Curse, Sleep, Stun, Stone, Freeze, Suffragium, Memorize,
-     Slowcast, Paralysis, Izayoi, Bragi, AssumptioRule, etc.).
+2. ~~**T2.4a — SC enum expansion.**~~ ✅ DONE 2026-05-20.
 
-3. **DB-7 — Wave 3 `_db` ports** (any remaining tables I missed
+3. **T2.4b — Per-SC IStatusEffect modules, first wave.** ~3–5 days.
+   Land ~30 of the most-used SCs:
+   - **Crowd control**: Stun, Sleep, Stone (petrify), Curse,
+     Freeze, Silence, Confusion, Blind (`StatusType` already lists
+     all of these — wire OnStart / OnEnd + duration math).
+   - **Damage-over-time**: Poison ✅, Bleeding, Burning, Toxin,
+     Pyrexia, MagicMushroom (per-tick HP/SP drain).
+   - **Physical buffs**: Endure (refresh on hit), Maximize (max-roll
+     damage), MagnumBreak (fire-cloak + SP boost), AdrenalineRush,
+     Concentration, Berserk.
+   - **Defense buffs**: SteelBody, ReflectShield, AutoGuard,
+     Kyrie, Assumptio, ParryDodge.
+   - **Cast-time scaling**: Suffragium (next cast 0.5×), Memorize
+     (next cast 0.5×), Slowcast, Paralysis, Izayoi — wire into
+     `SkillCastTimingService.CastFixSc`.
+   - **Bardsong**: Bragi (cast/delay reduction), AssumptioRule.
+
+4. **DB-7 — Wave 3 `_db` ports** (any remaining tables I missed
    in Wave 2 — produce_db.txt, mob_chat_db, stylist, const, etc.).
    ~half a day. Each is < 100 LOC by the established pattern.
 
-4. **DB-8 — Per-loader wiring to consume payload_json.** ~1 day.
+5. **DB-8 — Per-loader wiring to consume payload_json.** ~1 day.
    The Wave 2 catalogs (item_combos, item_packages, status_yml,
    refine, enchantgrade, …) are in SQL but their runtime services
    still use empty stubs — wire each to deserialize the
    `payload_json` column on Reload.
 
-5. **T3.0 — clif.cpp packet audit.** ~half a day. Run
+6. **T3.0 — clif.cpp packet audit.** ~half a day. Run
    `/rathena-parity clif.cpp` to produce a per-packet status table
    under `map/clif-parity.md`. Outputs the real Tier 3 backlog,
    replacing the optimistic T3.1-3.4 list.
 
-6. **T2.5 — Per-skill behavior plugins, first wave.** ~3–5 days.
+7. **T2.5 — Per-skill behavior plugins, first wave.** ~3–5 days.
    `ISkillBehavior` + 15–20 concrete behaviors (Bash, Magnum,
    Bowling Bash, Sonic Blow, Acid Bomb, Storm Gust, Heaven's
    Drive, Magnus, Holy Light, Pneuma, Safety Wall, Fire / Cold /
-   Lightning Bolt). Depends on T2.4 for SC procs.
+   Lightning Bolt). Depends on T2.4b for SC procs.
 
-After these six, Tier 4 (IIntifService stubs → real char-server
+After these, Tier 4 (IIntifService stubs → real char-server
 IPC) becomes the dominant gap. Tier 5 / 6 remain as long-tail
 backlogs.
 
@@ -696,6 +711,36 @@ hot path.
 - Every gameplay knob in `battle_*.conf` flows .conf → JSON; the
   JSON gets editor autocomplete via the generated schemas.
 - Tier 2 (combat correctness) is the next active tier.
+
+### 2026-05-20 — T2.4a SC enum expansion done
+- `StatusType.cs` regenerated as a 1:1 mirror of rAthena's
+  `enum sc_type` (status.hpp:233-1426). 1006 entries; persistence
+  indices in lockstep with rAthena so save/load round-trips work
+  without any remapping layer.
+- Pre-existing C# names preserved: `Stone`, `Freeze`, `Stun`,
+  `Sleep`, `Poison`, …, `Blessing`, `IncreaseAgi`, `DecreaseAgi`,
+  `Magnificat`, `DeadlyPoison`, `Concentrate`.
+- Two pre-existing C#-only entries cleaned up:
+  - `HealOverTime` (no rAthena counterpart) moved to id 2000
+    outside the rAthena range — was at 100 colliding with
+    SC_VOLCANO.
+  - `AttackUpRate` (was at 101 colliding with SC_DELUGE) dropped
+    — no consumers.
+- `Basilica` slot rectified: was at 130 (SC_MINDBREAKER slot)
+  but semantically the cell variant. Split into:
+  - `Basilica = 116` (rAthena SC_BASILICA, Priest skill)
+  - `BasilicaCell` (cell-based variant, applied on Basilica /
+    Land-Protector ground unit). The one consumer
+    (`PlayerPositionHelpers.IsBasilicaCell`) updated to use the
+    cell variant.
+- Some compound rAthena names without internal underscores PascalCase
+  to compact tokens (`Encpoison`, `Reflectshield`,
+  `Twohandquicken`, …) — valid identifiers; cosmetic prettify
+  can land later without touching values.
+- Generator at `/tmp/gen_statustype.py` parses status.hpp and emits
+  the enum. Re-runnable on rAthena content patches.
+- Tests stay at 334/335 (unchanged pre-existing replay-baseline
+  failure); no test code changes needed.
 
 ### 2026-05-20 — T2.2 card modifier port done
 - `EquipBonusBundle` (race / element / size / class indexed arrays
