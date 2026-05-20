@@ -22,10 +22,12 @@ namespace Map.Server.Combat;
 public sealed class BattleCalculator : IBattleCalculator
 {
     private readonly Random _rng;
+    private readonly IBattleCardService? _cards;
 
-    public BattleCalculator(Random? rng = null)
+    public BattleCalculator(Random? rng = null, IBattleCardService? cards = null)
     {
         _rng = rng ?? Random.Shared;
+        _cards = cards;
     }
 
     public BattleDamage CalcWeaponAttack(Entity source, Entity target)
@@ -86,6 +88,20 @@ public sealed class BattleCalculator : IBattleCalculator
         int vitDef = t.Def2;     // soft def (renewal: just def2 verbatim)
         if (def1 == -400) def1 = -399; // div-by-zero guard from rAthena
         damage = damage * (4000L + def1) / (4000L + 10L * def1) - vitDef;
+
+        // --- Step 5a: weapon mastery additive bonus
+        //               (battle.cpp:2215 battle_addmastery, renewal returns bonus only) ---
+        if (_cards != null && source is PlayerEntity pcAtk)
+        {
+            damage += _cards.AddMastery(pcAtk, target, damage, BattleAttackType.Weapon);
+        }
+
+        // --- Step 5b: card fix
+        //               (battle.cpp:711 battle_calc_cardfix) ---
+        if (_cards != null)
+        {
+            damage = _cards.CalcCardFix(BattleAttackType.Weapon, source, target, damage, leftHand: false);
+        }
 
         // --- Step 7: floor to 1 unless it actually missed (battle_min_damage) ---
         if (damage < 1) damage = 1;

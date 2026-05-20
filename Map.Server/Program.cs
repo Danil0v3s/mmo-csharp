@@ -212,7 +212,12 @@ builder.Services.AddSingleton<IItemDropService, ItemDropService>();
 // owns the renewal damage formula (battle.cpp:7635 battle_calc_weapon_attack
 // trimmed first slice); DamageService is the calc-then-apply façade that
 // the auto-attack loop, GM commands, and skill handlers funnel through.
-builder.Services.AddSingleton<IBattleCalculator>(_ => new BattleCalculator());
+builder.Services.AddSingleton<Map.Server.Combat.IBattleCardService, Map.Server.Combat.BattleCardService>();
+builder.Services.AddSingleton<Map.Server.Combat.IBattleReflectService, Map.Server.Combat.BattleReflectService>();
+builder.Services.AddSingleton<Map.Server.Combat.IZoneDamageService, Map.Server.Combat.ZoneDamageService>();
+builder.Services.AddSingleton<Map.Server.Combat.IBattleTargetService, Map.Server.Combat.BattleTargetService>();
+builder.Services.AddSingleton<IBattleCalculator>(sp =>
+    new BattleCalculator(rng: null, cards: sp.GetRequiredService<Map.Server.Combat.IBattleCardService>()));
 builder.Services.AddSingleton<IDamageService, DamageService>();
 
 // PC death + respawn (pc.cpp:9633 pc_dead + pc.cpp:9515 pc_respawn).
