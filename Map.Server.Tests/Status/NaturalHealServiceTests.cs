@@ -87,6 +87,42 @@ public class NaturalHealServiceTests
         Assert.Equal(508, mob.Hp);
     }
 
+    [Fact]
+    public void Bleeding_BlocksHpRegen()
+    {
+        var ctx = BuildWithSc();
+        var pc = ctx.AddPlayer(1);
+        pc.MaxHp = 1000; pc.Hp = 500;
+        pc.Stats.Vit = 10;
+
+        ctx.Sc!.Start(pc, StatusType.Bleeding, 0, 0, 0, 0, durationMs: 60_000);
+
+        ctx.Service.Tick(nowTick: 0);
+        ctx.Service.Tick(nowTick: 6_500);
+
+        Assert.Equal(500, pc.Hp); // Bleeding suppresses regen entirely.
+    }
+
+    [Fact]
+    public void Magnificat_DoublesSpRegen()
+    {
+        var ctx = BuildWithSc();
+        var pc = ctx.AddPlayer(1);
+        pc.MaxSp = 100; pc.Sp = 50;
+        pc.Stats.IntStat = 12;
+        // Sit so SP regen isn't gated by walking.
+        pc.IsSitting = true;
+
+        ctx.Sc!.Start(pc, StatusType.Magnificat, val1: 1, 0, 0, 0, durationMs: 60_000);
+
+        ctx.Service.Tick(nowTick: 0);
+        ctx.Service.Tick(nowTick: 8_500);
+
+        // Base SP regen: 1 + 100/100 + 12/6 = 4. Sitting doubles → 8.
+        // Magnificat doubles again → 16.
+        Assert.Equal(50 + 16, pc.Sp);
+    }
+
     private static TestContext Build()
     {
         const string mapName = "test_map";
@@ -95,14 +131,33 @@ public class NaturalHealServiceTests
         var entities = new EntityRegistry(world);
         var ids = new EntityIdAllocator();
         var svc = new NaturalHealService(entities, NullLogger<NaturalHealService>.Instance);
-        return new TestContext(svc, entities, ids, (uint)mapName.GetHashCode());
+        return new TestContext(svc, entities, ids, (uint)mapName.GetHashCode(), null);
+    }
+
+    /// <summary>Build with an SC service wired in so the regen overlay
+    /// (Bleeding blocks HP, Magnificat doubles SP) is observable.</summary>
+    private static TestContext BuildWithSc()
+    {
+        const string mapName = "test_map";
+        var map = new MapData(mapName, 200, 200, new byte[200 * 200]);
+        var world = new StubWorldRegistry(map);
+        var entities = new EntityRegistry(world);
+        var ids = new EntityIdAllocator();
+        // Damage service is a circular dep on SC; the Bleeding/Magnificat
+        // path uses neither tick-damage nor heal, so the stub never fires.
+        var damage = new Map.Server.Tests.Status.DummyDamageService();
+        var sc = new StatusChangeService(damage, entities, new StatusEffectRegistry(),
+            NullLogger<StatusChangeService>.Instance);
+        var svc = new NaturalHealService(entities, NullLogger<NaturalHealService>.Instance, sc);
+        return new TestContext(svc, entities, ids, (uint)mapName.GetHashCode(), sc);
     }
 
     private sealed record TestContext(
         NaturalHealService Service,
         EntityRegistry Entities,
         EntityIdAllocator Ids,
-        uint MapId)
+        uint MapId,
+        StatusChangeService? Sc)
     {
         public PlayerEntity AddPlayer(int charId)
         {
@@ -131,4 +186,18 @@ public class NaturalHealServiceTests
         public int TotalCells => _maps.Values.Sum(m => m.CellCount);
         public bool Contains(string name) => _maps.ContainsKey(name);
     }
+}
+
+/// <summary>
+/// Dummy <see cref="Map.Server.Combat.IDamageService"/> used by tests that
+/// need a <see cref="StatusChangeService"/> but never trigger periodic
+/// damage (e.g. regen-overlay tests for Bleeding / Magnificat). Throws if
+/// damage is ever applied so a regression here surfaces loudly.
+/// </summary>
+internal sealed class DummyDamageService : Map.Server.Combat.IDamageService
+{
+    public int ApplyDamage(Entity target, int damage, Entity? source = null)
+        => throw new InvalidOperationException("DummyDamageService: ApplyDamage was called from a test that shouldn't trigger damage");
+    public Map.Server.Combat.BattleDamage PerformMeleeAttack(Entity source, Entity target)
+        => throw new InvalidOperationException("DummyDamageService: PerformMeleeAttack was called from a test that shouldn't trigger damage");
 }

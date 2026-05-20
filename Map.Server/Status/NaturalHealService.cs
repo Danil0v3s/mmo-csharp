@@ -21,6 +21,13 @@ public interface INaturalHealService
 ///   SP/tick = 1 + maxsp/100 + int/6
 /// Default intervals are rAthena's <c>natural_healhp_interval</c>
 /// (6 s) and <c>natural_healsp_interval</c> (8 s).
+///
+/// <para>T2.4b+ SC overlays:</para>
+/// <list type="bullet">
+///   <item><c>SC_BLEEDING</c> — blocks HP regen (rAthena
+///     status_check_natural_heal).</item>
+///   <item><c>SC_MAGNIFICAT</c> — doubles SP regen.</item>
+/// </list>
 /// </summary>
 public sealed class NaturalHealService : INaturalHealService
 {
@@ -29,14 +36,21 @@ public sealed class NaturalHealService : INaturalHealService
 
     private readonly IEntityRegistry _entities;
     private readonly ILogger<NaturalHealService> _logger;
+    // Optional SC overlay so existing constructors keep working; DI
+    // resolves the real IStatusChangeService automatically.
+    private readonly IStatusChangeService? _sc;
 
     // Per-entity tick anchors for HP and SP. Initialized on first observation.
     private readonly Dictionary<EntityId, RegenState> _state = new();
 
-    public NaturalHealService(IEntityRegistry entities, ILogger<NaturalHealService> logger)
+    public NaturalHealService(
+        IEntityRegistry entities,
+        ILogger<NaturalHealService> logger,
+        IStatusChangeService? sc = null)
     {
         _entities = entities;
         _logger = logger;
+        _sc = sc;
     }
 
     public void Tick(long nowTick)
@@ -61,9 +75,16 @@ public sealed class NaturalHealService : INaturalHealService
             {
                 if (!(entity is PlayerEntity && walking))
                 {
-                    var amount = 1 + s.MaxHp / 200 + s.Vit / 5;
-                    if (sitting) amount *= 2;
-                    s.Hp = Math.Min(s.MaxHp, s.Hp + amount);
+                    // SC_BLEEDING blocks HP regen entirely (rAthena
+                    // status_check_natural_heal). Walk-not-allowed +
+                    // standing still still yields zero regen.
+                    var bleeding = _sc?.Get(entity, StatusType.Bleeding) != null;
+                    if (!bleeding)
+                    {
+                        var amount = 1 + s.MaxHp / 200 + s.Vit / 5;
+                        if (sitting) amount *= 2;
+                        s.Hp = Math.Min(s.MaxHp, s.Hp + amount);
+                    }
                 }
                 rs.NextHpTick = nowTick + HpIntervalMs;
             }
@@ -74,6 +95,10 @@ public sealed class NaturalHealService : INaturalHealService
                 {
                     var amount = 1 + s.MaxSp / 100 + s.IntStat / 6;
                     if (sitting) amount *= 2;
+                    // SC_MAGNIFICAT doubles SP regen (rAthena renewal:
+                    // 50 % faster, simplified to 2× here while the
+                    // Val1-level table ports).
+                    if (_sc?.Get(entity, StatusType.Magnificat) != null) amount *= 2;
                     s.Sp = Math.Min(s.MaxSp, s.Sp + amount);
                 }
                 rs.NextSpTick = nowTick + SpIntervalMs;
