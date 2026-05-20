@@ -1,0 +1,7 @@
+{
+  "$schema": "./instance.schema.json",
+  "instance_block_leave": true,
+  "instance_block_leaderchange": true,
+  "instance_block_invite": true,
+  "instance_block_expulsion": true
+}

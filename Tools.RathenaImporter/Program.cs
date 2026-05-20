@@ -12,11 +12,14 @@ using Tools.RathenaImporter.Converters;
 
 var rathenaRoot = "/Volumes/1TB/Projetos/rathena";
 var outputRoot = "/Volumes/1TB/Projetos/mmo-csharp";
+var mode = "all"; // all | yaml | conf
 
-for (var i = 0; i < args.Length - 1; i++)
+for (var i = 0; i < args.Length; i++)
 {
-    if (args[i] == "--rathena") rathenaRoot = args[i + 1];
-    if (args[i] == "--output") outputRoot = args[i + 1];
+    if (i + 1 < args.Length && args[i] == "--rathena") rathenaRoot = args[i + 1];
+    if (i + 1 < args.Length && args[i] == "--output") outputRoot = args[i + 1];
+    if (args[i] == "--yaml-only") mode = "yaml";
+    if (args[i] == "--conf-only") mode = "conf";
 }
 
 Console.WriteLine($"Tools.RathenaImporter");
@@ -89,6 +92,15 @@ var converters = new IYamlToSqlConverter[]
 var ok = 0;
 var failed = 0;
 
+if (mode == "conf")
+{
+    RunConfPass();
+    Console.WriteLine();
+    Console.WriteLine($"Done (conf-only). {ok} converted, {failed} failed.");
+    return failed == 0 ? 0 : 2;
+}
+
+if (mode == "all" || mode == "yaml")
 foreach (var c in converters)
 {
     var src = Path.Combine(rathenaRoot, c.SourceYamlPath);
@@ -116,6 +128,129 @@ foreach (var c in converters)
     }
 }
 
+if (mode == "all" || mode == "conf")
+{
+    RunConfPass();
+}
+
 Console.WriteLine();
 Console.WriteLine($"Done. {ok} converted, {failed} failed.");
 return failed == 0 ? 0 : 2;
+
+// ---- conf pass ------------------------------------------------------
+void RunConfPass()
+{
+    // Each entry: (source .conf path under rathena, output .json path
+    // under mmo-csharp, schema $id, title).
+    var confTargets = new (string src, string outJson, string outSchema, string title)[]
+    {
+        ("conf/battle/battle.conf",
+         "Map.Server/config/battle/battle.json",
+         "https://mmo-csharp.local/schemas/battle/battle.schema.json",
+         "rAthena battle.conf — core battle knobs"),
+        ("conf/battle/skill.conf",
+         "Map.Server/config/battle/skill.json",
+         "https://mmo-csharp.local/schemas/battle/skill.schema.json",
+         "rAthena skill.conf — skill knobs"),
+        ("conf/battle/player.conf",
+         "Map.Server/config/battle/player.json",
+         "https://mmo-csharp.local/schemas/battle/player.schema.json",
+         "rAthena player.conf"),
+        ("conf/battle/monster.conf",
+         "Map.Server/config/battle/monster.json",
+         "https://mmo-csharp.local/schemas/battle/monster.schema.json",
+         "rAthena monster.conf"),
+        ("conf/battle/items.conf",
+         "Map.Server/config/battle/items.json",
+         "https://mmo-csharp.local/schemas/battle/items.schema.json",
+         "rAthena items.conf"),
+        ("conf/battle/drops.conf",
+         "Map.Server/config/battle/drops.json",
+         "https://mmo-csharp.local/schemas/battle/drops.schema.json",
+         "rAthena drops.conf"),
+        ("conf/battle/exp.conf",
+         "Map.Server/config/battle/exp.json",
+         "https://mmo-csharp.local/schemas/battle/exp.schema.json",
+         "rAthena exp.conf"),
+        ("conf/battle/party.conf",
+         "Map.Server/config/battle/party.json",
+         "https://mmo-csharp.local/schemas/battle/party.schema.json",
+         "rAthena party.conf"),
+        ("conf/battle/guild.conf",
+         "Map.Server/config/battle/guild.json",
+         "https://mmo-csharp.local/schemas/battle/guild.schema.json",
+         "rAthena guild.conf"),
+        ("conf/battle/pet.conf",
+         "Map.Server/config/battle/pet.json",
+         "https://mmo-csharp.local/schemas/battle/pet.schema.json",
+         "rAthena pet.conf"),
+        ("conf/battle/homunc.conf",
+         "Map.Server/config/battle/homunc.json",
+         "https://mmo-csharp.local/schemas/battle/homunc.schema.json",
+         "rAthena homunc.conf"),
+        ("conf/battle/battleground.conf",
+         "Map.Server/config/battle/battleground.json",
+         "https://mmo-csharp.local/schemas/battle/battleground.schema.json",
+         "rAthena battleground.conf"),
+        ("conf/battle/instance.conf",
+         "Map.Server/config/battle/instance.json",
+         "https://mmo-csharp.local/schemas/battle/instance.schema.json",
+         "rAthena instance.conf"),
+        ("conf/battle/feature.conf",
+         "Map.Server/config/battle/feature.json",
+         "https://mmo-csharp.local/schemas/battle/feature.schema.json",
+         "rAthena feature.conf"),
+        ("conf/battle/gm.conf",
+         "Map.Server/config/battle/gm.json",
+         "https://mmo-csharp.local/schemas/battle/gm.schema.json",
+         "rAthena gm.conf"),
+        ("conf/battle/client.conf",
+         "Map.Server/config/battle/client.json",
+         "https://mmo-csharp.local/schemas/battle/client.schema.json",
+         "rAthena client.conf"),
+        ("conf/battle/status.conf",
+         "Map.Server/config/battle/status.json",
+         "https://mmo-csharp.local/schemas/battle/status.schema.json",
+         "rAthena status.conf"),
+        ("conf/battle/misc.conf",
+         "Map.Server/config/battle/misc.json",
+         "https://mmo-csharp.local/schemas/battle/misc.schema.json",
+         "rAthena misc.conf"),
+        ("conf/channels.conf",
+         "Map.Server/config/channels.json",
+         "https://mmo-csharp.local/schemas/channels.schema.json",
+         "rAthena channels.conf — chat channel definitions"),
+    };
+
+    foreach (var t in confTargets)
+    {
+        var src = Path.Combine(rathenaRoot, t.src);
+        if (!File.Exists(src))
+        {
+            Console.WriteLine($"  [skip-conf] {t.src}: source not found");
+            continue;
+        }
+        try
+        {
+            Console.Write($"  [conf] {t.src} ... ");
+            var parsed = ConfParser.Parse(src);
+            // Use a relative ./<name>.schema.json so the JSON file
+            // can $schema against the sibling schema without a full URL.
+            var schemaFile = Path.GetFileNameWithoutExtension(t.outJson) + ".schema.json";
+            var result = ConfToJsonConverter.Convert(parsed, t.title, "./" + schemaFile);
+
+            var jsonPath = Path.Combine(outputRoot, t.outJson);
+            var schemaPath = Path.Combine(Path.GetDirectoryName(jsonPath)!, schemaFile);
+            Directory.CreateDirectory(Path.GetDirectoryName(jsonPath)!);
+            File.WriteAllText(jsonPath, result.Json);
+            File.WriteAllText(schemaPath, result.Schema);
+            Console.WriteLine($"{result.PropertyCount} props → {t.outJson} (+ {schemaFile})");
+            ok++;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"FAILED: {ex.Message}");
+            failed++;
+        }
+    }
+}

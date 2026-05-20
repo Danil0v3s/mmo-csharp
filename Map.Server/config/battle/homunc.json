@@ -1,0 +1,21 @@
+{
+  "$schema": "./homunc.schema.json",
+  "hom_setting": 61,
+  "homunculus_friendly_rate": 100,
+  "hom_rename": false,
+  "homunculus_evo_intimacy_need": 91100,
+  "homunculus_evo_intimacy_reset": 1000,
+  "hvan_explosion_intimate": 45000,
+  "homunculus_show_growth": true,
+  "homunculus_autoloot": false,
+  "homunculus_auto_vapor": 80,
+  "homunculus_max_level": 99,
+  "homunculus_S_max_level": 250,
+  "homunculus_S_growth_level": 99,
+  "homunculus_autofeed_always": true,
+  "hom_idle_no_share": false,
+  "idletime_hom_option": 31,
+  "homunculus_exp_gain": 10,
+  "homunculus_starving_rate": 10,
+  "homunculus_starving_delay": 20000
+}

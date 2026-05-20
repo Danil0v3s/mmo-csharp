@@ -37,6 +37,18 @@
         <None Update="config\attendance.yml">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+        <!-- Battle config JSON files (rAthena conf/battle/*.conf
+             converted by Tools.RathenaImporter). Overlaid on the
+             in-memory defaults at IBattleConfigService boot. -->
+        <None Update="config\battle\*.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="config\channels.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="config\channels.schema.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
     <ItemGroup>

@@ -526,3 +526,46 @@ hot path.
   / battle_athena.conf. Each is mechanical via the established
   pattern — add converter + entity + repo + config + migration +
   seeder wiring.
+
+### 2026-05-20 — Tier 1 done (Wave 2)
+- 35 more YAML→SQL converters shipped: 10 flat-shape tables
+  (castle, statpoint, exp_homun/guild, size_fix, reputation,
+  create_arrow, item_randomopt, cashshop, captcha) + 25 payload-
+  shape tables that store deeply nested rAthena YAML as JSON in
+  a `payload_json` column (elemental_db, battleground_db,
+  skill_tree, guild_skill_tree, mob_summon, item_randomopt_group,
+  attr_fix, level_penalty, job_stats, job_exp, job_basepoints,
+  status_yml, item_combos, item_packages, item_group_db,
+  item_enchant, item_reform, laphine_synthesis, laphine_upgrade,
+  refine, enchantgrade, map_drops, mob_item_ratio, item_cash,
+  attendance, reputation_group). Runtime services deserialize
+  the JSON back to typed records on Reload.
+- New EF migration `AddTier1Wave2Catalogs` creates 36 tables.
+- DatabaseSeeder runs the 30 non-empty seed files.
+- 52 _db tables total now SQL-backed (16 from Wave 1 + 36 here).
+
+### 2026-05-20 — Tier 1 conf → JSON with schemas
+- Tools.RathenaImporter gains a conf parser + a conf→JSON+schema
+  emitter. Run `dotnet run --project Tools.RathenaImporter --conf-only`
+  to (re-)generate the JSON files from rAthena `conf/*.conf`.
+- 19 conf files converted (18 battle/*.conf + channels.conf) to
+  `Map.Server/config/battle/*.json` + `Map.Server/config/channels.json`,
+  totaling ~633 documented knobs. Each property's `description` in
+  the schema comes from rAthena's inline `.conf` comments — IDE
+  hover gives the original gameplay documentation.
+- IBattleConfigService now overlays the JSON values on top of the
+  in-memory defaults at boot. Re-running the importer + restarting
+  the map server picks up upstream rAthena config tweaks.
+- All existing `appsettings.json` (Login, Char, Map, Web,
+  Core.Database) now reference a hand-written shared schema at
+  `schemas/appsettings.shared.schema.json` for autocomplete +
+  documentation.
+- `schemas/README.md` documents the conventions (how the $schema
+  reference works, where to add new schemas).
+
+### Tier 1 done
+- Every rAthena `_db` worth porting flows YAML → SQL at deploy
+  time; runtime reads SQL only.
+- Every gameplay knob in `battle_*.conf` flows .conf → JSON; the
+  JSON gets editor autocomplete via the generated schemas.
+- Tier 2 (combat correctness) is the next active tier.

@@ -1,0 +1,14 @@
+{
+  "$schema": "./party.schema.json",
+  "show_steal_in_same_party": false,
+  "party_update_interval": 1000,
+  "party_hp_mode": 0,
+  "show_party_share_picker": true,
+  "show_picker.item_type": 112,
+  "party_item_share_type": 0,
+  "idle_no_share": false,
+  "party_even_share_bonus": 0,
+  "display_party_name": true,
+  "block_account_in_same_party": true,
+  "change_party_leader_samemap": true
+}

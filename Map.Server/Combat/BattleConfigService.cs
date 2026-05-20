@@ -1,19 +1,23 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Combat;
 
 /// <summary>
 /// Default <see cref="IBattleConfigService"/>. In-memory knob map
-/// pre-populated with the rAthena defaults; the .conf parser hook
-/// will overlay values on top once the loader lands. Until then
-/// the typed properties surface the most-used defaults so consumer
-/// code can avoid hard-coded literals.
+/// pre-populated with the rAthena defaults, then **overlaid from
+/// JSON files** under <c>Map.Server/config/battle/*.json</c>. Those
+/// files are produced by <c>Tools.RathenaImporter --conf-only</c>
+/// from rAthena's <c>conf/battle/*.conf</c> and each has a sibling
+/// <c>*.schema.json</c> so editors give autocomplete + docs from
+/// rAthena's own inline comments.
 ///
-/// rAthena ships ~600 knobs spread across conf/battle/*.conf. We
-/// intentionally don't enumerate them all here — see
-/// .agents/migrations/map/battle-parity.md B-L1 for the porting
-/// plan as new knobs surface in their consumers.
+/// rAthena ships ~600 knobs spread across conf/battle/*.conf. The
+/// in-memory defaults below cover the subset the C# port currently
+/// reads; the JSON overlay loads everything so a knob added by a
+/// future port lands automatically as soon as <see cref="GetValue"/>
+/// is called.
 /// </summary>
 public sealed class BattleConfigService : IBattleConfigService
 {
@@ -24,6 +28,60 @@ public sealed class BattleConfigService : IBattleConfigService
     {
         _logger = logger;
         SetDefaults();
+        LoadJsonOverlay();
+    }
+
+    /// <summary>
+    /// Overlay all JSON files under <c>config/battle/</c> onto the
+    /// in-memory knob map. Each file is a flat <c>{name: value}</c>
+    /// map (plus an optional <c>$schema</c> key). Booleans collapse
+    /// to 0/1 to match the existing int-only knob storage.
+    /// </summary>
+    private void LoadJsonOverlay()
+    {
+        var dir = Path.Combine(AppContext.BaseDirectory, "config", "battle");
+        if (!Directory.Exists(dir))
+        {
+            // Try the source-tree location for in-development runs.
+            dir = Path.Combine(Directory.GetCurrentDirectory(), "config", "battle");
+            if (!Directory.Exists(dir))
+            {
+                _logger.LogDebug("battle JSON overlay: directory not found ({Dir})", dir);
+                return;
+            }
+        }
+        var loaded = 0;
+        foreach (var file in Directory.GetFiles(dir, "*.json"))
+        {
+            if (file.EndsWith(".schema.json", StringComparison.OrdinalIgnoreCase)) continue;
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(file));
+                foreach (var prop in doc.RootElement.EnumerateObject())
+                {
+                    if (prop.NameEquals("$schema")) continue;
+                    var v = prop.Value;
+                    int intVal = v.ValueKind switch
+                    {
+                        JsonValueKind.Number => v.TryGetInt32(out var i) ? i : (int)v.GetInt64(),
+                        JsonValueKind.True => 1,
+                        JsonValueKind.False => 0,
+                        JsonValueKind.String => int.TryParse(v.GetString(), out var s) ? s : 0,
+                        _ => 0,
+                    };
+                    if (v.ValueKind != JsonValueKind.Object)
+                    {
+                        _knobs[prop.Name] = intVal;
+                        loaded++;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "battle JSON overlay: failed to read {File}", file);
+            }
+        }
+        _logger.LogInformation("battle_config: loaded {N} knobs from JSON overlay ({Dir})", loaded, dir);
     }
 
     /// <summary>rAthena <c>battle_set_defaults</c> — load the canonical defaults.</summary>

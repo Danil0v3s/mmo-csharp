@@ -1,0 +1,20 @@
+{
+  "$schema": "./guild.schema.json",
+  "guild_emperium_check": true,
+  "guild_exp_limit": 50,
+  "guild_max_castles": 0,
+  "guild_skill_relog_delay": 300000,
+  "gvg_short_attack_damage_rate": 80,
+  "gvg_long_attack_damage_rate": 80,
+  "gvg_weapon_attack_damage_rate": 60,
+  "gvg_magic_attack_damage_rate": 60,
+  "gvg_misc_attack_damage_rate": 60,
+  "gvg_flee_penalty": 20,
+  "require_glory_guild": false,
+  "max_guild_alliance": 3,
+  "guild_notice_changemap": 2,
+  "guild_maprespawn_clones": false,
+  "guild_leaderchange_delay": 1440,
+  "guild_leaderchange_woe": false,
+  "guild_alliance_onlygm": false
+}

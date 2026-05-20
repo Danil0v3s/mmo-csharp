@@ -1,0 +1,12 @@
+{
+  "$schema": "./gm.schema.json",
+  "atcommand_symbol": "@",
+  "charcommand_symbol": "#",
+  "atcommand_spawn_quantity_limit": 100,
+  "atcommand_slave_clone_limit": 25,
+  "partial_name_scan": true,
+  "ban_hack_trade": 5,
+  "atcommand_mobinfo_type": 1,
+  "atcommand_levelup_events": false,
+  "atcommand_disable_npc": true
+}

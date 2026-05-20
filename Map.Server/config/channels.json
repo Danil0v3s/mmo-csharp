@@ -1,0 +1,45 @@
+{
+  "$schema": "./channels.schema.json",
+  "channel_config": {
+    "colors": {
+      "Default": 16777215,
+      "Red": 16711680,
+      "Blue": 8638441,
+      "Orange": 15039488,
+      "Cyan": 47261,
+      "Yellow": 16777104,
+      "Green": 2670336,
+      "White": 16777215,
+      "Purple": 14057471,
+      "LightGreen": 11992832,
+      "Normal": 65280
+    },
+    "private_channel": {
+      "allow": true,
+      "color": "Default",
+      "delay": 1000,
+      "max_member": 1000,
+      "self_notif": true,
+      "join_notif": false,
+      "leave_notif": false,
+      "ban": true,
+      "kick": true,
+      "color_override": false,
+      "change_delay": false
+    },
+    "channels": "(",
+    "name": "#global",
+    "alias": "[Global]",
+    "color": "White",
+    "type": "CHAN_TYPE_PUBLIC",
+    "delay": 1000,
+    "autojoin": false,
+    "leave": false
+  },
+  "name": "#support",
+  "alias": "[Support]",
+  "color": "Blue",
+  "type": "CHAN_TYPE_PUBLIC",
+  "delay": 1000,
+  "autojoin": false
+}

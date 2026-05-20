@@ -1,0 +1,9 @@
+{
+  "$schema": "./status.schema.json",
+  "status_cast_cancel": 0,
+  "debuff_on_logout": 0,
+  "pc_status_def_rate": 100,
+  "mob_status_def_rate": 100,
+  "pc_max_status_def": 100,
+  "mob_max_status_def": 100
+}
