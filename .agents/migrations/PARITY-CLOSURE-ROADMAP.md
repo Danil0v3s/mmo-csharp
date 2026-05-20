@@ -500,3 +500,29 @@ hot path.
   + runtime loader) so each `_db` port is mechanical.
 - Listed every pending `_db` table with its consumer service, and
   proposed `Tools.SeedGen` as the optional YAML → SQL transformer.
+
+### 2026-05-20 — Tier 1 substantively done
+- Tools.RathenaImporter shipped (Tools.RathenaImporter/) — C#
+  console reads rAthena YAML via YamlDotNet, emits seed_*.sql.
+  Per-file converter pattern (IYamlToSqlConverter); 10 converters
+  live (skill / abra / magicmushroom / spellbook / quest / pet /
+  achievement / homunculus / mercenary / instance).
+- rAthena pre-gen SQL imported: mob_skill_db (11,634 rows) joins
+  item_db / mob_db / roulette already in the seeder.
+- 10 new EF entities + repositories + EF migration
+  (AddStaticCatalogDbs) for: abra, magicmushroom, spellbook, quest,
+  pet, achievement, homunculus, mercenary, instance, mob_skill.
+- Runtime catalog loaders wired (DB-4): AbraDatabase /
+  MagicMushroomDatabase / ReadingSpellbookDatabase / QuestService /
+  PetOpsService / AchievementService / HomunculusService /
+  MercenaryService / InstanceService — all read from SQL on boot,
+  fall back to empty in tests. SkillDb's existing SQL path now
+  loads 1,614 rows from the new seed.
+- Total: ~6,400 new catalog rows SQL-backed beyond what was already
+  there + the full 1,614-skill catalog flowing through SkillDb.
+- Remaining for full Tier 1: elemental / battleground / cashshop /
+  item_combo / item_package / item_randomopt / item_group /
+  item_enchant / laphine / castle / job stats / status / channels.conf
+  / battle_athena.conf. Each is mechanical via the established
+  pattern — add converter + entity + repo + config + migration +
+  seeder wiring.
