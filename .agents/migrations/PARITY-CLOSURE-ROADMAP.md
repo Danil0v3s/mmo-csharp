@@ -4,10 +4,17 @@ Companion to [CODE-COMPLETENESS-ROADMAP.md](CODE-COMPLETENESS-ROADMAP.md).
 
 **Status:** every rAthena map .cpp public function has a canonical C#
 entry point. The original survey counted **~56 data-pending markers**;
-post-Tier-1 sweep we're down to **23 markers across 20 files**. The
-remainder cluster around skill-specific behavior + per-shop registry
-exposure (no longer a data-availability problem; the data is in SQL
-or JSON, the consumer code just hasn't been wired through).
+post-Tier-1 sweep down to ~23, post-T2.2/T2.4 sweep down to **~19
+markers** (Strip / Suffragium / Memorize / Slowcast / Endure /
+ReflectShield / Magnificat closures landed). The remainder cluster
+around skill-specific behavior + per-shop registry exposure (no
+longer a data-availability problem; the data is in SQL or JSON,
+the consumer code just hasn't been wired through).
+
+**Latest session (2026-05-20):** Tier 2 substantially advanced —
+T2.2 + T2.4a + T2.4b + four combat-side SC consumer closures
+(SteelBody / Kyrie / AutoGuard / Bleeding / Magnificat / Strip).
+~51 new tests. See History.
 
 ## Tier scoreboard (re-evaluated 2026-05-20)
 
