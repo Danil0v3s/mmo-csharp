@@ -23,7 +23,7 @@ T2.2 + T2.4a + T2.4b + four combat-side SC consumer closures
 | T1 | Data loaders → SQL + JSON | ✅ **DONE** | 52 `_db` SQL-backed, 19 conf-JSON with schemas, IBattleConfigService overlays at boot |
 | T2.1 | Equip-bonus aggregator | ✅ **DONE** | `Map.Server/Inventory/EquipBonusAggregator.cs` — exists from PC-S4 wave |
 | T2.2 | Card modifier port | ✅ **DONE** | `BattleCardService.CalcCardFix` reads `PlayerEntity.EquipBonuses`; `EquipBonusBundle` + `BonusScriptExtractor` ship; Hydra-card test exercises +20% vs Demi-Human |
-| T2.3 | Per-skill behavior | ❌ pending | 5 generic resolvers; per-skill plugins (Bash splash, Magnum Break, Storm Gust, …) untouched |
+| T2.3 | Per-skill behavior | 🟡 infra + 2 plugins | T2.5 superseded — ISkillBehavior + SkillBehaviorRegistry land; MagnumBreak (splash + SC_FIREWEAPON) and Bash (lv 6+ stun proc) plug in. Pattern is set; per-skill plugins now an additive backlog. |
 | T2.4 | SC engine completion | 🟡 enum full / behavior ~30 of ~250 + combat hooks | T2.4a + T2.4b done: enum mirrors all 1006 SC ids; first wave of handlers (CC gates / DoT / stat buffs / cast-time SCs) registered; `CastFixSc` honors Suffragium/Memorize/Slowcast/Paralysis/Izayoi/Bragi; `DamageService` reads SteelBody / Kyrie / AutoGuard on every hit. Long-tail SC handlers ride the same registry pattern. |
 | T3 | Wire packets | 🟡 113 emitters exist | Per-handler audit needed; the surface is bigger than initially scoped |
 | T4 | IPC + persistence | ❌ pending | 73 `IIntifService` stubs — biggest single block of behavior gap |
@@ -617,11 +617,22 @@ In recommended pickup order — each is one PR-sized chunk:
    under `map/clif-parity.md`. Outputs the real Tier 3 backlog,
    replacing the optimistic T3.1-3.4 list.
 
-7. **T2.5 — Per-skill behavior plugins, first wave.** ~3–5 days.
-   `ISkillBehavior` + 15–20 concrete behaviors (Bash, Magnum,
-   Bowling Bash, Sonic Blow, Acid Bomb, Storm Gust, Heaven's
-   Drive, Magnus, Holy Light, Pneuma, Safety Wall, Fire / Cold /
-   Lightning Bolt). Depends on T2.4b for SC procs.
+7. ~~**T2.5 — Per-skill behavior plugins, first wave.**~~ Infra
+   shipped 2026-05-20: `ISkillBehavior` + `SkillBehaviorRegistry`
+   wired into `SkillCastService.ResolveSkill`; two seed plugins
+   (MagnumBreak, Bash) shipped. Adding more plugins is now an
+   additive cadence — one PR per family:
+   - **Knight/Lord Knight:** Bowling Bash (extra hits scaling
+     on enemies in radius), Pierce (×hits by target Size),
+     Spiral Pierce.
+   - **Assassin:** Sonic Blow (8-hit chain), Soul Breaker,
+     Grimtooth.
+   - **Wizard:** Storm Gust (3-hit + Freeze proc), Lord of
+     Vermillion, Earth Spike.
+   - **Priest:** Heal-vs-Undead (overload AL_HEAL plugin
+     returns damage instead of heal), Holy Light, Magnus
+     Exorcismus.
+   - **Hunter:** Double Strafe, Arrow Shower, Blitz Beat.
 
 After these, Tier 4 (IIntifService stubs → real char-server
 IPC) becomes the dominant gap. Tier 5 / 6 remain as long-tail
@@ -737,6 +748,31 @@ hot path.
 - Every gameplay knob in `battle_*.conf` flows .conf → JSON; the
   JSON gets editor autocomplete via the generated schemas.
 - Tier 2 (combat correctness) is the next active tier.
+
+### 2026-05-20 — T2.5 ISkillBehavior plugin layer + 2 seed plugins
+- New `Map.Server/Skills/Behaviors/` namespace:
+  - `ISkillBehavior` interface (one `Resolve` method that returns
+    true to claim the cast or false to fall through to the
+    generic resolver).
+  - `SkillBehaviorRegistry` indexes plugins by rAthena skill id.
+  - `SkillBehaviorContext` record carries shared services
+    (Entities / Damage / Battle / Sc) so per-plugin ctors stay
+    tiny.
+- `SkillCastService.ResolveSkill` consults the registry first;
+  plugin returns true → skip generic. Optional DI deps so the
+  legacy ctor still works.
+- `MagnumBreakBehavior` (SM_MAGNUM): claims cast; 5×5 splash
+  around caster, runs the standard swing on each victim ×
+  (120 + 20*lv)% rate, applies SC_FIREWEAPON for 10 s.
+- `BashBehavior` (SM_BASH): falls through to generic Weapon
+  resolver; layers a Fatal Blow stun proc at lv 6+ (chance =
+  5 + 5*(lv-5)%).
+- 9 new tests in `SkillBehaviorTests`. Registry plumbing +
+  splash radius + self-skip + SC application + stun proc bounds
+  + fall-through semantics all covered.
+- Program.cs DI: plugins + behavior registry + the 5 generic
+  resolvers + the resolver registry all hand-wired (resolvers
+  were previously only built in SkillCastService's test ctor).
 
 ### 2026-05-20 — StripEquip wired to SC table
 - `SkillSideEffectService.StripEquip` was a data-pending stub
