@@ -1,41 +1,155 @@
+using Core.Database.Repositories.Api;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Skills;
 
 /// <summary>
-/// In-memory stubs for the four rAthena auxiliary skill databases.
-/// Empty until the YAML loaders land — the entry points exist so
-/// the special-skill code (Abracadabra, Magic Mushroom proc, Spell
-/// Book read, Arrow Craft) has a typed lookup target.
+/// rAthena auxiliary skill databases — Abracadabra pool, Magic
+/// Mushroom proc list, Sage Reading Spell Book mapping. Loaded
+/// from MariaDB seeds produced by Tools.RathenaImporter
+/// (abra_db / magicmushroom_db / spellbook_db). Falls back to an
+/// empty in-memory pool if the SQL table is empty — keeps tests
+/// happy without a live DB.
 /// </summary>
 public sealed class AbraDatabase : IAbraDatabase
 {
     private readonly List<ushort> _pool = new();
+    private readonly IServiceScopeFactory? _scopes;
     private readonly ILogger<AbraDatabase> _logger;
-    public AbraDatabase(ILogger<AbraDatabase> logger) => _logger = logger;
+
+    public AbraDatabase(IServiceScopeFactory scopes, ILogger<AbraDatabase> logger)
+    {
+        _scopes = scopes;
+        _logger = logger;
+        Reload();
+    }
+
+    /// <summary>Test ctor — empty pool.</summary>
+    public AbraDatabase(ILogger<AbraDatabase> logger) { _logger = logger; }
+
     public ushort? PickRandom(Random rng) => _pool.Count == 0 ? null : _pool[rng.Next(_pool.Count)];
     public int Count => _pool.Count;
-    public void Reload() { /* abra_db.yml loader data-pending */ }
+
+    public void Reload()
+    {
+        _pool.Clear();
+        if (_scopes == null) return;
+        try
+        {
+            using var scope = _scopes.CreateScope();
+            var repo = scope.ServiceProvider.GetRequiredService<IAbraDbRepository>();
+            var db = scope.ServiceProvider.GetRequiredService<ISkillDb>();
+            var rows = repo.GetAllAsync().GetAwaiter().GetResult();
+            foreach (var r in rows)
+            {
+                var id = db.Name2Id(r.SkillName);
+                if (id != 0) _pool.Add(id);
+            }
+            _logger.LogInformation("Abra pool loaded: {N} skills", _pool.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "abra_db load failed — pool empty");
+        }
+    }
 }
 
 public sealed class MagicMushroomDatabase : IMagicMushroomDatabase
 {
     private readonly List<ushort> _pool = new();
+    private readonly IServiceScopeFactory? _scopes;
     private readonly ILogger<MagicMushroomDatabase> _logger;
-    public MagicMushroomDatabase(ILogger<MagicMushroomDatabase> logger) => _logger = logger;
+
+    public MagicMushroomDatabase(IServiceScopeFactory scopes, ILogger<MagicMushroomDatabase> logger)
+    {
+        _scopes = scopes;
+        _logger = logger;
+        Reload();
+    }
+
+    public MagicMushroomDatabase(ILogger<MagicMushroomDatabase> logger) { _logger = logger; }
+
     public ushort? PickRandom(Random rng) => _pool.Count == 0 ? null : _pool[rng.Next(_pool.Count)];
     public int Count => _pool.Count;
-    public void Reload() { /* magicmushroom_db.yml loader data-pending */ }
+
+    public void Reload()
+    {
+        _pool.Clear();
+        if (_scopes == null) return;
+        try
+        {
+            using var scope = _scopes.CreateScope();
+            var repo = scope.ServiceProvider.GetRequiredService<IMagicMushroomDbRepository>();
+            var db = scope.ServiceProvider.GetRequiredService<ISkillDb>();
+            foreach (var r in repo.GetAllAsync().GetAwaiter().GetResult())
+            {
+                var id = db.Name2Id(r.SkillName);
+                if (id != 0) _pool.Add(id);
+            }
+            _logger.LogInformation("MagicMushroom pool loaded: {N} skills", _pool.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "magicmushroom_db load failed — pool empty");
+        }
+    }
 }
 
+/// <summary>
+/// Warlock Reading Spell Book mapping — book item name → granted
+/// (statusId, skillId). statusId currently set to 0; the runtime
+/// fills it once the SC table assigns a `SC_FREEZE_SP` row to
+/// preserved spells. PreservePoints is stored alongside as val2.
+/// </summary>
 public sealed class ReadingSpellbookDatabase : IReadingSpellbookDatabase
 {
-    private readonly Dictionary<int, (ushort, ushort)> _map = new();
+    private readonly Dictionary<string, (ushort skillId, int preservePoints)> _byBook = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IServiceScopeFactory? _scopes;
     private readonly ILogger<ReadingSpellbookDatabase> _logger;
-    public ReadingSpellbookDatabase(ILogger<ReadingSpellbookDatabase> logger) => _logger = logger;
-    public (ushort statusId, ushort skillId)? Get(int itemId)
-        => _map.TryGetValue(itemId, out var v) ? v : null;
-    public void Reload() { /* spellbook_db.yml loader data-pending */ }
+
+    public ReadingSpellbookDatabase(IServiceScopeFactory scopes, ILogger<ReadingSpellbookDatabase> logger)
+    {
+        _scopes = scopes;
+        _logger = logger;
+        Reload();
+    }
+
+    public ReadingSpellbookDatabase(ILogger<ReadingSpellbookDatabase> logger) { _logger = logger; }
+
+    /// <summary>
+    /// rAthena indexes by item id; we receive a name from the SQL
+    /// seed. Until ItemCatalog exposes a name→id lookup the call
+    /// path here can't resolve numeric itemId. Callers that have
+    /// the item name should use <see cref="GetByBookName"/> below.
+    /// </summary>
+    public (ushort statusId, ushort skillId)? Get(int itemId) => null;
+
+    /// <summary>Lookup by item Aegis name (e.g. "WL_MB_MS").</summary>
+    public (ushort statusId, ushort skillId, int preservePoints)? GetByBookName(string nameAegis)
+        => _byBook.TryGetValue(nameAegis, out var v) ? (statusId: (ushort)0, v.skillId, v.preservePoints) : null;
+
+    public void Reload()
+    {
+        _byBook.Clear();
+        if (_scopes == null) return;
+        try
+        {
+            using var scope = _scopes.CreateScope();
+            var repo = scope.ServiceProvider.GetRequiredService<ISpellbookDbRepository>();
+            var db = scope.ServiceProvider.GetRequiredService<ISkillDb>();
+            foreach (var r in repo.GetAllAsync().GetAwaiter().GetResult())
+            {
+                var id = db.Name2Id(r.SkillName);
+                if (id != 0) _byBook[r.BookNameAegis] = (id, r.PreservePoints);
+            }
+            _logger.LogInformation("Spell Book db loaded: {N} entries", _byBook.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "spellbook_db load failed — empty");
+        }
+    }
 }
 
 public sealed class SkillArrowDatabase : ISkillArrowDatabase
@@ -45,5 +159,5 @@ public sealed class SkillArrowDatabase : ISkillArrowDatabase
     public SkillArrowDatabase(ILogger<SkillArrowDatabase> logger) => _logger = logger;
     public IReadOnlyList<(int itemId, int qty)> Get(int sourceItemId)
         => _recipes.TryGetValue(sourceItemId, out var v) ? v : Array.Empty<(int, int)>();
-    public void Reload() { /* arrow_db.yml loader data-pending */ }
+    public void Reload() { /* arrow_db YAML loader landing in Tools.RathenaImporter Wave 3 */ }
 }

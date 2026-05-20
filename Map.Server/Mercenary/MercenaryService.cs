@@ -1,13 +1,53 @@
+using Core.Database.Entities;
+using Core.Database.Repositories.Api;
 using Map.Server.Entities;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Mercenary;
 
-/// <summary>Default <see cref="IMercenaryService"/>. Entry-point shells; persistence + AI data-pending.</summary>
+/// <summary>
+/// Default <see cref="IMercenaryService"/>. Catalog loaded from
+/// <c>mercenary_db</c> SQL (~21 classes seeded from rAthena YAML).
+/// Per-character merc state persists via IPC.
+/// </summary>
 public sealed class MercenaryService : IMercenaryService
 {
+    private readonly Dictionary<uint, MercenaryDbEntity> _catalog = new();
+    private readonly IServiceScopeFactory? _scopes;
     private readonly ILogger<MercenaryService> _logger;
-    public MercenaryService(ILogger<MercenaryService> logger) => _logger = logger;
+
+    public MercenaryService(IServiceScopeFactory scopes, ILogger<MercenaryService> logger)
+    {
+        _scopes = scopes;
+        _logger = logger;
+        Reload();
+    }
+
+    public MercenaryService(ILogger<MercenaryService> logger) { _logger = logger; }
+
+    /// <summary>Catalog lookup by merc id.</summary>
+    public MercenaryDbEntity? GetCatalogEntry(uint mercId)
+        => _catalog.TryGetValue(mercId, out var v) ? v : null;
+
+    /// <summary>Reload catalog from SQL.</summary>
+    public void Reload()
+    {
+        _catalog.Clear();
+        if (_scopes == null) return;
+        try
+        {
+            using var scope = _scopes.CreateScope();
+            var repo = scope.ServiceProvider.GetRequiredService<IMercenaryDbRepository>();
+            foreach (var m in repo.GetAllAsync().GetAwaiter().GetResult())
+                _catalog[m.MercId] = m;
+            _logger.LogInformation("mercenary_db loaded: {N} classes", _catalog.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "mercenary_db load failed");
+        }
+    }
 
     public bool Create(PlayerEntity master, int classId, int lifetimeMs) => false;
     public bool Dead(PlayerEntity master) => false;

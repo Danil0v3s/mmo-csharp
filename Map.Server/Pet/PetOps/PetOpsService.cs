@@ -1,13 +1,32 @@
+using Core.Database.Entities;
+using Core.Database.Repositories.Api;
 using Map.Server.Entities;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Pet.PetOps;
 
-/// <summary>Default <see cref="IPetOpsService"/>. Shells — real logic lives in PetService (Map.Server.Pet).</summary>
+/// <summary>
+/// Default <see cref="IPetOpsService"/>. Catalog loaded from
+/// <c>pet_db</c> SQL table (seeded from <c>db/re/pet_db.yml</c>,
+/// ~957 rows). Real pet AI + per-character pet state live in
+/// <c>Map.Server.Pet.PetService</c>; this Ops service owns the
+/// catalog-side lookups + the rAthena-name entry points.
+/// </summary>
 public sealed class PetOpsService : IPetOpsService
 {
+    private readonly Dictionary<string, PetDbEntity> _catalog = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IServiceScopeFactory? _scopes;
     private readonly ILogger<PetOpsService> _logger;
-    public PetOpsService(ILogger<PetOpsService> logger) => _logger = logger;
+
+    public PetOpsService(IServiceScopeFactory scopes, ILogger<PetOpsService> logger)
+    {
+        _scopes = scopes;
+        _logger = logger;
+        Reload();
+    }
+
+    public PetOpsService(ILogger<PetOpsService> logger) { _logger = logger; }
 
     public bool DataInit(PlayerEntity master, byte flag) => false;
     public bool CreateEgg(PlayerEntity master, int itemId) => false;
@@ -38,5 +57,26 @@ public sealed class PetOpsService : IPetOpsService
     public void ExeAutoBonus(PlayerEntity master) { }
     public void CatchProcessStart(PlayerEntity master, int targetMobClass) { }
     public void CatchProcessEnd(PlayerEntity master, int targetMobClass) { }
-    public void Reload() { }
+
+    public void Reload()
+    {
+        _catalog.Clear();
+        if (_scopes == null) return;
+        try
+        {
+            using var scope = _scopes.CreateScope();
+            var repo = scope.ServiceProvider.GetRequiredService<IPetDbRepository>();
+            foreach (var p in repo.GetAllAsync().GetAwaiter().GetResult())
+                _catalog[p.MobAegis] = p;
+            _logger.LogInformation("pet_db loaded: {N} pets", _catalog.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "pet_db load failed");
+        }
+    }
+
+    /// <summary>Catalog lookup by mob Aegis name (e.g. "PORING").</summary>
+    public PetDbEntity? GetCatalogEntry(string mobAegis)
+        => _catalog.TryGetValue(mobAegis, out var v) ? v : null;
 }
