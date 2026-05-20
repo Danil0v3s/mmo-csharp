@@ -1,6 +1,7 @@
 using Core.Server.Packets.Out.ZC;
 using Map.Server.Entities;
 using Map.Server.Spawn;
+using Map.Server.Status;
 using Map.Server.Visibility;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -30,6 +31,10 @@ public sealed class DamageService : IDamageService
     private Map.Server.Mob.IMobAiService? MobAi
         => _cachedMobAi ??= _services?.GetService<Map.Server.Mob.IMobAiService>();
     private readonly ILogger<DamageService> _logger;
+    // T2.4b+: SC consumers (SteelBody / Kyrie / AutoGuard) — optional so
+    // older tests that build DamageService without the SC engine still work.
+    private readonly IStatusChangeService? _sc;
+    private readonly Random _rng;
 
     public DamageService(
         IVisibilityService visibility,
@@ -42,7 +47,9 @@ public sealed class DamageService : IDamageService
         Party.IPartyShareService? partyShare = null,
         Map.Server.World.IMapFlagService? mapFlags = null,
         Map.Server.World.IMapWorldRegistry? maps = null,
-        IServiceProvider? services = null)
+        IServiceProvider? services = null,
+        IStatusChangeService? sc = null,
+        Random? rng = null)
     {
         _visibility = visibility;
         _mobSpawn = mobSpawn;
@@ -54,6 +61,8 @@ public sealed class DamageService : IDamageService
         _mapFlags = mapFlags;
         _maps = maps;
         _services = services;
+        _sc = sc;
+        _rng = rng ?? Random.Shared;
         _logger = logger;
     }
 
@@ -126,6 +135,15 @@ public sealed class DamageService : IDamageService
         Core.Server.Packets.Out.ZC.DamageActionType action)
     {
         if (damage < 0) damage = 0;
+
+        // T2.4b+: SC overlays on incoming damage. Order matches rAthena
+        // status_calc_damage:
+        //   1) AutoGuard rolls full-block first (binary outcome).
+        //   2) Kyrie's HP shield soaks damage up to its remaining pool.
+        //   3) SteelBody applies a 90 % flat reduction last (multiplies
+        //      whatever survived absorb).
+        damage = ApplyScDamageReduction(target, damage, ref action);
+
         var (currentHp, _) = GetHp(target);
         var actual = Math.Min(damage, currentHp);
         SetHp(target, currentHp - actual);
@@ -145,6 +163,61 @@ public sealed class DamageService : IDamageService
             ai.NotifyAttacked(targetMob, source);
         }
         return actual;
+    }
+
+    /// <summary>
+    /// Apply incoming damage reductions / absorbs from active SCs on the
+    /// target. Mirrors the renewal status_calc_damage path that runs after
+    /// battle_calc_attack returns and before status_damage commits HP loss.
+    ///
+    /// Mutates <paramref name="action"/> to <c>Flee</c> when the target
+    /// fully blocks (Autoguard / Kyrie zero / SteelBody 100 % rounded) so
+    /// the client renders a dodge animation rather than a hit.
+    /// </summary>
+    private int ApplyScDamageReduction(Entity target, int damage, ref DamageActionType action)
+    {
+        if (_sc == null || damage <= 0) return damage;
+
+        // ---- AutoGuard ---------------------------------------------------
+        // Val1 = block chance %. rAthena: 5+5*lv at start, scaled by AGI.
+        // For the C# port we honor whatever the caster stored in Val1.
+        var auto = _sc.Get(target, StatusType.Autoguard);
+        if (auto != null && auto.Val1 > 0 && _rng.Next(100) < auto.Val1)
+        {
+            action = DamageActionType.Flee; // ZC renders the dodge anim.
+            return 0;
+        }
+
+        // ---- Kyrie shield -----------------------------------------------
+        // Val1 = remaining HP shield; Val2 = remaining hit counter.
+        // Each hit consumes from both pools — SC ends when either hits 0.
+        var kyrie = _sc.Get(target, StatusType.Kyrie);
+        if (kyrie != null && kyrie.Val1 > 0 && kyrie.Val2 > 0)
+        {
+            var absorb = Math.Min(damage, kyrie.Val1);
+            damage -= absorb;
+            kyrie.Val1 -= absorb;
+            kyrie.Val2 -= 1;
+            if (kyrie.Val1 <= 0 || kyrie.Val2 <= 0)
+            {
+                _sc.End(target, StatusType.Kyrie);
+            }
+            if (damage <= 0)
+            {
+                action = DamageActionType.Flee;
+                return 0;
+            }
+        }
+
+        // ---- SteelBody ---------------------------------------------------
+        // 90 % flat reduction on physical + magic. Always rounds down to
+        // at least 1 so a hit still registers visually.
+        if (_sc.Get(target, StatusType.Steelbody) != null)
+        {
+            damage = Math.Max(1, damage / 10);
+        }
+
+        return damage;
     }
 
     private static (int Hp, int MaxHp) GetHp(Entity entity) => entity switch
