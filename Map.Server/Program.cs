@@ -371,6 +371,24 @@ builder.Services.AddSingleton<Map.Server.Chat.Channels.IChannelService, Map.Serv
 builder.Services.AddSingleton<Map.Server.Party.Booking.IPartyBookingService, Map.Server.Party.Booking.PartyBookingService>();
 builder.Services.AddSingleton<Map.Server.Homunculus.IHomunculusService, Map.Server.Homunculus.HomunculusService>();
 builder.Services.AddSingleton<Map.Server.BattleGround.IBattlegroundService, Map.Server.BattleGround.BattlegroundService>();
+
+// Big-file services (status / clif / script / mob / npc / unit /
+// map / guild / pet / itemdb / chrif / intif). Canonical rAthena-
+// name entry points; most ops forward to dedicated services or
+// document data-pending.
+builder.Services.AddSingleton<Map.Server.Items.Db.IItemDbService, Map.Server.Items.Db.ItemDbService>();
+builder.Services.AddSingleton<Map.Server.Status.StatusOps.IStatusOpsService, Map.Server.Status.StatusOps.StatusOpsService>();
+builder.Services.AddSingleton<Map.Server.Handlers.ClifWire.IClifWireService, Map.Server.Handlers.ClifWire.ClifWireService>();
+builder.Services.AddSingleton<Map.Server.Scripting.ScriptApi.IScriptApiService, Map.Server.Scripting.ScriptApi.ScriptApiService>();
+builder.Services.AddSingleton<Map.Server.Spawn.MobOps.IMobOpsService, Map.Server.Spawn.MobOps.MobOpsService>();
+builder.Services.AddSingleton<Map.Server.Spawn.NpcOps.INpcOpsService, Map.Server.Spawn.NpcOps.NpcOpsService>();
+builder.Services.AddSingleton<Map.Server.Movement.UnitOps.IUnitOpsService, Map.Server.Movement.UnitOps.UnitOpsService>();
+builder.Services.AddSingleton<Map.Server.World.MapOps.IMapOpsService, Map.Server.World.MapOps.MapOpsService>();
+builder.Services.AddSingleton<Map.Server.Guild.IGuildService, Map.Server.Guild.GuildService>();
+builder.Services.AddSingleton<Map.Server.Pet.PetOps.IPetOpsService, Map.Server.Pet.PetOps.PetOpsService>();
+builder.Services.AddSingleton<Map.Server.Services.Chrif.IChrifService, Map.Server.Services.Chrif.ChrifService>();
+builder.Services.AddSingleton<Map.Server.Services.Intif.IIntifService, Map.Server.Services.Intif.IntifService>();
+
 builder.Services.AddSingleton<Map.Server.Skills.ISkillCastService, Map.Server.Skills.SkillCastService>();
 
 // Skill ground units (skill.cpp:skill_unitsetting +
