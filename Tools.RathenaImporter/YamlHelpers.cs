@@ -1,3 +1,4 @@
+using System.Text.Json;
 using YamlDotNet.RepresentationModel;
 
 namespace Tools.RathenaImporter;
@@ -22,14 +23,24 @@ namespace Tools.RathenaImporter;
 /// </summary>
 internal static class YamlHelpers
 {
-    /// <summary>Open a rAthena YAML file, return the <c>Body</c> sequence.</summary>
+    /// <summary>
+    /// Open a rAthena YAML file, return the <c>Body</c> sequence.
+    /// Returns an empty sequence if the file has no Body — tables that
+    /// only ship Header+Footer (imports pointing elsewhere) or where
+    /// the entire Body block is commented out (e.g. attendance.yml
+    /// ships an empty Body block as a template).
+    /// </summary>
     public static YamlSequenceNode LoadBody(string path)
     {
         using var reader = File.OpenText(path);
         var stream = new YamlStream();
         stream.Load(reader);
-        var root = (YamlMappingNode)stream.Documents[0].RootNode;
-        return (YamlSequenceNode)root.Children[new YamlScalarNode("Body")];
+        if (stream.Documents.Count == 0 || stream.Documents[0].RootNode is not YamlMappingNode root)
+            return new YamlSequenceNode();
+        var key = new YamlScalarNode("Body");
+        if (!root.Children.TryGetValue(key, out var bodyNode))
+            return new YamlSequenceNode();
+        return bodyNode is YamlSequenceNode seq ? seq : new YamlSequenceNode();
     }
 
     /// <summary>True if the map contains <paramref name="key"/>.</summary>
@@ -127,5 +138,47 @@ internal static class YamlHelpers
         }
         // emit "v1:v2:v3:..."
         return string.Join(':', values.Skip(1));
+    }
+
+    /// <summary>
+    /// Serialize a YAML node tree to a compact JSON string. Used by
+    /// converters that flatten nested rAthena structures (item_combos,
+    /// item_packages, refine, etc.) into a single <c>payload_json</c>
+    /// column. The runtime service parses the JSON back to typed
+    /// records.
+    /// </summary>
+    public static string ToJson(YamlNode node)
+    {
+        var obj = ToObject(node);
+        return JsonSerializer.Serialize(obj, new JsonSerializerOptions
+        {
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+        });
+    }
+
+    private static object? ToObject(YamlNode node)
+    {
+        switch (node)
+        {
+            case YamlScalarNode s:
+                if (s.Value == null) return null;
+                if (bool.TryParse(s.Value, out var b)) return b;
+                if (long.TryParse(s.Value, out var l)) return l;
+                if (double.TryParse(s.Value, System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var d)) return d;
+                return s.Value;
+            case YamlMappingNode m:
+                var dict = new Dictionary<string, object?>();
+                foreach (var kv in m.Children)
+                {
+                    var key = ((YamlScalarNode)kv.Key).Value!;
+                    dict[key] = ToObject(kv.Value);
+                }
+                return dict;
+            case YamlSequenceNode seq:
+                return seq.Children.Select(ToObject).ToList();
+            default:
+                return null;
+        }
     }
 }

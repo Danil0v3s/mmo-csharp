@@ -140,6 +140,46 @@ public class GameDbContext : DbContext
     public DbSet<MercenaryDbEntity> MercenaryDb => Set<MercenaryDbEntity>();
     public DbSet<InstanceDbEntity> InstanceDb => Set<InstanceDbEntity>();
 
+    // ---- Second wave of static catalogs (flat-shape) ----
+    public DbSet<CastleDbEntity> CastleDb => Set<CastleDbEntity>();
+    public DbSet<StatPointEntity> StatPointDb => Set<StatPointEntity>();
+    public DbSet<ExpHomunEntity> ExpHomunDb => Set<ExpHomunEntity>();
+    public DbSet<ExpGuildEntity> ExpGuildDb => Set<ExpGuildEntity>();
+    public DbSet<SizeFixEntity> SizeFixDb => Set<SizeFixEntity>();
+    public DbSet<ReputationEntity> ReputationDb => Set<ReputationEntity>();
+    public DbSet<CreateArrowDbEntity> CreateArrowDb => Set<CreateArrowDbEntity>();
+    public DbSet<ItemRandomOptDbEntity> ItemRandomOptDb => Set<ItemRandomOptDbEntity>();
+    public DbSet<CashShopDbEntity> CashShopDb => Set<CashShopDbEntity>();
+    public DbSet<CaptchaDbEntity> CaptchaDb => Set<CaptchaDbEntity>();
+
+    // ---- Payload-shape catalogs (key + JSON payload) ----
+    public DbSet<ElementalDbEntity> ElementalDb => Set<ElementalDbEntity>();
+    public DbSet<BattlegroundDbEntity> BattlegroundDb => Set<BattlegroundDbEntity>();
+    public DbSet<SkillTreeEntity> SkillTreeDb => Set<SkillTreeEntity>();
+    public DbSet<GuildSkillTreeEntity> GuildSkillTreeDb => Set<GuildSkillTreeEntity>();
+    public DbSet<MobSummonEntity> MobSummonDb => Set<MobSummonEntity>();
+    public DbSet<ItemRandomOptGroupEntity> ItemRandomOptGroupDb => Set<ItemRandomOptGroupEntity>();
+    public DbSet<AttrFixEntity> AttrFixDb => Set<AttrFixEntity>();
+    public DbSet<LevelPenaltyEntity> LevelPenaltyDb => Set<LevelPenaltyEntity>();
+    public DbSet<JobStatsEntity> JobStatsDb => Set<JobStatsEntity>();
+    public DbSet<JobExpEntity> JobExpDb => Set<JobExpEntity>();
+    public DbSet<JobBasePointsEntity> JobBasePointsDb => Set<JobBasePointsEntity>();
+    public DbSet<StatusYmlEntity> StatusYmlDb => Set<StatusYmlEntity>();
+    public DbSet<ItemCombosEntity> ItemCombosDb => Set<ItemCombosEntity>();
+    public DbSet<ItemPackagesEntity> ItemPackagesDb => Set<ItemPackagesEntity>();
+    public DbSet<ItemGroupDbEntity> ItemGroupDb => Set<ItemGroupDbEntity>();
+    public DbSet<ItemEnchantEntity> ItemEnchantDb => Set<ItemEnchantEntity>();
+    public DbSet<ItemReformEntity> ItemReformDb => Set<ItemReformEntity>();
+    public DbSet<LaphineSynthesisEntity> LaphineSynthesisDb => Set<LaphineSynthesisEntity>();
+    public DbSet<LaphineUpgradeEntity> LaphineUpgradeDb => Set<LaphineUpgradeEntity>();
+    public DbSet<RefineEntity> RefineDb => Set<RefineEntity>();
+    public DbSet<EnchantGradeEntity> EnchantGradeDb => Set<EnchantGradeEntity>();
+    public DbSet<MapDropsEntity> MapDropsDb => Set<MapDropsEntity>();
+    public DbSet<MobItemRatioEntity> MobItemRatioDb => Set<MobItemRatioEntity>();
+    public DbSet<ItemCashEntity> ItemCashDb => Set<ItemCashEntity>();
+    public DbSet<AttendanceDbEntity> AttendanceDb => Set<AttendanceDbEntity>();
+    public DbSet<ReputationGroupEntity> ReputationGroupDb => Set<ReputationGroupEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

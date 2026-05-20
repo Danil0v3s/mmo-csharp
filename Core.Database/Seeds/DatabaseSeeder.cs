@@ -58,6 +58,38 @@ public class DatabaseSeeder
             await ExecuteSqlScriptAsync("Seeds/Scripts/seed_mercenary_db.sql", ct);
             await ExecuteSqlScriptAsync("Seeds/Scripts/seed_instance_db.sql", ct);
 
+            // Second wave of catalogs (Tier 1 finish).
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_castle_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_statpoint.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_exp_homun.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_exp_guild.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_size_fix.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_reputation.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_create_arrow_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_randomopt_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_elemental_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_battleground_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_skill_tree.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_guild_skill_tree.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_mob_summon.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_randomopt_group.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_attr_fix.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_level_penalty.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_job_stats.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_job_exp.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_job_basepoints.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_status_yml.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_combos.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_packages.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_group_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_enchant.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_reform.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_laphine_synthesis.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_laphine_upgrade.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_refine.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_enchantgrade.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_map_drops.sql", ct);
+
             await _context.Database.ExecuteSqlRawAsync("COMMIT", ct);
 
             _logger.LogInformation("Database seeding completed successfully");
