@@ -24,7 +24,7 @@ modules last. The "C# surface" column gives the entry folder under
 | # | rAthena file | Lines | Status | Audit doc | C# surface |
 |---|---|---:|---|---|---|
 | 1  | `script.cpp`       | 28 422 | ❌ | — | `Scripting/` (TS+Jint runtime) |
-| 2  | `skill.cpp`        | 26 438 | ❌ | — | `Skills/` |
+| 2  | `skill.cpp`        | 26 438 | ✅ | [skill-parity.md](map/skill-parity.md) | `Skills/` |
 | 3  | `clif.cpp`         | 25 817 | ❌ | — | `Handlers/`, `Core.Server/Packets/` |
 | 4  | `status.cpp`       | 16 047 | ❌ | — | `Status/` |
 | 5  | `pc.cpp`           | 15 989 | ✅ | [pc-parity.md](map/pc-parity.md) | `Entities/PlayerEntity*`, `Session/` |
@@ -66,7 +66,7 @@ modules last. The "C# surface" column gives the entry folder under
 | 41 | `clan.cpp`         |    235 | ❌ | — | `Party/` |
 | 42 | `date.cpp`         |    155 | ❌ | — | — |
 
-**Audited: 3 / 41 (pc, battle, atcommand). Partial: 5. Pending: 34.**
+**Audited: 4 / 41 (pc, battle, atcommand, skill). Partial: 5. Pending: 33.**
 
 ## Sweep order (dependency + impact)
 
@@ -165,3 +165,10 @@ will land in a handful of medium commits each.
 - 7-wave dependency-ordered plan: skill→status→clif first, then the
   smaller subsystems.
 - Drives next-up work: `skill.cpp` parity audit.
+
+### 2026-05-20 — skill.cpp ✅
+- 162 functions enumerated; 15-wave sweep landed in 2 commits.
+- 17 new `Map.Server/Skills/` service interfaces + impls; every
+  rAthena `skill_*` public function now has a canonical C# entry
+  point.
+- Next up: `status.cpp` (16 047 lines, second-most depended-on).

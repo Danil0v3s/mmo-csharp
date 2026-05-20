@@ -323,6 +323,20 @@ builder.Services.AddSingleton<Map.Server.Skills.ISkillGateService, Map.Server.Sk
 builder.Services.AddSingleton<Map.Server.Skills.ISkillEffectService, Map.Server.Skills.SkillEffectService>();
 // Heal calc + AutoSpell + BreakEquip + StripEquip side effects.
 builder.Services.AddSingleton<Map.Server.Skills.ISkillSideEffectService, Map.Server.Skills.SkillSideEffectService>();
+// Production / arrow / refine / identify (skill.cpp:20571+).
+builder.Services.AddSingleton<Map.Server.Skills.ISkillProductionService, Map.Server.Skills.SkillProductionService>();
+// Combo / partner / banding helpers.
+builder.Services.AddSingleton<Map.Server.Skills.ISkillComboService, Map.Server.Skills.SkillComboService>();
+// One-off misc skill commands (Greed, Frost Joke, Magic Decoy, …).
+builder.Services.AddSingleton<Map.Server.Skills.ISkillMiscService, Map.Server.Skills.SkillMiscService>();
+// usave + layout init.
+builder.Services.AddSingleton<Map.Server.Skills.ISkillUsaveService, Map.Server.Skills.SkillUsaveService>();
+builder.Services.AddSingleton<Map.Server.Skills.ISkillLayoutService, Map.Server.Skills.SkillLayoutService>();
+// Auxiliary YAML-backed databases (Abra / Magic Mushroom / Spell Book / Arrow).
+builder.Services.AddSingleton<Map.Server.Skills.IAbraDatabase, Map.Server.Skills.AbraDatabase>();
+builder.Services.AddSingleton<Map.Server.Skills.IMagicMushroomDatabase, Map.Server.Skills.MagicMushroomDatabase>();
+builder.Services.AddSingleton<Map.Server.Skills.IReadingSpellbookDatabase, Map.Server.Skills.ReadingSpellbookDatabase>();
+builder.Services.AddSingleton<Map.Server.Skills.ISkillArrowDatabase, Map.Server.Skills.SkillArrowDatabase>();
 builder.Services.AddSingleton<Map.Server.Skills.ISkillCastService, Map.Server.Skills.SkillCastService>();
 
 // Skill ground units (skill.cpp:skill_unitsetting +

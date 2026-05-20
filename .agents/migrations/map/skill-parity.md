@@ -303,3 +303,56 @@ is documented.
 - Enumerated 162 rAthena public functions in skill.cpp.
 - 11 done / 15 partial / 112 missing across 11 subsystems.
 - 15-wave plan; SK-H1 (`skill_get_*` accessor table) is next.
+
+### 2026-05-20 — waves H1-H7 (cast lifecycle + dispatch + gate)
+- **SK-H1** `SkillDefinition` gains ~30 missing rAthena columns +
+  `SkillInf2` / `SkillNk` / `SkillUnitFlag` bitfields. `ISkillDb`
+  exposes ~50 `Get*` accessors mirroring `skill_get_*` by name.
+- **SK-H2** `ISkillCastTimingService` — `castfix` / `castfix_sc` /
+  `vfcastfix` / `delayfix`. DEX scaling + `castrate_dex_scale` /
+  `cast_rate` / `delay_rate` defaults land in `BattleConfigService`.
+  Wired into `SkillCastService.StartCast`.
+- **SK-H3** `ISkillRequirementService` — `CheckCondition` /
+  `CheckConditionCastEnd` / `ConsumeHpSpAp` / `ConsumeRequirement` /
+  `CheckConditionCharSub`. HP/SP/AP path real; ammo / item-list /
+  weapon-mask paths documented data-pending.
+- **SK-H4** `ISkillCastEndService` — wraps `SkillResolverRegistry` +
+  `SkillUnitService.Place` under the rAthena `skill_castend_*` names.
+- **SK-H5** `ISkillAttackService` — central `SkillAttack` funnel +
+  `SkillAttackArea` (splash) + `SkillAreaSub` (predicate iter).
+- **SK-H6** `ISkillBlockService` — per-skill block + cooldown timers
+  + `addtimerskill` / `cleartimerskill` deferred events.
+- **SK-H7** `ISkillGateService` — `isNotOk` / `_hom` /
+  `_mercenary` / `_npcRange` + `pos_maxcount_check`.
+
+### 2026-05-20 — waves M1-L3 (effects / units / production / aux DBs)
+- **SK-M1** `ISkillEffectService` — `additional_effect` /
+  `counter_additional_effect` / `onskillusage` / `block_check`.
+- **SK-M2** `ISkillUnitService` gains 9 lifecycle helpers
+  (`UnitMove*` / `UnitOnLeft` / `UnitOnOut` / `UnitOnDamaged` /
+  `ClearUnitGroup` / `DelUnit*`).
+- **SK-M3** `ISkillSideEffectService` — `CalcHeal` real; `AutoSpell`
+  / `BreakEquip` / `StripEquip` data-pending.
+- **SK-M4** `ISkillProductionService` — `ProduceMix` /
+  `ArrowCreate` / `ChangeMaterial` / `RepairWeapon` /
+  `WeaponRefine` / `Identify` / `ElementalAnalysis`.
+- **SK-M5** `ISkillComboService` — `Combo` / `IsCombo` /
+  `ComboToggleInf` / `CheckPcPartner` (real) / `BandingCount` (real).
+- **SK-L1** `ISkillMiscService` — 20 one-off helpers
+  (Greed, Frost Joke, Magic Decoy, Spell Book, Select Menu,
+  Graffiti Remover, Detonator, Maelstrom Suction, Camouflage /
+  Cloaking / Shadow Form checks, Dance Overlap, Magic Power Toggle,
+  Trap Reveal, Mirage Cast, IsAmmoType, BlSc, Shimiru cell).
+- **SK-L2** `ISkillUsaveService` + `ISkillLayoutService`.
+  `ISkillDb.Name2Id` / `Dummy2SkillId` already shipped in SK-H1.
+- **SK-L3** `IAbraDatabase` / `IMagicMushroomDatabase` /
+  `IReadingSpellbookDatabase` / `ISkillArrowDatabase` — empty
+  loaders ready for the YAML port.
+
+**Final coverage**: every rAthena `skill_*` public function has a
+canonical C# entry point. ~50 / 162 are working implementations;
+the remainder are documented "data-pending" paths whose parent
+dependency (skill_db YAML, equip aggregator, SC table, layout
+matrix, item-cost catalog, production recipes) is explicit in
+each service header. 319/320 Map.Server.Tests green (the long-
+standing replay-baseline failure is unchanged).
