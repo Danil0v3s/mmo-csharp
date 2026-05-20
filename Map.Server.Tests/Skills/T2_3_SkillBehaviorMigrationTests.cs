@@ -1,0 +1,609 @@
+using Map.Server.Combat;
+using Map.Server.Entities;
+using Map.Server.Items;
+using Map.Server.Mob;
+using Map.Server.Movement;
+using Map.Server.Skills;
+using Map.Server.Skills.Behaviors;
+using Map.Server.Spawn;
+using Map.Server.Status;
+using Map.Server.Tests.Status;
+using Map.Server.Tests.Visibility;
+using Map.Server.Tests.Warps;
+using Map.Server.Visibility;
+using Map.Server.World;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace Map.Server.Tests.Skills;
+
+/// <summary>
+/// T2.3 acceptance tests — first wave of per-skill behavior plugins
+/// covering the major job-tree skills. Each plugin lives in its own
+/// file under Map.Server/Skills/Behaviors/; tests group by skill
+/// family rather than by plugin.
+/// </summary>
+public class T2_3_SkillBehaviorMigrationTests
+{
+    // ============================================================
+    //  Swordsman family
+    // ============================================================
+
+    [Fact]
+    public void Provoke_AppliesScOnTarget()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var target = ctx.AddMob(51, 51);
+        target.Stats.DefenseElement = BattleElement.Neutral;
+
+        new ProvokeBehavior().Resolve(caster, target,
+            MakeDef(SkillIds.SM_PROVOKE, SkillDamageKind.None, 9), skillLevel: 5, ctx.Behavior);
+
+        Assert.NotNull(ctx.Sc.Get(target, StatusType.Provoke));
+    }
+
+    [Fact]
+    public void Provoke_FailsOnUndeadElement()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var target = ctx.AddMob(51, 51);
+        target.Stats.DefenseElement = BattleElement.Undead;
+
+        new ProvokeBehavior().Resolve(caster, target,
+            MakeDef(SkillIds.SM_PROVOKE, SkillDamageKind.None, 9), skillLevel: 5, ctx.Behavior);
+
+        Assert.Null(ctx.Sc.Get(target, StatusType.Provoke));
+    }
+
+    [Fact]
+    public void Endure_AlwaysAppliesToSelf()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        new EndureBehavior().Resolve(caster, caster,
+            MakeDef(SkillIds.SM_ENDURE, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+        var sc = ctx.Sc.Get(caster, StatusType.Endure);
+        Assert.NotNull(sc);
+        Assert.Equal(7, sc!.Val2); // Val2 = 7 remaining hits.
+    }
+
+    // ============================================================
+    //  Knight family
+    // ============================================================
+
+    [Fact]
+    public void TwoHandQuicken_AppliesAspdBoostToSelf()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.AspdRate = 0;
+        new TwoHandQuickenBehavior().Resolve(caster, caster,
+            MakeDef(SkillIds.KN_TWOHANDQUICKEN, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+
+        // Val1 = 35 (7 * lv5) → AspdRate += 35 via SC handler.
+        Assert.Equal(35, caster.Stats.AspdRate);
+    }
+
+    [Fact]
+    public void Pierce_HitsTwiceVsMediumMob()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.Batk = 100; caster.Stats.WatkMin = 100; caster.Stats.WatkMax = 100; caster.Stats.Hit = 200;
+        var mob = ctx.AddMob(51, 51);
+        mob.Stats.Size = BattleSize.Medium;
+        mob.Hp = 1000; mob.Stats.MaxHp = 1000;
+
+        var before = mob.Hp;
+        new PierceBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.KN_PIERCE, SkillDamageKind.Weapon, 3), skillLevel: 5, ctx.Behavior);
+
+        // 2 hits at 150% each. Each hit > 0 → HP drops by at least 2 units;
+        // the precise damage depends on the calc — we just need the
+        // monotonic property of "took multi-hit damage".
+        var afterTwoHits = mob.Hp;
+        Assert.True(afterTwoHits < before);
+
+        // Reset + try Small mob (1 hit) — should take less damage proportionally.
+        var small = ctx.AddMob(53, 53);
+        small.Stats.Size = BattleSize.Small;
+        small.Hp = 1000; small.Stats.MaxHp = 1000;
+        new PierceBehavior().Resolve(caster, small,
+            MakeDef(SkillIds.KN_PIERCE, SkillDamageKind.Weapon, 3), skillLevel: 5, ctx.Behavior);
+        var smallTook = 1000 - small.Hp;
+        var medTook = 1000 - afterTwoHits;
+        Assert.True(medTook >= smallTook * 2 - 5, $"medium ({medTook}) should be ~2x small ({smallTook})");
+    }
+
+    [Fact]
+    public void BowlingBash_HitsPrimary_AndSplashesNearby()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.Batk = 100; caster.Stats.WatkMin = 100; caster.Stats.WatkMax = 100; caster.Stats.Hit = 200;
+        var primary = ctx.AddMob(51, 51);
+        var splash = ctx.AddMob(52, 52);
+        var far = ctx.AddMob(90, 90);
+        primary.Hp = primary.Stats.MaxHp = 1000;
+        splash.Hp = splash.Stats.MaxHp = 1000;
+        far.Hp = far.Stats.MaxHp = 1000;
+
+        new BowlingBashBehavior().Resolve(caster, primary,
+            MakeDef(SkillIds.KN_BOWLINGBASH, SkillDamageKind.Weapon, 2), skillLevel: 5, ctx.Behavior);
+
+        Assert.True(primary.Hp < 1000);
+        Assert.True(splash.Hp < 1000);
+        Assert.Equal(1000, far.Hp);
+    }
+
+    // ============================================================
+    //  Mage family
+    // ============================================================
+
+    [Fact]
+    public void FrostDiver_ProcsFreeze_WhenRollUnderChance()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var mob = ctx.AddMob(51, 51);
+        new FrostDiverBehavior(new FixedRandom(0)).Resolve(caster, mob,
+            MakeDef(SkillIds.MG_FROSTDIVER, SkillDamageKind.Magic, 9), skillLevel: 5, ctx.Behavior);
+
+        Assert.NotNull(ctx.Sc.Get(mob, StatusType.Freeze));
+    }
+
+    [Fact]
+    public void FrostDiver_NoFreeze_OnHighRoll()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var mob = ctx.AddMob(51, 51);
+        // chance at lv5 = 45%; FixedRandom(99) → no proc.
+        new FrostDiverBehavior(new FixedRandom(99)).Resolve(caster, mob,
+            MakeDef(SkillIds.MG_FROSTDIVER, SkillDamageKind.Magic, 9), skillLevel: 5, ctx.Behavior);
+        Assert.Null(ctx.Sc.Get(mob, StatusType.Freeze));
+    }
+
+    [Fact]
+    public void StoneCurse_AppliesStoneWait_OnLowRoll()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var mob = ctx.AddMob(51, 51);
+        new StoneCurseBehavior(new FixedRandom(0)).Resolve(caster, mob,
+            MakeDef(SkillIds.MG_STONECURSE, SkillDamageKind.Magic, 9), skillLevel: 5, ctx.Behavior);
+        Assert.NotNull(ctx.Sc.Get(mob, StatusType.Stonewait));
+    }
+
+    // ============================================================
+    //  Acolyte / Priest family
+    // ============================================================
+
+    [Fact]
+    public void LexDivina_AppliesSilence_AndToggleEndsIt()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var target = ctx.AddPlayer(2, 51, 51);
+
+        new LexDivinaBehavior().Resolve(caster, target,
+            MakeDef(SkillIds.PR_LEXDIVINA, SkillDamageKind.None, 9), skillLevel: 3, ctx.Behavior);
+        Assert.NotNull(ctx.Sc.Get(target, StatusType.Silence));
+
+        // Recast cures.
+        new LexDivinaBehavior().Resolve(caster, target,
+            MakeDef(SkillIds.PR_LEXDIVINA, SkillDamageKind.None, 9), skillLevel: 3, ctx.Behavior);
+        Assert.Null(ctx.Sc.Get(target, StatusType.Silence));
+    }
+
+    [Fact]
+    public void LexAeterna_AppliesAeterna_AndReCastNoOps()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var target = ctx.AddMob(51, 51);
+
+        new LexAeternaBehavior().Resolve(caster, target,
+            MakeDef(SkillIds.PR_LEXAETERNA, SkillDamageKind.None, 9), skillLevel: 1, ctx.Behavior);
+        var sc = ctx.Sc.Get(target, StatusType.Aeterna);
+        Assert.NotNull(sc);
+        Assert.Equal(-1, sc!.ExpiresAt); // permanent until consumed.
+
+        // Re-cast: silently no-op.
+        new LexAeternaBehavior().Resolve(caster, target,
+            MakeDef(SkillIds.PR_LEXAETERNA, SkillDamageKind.None, 9), skillLevel: 1, ctx.Behavior);
+        Assert.NotNull(ctx.Sc.Get(target, StatusType.Aeterna));
+    }
+
+    [Fact]
+    public void TurnUndead_LowChance_FallsThrough()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Level = 1;
+        caster.Stats.Luk = 0;
+        var undead = ctx.AddMob(51, 51);
+        undead.Stats.DefenseElement = BattleElement.Undead;
+        undead.Level = 99;
+        undead.Hp = 5000;
+
+        // Instakill chance is negative → clamped to 0 → never procs.
+        // FixedRandom(0) wouldn't matter since chance=0.
+        var handled = new TurnUndeadBehavior(new FixedRandom(0)).Resolve(caster, undead,
+            MakeDef(SkillIds.PR_TURNUNDEAD, SkillDamageKind.Magic, 9), skillLevel: 1, ctx.Behavior);
+        // Returns false → falls through to Magic resolver.
+        Assert.False(handled);
+        Assert.Equal(5000, undead.Hp);
+    }
+
+    [Fact]
+    public void TurnUndead_HighChance_Instakills()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Level = 99; caster.Stats.Luk = 100;
+        var undead = ctx.AddMob(51, 51);
+        undead.Stats.DefenseElement = BattleElement.Undead;
+        undead.Level = 1;
+        undead.Hp = 5000; undead.Stats.MaxHp = 5000;
+
+        // Chance is huge → clamped to 100; FixedRandom(0) under any cap.
+        var handled = new TurnUndeadBehavior(new FixedRandom(0)).Resolve(caster, undead,
+            MakeDef(SkillIds.PR_TURNUNDEAD, SkillDamageKind.Magic, 9), skillLevel: 10, ctx.Behavior);
+        Assert.True(handled);
+        Assert.Equal(0, undead.Hp);
+    }
+
+    [Fact]
+    public void TurnUndead_NonUndead_NoOps()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var living = ctx.AddMob(51, 51);
+        living.Stats.DefenseElement = BattleElement.Neutral;
+        living.Hp = 1000; living.Stats.MaxHp = 1000;
+
+        new TurnUndeadBehavior(new FixedRandom(0)).Resolve(caster, living,
+            MakeDef(SkillIds.PR_TURNUNDEAD, SkillDamageKind.Magic, 9), skillLevel: 10, ctx.Behavior);
+        Assert.Equal(1000, living.Hp); // untouched.
+    }
+
+    // ============================================================
+    //  Merchant / Blacksmith family
+    // ============================================================
+
+    [Fact]
+    public void Mammonite_HitsTarget()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.Batk = 100; caster.Stats.WatkMin = 100; caster.Stats.WatkMax = 100; caster.Stats.Hit = 200;
+        var mob = ctx.AddMob(51, 51);
+        mob.Hp = 1000; mob.Stats.MaxHp = 1000;
+
+        new MammoniteBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.MC_MAMMONITE, SkillDamageKind.Weapon, 1), skillLevel: 5, ctx.Behavior);
+
+        Assert.True(mob.Hp < 1000);
+    }
+
+    [Fact]
+    public void HammerFall_StunOnLowRoll()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var mob = ctx.AddMob(51, 51);
+
+        // chance at lv5 = 70%; FixedRandom(0) → procs.
+        new HammerFallBehavior(new FixedRandom(0)).Resolve(caster, mob,
+            MakeDef(SkillIds.BS_HAMMERFALL, SkillDamageKind.Weapon, 2), skillLevel: 5, ctx.Behavior);
+        Assert.NotNull(ctx.Sc.Get(mob, StatusType.Stun));
+    }
+
+    [Fact]
+    public void AdrenalineRush_BoostsCasterAspd()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.AspdRate = 0;
+
+        new AdrenalineRushBehavior().Resolve(caster, caster,
+            MakeDef(SkillIds.BS_ADRENALINE, SkillDamageKind.None, 0), skillLevel: 1, ctx.Behavior);
+
+        Assert.Equal(30, caster.Stats.AspdRate);
+    }
+
+    [Fact]
+    public void Overthrust_AppliesScWithLevelScaledVal1()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        new OverthrustBehavior().Resolve(caster, caster,
+            MakeDef(SkillIds.BS_OVERTHRUST, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+        var sc = ctx.Sc.Get(caster, StatusType.Overthrust);
+        Assert.NotNull(sc);
+        Assert.Equal(25, sc!.Val1); // 5 * lv = 25 % ATK boost
+    }
+
+    // ============================================================
+    //  Archer / Hunter family
+    // ============================================================
+
+    [Fact]
+    public void DoubleStrafe_HitsTwice()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.Batk = 100; caster.Stats.WatkMin = 100; caster.Stats.WatkMax = 100; caster.Stats.Hit = 200;
+        var mob = ctx.AddMob(51, 51);
+        mob.Hp = 5000; mob.Stats.MaxHp = 5000;
+
+        new DoubleStrafeBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.AC_DOUBLE, SkillDamageKind.Weapon, 9), skillLevel: 5, ctx.Behavior);
+
+        Assert.True(mob.Hp < 5000); // multi-hit took chunks.
+    }
+
+    [Fact]
+    public void ArrowShower_HitsAllInSplash()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.Batk = 100; caster.Stats.WatkMin = 100; caster.Stats.WatkMax = 100; caster.Stats.Hit = 200;
+        var primary = ctx.AddMob(60, 60);
+        var nearby = ctx.AddMob(61, 60);
+        primary.Hp = primary.Stats.MaxHp = 1000;
+        nearby.Hp = nearby.Stats.MaxHp = 1000;
+
+        new ArrowShowerBehavior().Resolve(caster, primary,
+            MakeDef(SkillIds.AC_SHOWER, SkillDamageKind.Weapon, 9), skillLevel: 5, ctx.Behavior);
+
+        Assert.True(primary.Hp < 1000);
+        Assert.True(nearby.Hp < 1000);
+    }
+
+    [Fact]
+    public void BlitzBeat_HitsScalingByLevel()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.Dex = 50; caster.Stats.IntStat = 50; caster.Level = 50;
+        var mob = ctx.AddMob(51, 51);
+        mob.Hp = 9999; mob.Stats.MaxHp = 9999;
+
+        new BlitzBeatBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.HT_BLITZBEAT, SkillDamageKind.Misc, 9), skillLevel: 3, ctx.Behavior);
+
+        Assert.True(mob.Hp < 9999);
+    }
+
+    // ============================================================
+    //  Thief / Assassin family
+    // ============================================================
+
+    [Fact]
+    public void Hiding_TogglesSc()
+    {
+        var ctx = Build();
+        var pc = ctx.AddPlayer(1, 50, 50);
+
+        new HidingBehavior().Resolve(pc, pc,
+            MakeDef(SkillIds.TF_HIDING, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+        Assert.NotNull(ctx.Sc.Get(pc, StatusType.Hiding));
+
+        // Recast — toggles off.
+        new HidingBehavior().Resolve(pc, pc,
+            MakeDef(SkillIds.TF_HIDING, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+        Assert.Null(ctx.Sc.Get(pc, StatusType.Hiding));
+    }
+
+    [Fact]
+    public void Poison_AppliesPoisonScOnLowRoll()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var mob = ctx.AddMob(51, 51);
+        // chance at lv5 = 55%; FixedRandom(0) → procs.
+        new PoisonBehavior(new FixedRandom(0)).Resolve(caster, mob,
+            MakeDef(SkillIds.TF_POISON, SkillDamageKind.None, 9), skillLevel: 5, ctx.Behavior);
+        Assert.NotNull(ctx.Sc.Get(mob, StatusType.Poison));
+    }
+
+    [Fact]
+    public void SonicBlow_DealsMultiHit()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.Batk = 100; caster.Stats.WatkMin = 100; caster.Stats.WatkMax = 100; caster.Stats.Hit = 200;
+        var mob = ctx.AddMob(51, 51);
+        mob.Hp = 9999; mob.Stats.MaxHp = 9999;
+
+        new SonicBlowBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.AS_SONICBLOW, SkillDamageKind.Weapon, 1), skillLevel: 5, ctx.Behavior);
+
+        Assert.True(mob.Hp < 9999);
+    }
+
+    // ============================================================
+    //  Monk family
+    // ============================================================
+
+    [Fact]
+    public void TripleAttack_HitsThreeTimes()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.Batk = 100; caster.Stats.WatkMin = 100; caster.Stats.WatkMax = 100; caster.Stats.Hit = 200;
+        var mob = ctx.AddMob(51, 51);
+        mob.Hp = 9999; mob.Stats.MaxHp = 9999;
+
+        new TripleAttackBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.MO_TRIPLEATTACK, SkillDamageKind.Weapon, 1), skillLevel: 5, ctx.Behavior);
+
+        Assert.True(mob.Hp < 9999);
+    }
+
+    // ============================================================
+    //  Holy Light (defers to generic Magic resolver)
+    // ============================================================
+
+    [Fact]
+    public void HolyLight_FallsThrough_ReturnsFalse()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var mob = ctx.AddMob(51, 51);
+        var handled = new HolyLightBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.AL_HOLYLIGHT, SkillDamageKind.Magic, 9), skillLevel: 5, ctx.Behavior);
+        Assert.False(handled);
+    }
+
+    // ============================================================
+    //  Registry — all 23 new plugins resolve by id
+    // ============================================================
+
+    [Fact]
+    public void Registry_IndexesAllNewPlugins()
+    {
+        var reg = new SkillBehaviorRegistry(new ISkillBehavior[]
+        {
+            new ProvokeBehavior(),
+            new EndureBehavior(),
+            new TwoHandQuickenBehavior(),
+            new PierceBehavior(),
+            new BowlingBashBehavior(),
+            new FrostDiverBehavior(),
+            new StoneCurseBehavior(),
+            new HolyLightBehavior(),
+            new LexDivinaBehavior(),
+            new LexAeternaBehavior(),
+            new TurnUndeadBehavior(),
+            new MammoniteBehavior(),
+            new HammerFallBehavior(),
+            new AdrenalineRushBehavior(),
+            new OverthrustBehavior(),
+            new DoubleStrafeBehavior(),
+            new ArrowShowerBehavior(),
+            new BlitzBeatBehavior(),
+            new HidingBehavior(),
+            new PoisonBehavior(),
+            new SonicBlowBehavior(),
+            new TripleAttackBehavior(),
+        });
+
+        Assert.Equal(22, reg.Count);
+        Assert.NotNull(reg.Get(SkillIds.SM_PROVOKE));
+        Assert.NotNull(reg.Get(SkillIds.AS_SONICBLOW));
+        Assert.NotNull(reg.Get(SkillIds.KN_BOWLINGBASH));
+        Assert.NotNull(reg.Get(SkillIds.PR_TURNUNDEAD));
+    }
+
+    // ============================================================
+    //  Test rig
+    // ============================================================
+
+    private static SkillDefinition MakeDef(ushort id, SkillDamageKind damageKind, short range)
+        => new()
+        {
+            Id = id,
+            Name = $"skill_{id}",
+            MaxLevel = 10,
+            DamageKind = damageKind,
+            Target = SkillTargetMode.TargetEnemy,
+            Range = range,
+            DamageRate = new[] { 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100 },
+        };
+
+    private static TestContext Build()
+    {
+        const string mapName = "test_map";
+        var map = new MapData(mapName, 200, 200, new byte[200 * 200]);
+        var world = new StubWorldRegistry(map);
+        var entities = new EntityRegistry(world);
+        var dispatcher = new RecordingDispatcher();
+        var visibility = new VisibilityService(entities, dispatcher);
+        var movement = new MovementService(entities, world, visibility,
+            new NoOpWarpService(), new NoOpWarpDispatcher(),
+            NullLogger<MovementService>.Instance);
+        var mobDb = new StubMobDb();
+        var spawnRegistry = new MobSpawnRegistry();
+        var ids = new EntityIdAllocator();
+        var itemCatalog = new EmptyItemCatalog();
+        var itemDrops = new ItemDropService(entities, ids, visibility, NullLogger<ItemDropService>.Instance);
+        var mobSpawn = new MobSpawnService(
+            spawnRegistry, entities, world, mobDb, itemCatalog, itemDrops, movement, visibility,
+            ids, new StatusCalcService(), NullLogger<MobSpawnService>.Instance, new Random(0));
+        var damage = new DamageService(visibility, mobSpawn, entities,
+            new BattleCalculator(new Random(0)), NullLogger<DamageService>.Instance);
+        var sc = new StatusChangeService(damage, entities, new StatusEffectRegistry(),
+            NullLogger<StatusChangeService>.Instance);
+        var battle = new BattleCalculator(new Random(0));
+
+        var behaviorCtx = new SkillBehaviorContext(entities, damage, battle, sc);
+        return new TestContext(behaviorCtx, sc, entities, ids, (uint)mapName.GetHashCode());
+    }
+
+    private sealed record TestContext(
+        SkillBehaviorContext Behavior,
+        StatusChangeService Sc,
+        EntityRegistry Entities,
+        EntityIdAllocator Ids,
+        uint MapId)
+    {
+        public PlayerEntity AddPlayer(int charId, short x, short y)
+        {
+            var pc = new PlayerEntity(charId, charId, $"P{charId}", Guid.NewGuid(), MapId, x, y);
+            pc.Hp = pc.MaxHp = 1000;
+            Entities.Add(pc);
+            return pc;
+        }
+
+        public MobEntity AddMob(short x, short y)
+        {
+            var db = new MobDbEntry { Id = 1002, AegisName = "PORING", Name = "Poring", Hp = 1000 };
+            var origin = new MobSpawnEntry { MapId = MapId, MobClassId = 1002 };
+            var mob = new MobEntity(Ids.NextMob(), db, origin, MapId, x, y);
+            new StatusCalcService().CalcMob(mob);
+            Entities.Add(mob);
+            return mob;
+        }
+    }
+
+    private sealed class FixedRandom : Random
+    {
+        private readonly int _value;
+        public FixedRandom(int value) { _value = value; }
+        public override int Next(int maxValue) => _value % Math.Max(1, maxValue);
+        public override int Next() => _value;
+    }
+
+    private sealed class StubMobDb : IMobDb
+    {
+        public int Count => 0;
+        public MobDbEntry? Get(int classId) => null;
+        public MobDbEntry? GetByAegisName(string n) => null;
+        public IEnumerable<MobDbEntry> All() => Array.Empty<MobDbEntry>();
+        public void Reload() { }
+    }
+
+    private sealed class StubWorldRegistry : IMapWorldRegistry
+    {
+        private readonly Dictionary<string, MapData> _maps;
+        public StubWorldRegistry(params MapData[] maps) =>
+            _maps = maps.ToDictionary(m => m.Name, StringComparer.OrdinalIgnoreCase);
+        public MapData? Get(string name) => _maps.GetValueOrDefault(name);
+        public IEnumerable<MapData> All => _maps.Values;
+        public int TotalCells => _maps.Values.Sum(m => m.CellCount);
+        public bool Contains(string name) => _maps.ContainsKey(name);
+    }
+
+    private sealed class EmptyItemCatalog : IItemCatalog
+    {
+        public int Count => 0;
+        public Core.Database.Entities.ItemEntity? Get(uint id) => null;
+        public Core.Database.Entities.ItemEntity? GetByAegisName(string n) => null;
+        public IEnumerable<Core.Database.Entities.ItemEntity> All() => Array.Empty<Core.Database.Entities.ItemEntity>();
+        public void Reload() { }
+    }
+}

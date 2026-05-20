@@ -266,6 +266,22 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Striparmor, NoOpHandler());
         Register(StatusType.Striphelm, NoOpHandler());
 
+        // SC_HIDING — Thief Hiding (TF_HIDING). Presence flag; the
+        // visibility hook (other entities can't target hidden players)
+        // ports separately. We only need the SC slot for duration.
+        Register(StatusType.Hiding, NoOpHandler());
+
+        // SC_OVERTHRUST — Blacksmith Over Thrust (BS_OVERTHRUST).
+        // Val1 = ATK % boost. Future damage-side hook reads it from
+        // PlayerEntity.EquipBonuses-equivalent path; for now SC is
+        // a presence + duration marker.
+        Register(StatusType.Overthrust, NoOpHandler());
+
+        // SC_AETERNA — Priest Lex Aeterna (PR_LEXAETERNA). Marker
+        // that the next damage hit on the target should be doubled
+        // (and then the SC ends). Damage-side consumer ports next.
+        Register(StatusType.Aeterna, NoOpHandler());
+
         // SC_REFLECTSHIELD — % chance to reflect damage. Val1 = chance,
         // Val2 = reflect rate. Same combat-hook situation as Autoguard.
         Register(StatusType.Reflectshield, NoOpHandler());
