@@ -253,8 +253,18 @@ public sealed class StatusEffectRegistry
             }));
 
         // SC_AUTOGUARD — % chance to block physical. Val1 = chance %.
-        // Combat-side hook ports later; presence + Val1 is enough.
+        // Consumed by DamageService.ApplyScDamageReduction (T2.4b+).
         Register(StatusType.Autoguard, NoOpHandler());
+
+        // SC_STRIPWEAPON / SHIELD / ARMOR / HELM — Rogue's Strip family.
+        // Val1 = equip mask of the stripped slot; while attached the
+        // PC can't re-equip until the SC ends. Item-side enforcement
+        // ports when the unequip pipeline reads the SC marker on
+        // EquipService.CanEquip — registry entry holds the duration.
+        Register(StatusType.Stripweapon, NoOpHandler());
+        Register(StatusType.Stripshield, NoOpHandler());
+        Register(StatusType.Striparmor, NoOpHandler());
+        Register(StatusType.Striphelm, NoOpHandler());
 
         // SC_REFLECTSHIELD — % chance to reflect damage. Val1 = chance,
         // Val2 = reflect rate. Same combat-hook situation as Autoguard.

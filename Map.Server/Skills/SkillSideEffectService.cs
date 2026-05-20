@@ -1,23 +1,35 @@
 using Map.Server.Entities;
+using Map.Server.Inventory;
+using Map.Server.Status;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Skills;
 
 /// <summary>
 /// Default <see cref="ISkillSideEffectService"/>. The heal formula is
-/// real; autospell / break / strip are data-pending on the equip
+/// real; autospell / break flag flips are data-pending on the equip
 /// catalog (we don't track break / strip status on inventory rows
-/// yet) — the canonical entry points are here so callers don't drift.
+/// yet). T2.4b+ wires <see cref="StripEquip"/> to the SC table so
+/// the strip duration is at least recorded; equip-side enforcement
+/// rides on the SC presence flag.
 /// </summary>
 public sealed class SkillSideEffectService : ISkillSideEffectService
 {
     private readonly ISkillDb _db;
     private readonly ILogger<SkillSideEffectService> _logger;
+    private readonly IStatusChangeService? _sc;
+    private readonly Random _rng;
 
-    public SkillSideEffectService(ISkillDb db, ILogger<SkillSideEffectService> logger)
+    public SkillSideEffectService(
+        ISkillDb db,
+        ILogger<SkillSideEffectService> logger,
+        IStatusChangeService? sc = null,
+        Random? rng = null)
     {
         _db = db;
         _logger = logger;
+        _sc = sc;
+        _rng = rng ?? Random.Shared;
     }
 
     public int CalcHeal(Entity caster, Entity target, ushort skillId, ushort skillLevel, bool heal)
@@ -51,12 +63,50 @@ public sealed class SkillSideEffectService : ISkillSideEffectService
         return false;
     }
 
+    /// <summary>
+    /// rAthena <c>skill_strip_equip</c> (skill.cpp:5970) — Rogue's
+    /// Strip family. Picks the correct SC per slot (Weapon / Shield /
+    /// Armor / Helm) and attaches it for <paramref name="durationMs"/>.
+    /// Multiple-bit masks attach one SC per slot.
+    /// </summary>
     public bool StripEquip(Entity src, Entity target, int equipMask, int durationMs)
     {
-        // rAthena status_change_start with the equip-mask in val1.
-        // Data-pending on SC_STRIPWEAPON / STRIPHELM / STRIPARMOR /
-        // STRIPSHIELD entries in the SC table.
-        _logger.LogDebug("skill_strip_equip: mask=0x{Mask:X} duration={Ms} (data-pending)", equipMask, durationMs);
-        return false;
+        if (_sc == null || durationMs <= 0)
+        {
+            _logger.LogDebug("skill_strip_equip: mask=0x{Mask:X} duration={Ms} (sc-engine missing)", equipMask, durationMs);
+            return false;
+        }
+
+        var anyApplied = false;
+        var mask = (uint)equipMask;
+        if ((mask & EquipBits.HandR) != 0 || (mask & EquipBits.HandL) != 0)
+        {
+            _sc.Start(target, StatusType.Stripweapon, val1: (int)mask, 0, 0, 0, durationMs, src);
+            anyApplied = true;
+        }
+        if ((mask & EquipBits.HandL) != 0)
+        {
+            // Shield share the HandL bit; rAthena differentiates by
+            // checking the actual equipped item kind. Until equip-kind
+            // dispatch ports, fall back to attaching both SCs.
+            _sc.Start(target, StatusType.Stripshield, val1: (int)mask, 0, 0, 0, durationMs, src);
+            anyApplied = true;
+        }
+        if ((mask & EquipBits.Armor) != 0)
+        {
+            _sc.Start(target, StatusType.Striparmor, val1: (int)mask, 0, 0, 0, durationMs, src);
+            anyApplied = true;
+        }
+        if ((mask & (EquipBits.HeadTop | EquipBits.HeadMid | EquipBits.HeadLow)) != 0)
+        {
+            _sc.Start(target, StatusType.Striphelm, val1: (int)mask, 0, 0, 0, durationMs, src);
+            anyApplied = true;
+        }
+
+        if (anyApplied)
+        {
+            _logger.LogDebug("skill_strip_equip: mask=0x{Mask:X} duration={Ms} → SC attached", equipMask, durationMs);
+        }
+        return anyApplied;
     }
 }
