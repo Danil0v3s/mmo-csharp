@@ -23,7 +23,7 @@ T2.2 + T2.4a + T2.4b + four combat-side SC consumer closures
 | T1 | Data loaders → SQL + JSON | ✅ **DONE** | 52 `_db` SQL-backed, 19 conf-JSON with schemas, IBattleConfigService overlays at boot |
 | T2.1 | Equip-bonus aggregator | ✅ **DONE** | `Map.Server/Inventory/EquipBonusAggregator.cs` — exists from PC-S4 wave |
 | T2.2 | Card modifier port | ✅ **DONE** | `BattleCardService.CalcCardFix` reads `PlayerEntity.EquipBonuses`; `EquipBonusBundle` + `BonusScriptExtractor` ship; Hydra-card test exercises +20% vs Demi-Human |
-| T2.3 | Per-skill behavior | 🟡 infra + 2 plugins | T2.5 superseded — ISkillBehavior + SkillBehaviorRegistry land; MagnumBreak (splash + SC_FIREWEAPON) and Bash (lv 6+ stun proc) plug in. Pattern is set; per-skill plugins now an additive backlog. |
+| T2.3 | Per-skill behavior | 🟡 infra + **59 plugins** | First/second-class job-tree skills covered: Sword/Knight/Acolyte/Priest/Mage/Wizard/Merchant/Blacksmith/Archer/Hunter/Thief/Assassin/Monk/Bard/Dancer. Each skill = one `<SkillName>Behavior.cs` file in `Map.Server/Skills/Behaviors/`. Pattern proven; transcend-class + 3rd-class skills follow the same shape. |
 | T2.4 | SC engine completion | 🟡 enum full / behavior ~30 of ~250 + combat hooks | T2.4a + T2.4b done: enum mirrors all 1006 SC ids; first wave of handlers (CC gates / DoT / stat buffs / cast-time SCs) registered; `CastFixSc` honors Suffragium/Memorize/Slowcast/Paralysis/Izayoi/Bragi; `DamageService` reads SteelBody / Kyrie / AutoGuard on every hit. Long-tail SC handlers ride the same registry pattern. |
 | T3 | Wire packets | 🟡 113 emitters exist | Per-handler audit needed; the surface is bigger than initially scoped |
 | T4 | IPC + persistence | ❌ pending | 73 `IIntifService` stubs — biggest single block of behavior gap |
@@ -748,6 +748,50 @@ hot path.
 - Every gameplay knob in `battle_*.conf` flows .conf → JSON; the
   JSON gets editor autocomplete via the generated schemas.
 - Tier 2 (combat correctness) is the next active tier.
+
+### 2026-05-20 — T2.3 per-skill migration: 57 more plugins (waves 1-3)
+- Convention "every major skill has its own file" enforced — each
+  rAthena case arm of `skill_castend_damage_id` / `skill_castend_nodamage_id`
+  ports to a `<SkillName>Behavior.cs` under
+  `Map.Server/Skills/Behaviors/`. The file's xmldoc cites the
+  rAthena source line + formula so future maintainers can
+  cross-check against the C++.
+- Wave 1 (22 plugins): SM Provoke/Endure, KN TwoHandQuicken/Pierce/
+  BowlingBash, MG FrostDiver/StoneCurse, AL/PR HolyLight/LexDivina/
+  LexAeterna/TurnUndead, MC Mammonite, BS HammerFall/AdrenalineRush/
+  Overthrust, AC DoubleStrafe/ArrowShower, HT BlitzBeat, TF Hiding/
+  Poison, AS SonicBlow, MO TripleAttack.
+- Wave 2 (24 plugins): PR Impositio/Suffragium/Aspersio/KyrieEleison/
+  Magnificat/Gloria, MG bolts (Fire/Cold/Lightning/Soul)/AoE
+  (NapalmBeat/Fireball/Thunderstorm), AL SignumCrucis, KN spear
+  branch (BrandishSpear/SpearStab/SpearBoomerang), AS GrimTooth/
+  EnchantPoison, MO FingerOffensive/Investigate/ExtremityFist/
+  ExplosionSpirits/BodyRelocation.
+- Wave 3 (11 plugins): AS Cloaking, BS Maximize, WZ EarthSpike/
+  HeavenDrive/JupitelThunder/FrostNova, AC OwlsEye/Concentration,
+  MO CallSpirits, BA FrostJoker, DC Scream.
+- `StatusEffectRegistry` gains 11 new handlers (Hiding / Overthrust /
+  Aeterna / Impositio / Aspersio / Signumcrucis / Encpoison /
+  Cloaking / Maximizepower as NoOps; Gloria with Luk stat-mod;
+  Explosionspirits with Cri/Batk stat-mod).
+- `SkillIds.cs` grows from 27 → 67 verified constants
+  (cross-checked against db/re/skill_db.yml).
+- Program.cs DI wires all 59 plugins (one AddSingleton per skill).
+- 58 new tests in `T2_3_SkillBehaviorMigrationTests` covering
+  damage math, SC application, toggle semantics (Hiding/Cloaking/
+  LexDivina), filter logic (SignumCrucis Undead/Dark only,
+  TurnUndead instakill bands), splash patterns (BowlingBash/
+  ArrowShower/Fireball/HeavenDrive), multi-hit counters
+  (DoubleStrafe/SonicBlow/TripleAttack/JupitelThunder),
+  reveal-hidden side-effects (HeavenDrive pops Hiding), random-
+  proc bounds (FrostDiver/HammerFall/Scream/FrostJoker).
+- Tests: full sweep 437/438 (1 pre-existing replay-baseline failure
+  unchanged).
+- **Coverage now spans every classic Renewal first-class + 1-2
+  job tree** (NV/SM/MG/AL/MC/AC/TF + KN/PR/WZ/BS/HT/AS) plus
+  Monk + Bard + Dancer trans skills. Transcend (LK/HP/HW/PA/CH/
+  AB/etc.) + 3rd-class follow the same pattern when those waves
+  port.
 
 ### 2026-05-20 — T2.5 ISkillBehavior plugin layer + 2 seed plugins
 - New `Map.Server/Skills/Behaviors/` namespace:
