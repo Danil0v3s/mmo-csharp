@@ -389,6 +389,24 @@ builder.Services.AddSingleton<Map.Server.Pet.PetOps.IPetOpsService, Map.Server.P
 builder.Services.AddSingleton<Map.Server.Services.Chrif.IChrifService, Map.Server.Services.Chrif.ChrifService>();
 builder.Services.AddSingleton<Map.Server.Services.Intif.IIntifService, Map.Server.Services.Intif.IntifService>();
 
+// T2.5 — per-skill behavior plugins (ISkillBehavior). Each plugin
+// registers itself; SkillBehaviorRegistry collects them by skill id.
+// SkillCastService consults the registry before falling back to the
+// generic SkillResolverRegistry (DamageKind-keyed) dispatch.
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.MagnumBreakBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.BashBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillBehaviorRegistry>();
+
+// Standard SkillResolverRegistry now hand-wired here (was previously
+// only in SkillCastService's test ctor). The five generic resolvers
+// run when no plugin claims the cast.
+builder.Services.AddSingleton<Map.Server.Skills.Resolvers.ISkillResolver, Map.Server.Skills.Resolvers.WeaponSkillResolver>();
+builder.Services.AddSingleton<Map.Server.Skills.Resolvers.ISkillResolver, Map.Server.Skills.Resolvers.MagicSkillResolver>();
+builder.Services.AddSingleton<Map.Server.Skills.Resolvers.ISkillResolver, Map.Server.Skills.Resolvers.HealSkillResolver>();
+builder.Services.AddSingleton<Map.Server.Skills.Resolvers.ISkillResolver, Map.Server.Skills.Resolvers.StatusSkillResolver>();
+builder.Services.AddSingleton<Map.Server.Skills.Resolvers.ISkillResolver, Map.Server.Skills.Resolvers.MiscSkillResolver>();
+builder.Services.AddSingleton<Map.Server.Skills.Resolvers.SkillResolverRegistry>();
+
 builder.Services.AddSingleton<Map.Server.Skills.ISkillCastService, Map.Server.Skills.SkillCastService>();
 
 // Skill ground units (skill.cpp:skill_unitsetting +

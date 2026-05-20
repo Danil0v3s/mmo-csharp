@@ -1,5 +1,6 @@
 using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Skills.Behaviors;
 using Map.Server.Skills.Resolvers;
 using Map.Server.Status;
 using Map.Server.World;
@@ -33,6 +34,12 @@ public sealed class SkillCastService : ISkillCastService
     private readonly IMapWorldRegistry? _maps;
     private readonly IStatusChangeService? _sc;
     private readonly ISkillCastTimingService? _timing;
+    // T2.5 — per-skill plugin layer. Consults the registry before
+    // falling back to the generic DamageKind dispatch. Optional so
+    // the legacy ctor + tests that don't wire it keep working.
+    private readonly SkillBehaviorRegistry? _behaviors;
+    private readonly IBattleCalculator? _battleCalc;
+    private readonly IDamageService? _damage;
     private readonly ILogger<SkillCastService> _logger;
 
     private readonly List<PendingCast> _pending = new();
@@ -46,7 +53,10 @@ public sealed class SkillCastService : ISkillCastService
         IMapFlagService? mapFlags = null,
         IMapWorldRegistry? maps = null,
         IStatusChangeService? sc = null,
-        ISkillCastTimingService? timing = null)
+        ISkillCastTimingService? timing = null,
+        SkillBehaviorRegistry? behaviors = null,
+        IBattleCalculator? battleCalc = null,
+        IDamageService? damage = null)
     {
         _db = db;
         _entities = entities;
@@ -55,6 +65,9 @@ public sealed class SkillCastService : ISkillCastService
         _maps = maps;
         _sc = sc;
         _timing = timing;
+        _behaviors = behaviors;
+        _battleCalc = battleCalc;
+        _damage = damage;
         _logger = logger;
     }
 
@@ -185,6 +198,21 @@ public sealed class SkillCastService : ISkillCastService
         var def = _db.Get(skillId);
         if (def == null) return false;
         if (!IsAlive(target)) return false;
+
+        // T2.5 — per-skill plugin layer first. Returning true means the
+        // plugin fully handled the cast; false → fall through to the
+        // generic DamageKind dispatch so the plugin can add side
+        // effects (proc SC, log telemetry) without re-implementing
+        // base damage math.
+        if (_behaviors != null && _battleCalc != null && _damage != null)
+        {
+            var plugin = _behaviors.Get(skillId);
+            if (plugin != null)
+            {
+                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc);
+                if (plugin.Resolve(source, target, def, skillLevel, ctx)) return true;
+            }
+        }
 
         // Strategy-pattern dispatch — resolvers keyed by DamageKind.
         // New skill kinds add an ISkillResolver class + DI registration;
