@@ -282,6 +282,48 @@ public sealed class StatusEffectRegistry
         // (and then the SC ends). Damage-side consumer ports next.
         Register(StatusType.Aeterna, NoOpHandler());
 
+        // ---- T2.3 wave 2 — Priest support + Acolyte + Assassin SCs ----
+
+        // SC_IMPOSITIO — Priest Impositio Manus. Val1 = flat ATK boost.
+        // Damage-side consumer reads Val1 in the weapon-attack path.
+        Register(StatusType.Impositio, NoOpHandler());
+
+        // SC_ASPERSIO — Holy weapon endow (PR_ASPERSIO). Presence
+        // flag; weapon-element override consumer ports later.
+        Register(StatusType.Aspersio, NoOpHandler());
+
+        // SC_GLORIA — +30 Luk (PR_GLORIA).
+        Register(StatusType.Gloria, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            }));
+
+        // SC_SIGNUMCRUCIS — Holy/Dark debuff (AL_CRUCIS). Val1 = DEF
+        // drop %. Damage-side consumer reads it during DEF math.
+        Register(StatusType.Signumcrucis, NoOpHandler());
+
+        // SC_ENCPOISON — Poison weapon endow (AS_ENCHANTPOISON).
+        Register(StatusType.Encpoison, NoOpHandler());
+
+        // SC_EXPLOSIONSPIRITS — Monk finisher prep (MO_EXPLOSIONSPIRITS).
+        // Val1 = +crit, Val2 = +ATK.
+        Register(StatusType.Explosionspirits, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val1);
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val1);
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
+            }));
+
         // SC_REFLECTSHIELD — % chance to reflect damage. Val1 = chance,
         // Val2 = reflect rate. Same combat-hook situation as Autoguard.
         Register(StatusType.Reflectshield, NoOpHandler());

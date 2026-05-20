@@ -460,6 +460,317 @@ public class T2_3_SkillBehaviorMigrationTests
     }
 
     // ============================================================
+    //  Wave 2 — Priest support family
+    // ============================================================
+
+    [Fact]
+    public void Impositio_AppliesScWithFlatAtk()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var target = ctx.AddPlayer(2, 51, 51);
+        new ImpositioManusBehavior().Resolve(caster, target,
+            MakeDef(SkillIds.PR_IMPOSITIO, SkillDamageKind.None, 9), skillLevel: 5, ctx.Behavior);
+        var sc = ctx.Sc.Get(target, StatusType.Impositio);
+        Assert.NotNull(sc);
+        Assert.Equal(25, sc!.Val1); // 5 * lv = 25 flat ATK
+    }
+
+    [Fact]
+    public void Suffragium_AppliesCastSpeedSc()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var target = ctx.AddPlayer(2, 51, 51);
+        new SuffragiumBehavior().Resolve(caster, target,
+            MakeDef(SkillIds.PR_SUFFRAGIUM, SkillDamageKind.None, 9), skillLevel: 3, ctx.Behavior);
+        Assert.NotNull(ctx.Sc.Get(target, StatusType.Suffragium));
+    }
+
+    [Fact]
+    public void Aspersio_AppliesEndowSc()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var target = ctx.AddPlayer(2, 51, 51);
+        new AspersioBehavior().Resolve(caster, target,
+            MakeDef(SkillIds.PR_ASPERSIO, SkillDamageKind.None, 9), skillLevel: 5, ctx.Behavior);
+        Assert.NotNull(ctx.Sc.Get(target, StatusType.Aspersio));
+    }
+
+    [Fact]
+    public void KyrieEleison_AppliesShieldFromMaxHp()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var target = ctx.AddPlayer(2, 51, 51);
+        target.MaxHp = 1000; target.Stats.MaxHp = 1000;
+        new KyrieEleisonBehavior().Resolve(caster, target,
+            MakeDef(SkillIds.PR_KYRIE, SkillDamageKind.None, 9), skillLevel: 5, ctx.Behavior);
+        var sc = ctx.Sc.Get(target, StatusType.Kyrie);
+        Assert.NotNull(sc);
+        // lv5 → 22 % of MaxHp 1000 = 220 hp shield, 10 hits.
+        Assert.Equal(220, sc!.Val1);
+        Assert.Equal(10, sc.Val2);
+    }
+
+    [Fact]
+    public void Magnificat_AlwaysAppliesToSelf()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var unrelated = ctx.AddPlayer(2, 51, 51);
+        new MagnificatBehavior().Resolve(caster, unrelated,
+            MakeDef(SkillIds.PR_MAGNIFICAT, SkillDamageKind.None, 0), skillLevel: 3, ctx.Behavior);
+        Assert.NotNull(ctx.Sc.Get(caster, StatusType.Magnificat));
+        Assert.Null(ctx.Sc.Get(unrelated, StatusType.Magnificat));
+    }
+
+    [Fact]
+    public void Gloria_AppliesLukBoost()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var target = ctx.AddPlayer(2, 51, 51);
+        target.Stats.Luk = 10;
+        new GloriaBehavior().Resolve(caster, target,
+            MakeDef(SkillIds.PR_GLORIA, SkillDamageKind.None, 9), skillLevel: 5, ctx.Behavior);
+        // Gloria handler adds 30 to Luk on OnStart.
+        Assert.Equal(40, target.Stats.Luk);
+    }
+
+    // ============================================================
+    //  Wave 2 — Mage bolts + AoE
+    // ============================================================
+
+    [Fact]
+    public void FireBolt_HitsFiveTimes_AtLevel5()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.MatkMin = 100; caster.Stats.MatkMax = 200;
+        var mob = ctx.AddMob(51, 51);
+        mob.Hp = 5000; mob.Stats.MaxHp = 5000;
+        new FireBoltBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.MG_FIREBOLT, SkillDamageKind.Magic, 9), skillLevel: 5, ctx.Behavior);
+        Assert.Equal(5000 - 150 * 5, mob.Hp); // 5 hits × 150 (midpoint).
+    }
+
+    [Fact]
+    public void SoulStrike_HitsCeilLevelDiv2()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.MatkMin = 100; caster.Stats.MatkMax = 100;
+        var mob = ctx.AddMob(51, 51);
+        mob.Hp = 1000; mob.Stats.MaxHp = 1000;
+        // lv 9 → (9+1)/2 = 5 hits.
+        new SoulStrikeBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.MG_SOULSTRIKE, SkillDamageKind.Magic, 9), skillLevel: 9, ctx.Behavior);
+        Assert.Equal(1000 - 100 * 5, mob.Hp);
+    }
+
+    [Fact]
+    public void NapalmBeat_DamageSplitsAcrossVictims()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.MatkMin = 100; caster.Stats.MatkMax = 100;
+        var v1 = ctx.AddMob(60, 60);
+        var v2 = ctx.AddMob(61, 60);
+        v1.Hp = v1.Stats.MaxHp = 1000;
+        v2.Hp = v2.Stats.MaxHp = 1000;
+        new NapalmBeatBehavior().Resolve(caster, v1,
+            MakeDef(SkillIds.MG_NAPALMBEAT, SkillDamageKind.Magic, 9), skillLevel: 5, ctx.Behavior);
+        // Total damage = 100 * (70+50)/100 = 120 split across 2 victims → 60 each.
+        Assert.Equal(940, v1.Hp);
+        Assert.Equal(940, v2.Hp);
+    }
+
+    [Fact]
+    public void Fireball_PrimaryFullSplashHalf()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.MatkMin = 100; caster.Stats.MatkMax = 100;
+        var primary = ctx.AddMob(60, 60);
+        var splash = ctx.AddMob(61, 60);
+        var far = ctx.AddMob(90, 90);
+        primary.Hp = primary.Stats.MaxHp = 5000;
+        splash.Hp = splash.Stats.MaxHp = 5000;
+        far.Hp = far.Stats.MaxHp = 5000;
+        new FireballBehavior().Resolve(caster, primary,
+            MakeDef(SkillIds.MG_FIREBALL, SkillDamageKind.Magic, 9), skillLevel: 5, ctx.Behavior);
+        // Primary: 100 * (50 + 350)/100 = 400. Splash: 200. Far: untouched.
+        Assert.Equal(5000 - 400, primary.Hp);
+        Assert.Equal(5000 - 200, splash.Hp);
+        Assert.Equal(5000, far.Hp);
+    }
+
+    [Fact]
+    public void Thunderstorm_HitsThreeTimes_PerVictim()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.MatkMin = 100; caster.Stats.MatkMax = 100;
+        var mob = ctx.AddMob(60, 60);
+        mob.Hp = mob.Stats.MaxHp = 5000;
+        new ThunderstormBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.MG_THUNDERSTORM, SkillDamageKind.Magic, 9), skillLevel: 5, ctx.Behavior);
+        // Per-hit = 100 * (80+100)/100 = 180. 3 hits = 540.
+        Assert.Equal(5000 - 540, mob.Hp);
+    }
+
+    // ============================================================
+    //  Wave 2 — Acolyte AoE / Knight specials
+    // ============================================================
+
+    [Fact]
+    public void SignumCrucis_AppliesOnlyToUndeadDark()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var undead = ctx.AddMob(51, 51);
+        undead.Stats.DefenseElement = BattleElement.Undead;
+        var dark = ctx.AddMob(52, 52);
+        dark.Stats.DefenseElement = BattleElement.Dark;
+        var neutral = ctx.AddMob(53, 53);
+        neutral.Stats.DefenseElement = BattleElement.Neutral;
+
+        new SignumCrucisBehavior().Resolve(caster, neutral,
+            MakeDef(SkillIds.AL_CRUCIS, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+
+        Assert.NotNull(ctx.Sc.Get(undead, StatusType.Signumcrucis));
+        Assert.NotNull(ctx.Sc.Get(dark, StatusType.Signumcrucis));
+        Assert.Null(ctx.Sc.Get(neutral, StatusType.Signumcrucis));
+    }
+
+    [Fact]
+    public void BrandishSpear_PrimaryFullSplashHalf()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.Batk = 100; caster.Stats.WatkMin = 100; caster.Stats.WatkMax = 100; caster.Stats.Hit = 200;
+        var primary = ctx.AddMob(60, 60);
+        var splash = ctx.AddMob(61, 60);
+        primary.Hp = primary.Stats.MaxHp = 5000;
+        splash.Hp = splash.Stats.MaxHp = 5000;
+        new BrandishSpearBehavior().Resolve(caster, primary,
+            MakeDef(SkillIds.KN_BRANDISHSPEAR, SkillDamageKind.Weapon, 3), skillLevel: 5, ctx.Behavior);
+        Assert.True(primary.Hp < 5000);
+        Assert.True(splash.Hp < 5000);
+        // Splash takes half-ish; assert ordering.
+        var primaryTook = 5000 - primary.Hp;
+        var splashTook = 5000 - splash.Hp;
+        Assert.True(primaryTook > splashTook);
+    }
+
+    // ============================================================
+    //  Wave 2 — Assassin specials
+    // ============================================================
+
+    [Fact]
+    public void GrimTooth_ConsumesHiding_AndFallsThrough()
+    {
+        var ctx = Build();
+        var pc = ctx.AddPlayer(1, 50, 50);
+        var target = ctx.AddMob(51, 51);
+        // Pre-apply hiding so we can confirm consumption.
+        ctx.Sc.Start(pc, StatusType.Hiding, val1: 1, 0, 0, 0,
+            durationMs: 60_000);
+        Assert.NotNull(ctx.Sc.Get(pc, StatusType.Hiding));
+
+        var handled = new GrimToothBehavior().Resolve(pc, target,
+            MakeDef(SkillIds.AS_GRIMTOOTH, SkillDamageKind.Weapon, 9), skillLevel: 5, ctx.Behavior);
+
+        Assert.False(handled); // generic resolver runs the hit.
+        Assert.Null(ctx.Sc.Get(pc, StatusType.Hiding)); // hiding popped.
+    }
+
+    [Fact]
+    public void EnchantPoison_AppliesPoisonWeaponSc()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var target = ctx.AddPlayer(2, 51, 51);
+        new EnchantPoisonBehavior().Resolve(caster, target,
+            MakeDef(SkillIds.AS_ENCHANTPOISON, SkillDamageKind.None, 9), skillLevel: 5, ctx.Behavior);
+        Assert.NotNull(ctx.Sc.Get(target, StatusType.Encpoison));
+    }
+
+    // ============================================================
+    //  Wave 2 — Monk specials
+    // ============================================================
+
+    [Fact]
+    public void FingerOffensive_HitsLevelTimes()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.Batk = 100; caster.Stats.WatkMin = 100; caster.Stats.WatkMax = 100; caster.Stats.Hit = 200;
+        var mob = ctx.AddMob(51, 51);
+        mob.Hp = 9999; mob.Stats.MaxHp = 9999;
+        new FingerOffensiveBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.MO_FINGEROFFENSIVE, SkillDamageKind.Weapon, 5), skillLevel: 3, ctx.Behavior);
+        Assert.True(mob.Hp < 9999);
+    }
+
+    [Fact]
+    public void Investigate_HitsTarget()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.Batk = 100; caster.Stats.WatkMin = 100; caster.Stats.WatkMax = 100; caster.Stats.Hit = 200;
+        var mob = ctx.AddMob(51, 51);
+        mob.Stats.Def = 50; mob.Stats.Def2 = 50;
+        mob.Hp = 9999; mob.Stats.MaxHp = 9999;
+        new InvestigateBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.MO_INVESTIGATE, SkillDamageKind.Weapon, 1), skillLevel: 5, ctx.Behavior);
+        Assert.True(mob.Hp < 9999);
+    }
+
+    [Fact]
+    public void ExtremityFist_ConsumesAllSp()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.Batk = 100; caster.Stats.WatkMin = 100; caster.Stats.WatkMax = 100; caster.Stats.Hit = 200;
+        caster.Stats.Sp = 500;
+        var mob = ctx.AddMob(51, 51);
+        mob.Hp = 99999; mob.Stats.MaxHp = 99999;
+        new ExtremityFistBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.MO_EXTREMITYFIST, SkillDamageKind.Weapon, 1), skillLevel: 5, ctx.Behavior);
+        Assert.Equal(0, caster.Stats.Sp); // all SP drained.
+        Assert.True(mob.Hp < 99999);
+    }
+
+    [Fact]
+    public void ExplosionSpirits_AppliesScOnSelf_WithCritAndBatkBoost()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.Cri = 0; caster.Stats.Batk = 100;
+        new ExplosionSpiritsBehavior().Resolve(caster, caster,
+            MakeDef(SkillIds.MO_EXPLOSIONSPIRITS, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+        // SC handler: +100 Cri, +250 Batk at lv5.
+        Assert.Equal(100, caster.Stats.Cri);
+        Assert.Equal(350, caster.Stats.Batk);
+    }
+
+    [Fact]
+    public void BodyRelocation_ClaimsCast_NoOp()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var target = ctx.AddMob(51, 51);
+        target.Hp = 1000; target.Stats.MaxHp = 1000;
+        var handled = new BodyRelocationBehavior().Resolve(caster, target,
+            MakeDef(SkillIds.MO_BODYRELOCATION, SkillDamageKind.None, 7), skillLevel: 5, ctx.Behavior);
+        Assert.True(handled);
+        Assert.Equal(1000, target.Hp); // no damage.
+    }
+
+    // ============================================================
     //  Registry — all 23 new plugins resolve by id
     // ============================================================
 

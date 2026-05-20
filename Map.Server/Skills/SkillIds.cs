@@ -27,13 +27,16 @@ public static class SkillIds
     public const ushort MG_COLDBOLT = 14;
     public const ushort MG_FROSTDIVER = 15;
     public const ushort MG_STONECURSE = 16;
+    public const ushort MG_FIREBALL = 17;
     public const ushort MG_FIREBOLT = 19;
     public const ushort MG_LIGHTNINGBOLT = 20;
+    public const ushort MG_THUNDERSTORM = 21;
 
     // ----- Acolyte -----
     public const ushort AL_HEAL = 28;
     public const ushort AL_INCAGI = 29;
     public const ushort AL_DECAGI = 30;
+    public const ushort AL_CRUCIS = 32;
     public const ushort AL_BLESSING = 34;
     public const ushort AL_HOLYLIGHT = 156;
 
@@ -50,10 +53,20 @@ public static class SkillIds
 
     // ----- Knight (1-1 advance from Swordsman) -----
     public const ushort KN_PIERCE = 56;
+    public const ushort KN_BRANDISHSPEAR = 57;
+    public const ushort KN_SPEARSTAB = 58;
+    public const ushort KN_SPEARBOOMERANG = 59;
     public const ushort KN_TWOHANDQUICKEN = 60;
+    public const ushort KN_AUTOCOUNTER = 61;
     public const ushort KN_BOWLINGBASH = 62;
 
     // ----- Priest (1-2 advance from Acolyte) -----
+    public const ushort PR_IMPOSITIO = 66;
+    public const ushort PR_SUFFRAGIUM = 67;
+    public const ushort PR_ASPERSIO = 68;
+    public const ushort PR_KYRIE = 73;
+    public const ushort PR_MAGNIFICAT = 74;
+    public const ushort PR_GLORIA = 75;
     public const ushort PR_LEXDIVINA = 76;
     public const ushort PR_TURNUNDEAD = 77;
     public const ushort PR_LEXAETERNA = 78;
@@ -72,8 +85,14 @@ public static class SkillIds
 
     // ----- Assassin (1-2 advance from Thief) -----
     public const ushort AS_SONICBLOW = 136;
+    public const ushort AS_GRIMTOOTH = 137;
+    public const ushort AS_ENCHANTPOISON = 138;
 
     // ----- Monk (transcend Acolyte) -----
     public const ushort MO_TRIPLEATTACK = 263;
+    public const ushort MO_BODYRELOCATION = 264;
+    public const ushort MO_INVESTIGATE = 266;
     public const ushort MO_FINGEROFFENSIVE = 267;
+    public const ushort MO_EXPLOSIONSPIRITS = 270;
+    public const ushort MO_EXTREMITYFIST = 271;
 }

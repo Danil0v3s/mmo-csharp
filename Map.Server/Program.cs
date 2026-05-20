@@ -430,6 +430,31 @@ builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Se
 builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.OverthrustBehavior>();
 // Monk
 builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.TripleAttackBehavior>();
+// T2.3 wave 2 — Priest support + Mage bolts/AoE + Acolyte/Knight/Assassin/Monk specials
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.ImpositioManusBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.SuffragiumBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.AspersioBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.KyrieEleisonBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.MagnificatBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.GloriaBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.FireBoltBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.ColdBoltBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.LightningBoltBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.SoulStrikeBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.NapalmBeatBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.FireballBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.ThunderstormBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.SignumCrucisBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.BrandishSpearBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.SpearStabBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.SpearBoomerangBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.GrimToothBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.EnchantPoisonBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.FingerOffensiveBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.InvestigateBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.ExtremityFistBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.ExplosionSpiritsBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.BodyRelocationBehavior>();
 builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillBehaviorRegistry>();
 
 // Standard SkillResolverRegistry now hand-wired here (was previously
