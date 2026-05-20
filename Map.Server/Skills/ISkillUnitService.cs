@@ -21,4 +21,42 @@ public interface ISkillUnitService
 
     /// <summary>Game-loop pump — fires periodic effects, expires groups.</summary>
     void Tick(long nowTick);
+
+    /// <summary>
+    /// rAthena <c>skill_unit_move</c> — re-bind every unit on a cell when
+    /// the entity standing on the cell moved (re-trigger onplace timers).
+    /// </summary>
+    void UnitMove(Entity who, long tick, int flag);
+
+    /// <summary>
+    /// rAthena <c>skill_unit_move_unit</c> — relocate a single unit (e.g.
+    /// units that follow the caster: Lullaby, Magnetic Earth).
+    /// </summary>
+    void UnitMoveUnit(SkillUnit unit, short newX, short newY);
+
+    /// <summary>
+    /// rAthena <c>skill_unit_move_unit_group</c> — relocate an entire group.
+    /// </summary>
+    void UnitMoveUnitGroup(SkillUnitGroup group, short newX, short newY);
+
+    /// <summary>rAthena <c>skill_unit_onleft</c> — entity left the cell.</summary>
+    void UnitOnLeft(SkillUnit unit, Entity who, long tick);
+
+    /// <summary>rAthena <c>skill_unit_onout</c> — entity stepped out of the unit area.</summary>
+    void UnitOnOut(SkillUnit unit, Entity who, long tick);
+
+    /// <summary>
+    /// rAthena <c>skill_unit_ondamaged</c> — the unit itself took damage
+    /// (Ice Wall HP loss, trap detonate).
+    /// </summary>
+    void UnitOnDamaged(SkillUnit unit, long damage);
+
+    /// <summary>rAthena <c>skill_clear_unitgroup</c> — drop all of a caster's groups.</summary>
+    void ClearUnitGroup(EntityId casterId);
+
+    /// <summary>rAthena <c>skill_delunit</c> — delete a single unit.</summary>
+    void DelUnit(SkillUnit unit);
+
+    /// <summary>rAthena <c>skill_delunitgroup_</c> — delete an entire group.</summary>
+    void DelUnitGroup(SkillUnitGroup group);
 }

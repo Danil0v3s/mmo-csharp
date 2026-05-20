@@ -297,6 +297,32 @@ builder.Services.AddSingleton<Map.Server.Status.IStatusChangeService, Map.Server
 // hand-built starter catalog (Bash / Heal / Increase AGI / Blessing /
 // Fire Bolt / Cold Bolt). DB-backed skill_db loader lands later.
 builder.Services.AddSingleton<Map.Server.Skills.ISkillDb, Map.Server.Skills.SkillDb>();
+// Cast / delay / vfcast fix (skill.cpp:20193-20565). Wraps the
+// DEX/AGI cast-time scaling + battle_config rates so the rest of the
+// port reads a single canonical entry point.
+builder.Services.AddSingleton<Map.Server.Skills.ISkillCastTimingService, Map.Server.Skills.SkillCastTimingService>();
+// Skill cast pre/post-check + resource consume (skill.cpp:18347, 19417,
+// 4397, 19685). HP/SP/AP path real; item / ammo / weapon-mask paths
+// data-pending on the equip aggregator + skill_db require column.
+builder.Services.AddSingleton<Map.Server.Skills.ISkillRequirementService, Map.Server.Skills.SkillRequirementService>();
+// Castend dispatchers (skill.cpp castend_damage_id / nodamage_id /
+// pos2 / map). Wraps the existing resolver registry + ground-unit
+// service in the canonical rAthena entry-point names.
+builder.Services.AddSingleton<Map.Server.Skills.ISkillCastEndService, Map.Server.Skills.SkillCastEndService>();
+// Central skill-attack helper (skill.cpp:3561 + 20992 + 4188). The
+// funnel offensive skills flow through to actually deal damage.
+builder.Services.AddSingleton<Map.Server.Skills.ISkillAttackService, Map.Server.Skills.SkillAttackService>();
+// Per-skill block + timer-skill helper (skill.cpp skill_blockpc_*,
+// skill_addtimerskill / cleartimerskill).
+builder.Services.AddSingleton<Map.Server.Skills.ISkillBlockService, Map.Server.Skills.SkillBlockService>();
+// Map-flag + per-skill gating (skill.cpp skill_isNotOk family +
+// skill_pos_maxcount_check).
+builder.Services.AddSingleton<Map.Server.Skills.ISkillGateService, Map.Server.Skills.SkillGateService>();
+// Post-hit additional effect + counter effect + OnUseSkill bonus
+// hook (skill.cpp skill_additional_effect / counter_additional_effect).
+builder.Services.AddSingleton<Map.Server.Skills.ISkillEffectService, Map.Server.Skills.SkillEffectService>();
+// Heal calc + AutoSpell + BreakEquip + StripEquip side effects.
+builder.Services.AddSingleton<Map.Server.Skills.ISkillSideEffectService, Map.Server.Skills.SkillSideEffectService>();
 builder.Services.AddSingleton<Map.Server.Skills.ISkillCastService, Map.Server.Skills.SkillCastService>();
 
 // Skill ground units (skill.cpp:skill_unitsetting +

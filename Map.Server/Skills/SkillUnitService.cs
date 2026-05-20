@@ -138,4 +138,68 @@ public sealed class SkillUnitService : ISkillUnitService
         int IntervalMs,
         int Radius,
         Func<ushort, Entity?, Entity, int> Damage);
+
+    // -----------------------------------------------------------------
+    // rAthena skill_unit_* movement / lifecycle helpers (skill.cpp).
+    // First slice: lifecycle methods perform the mutation but the
+    // per-skill "what happens when you enter a Pneuma cell" hook is
+    // data-pending. Entry points stay canonical so callers don't have
+    // to inline the operation against the _groups list.
+    // -----------------------------------------------------------------
+
+    public void UnitMove(Entity who, long tick, int flag)
+    {
+        // rAthena triggers onplace timers when an entity steps onto a
+        // unit cell. With the polling-tick model we already scan on
+        // every tick (SkillUnitService.Tick), so this entry is a
+        // no-op until an event-driven step-on hook lands.
+    }
+
+    public void UnitMoveUnit(SkillUnit unit, short newX, short newY)
+    {
+        unit.X = newX;
+        unit.Y = newY;
+    }
+
+    public void UnitMoveUnitGroup(SkillUnitGroup group, short newX, short newY)
+    {
+        if (group.Units.Count == 0) return;
+        var dx = (short)(newX - group.Units[0].X);
+        var dy = (short)(newY - group.Units[0].Y);
+        foreach (var u in group.Units)
+        {
+            u.X = (short)(u.X + dx);
+            u.Y = (short)(u.Y + dy);
+        }
+    }
+
+    public void UnitOnLeft(SkillUnit unit, Entity who, long tick)
+    {
+        // Per-skill "stand-on" SC drop (Bragi, Lullaby). Data-pending
+        // on the SC-by-unit table.
+    }
+
+    public void UnitOnOut(SkillUnit unit, Entity who, long tick) { }
+
+    public void UnitOnDamaged(SkillUnit unit, long damage)
+    {
+        // Ice Wall HP loss, trap detonate. Until SkillUnit grows an
+        // Hp field, only the canonical entry exists.
+    }
+
+    public void ClearUnitGroup(EntityId casterId)
+    {
+        _groups.RemoveAll(g => g.CasterId == casterId);
+    }
+
+    public void DelUnit(SkillUnit unit)
+    {
+        unit.Removed = true;
+    }
+
+    public void DelUnitGroup(SkillUnitGroup group)
+    {
+        foreach (var u in group.Units) u.Removed = true;
+        _groups.Remove(group);
+    }
 }

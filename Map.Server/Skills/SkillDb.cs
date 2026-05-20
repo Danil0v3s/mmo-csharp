@@ -5,12 +5,127 @@ using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Skills;
 
+/// <summary>
+/// In-memory skill catalog + canonical entry point for every rAthena
+/// <c>skill_get_*</c> accessor. The catalog rows are
+/// <see cref="SkillDefinition"/>; the per-knob helpers below mirror
+/// the rAthena getter names so a port of skill.cpp / battle.cpp reads
+/// like a 1:1 translation. Every accessor returns the rAthena default
+/// (0 for ints, false for bools, <see cref="SkillNk.None"/> for flag
+/// fields) when the catalog row is missing or the knob isn't tracked
+/// — no caller crashes on an unseeded YAML row.
+/// </summary>
 public interface ISkillDb
 {
     SkillDefinition? Get(ushort skillId);
     int Count { get; }
     /// <summary>Reload the catalog from the backing source (DB if seeded, else the hand-built fallback).</summary>
     void Reload();
+
+    // ---- rAthena skill_get_* accessors (skill.cpp ~120..520).
+    // Per-level columns clamp to MaxLevel; out-of-range levels return 0.
+
+    /// <summary>rAthena <c>skill_get_max</c>.</summary>
+    int GetMaxLevel(ushort skillId);
+    /// <summary>rAthena <c>skill_get_range</c>.</summary>
+    int GetRange(ushort skillId);
+    /// <summary>rAthena <c>skill_get_range2</c> (range + per-level scaling).</summary>
+    int GetRange2(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_hp</c>.</summary>
+    int GetHp(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_sp</c>.</summary>
+    int GetSp(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_hp_rate</c>.</summary>
+    int GetHpRate(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_sp_rate</c>.</summary>
+    int GetSpRate(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_ap</c>.</summary>
+    int GetAp(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_ap_rate</c>.</summary>
+    int GetApRate(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_giveap</c>.</summary>
+    int GetGiveAp(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_mhp</c>.</summary>
+    int GetMhp(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_zeny</c>.</summary>
+    int GetZeny(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_spiritball</c>.</summary>
+    int GetSpiritBall(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_num</c> — hit count.</summary>
+    int GetNum(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_blewcount</c>.</summary>
+    int GetBlewCount(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_cast</c>.</summary>
+    int GetCast(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_fixed_cast</c>.</summary>
+    int GetFixedCast(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_delay</c> — after-cast delay.</summary>
+    int GetDelay(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_walkdelay</c>.</summary>
+    int GetWalkDelay(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_cooldown</c>.</summary>
+    int GetCooldown(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_time</c> — primary timer (SC duration).</summary>
+    int GetTime(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_time2</c>.</summary>
+    int GetTime2(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_time3</c>.</summary>
+    int GetTime3(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_castdef</c>.</summary>
+    int GetCastDef(ushort skillId);
+    /// <summary>rAthena <c>skill_get_castcancel</c>.</summary>
+    bool GetCastCancel(ushort skillId);
+    /// <summary>rAthena <c>skill_get_castnodex</c>.</summary>
+    int GetCastNoDex(ushort skillId);
+    /// <summary>rAthena <c>skill_get_delaynodex</c>.</summary>
+    int GetDelayNoDex(ushort skillId);
+    /// <summary>rAthena <c>skill_get_nocast</c>.</summary>
+    int GetNoCast(ushort skillId);
+    /// <summary>rAthena <c>skill_get_maxcount</c>.</summary>
+    int GetMaxCount(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_state</c>.</summary>
+    int GetState(ushort skillId);
+    /// <summary>rAthena <c>skill_get_type</c> — BF_WEAPON / BF_MAGIC / BF_MISC.</summary>
+    int GetType(ushort skillId);
+    /// <summary>rAthena <c>skill_get_inf</c>.</summary>
+    SkillTargetMode GetInf(ushort skillId);
+    /// <summary>rAthena <c>skill_get_inf2_</c> — bit test against the INF2 mask.</summary>
+    bool GetInf2(ushort skillId, SkillInf2 flag);
+    /// <summary>rAthena <c>skill_get_nk_</c> — bit test against the NK mask.</summary>
+    bool GetNk(ushort skillId, SkillNk flag);
+    /// <summary>rAthena <c>skill_get_ele</c>.</summary>
+    BattleElement GetEle(ushort skillId);
+    /// <summary>rAthena <c>skill_get_weapontype</c>.</summary>
+    int GetWeaponType(ushort skillId);
+    /// <summary>rAthena <c>skill_get_ammotype</c>.</summary>
+    int GetAmmoType(ushort skillId);
+    /// <summary>rAthena <c>skill_get_ammo_qty</c>.</summary>
+    int GetAmmoQty(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_splash</c>.</summary>
+    int GetSplash(ushort skillId, ushort level);
+    /// <summary>rAthena <c>skill_get_unit_id</c>.</summary>
+    int GetUnitId(ushort skillId);
+    /// <summary>rAthena <c>skill_get_unit_id2</c>.</summary>
+    int GetUnitId2(ushort skillId);
+    /// <summary>rAthena <c>skill_get_unit_target</c>.</summary>
+    int GetUnitTarget(ushort skillId);
+    /// <summary>rAthena <c>skill_get_unit_bl_target</c>.</summary>
+    int GetUnitBlTarget(ushort skillId);
+    /// <summary>rAthena <c>skill_get_unit_interval</c>.</summary>
+    int GetUnitInterval(ushort skillId);
+    /// <summary>rAthena <c>skill_get_unit_range</c>.</summary>
+    int GetUnitRange(ushort skillId);
+    /// <summary>rAthena <c>skill_get_unit_layout_type</c>.</summary>
+    int GetUnitLayoutType(ushort skillId);
+    /// <summary>rAthena <c>skill_get_unit_flag_</c> — bit test.</summary>
+    bool GetUnitFlag(ushort skillId, SkillUnitFlag flag);
+    /// <summary>rAthena <c>skill_get_elemental_type</c>.</summary>
+    int GetElementalType(ushort skillId);
+
+    /// <summary>rAthena <c>skill_name2id</c>.</summary>
+    ushort Name2Id(string name);
+    /// <summary>rAthena <c>skill_dummy2skill_id</c> — remap NPC dummy ids.</summary>
+    ushort Dummy2SkillId(ushort dummyId);
 }
 
 /// <summary>
@@ -163,5 +278,102 @@ public sealed class SkillDb : ISkillDb
     }
 
     private void Add(SkillDefinition def) => _byId[def.Id] = def;
+
+    // -----------------------------------------------------------------
+    // rAthena skill_get_* accessors. Each helper resolves the catalog
+    // row then reads the matching column with a safe per-level clamp.
+    // Returns 0 / false / Neutral / SelfOnly for missing rows so the
+    // C# port never has to guard against an unseeded skill_db.
+    // -----------------------------------------------------------------
+
+    private static int Lvl(int[] arr, ushort level)
+        => arr.Length > level ? arr[level] : 0;
+
+    public int GetMaxLevel(ushort id) => Get(id)?.MaxLevel ?? 0;
+    public int GetRange(ushort id) => Get(id)?.Range ?? 0;
+    public int GetRange2(ushort id, ushort lvl)
+    {
+        var def = Get(id);
+        return def == null ? 0 : def.Range; // rAthena adds per-skill scaling here (e.g. AC_SHOWER); kept flat until per-skill column ports.
+    }
+    public int GetHp(ushort id, ushort lvl) => Lvl(Get(id)?.HpCost ?? Array.Empty<int>(), lvl);
+    public int GetSp(ushort id, ushort lvl) => Lvl(Get(id)?.SpCost ?? Array.Empty<int>(), lvl);
+    public int GetHpRate(ushort id, ushort lvl) => Lvl(Get(id)?.HpRate ?? Array.Empty<int>(), lvl);
+    public int GetSpRate(ushort id, ushort lvl) => Lvl(Get(id)?.SpRate ?? Array.Empty<int>(), lvl);
+    public int GetAp(ushort id, ushort lvl) => Lvl(Get(id)?.ApCost ?? Array.Empty<int>(), lvl);
+    public int GetApRate(ushort id, ushort lvl) => Lvl(Get(id)?.ApRate ?? Array.Empty<int>(), lvl);
+    public int GetGiveAp(ushort id, ushort lvl) => Lvl(Get(id)?.GiveAp ?? Array.Empty<int>(), lvl);
+    public int GetMhp(ushort id, ushort lvl) => Lvl(Get(id)?.MaxHpRate ?? Array.Empty<int>(), lvl);
+    public int GetZeny(ushort id, ushort lvl) => Lvl(Get(id)?.ZenyCost ?? Array.Empty<int>(), lvl);
+    public int GetSpiritBall(ushort id, ushort lvl) => Lvl(Get(id)?.SpiritBallCost ?? Array.Empty<int>(), lvl);
+    public int GetNum(ushort id, ushort lvl)
+    {
+        var def = Get(id);
+        if (def == null) return 0;
+        if (def.HitCount.Length > lvl && def.HitCount[lvl] != 0) return def.HitCount[lvl];
+        return 1; // rAthena default = 1 hit unless the skill_db row overrides.
+    }
+    public int GetBlewCount(ushort id, ushort lvl) => Lvl(Get(id)?.BlewCount ?? Array.Empty<int>(), lvl);
+    public int GetCast(ushort id, ushort lvl) => Lvl(Get(id)?.CastTimeMs ?? Array.Empty<int>(), lvl);
+    public int GetFixedCast(ushort id, ushort lvl) => Lvl(Get(id)?.FixedCastMs ?? Array.Empty<int>(), lvl);
+    public int GetDelay(ushort id, ushort lvl) => Lvl(Get(id)?.AfterCastDelayMs ?? Array.Empty<int>(), lvl);
+    public int GetWalkDelay(ushort id, ushort lvl) => Lvl(Get(id)?.WalkDelayMs ?? Array.Empty<int>(), lvl);
+    public int GetCooldown(ushort id, ushort lvl) => Lvl(Get(id)?.CooldownMs ?? Array.Empty<int>(), lvl);
+    public int GetTime(ushort id, ushort lvl) => Lvl(Get(id)?.StatusDurationMs ?? Array.Empty<int>(), lvl);
+    public int GetTime2(ushort id, ushort lvl) => Lvl(Get(id)?.Time2Ms ?? Array.Empty<int>(), lvl);
+    public int GetTime3(ushort id, ushort lvl) => Lvl(Get(id)?.Time3Ms ?? Array.Empty<int>(), lvl);
+    public int GetCastDef(ushort id) => Get(id)?.CastDefenseRate ?? 0;
+    public bool GetCastCancel(ushort id) => Get(id)?.CastCancel ?? true;
+    public int GetCastNoDex(ushort id) => Get(id)?.CastNoDex ?? 0;
+    public int GetDelayNoDex(ushort id) => Get(id)?.DelayNoDex ?? 0;
+    public int GetNoCast(ushort id) => Get(id)?.NoCastMask ?? 0;
+    public int GetMaxCount(ushort id, ushort lvl) => Lvl(Get(id)?.MaxUnitCount ?? Array.Empty<int>(), lvl);
+    public int GetState(ushort id) => Get(id)?.RequiredState ?? 0;
+
+    public int GetType(ushort id) => (Get(id)?.DamageKind) switch
+    {
+        // rAthena BF_* family used by battle.cpp: WEAPON=1, MAGIC=2, MISC=4.
+        // Heal / None collapse to 0 so callers can short-circuit.
+        SkillDamageKind.Weapon => 1,
+        SkillDamageKind.Magic  => 2,
+        SkillDamageKind.Misc   => 4,
+        _ => 0,
+    };
+
+    public SkillTargetMode GetInf(ushort id) => Get(id)?.Target ?? SkillTargetMode.SelfOnly;
+    public bool GetInf2(ushort id, SkillInf2 flag) => (Get(id)?.Inf2 ?? SkillInf2.None).HasFlag(flag);
+    public bool GetNk(ushort id, SkillNk flag) => (Get(id)?.Nk ?? SkillNk.None).HasFlag(flag);
+    public BattleElement GetEle(ushort id) => Get(id)?.Element ?? BattleElement.Neutral;
+    public int GetWeaponType(ushort id) => Get(id)?.WeaponTypeMask ?? 0;
+    public int GetAmmoType(ushort id) => Get(id)?.AmmoTypeMask ?? 0;
+    public int GetAmmoQty(ushort id, ushort lvl) => Lvl(Get(id)?.AmmoQuantity ?? Array.Empty<int>(), lvl);
+    public int GetSplash(ushort id, ushort lvl) => Lvl(Get(id)?.SplashRadius ?? Array.Empty<int>(), lvl);
+    public int GetUnitId(ushort id) => Get(id)?.UnitId ?? 0;
+    public int GetUnitId2(ushort id) => Get(id)?.UnitId2 ?? 0;
+    public int GetUnitTarget(ushort id) => Get(id)?.UnitTargetMask ?? 0;
+    public int GetUnitBlTarget(ushort id) => Get(id)?.UnitBlTargetMask ?? 0;
+    public int GetUnitInterval(ushort id) => Get(id)?.UnitIntervalMs ?? 0;
+    public int GetUnitRange(ushort id) => Get(id)?.UnitRange ?? 0;
+    public int GetUnitLayoutType(ushort id) => Get(id)?.UnitLayoutType ?? 0;
+    public bool GetUnitFlag(ushort id, SkillUnitFlag flag) => (Get(id)?.UnitFlags ?? SkillUnitFlag.None).HasFlag(flag);
+    public int GetElementalType(ushort id) => Get(id)?.ElementalType ?? 0;
+
+    public ushort Name2Id(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return 0;
+        foreach (var (id, def) in _byId)
+        {
+            if (string.Equals(def.Name, name, StringComparison.OrdinalIgnoreCase)) return id;
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// rAthena <c>skill_dummy2skill_id</c> — collapses the family of
+    /// NPC_*DUMMY ids onto their real counterpart. Until the dummy
+    /// table ports, this is identity; the entry point is here so
+    /// callers (`battle_calc_damage`, mob AI) don't drift.
+    /// </summary>
+    public ushort Dummy2SkillId(ushort dummyId) => dummyId;
 }
 

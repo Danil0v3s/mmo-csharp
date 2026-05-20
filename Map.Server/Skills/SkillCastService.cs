@@ -32,6 +32,7 @@ public sealed class SkillCastService : ISkillCastService
     private readonly IMapFlagService? _mapFlags;
     private readonly IMapWorldRegistry? _maps;
     private readonly IStatusChangeService? _sc;
+    private readonly ISkillCastTimingService? _timing;
     private readonly ILogger<SkillCastService> _logger;
 
     private readonly List<PendingCast> _pending = new();
@@ -44,7 +45,8 @@ public sealed class SkillCastService : ISkillCastService
         ILogger<SkillCastService> logger,
         IMapFlagService? mapFlags = null,
         IMapWorldRegistry? maps = null,
-        IStatusChangeService? sc = null)
+        IStatusChangeService? sc = null,
+        ISkillCastTimingService? timing = null)
     {
         _db = db;
         _entities = entities;
@@ -52,6 +54,7 @@ public sealed class SkillCastService : ISkillCastService
         _mapFlags = mapFlags;
         _maps = maps;
         _sc = sc;
+        _timing = timing;
         _logger = logger;
     }
 
@@ -142,7 +145,13 @@ public sealed class SkillCastService : ISkillCastService
             pc2.Sp -= spCost;
         }
 
-        var castTime = def.CastTimeMs.Length > skillLevel ? def.CastTimeMs[skillLevel] : 0;
+        // Cast time pipeline: pull the raw value from skill_db, then run
+        // through the canonical castfix path so DEX scaling + config
+        // rates apply (rAthena skill_castfix, skill.cpp:20193). If the
+        // timing service isn't wired (test ctor) we fall back to raw.
+        var castTime = _timing != null
+            ? _timing.CastFix(source, skillId, skillLevel)
+            : (def.CastTimeMs.Length > skillLevel ? def.CastTimeMs[skillLevel] : 0);
         if (castTime <= 0)
         {
             ResolveSkill(source, target, skillId, skillLevel);
@@ -159,8 +168,14 @@ public sealed class SkillCastService : ISkillCastService
             });
         }
 
+        // rAthena skill_delayfix (skill.cpp:20456) — the after-cast
+        // delay belongs on the unit's CanAct gate, but we approximate
+        // by stacking it onto the cooldown floor today. When the
+        // PlayerEntity canact_tick lands the delay flows there.
         var cooldown = def.CooldownMs.Length > skillLevel ? def.CooldownMs[skillLevel] : 0;
-        if (cooldown > 0) _cooldowns[cdKey] = now + cooldown;
+        var afterDelay = _timing?.DelayFix(source, skillId, skillLevel) ?? 0;
+        var lock_ = Math.Max(cooldown, afterDelay);
+        if (lock_ > 0) _cooldowns[cdKey] = now + lock_;
 
         return SkillCastResult.Started;
     }

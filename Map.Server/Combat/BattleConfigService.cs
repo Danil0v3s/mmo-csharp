@@ -48,6 +48,20 @@ public sealed class BattleConfigService : IBattleConfigService
         _knobs["max_parameter"] = 99;
         _knobs["max_third_parameter"] = 130;
         _knobs["max_baselevel"] = 175;
+
+        // Cast timing knobs consumed by ISkillCastTimingService.
+        // rAthena defaults: castrate_dex_scale=150, cast_rate=100,
+        // delay_rate=100, delay_dependon_dex=0, delay_dependon_agi=0,
+        // min_skill_delay_limit=100, no_skill_delay=BL_MOB (=2),
+        // default_fixed_castrate=20.
+        _knobs["castrate_dex_scale"] = 150;
+        _knobs["cast_rate"] = 100;
+        _knobs["delay_rate"] = 100;
+        _knobs["delay_dependon_dex"] = 0;
+        _knobs["delay_dependon_agi"] = 0;
+        _knobs["min_skill_delay_limit"] = 100;
+        _knobs["no_skill_delay"] = 2;
+        _knobs["default_fixed_castrate"] = 20;
     }
 
     public int GetValue(string knob)
