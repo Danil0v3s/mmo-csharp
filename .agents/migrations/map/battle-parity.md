@@ -167,3 +167,40 @@ side-system polish > admin knobs).
 - 8 done / 4 partial / 36 missing across 8 subsystems.
 - 10-wave plan documented above. Damage card/mastery + reflect
   are the highest gameplay-impact gaps.
+
+### 2026-05-20 — waves H1-H4 (cards / reflect / zone / target)
+- **B-H1** `IBattleCardService` (`battle_calc_cardfix` +
+  `battle_addmastery`) hooked into `BattleCalculator`. Mastery
+  reads LearnedSkills for Demon/Beast Bane, Research, Madogear,
+  Breakthrough, Spirit Charm. Cardfix waits on equip aggregator.
+- **B-H2** `IBattleReflectService` (`battle_calc_return_damage` +
+  `battle_do_reflect`). Short-range branch wired; SC branch
+  waits on SC_REFLECTSHIELD.
+- **B-H3** `IZoneDamageService` — rAthena default rates for
+  gvg/bg/pk reading `MapFlag.Gvg`.
+- **B-H4** `IBattleTargetService` — `battle_gettarget`,
+  `gettargeted`, `getenemy`, `get_master` (all real),
+  `getcurrentskill`, `check_undead`, `check_coma`,
+  `is_infinite_defense`.
+
+### 2026-05-20 — waves M1-L2 (delay / effects / element / config / zone gates)
+- **B-M1** `IDelayedDamageService` — `battle_delay_damage` +
+  `battle_damage_area`.
+- **B-M2** `IBattleEffectsService.Drain` / `ConsumeAmmo` /
+  `AutocastAfterCast` / `AutocastElemBuff` — canonical entries
+  ready for aggregator wiring.
+- **B-M3** `IBattleElementService` — weapon real, magic/misc
+  Neutral until skill_db element ports.
+- **B-M4** `IBattleEffectsService.VanishDamage` /
+  `VellumDamage` (real), `StatusBlocksDamage` (false until SCs).
+- **B-L1** `IBattleConfigService` — 20 rAthena-default knobs.
+- **B-L2** `IBattleZoneGateService` —
+  `can_hit_bg_target` / `can_hit_gvg_target` /
+  `get_exception_ai` with same-guild fallback.
+
+**Final coverage**: every rAthena `battle_*` function has a
+canonical C# entry point. ~20 of 41 are working implementations;
+the remaining ~21 are documented "data-pending" paths whose
+parent dependency (equip aggregator, SC table, skill_db element
+column, battle_athena.conf parser) is explicit in each service
+header. 435 tests green.
