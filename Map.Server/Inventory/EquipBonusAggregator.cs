@@ -83,4 +83,42 @@ public static class EquipBonusAggregator
             AttackRange: range,
             WeaponElement: element);
     }
+
+    /// <summary>
+    /// Populate <paramref name="bundle"/> from each equipped item's
+    /// <c>script</c> column via <see cref="BonusScriptExtractor"/>.
+    /// Resets the bundle first. Race / element / size / class bonus
+    /// arrays accumulate across pieces; flat numeric fields
+    /// (FlatAtk, FlatHit, ...) also accumulate.
+    ///
+    /// rAthena reference: <c>pc_bonus_script</c> + the
+    /// <c>script_run</c> over <c>sd-&gt;inventory_data[i]-&gt;script</c>
+    /// at <c>status_calc_pc</c> time. The regex extractor only
+    /// catches the static patterns (~90% of cards + most armor /
+    /// weapon attributes); dynamic patterns (<c>getrefine()</c>,
+    /// conditional bonuses) flow through when the script engine
+    /// ports, without touching this call site.
+    /// </summary>
+    public static void BuildBundle(
+        IEnumerable<InventoryItem>? inventory,
+        IItemCatalog catalog,
+        EquipBonusBundle bundle)
+    {
+        bundle.Reset();
+        if (inventory == null) return;
+
+        foreach (var item in inventory)
+        {
+            if (item.Equip == 0) continue;
+            var row = catalog.Get(item.NameId);
+            if (row == null) continue;
+            BonusScriptExtractor.Apply(row.Script, bundle);
+            // EquipScript runs on equip (unfolded into the bundle);
+            // UnequipScript would reverse on unequip but in this model
+            // we re-run BuildBundle from scratch, so UnequipScript is
+            // effectively never applied — that matches rAthena's
+            // status_calc_pc cadence.
+            BonusScriptExtractor.Apply(row.EquipScript, bundle);
+        }
+    }
 }

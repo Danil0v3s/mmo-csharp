@@ -41,13 +41,51 @@ public sealed class BattleCardService : IBattleCardService
     public long CalcCardFix(BattleAttackType attackType, Entity src, Entity target, long damage, bool leftHand)
     {
         if (damage == 0) return 0;
-        // rAthena APPLY_CARDFIX is a 1000-based multiplier reduction.
-        // Until BattleStats grows the indexed_bonus aggregator (race
-        // / element / size / class arrays), there are no cards to
-        // accumulate; return the input as-is. The pipeline still
-        // routes through here so future aggregator wiring is a
-        // single-site change.
-        return damage;
+
+        // Card-fix only applies when the source is a player (mobs don't
+        // wear cards). The bundle is recomputed by
+        // EquipBonusAggregator.BuildBundle on every equip change.
+        if (src is not PlayerEntity pc) return damage;
+
+        var bundle = pc.EquipBonuses;
+        if (bundle == null) return damage;
+
+        var ts = target.Stats;
+        // Renewal MULT base = 100 (%); each bonus column adds onto
+        // the multiplier additively, then we apply once.
+        long mult = 100;
+
+        // Race attack bonus (indexed by target race + RC_All slot).
+        var raceIdx = (int)ts.Race;
+        if (raceIdx >= 0 && raceIdx < bundle.AddRace.Length) mult += bundle.AddRace[raceIdx];
+        mult += bundle.AddRace[(int)BattleRace.All];
+
+        // Element attack bonus (indexed by target defense element).
+        var eleIdx = (int)ts.DefenseElement;
+        if (eleIdx >= 0 && eleIdx < bundle.AddEle.Length) mult += bundle.AddEle[eleIdx];
+        mult += bundle.AddEle[(int)BattleElement.All];
+
+        // Size attack bonus (indexed by target size).
+        var sizeIdx = (int)ts.Size;
+        if (sizeIdx >= 0 && sizeIdx < bundle.AddSize.Length) mult += bundle.AddSize[sizeIdx];
+        mult += bundle.AddSize[(int)BattleSize.All];
+
+        // Class attack bonus — rAthena maps MD_MVP → CLASS_BOSS;
+        // everything else CLASS_NORMAL. CLASS_GUARDIAN exists on
+        // rAthena but our MobMode flags don't carry the guardian
+        // bit yet, so guardians collapse to Normal (a future patch
+        // adds the bit when GvG castles port).
+        var classIdx = (int)Inventory.BattleClassFlag.Normal;
+        if ((ts.Mode & MobMode.Mvp) != 0) classIdx = (int)Inventory.BattleClassFlag.Boss;
+        if (classIdx >= 0 && classIdx < bundle.AddClass.Length) mult += bundle.AddClass[classIdx];
+        mult += bundle.AddClass[(int)Inventory.BattleClassFlag.All];
+
+        // Attack-range bonus — short = melee (range ≤ 2), long = ranged.
+        if (pc.Stats.AttackRange > 2) mult += bundle.LongAtkRate;
+        else mult += bundle.ShortAtkRate;
+
+        // Apply the % multiplier with floor-at-1.
+        return Math.Max(1, damage * mult / 100);
     }
 
     public long AddMastery(PlayerEntity attacker, Entity target, long damage, BattleAttackType type)

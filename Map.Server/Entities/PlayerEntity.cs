@@ -88,6 +88,17 @@ public sealed class PlayerEntity : Entity
     /// <summary>Player group id (gm level). Mirrors session's GroupId; surfaced here for scripts.</summary>
     public int GroupId { get; set; }
 
+    /// <summary>
+    /// Accumulated equipment-bonus bundle. Mirrors rAthena's
+    /// <c>indexed_bonus</c> struct on <c>map_session_data</c>
+    /// (status.hpp:1980). Recomputed by
+    /// <see cref="Inventory.EquipBonusAggregator"/> on every equip /
+    /// unequip / break / strip / refine. Read by
+    /// <see cref="Combat.IBattleCardService.CalcCardFix"/> + the
+    /// cast-time / drain / autospell pipelines.
+    /// </summary>
+    public Inventory.EquipBonusBundle EquipBonuses { get; set; } = new();
+
     /// <summary>True if the PC has invoked pc_setsit. Drives sitting regen bonus + action gates.</summary>
     public bool IsSitting { get; set; }
 

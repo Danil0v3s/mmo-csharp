@@ -172,6 +172,10 @@ public sealed class EquipService : IEquipService
         if (_entities.Get(eid) is not PlayerEntity player) return;
 
         var summary = EquipBonusAggregator.Aggregate(session.Inventory, _catalog);
+        // T2.2 — rebuild the indexed bonus bundle from each equip's
+        // bonus script (regex pass over the item_db `script` column).
+        // Read by IBattleCardService.CalcCardFix + cast / drain hooks.
+        EquipBonusAggregator.BuildBundle(session.Inventory, _catalog, player.EquipBonuses);
         var stats = player.Stats;
         _statusCalc.CalcPc(player, new PcBaseInputs(
             BaseLevel: player.Level,
