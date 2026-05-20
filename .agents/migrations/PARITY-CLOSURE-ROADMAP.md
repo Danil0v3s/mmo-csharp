@@ -17,7 +17,7 @@ or JSON, the consumer code just hasn't been wired through).
 | T2.1 | Equip-bonus aggregator | ✅ **DONE** | `Map.Server/Inventory/EquipBonusAggregator.cs` — exists from PC-S4 wave |
 | T2.2 | Card modifier port | ✅ **DONE** | `BattleCardService.CalcCardFix` reads `PlayerEntity.EquipBonuses`; `EquipBonusBundle` + `BonusScriptExtractor` ship; Hydra-card test exercises +20% vs Demi-Human |
 | T2.3 | Per-skill behavior | ❌ pending | 5 generic resolvers; per-skill plugins (Bash splash, Magnum Break, Storm Gust, …) untouched |
-| T2.4 | SC engine completion | 🟡 enum full / behavior ~30 of ~250 | T2.4a + T2.4b done: enum mirrors all 1006 SC ids; first wave of handlers (CC gates / DoT / stat buffs / cast-time SCs) registered; `CastFixSc` honors Suffragium/Memorize/Slowcast/Paralysis/Izayoi/Bragi. Long-tail SC handlers ride the same registry pattern. |
+| T2.4 | SC engine completion | 🟡 enum full / behavior ~30 of ~250 + combat hooks | T2.4a + T2.4b done: enum mirrors all 1006 SC ids; first wave of handlers (CC gates / DoT / stat buffs / cast-time SCs) registered; `CastFixSc` honors Suffragium/Memorize/Slowcast/Paralysis/Izayoi/Bragi; `DamageService` reads SteelBody / Kyrie / AutoGuard on every hit. Long-tail SC handlers ride the same registry pattern. |
 | T3 | Wire packets | 🟡 113 emitters exist | Per-handler audit needed; the surface is bigger than initially scoped |
 | T4 | IPC + persistence | ❌ pending | 73 `IIntifService` stubs — biggest single block of behavior gap |
 | T5 | Per-file deep audits | ❌ pending | The pc/battle/skill style tables — 38 files left |
@@ -730,6 +730,29 @@ hot path.
 - Every gameplay knob in `battle_*.conf` flows .conf → JSON; the
   JSON gets editor autocomplete via the generated schemas.
 - Tier 2 (combat correctness) is the next active tier.
+
+### 2026-05-20 — Combat-side SC consumers (SteelBody / Kyrie / AutoGuard)
+- `DamageService.ApplyResolved` gains an `ApplyScDamageReduction`
+  step that runs before HP commit. Renewal order:
+  1. **AutoGuard** — Val1 % full block; sets action = Flee so the
+     client renders dodge anim instead of hit.
+  2. **Kyrie** — Val1 HP shield absorbs up to its pool per hit,
+     Val2 hit counter decrements; SC ends when either drops to 0.
+  3. **SteelBody** — 90 % flat reduction multiplies whatever
+     survived absorb, floor-at-1 so the client still draws a hit
+     floater.
+- `DamageService` ctor gains optional `IStatusChangeService` and
+  `Random` deps — DI resolves them automatically; legacy callers
+  still build since the step no-ops when `sc == null`.
+- 9 new tests in `DamageServiceScConsumerTests` cover the three
+  consumers individually plus Kyrie + SteelBody stacking.
+- Full Map.Server.Tests at 363/364 (unchanged pre-existing
+  replay-baseline failure).
+- **Remaining presence markers waiting for consumers:** Endure
+  (needs refresh-on-hit infra), ReflectShield (needs back-damage
+  feedback to attacker), Providence (race-specific resist),
+  Magnificat (SP regen rate read in IPcRegenService), Maximize
+  (max-roll damage in BattleCalculator).
 
 ### 2026-05-20 — T2.4b first-wave SC handlers done
 - `StatusEffectRegistry` grows from 5 → 30+ handlers covering
