@@ -469,6 +469,49 @@ builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.
 // Bard / Dancer
 builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Bard.FrostJoker>();
 builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Dancer.Scream>();
+// T2.3 transcend classes (LK / HP / HW / PA / CH / ASC / SN / WS)
+// Lord Knight
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.LordKnight.LkConcentration>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.LordKnight.TensionRelax>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.LordKnight.Berserk>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.LordKnight.SpiralPierce>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.LordKnight.HeadCrush>();
+// High Priest / High Wizard / Paladin
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.HighPriest.Assumptio>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.HighWizard.MagicCrasher>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.HighWizard.MagicPower>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.HighWizard.NapalmVulcan>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Paladin.Pressure>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Paladin.Sacrifice>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Paladin.ShieldChain>();
+// Champion / Assassin Cross
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Champion.PalmStrike>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Champion.TigerFist>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Champion.ChainCrush>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.AssassinCross.EnchantDeadlyPoison>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.AssassinCross.SoulBreaker>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.AssassinCross.MeteorAssault>();
+// Sniper / Whitesmith
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Sniper.FalconAssault>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Sniper.SharpShooting>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Sniper.WindWalk>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Whitesmith.MeltDown>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Whitesmith.CartBoost>();
+// T2.3 3rd class (Renewal)
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.RuneKnight.DeathBound>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Warlock.ChainLightning>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.ArchBishop.Adoramus>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Ranger.ArrowStorm>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Mechanic.AxeBoomerang>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.GuillotineCross.DarkIllusion>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.RoyalGuard.OverBrand>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Sura.DragonCombo>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Minstrel.Reverberation>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Sorcerer.PsychicWave>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Genetic.CartCannon>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.ShadowChaser.TriangleShot>();
+// T2.3 4th class (Renewal+)
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.DragonKnight.DragonicAura>();
 builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillBehaviorRegistry>();
 
 // Standard SkillResolverRegistry now hand-wired here (was previously

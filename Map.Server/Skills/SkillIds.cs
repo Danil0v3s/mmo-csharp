@@ -96,6 +96,45 @@ public static class SkillIds
     public const ushort AS_GRIMTOOTH = 137;
     public const ushort AS_ENCHANTPOISON = 138;
 
+    // ----- Lord Knight (transcend Knight) -----
+    public const ushort LK_CONCENTRATION = 357;
+    public const ushort LK_TENSIONRELAX = 358;
+    public const ushort LK_BERSERK = 359;
+    public const ushort LK_SPIRALPIERCE = 397;
+    public const ushort LK_HEADCRUSH = 398;
+
+    // ----- High Priest (transcend Priest) -----
+    public const ushort HP_ASSUMPTIO = 361;
+
+    // ----- High Wizard (transcend Wizard) -----
+    public const ushort HW_MAGICCRASHER = 365;
+    public const ushort HW_MAGICPOWER = 366;
+    public const ushort HW_NAPALMVULCAN = 400;
+
+    // ----- Paladin (transcend Crusader) -----
+    public const ushort PA_PRESSURE = 367;
+    public const ushort PA_SACRIFICE = 368;
+    public const ushort PA_SHIELDCHAIN = 480;
+
+    // ----- Champion (transcend Monk) -----
+    public const ushort CH_PALMSTRIKE = 370;
+    public const ushort CH_TIGERFIST = 371;
+    public const ushort CH_CHAINCRUSH = 372;
+
+    // ----- Assassin Cross (transcend Assassin) -----
+    public const ushort ASC_EDP = 378;
+    public const ushort ASC_BREAKER = 379;
+    public const ushort ASC_METEORASSAULT = 406;
+
+    // ----- Sniper (transcend Hunter) -----
+    public const ushort SN_FALCONASSAULT = 381;
+    public const ushort SN_SHARPSHOOTING = 382;
+    public const ushort SN_WINDWALK = 383;
+
+    // ----- Whitesmith (transcend Blacksmith) -----
+    public const ushort WS_MELTDOWN = 384;
+    public const ushort WS_CARTBOOST = 387;
+
     // ----- Monk (transcend Acolyte) -----
     public const ushort MO_CALLSPIRITS = 261;
     public const ushort MO_TRIPLEATTACK = 263;
@@ -109,4 +148,21 @@ public static class SkillIds
     public const ushort BD_LULLABY = 306;
     public const ushort BA_FROSTJOKER = 318;
     public const ushort DC_SCREAM = 326;
+
+    // ----- 3rd class (Renewal) -----
+    public const ushort RK_DEATHBOUND = 2003;        // Rune Knight
+    public const ushort GC_DARKILLUSION = 2023;      // Guillotine Cross
+    public const ushort AB_ADORAMUS = 2040;          // Arch Bishop
+    public const ushort WL_CHAINLIGHTNING = 2214;    // Warlock
+    public const ushort RA_ARROWSTORM = 2233;        // Ranger
+    public const ushort NC_AXEBOOMERANG = 2278;      // Mechanic
+    public const ushort SC_TRIANGLESHOT = 2288;      // Shadow Chaser
+    public const ushort LG_OVERBRAND = 2317;         // Royal Guard
+    public const ushort SR_DRAGONCOMBO = 2326;       // Sura
+    public const ushort WM_REVERBERATION = 2414;     // Minstrel / Wanderer
+    public const ushort SO_PSYCHIC_WAVE = 2449;      // Sorcerer
+    public const ushort GN_CARTCANNON = 2477;        // Genetic
+
+    // ----- 4th class (Renewal+) -----
+    public const ushort DK_DRAGONIC_AURA = 5210;     // Dragon Knight
 }

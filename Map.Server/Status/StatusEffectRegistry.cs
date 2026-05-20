@@ -336,6 +336,33 @@ public sealed class StatusEffectRegistry
         // consumer reads it inside BattleCalculator.
         Register(StatusType.Maximizepower, NoOpHandler());
 
+        // ---- T2.3 transcend-class SC markers ----
+
+        // SC_TENSIONRELAX (LK_TENSIONRELAX) — sit + boosted HP regen.
+        Register(StatusType.Tensionrelax, NoOpHandler());
+        // SC_BERSERK (LK_BERSERK) — triple MaxHp + ASPD + can't cast.
+        Register(StatusType.Berserk, NoOpHandler());
+        // SC_MAGICPOWER (HW_MAGICPOWER) — next magic cast +50+5*lv %.
+        Register(StatusType.Magicpower, NoOpHandler());
+        // SC_SACRIFICE (PA_SACRIFICE) — devotion link.
+        Register(StatusType.Sacrifice, NoOpHandler());
+        // SC_EDP (ASC_EDP) — Enchant Deadly Poison.
+        Register(StatusType.Edp, NoOpHandler());
+        // SC_WINDWALK (SN_WINDWALK) — +Flee +MoveSpeed.
+        Register(StatusType.Windwalk, NoOpHandler());
+        // SC_MELTDOWN (WS_MELTDOWN) — break-enemy-gear proc.
+        Register(StatusType.Meltdown, NoOpHandler());
+        // SC_CARTBOOST (WS_CARTBOOST) — +MoveSpeed while pushing cart.
+        Register(StatusType.Cartboost, NoOpHandler());
+
+        // ---- T2.3 3rd/4th class SC markers ----
+        // SC_DEATHBOUND (RK_DEATHBOUND) — reflect next physical hit.
+        Register(StatusType.Deathbound, NoOpHandler());
+        // SC_ADORAMUS (AB_ADORAMUS) — Blind-like debuff from Holy spell.
+        Register(StatusType.Adoramus, NoOpHandler());
+        // SC_DRAGONIC_AURA (DK_DRAGONIC_AURA) — Dragon Knight ATK boost.
+        Register(StatusType.DragonicAura, NoOpHandler());
+
         // SC_REFLECTSHIELD — % chance to reflect damage. Val1 = chance,
         // Val2 = reflect rate. Same combat-hook situation as Autoguard.
         Register(StatusType.Reflectshield, NoOpHandler());
