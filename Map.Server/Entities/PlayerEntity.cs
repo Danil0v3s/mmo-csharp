@@ -82,6 +82,12 @@ public sealed class PlayerEntity : Entity
     /// <summary>Guild id, 0 = none. Sourced from char-server at session enter.</summary>
     public int GuildId { get; set; }
 
+    /// <summary>Clan id, 0 = none. Sourced from char-server / clan_db.yml.</summary>
+    public int ClanId { get; set; }
+
+    /// <summary>Player group id (gm level). Mirrors session's GroupId; surfaced here for scripts.</summary>
+    public int GroupId { get; set; }
+
     /// <summary>True if the PC has invoked pc_setsit. Drives sitting regen bonus + action gates.</summary>
     public bool IsSitting { get; set; }
 

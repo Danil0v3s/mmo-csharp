@@ -337,6 +337,24 @@ builder.Services.AddSingleton<Map.Server.Skills.IAbraDatabase, Map.Server.Skills
 builder.Services.AddSingleton<Map.Server.Skills.IMagicMushroomDatabase, Map.Server.Skills.MagicMushroomDatabase>();
 builder.Services.AddSingleton<Map.Server.Skills.IReadingSpellbookDatabase, Map.Server.Skills.ReadingSpellbookDatabase>();
 builder.Services.AddSingleton<Map.Server.Skills.ISkillArrowDatabase, Map.Server.Skills.SkillArrowDatabase>();
+
+// Small-file services (date / duel / clan / mapreg / searchstore /
+// pc_groups / npc_chat) — canonical entry points for the rAthena
+// functions, with audit docs in .agents/migrations/map/.
+builder.Services.AddSingleton<Map.Server.Time.IDateService, Map.Server.Time.DateService>();
+builder.Services.AddSingleton<Map.Server.Duel.IDuelService, Map.Server.Duel.DuelService>();
+builder.Services.AddSingleton<Map.Server.Clan.IClanService, Map.Server.Clan.ClanService>();
+builder.Services.AddSingleton<Map.Server.Scripting.MapReg.IMapRegService, Map.Server.Scripting.MapReg.MapRegService>();
+builder.Services.AddSingleton<Map.Server.Shop.SearchStore.ISearchStoreService, Map.Server.Shop.SearchStore.SearchStoreService>();
+builder.Services.AddSingleton<Map.Server.Gm.Groups.IPlayerGroupsService, Map.Server.Gm.Groups.PlayerGroupsService>();
+builder.Services.AddSingleton<Map.Server.Scripting.NpcChat.INpcChatService, Map.Server.Scripting.NpcChat.NpcChatService>();
+builder.Services.AddSingleton<Map.Server.Chat.Rooms.IChatRoomService, Map.Server.Chat.Rooms.ChatRoomService>();
+builder.Services.AddSingleton<Map.Server.Pathing.IPathService, Map.Server.Pathing.PathService>();
+builder.Services.AddSingleton<Map.Server.Mail.IMailService, Map.Server.Mail.MailService>();
+builder.Services.AddSingleton<Map.Server.Shop.Cash.ICashShopService, Map.Server.Shop.Cash.CashShopService>();
+builder.Services.AddSingleton<Map.Server.Trade.Wire.ITradeWireService, Map.Server.Trade.Wire.TradeWireService>();
+builder.Services.AddSingleton<Map.Server.Navi.INaviService, Map.Server.Navi.NaviService>();
+builder.Services.AddSingleton<Map.Server.Logging.IGameLogService, Map.Server.Logging.GameLogService>();
 builder.Services.AddSingleton<Map.Server.Skills.ISkillCastService, Map.Server.Skills.SkillCastService>();
 
 // Skill ground units (skill.cpp:skill_unitsetting +
