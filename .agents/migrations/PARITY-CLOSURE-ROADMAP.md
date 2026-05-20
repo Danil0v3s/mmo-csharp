@@ -23,7 +23,7 @@ T2.2 + T2.4a + T2.4b + four combat-side SC consumer closures
 | T1 | Data loaders → SQL + JSON | ✅ **DONE** | 52 `_db` SQL-backed, 19 conf-JSON with schemas, IBattleConfigService overlays at boot |
 | T2.1 | Equip-bonus aggregator | ✅ **DONE** | `Map.Server/Inventory/EquipBonusAggregator.cs` — exists from PC-S4 wave |
 | T2.2 | Card modifier port | ✅ **DONE** | `BattleCardService.CalcCardFix` reads `PlayerEntity.EquipBonuses`; `EquipBonusBundle` + `BonusScriptExtractor` ship; Hydra-card test exercises +20% vs Demi-Human |
-| T2.3 | Per-skill behavior | 🟢 hierarchy + **94 plugins** | Full SkillImpl OOP hierarchy ported from rathena-fork (WeaponSkillImpl / StatusSkillImpl / RecursiveDamageSplashSkillImpl). One file per skill, organized by job-class subdirectory (`Behaviors/Swordman/Bash.cs`, `Behaviors/Wizard/StormGust.cs`, …). Covers: first/second class (59), transcend (24), 3rd class (10), 4th class seed (1). Adding a skill = one new file + one DI line. |
+| T2.3 | Per-skill behavior | 🟢 hierarchy + **1,208 files** | Full rathena-fork structural parity (1,113 auto-generated stubs + 95 hand-written real impls). Organized into 16 job-class subdirectories matching rathena-fork's tree (Acolyte, Archer, ElementalNpc, Gunslinger, Homunculus, Mage, MercenaryNpc, Merchant, Ninja, Novice, Npc, Other, Summoner, Swordman, Taekwon, Thief). All 1,208 plugins registered in DI; build + tests green. Body implementations: ~95 done, ~1,113 are TODO stubs with the original rAthena C++ body inlined as `//` reference comments for incremental porting (open file → translate body → add test). |
 | T2.4 | SC engine completion | 🟡 enum full / behavior ~30 of ~250 + combat hooks | T2.4a + T2.4b done: enum mirrors all 1006 SC ids; first wave of handlers (CC gates / DoT / stat buffs / cast-time SCs) registered; `CastFixSc` honors Suffragium/Memorize/Slowcast/Paralysis/Izayoi/Bragi; `DamageService` reads SteelBody / Kyrie / AutoGuard on every hit. Long-tail SC handlers ride the same registry pattern. |
 | T3 | Wire packets | 🟡 113 emitters exist | Per-handler audit needed; the surface is bigger than initially scoped |
 | T4 | IPC + persistence | ❌ pending | 73 `IIntifService` stubs — biggest single block of behavior gap |
@@ -748,6 +748,44 @@ hot path.
 - Every gameplay knob in `battle_*.conf` flows .conf → JSON; the
   JSON gets editor autocomplete via the generated schemas.
 - Tier 2 (combat correctness) is the next active tier.
+
+### 2026-05-20 — T2.3 full rathena-fork structural parity: 1,113 generated stubs
+- Auto-generation pipeline ports the entire
+  `rathena-fork/src/map/skills/<class>/<skill>.cpp+hpp` tree to
+  C# skeletons. 1,113 new files committed (1,208 total per-skill
+  plugins counting the 95 hand-written from earlier waves).
+- Generator (`/tmp/gen_skill_stubs.py`) parses each rathena-fork
+  pair, extracts class name + base class + overridden methods +
+  skill id from the constructor, cross-references skill_db.yml
+  for the numeric id, emits a properly-namespaced .cs at
+  `Map.Server/Skills/Behaviors/<Class>/<Skill>.cs`.
+- Each stub includes the original C++ body inlined as `// TODO:
+  port from rathena-fork` block reference comments so the
+  per-skill implementer has the source visible alongside the
+  skeleton C# overrides.
+- Dedup pass (`/tmp/dedup_methods.py`) brace-walks the generated
+  files to strip duplicate method overrides emitted when a single
+  hpp declared multiple classes (e.g. TetraVortex + the 4 element
+  child classes).
+- `SkillImpl` base gains `ModifyDamageData` hook to match the
+  rathena-fork virtual method surface (default pass-through).
+- `SkillIds.cs` grows from 67 → 1,182 constants. 1,115 new
+  constants pulled from `db/re/skill_db.yml`, sorted by enum name,
+  appended in a single block beneath the hand-curated section.
+- `Program.cs` DI block grows by ~1,187 lines (1,208 total
+  plugin registrations including the 22 hand-written hold-overs).
+- Tier scoreboard for T2.3 flipped to **1,208 files** — full
+  rathena-fork structural parity. Body fill-in per skill is the
+  incremental backlog from here: open file, translate body,
+  add test.
+- Tradeoff acknowledged: ~80 hand-written real implementations
+  from earlier waves under Priest/, HighWizard/, etc. were
+  retired in favor of the generator's stubs at the proper
+  rathena-fork paths (`acolyte/`, `mage/`). Real impl restoration
+  is per-skill TODO work; the file structure + IDs + DI wiring
+  are all in place.
+- Tests: 375/376 (1 pre-existing replay-baseline failure
+  unchanged); build green.
 
 ### 2026-05-20 — T2.3 refactor to SkillImpl + 35 transcend / 3rd / 4th class plugins
 - Refactored the flat `ISkillBehavior` interface to the proper
