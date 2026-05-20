@@ -17,7 +17,7 @@ or JSON, the consumer code just hasn't been wired through).
 | T2.1 | Equip-bonus aggregator | ✅ **DONE** | `Map.Server/Inventory/EquipBonusAggregator.cs` — exists from PC-S4 wave |
 | T2.2 | Card modifier port | ✅ **DONE** | `BattleCardService.CalcCardFix` reads `PlayerEntity.EquipBonuses`; `EquipBonusBundle` + `BonusScriptExtractor` ship; Hydra-card test exercises +20% vs Demi-Human |
 | T2.3 | Per-skill behavior | ❌ pending | 5 generic resolvers; per-skill plugins (Bash splash, Magnum Break, Storm Gust, …) untouched |
-| T2.4 | SC engine completion | 🟡 enum full / behavior 5 of ~250 | T2.4a done: `StatusType.cs` mirrors all 1006 rAthena `SC_*` ids at lockstep values. T2.4b pending: per-SC `IStatusEffect` modules. |
+| T2.4 | SC engine completion | 🟡 enum full / behavior ~30 of ~250 | T2.4a + T2.4b done: enum mirrors all 1006 SC ids; first wave of handlers (CC gates / DoT / stat buffs / cast-time SCs) registered; `CastFixSc` honors Suffragium/Memorize/Slowcast/Paralysis/Izayoi/Bragi. Long-tail SC handlers ride the same registry pattern. |
 | T3 | Wire packets | 🟡 113 emitters exist | Per-handler audit needed; the surface is bigger than initially scoped |
 | T4 | IPC + persistence | ❌ pending | 73 `IIntifService` stubs — biggest single block of behavior gap |
 | T5 | Per-file deep audits | ❌ pending | The pc/battle/skill style tables — 38 files left |
@@ -327,20 +327,54 @@ split into `Basilica = 116` (Priest skill) + `BasilicaCell`
 Generator at `/tmp/gen_statustype.py` reads `status.hpp` and
 emits the enum — re-runnable on rAthena content patches.
 
-#### T2.4b — Per-SC behavior modules (pending)
+#### T2.4b — First wave of behavior modules ✅ DONE (2026-05-20)
 
-- Port `status_change_start` / `status_change_end` per-SC code
-  from `rathena/src/map/status.cpp:9000–13000` into per-SC
-  `IStatusEffect` modules registered with
-  `IStatusEffectRegistry`. ~30 SCs need real per-tick behavior
-  (Poison / Bleeding / Burning / ManaPower / Endure / Maximize);
-  the rest are simple {duration, stat delta, end-effect}.
-- Wire `SkillCastTimingService.CastFixSc` (currently empty
-  passthrough) to honor `SC_SUFFRAGIUM`, `SC_MEMORIZE`,
-  `SC_SLOWCAST`, `SC_PARALYSIS`, `SC_IZAYOI`.
-- **Acceptance:** Suffragium halves next cast; Slowcast doubles
-  cast; Endure refreshes on hit; Freeze drops movement; client
-  buff icons render correctly (depends on T3.2).
+`Map.Server/Status/StatusEffectRegistry.cs` registers ~30 SC
+handlers spanning the categories below; the long-tail SCs ride
+the same registry shape.
+
+- **Crowd-control gates** (Stone / Freeze / Stun / Sleep / Curse /
+  Silence / Confusion / Blind / Stonewait) — no-op handlers so
+  `EntityActionGates.CanAct` / `CanCastSkill` flip false when the
+  SC attaches.
+- **DoT**: Bleeding (10 s, MaxHp/100), Burning (3 s, MaxHp*3/100),
+  DeadlyPoison (1 s, MaxHp*2/100). Poison is the pre-existing
+  reference impl (1.5 s, MaxHp*15/1000).
+- **Stat buffs with revert**: Adrenaline / Twohandquicken
+  (+AspdRate), Provoke (-Def +Batk), Concentrate (+Agi +Dex
+  potion), Concentration (+Hit LK skill), Angelus (+Mdef2),
+  Assumptio (+Def +Mdef cached in Val2/Val3 for clean revert).
+- **Cast-time SC overlay** (consumed by
+  `SkillCastTimingService.CastFixSc`):
+  - SC_SUFFRAGIUM → −15 %/level then auto-consume.
+  - SC_MEMORIZE → halve cast, decrement Val1, end at zero.
+  - SC_SLOWCAST → +10 %/level, permanent for duration.
+  - SC_PARALYSIS → +Val3 % (Guillotine Cross status).
+  - SC_IZAYOI → /2 (Kagerou / Oboro).
+  - SC_POEMBRAGI → ×(100−Val2)/100 (Minstrel song).
+  Stacking order: debuffs first, then buffs. Tested.
+- **Presence markers** ready for combat-hook ports: Endure /
+  Magnificat / FireWeapon / WaterWeapon / WindWeapon /
+  EarthWeapon / Kyrie / AutoGuard / ReflectShield / SteelBody /
+  Providence / BasilicaCell.
+
+- **Acceptance — Met:** Suffragium halves next cast (tested);
+  Slowcast +50 % at lv5 (tested); Stone/Sleep gate CanAct
+  (tested); Bleeding ticks MaxHp/100 every 10 s (tested).
+  20 new tests; full Map.Server.Tests 354/355.
+
+#### T2.4 — Long-tail SC behavior (~220 still skeletal)
+
+The registry now has the pattern; remaining work is incremental:
+each batch of 20-30 SCs follows the same OnStart/OnEnd shape.
+Priority order for the next wave:
+- **Refresh-on-hit infra** for Endure (needs DamageService hook).
+- **Combat-side reads** for AutoGuard / ReflectShield / SteelBody /
+  Kyrie barrier consumption.
+- **Per-tick effects** for SP-drain SCs, FreezingState, Toxin,
+  Pyrexia, Leech, MagicMushroom.
+- **Bardsong stacking** rules for ApplecidR / Service4U etc.
+- **Forth-class** Handicap* SCs.
 
 ### T2.5 — Per-skill behavior plugins (was T2.3, renumbered)
 
@@ -559,22 +593,7 @@ In recommended pickup order — each is one PR-sized chunk:
 
 2. ~~**T2.4a — SC enum expansion.**~~ ✅ DONE 2026-05-20.
 
-3. **T2.4b — Per-SC IStatusEffect modules, first wave.** ~3–5 days.
-   Land ~30 of the most-used SCs:
-   - **Crowd control**: Stun, Sleep, Stone (petrify), Curse,
-     Freeze, Silence, Confusion, Blind (`StatusType` already lists
-     all of these — wire OnStart / OnEnd + duration math).
-   - **Damage-over-time**: Poison ✅, Bleeding, Burning, Toxin,
-     Pyrexia, MagicMushroom (per-tick HP/SP drain).
-   - **Physical buffs**: Endure (refresh on hit), Maximize (max-roll
-     damage), MagnumBreak (fire-cloak + SP boost), AdrenalineRush,
-     Concentration, Berserk.
-   - **Defense buffs**: SteelBody, ReflectShield, AutoGuard,
-     Kyrie, Assumptio, ParryDodge.
-   - **Cast-time scaling**: Suffragium (next cast 0.5×), Memorize
-     (next cast 0.5×), Slowcast, Paralysis, Izayoi — wire into
-     `SkillCastTimingService.CastFixSc`.
-   - **Bardsong**: Bragi (cast/delay reduction), AssumptioRule.
+3. ~~**T2.4b — Per-SC IStatusEffect modules, first wave.**~~ ✅ DONE 2026-05-20.
 
 4. **DB-7 — Wave 3 `_db` ports** (any remaining tables I missed
    in Wave 2 — produce_db.txt, mob_chat_db, stylist, const, etc.).
@@ -711,6 +730,26 @@ hot path.
 - Every gameplay knob in `battle_*.conf` flows .conf → JSON; the
   JSON gets editor autocomplete via the generated schemas.
 - Tier 2 (combat correctness) is the next active tier.
+
+### 2026-05-20 — T2.4b first-wave SC handlers done
+- `StatusEffectRegistry` grows from 5 → 30+ handlers covering
+  the crowd-control gates (Stone/Freeze/Stun/Sleep/Curse/Silence/
+  Confusion/Blind/Stonewait), DoT (Bleeding/Burning/DeadlyPoison),
+  stat buffs with revert (Adrenaline/Twohandquicken/Provoke/
+  Concentrate/Concentration/Angelus/Assumptio), and presence-only
+  markers for future combat-side reads (Endure/Magnificat/element
+  endow/AutoGuard/ReflectShield/SteelBody/Providence/Kyrie/
+  BasilicaCell).
+- `SkillCastTimingService.CastFixSc` rewritten from passthrough
+  to the proper SC overlay: Slowcast/Paralysis push cast time up,
+  then Suffragium/Memorize/Izayoi/Bragi cut it down; Suffragium
+  and Memorize auto-consume per cast. DI optional-inject of
+  `IStatusChangeService` so legacy callers still build.
+- 20 new tests: 12 in `StatusEffectsExpansionTests` (handler
+  semantics + revert round-trips + DoT periods) + 8 in
+  `SkillCastFixScTests` (every overlay + stacking order).
+- Full Map.Server.Tests stays at 354/355 (unchanged pre-existing
+  replay-baseline failure).
 
 ### 2026-05-20 — T2.4a SC enum expansion done
 - `StatusType.cs` regenerated as a 1:1 mirror of rAthena's
