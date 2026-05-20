@@ -44,6 +44,8 @@ public static class SkillIds
     public const ushort MC_MAMMONITE = 42;
 
     // ----- Archer -----
+    public const ushort AC_OWL = 43;
+    public const ushort AC_CONCENTRATION = 45;
     public const ushort AC_DOUBLE = 46;
     public const ushort AC_SHOWER = 47;
 
@@ -73,26 +75,38 @@ public static class SkillIds
     public const ushort PR_MAGNUSEXORCISMUS = 79;
 
     // ----- Wizard (1-2 advance from Mage) -----
+    public const ushort WZ_JUPITEL = 84;
+    public const ushort WZ_FROSTNOVA = 88;
     public const ushort WZ_STORMGUST = 89;
+    public const ushort WZ_EARTHSPIKE = 90;
+    public const ushort WZ_HEAVENDRIVE = 91;
 
     // ----- Blacksmith (1-1 advance from Merchant) -----
     public const ushort BS_HAMMERFALL = 110;
     public const ushort BS_ADRENALINE = 111;
     public const ushort BS_OVERTHRUST = 113;
+    public const ushort BS_MAXIMIZE = 114;
 
     // ----- Hunter (1-2 advance from Archer) -----
     public const ushort HT_BLITZBEAT = 129;
 
     // ----- Assassin (1-2 advance from Thief) -----
+    public const ushort AS_CLOAKING = 135;
     public const ushort AS_SONICBLOW = 136;
     public const ushort AS_GRIMTOOTH = 137;
     public const ushort AS_ENCHANTPOISON = 138;
 
     // ----- Monk (transcend Acolyte) -----
+    public const ushort MO_CALLSPIRITS = 261;
     public const ushort MO_TRIPLEATTACK = 263;
     public const ushort MO_BODYRELOCATION = 264;
     public const ushort MO_INVESTIGATE = 266;
     public const ushort MO_FINGEROFFENSIVE = 267;
     public const ushort MO_EXPLOSIONSPIRITS = 270;
     public const ushort MO_EXTREMITYFIST = 271;
+
+    // ----- Bard / Dancer -----
+    public const ushort BD_LULLABY = 306;
+    public const ushort BA_FROSTJOKER = 318;
+    public const ushort DC_SCREAM = 326;
 }

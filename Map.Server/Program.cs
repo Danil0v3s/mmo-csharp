@@ -455,6 +455,19 @@ builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Se
 builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.ExtremityFistBehavior>();
 builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.ExplosionSpiritsBehavior>();
 builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.BodyRelocationBehavior>();
+// T2.3 wave 3 — Assassin Cloaking, Blacksmith Maximize, Wizard Earth/Wind,
+// Archer support, Monk spheres, Bard/Dancer crowd-control.
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.CloakingBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.MaximizePowerBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.EarthSpikeBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.HeavenDriveBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.JupitelThunderBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.FrostNovaBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.OwlsEyeBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.ImproveConcentrationBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.CallSpiritsBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.FrostJokerBehavior>();
+builder.Services.AddSingleton<Map.Server.Skills.Behaviors.ISkillBehavior, Map.Server.Skills.Behaviors.ScreamBehavior>();
 builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillBehaviorRegistry>();
 
 // Standard SkillResolverRegistry now hand-wired here (was previously

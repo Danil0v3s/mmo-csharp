@@ -324,6 +324,18 @@ public sealed class StatusEffectRegistry
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
             }));
 
+        // ---- T2.3 wave 3 — Cloaking, Maximize Power markers ----
+
+        // SC_CLOAKING — Assassin Cloaking (AS_CLOAKING). Presence flag
+        // for the visibility hook (similar to Hiding but with different
+        // SP-drain cadence).
+        Register(StatusType.Cloaking, NoOpHandler());
+
+        // SC_MAXIMIZEPOWER — Blacksmith Maximize Power (BS_MAXIMIZE).
+        // Marker that all weapon-attack rolls go to max; damage-side
+        // consumer reads it inside BattleCalculator.
+        Register(StatusType.Maximizepower, NoOpHandler());
+
         // SC_REFLECTSHIELD — % chance to reflect damage. Val1 = chance,
         // Val2 = reflect rate. Same combat-hook situation as Autoguard.
         Register(StatusType.Reflectshield, NoOpHandler());

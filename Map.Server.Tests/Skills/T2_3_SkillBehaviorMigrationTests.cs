@@ -771,6 +771,159 @@ public class T2_3_SkillBehaviorMigrationTests
     }
 
     // ============================================================
+    //  Wave 3 — Cloaking / Maximize / Wizard Earth-Wind / Bard-Dancer
+    // ============================================================
+
+    [Fact]
+    public void Cloaking_TogglesScOnSelf()
+    {
+        var ctx = Build();
+        var pc = ctx.AddPlayer(1, 50, 50);
+        new CloakingBehavior().Resolve(pc, pc,
+            MakeDef(SkillIds.AS_CLOAKING, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+        Assert.NotNull(ctx.Sc.Get(pc, StatusType.Cloaking));
+        // Recast → toggles off.
+        new CloakingBehavior().Resolve(pc, pc,
+            MakeDef(SkillIds.AS_CLOAKING, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+        Assert.Null(ctx.Sc.Get(pc, StatusType.Cloaking));
+    }
+
+    [Fact]
+    public void MaximizePower_AppliesScOnSelf()
+    {
+        var ctx = Build();
+        var pc = ctx.AddPlayer(1, 50, 50);
+        new MaximizePowerBehavior().Resolve(pc, pc,
+            MakeDef(SkillIds.BS_MAXIMIZE, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+        Assert.NotNull(ctx.Sc.Get(pc, StatusType.Maximizepower));
+    }
+
+    [Fact]
+    public void EarthSpike_HitsLevelTimes()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.MatkMin = 100; caster.Stats.MatkMax = 100;
+        var mob = ctx.AddMob(51, 51);
+        mob.Hp = 9999; mob.Stats.MaxHp = 9999;
+        new EarthSpikeBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.WZ_EARTHSPIKE, SkillDamageKind.Magic, 9), skillLevel: 3, ctx.Behavior);
+        // per-hit = 100 * 400/100 = 400; 3 hits = 1200.
+        Assert.Equal(9999 - 1200, mob.Hp);
+    }
+
+    [Fact]
+    public void HeavenDrive_RevealsHiddenAndDamages()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.MatkMin = 100; caster.Stats.MatkMax = 100;
+        var hidden = ctx.AddPlayer(2, 60, 60);
+        // Pre-attach Hiding so we can confirm the reveal.
+        ctx.Sc.Start(hidden, StatusType.Hiding, val1: 1, 0, 0, 0, durationMs: 60_000);
+        Assert.NotNull(ctx.Sc.Get(hidden, StatusType.Hiding));
+
+        new HeavenDriveBehavior().Resolve(caster, hidden,
+            MakeDef(SkillIds.WZ_HEAVENDRIVE, SkillDamageKind.Magic, 9), skillLevel: 5, ctx.Behavior);
+
+        Assert.Null(ctx.Sc.Get(hidden, StatusType.Hiding)); // revealed.
+    }
+
+    [Fact]
+    public void JupitelThunder_HitsLevelPlusOneTimes()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.MatkMin = 100; caster.Stats.MatkMax = 100;
+        var mob = ctx.AddMob(51, 51);
+        mob.Hp = 9999; mob.Stats.MaxHp = 9999;
+        new JupitelThunderBehavior().Resolve(caster, mob,
+            MakeDef(SkillIds.WZ_JUPITEL, SkillDamageKind.Magic, 9), skillLevel: 3, ctx.Behavior);
+        // per-hit = 100 * 250/100 = 250; lv3 → 4 hits → 1000 total.
+        Assert.Equal(9999 - 1000, mob.Hp);
+    }
+
+    [Fact]
+    public void FrostNova_HitsAllInRadius_AndProcsFreeze()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        caster.Stats.MatkMin = 100; caster.Stats.MatkMax = 100;
+        var v1 = ctx.AddMob(51, 51);
+        var v2 = ctx.AddMob(52, 52);
+        v1.Hp = v1.Stats.MaxHp = 1000;
+        v2.Hp = v2.Stats.MaxHp = 1000;
+
+        // FixedRandom(0) → freeze always procs.
+        new FrostNovaBehavior(new FixedRandom(0)).Resolve(caster, caster,
+            MakeDef(SkillIds.WZ_FROSTNOVA, SkillDamageKind.Magic, 0), skillLevel: 5, ctx.Behavior);
+
+        Assert.True(v1.Hp < 1000);
+        Assert.True(v2.Hp < 1000);
+        Assert.NotNull(ctx.Sc.Get(v1, StatusType.Freeze));
+    }
+
+    [Fact]
+    public void OwlsEye_ClaimsCast_NoOpToday()
+    {
+        var ctx = Build();
+        var pc = ctx.AddPlayer(1, 50, 50);
+        var handled = new OwlsEyeBehavior().Resolve(pc, pc,
+            MakeDef(SkillIds.AC_OWL, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+        Assert.True(handled);
+    }
+
+    [Fact]
+    public void ImproveConcentration_AppliesAgiDexSc()
+    {
+        var ctx = Build();
+        var pc = ctx.AddPlayer(1, 50, 50);
+        pc.Stats.Agi = 20; pc.Stats.Dex = 20;
+        new ImproveConcentrationBehavior().Resolve(pc, pc,
+            MakeDef(SkillIds.AC_CONCENTRATION, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+        // Concentrate SC handler adds val1 to Agi + Dex; val1 = 2*lv = 10.
+        Assert.Equal(30, pc.Stats.Agi);
+        Assert.Equal(30, pc.Stats.Dex);
+    }
+
+    [Fact]
+    public void CallSpirits_ClaimsCast()
+    {
+        var ctx = Build();
+        var pc = ctx.AddPlayer(1, 50, 50);
+        var handled = new CallSpiritsBehavior().Resolve(pc, pc,
+            MakeDef(SkillIds.MO_CALLSPIRITS, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+        Assert.True(handled);
+    }
+
+    [Fact]
+    public void FrostJoker_FreezesOnLowRoll()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var mob = ctx.AddMob(52, 52);
+
+        // lv5 chance = 35%; FixedRandom(0) always procs.
+        new FrostJokerBehavior(new FixedRandom(0)).Resolve(caster, caster,
+            MakeDef(SkillIds.BA_FROSTJOKER, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+
+        Assert.NotNull(ctx.Sc.Get(mob, StatusType.Freeze));
+    }
+
+    [Fact]
+    public void Scream_StunsOnLowRoll()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 50, 50);
+        var mob = ctx.AddMob(52, 52);
+
+        new ScreamBehavior(new FixedRandom(0)).Resolve(caster, caster,
+            MakeDef(SkillIds.DC_SCREAM, SkillDamageKind.None, 0), skillLevel: 5, ctx.Behavior);
+
+        Assert.NotNull(ctx.Sc.Get(mob, StatusType.Stun));
+    }
+
+    // ============================================================
     //  Registry — all 23 new plugins resolve by id
     // ============================================================
 
