@@ -89,6 +89,13 @@ public abstract class SkillImpl
     /// on the caster (gain SP from drain, gain combo, etc.).
     /// </summary>
     public virtual void ApplyCounterAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx) { }
+
+    /// <summary>
+    /// rAthena <c>modifyDamageData</c> — gives the plugin one last
+    /// shot at the Damage struct (flag/div_/type tweaks) right after
+    /// the damage pipeline initialized it. Default: pass-through.
+    /// </summary>
+    public virtual void ModifyDamageData(ref Map.Server.Combat.BattleDamage dmg, Entity src, Entity target, ushort skillLevel) { }
 }
 
 /// <summary>
