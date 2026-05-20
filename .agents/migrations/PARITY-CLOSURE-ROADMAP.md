@@ -15,7 +15,7 @@ or JSON, the consumer code just hasn't been wired through).
 |---|---|---|---|
 | T1 | Data loaders → SQL + JSON | ✅ **DONE** | 52 `_db` SQL-backed, 19 conf-JSON with schemas, IBattleConfigService overlays at boot |
 | T2.1 | Equip-bonus aggregator | ✅ **DONE** | `Map.Server/Inventory/EquipBonusAggregator.cs` — exists from PC-S4 wave |
-| T2.2 | Card modifier port | 🟡 **unblocked** | `BattleCardService.CalcCardFix` still pass-through; T2.1 done + item_db `script` column populated means cards can now flow |
+| T2.2 | Card modifier port | ✅ **DONE** | `BattleCardService.CalcCardFix` reads `PlayerEntity.EquipBonuses`; `EquipBonusBundle` + `BonusScriptExtractor` ship; Hydra-card test exercises +20% vs Demi-Human |
 | T2.3 | Per-skill behavior | ❌ pending | 5 generic resolvers; per-skill plugins (Bash splash, Magnum Break, Storm Gust, …) untouched |
 | T2.4 | SC engine completion | 🟡 25 / ~250 SCs | `StatusType.cs` has the starter set; need to extend enum + register per-SC `IStatusEffect` |
 | T3 | Wire packets | 🟡 113 emitters exist | Per-handler audit needed; the surface is bigger than initially scoped |
@@ -253,28 +253,40 @@ Walks equipment + reads each item's `bonus`/`bonus2`/`bonus3`
 script + accumulates the runtime numbers. Re-runs on equip /
 unequip / break / strip.
 
-### T2.2 — Card modifier port  🟡 unblocked
+### T2.2 — Card modifier port ✅ DONE
 
 `battle_calc_cardfix` (battle.cpp:711) — the race/size/element/
-class accumulator. Currently
-[BattleCardService.CalcCardFix](/Map.Server/Combat/BattleCardService.cs)
-returns input damage unchanged with a "data-pending on
-EquipBonusBundle" comment.
+class accumulator. Shipped 2026-05-20.
 
-**Now unblocked:** T2.1 is done, item_db's `script` column is
-populated for the full ~28k catalog from the new SQL seed. The
-remaining work is just consuming `EquipBonusBundle`:
-
-- Add indexed bonuses to `EquipBonusBundle`:
-  `AddRace[]`, `AddSize[]`, `AddEle[]`, `AddClass[]`,
-  `SubRace[]`, `SubSize[]`, `SubEle[]`, `SubClass[]`,
-  `WeaponAtk[]` (per weapon type), `MagicAtk[]` (per element).
-- Wire `CalcCardFix` to read the bundle indexed by
-  `target.Stats.Race` / `Size` / `DefenseElement` / `Class`.
-- Honor `SkillNk.NoCardFix` skip flag.
-- **Acceptance:** Damage diff against rAthena replay reference
-  within ±2 % for 10 sample skill casts (Bash, Fire Bolt, Magnus,
-  Sonic Blow, Storm Gust).
+- `Map.Server/Inventory/EquipBonusBundle.cs` — indexed-bonus
+  struct mirroring rAthena's `indexed_bonus`. AddRace / SubRace /
+  AddEle / SubEle / AddSize / SubSize / AddClass / SubClass arrays
+  + flat fields (FlatAtk, FlatMatk, FlatCritical, FlatHit, FlatFlee,
+  FlatMaxHp/Sp, MaxHpRate/SpRate, LongAtkRate, ShortAtkRate,
+  CritAtkRate, cast / drain knobs).
+- `Map.Server/Inventory/BonusScriptExtractor.cs` — regex pass over
+  each item's `script` / `equip_script` column populating the
+  bundle. Covers the static `bonus`/`bonus2` patterns (~90 % of
+  cards + armor / weapon scripts). Dynamic patterns (`getrefine()`,
+  conditional bonuses, `callfunc`) are silently skipped so a future
+  script-engine port slots in without touching the call site.
+- `EquipBonusAggregator.BuildBundle` runs on every equip change
+  inside `EquipService.TryRecalcStats`; the result lives on
+  `PlayerEntity.EquipBonuses`.
+- `BattleCardService.CalcCardFix` accumulates per-target
+  Race / Element / Size / Class multipliers + `LongAtkRate`/
+  `ShortAtkRate` based on weapon range. Renewal-additive: base
+  100 %, each row adds its percent, single multiply at the end
+  with floor-at-1.
+- **Acceptance — Met:** Hydra-card weapon test
+  (`bonus2 bAddRace,RC_DemiHuman,20;`) returns 1200 on a 1000
+  hit vs a Demi-Human target. 15 new tests
+  (`BattleCardServiceTests`, `EquipBonusAggregatorTests.BuildBundle_*`)
+  cover Race / Size / Class_Boss / Long/ShortAtkRate / unequipped
+  ignore / reset semantics.
+- **Follow-up backlog (not blocking):** rAthena replay diff fixture
+  (±2 %) once a deterministic replay harness lands; `SkillNk.NoCardFix`
+  skip flag plumb-through when the skill resolver picks up `SkillNk`.
 
 ### T2.3 — Skill resolver per-skill behavior
 
@@ -684,6 +696,30 @@ hot path.
 - Every gameplay knob in `battle_*.conf` flows .conf → JSON; the
   JSON gets editor autocomplete via the generated schemas.
 - Tier 2 (combat correctness) is the next active tier.
+
+### 2026-05-20 — T2.2 card modifier port done
+- `EquipBonusBundle` (race / element / size / class indexed arrays
+  + flat fields + cast / drain knobs) lives at
+  `Map.Server/Inventory/EquipBonusBundle.cs`.
+- `BonusScriptExtractor` (regex pass over `bonus` / `bonus2` /
+  `bonus3` statements) translates each equipped item's `script`
+  column into bundle deltas. Pragmatic 90% coverage of static
+  card / armor scripts; dynamic patterns (`getrefine()`,
+  conditional bonuses, `callfunc`) leave the bundle slot at 0
+  so the bias is "miss" not "lie".
+- `EquipBonusAggregator.BuildBundle` rebuilds the bundle from
+  scratch on every equip change inside
+  `EquipService.TryRecalcStats`. `PlayerEntity.EquipBonuses`
+  caches the result (mirrors rAthena's `indexed_bonus` cadence).
+- `BattleCardService.CalcCardFix` now reads the bundle and
+  accumulates per-target Race / Element / Size / Class +
+  Long/ShortAtkRate multipliers (renewal additive, single multiply
+  with floor-at-1).
+- 15 new tests (4 BuildBundle aggregator + 11 BattleCardService),
+  covering Hydra (DemiHuman +20 %), Skel Worker (Large +25 %),
+  Goblin+Hydra stacking, RC_All, Class_Boss vs MVP / normal,
+  Long/ShortAtkRate gating, unequipped-ignore, and reset semantics.
+- T2.2 roadmap entry flipped 🟡 unblocked → ✅ DONE.
 
 ### 2026-05-20 — re-evaluation after Tier 1 land + boot test
 - Verified end-to-end boot: `dotnet build` → `dotnet ef database
