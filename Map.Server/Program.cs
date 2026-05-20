@@ -355,6 +355,22 @@ builder.Services.AddSingleton<Map.Server.Shop.Cash.ICashShopService, Map.Server.
 builder.Services.AddSingleton<Map.Server.Trade.Wire.ITradeWireService, Map.Server.Trade.Wire.TradeWireService>();
 builder.Services.AddSingleton<Map.Server.Navi.INaviService, Map.Server.Navi.NaviService>();
 builder.Services.AddSingleton<Map.Server.Logging.IGameLogService, Map.Server.Logging.GameLogService>();
+
+// Mid-tier files (vending / buyingstore / mercenary / quest /
+// elemental / guild storage / achievement / instance / channel /
+// party booking / homunculus / battleground).
+builder.Services.AddSingleton<Map.Server.Shop.Vending.IVendingService, Map.Server.Shop.Vending.VendingService>();
+builder.Services.AddSingleton<Map.Server.Shop.Buying.IBuyingStoreService, Map.Server.Shop.Buying.BuyingStoreService>();
+builder.Services.AddSingleton<Map.Server.Mercenary.IMercenaryService, Map.Server.Mercenary.MercenaryService>();
+builder.Services.AddSingleton<Map.Server.Quest.IQuestService, Map.Server.Quest.QuestService>();
+builder.Services.AddSingleton<Map.Server.Elemental.IElementalService, Map.Server.Elemental.ElementalService>();
+builder.Services.AddSingleton<Map.Server.Storage.Guild.IGuildStorageService, Map.Server.Storage.Guild.GuildStorageService>();
+builder.Services.AddSingleton<Map.Server.Achievement.IAchievementService, Map.Server.Achievement.AchievementService>();
+builder.Services.AddSingleton<Map.Server.Instance.IInstanceService, Map.Server.Instance.InstanceService>();
+builder.Services.AddSingleton<Map.Server.Chat.Channels.IChannelService, Map.Server.Chat.Channels.ChannelService>();
+builder.Services.AddSingleton<Map.Server.Party.Booking.IPartyBookingService, Map.Server.Party.Booking.PartyBookingService>();
+builder.Services.AddSingleton<Map.Server.Homunculus.IHomunculusService, Map.Server.Homunculus.HomunculusService>();
+builder.Services.AddSingleton<Map.Server.BattleGround.IBattlegroundService, Map.Server.BattleGround.BattlegroundService>();
 builder.Services.AddSingleton<Map.Server.Skills.ISkillCastService, Map.Server.Skills.SkillCastService>();
 
 // Skill ground units (skill.cpp:skill_unitsetting +
