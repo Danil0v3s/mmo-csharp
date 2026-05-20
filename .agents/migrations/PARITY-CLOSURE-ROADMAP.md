@@ -23,7 +23,7 @@ T2.2 + T2.4a + T2.4b + four combat-side SC consumer closures
 | T1 | Data loaders → SQL + JSON | ✅ **DONE** | 52 `_db` SQL-backed, 19 conf-JSON with schemas, IBattleConfigService overlays at boot |
 | T2.1 | Equip-bonus aggregator | ✅ **DONE** | `Map.Server/Inventory/EquipBonusAggregator.cs` — exists from PC-S4 wave |
 | T2.2 | Card modifier port | ✅ **DONE** | `BattleCardService.CalcCardFix` reads `PlayerEntity.EquipBonuses`; `EquipBonusBundle` + `BonusScriptExtractor` ship; Hydra-card test exercises +20% vs Demi-Human |
-| T2.3 | Per-skill behavior | 🟡 infra + **59 plugins** | First/second-class job-tree skills covered: Sword/Knight/Acolyte/Priest/Mage/Wizard/Merchant/Blacksmith/Archer/Hunter/Thief/Assassin/Monk/Bard/Dancer. Each skill = one `<SkillName>Behavior.cs` file in `Map.Server/Skills/Behaviors/`. Pattern proven; transcend-class + 3rd-class skills follow the same shape. |
+| T2.3 | Per-skill behavior | 🟢 hierarchy + **94 plugins** | Full SkillImpl OOP hierarchy ported from rathena-fork (WeaponSkillImpl / StatusSkillImpl / RecursiveDamageSplashSkillImpl). One file per skill, organized by job-class subdirectory (`Behaviors/Swordman/Bash.cs`, `Behaviors/Wizard/StormGust.cs`, …). Covers: first/second class (59), transcend (24), 3rd class (10), 4th class seed (1). Adding a skill = one new file + one DI line. |
 | T2.4 | SC engine completion | 🟡 enum full / behavior ~30 of ~250 + combat hooks | T2.4a + T2.4b done: enum mirrors all 1006 SC ids; first wave of handlers (CC gates / DoT / stat buffs / cast-time SCs) registered; `CastFixSc` honors Suffragium/Memorize/Slowcast/Paralysis/Izayoi/Bragi; `DamageService` reads SteelBody / Kyrie / AutoGuard on every hit. Long-tail SC handlers ride the same registry pattern. |
 | T3 | Wire packets | 🟡 113 emitters exist | Per-handler audit needed; the surface is bigger than initially scoped |
 | T4 | IPC + persistence | ❌ pending | 73 `IIntifService` stubs — biggest single block of behavior gap |
@@ -748,6 +748,51 @@ hot path.
 - Every gameplay knob in `battle_*.conf` flows .conf → JSON; the
   JSON gets editor autocomplete via the generated schemas.
 - Tier 2 (combat correctness) is the next active tier.
+
+### 2026-05-20 — T2.3 refactor to SkillImpl + 35 transcend / 3rd / 4th class plugins
+- Refactored the flat `ISkillBehavior` interface to the proper
+  rAthena-fork OOP hierarchy: `SkillImpl` base + three specialized
+  subclasses (`WeaponSkillImpl`, `StatusSkillImpl`,
+  `RecursiveDamageSplashSkillImpl`). Each subclass owns the
+  per-hook composition (CalculateSkillRatio / ModifyHitRate /
+  ApplyAdditionalEffects / etc.) so a single skill can layer
+  multiple specializations cleanly (e.g. Bash overrides ratio +
+  hit-rate + post-hit stun).
+- Reorganized all 59 first/second-class plugins into per-job
+  subdirectories matching rathena-fork's tree
+  (`Behaviors/Swordman/Bash.cs`, `Behaviors/Mage/FireBolt.cs`, …).
+  Class names dropped the `Behavior` suffix to match rathena-fork
+  (`Bash` not `BashBehavior`).
+- New transcend-class subdirectories with 24 plugins:
+  `LordKnight/` (LkConcentration, TensionRelax, Berserk,
+  SpiralPierce, HeadCrush), `HighPriest/` (Assumptio),
+  `HighWizard/` (MagicCrasher, MagicPower, NapalmVulcan),
+  `Paladin/` (Pressure, Sacrifice, ShieldChain),
+  `Champion/` (PalmStrike, TigerFist, ChainCrush),
+  `AssassinCross/` (EnchantDeadlyPoison, SoulBreaker,
+  MeteorAssault), `Sniper/` (FalconAssault, SharpShooting,
+  WindWalk), `Whitesmith/` (MeltDown, CartBoost).
+- 3rd-class seeds (10 plugins, one per class): `RuneKnight/
+  DeathBound`, `Warlock/ChainLightning` (7-hit bounce chain),
+  `ArchBishop/Adoramus`, `Ranger/ArrowStorm`,
+  `Mechanic/AxeBoomerang`, `GuillotineCross/DarkIllusion`,
+  `RoyalGuard/OverBrand`, `Sura/DragonCombo`,
+  `Minstrel/Reverberation`, `Sorcerer/PsychicWave`,
+  `Genetic/CartCannon`, `ShadowChaser/TriangleShot`.
+- 4th-class seed: `DragonKnight/DragonicAura`.
+- `StatusEffectRegistry` grows 11 new NoOp handlers for the
+  transcend/3rd/4th SCs (Tensionrelax / Berserk / Magicpower /
+  Sacrifice / Edp / Windwalk / Meltdown / Cartboost / Deathbound /
+  Adoramus / DragonicAura).
+- 17 tests in `SkillImplBehaviorTests` cover the new hierarchy
+  composition (Bash ratio + hit rate + stun proc all wire
+  cleanly via separate hooks) and per-subclass dispatch
+  (WeaponSkillImpl pipeline, StatusSkillImpl toggle,
+  RecursiveDamageSplashSkillImpl splash enumeration).
+- Total per-skill plugin count: **94**. Adding any future skill
+  (transcend long-tail, more 3rd-class, more 4th-class, NPC
+  skills, mob skills) = one new file in the matching subdir +
+  one DI line.
 
 ### 2026-05-20 — T2.3 per-skill migration: 57 more plugins (waves 1-3)
 - Convention "every major skill has its own file" enforced — each
