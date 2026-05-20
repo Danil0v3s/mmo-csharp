@@ -731,6 +731,16 @@ hot path.
   JSON gets editor autocomplete via the generated schemas.
 - Tier 2 (combat correctness) is the next active tier.
 
+### 2026-05-20 — Regen SC overlay (Bleeding / Magnificat)
+- `NaturalHealService.Tick` reads the SC table:
+  - `SC_BLEEDING` on the entity suppresses the HP regen line
+    (matches rAthena `status_check_natural_heal`).
+  - `SC_MAGNIFICAT` on the entity doubles the SP regen amount
+    after the sitting bonus.
+- Optional `IStatusChangeService` ctor dep — DI resolves it
+  automatically; legacy tests without SC see no overlay.
+- 2 new tests in `NaturalHealServiceTests`.
+
 ### 2026-05-20 — Combat-side SC consumers (SteelBody / Kyrie / AutoGuard)
 - `DamageService.ApplyResolved` gains an `ApplyScDamageReduction`
   step that runs before HP commit. Renewal order:
