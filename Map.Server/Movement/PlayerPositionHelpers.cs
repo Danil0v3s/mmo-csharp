@@ -103,8 +103,10 @@ public sealed class PlayerPositionHelpers : IPlayerPositionHelpers
         // rAthena Basilica / Land Protector / Pneuma all apply an SC
         // to the player while standing on the unit cell. Checking the
         // SC list is the canonical proxy — the unit-on-place handler
-        // applies SC_BASILICA on enter, removes on leave.
-        if (_scs.Get(pc, StatusType.Basilica) != null) return true;
+        // applies SC_BASILICA_CELL on enter, removes on leave.
+        // (`StatusType.Basilica` is the original Priest skill SC; the
+        // *cell* variant is `BasilicaCell`, per rAthena status.hpp.)
+        if (_scs.Get(pc, StatusType.BasilicaCell) != null) return true;
         return false;
     }
 }
