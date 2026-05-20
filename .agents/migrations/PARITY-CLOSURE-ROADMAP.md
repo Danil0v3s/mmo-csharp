@@ -731,6 +731,18 @@ hot path.
   JSON gets editor autocomplete via the generated schemas.
 - Tier 2 (combat correctness) is the next active tier.
 
+### 2026-05-20 — StripEquip wired to SC table
+- `SkillSideEffectService.StripEquip` was a data-pending stub
+  until T2.4a put SC_STRIPWEAPON/SHIELD/ARMOR/HELM into
+  `StatusType`. Now parses the equip mask and attaches one SC per
+  slot (HandR/HandL → STRIPWEAPON, HandL → STRIPSHIELD,
+  Armor → STRIPARMOR, HeadTop/Mid/Low → STRIPHELM).
+- `StatusEffectRegistry` adds 4 NoOpHandler entries for the strip
+  SCs.
+- 5 new tests in `SkillSideEffectStripTests`.
+- Item-side enforcement (CanEquip read on the SC presence) is
+  the next step; the duration is at least correctly recorded.
+
 ### 2026-05-20 — Regen SC overlay (Bleeding / Magnificat)
 - `NaturalHealService.Tick` reads the SC table:
   - `SC_BLEEDING` on the entity suppresses the HP regen line
