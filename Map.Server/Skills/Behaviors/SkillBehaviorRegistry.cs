@@ -1,23 +1,23 @@
 namespace Map.Server.Skills.Behaviors;
 
 /// <summary>
-/// Strategy table — <see cref="ISkillBehavior.SkillId"/> →
-/// <see cref="ISkillBehavior"/>. Collects all registered plugins from
+/// Strategy table — <see cref="SkillImpl.SkillId"/> →
+/// <see cref="SkillImpl"/>. Collects all registered plugins from
 /// DI and indexes them by their rAthena skill id.
 ///
-/// Mirrors <see cref="Resolvers.SkillResolverRegistry"/> but keyed on
-/// skill id rather than <see cref="SkillDamageKind"/> — the layer
-/// above the generic dispatch.
+/// Mirrors <c>rathena-fork/src/map/skills/skill_factory.cpp</c>:
+/// each <see cref="SkillImpl"/> subclass is constructed once and
+/// looked up by id at cast time.
 /// </summary>
 public sealed class SkillBehaviorRegistry
 {
-    private readonly Dictionary<ushort, ISkillBehavior> _byId = new();
+    private readonly Dictionary<ushort, SkillImpl> _byId = new();
 
-    public SkillBehaviorRegistry(IEnumerable<ISkillBehavior> behaviors)
+    public SkillBehaviorRegistry(IEnumerable<SkillImpl> impls)
     {
-        foreach (var b in behaviors) _byId[b.SkillId] = b;
+        foreach (var s in impls) _byId[s.SkillId] = s;
     }
 
-    public ISkillBehavior? Get(ushort skillId) => _byId.GetValueOrDefault(skillId);
+    public SkillImpl? Get(ushort skillId) => _byId.GetValueOrDefault(skillId);
     public int Count => _byId.Count;
 }

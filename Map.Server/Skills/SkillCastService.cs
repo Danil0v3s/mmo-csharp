@@ -199,24 +199,32 @@ public sealed class SkillCastService : ISkillCastService
         if (def == null) return false;
         if (!IsAlive(target)) return false;
 
-        // T2.5 — per-skill plugin layer first. Returning true means the
-        // plugin fully handled the cast; false → fall through to the
-        // generic DamageKind dispatch so the plugin can add side
-        // effects (proc SC, log telemetry) without re-implementing
-        // base damage math.
+        // T2.3 refactor — per-skill SkillImpl plugin first. When a
+        // plugin is registered for this skill id, we route through its
+        // hook chain (CastendDamageId / CastendNoDamageId based on
+        // damage kind) and DO NOT fall back to the generic resolver.
+        // The plugin's specialized base (WeaponSkillImpl /
+        // StatusSkillImpl / RecursiveDamageSplashSkillImpl) owns the
+        // full pipeline. If the plugin needs the generic resolver's
+        // behavior, it constructs its own WeaponSkillImpl that runs
+        // the standard swing.
         if (_behaviors != null && _battleCalc != null && _damage != null)
         {
             var plugin = _behaviors.Get(skillId);
             if (plugin != null)
             {
                 var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc);
-                if (plugin.Resolve(source, target, def, skillLevel, ctx)) return true;
+                if (def.DamageKind == SkillDamageKind.None)
+                    plugin.CastendNoDamageId(source, target, skillLevel, ctx);
+                else
+                    plugin.CastendDamageId(source, target, skillLevel, ctx);
+                return true;
             }
         }
 
         // Strategy-pattern dispatch — resolvers keyed by DamageKind.
-        // New skill kinds add an ISkillResolver class + DI registration;
-        // no switch case to edit here.
+        // Used for any skill without a SkillImpl plugin (the long tail
+        // of vanilla skills that just run base damage / heal / status).
         var resolver = _resolvers.Get(def.DamageKind);
         resolver?.Resolve(source, target, def, skillLevel);
         return true;
