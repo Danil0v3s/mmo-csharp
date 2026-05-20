@@ -5,6 +5,12 @@ Not vertical gameplay slices — full enumeration of public functions in
 each file, mapped to a C# canonical entry point (real, partial, or
 documented "data-pending").
 
+> **Status:** ✅ This roadmap is **complete** (40 / 41 audited). The
+> follow-on work — closing the implementation depth of each
+> data-pending entry point — has its own ordered plan at
+> [PARITY-CLOSURE-ROADMAP.md](PARITY-CLOSURE-ROADMAP.md).
+> Start there for picking up the next concrete task.
+
 Driver skill: `/rathena-parity <path>` (`.claude/skills/rathena-parity/`).
 Per-file audit docs live under `.agents/migrations/map/<file>-parity.md`.
 

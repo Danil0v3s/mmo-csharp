@@ -27,7 +27,22 @@ Living status of the port from rAthena C++ (`/Volumes/1TB/Projetos/rathena`) to 
 
 ## Roadmap
 
-**Start here:** [ROADMAP.md](ROADMAP.md) — the sequenced 7-phase plan to complete Login + Char + Interop parity before any map-server gameplay work. Phases ordered by dependency, with explicit acceptance criteria.
+**Start here for closing the parity gap:**
+[PARITY-CLOSURE-ROADMAP.md](PARITY-CLOSURE-ROADMAP.md) — the
+6-tier dependency-ordered plan to flip every `data-pending` entry
+point into a real rAthena-parity port. Foundation-first
+(YAML loaders → combat math → wire packets → IPC → per-file
+deep audit → endgame content).
+
+**Companion: code-completeness roadmap** —
+[CODE-COMPLETENESS-ROADMAP.md](CODE-COMPLETENESS-ROADMAP.md). This
+is the canonical-entry-point sweep — now ✅ complete: every rAthena
+map .cpp public function has a named C# entry point.
+
+**Legacy phase plan** (Login + Char + Interop, done in 2026-05-16):
+[ROADMAP.md](ROADMAP.md) — the sequenced 7-phase plan that locked
+in the pre-gameplay surface before map work began. Phases ordered
+by dependency, with explicit acceptance criteria.
 
 Short version of phase ordering:
 
