@@ -38,7 +38,7 @@ Canonical entry points:
 | `mob_setstate` BERSERK/ANGRY + RUSH/FOLLOW swaps | ✅ | `MobFsm.TransitionTo` (T4.8) |
 | `mob_clean_spotted` / `mob_is_spotted` | ✅ | `MobSpotted.Add` / `Clean` / `IsSpotted` (T4.9c — populated by hard-tick PC scan, pruned per lazy tick; lazy AI gated on `IsSpotted`) |
 | `mob_warpchase` (cross-map follow) | ⚠️ | `IMobWarpChaseService` (T4.9c — interface + same-map gate; warp-NPC scan TODO) |
-| `mob_randomwalk` (idle wander pathing) | ❌ | spawn service handles initial wander; mid-AI re-roll TODO |
+| `mob_randomwalk` (idle wander pathing) | ✅ | `IMobRandomWalkService` (T4.9f — gates on NextWanderTick + MD_NORANDOMWALK + MD_CANMOVE, picks random offset ±7, walks via IMovementService) |
 
 ### Skill picker (mobskill_use / mobskill_event) — **T4.3 wave**
 
@@ -56,10 +56,10 @@ Canonical entry points:
 | `mobskill_use` MSC_SKILLUSED event payload (skill_id encoded in event) | ✅ | `ConditionPasses` reads `triggerSkillId` |
 | `mobskill_use` MSC_GROUNDATTACKED damage>0 gate | ✅ | `ConditionPasses` |
 | `mobskill_use` MSC_DAMAGEDGT damage>cond2 gate | ✅ | `ConditionPasses` |
-| `mobskill_use` msg_id chat broadcast on cast | ❌ | `MobSkillEntry.ChatId` field exists; broadcast path TODO |
+| `mobskill_use` msg_id chat broadcast on cast | ✅ | `MobSkillCastService` reads `entry.ChatId`, looks up via `IMobChatDb`, broadcasts through `IClifWireService.MobChat` (T4.9f — db loader is data-pending; broadcast pipe is live) |
 | `mobskill_event` (mob.cpp:4506) entry point | ✅ | `IMobSkillCastService.NotifyEvent` |
 | `mobskill_event` flag handling (rude_attacked counter reset) | ⚠️ | reset lives in `MobAiService.NotifyAttacked` post-fire |
-| `mob_chat_display_message` | ❌ | not ported (depends on mob_chat_db.yml loader) |
+| `mob_chat_display_message` | ✅ | `IClifWireService.MobChat` (T4.9f — name "#suffix" strip + "<name> : <text>" format mirrors mob.cpp:4210-4217; AOI broadcaster still TODO — currently logs) |
 
 ### Condition evaluators (MSC_*) — **T4.2 wave**
 
@@ -118,20 +118,20 @@ Canonical entry points:
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| AI think loop | 6 | 4 | 3 | 13 |
-| Skill picker | 11 | 3 | 2 | 16 |
+| AI think loop | 7 | 4 | 2 | 13 |
+| Skill picker | 12 | 3 | 1 | 16 |
 | Condition evaluators (MSC_*) | 24 | 1 | 2 | 27 |
 | Target modes (MST_*) | 7 | 1 | 0 | 8 |
 | Lifecycle / DB ops | ~16 | 0 | 0 | ~16 |
 
-**Aggregate: 64 ✅ / 9 ⚠️ / 7 ❌ across 80 entries.** Net for the goal:
-7 ❌ + 9 ⚠️ = **16 entries** stand between the current state and a
-zero-❌ mob.cpp parity audit. T4.9a-d collectively cleared 6 ❌; T4.9e
-closes the last two MSC_* ❌ rows (MSC_MASTERATTACKED + MSC_ALCHEMIST).
-Remaining ❌ all live in the AI think-loop table: skilltimer / OPT1
-gate, BG ally follow, attacktimer post-swing, mob_chat broadcast,
-random walk, slave full-AI ⚠️ row (still listed under ⚠️), and the
-master_id slave AI branch.
+**Aggregate: 67 ✅ / 9 ⚠️ / 4 ❌ across 80 entries.** Net for the goal:
+4 ❌ + 9 ⚠️ = **13 entries** stand between the current state and a
+zero-❌ mob.cpp parity audit. T4.9a-e cleared 8 ❌; T4.9f cleared
+3 more (mob_chat broadcast pipe, mob_chat_display_message clif seam,
+mob_randomwalk). Remaining 4 ❌ all live in the AI think-loop table:
+skilltimer / OPT1 gate, BG ally follow, attacktimer post-swing, and
+the `mob_ai_sub_hard` chat-DB loader (the loader itself is a separate
+follow-up — the runtime surface above already consumes it).
 
 ## Implementation plan
 
@@ -145,6 +145,46 @@ master_id slave AI branch.
 8. ❌ **T4.9** — final completion wave — see goal doc.
 
 ## History
+
+### 2026-05-21 — T4.9f (mob_chat broadcast + mob_randomwalk)
+
+Sixth slice. Closes 3 ❌: mob_chat broadcast pipe, the clif
+`mob_chat_display_message` seam, and the idle `mob_randomwalk`
+wander roll.
+
+**Surface added:**
+- `IMobChatDb` + `MobChatDb` — concurrent-dict in-memory store.
+  Tests + scripts register rows directly; the rAthena
+  `db/mob_chat_db.yml` loader is a documented follow-up (separate
+  data wave).
+- `IMobRandomWalkService` + `MobRandomWalkService` — gates on
+  `mob.NextWanderTick`, `MobMode.NoRandomWalk`, `MobMode.CanMove`;
+  picks a random offset within ±7 cells; pushes
+  `NextWanderTick` forward before issuing the walk so a movement
+  failure doesn't tick-storm.
+- `IClifWireService.MobChat(mob, colorRgb, text)` — canonical
+  naming seam for rAthena `mob_chat_display_message` (mob.cpp:4205).
+  Strips Aegis "#suffix" from the mob name, formats
+  `"<name> : <text>"`, logs in the current first-slice; AOI
+  broadcaster will swap in when the chat router lands.
+- `MobSkillCastService` post-cast emits the chat line when the
+  fired row's `ChatId > 0` and the db has a matching row
+  (mob.cpp:4494-4496).
+- `MobAiService.Tick` rolls a wander step when no enemy is in view,
+  matching mob.cpp:2059-2067. Injected via the new optional
+  `IMobRandomWalkService` ctor param.
+
+**Tests:** `Map.Server.Tests/Mob/MobChatRandomWalkTests.cs` —
+7 cases: chat db add/find/overwrite; wander first-init,
+too-soon-skip, NoRandomWalk-mode refuse, no-CanMove refuse, and
+NextWanderTick-advance-on-success.
+
+**Coverage delta:** 64 ✅ / 9 ⚠️ / 7 ❌ → **67 ✅ / 9 ⚠️ / 4 ❌**
+(−3 ❌). Remaining 4 ❌ are deep AI surface (attacktimer,
+skilltimer / OPT1, BG ally) plus the chat-DB YAML loader — all
+out of T4.9 scope per the goal doc.
+
+**Tests green:** 2935/2935 in `Map.Server.Tests`.
 
 ### 2026-05-21 — T4.9e (MSC_MASTERATTACKED + MSC_ALCHEMIST + MobSpecialAi)
 

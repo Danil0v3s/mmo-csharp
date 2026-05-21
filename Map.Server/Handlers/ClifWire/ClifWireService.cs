@@ -15,6 +15,19 @@ public sealed class ClifWireService : IClifWireService
 
     public void MessageColor(PlayerEntity pc, uint colorRgb, string text)
         => _logger.LogDebug("clif_messagecolor pc={Pc} #{Color:X6} {Text}", pc.Id, colorRgb, text);
+    public void MobChat(MobEntity mob, uint colorRgb, string text)
+    {
+        // rAthena mob.cpp:4210-4217 — drop everything after the first
+        // '#' in the mob's name (Aegis-style "Poring#room_1" → "Poring")
+        // then format "<name> : <text>" and broadcast in AREA_CHAT_WOC.
+        // Until the AOI broadcaster lands the canonical naming seam
+        // just logs; switch to clif_messagecolor on every PC in view.
+        var name = mob.Name ?? string.Empty;
+        var hash = name.IndexOf('#');
+        if (hash >= 0) name = name.Substring(0, hash);
+        _logger.LogDebug("clif_mobchat mob={Mob} #{Color:X6} {Name} : {Text}",
+            mob.Id, colorRgb, name, text);
+    }
     public void DisplayMessage(PlayerEntity pc, string text)
         => _logger.LogDebug("clif_displaymessage pc={Pc} {Text}", pc.Id, text);
     public void Broadcast(string text, uint colorRgb, byte type)

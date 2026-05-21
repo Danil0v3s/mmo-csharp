@@ -328,6 +328,13 @@ builder.Services.AddSingleton<Map.Server.Mob.IMobLooterService, Map.Server.Mob.M
 // Pure function over MobSkillState + MD_CHANGETARGET* mode bits.
 builder.Services.AddSingleton<Map.Server.Mob.IMobChangeTargetService, Map.Server.Mob.MobChangeTargetService>();
 
+// T4.9f — mob_chat_db (mob.cpp:86) + mob_randomwalk (mob.cpp:1673).
+// MobChatDb is empty until the YAML loader lands; the broadcast
+// surface (IClifWireService.MobChat) is wired now so post-cast
+// chat lines emit as soon as data is loaded.
+builder.Services.AddSingleton<Map.Server.Mob.IMobChatDb, Map.Server.Mob.MobChatDb>();
+builder.Services.AddSingleton<Map.Server.Mob.IMobRandomWalkService, Map.Server.Mob.MobRandomWalkService>();
+
 builder.Services.AddSingleton<Map.Server.Mob.IMobAiService, Map.Server.Mob.MobAiService>();
 
 // Summon AI (mob.cpp:2030 mob_ai_sub_lazy — slave / pet / homun / merc /

@@ -31,6 +31,8 @@ public sealed class MobSkillCastService : IMobSkillCastService
     private readonly Slaves.ISlaveMobService? _slaves;
     private readonly Map.Server.Status.IStatusChangeService? _sc;
     private readonly Map.Server.Entities.IEntityRegistry? _entities;
+    private readonly IMobChatDb? _chatDb;
+    private readonly Map.Server.Handlers.ClifWire.IClifWireService? _clif;
 
     public MobSkillCastService(
         MobSkillConditionRegistry conditions,
@@ -40,7 +42,9 @@ public sealed class MobSkillCastService : IMobSkillCastService
         Random? rng = null,
         Slaves.ISlaveMobService? slaves = null,
         Map.Server.Status.IStatusChangeService? sc = null,
-        Map.Server.Entities.IEntityRegistry? entities = null)
+        Map.Server.Entities.IEntityRegistry? entities = null,
+        IMobChatDb? chatDb = null,
+        Map.Server.Handlers.ClifWire.IClifWireService? clif = null)
     {
         _conditions = conditions;
         _targets = targets;
@@ -50,6 +54,8 @@ public sealed class MobSkillCastService : IMobSkillCastService
         _slaves = slaves;
         _sc = sc;
         _entities = entities;
+        _chatDb = chatDb;
+        _clif = clif;
     }
 
     /// <inheritdoc/>
@@ -142,6 +148,16 @@ public sealed class MobSkillCastService : IMobSkillCastService
             // T4.7 — record the cast id for MSC_AFTERSKILL on the next
             // think-tick. rAthena keeps this on md->ud.skill_id.
             mob.LastCastSkillId = entry.SkillId;
+
+            // T4.9f — rAthena mob.cpp:4494-4496: if the row carries a
+            // msg_id (mob_chat_db row) emit the colored chat line via
+            // clif_messagecolor (AREA_CHAT_WOC).
+            if (entry.ChatId > 0 && _chatDb != null && _clif != null)
+            {
+                var row = _chatDb.Find(entry.ChatId);
+                if (row != null) _clif.MobChat(mob, row.ColorRgb, row.Message);
+            }
+
             _logger.LogDebug(
                 "mob {Mob} cast {Skill}@{Level} via {Mode} (event={Event}, row={Row})",
                 mob.Id, entry.SkillId, entry.SkillLevel, entry.Target, @event, i);

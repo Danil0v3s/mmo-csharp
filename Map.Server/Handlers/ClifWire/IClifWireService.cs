@@ -29,6 +29,14 @@ public interface IClifWireService
     /// <summary>rAthena <c>clif_messagecolor</c> — colored system message.</summary>
     void MessageColor(PlayerEntity pc, uint colorRgb, string text);
 
+    /// <summary>
+    /// rAthena <c>mob_chat_display_message</c> (mob.cpp:4205) — emits
+    /// a colored chat line attached to <paramref name="mob"/> to every
+    /// PC in AREA_CHAT_WOC. Format mirrors rAthena: <c>"&lt;name&gt; : &lt;text&gt;"</c>
+    /// (the leading "#" identifier suffix on the mob name is stripped).
+    /// </summary>
+    void MobChat(Entities.MobEntity mob, uint colorRgb, string text);
+
     /// <summary>rAthena <c>clif_displaymessage</c> — single-line message in chat.</summary>
     void DisplayMessage(PlayerEntity pc, string text);
 

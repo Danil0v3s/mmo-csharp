@@ -28,6 +28,7 @@ public sealed class MobAiService : IMobAiService
     private readonly IMobSkillCastService _mobSkillCast;
     private readonly IMobLooterService? _looter;
     private readonly IMobChangeTargetService _changeTarget;
+    private readonly IMobRandomWalkService? _wander;
     private readonly Random _rng;
     private readonly Dictionary<EntityId, long> _lastThink = new();
 
@@ -41,13 +42,15 @@ public sealed class MobAiService : IMobAiService
         IMovementService? movement = null,
         IMobSkillCastService? mobSkillCast = null,
         IMobLooterService? looter = null,
-        IMobChangeTargetService? changeTarget = null)
+        IMobChangeTargetService? changeTarget = null,
+        IMobRandomWalkService? wander = null)
     {
         _entities = entities;
         _attack = attack;
         _movement = movement;
         _looter = looter;
         _changeTarget = changeTarget ?? new MobChangeTargetService();
+        _wander = wander;
         _rng = rng ?? Random.Shared;
 
         // Default to the standard evaluator set so existing tests don't
@@ -200,7 +203,14 @@ public sealed class MobAiService : IMobAiService
                 }
             }
 
-            if (closest == null) continue;
+            if (closest == null)
+            {
+                // T4.9f — no enemy in view → roll random walk
+                // (rAthena mob.cpp:2059-2067). Gated by IMobRandomWalkService
+                // (MD_CANMOVE + MD_NORANDOMWALK + NextWanderTick).
+                _wander?.TryWander(mob, nowTick);
+                continue;
+            }
 
             // Engage. AttackService validates range + drives chase/swings.
             _attack.StartAttack(mob, closest.Id, continuous: true);
