@@ -319,6 +319,10 @@ builder.Services.AddSingleton<Map.Server.Mob.IMobSkillCastService, Map.Server.Mo
 builder.Services.AddSingleton<Map.Server.Mob.IMobWarpChaseService, Map.Server.Mob.MobWarpChaseService>();
 builder.Services.AddSingleton<Map.Server.Mob.IMobLooterService, Map.Server.Mob.MobLooterService>();
 
+// T4.9d — mob_can_changetarget + mob_target (mob.cpp:1229-1310).
+// Pure function over MobSkillState + MD_CHANGETARGET* mode bits.
+builder.Services.AddSingleton<Map.Server.Mob.IMobChangeTargetService, Map.Server.Mob.MobChangeTargetService>();
+
 builder.Services.AddSingleton<Map.Server.Mob.IMobAiService, Map.Server.Mob.MobAiService>();
 
 // Summon AI (mob.cpp:2030 mob_ai_sub_lazy — slave / pet / homun / merc /

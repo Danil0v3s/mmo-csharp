@@ -34,4 +34,15 @@ public interface IMobAiService
     /// <c>unit_escape</c> (walk away from the attacker).
     /// </summary>
     void NotifyAttacked(MobEntity mob, Entity attacker);
+
+    /// <summary>
+    /// rAthena <c>mob_target</c> (mob.cpp:1290). Request that the mob
+    /// switch its current <see cref="MobEntity.TargetId"/> to
+    /// <paramref name="newTarget"/>. The change is gated by
+    /// <see cref="IMobChangeTargetService.CanChangeTarget"/> — the
+    /// mob refuses while in MSS_BERSERK without
+    /// <see cref="Status.MobMode.ChangeTargetMelee"/>, etc. Returns
+    /// true if the target was updated.
+    /// </summary>
+    bool TryChangeTarget(MobEntity mob, Entity newTarget);
 }

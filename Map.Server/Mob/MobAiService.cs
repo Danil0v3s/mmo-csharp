@@ -27,6 +27,7 @@ public sealed class MobAiService : IMobAiService
     private readonly IMovementService? _movement;
     private readonly IMobSkillCastService _mobSkillCast;
     private readonly IMobLooterService? _looter;
+    private readonly IMobChangeTargetService _changeTarget;
     private readonly Random _rng;
     private readonly Dictionary<EntityId, long> _lastThink = new();
 
@@ -39,12 +40,14 @@ public sealed class MobAiService : IMobAiService
         Random? rng = null,
         IMovementService? movement = null,
         IMobSkillCastService? mobSkillCast = null,
-        IMobLooterService? looter = null)
+        IMobLooterService? looter = null,
+        IMobChangeTargetService? changeTarget = null)
     {
         _entities = entities;
         _attack = attack;
         _movement = movement;
         _looter = looter;
+        _changeTarget = changeTarget ?? new MobChangeTargetService();
         _rng = rng ?? Random.Shared;
 
         // Default to the standard evaluator set so existing tests don't
@@ -327,6 +330,13 @@ public sealed class MobAiService : IMobAiService
         // if neither fires, fall back to unit_escape.
         var now = Environment.TickCount64;
         mob.AttackedId = (int)attacker.Id.Value;
+        // T4.9d — rAthena mob.cpp:1955 — when the AI is choosing
+        // between current target and incoming attacker, the
+        // mob_can_changetarget gate picks the winner. If allowed,
+        // re-aim. Pure target-id mutation; the engage-on-Tick path
+        // picks it up next pump.
+        _changeTarget.TrySetTarget(mob, attacker);
+
         var fired = _mobSkillCast.TryUseSkill(mob, now)
                     || _mobSkillCast.NotifyEvent(mob, attacker, now, MobSkillCondition.RudeAttacked);
         if (!fired)
@@ -338,6 +348,16 @@ public sealed class MobAiService : IMobAiService
         // mobskill_use returns true OR after unit_escape).
         mob.RudeAttackedCount = 0;
     }
+
+    /// <summary>
+    /// rAthena <c>mob_target</c> path (mob.cpp:1290). Public so the
+    /// damage path (which sees every incoming hit, not just rude
+    /// ones) can request a target switch and have the
+    /// <see cref="IMobChangeTargetService"/> gate decide whether the
+    /// mob honours it.
+    /// </summary>
+    public bool TryChangeTarget(MobEntity mob, Entity newTarget)
+        => _changeTarget.TrySetTarget(mob, newTarget);
 
     /// <summary>
     /// rAthena <c>unit_escape</c> (unit.cpp:2240). Pick a cell roughly

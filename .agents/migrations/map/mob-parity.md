@@ -28,7 +28,7 @@ Canonical entry points:
 |---|---|---|
 | `mob_ai_sub_hard` aggressive-engage spine | ✅ | `MobAiService.Tick` (closest-PC scan + StartAttack handoff) |
 | `mob_ai_sub_hard` skilltimer / OPT1 / SCF_MOBLOSETARGET gate | ❌ | not ported |
-| `mob_ai_sub_hard` `attacked_id` target-switch | ⚠️ | `MobEntity.AttackedId` set on hit; full re-target on unreachable primary still TODO |
+| `mob_ai_sub_hard` `attacked_id` target-switch | ✅ | `MobAiService.NotifyAttacked` calls `IMobChangeTargetService.TrySetTarget` (T4.9d — gated by MSS_BERSERK + MD_CHANGETARGETMELEE / MSS_RUSH + MD_CHANGETARGETCHASE matrix) |
 | `mob_ai_sub_hard` master_id slave AI | ⚠️ | `SummonAiService` covers follow + assist; full assist-on-master-target branch TODO |
 | `mob_ai_sub_hard` MD_LOOTER pickup | ✅ | `IMobLooterService` (T4.9c — bag cap, FIFO evict, registry transfer; mob walks to drop, picks up on adjacency) |
 | `mob_ai_sub_hard` `mob_warpchase` | ⚠️ | `IMobWarpChaseService` (T4.9c — canonical entry point, same-map short-circuit; cross-map scan is data-pending until NpcEntity gains the warp subtype) |
@@ -118,18 +118,19 @@ Canonical entry points:
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| AI think loop | 5 | 5 | 3 | 13 |
+| AI think loop | 6 | 4 | 3 | 13 |
 | Skill picker | 11 | 3 | 2 | 16 |
 | Condition evaluators (MSC_*) | 22 | 1 | 4 | 27 |
 | Target modes (MST_*) | 7 | 1 | 0 | 8 |
 | Lifecycle / DB ops | ~16 | 0 | 0 | ~16 |
 
-**Aggregate: 61 ✅ / 10 ⚠️ / 9 ❌ across 80 entries.** Net for the goal:
-9 ❌ + 10 ⚠️ = **19 entries** stand between the current state and a
+**Aggregate: 62 ✅ / 9 ⚠️ / 9 ❌ across 80 entries.** Net for the goal:
+9 ❌ + 9 ⚠️ = **18 entries** stand between the current state and a
 zero-❌ mob.cpp parity audit. T4.9a closed 2 ❌ (MSC_MYSTATUSON/OFF);
 T4.9b closed 2 more (MSC_MOBNEARBYGT, MSC_TRICKCASTING); T4.9c
 closed 2 ❌ (MD_LOOTER + spotted-log) and downgraded 2 more to ⚠️
-(mob_warpchase entries — interface exists, scan body pending).
+(mob_warpchase entries); T4.9d resolved the attacked_id ⚠️ to ✅ via
+the new `IMobChangeTargetService` gate.
 
 ## Implementation plan
 
@@ -143,6 +144,36 @@ closed 2 ❌ (MD_LOOTER + spotted-log) and downgraded 2 more to ⚠️
 8. ❌ **T4.9** — final completion wave — see goal doc.
 
 ## History
+
+### 2026-05-21 — T4.9d (mob_can_changetarget gate + mob_target)
+
+Fourth slice. Closes the long-standing ⚠️ on `attacked_id` target
+switching by porting rAthena `mob_can_changetarget` (mob.cpp:1229)
+and `mob_target` (mob.cpp:1290) as `IMobChangeTargetService`.
+
+**Surface added:**
+- `IMobChangeTargetService` + `MobChangeTargetService` — pure
+  function over the (skill_state, mode_bits) matrix.
+  MSS_BERSERK gates on MD_CHANGETARGETMELEE; MSS_RUSH gates on
+  MD_CHANGETARGETCHASE; FOLLOW/ANGRY/IDLE/WALK/LOOT always allow;
+  DEAD / ANYTARGET refuse.
+- `MobAiService.NotifyAttacked` now calls `TrySetTarget(attacker)`
+  on rude-attack escalation — if the gate allows, the mob re-aims
+  before the picker fires, mirroring mob.cpp:1955.
+- `IMobAiService.TryChangeTarget` public entry point so the damage
+  service / future PVP path can drive a target switch with the
+  same gate.
+- Inline default in `MobAiService` ctor — no test bootstrap changes.
+
+**Tests:** `Map.Server.Tests/Mob/MobChangeTargetTests.cs` — 10
+cases: BERSERK ± MELEE bit, RUSH ± CHASE bit, all four passive
+states allow, DEAD refuses, fresh-target (no current) always
+accepts.
+
+**Coverage delta:** 61 ✅ / 10 ⚠️ / 9 ❌ → **62 ✅ / 9 ⚠️ / 9 ❌**
+(+1 ✅ from the ⚠️ that resolved).
+
+**Tests green:** 2920/2920 in `Map.Server.Tests`.
 
 ### 2026-05-21 — T4.9c (spotted-log + warpchase + MD_LOOTER)
 
