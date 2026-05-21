@@ -1,5 +1,11 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
     "kind": "nodamage",
     "data": {
       "src": 1,
@@ -7,6 +13,19 @@
       "skillId": 2422,
       "healOrLevel": 5,
       "success": true
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "Deepsleep",
+      "val1": 5,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 27450,
+      "src": 1
     }
   }
 ]

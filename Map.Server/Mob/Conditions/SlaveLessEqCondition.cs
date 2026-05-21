@@ -8,7 +8,7 @@ public sealed class SlaveLessEqCondition : IMobSkillConditionEvaluator
     public MobSkillCondition Kind => MobSkillCondition.SlaveLessEq;
     public bool IsMet(MobEntity mob, MobSkillEntry entry, MobConditionContext context)
     {
-        // See SlaveLessThanCondition note — currently a permissive stub.
-        return entry.Cond2 >= 0;
+        if (context.Slaves == null) return entry.Cond2 >= 0;
+        return context.Slaves.CountSlaves(mob) <= entry.Cond2;
     }
 }

@@ -281,7 +281,21 @@ builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvalua
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.SpawnCondition>();
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.SlaveLessThanCondition>();
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.SlaveLessEqCondition>();
+// T4.6 — Friend/master conditions that read through ISlaveMobService.
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.FriendHpLessThanRateCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.FriendHpInRateCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.FriendStatusOnCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.FriendStatusOffCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.MasterHpLessThanRateCondition>();
+// T4.7 — DmgListLog-backed AfterSkill chain trigger.
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.AfterSkillCondition>();
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.MobSkillConditionRegistry>();
+
+// T4.6 — Slave-mob registry. Read-mostly helpers for mob_countslave /
+// mob_getfriendhprate / mob_getmasterhpltmaxrate (mob.cpp:3946 /
+// 4114 / 4130). Walks IEntityRegistry rather than maintaining a
+// parallel master→slaves index.
+builder.Services.AddSingleton<Map.Server.Mob.Slaves.ISlaveMobService, Map.Server.Mob.Slaves.SlaveMobService>();
 
 // T4.3 — mob_skill_use_id picker (rAthena mob.cpp:4275). Walks
 // MobDbEntry.Skills + applies condition + permillage gates + resolves

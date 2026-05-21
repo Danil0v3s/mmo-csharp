@@ -196,7 +196,7 @@ public class RathenaMobSkillSweepTests
             new RudeAttackedCondition(),
             new SkillUsedCondition(),
         });
-        var resolver = new MobSkillTargetResolver(entities, new Random(0));
+        var resolver = new MobSkillTargetResolver(entities, rng: new Random(0));
         var castService = new MobSkillCastService(
             conditions, resolver,
             NullLogger<MobSkillCastService>.Instance,

@@ -19,6 +19,19 @@ public interface ISkillCastService
     SkillCastResult StartCast(Entity source, EntityId targetId, ushort skillId, ushort skillLevel);
 
     /// <summary>
+    /// Ground-targeted variant of <see cref="StartCast"/>. Mirrors
+    /// rAthena <c>unit_skilluse_pos2</c> (unit.cpp). Default
+    /// implementation delegates to <see cref="StartCast"/> against the
+    /// caster itself (acceptable parity fallback — the picker still
+    /// emits the right call shape, downstream cast resolution sees a
+    /// CastendPos2 hook on the SkillImpl).
+    /// </summary>
+    /// <param name="x">Cast cell X.</param>
+    /// <param name="y">Cast cell Y.</param>
+    SkillCastResult StartCastAt(Entity source, short x, short y, ushort skillId, ushort skillLevel)
+        => StartCast(source, source.Id, skillId, skillLevel);
+
+    /// <summary>
     /// Resolve a skill RIGHT NOW (no cast timer). Used by mob skills,
     /// auto-cast procs, and tests. Returns true if anything happened.
     /// </summary>

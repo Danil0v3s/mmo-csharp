@@ -51,6 +51,25 @@ public sealed record MobConditionContext
     public bool CastTargeted { get; init; }
     /// <summary>Cumulative damage taken (used by MSC_DAMAGEDGT).</summary>
     public int CumulativeDamageTaken { get; init; }
+    /// <summary>
+    /// Optional slave / friend / master lookup service. When non-null,
+    /// the friend-/slave-/master-class evaluators read through this;
+    /// when null they fall back to the conservative stubs.
+    /// </summary>
+    public Slaves.ISlaveMobService? Slaves { get; init; }
+
+    /// <summary>
+    /// Distinct PC-attacker count (rAthena <c>unit_counttargeted</c>).
+    /// Used by MSC_ATTACKPCGT / MSC_ATTACKPCGE. Zero when the
+    /// DmgListLog hasn't been queried yet.
+    /// </summary>
+    public int DistinctAttackerCount { get; init; }
+
+    /// <summary>
+    /// The skill id this mob cast on its previous tick (rAthena
+    /// <c>md-&gt;ud.skill_id</c>). Used by MSC_AFTERSKILL.
+    /// </summary>
+    public ushort LastCastSkillId { get; init; }
 
     public static MobConditionContext Empty { get; } = new();
 }

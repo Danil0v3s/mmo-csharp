@@ -1,3 +1,4 @@
 Missing in C# port (rAthena calls but ours doesn't):
+  fail
   cast-effect
   sc-start

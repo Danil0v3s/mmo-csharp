@@ -148,6 +148,16 @@ public sealed class DamageService : IDamageService
         var actual = Math.Min(damage, currentHp);
         SetHp(target, currentHp - actual);
 
+        // T4.7 — DmgListLog (rAthena md->dmglog). Track every hit a mob
+        // takes so MSC_ATTACKPCGT / MSC_ATTACKPCGE evaluators can answer
+        // distinct-attacker queries, and so the EXP-share split at death
+        // has the data it needs. Only meaningful for mob targets with a
+        // known source.
+        if (target is MobEntity dmgMob && source != null && actual > 0)
+        {
+            dmgMob.DmgList.Record(source.Id, actual);
+        }
+
         BroadcastAct(target, source, actual, action);
 
         var remaining = currentHp - actual;

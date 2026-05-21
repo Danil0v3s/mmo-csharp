@@ -28,18 +28,22 @@ public sealed class MobSkillCastService : IMobSkillCastService
     /// <summary>Per-mob, per-skill cooldown anchor (Environment.TickCount64).</summary>
     private readonly Dictionary<(EntityId mobId, int skillIndex), long> _skillDelay = new();
 
+    private readonly Slaves.ISlaveMobService? _slaves;
+
     public MobSkillCastService(
         MobSkillConditionRegistry conditions,
         MobSkillTargetResolver targets,
         ILogger<MobSkillCastService> logger,
         ISkillCastService? skillCast = null,
-        Random? rng = null)
+        Random? rng = null,
+        Slaves.ISlaveMobService? slaves = null)
     {
         _conditions = conditions;
         _targets = targets;
         _logger = logger;
         _skillCast = skillCast;
         _rng = rng ?? Random.Shared;
+        _slaves = slaves;
     }
 
     /// <inheritdoc/>
@@ -110,19 +114,31 @@ public sealed class MobSkillCastService : IMobSkillCastService
                 continue;
 
             // (5) target resolution — mob.cpp:4392-4475.
-            var target = _targets.ResolveEntity(mob, entry.Target);
-            if (target == null) continue;
-
-            // Dispatch. C# port routes through ISkillCastService.StartCast;
-            // ground vs targeted differentiation will move down once
-            // StartCastAt(x,y) lands.
-            var castResult = _skillCast!.StartCast(mob, target.Id, entry.SkillId, entry.SkillLevel);
+            // For ground modes (MST_AROUND*) the picker resolves a
+            // (x,y) cell and dispatches via StartCastAt; for everything
+            // else it picks a single target entity.
+            SkillCastResult castResult;
+            if (IsGroundTarget(entry.Target))
+            {
+                var cell = _targets.ResolveGroundCell(mob, entry.Target);
+                if (cell == null) continue;
+                castResult = _skillCast!.StartCastAt(mob, cell.Value.x, cell.Value.y, entry.SkillId, entry.SkillLevel);
+            }
+            else
+            {
+                var target = _targets.ResolveEntity(mob, entry.Target);
+                if (target == null) continue;
+                castResult = _skillCast!.StartCast(mob, target.Id, entry.SkillId, entry.SkillLevel);
+            }
             if (castResult != SkillCastResult.Started) continue;
 
             _skillDelay[key] = nowTick + Math.Max(1, entry.DelayMs);
+            // T4.7 — record the cast id for MSC_AFTERSKILL on the next
+            // think-tick. rAthena keeps this on md->ud.skill_id.
+            mob.LastCastSkillId = entry.SkillId;
             _logger.LogDebug(
-                "mob {Mob} cast {Skill}@{Level} on {Target} (event={Event}, row={Row})",
-                mob.Id, entry.SkillId, entry.SkillLevel, target.Id, @event, i);
+                "mob {Mob} cast {Skill}@{Level} via {Mode} (event={Event}, row={Row})",
+                mob.Id, entry.SkillId, entry.SkillLevel, entry.Target, @event, i);
             return true;
         }
         return false;
@@ -138,6 +154,20 @@ public sealed class MobSkillCastService : IMobSkillCastService
     ///         <see cref="MobSkillConditionRegistry"/> + a context bag.</item>
     /// </list>
     /// </summary>
+    /// <summary>
+    /// rAthena <c>skill_get_casttype(skill_id) == CAST_GROUND</c>
+    /// (mob.cpp:4389) — we approximate with the MST_AROUND* target
+    /// modes since those are the only mob_skill_db modes that require
+    /// a (x,y) cell. MST_TARGET cells for ground skills still resolve
+    /// to the target entity's cell, which the picker reads via
+    /// MobSkillTargetResolver.ResolveGroundCell.
+    /// </summary>
+    private static bool IsGroundTarget(MobSkillTarget mode) => mode is
+        MobSkillTarget.Around1 or MobSkillTarget.Around2
+        or MobSkillTarget.Around3 or MobSkillTarget.Around4
+        or MobSkillTarget.Around5 or MobSkillTarget.Around6
+        or MobSkillTarget.Around7 or MobSkillTarget.Around8;
+
     private bool ConditionPasses(MobSkillEntry entry, MobEntity mob, long nowTick, int @event, int damage, Entity? recentSrc, ushort triggerSkillId)
     {
         // --- special cases first (override the direct match below) ---
@@ -182,6 +212,7 @@ public sealed class MobSkillCastService : IMobSkillCastService
             Attacker = recentSrc,
             CumulativeDamageTaken = damage,
             SkillUsedNearby = triggerSkillId,
+            Slaves = _slaves,
         };
         return evaluator.IsMet(mob, entry, ctx);
     }

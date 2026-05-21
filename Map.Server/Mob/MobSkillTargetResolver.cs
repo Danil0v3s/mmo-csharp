@@ -16,11 +16,16 @@ namespace Map.Server.Mob;
 public sealed class MobSkillTargetResolver
 {
     private readonly IEntityRegistry _entities;
+    private readonly Slaves.ISlaveMobService? _slaves;
     private readonly Random _rng;
 
-    public MobSkillTargetResolver(IEntityRegistry entities, Random? rng = null)
+    public MobSkillTargetResolver(
+        IEntityRegistry entities,
+        Slaves.ISlaveMobService? slaves = null,
+        Random? rng = null)
     {
         _entities = entities;
+        _slaves = slaves;
         _rng = rng ?? Random.Shared;
     }
 
@@ -66,10 +71,17 @@ public sealed class MobSkillTargetResolver
             case MobSkillTarget.Friend:
                 // The "friend" entity tracked alongside the condition
                 // evaluation (mob_getfriendhprate / mob_getfriendstatus
-                // populate `fbl`/`fmd`). Until the friend-tracker lands
-                // we fall back to self so the cast still resolves on
-                // a valid block_list — matches rAthena's last-resort
-                // `bl = md`.
+                // populate `fbl`/`fmd`). When the slave service is
+                // wired we pick the lowest-HP friend in range (matches
+                // the common rAthena pattern for friendly-heal mobs);
+                // when missing we fall back to self so the cast still
+                // resolves on a valid block_list (rAthena last-resort
+                // `bl = md`).
+                if (_slaves != null)
+                {
+                    var friend = _slaves.GetFriendByHpRate(mob, 0, 100);
+                    if (friend != null) return friend;
+                }
                 return mob;
 
             case MobSkillTarget.Random:

@@ -72,7 +72,7 @@ public sealed class MobAiService : IMobAiService
         // bootstrap).
         _mobSkillCast = mobSkillCast ?? new MobSkillCastService(
             defaultConditions,
-            new MobSkillTargetResolver(entities, _rng),
+            new MobSkillTargetResolver(entities, rng: _rng),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<MobSkillCastService>.Instance,
             skillCast,
             _rng);
@@ -94,6 +94,17 @@ public sealed class MobAiService : IMobAiService
 
             var mode = mob.Stats.Mode;
 
+            // T4.8 — lazy vs hard split (rAthena mob_ai_lazy / mob_ai_hard
+            // at mob.cpp:2460 / 2467). Mobs without any PC in view fall
+            // to the lazy path which only rolls idle-skill picks at a
+            // low rate; mobs in active PC range go through the full
+            // hard path below.
+            if (!HasAnyPcInView(mob))
+            {
+                TickLazy(mob, nowTick);
+                continue;
+            }
+
             // Validate existing target — drop it if it's gone or unreachable.
             if (mob.Attack != null)
             {
@@ -101,13 +112,15 @@ public sealed class MobAiService : IMobAiService
                 if (current == null || current.MapId != mob.MapId || !IsAlive(current))
                 {
                     _attack.StopAttack(mob);
+                    // FSM transition — leaving combat → Idle (T4.8a).
+                    MobFsm.TransitionTo(mob, MobSkillState.Idle);
                 }
                 else
                 {
                     // Engaged — give the mob a chance to cast a skill instead
                     // of the basic swing. T4.3: route through the canonical
                     // IMobSkillCastService (rAthena mob.cpp:4275 mobskill_use).
-                    mob.SkillState = MobSkillState.Berserk;
+                    MobFsm.TransitionTo(mob, MobSkillState.Berserk);
                     mob.TargetId = (int)current.Id.Value;
                     _mobSkillCast.TryUseSkill(mob, nowTick);
                     continue;
@@ -161,6 +174,50 @@ public sealed class MobAiService : IMobAiService
         MobEntity m => m.Hp > 0,
         _ => false,
     };
+
+    /// <summary>
+    /// T4.8 — has any live PC within view-range of the mob?
+    /// Cheap O(N) scan; if profiling shows it as a hot path, the
+    /// per-map PC bucket from IEntityRegistry can take over.
+    /// rAthena equivalent: <c>map_getmapdata(md-&gt;m)-&gt;users &gt; 0</c>
+    /// gate at <c>mob.cpp:2372</c>, but our test maps only host the
+    /// mobs and PCs the test added so the proxy is "any PC in the
+    /// mob's view range." Boss mobs (MD_STATUSIMMUNE) use a wider
+    /// active radius (rAthena <c>battle_config.boss_active_time</c>) —
+    /// that delta is a follow-up.
+    /// </summary>
+    private bool HasAnyPcInView(MobEntity mob)
+    {
+        var viewRange = mob.DbEntry?.ChaseRange > 0
+            ? (short)mob.DbEntry.ChaseRange
+            : (short)12;
+        var nearby = _entities.ForEachInRange(
+            mob.MapId, mob.X, mob.Y, viewRange, EntityType.Pc);
+        foreach (var e in nearby)
+        {
+            if (e is PlayerEntity p && p.Hp > 0) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// T4.8 — lazy AI path (rAthena <c>mob_ai_sub_lazy</c>
+    /// <c>mob.cpp:2359</c>). Far-from-PC mobs only roll an idle-skill
+    /// pick at the rAthena-default low rate (~5% of ticks for
+    /// non-boss mobs). No target acquisition, no chase, no swing —
+    /// just an occasional buff/transform/emote.
+    /// </summary>
+    private void TickLazy(MobEntity mob, long nowTick)
+    {
+        // rAthena: mob_nopc_idleskill_rate default 5 / mob_active_time.
+        // We approximate with a 5/100 roll per tick. Cooldown is
+        // owned by the IMobSkillCastService picker.
+        if (_rng.Next(100) >= 5) return;
+        // Use Idle FSM bucket so the picker only considers
+        // MSS_IDLE / MSS_ANY rows.
+        MobFsm.TransitionTo(mob, MobSkillState.Idle);
+        _mobSkillCast.TryUseSkill(mob, nowTick);
+    }
 
     /// <summary>
     /// rAthena <c>mob_damage</c> path (mob.cpp:1748): on each incoming hit

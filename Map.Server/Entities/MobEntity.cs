@@ -88,6 +88,22 @@ public class MobEntity : Entity
     /// </summary>
     public int AttackedId { get; set; }
 
+    /// <summary>
+    /// rAthena <c>md-&gt;dmglog</c> — ring buffer of distinct attackers
+    /// and their cumulative damage. Updated by
+    /// <c>IDamageService.ApplyDamage</c>; queried by MSC_ATTACKPCGT /
+    /// MSC_ATTACKPCGE for distinct-attacker count and by the EXP
+    /// split path for share-of-damage.
+    /// </summary>
+    public Map.Server.Mob.MobDmgList DmgList { get; } = new();
+
+    /// <summary>
+    /// rAthena <c>md-&gt;ud.skill_id</c> — the skill id this mob most
+    /// recently cast. Used by MSC_AFTERSKILL (mob_skill_db rows that
+    /// chain to a specific previous skill). 0 = no recent cast.
+    /// </summary>
+    public ushort LastCastSkillId { get; set; }
+
     public override EntityType Type => EntityType.Mob;
 
     public MobEntity(EntityId id, int classId, string name, uint mapId, short x, short y)

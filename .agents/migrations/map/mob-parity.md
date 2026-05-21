@@ -133,6 +133,96 @@ Canonical entry points:
 
 ## History
 
+### 2026-05-21 — T4.6 + T4.7 + T4.8 (slave registry, DmgListLog, FSM + lazy AI)
+
+Three follow-up waves identified in the T4.5 plan, all landed.
+
+**T4.6 — Slave-mob registry**
+
+- New `ISlaveMobService` / `SlaveMobService` in
+  `Map.Server/Mob/Slaves/`. Read-mostly helpers walk
+  `IEntityRegistry`:
+  - `CountSlaves(master)` — rAthena `mob_countslave` (mob.cpp:3946).
+  - `GetFriendByHpRate(mob, min, max)` — rAthena
+    `mob_getfriendhprate` (mob.cpp:4114). Fixed 8-tile radius;
+    BL_MOB by default, BL_PC for summoned creatures with player
+    masters.
+  - `GetFriendByStatus(mob, cond, type)` — rAthena
+    `mob_getfriendstatus` (mob.cpp:4196).
+  - `GetMasterIfHpBelow(mob, rate)` — rAthena
+    `mob_getmasterhpltmaxrate` (mob.cpp:4130).
+- Threaded through `MobConditionContext.Slaves` so condition
+  evaluators read through it.
+- 5 new evaluators wired: `FriendHpLessThanRateCondition`,
+  `FriendHpInRateCondition`, `FriendStatusOnCondition`,
+  `FriendStatusOffCondition`, `MasterHpLessThanRateCondition`.
+- Existing `SlaveLessThan/Eq` conditions upgraded from stubs to
+  real counts.
+- `MobSkillTargetResolver` MST_FRIEND branch now picks the
+  lowest-HP friendly in range via the service (was: fall back to
+  self).
+- 8 new unit tests (`SlaveMobServiceTests`) covering count +
+  friend-by-hp + master-if-low semantics.
+
+**T4.7 — DmgListLog**
+
+- New `MobDmgList` ring buffer on `MobEntity.DmgList`. Capacity 30
+  (rAthena `DAMAGELOG_SIZE`); accumulates per-attacker damage,
+  evicts oldest when full.
+- New `MobEntity.LastCastSkillId` (rAthena `md->ud.skill_id`)
+  recorded by `MobSkillCastService` after a successful cast.
+- `DamageService.ApplyResolved` now records every mob-bound hit
+  into `DmgList.Record(source.Id, actual)`.
+- `AttackerCountGreaterCondition` /
+  `AttackerCountGreaterEqCondition` upgraded from
+  RudeAttackedCount proxy to real `DmgList.DistinctAttackerCount`
+  with the proxy as a fallback for early-test paths.
+- New `AfterSkillCondition` (MSC_AFTERSKILL) reads
+  `LastCastSkillId == cond2`. Drives chain casts like
+  "Heal → Blessing" on cleric mobs.
+- 6 new unit tests (`MobDmgListTests`) covering record +
+  accumulate + evict + clear.
+
+**T4.8 — Lazy AI + FSM + ground-cell**
+
+- New `MobFsm.TransitionTo(mob, state)` mirrors rAthena
+  `mob_setstate` (mob.cpp:1820): Berserk↔Angry and Rush↔Follow
+  swaps gated on `MobMode.Angry`; all other transitions
+  write through. `MobAiService.Tick` now goes through the helper
+  instead of direct `mob.SkillState =`.
+- New `MobAiService.TickLazy(mob, tick)` runs when no PC is in
+  view range. Rolls a 5% idle-skill pick at Idle state. Mirrors
+  rAthena `mob_ai_sub_lazy` (mob.cpp:2359) — minimum-viable port
+  (no slave-active-time, no spotted-log, no warp-chase yet).
+- `MobAiService.HasAnyPcInView` uses
+  `IEntityRegistry.ForEachInRange(EntityType.Pc)` over the mob's
+  view range as the lazy/hard split signal.
+- `ISkillCastService.StartCastAt(x, y, ...)` — new default-method
+  ground-cast entry; default delegates to `StartCast(source.Id)`
+  so existing implementations keep working. Real cell-target
+  dispatch (rAthena `unit_skilluse_pos2`) lands when a SkillImpl
+  hook for ground placement is added.
+- `MobSkillCastService.RunPicker` routes MST_AROUND* through
+  `StartCastAt(cell.x, cell.y)`; all other MST_* still go through
+  `StartCast(targetId)`.
+- 9 new unit tests (`MobFsmTests`) covering all five FSM swap
+  cases.
+
+**Test results**
+
+- 2,894 / 2,894 Map.Server.Tests pass (PacketReplayTests
+  integration flake filtered).
+- Build green, 0 errors.
+- 23 new mob-AI tests added (8 slave + 6 dmglist + 9 fsm).
+
+**Coverage delta:**
+
+| Bucket | Previous (T4.5) | Now (T4.8) | Delta |
+|---|---|---|---|
+| ✅ implemented | 43 | 59 | +16 |
+| ⚠️ partial | 11 | 6 | -5 |
+| ❌ missing | 22 | 11 | -11 |
+
 ### 2026-05-21 — T4.3 + T4.4 + T4.5 (mob_skill_use_id picker)
 
 **T4.3a — IMobSkillCastService + MobSkillTargetResolver**
