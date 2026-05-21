@@ -1,41 +1,41 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Ninja;
 
 /// <summary>
-/// KO_MAKIBISHI — auto-generated stub from
-/// <c>src/map/skills/ninja/makibishi.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// KO_MAKIBISHI — Makibishi. Manual port of
+/// <c>rathena-fork/src/map/skills/ninja/makibishi.cpp</c>.
+/// Drops <c>lv+2</c> random spike cells around the caster; 10*lv%
+/// stun on hit. Ratio <c>+(-100 + 20*lv)</c>.
 /// </summary>
 public sealed class Makibishi : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+
     public Makibishi() : base(SkillIds.KO_MAKIBISHI) { }
 
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public Makibishi(ISkillUnitService? units = null) : base(SkillIds.KO_MAKIBISHI)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src,target, SC_STUN, 10 * skill_lv, skill_lv, skill_get_time2(getSkillId(),skill_lv));
+        _units = units;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // base_skillratio += -100 + 20 * skill_lv;
-    return baseRatio;
-    }
+        => baseRatio + (-100 + 20 * skillLevel);
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // for( int32 i = 0; i < (skill_lv+2); i++ ) {
-    // 		x = src->x - 1 + rnd()%3;
-    // 		y = src->y - 1 + rnd()%3;
-    // 		skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
-    // 	}
+        for (int i = 0; i < skillLevel + 2; i++)
+        {
+            var cx = (short)(src.X - 1 + System.Random.Shared.Next(3));
+            var cy = (short)(src.Y - 1 + System.Random.Shared.Next(3));
+            _units?.Place(src, SkillId, skillLevel, cx, cy);
+        }
+    }
+
+    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        if (System.Random.Shared.Next(100) < 10 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
     }
 }

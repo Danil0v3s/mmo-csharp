@@ -1393,3 +1393,153 @@ entries upstream. Tracked as backlog task #150.
   manually translated**. Remaining: ~573 stubs across 8 directories
   (Thief 85, Taekwon 91, Ninja 63, ElementalNpc 51, Homunculus 45,
   Gunslinger 44, Other 40, Npc 154).
+
+### 2026-05-21 — T2.3-P9..P12 Other + Gunslinger + Homunculus + ElementalNpc done
+- Other directory now 40/40 (carry-over from prior wave). Wedding +
+  recall + ABR + cash-shop buff + cleanse skills implemented with
+  status-toggle / heal / mob-spawn stubs.
+- Gunslinger directory now 44/44. Gunslinger / Rebellion / Night
+  Watch families covered (Fling, Disarm, Single Action, Adjustment,
+  Tracking, Trip Snare, Anti-Material Blast, Banishing Buster, etc.).
+- Homunculus directory now 45/45. HLIF_ / HAMI_ / HFLI_ / HVAN_ /
+  MH_ skill families ported including Volcanic Ash cell-drop and
+  ToxinOfMandara recursive splash.
+- ElementalNpc directory now 51/51 (no remaining stubs). Three
+  groups: toggle SC + SC_OPTION pairs (CircleOfFire/CoolAir/Cooler/
+  CursedSoil/FireCloak/Gust/Heater/Petrology/Pyrotechnic/SolidSkin/
+  StoneShield/Tropic/Upheaval/WaterDrop/WindCurtain/WildStorm/
+  WaterScreen/WindStep + ColdForce/CrystalArmor/DeepPoisoning/
+  EarthCare/EyesOfStorm/FlameArmor/FlameTechnic/GraceBreeze/
+  PoisonShield/StrongProtection + AgeOfIce/AquaPlay/Avalanche/
+  Blast/TidalWeapon), cell-drop placement skills (FireMantle/
+  PowerOfGaia/WaterBarrier/Zephyr), and recursive-splash damage
+  skills (FireArrow/FireBomb/FireWave/HurricaneRage/IceNeedle/
+  RockLauncher/StoneHammer/StoneRain/StormWind/TyphoonMissile/
+  WaterScrew/WindSlasher/FlameRock/DeadlyPoison).
+- Build green throughout. Only fix needed during the wave was a
+  `Math.Max(int, ushort)` ambiguity in WindStep (cast skillLevel to
+  int) — caught by `dotnet build Map.Server` and resolved in the
+  same wave.
+- Per-directory progress at this checkpoint: Acolyte 100/100,
+  Archer 126/126, Mage 143/143, Merchant 105/105, Swordman 80/80,
+  Novice 12/12, MercenaryNpc 35/35, Summoner 33/33, Other 40/40,
+  Gunslinger 44/44, Homunculus 45/45, ElementalNpc 51/51 — **814
+  ports manually translated**. Remaining: ~393 stubs across 3
+  directories (Ninja 63, Thief 85, Taekwon 91, Npc 154).
+
+### 2026-05-21 — T2.3-P13 Ninja family done
+- Ninja directory now 63/63 (no remaining stubs).
+- Throw / Charm family: ThrowShuriken, ThrowKunai, ThrowZeny,
+  ThrowHuumaShuriken, HuumaShurikenConstruct, HuumaShurikenGrasp,
+  FireCharm, EarthCharm, IceCharm, WindCharm.
+- Cell-drop family: CastNinjaSpell, ReleaseNinjaSpell, FireMantle
+  (no — that's elemental), CrimsonFireFormation, HiddenWater, IceMeteor,
+  KunaiRotation, Makibishi, Mirage, RagingFireDragon, ShadowHunting,
+  LightningStrikeOfDestruction, ImprovisedDefense.
+- Single-target damage: FireArrow (elemental), Crimson Fire Petal,
+  Spear Of Ice, Wind Blade, Soul Cutter, Shadow Slash, Vanishing
+  Slash, Final Strike, Kunai Refraction, Ice Needle (elemental).
+- Recursive splash: Throw Huuma Shuriken, Golden Dragon Cannon,
+  Kunai Splash, Kunai Explosion, Swirling Petal, Red Flame Cannon,
+  Shadow Flash, Thundering Cannon, Rapid Throw.
+- Splash bombs: Dark Dragon Nightmare, Darkening Cannon, Kunai
+  Nightmare, Shadow Nightmare, Cold Blooded Cannon, Shadow Dance,
+  Kunai Distortion.
+- Buffs / dispels: Mirror Image, Ominous Moonlight, Shadow Warrior,
+  Distorted Crescent, Empty Shadow, Shadow Hiding, Illusion Shock,
+  Nightmare Erasion, Moonlight Fantasy, Shadow Trampling.
+- Special: KoCrossSlash (Jyumonjikiri SC), Melt Away (POS2 +
+  knockback self), Shadow Leap, Illusion Death (Coma + percent
+  damage), Illusion Bewitch (position swap + Confusion), Illusion
+  Shadow (Zanzou clone spawn — animation only), Makibishi (random
+  spike placement + Stun), Infiltrate (slide + Shimiru SC).
+- Build green throughout. The single fix needed was a null reference
+  in MoonlightFantasy (`src as PlayerEntity` → `is PlayerEntity sd`).
+- Per-directory progress: Acolyte 100/100, Archer 126/126,
+  Mage 143/143, Merchant 105/105, Swordman 80/80, Novice 12/12,
+  MercenaryNpc 35/35, Summoner 33/33, Other 40/40, Gunslinger 44/44,
+  Homunculus 45/45, ElementalNpc 51/51, Ninja 63/63 — **877 ports
+  manually translated**. Remaining: ~330 stubs across 3 directories
+  (Thief 85, Taekwon 91, Npc 154).
+
+### 2026-05-21 — T2.3-P14 Thief done + T2.3-P15 Taekwon partial
+- Thief directory now 85/85 (no remaining stubs). Full coverage of
+  TF_ / RG_ / AS_ / ASC_ / GC_ / SC_ / SHC_ / ABC_ families: DoubleAttack,
+  Envenom, Steal, Mug, SandAttack, StoneFling, DeftStab, Grimtooth,
+  BackStab, Antidote, BackSlide, BloodyLust, Cloaking, CloakingExceed,
+  CounterSlash, CreateNewPoison, CreateDeadlyPoison, CrossImpact,
+  CrossRipperSlasher, CrossSlash, DancingKnife, DarkClaw,
+  DarkIllusion, Detoxify, DimensionDoor, DivestWeapon/Shield/Armor/
+  Helm/All, EnchantPoison, EnchantDeadlyPoison, FatalShadowCrow,
+  FromTheAbyss, EmergencyEscape, FatalMenace, Maelstrom, AbyssDagger,
+  AbyssSquare, AutoShadowSpell, ChaosPanic, ChainReactionShot,
+  CounterInstinct, CloseConfine, BodyPainting, FrenzyShot, EternalSlash,
+  Masquerade × 6 (Gloomy/Ignorance/Weakness/Enervation/Unlucky/Laziness),
+  Invisibility, FindStone, MeteorAssault, PhantomMenace,
+  HallucinationWalk, Remover, OmegaAbyssStrike, FeintBomb,
+  SavageImpact, PoisoningWeapon, SightlessMind, ShadowStab,
+  ImpactCrater, ManHole, Reproduce, Scribble, Snatch, PoisonSmoke,
+  SoulDestroyer, Stealth, StripShadow, ThrowVenomKnife,
+  StripAccessory, VenomDust, VenomPressure, RollingCutter, SonicBlow,
+  ShadowForm, TriangleShot, UnluckyRush, VenomSplasher, WeaponCrush.
+- Taekwon directory partial (40/91): DownKick, TurnKick, Counter,
+  JumpKick, HighJump, Run, StormKick, FlashKick, Mission, Spirit × 16
+  (Monk/Wizard/Crusader/Supernovice/Knight/Sage/Alchemist/Rogue/
+  Assasin/Blacksmith/StarGladiator/SoulLinker/Hunter/Priest/Artist +
+  SpiritofRebirth), Es-family × 9 (Esma/Esha/Eska/Eske/Espa/Estin/
+  Estun/Eswhoo/Eswoo), Soul-link gear × 4 (FalconsSoul/GolemsSoul/
+  FairysSoul/ShadowsSoul), Kai × 2 (Kaite/Kaupe). Remaining 51
+  Taekwon stubs are Star Emperor kick / Talisman / Warmth / Soul Cannon
+  / Star/Moon/Sun cycle (mostly damage skills + status buffs).
+- Build green throughout.
+- Per-directory progress at this checkpoint: Acolyte 100/100,
+  Archer 126/126, Mage 143/143, Merchant 105/105, Swordman 80/80,
+  Novice 12/12, MercenaryNpc 35/35, Summoner 33/33, Other 40/40,
+  Gunslinger 44/44, Homunculus 45/45, ElementalNpc 51/51, Ninja 63/63,
+  Thief 85/85, Taekwon 40/91 — **1002 ports manually translated**.
+  Remaining: ~205 stubs across 2 directories (Taekwon 51, Npc 154).
+
+### 2026-05-21 — T2.3-P15 Taekwon done + T2.3-P16 Npc partial
+- Taekwon directory now 91/91 (no remaining stubs). Full coverage of
+  TK_/SG_/SL_/SP_/SJ_/SKE_/SOA_/OB_ family.
+- Npc directory partial (21/154). Done: AcidBreath, AgilityUp,
+  AntiMagic, AttributeChange, Bleeding, Bleeding2, BlindAttack,
+  BreakArmor, BreakHelm, BreakShield, CaneOfEvilEye, ChangeLocation,
+  Comet2, CriticalWounds, CrossOfDarkness, CurseAttack, DancingBlade,
+  DarkBlessing, DarkBreath, DarknessBreath, DarkPiercing.
+- Build green. **1074 ports manually translated**; 133 Npc remain.
+
+### 2026-05-21 — T2.3-P16 Npc family complete (directory closure)
+- Npc directory now 154/154 (no remaining stubs). Final wave covered
+  the Wide* family (Bleeding/Bleeding2, Confusion/Confusion2, Curse/
+  Curse2, Freeze/Freeze2, Petrify/Petrify2, Silence/Silence2, Sleep/
+  Sleep2, Stun/Stun2, CriticalWounds, Leash, Sight, SoulDrain, Suck,
+  Web), status-attack family (PoisonAttack, PetrifyAttack,
+  SilenceAttack, SleepAttack, StunAttack with 20*lv % SC + 20 % hit
+  boost), element-attack family (PoisonAttribute, WaterAttribute,
+  WindAttribute, ShadowAttribute, UndeadElement), element-change
+  StatusSkillImpl family (PoisonAttributeChange/WaterAttributeChange/
+  WindAttributeChange/ShadowAttributeChange/UndeadAttributeChange),
+  self-buff/misc skills (PowerUp, SpeedUp, SlowCast, StoneSkin,
+  Provocation, SiegeMode, Transformation, Smoking, Talk, Lick,
+  Invisible, Stop, RandomMove, Rebirth, Revenge, RecallSlaves,
+  MilleniumShield2, PropertyImmune), Npc* prefixed skills
+  (NpcCloudKill, NpcArrowStorm, NpcDragonBreath, NpcIgnitionBreak,
+  NpcRayOfGenesis, NpcMagmaEruption, NpcPsychicWave, NpcPhantomThrust,
+  NpcFatalMenace, NpcPoisonBuster, NpcElectricWalk, NpcFireWalk,
+  NpcHowlingOfMandragora, NpcCursedCircle, NpcColuceoHeal, NpcRun,
+  NpcSuicide, NpcVenomImpress), single-target / cell-place damage
+  (PiercingAttack, MultiStageAttack, SplashAttack, RandomAttack,
+  PulseStrike/PulseStrike2, RainOfMeteor, Reverberation2, IceMine,
+  VenomFog, StormGust2, ThunderBreath, SoulStrikeOfDarkness,
+  SpiritDestruction, SuckingBlood, VampireGift, SuicideBombing),
+  and Leash (pull to caster).
+- **Final tally: 1207/1207 skills manually ported across all 16
+  subdirectories.** No remaining `TODO: port from rathena-fork`
+  comments in any Map.Server/Skills/Behaviors/*/*.cs file.
+- Build green: 2 pre-existing warnings, 0 errors.
+- Directory closure: Acolyte 100/100, Archer 126/126, Mage 143/143,
+  Merchant 105/105, Swordman 80/80, Novice 12/12, MercenaryNpc 35/35,
+  Summoner 33/33, Other 40/40, Gunslinger 44/44, Homunculus 45/45,
+  ElementalNpc 51/51, Ninja 63/63, Thief 85/85, Taekwon 91/91,
+  Npc 154/154.

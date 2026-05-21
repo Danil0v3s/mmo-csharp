@@ -1,40 +1,33 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Thief;
 
 /// <summary>
-/// ABC_ABYSS_STRIKE — auto-generated stub from
-/// <c>src/map/skills/thief/omegaabyssstrike.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// ABC_ABYSS_STRIKE — Omega Abyss Strike. Manual port of
+/// <c>rathena-fork/src/map/skills/thief/omegaabyssstrike.cpp</c>.
+/// POS2 unit placement; ratio <c>+(-100 + 2650*lv) + 10*spl</c>;
+/// +200*lv vs Demon / Angel.
 /// </summary>
 public sealed class OmegaAbyssStrike : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+
     public OmegaAbyssStrike() : base(SkillIds.ABC_ABYSS_STRIKE) { }
 
-    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+    public OmegaAbyssStrike(ISkillUnitService? units = null) : base(SkillIds.ABC_ABYSS_STRIKE)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // flag|=1;//Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
+        _units = units;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 	const status_data* tstatus = status_get_status_data(*target);
-    // 
-    // 	skillratio += -100 + 2650 * skill_lv;
-    // 	skillratio += 10 * sstatus->spl;
-    // 	if (tstatus->race == RC_DEMON || tstatus->race == RC_ANGEL)
-    // 		skillratio += 200 * skill_lv;
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
+        var ratio = baseRatio + (-100 + 2650 * skillLevel) + 10 * src.Stats.Spl;
+        if (target.Stats.Race == BattleRace.Demon || target.Stats.Race == BattleRace.Angel)
+            ratio += 200 * skillLevel;
+        return ratio;
     }
+
+    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 }

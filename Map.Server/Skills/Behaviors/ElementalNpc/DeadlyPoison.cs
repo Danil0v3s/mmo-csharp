@@ -3,14 +3,10 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.ElementalNpc;
 
 /// <summary>
-/// EM_EL_DEADLY_POISON — auto-generated stub from
-/// <c>src/map/skills/elemental/deadlypoison.hpp</c>.
-///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// EM_EL_DEADLY_POISON — Elemental Deadly Poison. Manual port of
+/// <c>rathena-fork/src/map/skills/elemental/deadlypoison.cpp</c>.
+/// Ratio <c>+(-100 + 700)</c>, scaled by (1 + masterLv/100). Master-Lv
+/// lookup is TODO; using the caster's Lv as a stand-in.
 /// </summary>
 public sealed class DeadlyPoison : RecursiveDamageSplashSkillImpl
 {
@@ -18,12 +14,8 @@ public sealed class DeadlyPoison : RecursiveDamageSplashSkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const s_elemental_data* ed = BL_CAST(BL_ELEM, src);
-    // 
-    // 	base_skillratio += -100 + 700;
-    // 	if (ed)
-    // 		base_skillratio += base_skillratio * status_get_lv(ed->master) / 100;
-    return baseRatio;
+        var ratio = baseRatio + (-100 + 700);
+        ratio += ratio * src.Level / 100;
+        return ratio;
     }
 }

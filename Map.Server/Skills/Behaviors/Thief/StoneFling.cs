@@ -1,38 +1,41 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Thief;
 
 /// <summary>
-/// TF_THROWSTONE — auto-generated stub from
-/// <c>src/map/skills/thief/stonefling.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// TF_THROWSTONE — Stone Fling. Manual port of
+/// <c>rathena-fork/src/map/skills/thief/stonefling.cpp</c>.
+/// Single-target hit; 3% stun OR 3% blind on player, 5% stun on mob.
 /// </summary>
 public sealed class StoneFling : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
+
     public StoneFling() : base(SkillIds.TF_THROWSTONE) { }
 
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public StoneFling(ISkillAttackService? skillAttack = null) : base(SkillIds.TF_THROWSTONE)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data *sd = BL_CAST(BL_PC, src);
-    // 	if (sd != nullptr) {
-    // 		// Only blind if used by player and stun failed
-    // 		if (!sc_start(src, target, SC_STUN, 3, skill_lv, skill_get_time(getSkillId(), skill_lv)))
-    // 			sc_start(src, target, SC_BLIND, 3, skill_lv, skill_get_time2(getSkillId(), skill_lv));
-    // 	} else {
-    // 		// 5% stun chance and no blind chance when used by monsters
-    // 		sc_start(src, target, SC_STUN, 5, skill_lv, skill_get_time(getSkillId(), skill_lv));
-    // 	}
+        _skillAttack = skillAttack;
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+        => _skillAttack?.SkillAttack(BattleAttackType.Misc, src, src, target, SkillId, skillLevel);
+
+    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_attack(skill_get_type(getSkillId()), src, src, target, getSkillId(), skill_lv, tick, flag);
+        if (src is PlayerEntity)
+        {
+            if (System.Random.Shared.Next(100) < 3)
+                ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
+            else if (System.Random.Shared.Next(100) < 3)
+                ctx.Sc?.Start(target, StatusType.Blind, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
+        }
+        else
+        {
+            if (System.Random.Shared.Next(100) < 5)
+                ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
+        }
     }
 }

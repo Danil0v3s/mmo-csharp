@@ -3,25 +3,25 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Thief;
 
 /// <summary>
-/// SC_ESCAPE — auto-generated stub from
-/// <c>src/map/skills/thief/emergencyescape.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// SC_ESCAPE — Emergency Escape. Manual port of
+/// <c>rathena-fork/src/map/skills/thief/emergencyescape.cpp</c>.
+/// POS2 unit-set + caster backslide (BLOWN_IGNORE_NO_KNOCKBACK).
+/// Self-knockback is TODO.
 /// </summary>
 public sealed class EmergencyEscape : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+
     public EmergencyEscape() : base(SkillIds.SC_ESCAPE) { }
+
+    public EmergencyEscape(ISkillUnitService? units = null) : base(SkillIds.SC_ESCAPE)
+    {
+        _units = units;
+    }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_unitsetting(src, getSkillId(), skill_lv, x, y, 0);
-    // 	skill_blown(src, src, skill_get_blewcount(getSkillId(), skill_lv), unit_getdir(src), BLOWN_IGNORE_NO_KNOCKBACK); // Don't stop the caster from backsliding if special_state.no_knockback is active
-    // 	clif_skill_nodamage(src,*src,getSkillId(),skill_lv);
-    // 	flag |= 1;
+        _units?.Place(src, SkillId, skillLevel, x, y);
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
     }
 }

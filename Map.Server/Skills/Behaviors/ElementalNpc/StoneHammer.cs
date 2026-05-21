@@ -1,39 +1,37 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.ElementalNpc;
 
 /// <summary>
-/// EL_STONE_HAMMER — auto-generated stub from
-/// <c>src/map/skills/elemental/stonehammer.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// EL_STONE_HAMMER — Elemental Stone Hammer. Manual port of
+/// <c>rathena-fork/src/map/skills/elemental/stonehammer.cpp</c>.
+/// +400 ratio; chance to stun (10*lv%).
 /// </summary>
 public sealed class StoneHammer : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
+
     public StoneHammer() : base(SkillIds.EL_STONE_HAMMER) { }
 
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public StoneHammer(ISkillAttackService? skillAttack = null) : base(SkillIds.EL_STONE_HAMMER)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, SC_STUN, 10 * skill_lv, skill_lv, skill_get_time(getSkillId(), skill_lv));
+        _skillAttack = skillAttack;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // base_skillratio += 400;
-    return baseRatio;
-    }
+        => baseRatio + 400;
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src,*battle_get_master(src),getSkillId(),skill_lv);
-    // 	clif_skill_damage( *src, *target, tick, status_get_amotion(src), 0, DMGVAL_IGNORE, 1, getSkillId(), skill_lv, DMG_SINGLE );
-    // 	skill_attack(skill_get_type(getSkillId()),src,src,target,getSkillId(),skill_lv,tick,flag);
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+        _skillAttack?.SkillAttack(BattleAttackType.Weapon, src, src, target, SkillId, skillLevel);
+    }
+
+    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        if (System.Random.Shared.Next(100) < 10 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
     }
 }

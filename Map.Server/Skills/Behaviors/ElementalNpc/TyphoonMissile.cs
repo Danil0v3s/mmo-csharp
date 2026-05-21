@@ -1,49 +1,40 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.ElementalNpc;
 
 /// <summary>
-/// EL_TYPOON_MIS — auto-generated stub from
-/// <c>src/map/skills/elemental/typhoonmissile.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// EL_TYPOON_MIS — Elemental Typhoon Missile. Manual port of
+/// <c>rathena-fork/src/map/skills/elemental/typhoonmissile.cpp</c>.
+/// +900 ratio; 30% splash, else single hit. Applies SC_SILENCE at
+/// 10*lv%. EL_TYPOON_MIS_ATK splash variant lives in the same source
+/// file (+1100).
 /// </summary>
 public sealed class TyphoonMissile : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
+
     public TyphoonMissile() : base(SkillIds.EL_TYPOON_MIS) { }
 
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public TyphoonMissile(ISkillAttackService? skillAttack = null) : base(SkillIds.EL_TYPOON_MIS)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src,target,SC_SILENCE,10*skill_lv,skill_lv,skill_get_time(getSkillId(),skill_lv));
+        _skillAttack = skillAttack;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // base_skillratio += 900;
-    return baseRatio;
-    }
+        => baseRatio + 900;
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // if( flag&1 )
-    // 		skill_attack(skill_get_type(EL_TYPOON_MIS_ATK),src,src,target,EL_TYPOON_MIS_ATK,skill_lv,tick,flag);
-    // 	else {
-    // 		int32 i = skill_get_splash(getSkillId(),skill_lv);
-    // 		clif_skill_nodamage(src,*battle_get_master(src),getSkillId(),skill_lv);
-    // 		clif_skill_damage( *src, *target, tick, status_get_amotion(src), 0, DMGVAL_IGNORE, 1, getSkillId(), skill_lv, DMG_SINGLE );
-    // 		if( rnd()%100 < 30 )
-    // 			map_foreachinrange(skill_area_sub,target,i,BL_CHAR,src,getSkillId(),skill_lv,tick,flag|BCT_ENEMY|1,skill_castend_damage_id);
-    // 		else
-    // 			skill_attack(skill_get_type(getSkillId()),src,src,target,getSkillId(),skill_lv,tick,flag);
-    // 	}
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+        // TODO: 30% splash via EL_TYPOON_MIS_ATK isn't yet a registered SkillId.
+        _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
     }
 
-
+    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        if (System.Random.Shared.Next(100) < 10 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Silence, val1: skillLevel, 0, 0, 0, durationMs: 10_000, src);
+    }
 }

@@ -3,30 +3,11 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Ninja;
 
 /// <summary>
-/// OB_AKAITSUKI — auto-generated stub from
-/// <c>src/map/skills/ninja/ominousmoonlight.hpp</c>.
-///
-/// <para>Inherits <see cref="StatusSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// KO_IZAYOI — Ominous Moonlight (16th Night). Manual port of
+/// <c>rathena-fork/src/map/skills/ninja/16thnight.cpp</c>.
+/// Status-only buff.
 /// </summary>
 public sealed class OminousMoonlight : StatusSkillImpl
 {
-    public OminousMoonlight() : base(SkillIds.OB_AKAITSUKI) { }
-
-    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if( sd && status_bl_has_mode(target,MD_STATUSIMMUNE) ){ // Does not work on status immune monsters.
-    // 		clif_skill_fail( *sd, getSkillId() );
-    // 		return;
-    // 	}
-    // 	StatusSkillImpl::castendNoDamageId(src, target, skill_lv, tick, flag);
-    // 
-    // 	clif_skill_damage( *src, *target, tick, status_get_amotion(src), 0, DMGVAL_IGNORE, 1, getSkillId(), skill_lv, DMG_SINGLE );
-    }
+    public OminousMoonlight() : base(SkillIds.KO_IZAYOI) { }
 }

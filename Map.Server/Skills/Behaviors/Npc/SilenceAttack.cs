@@ -1,31 +1,17 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Npc;
 
-/// <summary>
-/// NPC_SILENCEATTACK — auto-generated stub from
-/// <c>src/map/skills/npc/silenceattack.hpp</c>.
-///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
-/// </summary>
+/// <summary>NPC_SILENCEATTACK — Weapon hit; 20*lv % SC_SILENCE; +20% hit rate.</summary>
 public sealed class SilenceAttack : WeaponSkillImpl
 {
     public SilenceAttack() : base(SkillIds.NPC_SILENCEATTACK) { }
-
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src,target,SC_SILENCE,(20*skill_lv),skill_lv,skill_get_time2(getSkillId(),skill_lv));
+        if (System.Random.Shared.Next(100) < 20 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Silence, val1: skillLevel, val2: (int)src.Id.Value, 0, 0, durationMs: 30_000, src);
     }
-
     public override short ModifyHitRate(short hitRate, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // hit_rate += hit_rate * 20 / 100;
-    return hitRate;
-    }
+        => (short)(hitRate + hitRate * 20 / 100);
 }

@@ -1,40 +1,37 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.ElementalNpc;
 
 /// <summary>
-/// EL_WIND_SLASH — auto-generated stub from
-/// <c>src/map/skills/elemental/windslasher.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// EL_WIND_SLASH — Elemental Wind Slasher. Manual port of
+/// <c>rathena-fork/src/map/skills/elemental/windslasher.cpp</c>.
+/// +100 ratio; 25% bleed (SC_BLEEDING).
 /// </summary>
 public sealed class WindSlasher : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
+
     public WindSlasher() : base(SkillIds.EL_WIND_SLASH) { }
 
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public WindSlasher(ISkillAttackService? skillAttack = null) : base(SkillIds.EL_WIND_SLASH)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // // Non confirmed rate.
-    // 	sc_start2(src,target, SC_BLEEDING, 25, skill_lv, src->id, skill_get_time(getSkillId(),skill_lv));
+        _skillAttack = skillAttack;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // base_skillratio += 100;
-    return baseRatio;
-    }
+        => baseRatio + 100;
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src,*battle_get_master(src),getSkillId(),skill_lv);
-    // 	clif_skill_damage( *src, *target, tick, status_get_amotion(src), 0, DMGVAL_IGNORE, 1, getSkillId(), skill_lv, DMG_SINGLE );
-    // 	skill_attack(skill_get_type(getSkillId()),src,src,target,getSkillId(),skill_lv,tick,flag);
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+        _skillAttack?.SkillAttack(BattleAttackType.Weapon, src, src, target, SkillId, skillLevel);
+    }
+
+    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        if (System.Random.Shared.Next(100) < 25)
+            ctx.Sc?.Start(target, StatusType.Bleeding, val1: skillLevel, val2: (int)src.Id.Value, 0, 0, durationMs: 30_000, src);
     }
 }

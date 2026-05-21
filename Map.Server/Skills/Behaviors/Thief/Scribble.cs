@@ -3,23 +3,21 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Thief;
 
 /// <summary>
-/// RG_GRAFFITI — auto-generated stub from
-/// <c>src/map/skills/thief/scribble.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// RG_GRAFFITI — Scribble (Graffiti). Manual port of
+/// <c>rathena-fork/src/map/skills/thief/scribble.cpp</c>.
+/// Drops a Graffiti cell at the targeted tile.
 /// </summary>
 public sealed class Scribble : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+
     public Scribble() : base(SkillIds.RG_GRAFFITI) { }
 
-    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+    public Scribble(ISkillUnitService? units = null) : base(SkillIds.RG_GRAFFITI)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
-    // 	flag|=1;
+        _units = units;
     }
+
+    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 }

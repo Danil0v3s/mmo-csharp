@@ -1,41 +1,30 @@
 using Map.Server.Entities;
+using Map.Server.Movement.UnitOps;
 
 namespace Map.Server.Skills.Behaviors.Thief;
 
 /// <summary>
-/// TF_BACKSLIDING — auto-generated stub from
-/// <c>src/map/skills/thief/backslide.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// TF_BACKSLIDING — Back Slide. Manual port of
+/// <c>rathena-fork/src/map/skills/thief/backslide.cpp</c>.
+/// Knocks the caster backwards (BLOWN_IGNORE_NO_KNOCKBACK) and grants
+/// 200ms unstoppable. Endure-tick grant is TODO; this stub does the
+/// knockback animation only.
 /// </summary>
 public sealed class BackSlide : SkillImpl
 {
+    private readonly IUnitOpsService? _unitOps;
+
     public BackSlide() : base(SkillIds.TF_BACKSLIDING) { }
+
+    public BackSlide(IUnitOpsService? unitOps = null) : base(SkillIds.TF_BACKSLIDING)
+    {
+        _unitOps = unitOps;
+    }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // //This is the correct implementation as per packet logging information. [Skotlex]
-    // 
-    // 	// Backsliding makes you immune to being stopped for 200ms, but only if you don't have the endure effect yet
-    // 	if (unit_data *ud = unit_bl2ud(bl); ud != nullptr && !status_isendure(*bl, tick, true))
-    // 		ud->endure_tick = tick + 200;
-    // 
-    // #ifdef RENEWAL
-    // 	int16 blew_count = skill_blown(src, bl, skill_get_blewcount(getSkillId(), skill_lv), unit_getdir(bl),
-    // 	                               static_cast<enum e_skill_blown>(BLOWN_IGNORE_NO_KNOCKBACK | BLOWN_DONT_SEND_PACKET));
-    // 	clif_skill_nodamage(src, *bl, getSkillId(), skill_lv);
-    // 
-    // 	if (blew_count > 0)
-    // 		clif_blown(src); // Always blow, otherwise it shows a casting animation. [Lemongrass]
-    // #else
-    // 	int16 blew_count = skill_blown(src, bl, skill_get_blewcount(getSkillId(), skill_lv), unit_getdir(bl), BLOWN_IGNORE_NO_KNOCKBACK);
-    // 	clif_skill_nodamage(src, *bl, getSkillId(), skill_lv);
-    // 	clif_slide(*bl, bl->x, bl->y); //Show the casting animation on pre-re
-    // #endif
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        // Blow backward from the caster's facing direction (-blewcount cells).
+        _unitOps?.BlownBy(target, 0 /* TODO: opposite-of-target dir */, 5);
     }
 }

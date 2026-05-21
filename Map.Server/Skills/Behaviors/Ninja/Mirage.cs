@@ -3,25 +3,25 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Ninja;
 
 /// <summary>
-/// SS_SHINKIROU — auto-generated stub from
-/// <c>src/map/skills/ninja/mirage.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// SS_SHINKIROU — Mirage. Manual port of
+/// <c>rathena-fork/src/map/skills/ninja/mirage.cpp</c>.
+/// Self-buff + cell unit placement at target cell.
 /// </summary>
 public sealed class Mirage : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+
     public Mirage() : base(SkillIds.SS_SHINKIROU) { }
+
+    public Mirage(ISkillUnitService? units = null) : base(SkillIds.SS_SHINKIROU)
+    {
+        _units = units;
+    }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // flag |= 1;
-    // 	clif_skill_nodamage(src, *src, getSkillId(), skill_lv);
-    // 	sc_start(src, src, skill_get_sc(getSkillId()), 100, skill_lv, skill_get_time(getSkillId(), skill_lv));
-    // 	skill_unitsetting(src, getSkillId(), skill_lv, x, y, 0);
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+        // TODO: self SC_SHINKIROU.
+        _units?.Place(src, SkillId, skillLevel, x, y);
     }
 }

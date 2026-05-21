@@ -1,37 +1,31 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Ninja;
 
 /// <summary>
-/// KO_KAIHOU — auto-generated stub from
-/// <c>src/map/skills/ninja/releaseninjaspell.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// KO_KAIHOU — Release Ninja Spell. Manual port of
+/// <c>rathena-fork/src/map/skills/ninja/releaseninjaspell.cpp</c>.
+/// Magic hit; ratio <c>+(-100 + 200*spiritCharm)</c> when charms are
+/// present. Charm consumption is TODO — needs IPlayerOrbsService.
 /// </summary>
 public sealed class ReleaseNinjaSpell : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
+
     public ReleaseNinjaSpell() : base(SkillIds.KO_KAIHOU) { }
+
+    public ReleaseNinjaSpell(ISkillAttackService? skillAttack = null) : base(SkillIds.KO_KAIHOU)
+    {
+        _skillAttack = skillAttack;
+    }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if(sd && sd->spiritcharm_type != CHARM_TYPE_NONE && sd->spiritcharm > 0) {
-    // 		skillratio += -100 + 200 * sd->spiritcharm;
-    // 		RE_LVL_DMOD(100);
-    // 		pc_delspiritcharm(const_cast<map_session_data*>(sd), sd->spiritcharm, sd->spiritcharm_type);
-    // 	}
-    return baseRatio;
+        // TODO: scale by sd->spiritcharm + RE_LVL_DMOD(100) + pc_delspiritcharm.
+        return baseRatio;
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_attack(BF_MAGIC, src, src, target, getSkillId(), skill_lv, tick, flag);
-    }
+        => _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
 }

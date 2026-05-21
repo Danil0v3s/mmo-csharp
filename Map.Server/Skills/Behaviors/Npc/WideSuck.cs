@@ -1,25 +1,15 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Npc;
 
-/// <summary>
-/// NPC_WIDESUCK — auto-generated stub from
-/// <c>src/map/skills/npc/widesuck.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
-/// </summary>
+/// <summary>NPC_WIDESUCK — 100% SC_BLOODSUCKER (drain HP) on splash hit.</summary>
 public sealed class WideSuck : SkillImpl
 {
     public WideSuck() : base(SkillIds.NPC_WIDESUCK) { }
-
-    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // flag|=1;	// Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        ctx.Sc?.Start(target, StatusType.Bloodsucker, val1: skillLevel, val2: (int)src.Id.Value, 0, 0, durationMs: 20_000, src);
     }
 }

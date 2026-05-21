@@ -2,31 +2,5 @@ using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Taekwon;
 
-/// <summary>
-/// SP_SOULGOLEM — auto-generated stub from
-/// <c>src/map/skills/taekwon/golemssoul.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
-/// </summary>
-public sealed class GolemsSoul : SkillImpl
-{
-    public GolemsSoul() : base(SkillIds.SP_SOULGOLEM) { }
-
-    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // if( sc_start( src, target, skill_get_sc(getSkillId()), 100, skill_lv, skill_get_time( getSkillId(), skill_lv ) ) ){
-    // 		clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    // 	}else{
-    // 		map_session_data* sd = BL_CAST( BL_PC, src );
-    // 
-    // 		if( sd ){
-    // 			clif_skill_fail( *sd, getSkillId(), USESKILL_FAIL );
-    // 		}
-    // 	}
-    }
-}
+/// <summary>SP_SOULGOLEM — Golem's Soul. Applies SC_SOULGOLEM.</summary>
+public sealed class GolemsSoul : StatusSkillImpl { public GolemsSoul() : base(SkillIds.SP_SOULGOLEM) { } }

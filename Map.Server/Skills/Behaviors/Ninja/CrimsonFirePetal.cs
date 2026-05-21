@@ -1,35 +1,27 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Ninja;
 
 /// <summary>
-/// NJ_KOUENKA — auto-generated stub from
-/// <c>src/map/skills/ninja/crimsonfirepetal.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// NJ_KOUENKA — Crimson Fire Petal. Manual port of
+/// <c>rathena-fork/src/map/skills/ninja/crimsonfirepetal.cpp</c>.
+/// -10 base ratio + 10*charm when CHARM_TYPE_FIRE. Magic single hit.
 /// </summary>
 public sealed class CrimsonFirePetal : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
+
     public CrimsonFirePetal() : base(SkillIds.NJ_KOUENKA) { }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+    public CrimsonFirePetal(ISkillAttackService? skillAttack = null) : base(SkillIds.NJ_KOUENKA)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	base_skillratio -= 10;
-    // 	if(sd && sd->spiritcharm_type == CHARM_TYPE_FIRE && sd->spiritcharm > 0)
-    // 		base_skillratio += 10 * sd->spiritcharm;
-    return baseRatio;
+        _skillAttack = skillAttack;
     }
 
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+        => baseRatio - 10;
+
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_attack(BF_MAGIC, src, src, target, getSkillId(), skill_lv, tick, flag);
-    }
+        => _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
 }

@@ -1,16 +1,12 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Thief;
 
 /// <summary>
-/// TF_POISON — auto-generated stub from
-/// <c>src/map/skills/thief/envenom.hpp</c>.
-///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// TF_POISON — Envenom. Manual port of
+/// <c>rathena-fork/src/map/skills/thief/envenom.cpp</c>.
+/// Weapon hit; applies SC_POISON at <c>4*lv + 10</c>%.
 /// </summary>
 public sealed class Envenom : WeaponSkillImpl
 {
@@ -18,9 +14,9 @@ public sealed class Envenom : WeaponSkillImpl
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data *sd = BL_CAST(BL_PC, src);
-    // 	if (!sc_start2(src, target, SC_POISON, (4 * skill_lv + 10), skill_lv, src->id, skill_get_time2(getSkillId(), skill_lv)) && sd)
-    // 		clif_skill_fail(*sd, getSkillId());
+        if (System.Random.Shared.Next(100) < 4 * skillLevel + 10)
+            ctx.Sc?.Start(target, StatusType.Poison, val1: skillLevel, val2: (int)src.Id.Value, 0, 0, durationMs: 20_000, src);
+        else if (src is PlayerEntity sd)
+            ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
     }
 }

@@ -1,43 +1,41 @@
 using Map.Server.Entities;
+using Map.Server.Movement.UnitOps;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.ElementalNpc;
 
 /// <summary>
-/// EL_WIND_STEP — auto-generated stub from
-/// <c>src/map/skills/elemental/windstep.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// EL_WIND_STEP — Elemental Wind Step. Manual port of
+/// <c>rathena-fork/src/map/skills/elemental/windstep.cpp</c>.
+/// Toggles SC_WIND_STEP on target + SC_WIND_STEP_OPTION on the
+/// elemental, and on activation knocks the master back a few cells.
 /// </summary>
 public sealed class WindStep : SkillImpl
 {
+    private readonly IUnitOpsService? _unitOps;
+
     public WindStep() : base(SkillIds.EL_WIND_STEP) { }
+
+    public WindStep(IUnitOpsService? unitOps = null) : base(SkillIds.EL_WIND_STEP)
+    {
+        _unitOps = unitOps;
+    }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_change *tsc = status_get_sc(target);
-    // 	sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 	s_elemental_data *ele = BL_CAST(BL_ELEM, src);
-    // 	if( ele ) {
-    // 		sc_type type2 = (sc_type)(type-1);
-    // 		status_change *esc = status_get_sc(ele);
-    // 
-    // 		if( (esc && esc->getSCE(type2)) || (tsc && tsc->getSCE(type)) ) {
-    // 			status_change_end(src,type);
-    // 			status_change_end(target,type2);
-    // 		} else {
-    // 			clif_skill_nodamage(src,*src,getSkillId(),skill_lv);
-    // 			clif_skill_damage( *src, *target, tick, status_get_amotion(src), 0, DMGVAL_IGNORE, 1, getSkillId(), skill_lv, DMG_SINGLE );
-    // 			// There aren't teleport, just push the master away.
-    // 			skill_blown(src,target,(rnd()%skill_get_blewcount(getSkillId(),skill_lv))+1,rnd()%8,BLOWN_NONE);
-    // 			sc_start(src,src,type2,100,skill_lv,skill_get_time(getSkillId(),skill_lv));
-    // 			sc_start(src,target,type,100,skill_lv,skill_get_time(getSkillId(),skill_lv));
-    // 		}
-    // 	}
+        if (ctx.Sc?.Get(target, StatusType.WindStep) != null
+            || ctx.Sc?.Get(src, StatusType.WindStepOption) != null)
+        {
+            ctx.Sc.End(target, StatusType.WindStep);
+            ctx.Sc.End(src, StatusType.WindStepOption);
+            return;
+        }
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+        // Push the master a random short distance — knockback parity.
+        var dir = System.Random.Shared.Next(0, 8);
+        var count = System.Random.Shared.Next(0, Math.Max(1, (int)skillLevel)) + 1;
+        _unitOps?.BlownBy(target, dir, count);
+        ctx.Sc?.Start(src, StatusType.WindStepOption, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+        ctx.Sc?.Start(target, StatusType.WindStep, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
     }
 }

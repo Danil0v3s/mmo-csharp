@@ -1,26 +1,19 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Npc;
 
-/// <summary>
-/// NPC_LICK — auto-generated stub from
-/// <c>src/map/skills/npc/lick.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
-/// </summary>
+/// <summary>NPC_LICK — Drain 100 SP; 20*lv % SC_STUN on target.</summary>
 public sealed class Lick : SkillImpl
 {
     public Lick() : base(SkillIds.NPC_LICK) { }
-
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_zap(target, 0, 100);
-    // 	clif_skill_nodamage(src,*target,getSkillId(),skill_lv,
-    // 		sc_start(src,target,skill_get_sc(getSkillId()),(skill_lv*20),skill_lv,skill_get_time2(getSkillId(),skill_lv)));
+        // status_zap(target, 0, 100) — drain 100 SP
+        if (target is PlayerEntity p)
+            p.Sp = System.Math.Max(0, p.Sp - 100);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        if (System.Random.Shared.Next(100) < skillLevel * 20)
+            ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
     }
 }

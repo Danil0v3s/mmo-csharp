@@ -1,35 +1,17 @@
 using Map.Server.Entities;
+using Map.Server.Movement.UnitOps;
 
 namespace Map.Server.Skills.Behaviors.Npc;
 
-/// <summary>
-/// NPC_WIDELEASH — auto-generated stub from
-/// <c>src/map/skills/npc/wideleash.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
-/// </summary>
+/// <summary>NPC_WIDELEASH — Splash leash; pull each enemy in splash to src. Splash iteration TODO.</summary>
 public sealed class WideLeash : SkillImpl
 {
+    private readonly IUnitOpsService? _units;
     public WideLeash() : base(SkillIds.NPC_WIDELEASH) { }
-
+    public WideLeash(IUnitOpsService? units = null) : base(SkillIds.NPC_WIDELEASH) { _units = units; }
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // if( flag & 1 ){
-    // 		if( !skill_check_unit_movepos( 0, target, src->x, src->y, 1, 1 ) ){
-    // 			flag |= SKILL_NOCONSUME_REQ;
-    // 			return;
-    // 		}
-    // 
-    // 		clif_blown( target );
-    // 	}else{
-    // 		skill_area_temp[2] = 0; // For SD_PREAMBLE
-    // 		clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    // 		map_foreachinallrange( skill_area_sub, target, skill_get_splash( getSkillId(), skill_lv ), BL_CHAR, src, getSkillId(), skill_lv, tick, flag | BCT_ENEMY | SD_PREAMBLE | 1, skill_castend_nodamage_id );
-    // 	}
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        _units?.MovePos(target, src.X, src.Y, easy: 1, checkColl: true);
     }
 }

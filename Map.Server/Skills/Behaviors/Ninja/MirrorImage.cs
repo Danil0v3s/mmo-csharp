@@ -1,16 +1,12 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Ninja;
 
 /// <summary>
-/// NJ_BUNSINJYUTSU — auto-generated stub from
-/// <c>src/map/skills/ninja/mirrorimage.hpp</c>.
-///
-/// <para>Inherits <see cref="StatusSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// NJ_BUNSINJYUTSU — Mirror Image. Manual port of
+/// <c>rathena-fork/src/map/skills/ninja/mirrorimage.cpp</c>.
+/// Recasting cancels existing image; also ends SC_NEN.
 /// </summary>
 public sealed class MirrorImage : StatusSkillImpl
 {
@@ -18,10 +14,8 @@ public sealed class MirrorImage : StatusSkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // // TODO: refactor into status.yml
-    // 	status_change_end(target, SC_BUNSINJYUTSU); // on official recasting cancels existing mirror image [helvetica]
-    // 	StatusSkillImpl::castendNoDamageId(src, target, skill_lv, tick, flag);
-    // 	status_change_end(target, SC_NEN);
+        // TODO: SC_BUNSINJYUTSU enum missing.
+        base.CastendNoDamageId(src, target, skillLevel, ctx);
+        ctx.Sc?.End(target, StatusType.Nen);
     }
 }

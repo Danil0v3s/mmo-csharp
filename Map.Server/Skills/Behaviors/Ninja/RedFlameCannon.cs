@@ -3,35 +3,15 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Ninja;
 
 /// <summary>
-/// SS_SEKIENHOU — auto-generated stub from
-/// <c>src/map/skills/ninja/redflamecannon.hpp</c>.
-///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// SS_SEKIENHOU — Red Flame Cannon. Manual port of
+/// <c>rathena-fork/src/map/skills/ninja/redflamecannon.cpp</c>.
+/// Recursive splash; ratio <c>+(-100 + 600 + 1100*lv) + 5*spl</c>.
+/// SS_ANTENPOU partner bonus + SC_FIRE_CHARM_POWER +8500 are TODO.
 /// </summary>
 public sealed class RedFlameCannon : RecursiveDamageSplashSkillImpl
 {
     public RedFlameCannon() : base(SkillIds.SS_SEKIENHOU) { }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 	const status_change *sc = status_get_sc(src);
-    // 	const map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	skillratio += -100 + 600 + 1100 * skill_lv;
-    // 	skillratio += 70 * pc_checkskill( sd, SS_ANTENPOU ) * skill_lv;
-    // 	skillratio += 5 * sstatus->spl;
-    // 
-    // 	if( sc != nullptr && sc->hasSCE( SC_FIRE_CHARM_POWER ) ){
-    // 		skillratio += 8500;
-    // 	}
-    // 
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
-    }
+        => baseRatio + (-100 + 600 + 1100 * skillLevel) + 5 * src.Stats.Spl;
 }

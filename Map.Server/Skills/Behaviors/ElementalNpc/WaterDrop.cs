@@ -1,16 +1,13 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.ElementalNpc;
 
 /// <summary>
-/// EL_WATER_DROP — auto-generated stub from
-/// <c>src/map/skills/elemental/waterdrop.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// EL_WATER_DROP — Elemental Water Drop. Manual port of
+/// <c>rathena-fork/src/map/skills/elemental/waterdrop.cpp</c>.
+/// Toggles SC_WATER_DROP on target + SC_WATER_DROP_OPTION on the
+/// elemental.
 /// </summary>
 public sealed class WaterDrop : SkillImpl
 {
@@ -18,24 +15,15 @@ public sealed class WaterDrop : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_change *tsc = status_get_sc(target);
-    // 	sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 	s_elemental_data *ele = BL_CAST(BL_ELEM, src);
-    // 	if( ele ) {
-    // 		sc_type type2 = (sc_type)(type-1);
-    // 		status_change *esc = status_get_sc(ele);
-    // 
-    // 		if( (esc && esc->getSCE(type2)) || (tsc && tsc->getSCE(type)) ) {
-    // 			status_change_end(src,type);
-    // 			status_change_end(target,type2);
-    // 		} else {
-    // 			clif_skill_nodamage(src,*src,getSkillId(),skill_lv);
-    // 			clif_skill_damage( *src, *target, tick, status_get_amotion(src), 0, DMGVAL_IGNORE, 1, getSkillId(), skill_lv, DMG_SINGLE );
-    // 			sc_start(src,src,type2,100,skill_lv,skill_get_time(getSkillId(),skill_lv));
-    // 			sc_start(src,target,type,100,skill_lv,skill_get_time(getSkillId(),skill_lv));
-    // 		}
-    // 	}
+        if (ctx.Sc?.Get(target, StatusType.WaterDrop) != null
+            || ctx.Sc?.Get(src, StatusType.WaterDropOption) != null)
+        {
+            ctx.Sc.End(target, StatusType.WaterDrop);
+            ctx.Sc.End(src, StatusType.WaterDropOption);
+            return;
+        }
+        ctx.Sc?.Start(src, StatusType.WaterDropOption, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+        ctx.Sc?.Start(target, StatusType.WaterDrop, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
     }
 }

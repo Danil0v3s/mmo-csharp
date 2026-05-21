@@ -1,16 +1,14 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.ElementalNpc;
 
 /// <summary>
-/// EL_WATER_SCREEN — auto-generated stub from
-/// <c>src/map/skills/elemental/waterscreen.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// EL_WATER_SCREEN — Elemental Water Screen. Manual port of
+/// <c>rathena-fork/src/map/skills/elemental/waterscreen.cpp</c>.
+/// Toggles SC_WATER_SCREEN on target + SC_WATER_SCREEN_OPTION on the
+/// elemental. End semantics differ slightly from the other toggles —
+/// rAthena ends target/type and src/type2 (instead of src/type).
 /// </summary>
 public sealed class WaterScreen : SkillImpl
 {
@@ -18,25 +16,15 @@ public sealed class WaterScreen : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_change *tsc = status_get_sc(target);
-    // 	sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 	s_elemental_data *ele = BL_CAST(BL_ELEM, src);
-    // 	if( ele ) {
-    // 		status_change *esc = status_get_sc(ele);
-    // 		sc_type type2 = (sc_type)(type-1);
-    // 
-    // 		clif_skill_nodamage(src,*src,getSkillId(),skill_lv);
-    // 		if( (esc && esc->getSCE(type2)) || (tsc && tsc->getSCE(type)) ) {
-    // 			status_change_end(target,type);
-    // 			status_change_end(src,type2);
-    // 		} else {
-    // 			// This not heals at the end.
-    // 			clif_skill_damage( *src, *src, tick, status_get_amotion(src), 0, DMGVAL_IGNORE, 1, getSkillId(), skill_lv, DMG_SINGLE );
-    // 			sc_start(src,src,type2,100,skill_lv,skill_get_time(getSkillId(),skill_lv));
-    // 			sc_start(src,target,type,100,src->id,skill_get_time(getSkillId(),skill_lv));
-    // 		}
-    // 	}
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+        if (ctx.Sc?.Get(target, StatusType.WaterScreen) != null
+            || ctx.Sc?.Get(src, StatusType.WaterScreenOption) != null)
+        {
+            ctx.Sc.End(target, StatusType.WaterScreen);
+            ctx.Sc.End(src, StatusType.WaterScreenOption);
+            return;
+        }
+        ctx.Sc?.Start(src, StatusType.WaterScreenOption, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+        ctx.Sc?.Start(target, StatusType.WaterScreen, val1: skillLevel, val2: (int)src.Id.Value, 0, 0, durationMs: 60_000, src);
     }
 }

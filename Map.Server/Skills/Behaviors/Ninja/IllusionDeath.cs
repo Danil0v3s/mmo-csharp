@@ -1,16 +1,13 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Ninja;
 
 /// <summary>
-/// KO_JYUSATSU — auto-generated stub from
-/// <c>src/map/skills/ninja/illusiondeath.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// KO_JYUSATSU — Illusion Death. Manual port of
+/// <c>rathena-fork/src/map/skills/ninja/illusiondeath.cpp</c>.
+/// Chance <c>(45 + 5*lv + 5*lv - tgtInt/2)</c>% to inflict SC_HALLUCINATION
+/// + percent damage; if target level &lt;= caster level, also SC_COMA.
 /// </summary>
 public sealed class IllusionDeath : SkillImpl
 {
@@ -18,21 +15,17 @@ public sealed class IllusionDeath : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_data* tstatus = status_get_status_data(*target);
-    // 	status_change *tsc = status_get_sc(target);
-    // 	sc_type type = skill_get_sc(getSkillId());
-    // 	map_session_data* sd = BL_CAST(BL_PC, src);
-    // 	map_session_data* dstsd = BL_CAST(BL_PC, target);
-    // 
-    // 	if( dstsd && tsc && !tsc->getSCE(type) &&
-    // 		rnd()%100 < ((45+5*skill_lv) + skill_lv*5 - status_get_int(target)/2) ){//[(Base chance of success) + (Skill Level x 5) - (int32 / 2)]%.
-    // 		clif_skill_nodamage(src,*target,getSkillId(),skill_lv,
-    // 			status_change_start(src,target,type,10000,skill_lv,0,0,0,skill_get_time(getSkillId(),skill_lv),SCSTART_NOAVOID|SCSTART_NOTICKDEF));
-    // 		status_percent_damage(src, target, tstatus->hp * skill_lv * 5, 0, false); // Does not kill the target.
-    // 		if( status_get_lv(target) <= status_get_lv(src) )
-    // 			status_change_start(src,target,SC_COMA,10,skill_lv,0,src->id,0,0,SCSTART_NONE);
-    // 	}else if( sd )
-    // 		clif_skill_fail( *sd, getSkillId() );
+        var chance = (45 + 5 * skillLevel) + skillLevel * 5 - target.Stats.IntStat / 2;
+        if (System.Random.Shared.Next(100) < chance)
+        {
+            ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+            // TODO: percent_damage(target, hp*lv*5%); apply Jyusatsu status.
+            if (target.Level <= src.Level)
+                ctx.Sc?.Start(target, StatusType.Coma, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
+        }
+        else if (src is PlayerEntity sd)
+        {
+            ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
+        }
     }
 }

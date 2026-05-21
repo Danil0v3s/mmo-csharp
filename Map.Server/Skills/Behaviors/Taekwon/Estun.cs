@@ -1,47 +1,18 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Taekwon;
 
-/// <summary>
-/// SL_STUN — auto-generated stub from
-/// <c>src/map/skills/taekwon/estun.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
-/// </summary>
+/// <summary>SL_STUN — Estun. Manual port. Ratio +5*lv; magic hit.</summary>
 public sealed class Estun : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
     public Estun() : base(SkillIds.SL_STUN) { }
-
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_data* tstatus = status_get_status_data(*target);
-    // 
-    // 	if (tstatus->size==SZ_MEDIUM) //Only stuns mid-sized mobs.
-    // 		sc_start(src,target,SC_STUN,(30+10*skill_lv),skill_lv,skill_get_time(getSkillId(),skill_lv));
-    }
+    public Estun(ISkillAttackService? skillAttack = null) : base(SkillIds.SL_STUN) { _skillAttack = skillAttack; }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // base_skillratio += 5 * skill_lv;
-    return baseRatio;
-    }
+        => baseRatio + 5 * skillLevel;
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST( BL_PC, src );
-    // 
-    // 	if (sd && !battle_config.allow_es_magic_pc && target->type != BL_MOB) {
-    // 		status_change_start(src,src,SC_STUN,10000,skill_lv,0,0,0,500,SCSTART_NOTICKDEF|SCSTART_NORATEDEF);
-    // 		clif_skill_fail( *sd, getSkillId() );
-    // 		return;
-    // 	}
-    // 	skill_attack(BF_MAGIC,src,src,target,getSkillId(),skill_lv,tick,flag);
-    }
+        => _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
 }
