@@ -29,6 +29,8 @@ public sealed class MobSkillCastService : IMobSkillCastService
     private readonly Dictionary<(EntityId mobId, int skillIndex), long> _skillDelay = new();
 
     private readonly Slaves.ISlaveMobService? _slaves;
+    private readonly Map.Server.Status.IStatusChangeService? _sc;
+    private readonly Map.Server.Entities.IEntityRegistry? _entities;
 
     public MobSkillCastService(
         MobSkillConditionRegistry conditions,
@@ -36,7 +38,9 @@ public sealed class MobSkillCastService : IMobSkillCastService
         ILogger<MobSkillCastService> logger,
         ISkillCastService? skillCast = null,
         Random? rng = null,
-        Slaves.ISlaveMobService? slaves = null)
+        Slaves.ISlaveMobService? slaves = null,
+        Map.Server.Status.IStatusChangeService? sc = null,
+        Map.Server.Entities.IEntityRegistry? entities = null)
     {
         _conditions = conditions;
         _targets = targets;
@@ -44,6 +48,8 @@ public sealed class MobSkillCastService : IMobSkillCastService
         _skillCast = skillCast;
         _rng = rng ?? Random.Shared;
         _slaves = slaves;
+        _sc = sc;
+        _entities = entities;
     }
 
     /// <inheritdoc/>
@@ -213,6 +219,9 @@ public sealed class MobSkillCastService : IMobSkillCastService
             CumulativeDamageTaken = damage,
             SkillUsedNearby = triggerSkillId,
             Slaves = _slaves,
+            Sc = _sc,
+            Entities = _entities,
+            LastCastSkillId = mob.LastCastSkillId,
         };
         return evaluator.IsMet(mob, entry, ctx);
     }

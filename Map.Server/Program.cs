@@ -289,6 +289,10 @@ builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvalua
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.MasterHpLessThanRateCondition>();
 // T4.7 — DmgListLog-backed AfterSkill chain trigger.
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.AfterSkillCondition>();
+// T4.9a — Self-status SC evaluators (MSC_MYSTATUSON / MSC_MYSTATUSOFF).
+// Read through MobConditionContext.Sc (IStatusChangeService).
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.MyStatusOnCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.MyStatusOffCondition>();
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.MobSkillConditionRegistry>();
 
 // T4.6 — Slave-mob registry. Read-mostly helpers for mob_countslave /

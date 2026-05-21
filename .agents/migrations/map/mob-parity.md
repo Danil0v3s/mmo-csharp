@@ -70,8 +70,8 @@ Canonical entry points:
 | MSC_MYHPINRATE | ✅ | `MyHpInRateCondition` |
 | MSC_FRIENDHPLTMAXRATE | ✅ | `FriendHpLessThanRateCondition` (T4.6 via `ISlaveMobService`) |
 | MSC_FRIENDHPINRATE | ✅ | `FriendHpInRateCondition` (T4.6) |
-| MSC_MYSTATUSON | ❌ | enum declared; needs `IStatusChangeService.Get(mob, type)` wiring into context |
-| MSC_MYSTATUSOFF | ❌ | same as above (inverse) |
+| MSC_MYSTATUSON | ✅ | `MyStatusOnCondition` (T4.9a — reads `MobConditionContext.Sc.Get(mob, type)`; cond2==0 sweeps SC_COMMON_MIN..MAX) |
+| MSC_MYSTATUSOFF | ✅ | `MyStatusOffCondition` (T4.9a — inverse of above) |
 | MSC_FRIENDSTATUSON | ✅ | `FriendStatusOnCondition` (T4.6) |
 | MSC_FRIENDSTATUSOFF | ✅ | `FriendStatusOffCondition` (T4.6) |
 | MSC_ATTACKPCGT | ✅ | `AttackerCountGreaterCondition` (T4.7 — real DmgList count) |
@@ -120,13 +120,13 @@ Canonical entry points:
 |---|---|---|---|---|
 | AI think loop | 3 | 3 | 7 | 13 |
 | Skill picker | 11 | 3 | 2 | 16 |
-| Condition evaluators (MSC_*) | 18 | 1 | 8 | 27 |
+| Condition evaluators (MSC_*) | 20 | 1 | 6 | 27 |
 | Target modes (MST_*) | 7 | 1 | 0 | 8 |
 | Lifecycle / DB ops | ~16 | 0 | 0 | ~16 |
 
-**Aggregate: 55 ✅ / 8 ⚠️ / 17 ❌ across 80 entries.** Net for the goal:
-17 ❌ + 8 ⚠️ = **25 entries** stand between the current state and a
-zero-❌ mob.cpp parity audit.
+**Aggregate: 57 ✅ / 8 ⚠️ / 15 ❌ across 80 entries.** Net for the goal:
+15 ❌ + 8 ⚠️ = **23 entries** stand between the current state and a
+zero-❌ mob.cpp parity audit. T4.9a closed 2 ❌ (MSC_MYSTATUSON/OFF).
 
 ## Implementation plan
 
@@ -140,6 +140,40 @@ zero-❌ mob.cpp parity audit.
 8. ❌ **T4.9** — final completion wave — see goal doc.
 
 ## History
+
+### 2026-05-21 — T4.9a (status-SC condition evaluators)
+
+First slice of the T4.9 closure wave. MSC_MYSTATUSON / MSC_MYSTATUSOFF
+were the last evaluators reading mob-owned SC state; everything else
+was unblocked by T4.6/T4.7 (slave + DmgList) or T4.8 (FSM + lazy AI).
+
+**Surface added:**
+- `MyStatusOnCondition` (`Map.Server/Mob/Conditions/MyStatusOnCondition.cs`) —
+  reads `MobConditionContext.Sc.Get(mob, type)`; mirrors rAthena
+  `mob.cpp:4340` direct match and the `cond2 == SC_NONE` wildcard
+  sweep over `SC_COMMON_MIN..SC_COMMON_MAX`
+  (`Stone..Bleeding` in our `StatusType` enum).
+- `MyStatusOffCondition` — inverse of the above.
+- `MobConditionContext.Sc` (`IStatusChangeService?`) — threaded
+  through `MobSkillCastService.ConditionPasses` so the evaluator can
+  read self-status without re-injecting the SC engine.
+- DI registration in `Program.cs` next to the other condition
+  evaluators; `MobSkillCastService` ctor auto-resolves the optional
+  `IStatusChangeService` param from the container.
+
+**Tests:** `Map.Server.Tests/Mob/MobStatusConditionsTests.cs` — 5
+cases covering direct SC match/miss, cond2==0 wildcard fire/skip,
+and the no-`Sc`-injected defensive branch. Uses a `FakeSc`
+in-test implementation so the evaluator surface stays decoupled
+from the full StatusChangeService graph (damage + entity registry +
+effect registry).
+
+**Coverage delta:** 55 ✅ / 8 ⚠️ / 17 ❌ → **57 ✅ / 8 ⚠️ / 15 ❌**
+(−2 ❌). Remaining ❌: MSC_MOBNEARBYGT, MSC_TRICKCASTING,
+MSC_MASTERATTACKED, MSC_ALCHEMIST + 7 AI-think-loop + 2 picker.
+
+**Tests green:** 2899/2899 in `Map.Server.Tests`
+(PacketReplayTests fixture excluded as usual — needs live `:5191`).
 
 ### 2026-05-21 — T4.6 + T4.7 + T4.8 (slave registry, DmgListLog, FSM + lazy AI)
 

@@ -59,6 +59,21 @@ public sealed record MobConditionContext
     public Slaves.ISlaveMobService? Slaves { get; init; }
 
     /// <summary>
+    /// Optional status-change service for MSC_MYSTATUSON /
+    /// MSC_MYSTATUSOFF self-status reads. Friend-status variants ride
+    /// on <see cref="Slaves.ISlaveMobService.GetFriendByStatus"/>;
+    /// only the self-status branch needs this directly.
+    /// </summary>
+    public Map.Server.Status.IStatusChangeService? Sc { get; init; }
+
+    /// <summary>
+    /// Optional entity registry for MSC_MOBNEARBYGT (range scan of
+    /// same-class mobs). Null is acceptable — the evaluator falls
+    /// back to "false" rather than throwing.
+    /// </summary>
+    public Map.Server.Entities.IEntityRegistry? Entities { get; init; }
+
+    /// <summary>
     /// Distinct PC-attacker count (rAthena <c>unit_counttargeted</c>).
     /// Used by MSC_ATTACKPCGT / MSC_ATTACKPCGE. Zero when the
     /// DmgListLog hasn't been queried yet.
