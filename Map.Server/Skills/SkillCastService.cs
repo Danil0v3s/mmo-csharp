@@ -44,6 +44,7 @@ public sealed class SkillCastService : ISkillCastService
     private readonly ILogger<SkillCastService> _logger;
 
     private readonly List<PendingCast> _pending = new();
+    private readonly List<PendingPosCast> _pendingPos = new();
     private readonly Dictionary<(EntityId, ushort), long> _cooldowns = new();
 
     public SkillCastService(
@@ -196,6 +197,108 @@ public sealed class SkillCastService : ISkillCastService
         return SkillCastResult.Started;
     }
 
+    /// <summary>
+    /// T4.9g — real ground-cell cast path. Mirrors rAthena
+    /// <c>unit_skilluse_pos2</c> + <c>skill_castend_pos2</c>
+    /// (unit.cpp / skill.cpp). Validates the skill exists, applies the
+    /// same SP / cooldown / map-flag gates as <see cref="StartCast"/>
+    /// (target validation is skipped — the target is a cell), then either
+    /// schedules a deferred resolve or routes immediately to
+    /// <see cref="Behaviors.SkillImpl.CastendPos2"/> when a plugin is
+    /// registered. Skills with no plugin fall back to a generic
+    /// "no-op" resolution: the parity audit ⚠️ row covers the missing
+    /// resolver chain, individual ports plug in via their own SkillImpl.
+    /// </summary>
+    public SkillCastResult StartCastAt(Entity source, short x, short y, ushort skillId, ushort skillLevel)
+    {
+        var def = _db.Get(skillId);
+        if (def == null) return SkillCastResult.UnknownSkill;
+        if (skillLevel < 1 || skillLevel > def.MaxLevel) return SkillCastResult.LevelOutOfRange;
+
+        if (source is PlayerEntity && !source.CanCastSkill(_sc))
+            return SkillCastResult.CannotAct;
+        if (_mapFlags != null && _maps != null && source is PlayerEntity)
+        {
+            var map = _maps.All.FirstOrDefault(m => (uint)m.Name.GetHashCode() == source.MapId);
+            if (map != null && _mapFlags.IsSet(map.Name, Map.Server.World.MapFlag.NoSkill))
+                return SkillCastResult.MapRefused;
+        }
+        if (source is PlayerEntity pcSource)
+        {
+            var learned = pcSource.LearnedSkills.GetValueOrDefault(skillId);
+            if (learned < skillLevel) return SkillCastResult.LevelOutOfRange;
+        }
+
+        // Range — Chebyshev distance from source to cell.
+        var dist = Math.Max(Math.Abs(source.X - x), Math.Abs(source.Y - y));
+        if (dist > def.Range) return SkillCastResult.OutOfRange;
+
+        var spCost = def.SpCost.Length > skillLevel ? def.SpCost[skillLevel] : 0;
+        if (source is PlayerEntity pc && pc.Sp < spCost) return SkillCastResult.NotEnoughSp;
+
+        var cdKey = (source.Id, skillId);
+        var now = Environment.TickCount64;
+        if (_cooldowns.TryGetValue(cdKey, out var readyAt) && readyAt > now) return SkillCastResult.OnCooldown;
+
+        if (source is PlayerEntity pc2) pc2.Sp -= spCost;
+
+        var castTime = _timing != null
+            ? _timing.CastFix(source, skillId, skillLevel)
+            : (def.CastTimeMs.Length > skillLevel ? def.CastTimeMs[skillLevel] : 0);
+        if (castTime <= 0)
+        {
+            ResolveSkillAt(source, x, y, skillId, skillLevel);
+        }
+        else
+        {
+            _pendingPos.Add(new PendingPosCast
+            {
+                Source = source.Id,
+                X = x,
+                Y = y,
+                SkillId = skillId,
+                Level = skillLevel,
+                ResolveAt = now + castTime,
+            });
+        }
+
+        var cooldown = def.CooldownMs.Length > skillLevel ? def.CooldownMs[skillLevel] : 0;
+        var afterDelay = _timing?.DelayFix(source, skillId, skillLevel) ?? 0;
+        var lock_ = Math.Max(cooldown, afterDelay);
+        if (lock_ > 0) _cooldowns[cdKey] = now + lock_;
+
+        return SkillCastResult.Started;
+    }
+
+    /// <summary>
+    /// rAthena <c>skill_castend_pos2</c> (skill.cpp). Routes a
+    /// ground-targeted cast to the registered SkillImpl plugin's
+    /// <see cref="Behaviors.SkillImpl.CastendPos2"/> hook, or returns
+    /// false when no plugin is registered (the per-skill port wave fills
+    /// the gaps).
+    /// </summary>
+    public bool ResolveSkillAt(Entity source, short x, short y, ushort skillId, ushort skillLevel)
+    {
+        var def = _db.Get(skillId);
+        if (def == null) return false;
+
+        if (_behaviors != null && _battleCalc != null && _damage != null)
+        {
+            var plugin = _behaviors.Get(skillId);
+            if (plugin != null)
+            {
+                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client);
+                plugin.CastendPos2(source, x, y, skillLevel, ctx);
+                return true;
+            }
+        }
+        // No SkillImpl plugin registered — generic ground resolvers
+        // (e.g. simple AOE-on-cell heal) are not yet a registry; per-skill
+        // ports are the canonical path. Returning false lets the caller
+        // log / fall back without crashing.
+        return false;
+    }
+
     public bool ResolveSkill(Entity source, Entity target, ushort skillId, ushort skillLevel)
     {
         var def = _db.Get(skillId);
@@ -235,19 +338,37 @@ public sealed class SkillCastService : ISkillCastService
 
     public void Tick(long nowTick)
     {
-        if (_pending.Count == 0) return;
-
-        for (var i = _pending.Count - 1; i >= 0; i--)
+        if (_pending.Count > 0)
         {
-            var pc = _pending[i];
-            if (pc.ResolveAt > nowTick) continue;
-
-            _pending.RemoveAt(i);
-            var src = _entities.Get(pc.Source);
-            var tgt = _entities.Get(pc.Target);
-            if (src != null && tgt != null && IsAlive(src) && IsAlive(tgt))
+            for (var i = _pending.Count - 1; i >= 0; i--)
             {
-                ResolveSkill(src, tgt, pc.SkillId, pc.Level);
+                var pc = _pending[i];
+                if (pc.ResolveAt > nowTick) continue;
+
+                _pending.RemoveAt(i);
+                var src = _entities.Get(pc.Source);
+                var tgt = _entities.Get(pc.Target);
+                if (src != null && tgt != null && IsAlive(src) && IsAlive(tgt))
+                {
+                    ResolveSkill(src, tgt, pc.SkillId, pc.Level);
+                }
+            }
+        }
+
+        // T4.9g — deferred ground casts use the same expiry sweep.
+        if (_pendingPos.Count > 0)
+        {
+            for (var i = _pendingPos.Count - 1; i >= 0; i--)
+            {
+                var pc = _pendingPos[i];
+                if (pc.ResolveAt > nowTick) continue;
+
+                _pendingPos.RemoveAt(i);
+                var src = _entities.Get(pc.Source);
+                if (src != null && IsAlive(src))
+                {
+                    ResolveSkillAt(src, pc.X, pc.Y, pc.SkillId, pc.Level);
+                }
             }
         }
     }
@@ -266,6 +387,16 @@ public sealed class SkillCastService : ISkillCastService
     {
         public EntityId Source;
         public EntityId Target;
+        public ushort SkillId;
+        public ushort Level;
+        public long ResolveAt;
+    }
+
+    private sealed class PendingPosCast
+    {
+        public EntityId Source;
+        public short X;
+        public short Y;
         public ushort SkillId;
         public ushort Level;
         public long ResolveAt;

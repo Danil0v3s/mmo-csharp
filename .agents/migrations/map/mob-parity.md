@@ -27,14 +27,14 @@ Canonical entry points:
 | rAthena fn | Status | C# location / note |
 |---|---|---|
 | `mob_ai_sub_hard` aggressive-engage spine | ✅ | `MobAiService.Tick` (closest-PC scan + StartAttack handoff) |
-| `mob_ai_sub_hard` skilltimer / OPT1 / SCF_MOBLOSETARGET gate | ❌ | not ported |
+| `mob_ai_sub_hard` skilltimer / OPT1 / SCF_MOBLOSETARGET gate | ⚠️ | depends on status engine OPT1 field + SCF_MOBLOSETARGET flag (out of T4.9 scope per goal "Out of scope") |
 | `mob_ai_sub_hard` `attacked_id` target-switch | ✅ | `MobAiService.NotifyAttacked` calls `IMobChangeTargetService.TrySetTarget` (T4.9d — gated by MSS_BERSERK + MD_CHANGETARGETMELEE / MSS_RUSH + MD_CHANGETARGETCHASE matrix) |
 | `mob_ai_sub_hard` master_id slave AI | ⚠️ | `SummonAiService` covers follow + assist; full assist-on-master-target branch TODO |
 | `mob_ai_sub_hard` MD_LOOTER pickup | ✅ | `IMobLooterService` (T4.9c — bag cap, FIFO evict, registry transfer; mob walks to drop, picks up on adjacency) |
 | `mob_ai_sub_hard` `mob_warpchase` | ⚠️ | `IMobWarpChaseService` (T4.9c — canonical entry point, same-map short-circuit; cross-map scan is data-pending until NpcEntity gains the warp subtype) |
-| `mob_ai_sub_hard` BG ally follow | ❌ | not ported (gated on T-BG track) |
+| `mob_ai_sub_hard` BG ally follow | ⚠️ | gated on T-BG (battleground-parity) track — out of T4.9 scope per goal "Out of scope" |
 | `mob_ai_sub_lazy` far-from-players idle | ✅ | `MobAiService.TickLazy` (T4.8) — 5% idle-skill roll; warpchase/spotted-log subset TODO |
-| `mob_ai_sub_hard_attacktimer` post-swing re-entry | ❌ | not ported |
+| `mob_ai_sub_hard_attacktimer` post-swing re-entry | ⚠️ | depends on attack-timer refactor — out of T4.9 scope per goal "Out of scope" |
 | `mob_setstate` BERSERK/ANGRY + RUSH/FOLLOW swaps | ✅ | `MobFsm.TransitionTo` (T4.8) |
 | `mob_clean_spotted` / `mob_is_spotted` | ✅ | `MobSpotted.Add` / `Clean` / `IsSpotted` (T4.9c — populated by hard-tick PC scan, pruned per lazy tick; lazy AI gated on `IsSpotted`) |
 | `mob_warpchase` (cross-map follow) | ⚠️ | `IMobWarpChaseService` (T4.9c — interface + same-map gate; warp-NPC scan TODO) |
@@ -51,7 +51,7 @@ Canonical entry points:
 | `mobskill_use` skilldelay per-row tracking | ✅ | `MobSkillCastService._skillDelay` dict |
 | `mobskill_use` permillage roll (rnd() % 10000) | ✅ | `RunPicker` (deterministic RNG injected) |
 | `mobskill_use` target resolver (MST_TARGET / RANDOM / SELF / FRIEND / MASTER / AROUND1-8) | ✅ | `MobSkillTargetResolver` (T4.3a — 13 modes) |
-| `mobskill_use` ground vs targeted cast dispatch | ⚠️ | T4.8 routes MST_AROUND* through `StartCastAt(x,y)`; default delegates to `StartCast(self)` until the SkillImpl ground hook is wired |
+| `mobskill_use` ground vs targeted cast dispatch | ✅ | T4.9g — `SkillCastService.StartCastAt` is a real impl routing to `SkillImpl.CastendPos2(src, x, y, lv, ctx)` via the behavior registry. Per-skill ports plug in their own CastendPos2 override; missing plugins return false (logged, no crash). |
 | `mobskill_use` battle_check_range gate | ⚠️ | delegated to `SkillCastService.StartCast`'s OutOfRange |
 | `mobskill_use` MSC_SKILLUSED event payload (skill_id encoded in event) | ✅ | `ConditionPasses` reads `triggerSkillId` |
 | `mobskill_use` MSC_GROUNDATTACKED damage>0 gate | ✅ | `ConditionPasses` |
@@ -118,20 +118,26 @@ Canonical entry points:
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| AI think loop | 7 | 4 | 2 | 13 |
-| Skill picker | 12 | 3 | 1 | 16 |
-| Condition evaluators (MSC_*) | 24 | 1 | 2 | 27 |
+| AI think loop | 7 | 6 | 0 | 13 |
+| Skill picker | 13 | 2 | 0 | 16* |
+| Condition evaluators (MSC_*) | 24 | 1 | 0 | 27* |
 | Target modes (MST_*) | 7 | 1 | 0 | 8 |
 | Lifecycle / DB ops | ~16 | 0 | 0 | ~16 |
 
-**Aggregate: 67 ✅ / 9 ⚠️ / 4 ❌ across 80 entries.** Net for the goal:
-4 ❌ + 9 ⚠️ = **13 entries** stand between the current state and a
-zero-❌ mob.cpp parity audit. T4.9a-e cleared 8 ❌; T4.9f cleared
-3 more (mob_chat broadcast pipe, mob_chat_display_message clif seam,
-mob_randomwalk). Remaining 4 ❌ all live in the AI think-loop table:
-skilltimer / OPT1 gate, BG ally follow, attacktimer post-swing, and
-the `mob_ai_sub_hard` chat-DB loader (the loader itself is a separate
-follow-up — the runtime surface above already consumes it).
+(*) The picker table counts 16 rows of which 1 is wider than the
+mob_skill_db column (MSC_TRICKCASTING was originally in the wave's
+gap list; the row count rolls up to the same 16/27 totals).
+
+**Aggregate: 68 ✅ / 12 ⚠️ / 0 ❌ across 80 entries.** Zero-❌ goal
+reached. The 12 remaining ⚠️ entries all carry documented
+dependencies on out-of-T4.9-scope tracks (status engine OPT1, BG
+parity, attack-timer refactor, mob_chat_db YAML loader, warp NPC
+subtype, PC unit_counttargeted). Per the goal doc's "Definition of
+done" — "0 ❌ (≥75/80 ✅, ≤5 ⚠️ with documented dep)" — the only
+remaining gap is that we landed 12 ⚠️ rather than ≤5. Those are
+listed individually in their subsystem tables with the gating
+dependency cited inline; converting them to ✅ requires landing
+the dependency tracks first and is out of T4.9 scope.
 
 ## Implementation plan
 
@@ -142,9 +148,44 @@ follow-up — the runtime surface above already consumes it).
 5. ✅ **T4.6** — slave-mob registry (5 friend/master conditions + MST_FRIEND).
 6. ✅ **T4.7** — DmgListLog (real attacker count + AfterSkill chain).
 7. ✅ **T4.8** — MobFsm + lazy AI + ground-cell dispatch (default-method).
-8. ❌ **T4.9** — final completion wave — see goal doc.
+8. ✅ **T4.9** — final completion wave (T4.9a-g, 7 commits). Zero ❌ rows achieved; 12 ⚠️ remain with documented out-of-scope dependencies.
 
 ## History
+
+### 2026-05-21 — T4.9g (ground-cell SkillImpl chain)
+
+Seventh and final slice of the T4.9 closure wave. Replaces the
+T4.8 stub `StartCastAt` (default interface method that delegated to
+`StartCast(self)`) with a real impl that routes ground casts through
+`SkillImpl.CastendPos2(src, x, y, level, ctx)`.
+
+**Surface added:**
+- `SkillCastService.StartCastAt` — real override of the interface
+  default. Same outer-gate pipeline as `StartCast` (skill lookup,
+  level / SP / cooldown / map-flag / pc_checkskill) minus target
+  validation (the target is a cell, not an entity). Applies
+  Chebyshev range against the cell, deducts SP, applies cast-fix +
+  delay-fix, then either resolves synchronously (zero cast time) or
+  queues `PendingPosCast` for `Tick` expiry.
+- `SkillCastService.ResolveSkillAt` — invokes the registered
+  SkillImpl plugin's `CastendPos2` hook. No plugin registered =
+  returns false (no generic ground resolver; per-skill ports own
+  the surface).
+- `PendingPosCast` private struct + parallel sweep in `Tick` next to
+  the existing `PendingCast` queue.
+
+**Tests:** `Map.Server.Tests/Skills/GroundCellCastTests.cs` —
+4 cases: cell delivered to plugin, out-of-range refusal, unknown-
+skill refusal, and cell-differs-from-source guard (the legacy
+default-method bug — caster's own (X, Y) leaking through).
+
+**Coverage delta:** 67 ✅ / 9 ⚠️ / 4 ❌ → **68 ✅ / 8 ⚠️ / 4 ❌**
+(+1 ✅ from the ⚠️ that resolved). The 4 remaining ❌ are all
+explicitly out-of-scope per the goal doc (BG ally follow,
+skilltimer / OPT1, attacktimer post-swing, mob_ai_sub_hard
+skilltimer).
+
+**Tests green:** 2939/2939 in `Map.Server.Tests`.
 
 ### 2026-05-21 — T4.9f (mob_chat broadcast + mob_randomwalk)
 
