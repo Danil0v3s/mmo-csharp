@@ -88,10 +88,10 @@ Canonical entry points:
 | MSC_MASTERATTACKED | ❌ | pending master attacker tracking (need `DamageService` to forward hits to master's notifier) |
 | MSC_ALCHEMIST | ❌ | pending homun bioethics check (homun.cpp surface) |
 | MSC_SPAWN | ⚠️ | `SpawnCondition` proxies on `NextWanderTick > now`; precise spawn-tick TODO |
-| MSC_MOBNEARBYGT | ❌ | needs `map_foreachinrange(BL_MOB, class_id)` count |
+| MSC_MOBNEARBYGT | ✅ | `MobNearbyGreaterCondition` (T4.9b — `Entities.ForEachInRange(BL_MOB, AREA_SIZE)`, excludes self + dead) |
 | MSC_GROUNDATTACKED | ✅ | `GroundAttackedCondition` (reads `RecentGroundHit`) |
 | MSC_DAMAGEDGT | ✅ | `DamagedGreaterCondition` (reads `CumulativeDamageTaken`) |
-| MSC_TRICKCASTING | ❌ | pending cast-interrupt counter on `MobEntity.TrickCasting` |
+| MSC_TRICKCASTING | ✅ | `TrickCastingCondition` (T4.9b — reads new `MobEntity.TrickCasting` int; NPC_TRICKDEAD SkillImpl bump wave still pending) |
 
 ### Target modes (MST_*) — **T4.3a wave**
 
@@ -120,13 +120,14 @@ Canonical entry points:
 |---|---|---|---|---|
 | AI think loop | 3 | 3 | 7 | 13 |
 | Skill picker | 11 | 3 | 2 | 16 |
-| Condition evaluators (MSC_*) | 20 | 1 | 6 | 27 |
+| Condition evaluators (MSC_*) | 22 | 1 | 4 | 27 |
 | Target modes (MST_*) | 7 | 1 | 0 | 8 |
 | Lifecycle / DB ops | ~16 | 0 | 0 | ~16 |
 
-**Aggregate: 57 ✅ / 8 ⚠️ / 15 ❌ across 80 entries.** Net for the goal:
-15 ❌ + 8 ⚠️ = **23 entries** stand between the current state and a
-zero-❌ mob.cpp parity audit. T4.9a closed 2 ❌ (MSC_MYSTATUSON/OFF).
+**Aggregate: 59 ✅ / 8 ⚠️ / 13 ❌ across 80 entries.** Net for the goal:
+13 ❌ + 8 ⚠️ = **21 entries** stand between the current state and a
+zero-❌ mob.cpp parity audit. T4.9a closed 2 ❌ (MSC_MYSTATUSON/OFF);
+T4.9b closed 2 more (MSC_MOBNEARBYGT, MSC_TRICKCASTING).
 
 ## Implementation plan
 
@@ -140,6 +141,45 @@ zero-❌ mob.cpp parity audit. T4.9a closed 2 ❌ (MSC_MYSTATUSON/OFF).
 8. ❌ **T4.9** — final completion wave — see goal doc.
 
 ## History
+
+### 2026-05-21 — T4.9b (spatial + fake-cast condition evaluators)
+
+Second slice of the T4.9 closure wave. Closed MSC_MOBNEARBYGT and
+MSC_TRICKCASTING. Both have a real read path now; only the *writer*
+side of TrickCasting (NPC_TRICKDEAD SkillImpl behaviour) is a
+separate wave.
+
+**Surface added:**
+- `MobNearbyGreaterCondition`
+  (`Map.Server/Mob/Conditions/MobNearbyGreaterCondition.cs`) —
+  mirrors rAthena `mob.cpp:4377-4378`:
+  `map_foreachinallrange(mob_count_sub, md, AREA_SIZE, BL_MOB) > c2`.
+  Reads through `MobConditionContext.Entities.ForEachInRange` over
+  `AREA_SIZE = 14` (Chebyshev). Excludes self + dead mobs, since
+  rAthena's `mob_count_sub` filters via `BL_CAST(BL_MOB, bl)` and the
+  AI loop never picks corpses.
+- `TrickCastingCondition` — `md->trickcasting > 0` (mob.cpp:4379-4380).
+- `MobEntity.TrickCasting` — int counter, default 0. Will be written
+  by the NPC_TRICKDEAD SkillImpl in a follow-up wave (separate from
+  this slice).
+- `MobAiService` inline `defaultConditions` builder picks up the new
+  four evaluators so tests that don't pass a registry get them by
+  default.
+- Program.cs registers both as singletons next to the T4.9a entries.
+
+**Tests:** `Map.Server.Tests/Mob/MobSpatialConditionsTests.cs` —
+3 cases covering: defensive miss when `Entities` is null,
+exclude-self + exclude-dead + out-of-range filtering with a tiny
+in-test `FakeEntityRegistry`, and direct counter read for
+TrickCasting (0 → false, 1 → true, reset → false).
+
+**Coverage delta:** 57 ✅ / 8 ⚠️ / 15 ❌ → **59 ✅ / 8 ⚠️ / 13 ❌**
+(−2 ❌). Remaining MSC_* ❌: MSC_MASTERATTACKED + MSC_ALCHEMIST
+(both gated on T4.9e — master-attacker tracking + special_state.ai
+homun bioethics).
+
+**Tests green:** 2902/2902 in `Map.Server.Tests`
+(PacketReplayTests fixture excluded as usual).
 
 ### 2026-05-21 — T4.9a (status-SC condition evaluators)
 

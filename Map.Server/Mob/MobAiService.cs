@@ -64,6 +64,12 @@ public sealed class MobAiService : IMobAiService
             new SpawnCondition(),
             new SlaveLessThanCondition(),
             new SlaveLessEqCondition(),
+            // T4.9a — self-status SC.
+            new MyStatusOnCondition(),
+            new MyStatusOffCondition(),
+            // T4.9b — spatial / fake-cast.
+            new MobNearbyGreaterCondition(),
+            new TrickCastingCondition(),
         });
 
         // If the picker isn't injected, build one inline. This keeps the

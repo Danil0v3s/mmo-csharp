@@ -104,6 +104,15 @@ public class MobEntity : Entity
     /// </summary>
     public ushort LastCastSkillId { get; set; }
 
+    /// <summary>
+    /// rAthena <c>md-&gt;trickcasting</c> (mob.hpp). Per-mob counter
+    /// bumped by skills like NPC_TRICKDEAD that put the mob in a
+    /// "fake-cast" state. MSC_TRICKCASTING fires while this is &gt; 0;
+    /// MSC_ALCHEMIST fires only while it equals 0. Reset to 0 in
+    /// <c>mob_spawn</c> (mob.cpp:1195) and on relevant SC ends.
+    /// </summary>
+    public int TrickCasting { get; set; }
+
     public override EntityType Type => EntityType.Mob;
 
     public MobEntity(EntityId id, int classId, string name, uint mapId, short x, short y)

@@ -293,6 +293,11 @@ builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvalua
 // Read through MobConditionContext.Sc (IStatusChangeService).
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.MyStatusOnCondition>();
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.MyStatusOffCondition>();
+// T4.9b — Spatial / fake-cast evaluators.
+// MSC_MOBNEARBYGT reads through MobConditionContext.Entities.
+// MSC_TRICKCASTING reads MobEntity.TrickCasting directly.
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.MobNearbyGreaterCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.TrickCastingCondition>();
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.MobSkillConditionRegistry>();
 
 // T4.6 — Slave-mob registry. Read-mostly helpers for mob_countslave /
