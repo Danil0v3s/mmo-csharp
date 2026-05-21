@@ -1,16 +1,12 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Other;
 
 /// <summary>
-/// GM_SANDMAN — auto-generated stub from
-/// <c>src/map/skills/other/gmsandman.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// GM_SANDMAN — GM sleep toggle. Manual port of
+/// <c>rathena-fork/src/map/skills/other/gmsandman.cpp</c>.
+/// Toggles OPT1_SLEEP on the target.
 /// </summary>
 public sealed class GmSandman : SkillImpl
 {
@@ -18,16 +14,10 @@ public sealed class GmSandman : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_change *tsc = status_get_sc(target);
-    // 
-    // 	if( tsc ) {
-    // 		if( tsc->opt1 == OPT1_SLEEP )
-    // 			tsc->opt1 = 0;
-    // 		else
-    // 			tsc->opt1 = OPT1_SLEEP;
-    // 		clif_changeoption(target);
-    // 		clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    // 	}
+        if (ctx.Sc?.Get(target, StatusType.Sleep) != null)
+            ctx.Sc.End(target, StatusType.Sleep);
+        else
+            ctx.Sc?.Start(target, StatusType.Sleep, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

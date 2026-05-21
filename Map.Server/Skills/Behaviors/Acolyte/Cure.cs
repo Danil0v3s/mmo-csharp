@@ -1,16 +1,15 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AL_CURE — auto-generated stub from
-/// <c>src/map/skills/acolyte/cure.hpp</c>.
+/// AL_CURE — Acolyte Cure. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/cure.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Removes Silence, Blind, Confusion and Bitescar from the
+/// target. Status-immune mobs (MD_STATUSIMMUNE) cause the cast to
+/// fail-broadcast with no SC removal.</para>
 /// </summary>
 public sealed class Cure : SkillImpl
 {
@@ -18,16 +17,19 @@ public sealed class Cure : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // if (status_isimmune(bl))
-    // 	{
-    // 		clif_skill_nodamage(src, *bl, getSkillId(), skill_lv, false);
-    // 		return;
-    // 	}
-    // 	status_change_end(bl, SC_SILENCE);
-    // 	status_change_end(bl, SC_BLIND);
-    // 	status_change_end(bl, SC_CONFUSION);
-    // 	status_change_end(bl, SC_BITESCAR);
-    // 	clif_skill_nodamage(src, *bl, getSkillId(), skill_lv);
+        // rAthena: if (status_isimmune(bl)) { clif_skill_nodamage(..., false); return; }
+        if ((target.Stats.Mode & MobMode.StatusImmune) != 0)
+        {
+            ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel, success: false);
+            return;
+        }
+
+        // rAthena: end SC_SILENCE / SC_BLIND / SC_CONFUSION / SC_BITESCAR.
+        ctx.Sc?.End(target, StatusType.Silence);
+        ctx.Sc?.End(target, StatusType.Blind);
+        ctx.Sc?.End(target, StatusType.Confusion);
+        ctx.Sc?.End(target, StatusType.Bitescar);
+
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

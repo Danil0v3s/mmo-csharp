@@ -1,28 +1,27 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.MercenaryNpc;
 
 /// <summary>
-/// MER_DECAGI — auto-generated stub from
-/// <c>src/map/skills/mercenary/mercenary_decreaseagi.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MER_DECAGI — Mercenary Decrease Agi. Manual port of
+/// <c>rathena-fork/src/map/skills/mercenary/mercenary_decreaseagi.cpp</c>.
+/// Rate <c>50 + 3*lv + (BaseLv + INT)/5</c>%, duration from skill_db.
 /// </summary>
 public sealed class MercenaryDecreaseAgi : SkillImpl
 {
-    public MercenaryDecreaseAgi() : base(SkillIds.MER_DECAGI) { }
+    private readonly Random _rng;
+
+    public MercenaryDecreaseAgi() : base(SkillIds.MER_DECAGI) => _rng = Random.Shared;
+
+    public MercenaryDecreaseAgi(Random? rng = null) : base(SkillIds.MER_DECAGI)
+        => _rng = rng ?? Random.Shared;
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_data* sstatus = status_get_status_data(*src);
-    // 	sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 	clif_skill_nodamage(src, *target, getSkillId(), skill_lv,
-    // 		sc_start(src,target, type, (50 + skill_lv * 3 + (status_get_lv(src) + sstatus->int_)/5), skill_lv, skill_get_time(getSkillId(),skill_lv)));
+        var rate = 50 + 3 * skillLevel + (src.Level + src.Stats.IntStat) / 5;
+        if (_rng.Next(100) < rate)
+            ctx.Sc?.Start(target, StatusType.DecreaseAgi, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

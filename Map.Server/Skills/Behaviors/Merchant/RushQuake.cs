@@ -1,16 +1,13 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// MT_RUSH_QUAKE — auto-generated stub from
-/// <c>src/map/skills/merchant/rushquake.hpp</c>.
-///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MT_RUSH_QUAKE — Meister Rush Quake. Manual port of
+/// <c>rathena-fork/src/map/skills/merchant/rushquake.cpp</c>.
+/// Ratio <c>+(-100 + 3600*lv) + 10*POW</c>, additional <c>+150*lv</c>
+/// against Formless / Insect races. On hit applies SC_RUSH_QUAKE1.
 /// </summary>
 public sealed class RushQuake : RecursiveDamageSplashSkillImpl
 {
@@ -18,20 +15,12 @@ public sealed class RushQuake : RecursiveDamageSplashSkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 	const status_data* tstatus = status_get_status_data(*target);
-    // 
-    // 	skillratio += -100 + 3600 * skill_lv + 10 * sstatus->pow;
-    // 	if (tstatus->race == RC_FORMLESS || tstatus->race == RC_INSECT)
-    // 		skillratio += 150 * skill_lv;
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
+        var ratio = baseRatio + (-100 + 3600 * skillLevel) + 10 * src.Stats.Pow;
+        if (target.Stats.Race == BattleRace.Formless || target.Stats.Race == BattleRace.Insect)
+            ratio += 150 * skillLevel;
+        return ratio;
     }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start( src, target, SC_RUSH_QUAKE1, 100, skill_lv, skill_get_time( getSkillId(), skill_lv ) );
-    }
+        => ctx.Sc?.Start(target, StatusType.RushQuake1, val1: skillLevel, 0, 0, 0, durationMs: 10_000, src);
 }

@@ -1,16 +1,12 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Other;
 
 /// <summary>
-/// ECL_SNOWFLIP — auto-generated stub from
-/// <c>src/map/skills/other/snowflip.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// ECL_SNOWFLIP — Snow Flip cleanse. Manual port of
+/// <c>rathena-fork/src/map/skills/other/snowflip.cpp</c>.
+/// Cleanses Sleep / Bleeding / Burning / DeepSleep.
 /// </summary>
 public sealed class SnowFlip : SkillImpl
 {
@@ -18,13 +14,10 @@ public sealed class SnowFlip : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_change_end(target, SC_SLEEP);
-    // 	status_change_end(target, SC_BLEEDING);
-    // 	status_change_end(target, SC_BURNING);
-    // 	status_change_end(target, SC_DEEPSLEEP);
-    // 
-    // 	clif_skill_damage( *src, *target, tick, status_get_amotion(src), 0, DMGVAL_IGNORE, 1, getSkillId(), 1, DMG_SINGLE );
-    // 	clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
+        ctx.Sc?.End(target, StatusType.Sleep);
+        ctx.Sc?.End(target, StatusType.Bleeding);
+        ctx.Sc?.End(target, StatusType.Burning);
+        ctx.Sc?.End(target, StatusType.Deepsleep);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

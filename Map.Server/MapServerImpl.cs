@@ -38,6 +38,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly Status.IStatusChangeService _scService;
     private readonly Skills.ISkillCastService _skillCast;
     private readonly Skills.ISkillUnitService _skillUnits;
+    private readonly Skills.ISkillTimerService _skillTimers;
+    private readonly Combat.IDelayedDamageService _delayedDamage;
     private readonly Status.INaturalHealService _naturalHeal;
     private readonly Pet.IPetService _pet;
     private readonly ScriptHost _scriptHost;
@@ -75,6 +77,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         Status.IStatusChangeService scService,
         Skills.ISkillCastService skillCast,
         Skills.ISkillUnitService skillUnits,
+        Skills.ISkillTimerService skillTimers,
+        Combat.IDelayedDamageService delayedDamage,
         Status.INaturalHealService naturalHeal,
         Pet.IPetService pet,
         ScriptHost scriptHost,
@@ -101,6 +105,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _scService = scService;
         _skillCast = skillCast;
         _skillUnits = skillUnits;
+        _skillTimers = skillTimers;
+        _delayedDamage = delayedDamage;
         _naturalHeal = naturalHeal;
         _pet = pet;
         _scriptHost = scriptHost;
@@ -307,6 +313,13 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _skillCast.Tick(nowTick);
         // Skill ground-units periodic effects (rAthena skill_unit_onplace_timer).
         _skillUnits.Tick(nowTick);
+        // Deferred per-skill callbacks (rAthena skill_timerskill / skill_addtimerskill).
+        // Drives multi-hit chains (Sonic Blow, Storm Gust, Adoramus) and
+        // post-knockback re-hits. Ticked after skill_cast so skills cast
+        // this same tick can schedule for the next tick onward.
+        _skillTimers.Tick(nowTick);
+        // Deferred damage applications (rAthena battle_delay_damage).
+        _delayedDamage.Tick(nowTick);
         // Out-of-combat natural HP/SP regen (rAthena status_natural_heal).
         _naturalHeal.Tick(nowTick);
     }

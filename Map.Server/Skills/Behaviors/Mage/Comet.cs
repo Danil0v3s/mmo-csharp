@@ -1,39 +1,18 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
-/// <summary>
-/// WL_COMET — auto-generated stub from
-/// <c>src/map/skills/mage/comet.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
-/// </summary>
+/// <summary>WL_COMET — Warlock Comet. Ground unit; ratio +(-100+2500+700*lv); applies SC_MAGIC_POISON.</summary>
 public sealed class Comet : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
     public Comet() : base(SkillIds.WL_COMET) { }
-
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, SC_MAGIC_POISON, 100, skill_lv, 20000);
-    }
-
+    public Comet(ISkillUnitService? units = null) : base(SkillIds.WL_COMET) => _units = units;
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skillratio += -100 + 2500 + 700 * skill_lv;
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
-    }
-
+        => baseRatio + (-100 + 2500 + 700 * skillLevel);
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // flag|=1;//Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
-    }
+        => _units?.Place(src, SkillId, skillLevel, x, y);
+    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+        => ctx.Sc?.Start(target, StatusType.MagicPoison, val1: skillLevel, 0, 0, 0, durationMs: 20_000, src);
 }

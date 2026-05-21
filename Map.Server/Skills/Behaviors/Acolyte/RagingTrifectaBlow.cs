@@ -3,31 +3,19 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// MO_TRIPLEATTACK — auto-generated stub from
-/// <c>src/map/skills/acolyte/ragingtrifectablow.hpp</c>.
+/// MO_TRIPLEATTACK — Monk Raging Trifecta Blow. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/ragingtrifectablow.cpp</c>.
 ///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>3-hit melee Monk combo. Ratio: <c>+20 * skillLevel</c>
+/// on top of the base. Just a simple per-level damage bump on
+/// the standard weapon-hit pipeline.</para>
 /// </summary>
 public sealed class RagingTrifectaBlow : WeaponSkillImpl
 {
     public RagingTrifectaBlow() : base(SkillIds.MO_TRIPLEATTACK) { }
 
-    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // int32 sflag = flag|SD_ANIMATION;
-    // 
-    // 	WeaponSkillImpl::castendDamageId(src, target, skill_lv, tick, sflag);
-    }
-
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // base_skillratio += 20 * skill_lv;
-    return baseRatio;
+        return baseRatio + 20 * skillLevel;
     }
 }

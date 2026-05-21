@@ -1,31 +1,28 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.MercenaryNpc;
 
 /// <summary>
-/// MER_CRASH — auto-generated stub from
-/// <c>src/map/skills/mercenary/mercenary_crash.hpp</c>.
-///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MER_CRASH — Mercenary Crash. Manual port of
+/// <c>rathena-fork/src/map/skills/mercenary/mercenary_crash.cpp</c>.
+/// Ratio <c>+10*lv</c>. (6*lv)% stun on hit.
 /// </summary>
 public sealed class MercenaryCrash : WeaponSkillImpl
 {
-    public MercenaryCrash() : base(SkillIds.MER_CRASH) { }
+    private readonly Random _rng;
+
+    public MercenaryCrash() : base(SkillIds.MER_CRASH) => _rng = Random.Shared;
+
+    public MercenaryCrash(Random? rng = null) : base(SkillIds.MER_CRASH)
+        => _rng = rng ?? Random.Shared;
+
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+        => baseRatio + 10 * skillLevel;
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src,target,SC_STUN,(6*skill_lv),skill_lv,skill_get_time2(getSkillId(),skill_lv));
-    }
-
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // base_skillratio += 10 * skill_lv;
-    return baseRatio;
+        if (_rng.Next(100) < 6 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
     }
 }

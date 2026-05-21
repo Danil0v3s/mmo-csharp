@@ -1,33 +1,40 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// CH_SOULCOLLECT — auto-generated stub from
-/// <c>src/map/skills/acolyte/zen.hpp</c>.
+/// CH_SOULCOLLECT — Champion Zen / Soul Collect. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/zen.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Instantly fills the caster's Spirit Sphere counter to its
+/// cap (5 by default, +Val1 of <see cref="StatusType.Raisingdragon"/>
+/// when active — Raising Dragon raises the max).</para>
 /// </summary>
 public sealed class Zen : SkillImpl
 {
+    private readonly IPlayerOrbService? _orbs;
+
     public Zen() : base(SkillIds.CH_SOULCOLLECT) { }
+
+    public Zen(IPlayerOrbService? orbs = null) : base(SkillIds.CH_SOULCOLLECT)
+    {
+        _orbs = orbs;
+    }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if(sd) {
-    // 		int32 limit = 5;
-    // 		if( sd->sc.getSCE(SC_RAISINGDRAGON) )
-    // 			limit += sd->sc.getSCE(SC_RAISINGDRAGON)->val1;
-    // 		clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 		for (int32 i = 0; i < limit; i++)
-    // 			pc_addspiritball(sd,skill_get_time(getSkillId(),skill_lv),limit);
-    // 	}
+        if (src is not PlayerEntity sd) return;
+
+        // rAthena: int32 limit = 5; if (SC_RAISINGDRAGON) limit += sc->val1;
+        int limit = 5;
+        var raising = ctx.Sc?.Get(sd, StatusType.Raisingdragon);
+        if (raising != null) limit += raising.Val1;
+
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+
+        // rAthena: for (i=0; i<limit; i++) pc_addspiritball(sd, skill_get_time(...), limit);
+        // We add limit balls at once; the orb service clamps to cap.
+        _orbs?.Add(sd, OrbKind.Spirit, limit);
     }
 }

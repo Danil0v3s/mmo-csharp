@@ -1,31 +1,32 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.MercenaryNpc;
 
 /// <summary>
-/// MA_SANDMAN — auto-generated stub from
-/// <c>src/map/skills/mercenary/mercenary_sandman.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MA_SANDMAN — Mercenary Sandman. Manual port of
+/// <c>rathena-fork/src/map/skills/mercenary/mercenary_sandman.cpp</c>.
+/// Drops the trap; on hit (10*lv + 40)% to sleep.
 /// </summary>
 public sealed class MercenarySandman : SkillImpl
 {
-    public MercenarySandman() : base(SkillIds.MA_SANDMAN) { }
+    private readonly Random _rng;
+    private readonly ISkillUnitService? _units;
+
+    public MercenarySandman() : base(SkillIds.MA_SANDMAN) => _rng = Random.Shared;
+
+    public MercenarySandman(ISkillUnitService? units = null, Random? rng = null) : base(SkillIds.MA_SANDMAN)
+    {
+        _units = units;
+        _rng = rng ?? Random.Shared;
+    }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, SC_SLEEP, (10 * skill_lv + 40), skill_lv, skill_get_time2(getSkillId(), skill_lv), 1000);
+        if (_rng.Next(100) < 10 * skillLevel + 40)
+            ctx.Sc?.Start(target, StatusType.Sleep, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
     }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // flag|=1; // Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
-    }
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 }

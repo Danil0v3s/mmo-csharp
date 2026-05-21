@@ -1635,6 +1635,21 @@ builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.
 
 builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillBehaviorRegistry>();
 
+// T2.3-H1/H2/H3 — central broadcaster for skill-result packets
+// (clif_skill_nodamage / clif_skill_damage / clif_skill_fail). Each
+// SkillImpl body resolves through this façade instead of building
+// raw ZC packets — keeps per-skill code on the high-level intent
+// ("this cast healed N HP", "this hit dealt M damage") rather than
+// the wire format.
+builder.Services.AddSingleton<Map.Server.Skills.ISkillClientService, Map.Server.Skills.SkillClientService>();
+
+// T2.3-H4 — deferred per-skill callback scheduler (rAthena
+// skill_addtimerskill). Multi-hit skills (Sonic Blow, Storm Gust,
+// Adoramus, Tetra Vortex) capture a closure with their post-delay
+// logic and the scheduler fires it at the target tick. Ticked in
+// MapServerImpl.OnTick after SkillCastService.
+builder.Services.AddSingleton<Map.Server.Skills.ISkillTimerService, Map.Server.Skills.SkillTimerService>();
+
 // Standard SkillResolverRegistry now hand-wired here (was previously
 // only in SkillCastService's test ctor). The five generic resolvers
 // run when no plugin claims the cast.

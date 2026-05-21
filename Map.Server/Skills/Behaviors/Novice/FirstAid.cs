@@ -3,14 +3,9 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Novice;
 
 /// <summary>
-/// NV_FIRSTAID — auto-generated stub from
-/// <c>src/map/skills/novice/firstaid.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// NV_FIRSTAID — Novice First Aid. Manual port of
+/// <c>rathena-fork/src/map/skills/novice/firstaid.cpp</c>.
+/// Flat <c>+5 HP</c> heal on the target, animated with skill level 5.
 /// </summary>
 public sealed class FirstAid : SkillImpl
 {
@@ -18,8 +13,10 @@ public sealed class FirstAid : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src, *target, getSkillId(), 5);
-    // 	status_heal(target, 5, 0, 0);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, 5);
+        if (target is PlayerEntity p)
+            p.Hp = Math.Min(p.MaxHp, p.Hp + 5);
+        else if (target is MobEntity m)
+            m.Hp = Math.Min(m.MaxHp, m.Hp + 5);
     }
 }

@@ -1,34 +1,37 @@
 using Map.Server.Entities;
+using Map.Server.Status;
+using Map.Server.Status.StatusOps;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// IQ_THIRD_CONSECRATION — auto-generated stub from
-/// <c>src/map/skills/acolyte/thirdconsecration.hpp</c>.
+/// IQ_THIRD_CONSECRATION — Inquisitor Third Consecration. Manual
+/// port of <c>rathena-fork/src/map/skills/acolyte/thirdconsecration.cpp</c>.
 ///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Holy splash. Ratio: <c>-100 + 700*lv + 10*POW</c>. Ends
+/// <see cref="StatusType.SecondBrand"/> on hit. Heals caster
+/// <c>lv % MaxHP + lv % MaxSP</c> on each splash entry.</para>
 /// </summary>
 public sealed class ThirdConsecration : RecursiveDamageSplashSkillImpl
 {
+    private readonly IStatusOpsService? _statusOps;
+
     public ThirdConsecration() : base(SkillIds.IQ_THIRD_CONSECRATION) { }
+
+    public ThirdConsecration(IStatusOpsService? statusOps = null) : base(SkillIds.IQ_THIRD_CONSECRATION)
+    {
+        _statusOps = statusOps;
+    }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	skillratio += -100 + 700 * skill_lv + 10 * sstatus->pow;
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
+        return baseRatio + (-100 + 700 * skillLevel) + 10 * src.Stats.Pow;
     }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_change_end(target, SC_SECOND_BRAND);
+        ctx.Sc?.End(target, StatusType.SecondBrand);
+        // Heals caster: skill_lv % MaxHP + skill_lv % MaxSP.
+        _statusOps?.PercentHeal(src, (sbyte)skillLevel, (sbyte)skillLevel);
     }
 }

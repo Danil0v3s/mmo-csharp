@@ -1,27 +1,20 @@
 using Map.Server.Entities;
+using Map.Server.Status;
+using Map.Server.Status.StatusOps;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
-/// <summary>
-/// SA_FULLRECOVERY — auto-generated stub from
-/// <c>src/map/skills/mage/rejuvenation.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
-/// </summary>
+/// <summary>SA_FULLRECOVERY — Sage Full Recovery. 100 % HP + SP heal (status-immune blocks).</summary>
 public sealed class Rejuvenation : SkillImpl
 {
+    private readonly IStatusOpsService? _statusOps;
     public Rejuvenation() : base(SkillIds.SA_FULLRECOVERY) { }
+    public Rejuvenation(IStatusOpsService? statusOps = null) : base(SkillIds.SA_FULLRECOVERY) => _statusOps = statusOps;
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 	if (status_isimmune(target))
-    // 		return;
-    // 	status_percent_heal(target, 100, 100);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        if ((target.Stats.Mode & MobMode.StatusImmune) != 0) return;
+        _statusOps?.PercentHeal(target, 100, 100);
     }
 }

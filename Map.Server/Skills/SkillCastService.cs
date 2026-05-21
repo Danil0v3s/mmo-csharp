@@ -40,6 +40,7 @@ public sealed class SkillCastService : ISkillCastService
     private readonly SkillBehaviorRegistry? _behaviors;
     private readonly IBattleCalculator? _battleCalc;
     private readonly IDamageService? _damage;
+    private readonly ISkillClientService? _client;
     private readonly ILogger<SkillCastService> _logger;
 
     private readonly List<PendingCast> _pending = new();
@@ -56,7 +57,8 @@ public sealed class SkillCastService : ISkillCastService
         ISkillCastTimingService? timing = null,
         SkillBehaviorRegistry? behaviors = null,
         IBattleCalculator? battleCalc = null,
-        IDamageService? damage = null)
+        IDamageService? damage = null,
+        ISkillClientService? client = null)
     {
         _db = db;
         _entities = entities;
@@ -68,6 +70,7 @@ public sealed class SkillCastService : ISkillCastService
         _behaviors = behaviors;
         _battleCalc = battleCalc;
         _damage = damage;
+        _client = client;
         _logger = logger;
     }
 
@@ -213,7 +216,7 @@ public sealed class SkillCastService : ISkillCastService
             var plugin = _behaviors.Get(skillId);
             if (plugin != null)
             {
-                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc);
+                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client);
                 if (def.DamageKind == SkillDamageKind.None)
                     plugin.CastendNoDamageId(source, target, skillLevel, ctx);
                 else

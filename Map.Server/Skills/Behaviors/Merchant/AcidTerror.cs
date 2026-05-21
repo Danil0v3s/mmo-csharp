@@ -1,45 +1,29 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// AM_ACIDTERROR — auto-generated stub from
-/// <c>src/map/skills/merchant/acidterror.hpp</c>.
-///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// AM_ACIDTERROR — Alchemist Acid Terror. Manual port of
+/// <c>rathena-fork/src/map/skills/merchant/acidterror.cpp</c>.
+/// Renewal ratio: <c>+(-100 + 200*lv)</c>. On-hit SC_BLEEDING at
+/// <c>3*lv %</c> and a chance to break armor (break_equip TODO).
 /// </summary>
 public sealed class AcidTerror : WeaponSkillImpl
 {
-    public AcidTerror() : base(SkillIds.AM_ACIDTERROR) { }
+    private readonly Random _rng;
+
+    public AcidTerror() : base(SkillIds.AM_ACIDTERROR) => _rng = Random.Shared;
+
+    public AcidTerror(Random? rng = null) : base(SkillIds.AM_ACIDTERROR) => _rng = rng ?? Random.Shared;
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // #ifdef RENEWAL
-    // 	const map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	base_skillratio += -100 + 200 * skill_lv;
-    // 	if (sd && pc_checkskill(sd, AM_LEARNINGPOTION))
-    // 		base_skillratio += 100; // !TODO: What's this bonus increase?
-    // #else
-    // 	base_skillratio += -50 + 50 * skill_lv;
-    // #endif
-    return baseRatio;
-    }
+        => baseRatio + (-100 + 200 * skillLevel);
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start2(src,target,SC_BLEEDING,(skill_lv*3),skill_lv,src->id,skill_get_time2(getSkillId(),skill_lv));
-    // #ifdef RENEWAL
-    // 	if (skill_break_equip(src,target, EQP_ARMOR, (1000 * skill_lv + 500) - 1000, BCT_ENEMY))
-    // #else
-    // 	if (skill_break_equip(src,target, EQP_ARMOR, 100*skill_get_time(getSkillId(),skill_lv), BCT_ENEMY))
-    // #endif
-    // 		clif_emotion( *target, ET_HUK );
+        if (_rng.Next(100) < 3 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Bleeding, val1: skillLevel, val2: (int)src.Id, 0, 0, durationMs: 30_000, src);
+        // TODO: skill_break_equip(EQP_ARMOR, ...) + ET_HUK emote.
     }
 }

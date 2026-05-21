@@ -1,40 +1,41 @@
 using Map.Server.Entities;
+using Map.Server.Status;
+using Map.Server.Status.StatusOps;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// CD_REPARATIO — auto-generated stub from
-/// <c>src/map/skills/acolyte/reparatio.hpp</c>.
+/// CD_REPARATIO — Cardinal Reparatio. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/reparatio.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Full-HP heal on a PC target. PC-only — mobs reject with
+/// fail-broadcast. Status-immune targets heal for 0.</para>
 /// </summary>
 public sealed class Reparatio : SkillImpl
 {
+    private readonly IStatusOpsService? _statusOps;
+
     public Reparatio() : base(SkillIds.CD_REPARATIO) { }
+
+    public Reparatio(IStatusOpsService? statusOps = null) : base(SkillIds.CD_REPARATIO)
+    {
+        _statusOps = statusOps;
+    }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 	status_data* tstatus = status_get_status_data(*target);
-    // 
-    // 	if (target->type != BL_PC) { // Only works on players.
-    // 		if (sd)
-    // 			clif_skill_fail( *sd, getSkillId() );
-    // 		return;
-    // 	}
-    // 
-    // 	int32 heal_amount = 0;
-    // 
-    // 	if (!status_isimmune(target))
-    // 		heal_amount = tstatus->max_hp;
-    // 
-    // 	clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    // 	clif_skill_nodamage(nullptr, *target, AL_HEAL, heal_amount);
-    // 	status_heal(target, heal_amount, 0, 0);
+        if (target is not PlayerEntity)
+        {
+            if (src is PlayerEntity sd)
+                ctx.Client?.BroadcastSkillFail(sd, SkillId,
+                    Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
+            return;
+        }
+
+        long healAmount = (target.Stats.Mode & MobMode.StatusImmune) != 0 ? 0 : target.Stats.MaxHp;
+
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        ctx.Client?.BroadcastSkillNoDamage(null, target, SkillIds.AL_HEAL, (int)healAmount);
+        _statusOps?.Heal(target, healAmount, 0, 0);
     }
 }

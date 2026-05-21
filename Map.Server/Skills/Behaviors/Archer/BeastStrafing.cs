@@ -1,36 +1,38 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Archer;
 
 /// <summary>
-/// HT_POWER — auto-generated stub from
-/// <c>src/map/skills/archer/beaststrafing.hpp</c>.
+/// HT_POWER — Hunter Beast Strafing. Manual port of
+/// <c>rathena-fork/src/map/skills/archer/beaststrafing.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Only fires against Brute / Doram / Insect races. Ratio:
+/// <c>+(-50 + 8*STR)</c>.</para>
 /// </summary>
 public sealed class BeastStrafing : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
+
     public BeastStrafing() : base(SkillIds.HT_POWER) { }
 
-    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public BeastStrafing(ISkillAttackService? skillAttack = null) : base(SkillIds.HT_POWER)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_data* tstatus = status_get_status_data(*target);
-    // 
-    // 	if( tstatus->race == RC_BRUTE || tstatus->race == RC_PLAYER_DORAM || tstatus->race == RC_INSECT )
-    // 		skill_attack(BF_WEAPON,src,src,target,getSkillId(),skill_lv,tick,flag);
+        _skillAttack = skillAttack;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	base_skillratio += -50 + 8 * sstatus->str;
-    return baseRatio;
+        return baseRatio + (-50 + 8 * src.Stats.Str);
+    }
+
+    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        if (target.Stats.Race != BattleRace.Brute
+            && target.Stats.Race != BattleRace.PlayerDoram
+            && target.Stats.Race != BattleRace.Insect)
+            return;
+        _skillAttack?.SkillAttack(BattleAttackType.Weapon, src, src, target, SkillId, skillLevel);
     }
 }

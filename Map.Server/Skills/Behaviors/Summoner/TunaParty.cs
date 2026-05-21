@@ -1,16 +1,12 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Summoner;
 
 /// <summary>
-/// SU_TUNAPARTY — auto-generated stub from
-/// <c>src/map/skills/summoner/tunaparty.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// SU_TUNAPARTY — Summoner Tuna Party. Manual port of
+/// <c>rathena-fork/src/map/skills/summoner/tunaparty.cpp</c>.
+/// Applies SC_TUNAPARTY.
 /// </summary>
 public sealed class TunaParty : SkillImpl
 {
@@ -18,8 +14,7 @@ public sealed class TunaParty : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(target,*target,getSkillId(),skill_lv,
-    // 		sc_start(src,target,skill_get_sc(getSkillId()),100,skill_lv,skill_get_time(getSkillId(),skill_lv)));
+        ctx.Sc?.Start(target, StatusType.Tunaparty, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

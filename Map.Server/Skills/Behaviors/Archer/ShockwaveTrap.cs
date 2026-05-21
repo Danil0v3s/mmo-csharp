@@ -1,33 +1,32 @@
 using Map.Server.Entities;
+using Map.Server.Status.StatusOps;
 
 namespace Map.Server.Skills.Behaviors.Archer;
 
 /// <summary>
-/// HT_SHOCKWAVE — auto-generated stub from
-/// <c>src/map/skills/archer/shockwavetrap.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// HT_SHOCKWAVE — Hunter Shockwave Trap. Manual port of
+/// <c>rathena-fork/src/map/skills/archer/shockwavetrap.cpp</c>.
+/// Drops trap; on-hit drains <c>(15*lv + 5)%</c> of victim's SP.
 /// </summary>
 public sealed class ShockwaveTrap : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+    private readonly IStatusOpsService? _statusOps;
+
     public ShockwaveTrap() : base(SkillIds.HT_SHOCKWAVE) { }
 
-    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+    public ShockwaveTrap(ISkillUnitService? units = null, IStatusOpsService? statusOps = null) : base(SkillIds.HT_SHOCKWAVE)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // //Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	flag |= 1;
-    // 
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
+        _units = units;
+        _statusOps = statusOps;
     }
+
+    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_percent_damage(src, target, 0, -(15*skill_lv+5), false);
+        var pct = (sbyte)(15 * skillLevel + 5);
+        _statusOps?.PercentDamage(src, target, 0, (sbyte)-pct, can_kill: false);
     }
 }

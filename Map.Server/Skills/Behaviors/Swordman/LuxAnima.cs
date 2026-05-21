@@ -1,16 +1,13 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// RK_LUXANIMA — auto-generated stub from
-/// <c>src/map/skills/swordman/luxanima.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// RK_LUXANIMA — Rune Knight Lux Anima. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/luxanima.cpp</c>.
+/// Strips the target's bonus_script buffs (SCCB_LUXANIMA) and applies
+/// SC_LUXANIMA. Bonus-script clear is TODO.
 /// </summary>
 public sealed class LuxAnima : SkillImpl
 {
@@ -18,11 +15,8 @@ public sealed class LuxAnima : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 	status_change_clear_buffs(target, SCCB_LUXANIMA); // For bonus_script
-    // 	sc_start(src, target, type, 100, skill_lv, skill_get_time(getSkillId(), skill_lv));
-    // 	clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
+        // TODO: status_change_clear_buffs(target, SCCB_LUXANIMA) on PlayerEntity bonus scripts.
+        ctx.Sc?.Start(target, StatusType.Luxanima, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

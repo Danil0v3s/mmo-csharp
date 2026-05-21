@@ -3,14 +3,10 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// GN_CHANGEMATERIAL — auto-generated stub from
-/// <c>src/map/skills/merchant/changematerial.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// GN_CHANGEMATERIAL — Genetic Change Material. Manual port of
+/// <c>rathena-fork/src/map/skills/merchant/changematerial.cpp</c>.
+/// Opens the item-conversion list. UI packet (clif_skill_itemlistwindow)
+/// not wired — broadcast only.
 /// </summary>
 public sealed class ChangeMaterial : SkillImpl
 {
@@ -18,12 +14,7 @@ public sealed class ChangeMaterial : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if( sd ) {
-    // 		clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 		clif_skill_itemlistwindow(sd,getSkillId(),skill_lv);
-    // 	}
+        if (src is not PlayerEntity) return;
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

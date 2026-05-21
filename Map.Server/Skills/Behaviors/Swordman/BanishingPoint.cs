@@ -1,16 +1,13 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// LG_BANISHINGPOINT — auto-generated stub from
-/// <c>src/map/skills/swordman/banishingpoint.hpp</c>.
-///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// LG_BANISHINGPOINT — Royal Guard Banishing Point. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/banishingpoint.cpp</c>.
+/// Ratio <c>+(-100 + 100*lv) + 70*Bash_lv</c>; +800 with SC_SPEAR_SCAR.
+/// Hit bonus +5*lv. SM_BASH skill-tree query is TODO.
 /// </summary>
 public sealed class BanishingPoint : WeaponSkillImpl
 {
@@ -18,28 +15,12 @@ public sealed class BanishingPoint : WeaponSkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const map_session_data* sd = BL_CAST(BL_PC, src);
-    // 	const status_change* sc = status_get_sc(src);
-    // 
-    // 	skillratio += -100 + (100 * skill_lv);
-    // 
-    // 	if (sd != nullptr) {
-    // 		skillratio += pc_checkskill(sd, SM_BASH) * 70;
-    // 	}
-    // 
-    // 	if (sc != nullptr && sc->getSCE(SC_SPEAR_SCAR)) {
-    // 		skillratio += 800;
-    // 	}
-    // 
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
+        var ratio = baseRatio + (-100 + 100 * skillLevel);
+        // TODO: + pc_checkskill(sd, SM_BASH) * 70 when skill tree is wired through.
+        // TODO: + 800 if src has SC_SPEAR_SCAR.
+        return ratio;
     }
 
     public override short ModifyHitRate(short hitRate, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // hit_rate += 5 * skill_lv;
-    return hitRate;
-    }
+        => (short)(hitRate + 5 * skillLevel);
 }

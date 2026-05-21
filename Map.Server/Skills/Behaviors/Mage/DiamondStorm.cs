@@ -1,49 +1,42 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// EM_DIAMOND_STORM — auto-generated stub from
-/// <c>src/map/skills/mage/diamondstorm.hpp</c>.
+/// EM_DIAMOND_STORM — Elemental Master Diamond Storm. Manual port of
+/// <c>rathena-fork/src/map/skills/mage/diamondstorm.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Ground unit Water magic. Ratio: <c>+(-100 + 500 + 2400*lv) + 5*SPL</c>,
+/// plus a +<c>7300 + 200*lv + 5*SPL</c> bonus when SC_SUMMON_ELEMENTAL_DILUVIO
+/// is active on the caster (SC readback TODO). Splash victims roll 5 %
+/// SC_HANDICAPSTATE_FROSTBITE.</para>
 /// </summary>
 public sealed class DiamondStorm : SkillImpl
 {
-    public DiamondStorm() : base(SkillIds.EM_DIAMOND_STORM) { }
+    private readonly ISkillUnitService? _units;
+    private readonly Random _rng;
 
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public DiamondStorm() : base(SkillIds.EM_DIAMOND_STORM) => _rng = Random.Shared;
+
+    public DiamondStorm(ISkillUnitService? units = null, Random? rng = null) : base(SkillIds.EM_DIAMOND_STORM)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, SC_HANDICAPSTATE_FROSTBITE, 5, skill_lv, skill_get_time2(getSkillId(), skill_lv));
+        _units = units;
+        _rng = rng ?? Random.Shared;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 	const status_change *sc = status_get_sc(src);
-    // 
-    // 	skillratio += -100 + 500 + 2400 * skill_lv;
-    // 	skillratio += 5 * sstatus->spl;
-    // 
-    // 	if( sc != nullptr && sc->getSCE( SC_SUMMON_ELEMENTAL_DILUVIO ) ){
-    // 		skillratio += 7300 + 200 * skill_lv;
-    // 		skillratio += 5 * sstatus->spl;
-    // 	}
-    // 
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
+        // rAthena: skillratio += -100 + 500 + 2400*lv + 5*SPL; +SC_SUMMON_ELEMENTAL_DILUVIO bonus TODO.
+        return baseRatio + (-100 + 500 + 2400 * skillLevel) + 5 * src.Stats.Spl;
     }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+        => _units?.Place(src, SkillId, skillLevel, x, y);
+
+    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // flag|=1;//Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
+        if (_rng.Next(100) < 5)
+            ctx.Sc?.Start(target, StatusType.HandicapstateFrostbite, val1: skillLevel, 0, 0, 0, durationMs: 5000, src);
     }
 }

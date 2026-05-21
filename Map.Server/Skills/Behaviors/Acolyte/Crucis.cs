@@ -1,32 +1,56 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AL_CRUCIS — auto-generated stub from
-/// <c>src/map/skills/acolyte/crucis.hpp</c>.
+/// AL_CRUCIS — Acolyte Signum Crucis. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/crucis.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Splash debuff that lowers Undead/Demon DEF on every enemy
+/// in range. Per-target landing chance is level-scaled:</para>
+///
+/// <code>
+///   chance% = 25 + skillLevel*4 + casterLevel − targetLevel
+/// </code>
+///
+/// <para>rAthena's outer branch (no <c>flag &amp; 1</c>) iterates
+/// every enemy in <c>skill_get_splash</c> and recursively invokes
+/// itself per-victim with the bit set. The inner branch is what
+/// actually applies the SC.</para>
+///
+/// <para>Duration: <c>30000 * skillLevel</c> ms per skill_db.</para>
 /// </summary>
 public sealed class Crucis : SkillImpl
 {
-    public Crucis() : base(SkillIds.AL_CRUCIS) { }
+    private readonly Random _rng;
+
+    public Crucis() : base(SkillIds.AL_CRUCIS) => _rng = Random.Shared;
+
+    public Crucis(Random? rng = null) : base(SkillIds.AL_CRUCIS) => _rng = rng ?? Random.Shared;
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 	if (flag & 1)
-    // 		sc_start(src, bl, type, 25 + skill_lv * 4 + status_get_lv(src) - status_get_lv(bl), skill_lv, skill_get_time(getSkillId(), skill_lv));
-    // 	else
-    // 	{
-    // 		map_foreachinallrange(skill_area_sub, src, skill_get_splash(getSkillId(), skill_lv), BL_CHAR, src, getSkillId(), skill_lv, tick, flag | BCT_ENEMY | 1, skill_castend_nodamage_id);
-    // 		clif_skill_nodamage(src, *bl, getSkillId(), skill_lv);
-    // 	}
+        // Always broadcast the cast visual (rAthena emits clif_skill_nodamage
+        // in the outer branch). Splash range from skill_db: 7 cells.
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+
+        const short splashRange = 7;
+        var duration = 30_000 * skillLevel;
+
+        var victims = ctx.Entities.ForEachInRange(src.MapId, src.X, src.Y, splashRange,
+            EntityType.Mob | EntityType.Pc)
+            .Where(v => v.Id != src.Id);
+
+        foreach (var v in victims)
+        {
+            // chance = 25 + skill_lv*4 + casterLv - targetLv
+            var chance = 25 + skillLevel * 4 + src.Level - v.Level;
+            if (chance <= 0) continue;
+            if (_rng.Next(100) >= chance) continue;
+
+            ctx.Sc?.Start(v, StatusType.Signumcrucis, val1: skillLevel,
+                0, 0, 0, duration, src);
+        }
     }
 }

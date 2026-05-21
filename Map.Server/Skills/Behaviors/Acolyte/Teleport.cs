@@ -1,61 +1,54 @@
+using Core.Server.Packets.Out.ZC;
 using Map.Server.Entities;
+using Map.Server.Visibility;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AL_TELEPORT — auto-generated stub from
-/// <c>src/map/skills/acolyte/teleport.hpp</c>.
+/// AL_TELEPORT — Acolyte Teleport. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/teleport.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Lv 1: random warp on the same map. Lv 2: chooser between
+/// random and save-point. Lv 3: direct warp to save-point (used by
+/// the Fly Wing item or autocast).</para>
+///
+/// <para>Mobs invoked at lv 0 → <c>unit_warp(-1,-1,-1)</c> = random
+/// warp on same map.</para>
+///
+/// <para>Map-flag NOTELEPORT / duel restrictions / save-point warp
+/// are TODO until the map-flag service + save-point field are
+/// surfaced through the skill behavior context.</para>
 /// </summary>
 public sealed class Teleport : SkillImpl
 {
+    private readonly IVisibilityService? _visibility;
+
     public Teleport() : base(SkillIds.AL_TELEPORT) { }
+
+    public Teleport(IVisibilityService? visibility = null) : base(SkillIds.AL_TELEPORT)
+    {
+        _visibility = visibility;
+    }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if(sd != nullptr)
-    // 	{
-    // 		if (map_getmapflag(target->m, MF_NOTELEPORT) && skill_lv <= 2) {
-    // 			clif_skill_teleportmessage( *sd, NOTIFY_MAPINFO_CANT_TP );
-    // 			return;
-    // 		}
-    // 		if(!battle_config.duel_allow_teleport && sd->duel_group && skill_lv <= 2) { // duel restriction [LuzZza]
-    // 			char output[128]; sprintf(output, msg_txt(sd,365), skill_get_name(getSkillId()));
-    // 			clif_displaymessage(sd->fd, output); //"Duel: Can't use %s in duel."
-    // 			return;
-    // 		}
-    // 
-    // 		if( sd->state.autocast || ( (sd->skillitem == getSkillId() || battle_config.skip_teleport_lv1_menu) && skill_lv == 1 ) || skill_lv == 3 )
-    // 		{
-    // 			if( skill_lv == 1 )
-    // 				pc_randomwarp(sd,CLR_TELEPORT);
-    // 			else
-    // 				pc_setpos( sd, mapindex_name2id( sd->status.save_point.map ), sd->status.save_point.x, sd->status.save_point.y, CLR_TELEPORT );
-    // 			return;
-    // 		}
-    // 
-    // 		clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 
-    // 		std::vector<std::string> maps = {
-    // 			"Random"
-    // 		};
-    // 
-    // 		if( skill_lv == 1 ){
-    // 			clif_skill_warppoint( *sd, getSkillId(), skill_lv, maps );
-    // 		}else{
-    // 			maps.push_back( sd->status.save_point.map );
-    // 
-    // 			clif_skill_warppoint( *sd, getSkillId(), skill_lv, maps );
-    // 		}
-    // 	} else
-    // 		unit_warp(target,-1,-1,-1,CLR_TELEPORT);
+        if (src is not PlayerEntity sd)
+        {
+            // Mob caster: random-warp on same map. TODO: hook into
+            // IUnitOpsService.Warp once it lands.
+            return;
+        }
+
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+
+        // Send the chooser packet at lv1 (just "Random") or lv2+ (Random + Save).
+        var maps = new List<string> { "Random" };
+        if (skillLevel >= 2) maps.Add("SavePoint"); // TODO: actual save_point.map.
+
+        _visibility?.SendToSelf(sd, new ZC_WARPLIST
+        {
+            SkillId = SkillId,
+            Maps = maps,
+        });
     }
 }

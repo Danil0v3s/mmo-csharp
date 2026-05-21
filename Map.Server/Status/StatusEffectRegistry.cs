@@ -355,6 +355,31 @@ public sealed class StatusEffectRegistry
         // SC_CARTBOOST (WS_CARTBOOST) — +MoveSpeed while pushing cart.
         Register(StatusType.Cartboost, NoOpHandler());
 
+        // ---- T2.3-P2 (Acolyte wave) SC markers ----
+        // SC_LAUDAAGNUS (AB_LAUDAAGNUS) — cures Freeze/Stone/Blind/
+        // Burning/Freezing/Crystallize on cast; otherwise +VIT buff.
+        Register(StatusType.Laudaagnus, NoOpHandler());
+        // SC_LAUDARAMUS (AB_LAUDARAMUS) — cures Sleep/Stun/Mandragora/
+        // Silence/DeepSleep on cast; otherwise +CRIT buff.
+        Register(StatusType.Laudaramus, NoOpHandler());
+        // SC_PROTECTEXP (AB_EXPIATIO etc.) — left as marker for later.
+        // SC_BLIND already registered above; we end it from Cure / LaudaAgnus.
+
+        // ---- T2.3-P1 (Heal port) SC markers ----
+        // SC_KAITE — bounce-back-heal SC (KG_KAITE). Acolyte/Priest
+        // Heal is redirected to the caster while active; consumed per
+        // Heal use (Val2 = remaining charges).
+        Register(StatusType.Kaite, NoOpHandler());
+        // SC_BITESCAR — Sura/4th-class DoT marker; ends when target
+        // is healed (AL_HEAL clears it).
+        Register(StatusType.Bitescar, NoOpHandler());
+        // SC_AKAITSUKI — Sura Yggdrasil-Leaf marker. Flips next heal
+        // into damage of equal magnitude.
+        Register(StatusType.Akaitsuki, NoOpHandler());
+        // SC_SATURDAYNIGHTFEVER — Sura buff that suppresses heal
+        // (rAthena: clif still shows the 0 frame, real apply is zero).
+        Register(StatusType.Saturdaynightfever, NoOpHandler());
+
         // ---- T2.3 3rd/4th class SC markers ----
         // SC_DEATHBOUND (RK_DEATHBOUND) — reflect next physical hit.
         Register(StatusType.Deathbound, NoOpHandler());

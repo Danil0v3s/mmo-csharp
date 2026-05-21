@@ -3,38 +3,18 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Homunculus;
 
 /// <summary>
-/// MH_THE_ONE_FIGHTER_RISES — auto-generated stub from
-/// <c>src/map/skills/homunculus/homunculus_theonefighterrises.hpp</c>.
-///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MH_THE_ONE_FIGHTER_RISES — Homunculus The One Fighter Rises.
+/// Manual port of <c>rathena-fork/src/map/skills/homunculus/homunculus_theonefighterrises.cpp</c>.
+/// Ratio <c>+(-100 + 580*lv*BaseLv/100) + STR</c>. On cast grants
+/// MAX_SPIRITBALL stacks (TODO).
 /// </summary>
 public sealed class TheOneFighterRises : RecursiveDamageSplashSkillImpl
 {
     public TheOneFighterRises() : base(SkillIds.MH_THE_ONE_FIGHTER_RISES) { }
 
-    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // homun_data* hd = BL_CAST(BL_HOM, src);
-    // 
-    // 	if (hd != nullptr) {
-    // 		hom_addspiritball(hd, MAX_SPIRITBALL);
-    // 	}
-    // 
-    // 	clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 	skill_castend_damage_id(src, target, getSkillId(), skill_lv, tick, flag);
-    }
-
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	base_skillratio += -100 + 580 * skill_lv * status_get_lv(src) / 100 + sstatus->str;
-    return baseRatio;
-    }
+        => baseRatio + (-100 + 580 * skillLevel * src.Level / 100) + src.Stats.Str;
+
+    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+        => ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
 }

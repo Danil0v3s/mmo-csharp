@@ -3,34 +3,24 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Homunculus;
 
 /// <summary>
-/// MH_POISON_MIST — auto-generated stub from
-/// <c>src/map/skills/homunculus/homunculus_poisonmist.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MH_POISON_MIST — Homunculus Poison Mist. Manual port of
+/// <c>rathena-fork/src/map/skills/homunculus/homunculus_poisonmist.cpp</c>.
+/// Drops the poison cloud unit. Ratio <c>+(-100 + 200*lv*BaseLv/100) + DEX</c>.
 /// </summary>
 public sealed class PoisonMist : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+
     public PoisonMist() : base(SkillIds.MH_POISON_MIST) { }
 
-    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+    public PoisonMist(ISkillUnitService? units = null) : base(SkillIds.MH_POISON_MIST)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // //Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	flag |= 1;
-    // 	// Ammo should be deleted right away.
-    // 	skill_unitsetting(src, getSkillId(), skill_lv, x, y, 0);
+        _units = units;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	base_skillratio += -100 + 200 * skill_lv * status_get_lv(src) / 100 + sstatus->dex; // ! TODO: Confirm DEX bonus
-    return baseRatio;
-    }
+        => baseRatio + (-100 + 200 * skillLevel * src.Level / 100) + src.Stats.Dex;
+
+    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 }

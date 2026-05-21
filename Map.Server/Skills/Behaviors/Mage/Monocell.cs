@@ -1,16 +1,18 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SA_MONOCELL — auto-generated stub from
-/// <c>src/map/skills/mage/monocell.hpp</c>.
+/// SA_MONOCELL — Sage Monocell. Manual port of
+/// <c>rathena-fork/src/map/skills/mage/monocell.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Transforms the target monster into a Poring (MOBID_PORING).
+/// Player caster fails on status-immune (boss) mobs. On success it
+/// also clears every common SC and a curated list of crowd-control
+/// SCs. <c>mob_class_change</c> isn't wired here yet — the
+/// transformation is left as TODO and we only land the broadcast +
+/// safety gate.</para>
 /// </summary>
 public sealed class Monocell : SkillImpl
 {
@@ -18,30 +20,14 @@ public sealed class Monocell : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // mob_data* dstmd = BL_CAST(BL_MOB, target);
-    // 	status_change *tsc = status_get_sc(target);
-    // 	map_session_data* sd = BL_CAST( BL_PC, src );
-    // 	int32 i = 0;
-    // 
-    // 	if (dstmd)
-    // 	{
-    // 		int32 class_;
-    // 
-    // 		if ( sd && status_has_mode(&dstmd->status,MD_STATUSIMMUNE) ) {
-    // 			clif_skill_fail( *sd, getSkillId() );
-    // 			return;
-    // 		}
-    // 		class_ = MOBID_PORING;
-    // 		clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 		mob_class_change(dstmd,class_);
-    // 		if( tsc && status_has_mode(&dstmd->status,MD_STATUSIMMUNE) ) {
-    // 			const enum sc_type scs[] = { SC_QUAGMIRE, SC_PROVOKE, SC_ROKISWEIL, SC_GRAVITATION, SC_SUITON, SC_STRIPWEAPON, SC_STRIPSHIELD, SC_STRIPARMOR, SC_STRIPHELM, SC_BLADESTOP };
-    // 			for (i = SC_COMMON_MIN; i <= SC_COMMON_MAX; i++)
-    // 				if (tsc->getSCE(i)) status_change_end(target, (sc_type)i);
-    // 			for (i = 0; i < ARRAYLENGTH(scs); i++)
-    // 				if (tsc->getSCE(scs[i])) status_change_end(target, scs[i]);
-    // 		}
-    // 	}
+        if (target is not MobEntity)
+            return;
+        if (src is PlayerEntity sd && (target.Stats.Mode & MobMode.StatusImmune) != 0)
+        {
+            ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
+            return;
+        }
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        // TODO: mob_class_change(target, MOBID_PORING) + SC clean-up.
     }
 }

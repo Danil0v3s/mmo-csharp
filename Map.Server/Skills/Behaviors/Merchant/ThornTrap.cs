@@ -1,31 +1,30 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// GN_THORNS_TRAP — auto-generated stub from
-/// <c>src/map/skills/merchant/thorntrap.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// GN_THORNS_TRAP — Genetic Thorn Trap. Manual port of
+/// <c>rathena-fork/src/map/skills/merchant/thorntrap.cpp</c>.
+/// CastendPos2 drops the unit; CastendDamageId hits the trapped target
+/// via the skill's regular attack type.
 /// </summary>
 public sealed class ThornTrap : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
+    private readonly ISkillUnitService? _units;
+
     public ThornTrap() : base(SkillIds.GN_THORNS_TRAP) { }
 
-    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public ThornTrap(ISkillAttackService? skillAttack = null, ISkillUnitService? units = null) : base(SkillIds.GN_THORNS_TRAP)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_attack(skill_get_type(getSkillId()),src,src,target,getSkillId(),skill_lv,tick,flag);
+        _skillAttack = skillAttack;
+        _units = units;
     }
 
+    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+        => _skillAttack?.SkillAttack(BattleAttackType.Weapon, src, src, target, SkillId, skillLevel);
+
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // flag|=1;//Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
-    }
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 }

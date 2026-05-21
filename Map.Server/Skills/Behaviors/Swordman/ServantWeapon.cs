@@ -1,16 +1,12 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// DK_SERVANTWEAPON — auto-generated stub from
-/// <c>src/map/skills/swordman/servantweapon.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// DK_SERVANTWEAPON — Dragon Knight Servant Weapon. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/servantweapon.cpp</c>.
+/// Starts SC_SERVANTWEAPON with val2 = caster id.
 /// </summary>
 public sealed class ServantWeapon : SkillImpl
 {
@@ -18,14 +14,7 @@ public sealed class ServantWeapon : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src, *target, getSkillId(), skill_lv, sc_start2(src, target, skill_get_sc(getSkillId()), 100, skill_lv, src->id, skill_get_time(getSkillId(), skill_lv)));
-    }
-
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    //     // (empty / no-op in rAthena)
-    return baseRatio;
+        ctx.Sc?.Start(target, StatusType.Servantweapon, val1: skillLevel, val2: (int)src.Id, 0, 0, durationMs: 60_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

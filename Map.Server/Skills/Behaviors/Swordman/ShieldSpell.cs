@@ -1,16 +1,12 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// LG_SHIELDSPELL — auto-generated stub from
-/// <c>src/map/skills/swordman/shieldspell.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// LG_SHIELDSPELL — Royal Guard Shield Spell. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/shieldspell.cpp</c>.
+/// Lv1 → SC_SHIELDSPELL_HP, lv2 → SC_SHIELDSPELL_SP, lv3+ → SC_SHIELDSPELL_ATK.
 /// </summary>
 public sealed class ShieldSpell : SkillImpl
 {
@@ -18,18 +14,13 @@ public sealed class ShieldSpell : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_type type;
-    // 
-    // 	if (skill_lv == 1) {
-    // 		type = SC_SHIELDSPELL_HP;
-    // 	} else if (skill_lv == 2) {
-    // 		type = SC_SHIELDSPELL_SP;
-    // 	} else {
-    // 		type = SC_SHIELDSPELL_ATK;
-    // 	}
-    // 
-    // 	clif_skill_nodamage(src, *target, getSkillId(), skill_lv,
-    // 		sc_start(src, target, type, 100, skill_lv, skill_get_time(getSkillId(), skill_lv)));
+        var type = skillLevel switch
+        {
+            1 => StatusType.ShieldspellHp,
+            2 => StatusType.ShieldspellSp,
+            _ => StatusType.ShieldspellAtk,
+        };
+        ctx.Sc?.Start(target, type, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

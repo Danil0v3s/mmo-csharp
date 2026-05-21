@@ -1,38 +1,32 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// KN_AUTOCOUNTER — auto-generated stub from
-/// <c>src/map/skills/swordman/counterattack.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// KN_AUTOCOUNTER — Knight Auto Counter. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/counterattack.cpp</c>.
+/// Applies SC_AUTOCOUNTER to the caster and schedules a +100 ms
+/// follow-up swing at the target.
 /// </summary>
 public sealed class CounterAttack : SkillImpl
 {
+    private readonly ISkillTimerService? _timers;
+
     public CounterAttack() : base(SkillIds.KN_AUTOCOUNTER) { }
 
-    public override void ModifyDamageData(ref Map.Server.Combat.BattleDamage dmg, Entity src, Entity target, ushort skillLevel)
+    public CounterAttack(ISkillTimerService? timers = null) : base(SkillIds.KN_AUTOCOUNTER)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // dmg.flag = (dmg.flag&~BF_SKILLMASK)|BF_NORMAL;
-    }
-
-    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, skill_get_sc(getSkillId()), 100, skill_lv, skill_get_time(getSkillId(), skill_lv));
-    // 	skill_addtimerskill(src, tick + 100, target->id, 0, 0, getSkillId(), skill_lv, BF_WEAPON, flag);
+        _timers = timers;
     }
 
     public override short ModifyHitRate(short hitRate, Entity src, Entity target, ushort skillLevel)
+        => (short)(hitRate + hitRate * 20 / 100);
+
+    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // hit_rate += hit_rate * 20 / 100;
-    return hitRate;
+        ctx.Sc?.Start(src, StatusType.Autocounter, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
+        _timers?.Schedule(src, target, delayMs: 100, SkillId, skillLevel,
+            (s, t, lv) => ctx.Client?.BroadcastSkillNoDamage(s, t, SkillId, lv));
     }
 }

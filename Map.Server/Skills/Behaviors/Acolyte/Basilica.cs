@@ -1,16 +1,16 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// HP_BASILICA — auto-generated stub from
-/// <c>src/map/skills/acolyte/basilica.hpp</c>.
+/// HP_BASILICA — High Priest Basilica. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/basilica.cpp</c>.
 ///
-/// <para>Inherits <see cref="StatusSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Renewal behavior: <see cref="StatusType.Basilica"/> applies
+/// as a single-target SC (the caster stays rooted, the SC does the
+/// PVP-block work). Pre-renewal placed a ground unit at the cast
+/// cell — that branch isn't ported (the codebase targets renewal).</para>
 /// </summary>
 public sealed class Basilica : StatusSkillImpl
 {
@@ -18,34 +18,17 @@ public sealed class Basilica : StatusSkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // #ifdef RENEWAL
-    // 	StatusSkillImpl::castendNoDamageId(src, target, skill_lv, tick, flag);
-    // #endif
+        // rAthena renewal path: just apply the SC. The C# port follows
+        // the renewal codepath.
+        ctx.Sc?.Start(target, StatusType.Basilica,
+            val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // #ifndef RENEWAL
-    // 	map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if( status_change *sc = status_get_sc(src); sc && sc->getSCE(SC_BASILICA) ) {
-    // 		status_change_end(src, SC_BASILICA); // Cancel Basilica and return so requirement isn't consumed again
-    // 		flag |= SKILL_NOCONSUME_REQ;
-    // 		return;
-    // 	}
-    // 	if( map_getcell(src->m, x, y, CELL_CHKLANDPROTECTOR) ) {
-    // 		if (sd)
-    // 			clif_skill_fail( *sd, getSkillId(), USESKILL_FAIL );
-    // 		flag |= SKILL_NOCONSUME_REQ;
-    // 		return;
-    // 	}
-    // 	
-    // 	// Create Basilica
-    // 	skill_clear_unitgroup(src);
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
-    // 	flag|=1;
-    // #endif
+        // Pre-renewal: ground unit placement. Not used in renewal.
+        // TODO: if pre-renewal compat is ever needed, place a Basilica
+        // SkillUnit + handle the SC_BASILICA cancel-on-recast semantic.
     }
 }

@@ -3,14 +3,10 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Archer;
 
 /// <summary>
-/// WM_DOMINION_IMPULSE — auto-generated stub from
-/// <c>src/map/skills/archer/dominionimpulse.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// WM_DOMINION_IMPULSE — Minstrel/Wanderer Dominion Impulse. Manual
+/// port of <c>rathena-fork/src/map/skills/archer/dominionimpulse.cpp</c>.
+/// Triggers all Reverberation units in splash. skill_active_reverberation
+/// helper not surfaced — broadcast only.
 /// </summary>
 public sealed class DominionImpulse : SkillImpl
 {
@@ -18,8 +14,6 @@ public sealed class DominionImpulse : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // int32 i = skill_get_splash(getSkillId(), skill_lv);
-    // 	map_foreachinallarea(skill_active_reverberation, src->m, x-i, y-i, x+i,y+i,BL_SKILL);
+        // TODO: iterate BL_SKILL units in splash, fire skill_active_reverberation.
     }
 }

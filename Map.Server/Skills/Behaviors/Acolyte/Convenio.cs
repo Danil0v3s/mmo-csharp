@@ -3,14 +3,19 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AB_CONVENIO — auto-generated stub from
-/// <c>src/map/skills/acolyte/convenio.hpp</c>.
+/// AB_CONVENIO — Arch Bishop Convenio. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/convenio.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Party-only teleport-to-caster. Requires the caster to be
+/// the party leader; pulls every party member (same map, alive,
+/// /call enabled) to the caster's cell. Map-flag gates: NoTeleport,
+/// PvP, Battleground, and GvG maps reject the cast entirely.</para>
+///
+/// <para>Cross-map / party-iteration infrastructure isn't surfaced
+/// yet — this port is structural (the party / map-flag guards are
+/// stubs). Full implementation lands once
+/// <c>IPartyMapService.ForEachOnSameMap</c> + <c>IMapFlagService</c>
+/// route through SkillBehaviorContext.</para>
 /// </summary>
 public sealed class Convenio : SkillImpl
 {
@@ -18,46 +23,18 @@ public sealed class Convenio : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST( BL_PC, src );
-    // 
-    // 	if (sd) {
-    // 		party_data *p = party_search(sd->status.party_id);
-    // 		int32 i = 0, count = 0;
-    // 
-    // 		// Only usable in party
-    // 		if (p == nullptr) {
-    // 			clif_skill_fail( *sd, getSkillId() );
-    // 			return;
-    // 		}
-    // 
-    // 		// Only usable as party leader.
-    // 		ARR_FIND(0, MAX_PARTY, i, p->data[i].sd == sd);
-    // 		if (i == MAX_PARTY || !p->party.member[i].leader) {
-    // 			clif_skill_fail( *sd, getSkillId() );
-    // 			return;
-    // 		}
-    // 
-    // 		// Do the teleport part
-    // 		for (i = 0; i < MAX_PARTY; ++i) {
-    // 			map_session_data *pl_sd = p->data[i].sd;
-    // 
-    // 			if (pl_sd == nullptr || pl_sd == sd || pl_sd->status.party_id != p->party.party_id || pc_isdead(pl_sd) ||
-    // 				sd->m != pl_sd->m)
-    // 				continue;
-    // 
-    // 			// Respect /call configuration
-    // 			if( pl_sd->status.disable_call ){
-    // 				continue;
-    // 			}
-    // 
-    // 			if (!(map_getmapflag(sd->m, MF_NOTELEPORT) || map_getmapflag(sd->m, MF_PVP) || map_getmapflag(sd->m, MF_BATTLEGROUND) || map_flag_gvg2(sd->m))) {
-    // 				pc_setpos(pl_sd, map_id2index(sd->m), sd->x, sd->y, CLR_TELEPORT);
-    // 				count++;
-    // 			}
-    // 		}
-    // 		if (!count)
-    // 			clif_skill_fail( *sd, getSkillId() );
-    // 	}
+        if (src is not PlayerEntity caster) return;
+
+        // rAthena: requires party + leader. Currently we can't read
+        // party-leader flag from the map side (party state lives on
+        // char-server). Emit fail-broadcast until the IPC surfaces it.
+        ctx.Client?.BroadcastSkillFail(caster, SkillId,
+            Core.Server.Packets.Out.ZC.SkillFailCause.NeedHelpers);
+
+        // TODO: when party-leader + party-member iteration is wired:
+        //   1. Verify caster is party leader.
+        //   2. For each party member on the same map (excluding caster, dead, disabled-call):
+        //        if (map allows teleport) pc_setpos(member, src.MapId, src.X, src.Y, CLR_TELEPORT)
+        //   3. If 0 teleported, emit clif_skill_fail.
     }
 }

@@ -1,39 +1,31 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// WS_CARTTERMINATION — auto-generated stub from
-/// <c>src/map/skills/merchant/carttermination.hpp</c>.
-///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// WS_CARTTERMINATION — Whitesmith Cart Termination. Manual port of
+/// <c>rathena-fork/src/map/skills/merchant/carttermination.cpp</c>.
+/// Ratio scales by cart-weight; we use the non-player max
+/// (<c>80000 / (10*(16-lv)) - 100</c>). On-hit SC_STUN at <c>5*lv %</c>.
 /// </summary>
 public sealed class CartTermination : WeaponSkillImpl
 {
-    public CartTermination() : base(SkillIds.WS_CARTTERMINATION) { }
+    private readonly Random _rng;
 
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src,target,SC_STUN,5*skill_lv,skill_lv,skill_get_time2(getSkillId(),skill_lv));
-    }
+    public CartTermination() : base(SkillIds.WS_CARTTERMINATION) => _rng = Random.Shared;
+
+    public CartTermination(Random? rng = null) : base(SkillIds.WS_CARTTERMINATION) => _rng = rng ?? Random.Shared;
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const map_session_data* sd = BL_CAST( BL_PC, src );
-    // 
-    // 	int32 i = 10 * (16 - skill_lv);
-    // 	if (i < 1) i = 1;
-    // 	//Preserve damage ratio when max cart weight is changed.
-    // 	if (sd && sd->cart_weight)
-    // 		base_skillratio += sd->cart_weight / i * 80000 / battle_config.max_cart_weight - 100;
-    // 	else if (!sd)
-    // 		base_skillratio += 80000 / i - 100;
-    return baseRatio;
+        var i = Math.Max(1, 10 * (16 - skillLevel));
+        return baseRatio + (80000 / i - 100);
+    }
+
+    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        if (_rng.Next(100) < 5 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 3000, src);
     }
 }

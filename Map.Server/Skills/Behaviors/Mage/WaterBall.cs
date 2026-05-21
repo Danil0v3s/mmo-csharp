@@ -1,33 +1,38 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// WZ_WATERBALL — auto-generated stub from
-/// <c>src/map/skills/mage/waterball.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// WZ_WATERBALL — Wizard Water Ball. Deploys waterball cells at the
+/// caster's position and schedules the per-ball delivery via the
+/// skill-timer scheduler. Ratio: <c>+30 * lv</c> per ball.
 /// </summary>
 public sealed class WaterBall : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+    private readonly Map.Server.Skills.ISkillTimerService? _timers;
+    private readonly Map.Server.Skills.ISkillAttackService? _skillAttack;
+
     public WaterBall() : base(SkillIds.WZ_WATERBALL) { }
+
+    public WaterBall(
+        ISkillUnitService? units = null,
+        Map.Server.Skills.ISkillTimerService? timers = null,
+        Map.Server.Skills.ISkillAttackService? skillAttack = null) : base(SkillIds.WZ_WATERBALL)
+    {
+        _units = units;
+        _timers = timers;
+        _skillAttack = skillAttack;
+    }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // //Deploy waterball cells, these are used and turned into waterballs via the timerskill
-    // 	skill_unitsetting(src, getSkillId(), skill_lv, src->x, src->y, 0);
-    // 	skill_addtimerskill(src, tick, target->id, src->x, src->y, getSkillId(), skill_lv, 0, flag);
+        _units?.Place(src, SkillId, skillLevel, src.X, src.Y);
+        _timers?.Schedule(src, target, delayMs: 0, SkillId, skillLevel,
+            (s, t, lv) => _skillAttack?.SkillAttack(BattleAttackType.Magic, s, s, t, SkillId, lv));
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // base_skillratio += 30 * skill_lv;
-    return baseRatio;
-    }
+        => baseRatio + 30 * skillLevel;
 }

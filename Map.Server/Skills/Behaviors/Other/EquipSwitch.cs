@@ -3,14 +3,10 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Other;
 
 /// <summary>
-/// ALL_EQSWITCH — auto-generated stub from
-/// <c>src/map/skills/other/equipswitch.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// ALL_EQSWITCH — Equip Switch. Manual port of
+/// <c>rathena-fork/src/map/skills/other/equipswitch.cpp</c>.
+/// Iterates the caster's equip_switch slots and runs pc_equipswitch on
+/// each. Equip-switch pipeline is TODO; we animate.
 /// </summary>
 public sealed class EquipSwitch : SkillImpl
 {
@@ -18,17 +14,8 @@ public sealed class EquipSwitch : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if( sd ){
-    // 		clif_equipswitch_reply( sd, false );
-    // 
-    // 		for( int32 i = 0, position = 0; i < EQI_MAX; i++ ){
-    // 			if( sd->equip_switch_index[i] >= 0 && !( position & equip_bitmask[i] ) ){
-    // 				position |= pc_equipswitch( sd, sd->equip_switch_index[i] );
-    // 			}
-    // 		}
-    // 	}
+        if (src is not PlayerEntity) return;
+        // TODO: iterate sd.EquipSwitchIndex and call EquipService.SwitchSlot.
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

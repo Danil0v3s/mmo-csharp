@@ -3,25 +3,39 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AL_PNEUMA — auto-generated stub from
-/// <c>src/map/skills/acolyte/pneuma.hpp</c>.
+/// AL_PNEUMA — Pneuma. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/pneuma.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Ground-target placement skill: drops a 1-cell Pneuma unit
+/// that blocks incoming ranged attacks on anyone standing in it.
+/// The unit lives for 10 s and the SkillUnit engine handles the
+/// per-tick effect (NoEnemy / NoReiteration flags from skill_db
+/// prevent stacking against the caster's enemies).</para>
+///
+/// <para>Implementation is a single call to
+/// <see cref="ISkillUnitService.Place"/>. The fork's <c>flag |= 1</c>
+/// is an rAthena hint to skip ammo decrement — we don't model
+/// ammo consumption for self-cast spells, so the flag is a no-op
+/// here.</para>
 /// </summary>
 public sealed class Pneuma : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+
     public Pneuma() : base(SkillIds.AL_PNEUMA) { }
+
+    public Pneuma(ISkillUnitService? units = null) : base(SkillIds.AL_PNEUMA)
+    {
+        _units = units;
+    }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // //Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	flag |= 1;
-    // 
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
+        // rAthena: skill_unitsetting(src, getSkillId(), skill_lv, x, y, 0);
+        // The skill_db unit definition (Id: Pneuma, Layout: 1, Interval: -1)
+        // drives the placement: a single cell, no periodic tick (the
+        // ranged-block check happens on each incoming attack via the
+        // unit's OnPlace hook).
+        _units?.Place(src, SkillId, skillLevel, x, y);
     }
 }

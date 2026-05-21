@@ -1,38 +1,31 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// CR_HOLYCROSS — auto-generated stub from
-/// <c>src/map/skills/swordman/holycross.hpp</c>.
-///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// CR_HOLYCROSS — Crusader Holy Cross. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/holycross.cpp</c>.
+/// Renewal: ratio <c>+70*lv</c> with a 2H spear, <c>+35*lv</c> otherwise.
+/// 3*lv % chance to apply SC_BLIND. Weapon-type query is TODO; we use
+/// the lower-ratio default.
 /// </summary>
 public sealed class HolyCross : WeaponSkillImpl
 {
-    public HolyCross() : base(SkillIds.CR_HOLYCROSS) { }
+    private readonly Random _rng;
+
+    public HolyCross() : base(SkillIds.CR_HOLYCROSS) => _rng = Random.Shared;
+
+    public HolyCross(Random? rng = null) : base(SkillIds.CR_HOLYCROSS)
+        => _rng = rng ?? Random.Shared;
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // #ifdef RENEWAL
-    // 	const map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if(sd && sd->status.weapon == W_2HSPEAR)
-    // 		base_skillratio += 70 * skill_lv;
-    // 	else
-    // #endif
-    // 		base_skillratio += 35 * skill_lv;
-    return baseRatio;
-    }
+        => baseRatio + 35 * skillLevel;
+    // TODO: + 70*lv with W_2HSPEAR.
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src,target,SC_BLIND,3*skill_lv,skill_lv,skill_get_time2(getSkillId(),skill_lv));
+        if (_rng.Next(100) < 3 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Blind, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
     }
 }

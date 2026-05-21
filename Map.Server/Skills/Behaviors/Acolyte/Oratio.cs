@@ -1,32 +1,42 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AB_ORATIO — auto-generated stub from
-/// <c>src/map/skills/acolyte/oratio.hpp</c>.
+/// AB_ORATIO — Arch Bishop Oratio. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/oratio.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>AoE Holy-resistance debuff centered on the target. Splash
+/// iteration applies <see cref="StatusType.Oratio"/> at
+/// <c>(40 + 5 * skillLevel) %</c> chance per enemy in range.</para>
+///
+/// <para>Duration: <c>30000 ms</c> per <c>db/re/skill_db.yml</c>.</para>
 /// </summary>
 public sealed class Oratio : SkillImpl
 {
-    public Oratio() : base(SkillIds.AB_ORATIO) { }
+    private readonly Random _rng;
+
+    public Oratio() : base(SkillIds.AB_ORATIO) => _rng = Random.Shared;
+
+    public Oratio(Random? rng = null) : base(SkillIds.AB_ORATIO) => _rng = rng ?? Random.Shared;
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 	if( flag&1 )
-    // 		sc_start(src,target, type, 40 + 5 * skill_lv, skill_lv, skill_get_time(getSkillId(), skill_lv));
-    // 	else {
-    // 		map_foreachinallrange(skill_area_sub, src, skill_get_splash(getSkillId(), skill_lv), BL_CHAR,
-    // 			src, getSkillId(), skill_lv, tick, flag|BCT_ENEMY|1, skill_castend_nodamage_id);
-    // 		clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    // 	}
+        // rAthena: outer pass broadcasts; inner per-victim pass applies the SC.
+        const short splashRange = 7;
+        var chance = 40 + 5 * skillLevel;
+        var victims = ctx.Entities.ForEachInRange(src.MapId, src.X, src.Y,
+            splashRange, EntityType.Mob | EntityType.Pc)
+            .Where(v => v.Id != src.Id);
+
+        foreach (var v in victims)
+        {
+            if (_rng.Next(100) >= chance) continue;
+            ctx.Sc?.Start(v, StatusType.Oratio,
+                val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
+        }
+
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

@@ -1,43 +1,31 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Summoner;
 
 /// <summary>
-/// SU_SCAROFTAROU — auto-generated stub from
-/// <c>src/map/skills/summoner/scaroftarou.hpp</c>.
-///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// SU_SCAROFTAROU — Summoner Scar of Tarou. Manual port of
+/// <c>rathena-fork/src/map/skills/summoner/scaroftarou.cpp</c>.
+/// Ratio <c>+(-100 + 100*lv)</c>. 10% chance to stun + applies
+/// SC_BITESCAR on hit. SU_SPIRITOFLIFE HP-ratio bonus is TODO.
 /// </summary>
 public sealed class ScarofTarou : WeaponSkillImpl
 {
-    public ScarofTarou() : base(SkillIds.SU_SCAROFTAROU) { }
+    private readonly Random _rng;
+
+    public ScarofTarou() : base(SkillIds.SU_SCAROFTAROU) => _rng = Random.Shared;
+
+    public ScarofTarou(Random? rng = null) : base(SkillIds.SU_SCAROFTAROU)
+        => _rng = rng ?? Random.Shared;
+
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+        => baseRatio + (-100 + 100 * skillLevel);
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, SC_STUN, 10, skill_lv, skill_get_time2(getSkillId(), skill_lv)); //! TODO: What's the chance/time?
-    }
-
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	base_skillratio += -100 + 100 * skill_lv;
-    // 	if (sd && pc_checkskill(sd, SU_SPIRITOFLIFE))
-    // 		base_skillratio += base_skillratio * status_get_hp(src) / status_get_max_hp(src);
-    return baseRatio;
-    }
-
-    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, SC_BITESCAR, 10, skill_lv, skill_get_time(getSkillId(), skill_lv)); //! TODO: What's the activation chance for the Bite effect?
-    // 
-    // 	WeaponSkillImpl::castendDamageId(src, target, skill_lv, tick, flag);
+        if (_rng.Next(100) < 10)
+            ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
+        if (_rng.Next(100) < 10)
+            ctx.Sc?.Start(target, StatusType.Bitescar, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
     }
 }

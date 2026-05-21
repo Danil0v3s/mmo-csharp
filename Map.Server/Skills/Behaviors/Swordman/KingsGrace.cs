@@ -3,23 +3,21 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// LG_KINGS_GRACE — auto-generated stub from
-/// <c>src/map/skills/swordman/kingsgrace.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// LG_KINGS_GRACE — Royal Guard King's Grace. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/kingsgrace.cpp</c>.
+/// Places the protection field at the cast XY.
 /// </summary>
 public sealed class KingsGrace : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+
     public KingsGrace() : base(SkillIds.LG_KINGS_GRACE) { }
 
-    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+    public KingsGrace(ISkillUnitService? units = null) : base(SkillIds.LG_KINGS_GRACE)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // flag|=1;//Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
+        _units = units;
     }
+
+    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 }

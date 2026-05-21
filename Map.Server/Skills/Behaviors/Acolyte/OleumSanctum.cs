@@ -1,16 +1,17 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// IQ_OLEUM_SANCTUM — auto-generated stub from
-/// <c>src/map/skills/acolyte/oleumsanctum.hpp</c>.
+/// IQ_OLEUM_SANCTUM — Inquisitor Oleum Sanctum. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/oleumsanctum.cpp</c>.
 ///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Single-cast Holy splash that broadcasts the cast frame
+/// then runs the damage pipeline + applies <see cref="StatusType.HolyOil"/>
+/// to victims on hit (skill_db Duration1).</para>
+///
+/// <para>Ratio: <c>-100 + 500 + 2000*lv + 5*POW</c>.</para>
 /// </summary>
 public sealed class OleumSanctum : RecursiveDamageSplashSkillImpl
 {
@@ -18,24 +19,20 @@ public sealed class OleumSanctum : RecursiveDamageSplashSkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    // 	skill_castend_damage_id(src, target, getSkillId(), skill_lv, tick, flag);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        CastendDamageId(src, target, skillLevel, ctx);
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	skillratio += -100 + 500 + 2000 * skill_lv + 5 * sstatus->pow;
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
+        return baseRatio + (-100 + 500 + 2000 * skillLevel) + 5 * src.Stats.Pow;
     }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, SC_HOLY_OIL, 100, skill_lv, skill_get_time(getSkillId(), skill_lv));
+        // rAthena: sc_start(src, target, SC_HOLY_OIL, 100, skill_lv, skill_get_time(...));
+        // skill_db Duration1 — 6 s baseline at lv 1.
+        ctx.Sc?.Start(target, StatusType.HolyOil, val1: skillLevel,
+            0, 0, 0, durationMs: 6000, src);
     }
 }

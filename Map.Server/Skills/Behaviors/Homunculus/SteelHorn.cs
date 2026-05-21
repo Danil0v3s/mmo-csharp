@@ -1,39 +1,37 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Homunculus;
 
 /// <summary>
-/// MH_STAHL_HORN — auto-generated stub from
-/// <c>src/map/skills/homunculus/homunculus_steelhorn.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MH_STAHL_HORN — Homunculus Stahl Horn. Manual port of
+/// <c>rathena-fork/src/map/skills/homunculus/homunculus_steelhorn.cpp</c>.
+/// Ratio <c>+(-100 + 1000 + 300*lv*BaseLv/150) + VIT</c>. (20 + 2*lv)%
+/// stun on hit.
 /// </summary>
 public sealed class SteelHorn : SkillImpl
 {
-    public SteelHorn() : base(SkillIds.MH_STAHL_HORN) { }
+    private readonly Random _rng;
+    private readonly ISkillAttackService? _skillAttack;
 
-    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public SteelHorn() : base(SkillIds.MH_STAHL_HORN) => _rng = Random.Shared;
+
+    public SteelHorn(ISkillAttackService? skillAttack = null, Random? rng = null) : base(SkillIds.MH_STAHL_HORN)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_attack(skill_get_type(getSkillId()), src, src, target, getSkillId(), skill_lv, tick, flag);
+        _skillAttack = skillAttack;
+        _rng = rng ?? Random.Shared;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	base_skillratio += -100 + 1000 + 300 * skill_lv * status_get_lv(src) / 150 + sstatus->vit; // !TODO: Confirm VIT bonus
-    return baseRatio;
-    }
+        => baseRatio + (-100 + 1000 + 300 * skillLevel * src.Level / 150) + src.Stats.Vit;
+
+    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+        => _skillAttack?.SkillAttack(BattleAttackType.Weapon, src, src, target, SkillId, skillLevel);
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, SC_STUN, 20 + 2 * skill_lv, skill_lv, skill_get_time(getSkillId(), skill_lv));
+        if (_rng.Next(100) < 20 + 2 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
     }
 }

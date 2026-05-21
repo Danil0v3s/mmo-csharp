@@ -2,24 +2,12 @@ using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
-/// <summary>
-/// SO_VACUUM_EXTREME — auto-generated stub from
-/// <c>src/map/skills/mage/vacuumextreme.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
-/// </summary>
+/// <summary>SO_VACUUM_EXTREME — Sorcerer Vacuum Extreme. Ground unit placement.</summary>
 public sealed class VacuumExtreme : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
     public VacuumExtreme() : base(SkillIds.SO_VACUUM_EXTREME) { }
-
+    public VacuumExtreme(ISkillUnitService? units = null) : base(SkillIds.SO_VACUUM_EXTREME) => _units = units;
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // flag|=1; // Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
-    }
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 }

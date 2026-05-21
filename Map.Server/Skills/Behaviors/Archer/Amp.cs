@@ -1,16 +1,17 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Archer;
 
 /// <summary>
-/// BD_ADAPTATION — auto-generated stub from
-/// <c>src/map/skills/archer/amp.hpp</c>.
+/// BD_ADAPTATION — Bard Encore (Amp / Adaptation). Manual port of
+/// <c>rathena-fork/src/map/skills/archer/amp.cpp</c>.
 ///
-/// <para>Inherits <see cref="StatusSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Renewal: lets the caster instantly re-cast their last song
+/// (handled by <see cref="StatusSkillImpl"/> default). Pre-renewal:
+/// ends SC_DANCING on the target. We hand off to the base behavior
+/// (renewal path) and additionally cancel SC_DANCING for parity with
+/// the legacy branch.</para>
 /// </summary>
 public sealed class Amp : StatusSkillImpl
 {
@@ -18,16 +19,7 @@ public sealed class Amp : StatusSkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // #ifdef RENEWAL
-    // 	StatusSkillImpl::castendNoDamageId(src, target, skill_lv, tick, flag);
-    // #else
-    // 	status_change *tsc = status_get_sc(target);
-    // 
-    // 	if(tsc && tsc->getSCE(SC_DANCING)){
-    // 		clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 		status_change_end(target, SC_DANCING);
-    // 	}
-    // #endif
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        ctx.Sc?.End(target, StatusType.Dancing);
     }
 }

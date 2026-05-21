@@ -1,16 +1,11 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Summoner;
 
 /// <summary>
-/// SU_CHATTERING — auto-generated stub from
-/// <c>src/map/skills/summoner/chattering.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// SU_CHATTERING — Summoner Chattering. Manual port of
+/// <c>rathena-fork/src/map/skills/summoner/chattering.cpp</c>. Applies SC_CHATTERING.
 /// </summary>
 public sealed class Chattering : SkillImpl
 {
@@ -18,10 +13,7 @@ public sealed class Chattering : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 	clif_skill_nodamage(target,*target,getSkillId(),skill_lv,
-    // 		sc_start(src,target,type,100,skill_lv,skill_get_time(getSkillId(),skill_lv)));
+        ctx.Sc?.Start(target, StatusType.Chattering, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

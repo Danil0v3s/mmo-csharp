@@ -1,16 +1,13 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.MercenaryNpc;
 
 /// <summary>
-/// MS_REFLECTSHIELD — auto-generated stub from
-/// <c>src/map/skills/mercenary/mercenary_shieldreflect.hpp</c>.
-///
-/// <para>Inherits <see cref="StatusSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MS_REFLECTSHIELD — Mercenary Reflect Shield. Manual port of
+/// <c>rathena-fork/src/map/skills/mercenary/mercenary_shieldreflect.cpp</c>.
+/// Refuses to land on targets affected by SC_DARKCROW; otherwise
+/// delegates to the StatusSkillImpl SC-apply path.
 /// </summary>
 public sealed class MercenaryShieldReflect : StatusSkillImpl
 {
@@ -18,15 +15,12 @@ public sealed class MercenaryShieldReflect : StatusSkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_change *tsc = status_get_sc(target);
-    // 	map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if (tsc && tsc->getSCE(SC_DARKCROW)) { // SC_DARKCROW prevents using reflecting skills
-    // 		if (sd)
-    // 			clif_skill_fail( *sd, getSkillId(), USESKILL_FAIL );
-    // 		return;
-    // 	}
-    // 	StatusSkillImpl::castendNoDamageId(src, target, skill_lv, tick, flag);
+        if (ctx.Sc?.Get(target, StatusType.Darkcrow) != null)
+        {
+            if (src is PlayerEntity sd)
+                ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
+            return;
+        }
+        base.CastendNoDamageId(src, target, skillLevel, ctx);
     }
 }

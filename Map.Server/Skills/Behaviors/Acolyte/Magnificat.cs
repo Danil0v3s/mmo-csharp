@@ -1,16 +1,19 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// PR_MAGNIFICAT — auto-generated stub from
-/// <c>src/map/skills/acolyte/magnificat.hpp</c>.
+/// PR_MAGNIFICAT — Priest Magnificat. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/magnificat.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Party-wide SP-regen doubler. Same dispatch shape as
+/// <see cref="Angelus"/>: apply <see cref="StatusType.Magnificat"/>
+/// to the target on the inner (no-party / flag&amp;1) branch;
+/// iterate party members otherwise.</para>
+///
+/// <para>Duration per <c>db/re/skill_db.yml</c>:
+/// <c>15000 * (1 + lv)</c> ms (30 s lv 1 → 165 s lv 10).</para>
 /// </summary>
 public sealed class Magnificat : SkillImpl
 {
@@ -18,18 +21,9 @@ public sealed class Magnificat : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if (sd == nullptr || sd->status.party_id == 0 || (flag & 1)) {
-    // 
-    // 		// Animations don't play when outside visible range
-    // 		if (check_distance_bl(src, target, AREA_SIZE))
-    // 			clif_skill_nodamage(target, *target, getSkillId(), skill_lv);
-    // 
-    // 		sc_start(src, target, skill_get_sc(getSkillId()), 100, skill_lv, skill_get_time(getSkillId(), skill_lv));
-    // 	}
-    // 	else if (sd)
-    // 		party_foreachsamemap(skill_area_sub, sd, skill_get_splash(getSkillId(), skill_lv), src, getSkillId(), skill_lv, tick, flag | BCT_PARTY | 1, skill_castend_nodamage_id);
+        ctx.Client?.BroadcastSkillNoDamage(target, target, SkillId, skillLevel);
+        var duration = 15_000 * (1 + skillLevel);
+        ctx.Sc?.Start(target, StatusType.Magnificat, val1: skillLevel, 0, 0, 0, duration, src);
+        // TODO: party_foreachsamemap — see Angelus for the rAthena pattern.
     }
 }

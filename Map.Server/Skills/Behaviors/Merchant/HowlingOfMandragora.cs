@@ -1,42 +1,37 @@
 using Map.Server.Entities;
+using Map.Server.Status;
+using Map.Server.Status.StatusOps;
 
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// GN_MANDRAGORA — auto-generated stub from
-/// <c>src/map/skills/merchant/howlingofmandragora.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// GN_MANDRAGORA — Genetic Howling of Mandragora. Manual port of
+/// <c>rathena-fork/src/map/skills/merchant/howlingofmandragora.cpp</c>.
+/// SC_MANDRAGORA at <c>max(10, 25 + 10*lv - (VIT+LUK)/5) %</c>;
+/// on success drains <c>25 + 5*lv %</c> of target's max SP.
 /// </summary>
 public sealed class HowlingOfMandragora : SkillImpl
 {
-    public HowlingOfMandragora() : base(SkillIds.GN_MANDRAGORA) { }
+    private readonly IStatusOpsService? _statusOps;
+    private readonly Random _rng;
+
+    public HowlingOfMandragora() : base(SkillIds.GN_MANDRAGORA) => _rng = Random.Shared;
+
+    public HowlingOfMandragora(IStatusOpsService? statusOps = null, Random? rng = null) : base(SkillIds.GN_MANDRAGORA)
+    {
+        _statusOps = statusOps;
+        _rng = rng ?? Random.Shared;
+    }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // if( flag&1 ) {
-    // 		sc_type type = skill_get_sc(getSkillId());
-    // 		status_change *tsc = status_get_sc(target);
-    // 		status_data* tstatus = status_get_status_data(*target);
-    // 
-    // 		int32 rate = 25 + (10 * skill_lv) - (tstatus->vit + tstatus->luk) / 5;
-    // 
-    // 		if (rate < 10)
-    // 			rate = 10;
-    // 		if (target->type == BL_MOB || (tsc && tsc->getSCE(type)))
-    // 			return; // Don't activate if target is a monster or zap SP if target already has Mandragora active.
-    // 		if (rnd()%100 < rate) {
-    // 			sc_start(src,target,type,100,skill_lv,skill_get_time(getSkillId(),skill_lv));
-    // 			status_zap(target,0,status_get_max_sp(target) * (25 + 5 * skill_lv) / 100);
-    // 		}
-    // 	} else {
-    // 		map_foreachinallrange(skill_area_sub,target,skill_get_splash(getSkillId(),skill_lv),BL_CHAR,src,getSkillId(),skill_lv,tick,flag|BCT_ENEMY|1,skill_castend_nodamage_id);
-    // 		clif_skill_nodamage(src,*src,getSkillId(),skill_lv);
-    // 	}
+        if (target is MobEntity) return;
+        var rate = Math.Max(10, 25 + 10 * skillLevel - (target.Stats.Vit + target.Stats.Luk) / 5);
+        if (_rng.Next(100) < rate)
+        {
+            ctx.Sc?.Start(target, StatusType.Mandragora, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
+            _statusOps?.Zap(target, 0, target.Stats.MaxSp * (25 + 5 * skillLevel) / 100);
+        }
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
     }
 }

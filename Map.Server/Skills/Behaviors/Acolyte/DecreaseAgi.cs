@@ -1,27 +1,50 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AL_DECAGI — auto-generated stub from
-/// <c>src/map/skills/acolyte/decagi.hpp</c>.
+/// AL_DECAGI — Decrease Agility. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/decagi.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Single-target debuff that lands with a chance scaled by
+/// caster Level + INT:</para>
+/// <code>
+///   chance% = 50 + skillLevel*3 + (CasterLevel + CasterINT) / 5
+/// </code>
+///
+/// <para>Duration follows the AL_DECAGI Duration1 ladder in
+/// <c>db/re/skill_db.yml</c>: <c>(30 + 10*lv) * 1000</c> ms.</para>
+///
+/// <para>The clif frame's <c>result</c> byte mirrors whether the SC
+/// actually landed (1 = applied, 0 = resisted) so the client renders
+/// the right hit/miss animation — same as the rAthena one-liner
+/// <c>clif_skill_nodamage(..., sc_start(...))</c>.</para>
 /// </summary>
 public sealed class DecreaseAgi : SkillImpl
 {
-    public DecreaseAgi() : base(SkillIds.AL_DECAGI) { }
+    private readonly Random _rng;
+
+    public DecreaseAgi() : base(SkillIds.AL_DECAGI) => _rng = Random.Shared;
+
+    public DecreaseAgi(Random? rng = null) : base(SkillIds.AL_DECAGI) => _rng = rng ?? Random.Shared;
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_type type = skill_get_sc(getSkillId());
-    // 	status_data *sstatus = status_get_status_data(*src);
-    // 
-    // 	clif_skill_nodamage(src, *bl, getSkillId(), skill_lv, sc_start(src, bl, type, (50 + skill_lv * 3 + (status_get_lv(src) + sstatus->int_) / 5), skill_lv, skill_get_time(getSkillId(), skill_lv)));
+        // rAthena: chance = 50 + skill_lv*3 + (status_get_lv(src) + sstatus->int_) / 5
+        var chance = 50 + skillLevel * 3 + (src.Level + src.Stats.IntStat) / 5;
+
+        bool landed = false;
+        if (ctx.Sc != null && _rng.Next(100) < chance)
+        {
+            var duration = (30 + 10 * skillLevel) * 1000;
+            var sc = ctx.Sc.Start(target, StatusType.DecreaseAgi, val1: skillLevel, 0, 0, 0, duration, src);
+            landed = sc != null;
+        }
+
+        // rAthena: clif_skill_nodamage(src, *bl, getSkillId(), skill_lv, sc_start(...))
+        // The packet's success byte = whether the SC actually attached
+        // (rAthena passes the bool return of sc_start as the 5th arg).
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel, landed);
     }
 }

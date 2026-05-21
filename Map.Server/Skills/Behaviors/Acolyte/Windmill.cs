@@ -1,48 +1,62 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// SR_WINDMILL — auto-generated stub from
-/// <c>src/map/skills/acolyte/windmill.hpp</c>.
+/// SR_WINDMILL — Sura Windmill. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/windmill.cpp</c>.
 ///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Centered AoE around the caster. Per-victim post-hit effect:
+/// PC targets get a deferred re-hit (skill_addtimerskill); mob
+/// targets get SC_STUN for 1-3 seconds at 100 % chance.</para>
+///
+/// <para>Ratio: <c>-100 + casterBaseLv + casterDex</c> (capped at
+/// the caster's level + dex, RE_LVL_DMOD applied at calc time).</para>
 /// </summary>
 public sealed class Windmill : RecursiveDamageSplashSkillImpl
 {
+    private readonly Map.Server.Skills.ISkillTimerService? _timers;
+
     public Windmill() : base(SkillIds.SR_WINDMILL) { }
+
+    public Windmill(Map.Server.Skills.ISkillTimerService? timers = null) : base(SkillIds.SR_WINDMILL)
+    {
+        _timers = timers;
+    }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // mob_data* dstmd = BL_CAST(BL_MOB, target);
-    // 	map_session_data* dstsd = BL_CAST(BL_PC, target);
-    // 
-    // 	if( dstsd )
-    // 		skill_addtimerskill(src,tick+status_get_amotion(src),target->id,0,0,getSkillId(),skill_lv,BF_WEAPON,0);
-    // 	else if( dstmd )
-    // 		sc_start(src,target, SC_STUN, 100, skill_lv, 1000 + 1000 * (rnd() %3));
+        if (target is PlayerEntity)
+        {
+            // rAthena: skill_addtimerskill(src, tick+amotion, target->id, 0, 0, getSkillId(), skill_lv, BF_WEAPON, 0);
+            // Deferred re-hit on PC targets — re-runs the weapon-attack pipeline.
+            _timers?.Schedule(src, target, delayMs: src.Stats.Amotion, SkillId, skillLevel,
+                (s, t, lv) =>
+                {
+                    // Apply a second hit on the deferred tick.
+                    CastendDamageId(s, t, lv, ctx);
+                });
+        }
+        else if (target is MobEntity)
+        {
+            // rAthena: sc_start(SC_STUN, 100%, lv, 1000 + 1000 * (rnd%3))
+            var duration = 1000 + 1000 * Random.Shared.Next(3);
+            ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel,
+                0, 0, 0, duration, src);
+        }
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	// ATK [(Caster Base Level + Caster DEX) x Caster Base Level / 100] %
-    // 	skillratio += -100 + status_get_lv(src) + sstatus->dex;
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
+        // rAthena: skillratio += -100 + status_get_lv(src) + sstatus->dex;
+        return baseRatio + (-100 + src.Level + src.Stats.Dex);
     }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 	skill_castend_damage_id(src, src, getSkillId(), skill_lv, tick, flag);
+        // rAthena: clif_skill_nodamage + skill_castend_damage_id on src (self-centered AoE).
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        CastendDamageId(src, src, skillLevel, ctx);
     }
 }

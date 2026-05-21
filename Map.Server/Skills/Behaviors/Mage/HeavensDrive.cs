@@ -1,42 +1,38 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// WZ_HEAVENDRIVE — auto-generated stub from
-/// <c>src/map/skills/mage/heavensdrive.hpp</c>.
+/// WZ_HEAVENDRIVE — Wizard Heaven's Drive. Manual port of
+/// <c>rathena-fork/src/map/skills/mage/heavensdrive.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Drops the Heaven's Drive ground unit at the cast XY (Earth
+/// damage). Renewal: +25 % MATK on the ratio. Cancels SC_SV_ROOTTWIST
+/// on hit victims.</para>
 /// </summary>
 public sealed class HeavensDrive : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+
     public HeavensDrive() : base(SkillIds.WZ_HEAVENDRIVE) { }
 
-    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+    public HeavensDrive(ISkillUnitService? units = null) : base(SkillIds.WZ_HEAVENDRIVE)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // //Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	flag|=1;
-    // 
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
+        _units = units;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // #ifdef RENEWAL
-    // 	base_skillratio += 25;
-    // #endif
-    return baseRatio;
+        // Renewal: +25.
+        return baseRatio + 25;
     }
+
+    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_change_end(target, SC_SV_ROOTTWIST);
+        ctx.Sc?.End(target, StatusType.SvRoottwist);
     }
 }

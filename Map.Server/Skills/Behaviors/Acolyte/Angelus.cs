@@ -1,16 +1,22 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AL_ANGELUS — auto-generated stub from
-/// <c>src/map/skills/acolyte/angelus.hpp</c>.
+/// AL_ANGELUS — Acolyte Angelus. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/angelus.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Party-buff: applies <see cref="StatusType.Angelus"/> to
+/// every party member in splash range when cast by a partied
+/// player, or to the single target otherwise. rAthena uses the
+/// <c>flag &amp; 1</c> bit to mark the inner per-member recursion
+/// (so the same function ends up at the SC apply once the
+/// iterator reaches each member).</para>
+///
+/// <para>Party-iteration branch is TODO: requires a
+/// <c>ForEachPartyMemberOnSameMap</c> helper that the map server
+/// doesn't yet expose. Single-target / no-party path is faithful.</para>
 /// </summary>
 public sealed class Angelus : SkillImpl
 {
@@ -18,23 +24,18 @@ public sealed class Angelus : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data *sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if (sd == nullptr || sd->status.party_id == 0 || (flag & 1))
-    // 	{
-    // 		sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 		// Animations don't play when outside visible range
-    // 		if (check_distance_bl(src, bl, AREA_SIZE))
-    // 			clif_skill_nodamage(bl, *bl, getSkillId(), skill_lv);
-    // 
-    // 
-    // 		sc_start(src, bl, type, 100, skill_lv, skill_get_time(getSkillId(), skill_lv));
-    // 	}
-    // 	else if (sd != nullptr)
-    // 	{
-    // 		party_foreachsamemap(skill_area_sub, sd, skill_get_splash(getSkillId(), skill_lv), src, getSkillId(), skill_lv, tick, flag | BCT_PARTY | 1, skill_castend_nodamage_id);
-    // 	}
+        // rAthena broadcasts only when target is in AOI of caster
+        // (check_distance_bl(src, bl, AREA_SIZE)); our broadcaster
+        // already scopes to AOI so the test is implicit.
+        ctx.Client?.BroadcastSkillNoDamage(target, target, SkillId, skillLevel);
+
+        // Duration ladder per AL_ANGELUS skill_db: 30 * (3 + lv) seconds.
+        var duration = 30 * (3 + skillLevel) * 1000;
+        ctx.Sc?.Start(target, StatusType.Angelus, val1: skillLevel, 0, 0, 0, duration, src);
+
+        // TODO: party_foreachsamemap — when caster is in a party and
+        // flag&1 is unset, rAthena iterates same-map party members and
+        // recursively invokes self with flag|BCT_PARTY|1. Skipped
+        // until IPartyMapService exposes the iterator.
     }
 }

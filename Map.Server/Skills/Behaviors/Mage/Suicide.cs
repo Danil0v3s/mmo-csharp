@@ -3,14 +3,7 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SA_INSTANTDEATH — auto-generated stub from
-/// <c>src/map/skills/mage/suicide.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// SA_INSTANTDEATH — Sage Instant Death (Suicide). Casts then kills the caster outright.
 /// </summary>
 public sealed class Suicide : SkillImpl
 {
@@ -18,8 +11,11 @@ public sealed class Suicide : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 	status_kill(src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        // rAthena: status_kill(src) — set HP to 0 + trigger death pipeline.
+        if (src is PlayerEntity sd)
+        {
+            ctx.Damage?.ApplyDamage(sd, sd.Hp, sd);
+        }
     }
 }

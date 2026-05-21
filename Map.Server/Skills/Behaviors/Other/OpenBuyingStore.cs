@@ -3,14 +3,10 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Other;
 
 /// <summary>
-/// ALL_BUYING_STORE — auto-generated stub from
-/// <c>src/map/skills/other/openbuyingstore.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// ALL_BUYING_STORE — Open Buying Store. Manual port of
+/// <c>rathena-fork/src/map/skills/other/openbuyingstore.cpp</c>.
+/// Calls buyingstore_setup with MAX_BUYINGSTORE_SLOTS (=5). Buying-store
+/// subsystem isn't wired yet; we land the animation.
 /// </summary>
 public sealed class OpenBuyingStore : SkillImpl
 {
@@ -18,12 +14,8 @@ public sealed class OpenBuyingStore : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if( sd )
-    // 	{// players only, skill allows 5 buying slots
-    // 		clif_skill_nodamage(src, *target, getSkillId(), skill_lv, buyingstore_setup(sd, MAX_BUYINGSTORE_SLOTS) == 0);
-    // 	}
+        if (src is not PlayerEntity) return;
+        // TODO: buyingstore_setup(sd, MAX_BUYINGSTORE_SLOTS).
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

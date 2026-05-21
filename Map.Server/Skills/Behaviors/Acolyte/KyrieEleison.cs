@@ -1,16 +1,18 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// PR_KYRIE — auto-generated stub from
-/// <c>src/map/skills/acolyte/kyrieeleison.hpp</c>.
+/// PR_KYRIE — Priest Kyrie Eleison. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/kyrieeleison.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Applies <see cref="StatusType.Kyrie"/> — a damage-absorb
+/// shield with a max-hit + max-damage counter. The shield's
+/// thresholds live on the SC handler (which the combat-side
+/// DamageService consumer reads to apply absorption).</para>
+///
+/// <para>Duration: <c>120 000 ms</c> per <c>db/re/skill_db.yml</c>.</para>
 /// </summary>
 public sealed class KyrieEleison : SkillImpl
 {
@@ -18,8 +20,10 @@ public sealed class KyrieEleison : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(target,*target,getSkillId(), skill_lv,
-    // 			sc_start(src,target,skill_get_sc(getSkillId()), 100, skill_lv, skill_get_time(getSkillId(), skill_lv)));
+        // rAthena: clif_skill_nodamage(target, *target, getSkillId(), skill_lv,
+        //          sc_start(src, target, type, 100, skill_lv, skill_get_time(...)));
+        bool landed = ctx.Sc?.Start(target, StatusType.Kyrie,
+            val1: skillLevel, 0, 0, 0, durationMs: 120_000, src) != null;
+        ctx.Client?.BroadcastSkillNoDamage(target, target, SkillId, skillLevel, landed);
     }
 }

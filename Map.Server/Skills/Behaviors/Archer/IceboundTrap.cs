@@ -1,31 +1,32 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Archer;
 
 /// <summary>
-/// RA_ICEBOUNDTRAP — auto-generated stub from
-/// <c>src/map/skills/archer/iceboundtrap.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// RA_ICEBOUNDTRAP — Ranger Icebound Trap. Manual port of
+/// <c>rathena-fork/src/map/skills/archer/iceboundtrap.cpp</c>.
+/// Trap unit + on-hit SC_FREEZING at <c>50 + 10*lv %</c>.
 /// </summary>
 public sealed class IceboundTrap : SkillImpl
 {
-    public IceboundTrap() : base(SkillIds.RA_ICEBOUNDTRAP) { }
+    private readonly ISkillUnitService? _units;
+    private readonly Random _rng;
 
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public IceboundTrap() : base(SkillIds.RA_ICEBOUNDTRAP) => _rng = Random.Shared;
+
+    public IceboundTrap(ISkillUnitService? units = null, Random? rng = null) : base(SkillIds.RA_ICEBOUNDTRAP)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, SC_FREEZING, 50 + skill_lv * 10, skill_lv, skill_get_time2(getSkillId(), skill_lv));
+        _units = units;
+        _rng = rng ?? Random.Shared;
     }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+        => _units?.Place(src, SkillId, skillLevel, x, y);
+
+    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // flag|=1;//Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
+        if (_rng.Next(100) < 50 + 10 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Freezing, val1: skillLevel, 0, 0, 0, durationMs: 8000, src);
     }
 }

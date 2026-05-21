@@ -1,16 +1,15 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// IQ_SECOND_FLAME — auto-generated stub from
-/// <c>src/map/skills/acolyte/secondflame.hpp</c>.
+/// IQ_SECOND_FLAME — Inquisitor Second Flame. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/secondflame.cpp</c>.
 ///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Holy splash variant of the brand combo. Ratio:
+/// <c>-100 + 200 + 2900*lv + 9*POW</c>. Brands target with
+/// <see cref="StatusType.SecondBrand"/>.</para>
 /// </summary>
 public sealed class SecondFlame : RecursiveDamageSplashSkillImpl
 {
@@ -18,17 +17,12 @@ public sealed class SecondFlame : RecursiveDamageSplashSkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	skillratio += -100 + 200 + 2900 * skill_lv + 9 * sstatus->pow;
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
+        return baseRatio + (-100 + 200 + 2900 * skillLevel) + 9 * src.Stats.Pow;
     }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, SC_SECOND_BRAND, 100, skill_lv, skill_get_time(getSkillId(), skill_lv));
+        ctx.Sc?.Start(target, StatusType.SecondBrand,
+            val1: skillLevel, 0, 0, 0, durationMs: 4000, src);
     }
 }

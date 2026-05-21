@@ -3,22 +3,14 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// MC_CHANGECART — auto-generated stub from
-/// <c>src/map/skills/merchant/changecart.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MC_CHANGECART — Merchant Change Cart. Manual port of
+/// <c>rathena-fork/src/map/skills/merchant/changecart.cpp</c>.
+/// Opens the cart-skin chooser; the cast itself is a broadcast.
 /// </summary>
 public sealed class ChangeCart : SkillImpl
 {
     public ChangeCart() : base(SkillIds.MC_CHANGECART) { }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    }
+        => ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
 }

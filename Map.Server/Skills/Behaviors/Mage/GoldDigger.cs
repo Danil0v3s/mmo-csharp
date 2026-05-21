@@ -3,14 +3,10 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SA_FORTUNE — auto-generated stub from
-/// <c>src/map/skills/mage/golddigger.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// SA_FORTUNE — Sage Gold Digger (Hocus Pocus). Grants the caster
+/// <c>targetLevel * 100</c> zeny. Player-only. Zeny grant is TODO:
+/// PlayerEntity doesn't carry the zeny field yet — it lives in the
+/// char DB row and changes route through char-server IPC.
 /// </summary>
 public sealed class GoldDigger : SkillImpl
 {
@@ -18,10 +14,7 @@ public sealed class GoldDigger : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST( BL_PC, src );
-    // 
-    // 	clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 	if(sd) pc_getzeny(sd,status_get_lv(target)*100,LOG_TYPE_STEAL);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        // TODO: grant src zeny += target.Level * 100 via IPlayerEconomyService.
     }
 }

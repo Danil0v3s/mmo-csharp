@@ -1,36 +1,19 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
-/// <summary>
-/// HW_NAPALMVULCAN — auto-generated stub from
-/// <c>src/map/skills/mage/napalmvulcan.hpp</c>.
-///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
-/// </summary>
+/// <summary>HW_NAPALMVULCAN — High Wizard Napalm Vulcan. Splash; ratio +(-100+70*lv); Curse proc at 5*lv %.</summary>
 public sealed class NapalmVulcan : RecursiveDamageSplashSkillImpl
 {
-    public NapalmVulcan() : base(SkillIds.HW_NAPALMVULCAN) { }
-
+    private readonly Random _rng;
+    public NapalmVulcan() : base(SkillIds.HW_NAPALMVULCAN) => _rng = Random.Shared;
+    public NapalmVulcan(Random? rng = null) : base(SkillIds.HW_NAPALMVULCAN) => _rng = rng ?? Random.Shared;
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+        => baseRatio + (-100 + 70 * skillLevel);
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src,target,SC_CURSE,5*skill_lv,skill_lv,skill_get_time2(getSkillId(),skill_lv));
-    }
-
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // #ifdef RENEWAL
-    // 	skillratio += -100 + 70 * skill_lv;
-    // 	RE_LVL_DMOD(100);
-    // #else
-    // 	skillratio += 25;
-    // #endif
-    return baseRatio;
+        if (_rng.Next(100) < 5 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Curse, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
     }
 }

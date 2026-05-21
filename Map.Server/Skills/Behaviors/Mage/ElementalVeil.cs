@@ -3,14 +3,13 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// EM_ELEMENTAL_VEIL — auto-generated stub from
-/// <c>src/map/skills/mage/elementalveil.hpp</c>.
+/// EM_ELEMENTAL_VEIL — Elemental Master Elemental Veil. Manual port of
+/// <c>rathena-fork/src/map/skills/mage/elementalveil.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Buffs the caster's bound EM-tier elemental with SC_ELEMENTAL_VEIL.
+/// Bound-elemental binding + the SC application on a non-Entity
+/// elemental target is TODO until that surface lands; we broadcast the
+/// no-damage frame and fail-fast if the caster isn't a player.</para>
 /// </summary>
 public sealed class ElementalVeil : SkillImpl
 {
@@ -18,17 +17,9 @@ public sealed class ElementalVeil : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    // 
-    // 	if (sd == nullptr)
-    // 		return;
-    // 
-    // 	if (sd->ed && sd->ed->elemental.class_ >= ELEMENTALID_DILUVIO && sd->ed->elemental.class_ <= ELEMENTALID_SERPENS)
-    // 		sc_start(src, sd->ed, skill_get_sc(getSkillId()), 100, skill_lv, skill_get_time(getSkillId(), skill_lv));
-    // 	else
-    // 		clif_skill_fail( *sd, getSkillId() );
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        if (src is not PlayerEntity sd) return;
+        // TODO: read sd.BoundElemental, verify it's an EM-tier elemental, then sc_start(SC_ELEMENTAL_VEIL).
+        ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SummonNone);
     }
 }

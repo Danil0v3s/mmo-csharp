@@ -3,22 +3,14 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Other;
 
 /// <summary>
-/// ALL_DREAM_SUMMERNIGHT — auto-generated stub from
-/// <c>src/map/skills/other/summernightdream.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// ALL_DREAM_SUMMERNIGHT — Summer Night's Dream emote. Manual port of
+/// <c>rathena-fork/src/map/skills/other/summernightdream.cpp</c>.
+/// Animation only.
 /// </summary>
 public sealed class SummerNightDream : SkillImpl
 {
     public SummerNightDream() : base(SkillIds.ALL_DREAM_SUMMERNIGHT) { }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    }
+        => ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
 }

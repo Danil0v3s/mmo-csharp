@@ -1,16 +1,12 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.MercenaryNpc;
 
 /// <summary>
-/// MER_KYRIE — auto-generated stub from
-/// <c>src/map/skills/mercenary/mercenary_kyrieeleison.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MER_KYRIE — Mercenary Kyrie Eleison. Manual port of
+/// <c>rathena-fork/src/map/skills/mercenary/mercenary_kyrieeleison.cpp</c>.
+/// Applies SC_KYRIE.
 /// </summary>
 public sealed class MercenaryKyrieEleison : SkillImpl
 {
@@ -18,10 +14,7 @@ public sealed class MercenaryKyrieEleison : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 	clif_skill_nodamage(target,*target,getSkillId(),skill_lv,
-    // 	sc_start(src,target,type,100,skill_lv,skill_get_time(getSkillId(),skill_lv)));
+        ctx.Sc?.Start(target, StatusType.Kyrie, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

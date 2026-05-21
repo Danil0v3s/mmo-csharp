@@ -1,43 +1,42 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// WZ_SIGHTRASHER — auto-generated stub from
-/// <c>src/map/skills/mage/sightrasher.hpp</c>.
+/// WZ_SIGHTRASHER — Wizard Sight Rasher. Manual port of
+/// <c>rathena-fork/src/map/skills/mage/sightrasher.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Ends SC_SIGHT on the caster and fires a splash Wind-magic
+/// hit. Per-victim ratio: <c>+20*lv</c>. Splash dispatch is TODO; the
+/// primary target gets the magic hit.</para>
 /// </summary>
 public sealed class SightRasher : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
+
     public SightRasher() : base(SkillIds.WZ_SIGHTRASHER) { }
 
-    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public SightRasher(ISkillAttackService? skillAttack = null) : base(SkillIds.WZ_SIGHTRASHER)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // //Passive side of the attack.
-    // 	status_change_end(src, SC_SIGHT);
-    // 	clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 	map_foreachinshootrange(skill_area_sub,src,
-    // 		skill_get_splash(getSkillId(), skill_lv),BL_CHAR|BL_SKILL,
-    // 		src,getSkillId(),skill_lv,tick, flag|BCT_ENEMY|SD_ANIMATION|1,
-    // 		skill_castend_damage_id);
-    }
-
-    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_attack(BF_MAGIC,src,src,target,getSkillId(),skill_lv,tick,flag);
+        _skillAttack = skillAttack;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // base_skillratio += 20 * skill_lv;
-    return baseRatio;
+        return baseRatio + 20 * skillLevel;
+    }
+
+    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        ctx.Sc?.End(src, StatusType.Sight);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        // TODO: full splash dispatch via map_foreachinshootrange.
+    }
+
+    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
     }
 }

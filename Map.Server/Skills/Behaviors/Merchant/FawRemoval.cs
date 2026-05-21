@@ -3,14 +3,9 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// NC_DISJOINT — auto-generated stub from
-/// <c>src/map/skills/merchant/fawremoval.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// NC_DISJOINT — Mechanic FAW Removal (Disjoint). Manual port of
+/// <c>rathena-fork/src/map/skills/merchant/fawremoval.cpp</c>.
+/// Kills a Silver Sniper or Magic Decoy unit. Mob-id range check TODO.
 /// </summary>
 public sealed class FawRemoval : SkillImpl
 {
@@ -18,15 +13,8 @@ public sealed class FawRemoval : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // if (target->type != BL_MOB) {
-    // 		return;
-    // 	}
-    // 
-    // 	mob_data* md = map_id2md(target->id);
-    // 	if (md && md->mob_id >= MOBID_SILVERSNIPER && md->mob_id <= MOBID_MAGICDECOY_WIND) {
-    // 		status_kill(target);
-    // 	}
-    // 	clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
+        if (target is not MobEntity) return;
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        // TODO: gate by MOBID_SILVERSNIPER..MOBID_MAGICDECOY_WIND, then status_kill.
     }
 }

@@ -1,51 +1,41 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SO_CLOUD_KILL — auto-generated stub from
-/// <c>src/map/skills/mage/cloudkill.hpp</c>.
+/// SO_CLOUD_KILL — Sorcerer Cloud Kill. Manual port of
+/// <c>rathena-fork/src/map/skills/mage/cloudkill.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Drops a poisonous ground unit. Per-tick splash applies the
+/// status configured on the skill (poison) with 100 % rate. Ratio:
+/// <c>+(-100 + 40*lv) + INT*3</c>, with optional SC_CURSED_SOIL_OPTION
+/// (+job_level) and SC_DEEP_POISONING_OPTION (×16) bonuses — SC reads
+/// on caster TODO.</para>
 /// </summary>
 public sealed class CloudKill : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+
     public CloudKill() : base(SkillIds.SO_CLOUD_KILL) { }
 
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public CloudKill(ISkillUnitService? units = null) : base(SkillIds.SO_CLOUD_KILL)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, skill_get_sc(getSkillId()), 100, skill_lv, skill_get_time2(getSkillId(), skill_lv));
+        _units = units;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 	const status_change *sc = status_get_sc(src);
-    // 	const map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	skillratio += -100 + 40 * skill_lv;
-    // 	skillratio += sstatus->int_ * 3;
-    // 	RE_LVL_DMOD(100);
-    // 	if (sc) {
-    // 		if (sc->getSCE(SC_CURSED_SOIL_OPTION))
-    // 			skillratio += (sd ? sd->status.job_level : 0);
-    // 
-    // 		if (sc->getSCE(SC_DEEP_POISONING_OPTION))
-    // 			skillratio += skillratio * 1500 / 100;
-    // 	}
-    return baseRatio;
+        // rAthena: skillratio += -100 + 40*lv + INT*3; SC bonuses on caster TODO (no buff readback here).
+        return baseRatio + (-100 + 40 * skillLevel) + src.Stats.IntStat * 3;
     }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+        => _units?.Place(src, SkillId, skillLevel, x, y);
+
+    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // flag |= 4;
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
+        // rAthena: sc_start at 100% with skill's default SC (Poison) and time2 duration.
+        ctx.Sc?.Start(target, StatusType.Poison, val1: skillLevel, 0, 0, 0, durationMs: 5000, src);
     }
 }

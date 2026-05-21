@@ -3,14 +3,10 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Summoner;
 
 /// <summary>
-/// SU_PICKYPECK — auto-generated stub from
-/// <c>src/map/skills/summoner/pickypeck.hpp</c>.
-///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// SU_PICKYPECK — Summoner Picky Peck. Manual port of
+/// <c>rathena-fork/src/map/skills/summoner/pickypeck.cpp</c>.
+/// Ratio <c>+(100 + 100*lv)</c>; doubles when target HP &lt; MaxHP/2;
+/// SU_SPIRITOFLIFE adds HP-ratio multiplier (TODO — skilltree query).
 /// </summary>
 public sealed class PickyPeck : WeaponSkillImpl
 {
@@ -18,24 +14,15 @@ public sealed class PickyPeck : WeaponSkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	base_skillratio += 100 + 100 * skill_lv;
-    // 	if (status_get_hp(target) < (status_get_max_hp(target) / 2))
-    // 		base_skillratio *= 2;
-    // 	if (sd && pc_checkskill(sd, SU_SPIRITOFLIFE))
-    // 		base_skillratio += base_skillratio * status_get_hp(src) / status_get_max_hp(src);
-    return baseRatio;
+        var ratio = baseRatio + 100 + 100 * skillLevel;
+        if (target.Stats.Hp < target.Stats.MaxHp / 2)
+            ratio *= 2;
+        return ratio;
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    // 
-    // 	WeaponSkillImpl::castendDamageId(src, target, skill_lv, tick, flag);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        base.CastendDamageId(src, target, skillLevel, ctx);
     }
-
-
 }

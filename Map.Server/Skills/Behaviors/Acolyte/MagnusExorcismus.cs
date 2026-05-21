@@ -1,37 +1,43 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// PR_MAGNUS — auto-generated stub from
-/// <c>src/map/skills/acolyte/magnusexorcismus.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// PR_MAGNUS — Priest Magnus Exorcismus. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/magnusexorcismus.cpp</c>.
+/// Drops the ground unit; +30 ratio against Undead/Demon races and
+/// Undead-element targets.
 /// </summary>
 public sealed class MagnusExorcismus : SkillImpl
 {
+    private readonly Map.Server.Skills.ISkillUnitService? _units;
+
     public MagnusExorcismus() : base(SkillIds.PR_MAGNUS) { }
+
+    public MagnusExorcismus(Map.Server.Skills.ISkillUnitService? units = null) : base(SkillIds.PR_MAGNUS)
+    {
+        _units = units;
+    }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // //Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	flag |= 1;
-    // 
-    // 	skill_unitsetting(src, getSkillId(), skill_lv, x, y, 0);
+        // rAthena: skill_unitsetting(src, getSkillId(), skill_lv, x, y, 0);
+        // Drops the Magnus Exorcismus ground unit; per-tick damage to
+        // Undead/Demon races inside the splash is handled by the
+        // SkillUnit engine via skill_unit_db entry.
+        _units?.Place(src, SkillId, skillLevel, x, y);
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* tstatus = status_get_status_data(*target);
-    // 
-    // 	if (battle_check_undead(tstatus->race, tstatus->def_ele) || tstatus->race == RC_DEMON)
-    // 		base_skillratio += 30;
-    return baseRatio;
+        // rAthena: if (undead-race or undead-element or demon-race) baseRatio += 30;
+        if (target.Stats.Race == BattleRace.Undead ||
+            target.Stats.DefenseElement == BattleElement.Undead ||
+            target.Stats.Race == BattleRace.Demon)
+        {
+            return baseRatio + 30;
+        }
+        return baseRatio;
     }
 }

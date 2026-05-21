@@ -1,35 +1,57 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// SR_FLASHCOMBO — auto-generated stub from
-/// <c>src/map/skills/acolyte/flashcombo.hpp</c>.
+/// SR_FLASHCOMBO — Sura Flash Combo. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/flashcombo.cpp</c>.
 ///
-/// <para>Inherits <see cref="StatusSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Triggers a fixed 3-skill chain on the target:</para>
+/// <list type="number">
+///   <item>SR_DRAGONCOMBO at +0 ms</item>
+///   <item>SR_FALLENEMPIRE at +750 ms</item>
+///   <item>SR_TIGERCANNON at +1250 ms</item>
+/// </list>
+/// <para>Caster's attack/cast/use-item locks are held for the full
+/// 1250 ms window. The deferred hits use
+/// <see cref="ISkillAttackService"/> with BF_WEAPON.</para>
 /// </summary>
 public sealed class FlashCombo : StatusSkillImpl
 {
+    private readonly Map.Server.Skills.ISkillTimerService? _timers;
+    private readonly Map.Server.Skills.ISkillAttackService? _skillAttack;
+
     public FlashCombo() : base(SkillIds.SR_FLASHCOMBO) { }
+
+    public FlashCombo(
+        Map.Server.Skills.ISkillTimerService? timers = null,
+        Map.Server.Skills.ISkillAttackService? skillAttack = null) : base(SkillIds.SR_FLASHCOMBO)
+    {
+        _timers = timers;
+        _skillAttack = skillAttack;
+    }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	const int32 combo[] = { SR_DRAGONCOMBO, SR_FALLENEMPIRE, SR_TIGERCANNON };
-    // 	const int32 delay[] = { 0, 750, 1250 };
-    // 
-    // 	if (sd) // Disable attacking/acting/moving for skill's duration.
-    // 		sd->ud.attackabletime = sd->canuseitem_tick = sd->ud.canact_tick = tick + delay[2];
-    // 
-    // 	StatusSkillImpl::castendNoDamageId(src, target, skill_lv, tick, flag);
-    // 
-    // 	for (int32 i = 0; i < ARRAYLENGTH(combo); i++)
-    // 		skill_addtimerskill(src,tick + delay[i],target->id,0,0,combo[i],skill_lv,BF_WEAPON,flag|SD_LEVEL);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+
+        // TODO: lock caster's attack/cast/use-item for 1250 ms via PlayerEntity
+        // canact_tick when that field is surfaced.
+
+        // Schedule the 3-skill chain. Each fires through SkillAttackService
+        // as a BF_WEAPON hit on the target.
+        var combo = new[] { SkillIds.SR_DRAGONCOMBO, SkillIds.SR_FALLENEMPIRE, SkillIds.SR_TIGERCANNON };
+        var delays = new[] { 0, 750, 1250 };
+        for (int i = 0; i < combo.Length; i++)
+        {
+            int delay = delays[i];
+            ushort comboSkill = combo[i];
+            _timers?.Schedule(src, target, delay, comboSkill, skillLevel,
+                (s, t, lv) =>
+                {
+                    _skillAttack?.SkillAttack(BattleAttackType.Weapon, s, s, t, comboSkill, lv);
+                });
+        }
     }
 }

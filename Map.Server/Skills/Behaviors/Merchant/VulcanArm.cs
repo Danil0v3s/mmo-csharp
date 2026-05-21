@@ -1,37 +1,25 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// NC_VULCANARM — auto-generated stub from
-/// <c>src/map/skills/merchant/vulcanarm.hpp</c>.
-///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// NC_VULCANARM — Mechanic Vulcan Arm. Manual port of
+/// <c>rathena-fork/src/map/skills/merchant/vulcanarm.cpp</c>.
+/// Ratio <c>+(-100 + 230*lv) + DEX</c>. If the caster has SC_ABR_DUAL_CANNON
+/// the attack divides into two hits.
 /// </summary>
 public sealed class VulcanArm : RecursiveDamageSplashSkillImpl
 {
     public VulcanArm() : base(SkillIds.NC_VULCANARM) { }
 
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+        => baseRatio + (-100 + 230 * skillLevel) + src.Stats.Dex;
+
     public override void ModifyDamageData(ref Map.Server.Combat.BattleDamage dmg, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_change *sc = status_get_sc(&src);
-    // 
-    // 	if (sc != nullptr && sc->hasSCE(SC_ABR_DUAL_CANNON))
-    // 		dmg.div_ = 2;
-    }
-
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	skillratio += -100 + 230 * skill_lv + sstatus->dex; // !TODO: What's the DEX bonus?
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
+        // SC_ABR_DUAL_CANNON splits Vulcan Arm into two hits.
+        // Sc availability isn't passed through ModifyDamageData yet — TODO once
+        // the SC service is plumbed into the damage hook. For now we leave Hits=1.
     }
 }

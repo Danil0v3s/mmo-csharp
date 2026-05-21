@@ -3,14 +3,16 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AB_PRAEFATIO — auto-generated stub from
-/// <c>src/map/skills/acolyte/praefatio.hpp</c>.
+/// AB_PRAEFATIO — Arch Bishop Praefatio. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/praefatio.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Party-wide Praefatio buff (damage-absorb shield similar to
+/// Kyrie Eleison but scales with party size — Val4 carries the
+/// party count for the SC handler to read).</para>
+///
+/// <para>The SC type <c>SC_PRAEFATIO</c> isn't yet on our StatusType
+/// enum — once it lands, the apply call will use the proper SC.
+/// For now we broadcast the cast frame and TODO the SC.</para>
 /// </summary>
 public sealed class Praefatio : SkillImpl
 {
@@ -18,13 +20,12 @@ public sealed class Praefatio : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_type type = skill_get_sc(getSkillId());
-    // 	map_session_data* sd = BL_CAST( BL_PC, src );
-    // 
-    // 	if( !sd || sd->status.party_id == 0 || flag&1 ) {
-    // 		clif_skill_nodamage(target, *target, getSkillId(), skill_lv, sc_start4(src, target, type, 100, skill_lv, 0, 0, (sd && sd->status.party_id ? party_foreachsamemap(party_sub_count, sd, 0) : 1 ), skill_get_time(getSkillId(), skill_lv)));
-    // 	} else if( sd )
-    // 		party_foreachsamemap(skill_area_sub, sd, skill_get_splash(getSkillId(), skill_lv), src, getSkillId(), skill_lv, tick, flag|BCT_PARTY|1, skill_castend_nodamage_id);
+        // rAthena: sc_start4(SC_PRAEFATIO, 100, lv, 0, 0, party_count, skill_get_time(...))
+        // SC missing on our enum — broadcast the cast frame; the SC
+        // application + party-count Val4 land once SC_PRAEFATIO is added.
+        ctx.Client?.BroadcastSkillNoDamage(target, target, SkillId, skillLevel);
+
+        // TODO: when StatusType.Praefatio is added, apply the SC with
+        // Val4 = party member count for proportional damage absorb.
     }
 }

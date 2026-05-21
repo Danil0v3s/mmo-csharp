@@ -3,25 +3,14 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Other;
 
 /// <summary>
-/// ALL_RAY_OF_PROTECTION — auto-generated stub from
-/// <c>src/map/skills/other/rayofprotection.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// ALL_RAY_OF_PROTECTION — All Ray of Protection. Manual port of
+/// <c>rathena-fork/src/map/skills/other/rayofprotection.cpp</c>.
+/// Buff SC; enum not yet in StatusType — TODO. Animation lands.
 /// </summary>
 public sealed class RayOfProtection : SkillImpl
 {
     public RayOfProtection() : base(SkillIds.ALL_RAY_OF_PROTECTION) { }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 	clif_skill_nodamage(target,*target,getSkillId(),skill_lv,
-    // 		sc_start(src,target,type,100,skill_lv,skill_get_time(getSkillId(),skill_lv)));
-    }
+        => ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
 }

@@ -1,16 +1,13 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// RK_FIGHTINGSPIRIT — auto-generated stub from
-/// <c>src/map/skills/swordman/fightingspirit.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// RK_FIGHTINGSPIRIT — Rune Knight Fighting Spirit. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/fightingspirit.cpp</c>.
+/// Val1 = ATK bonus (70 + 7*runelv), Val2 = ASPD bonus (4*runelv).
+/// runelv = RK_RUNEMASTERY level (defaults to 10 here pending skill tree).
 /// </summary>
 public sealed class FightingSpirit : SkillImpl
 {
@@ -18,14 +15,9 @@ public sealed class FightingSpirit : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	uint8 runemastery_skill_lv = (sd ? pc_checkskill(sd, RK_RUNEMASTERY) : skill_get_max(RK_RUNEMASTERY));
-    // 
-    // 	// val1: ATKBonus: ? // !TODO: Confirm new ATK formula
-    // 	// val2: ASPD boost: [RK_RUNEMASTERYlevel * 4 / 10] * 10 ==> RK_RUNEMASTERYlevel * 4
-    // 	sc_start2(src,target,skill_get_sc(getSkillId()),100,70 + 7 * runemastery_skill_lv,4 * runemastery_skill_lv,skill_get_time(getSkillId(),skill_lv));
-    // 	clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
+        // TODO: query pc_checkskill(sd, RK_RUNEMASTERY); for now assume max (10).
+        const int runeLv = 10;
+        ctx.Sc?.Start(target, StatusType.Fightingspirit, val1: 70 + 7 * runeLv, val2: 4 * runeLv, 0, 0, durationMs: 60_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

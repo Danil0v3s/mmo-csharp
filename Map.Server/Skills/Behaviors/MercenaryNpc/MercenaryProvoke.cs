@@ -1,52 +1,33 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.MercenaryNpc;
 
 /// <summary>
-/// MER_PROVOKE — auto-generated stub from
-/// <c>src/map/skills/mercenary/mercenary_provoke.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MER_PROVOKE — Mercenary Provoke. Manual port of
+/// <c>rathena-fork/src/map/skills/mercenary/mercenary_provoke.cpp</c>.
+/// Status-immune mobs and undead targets are skipped. Apply rate
+/// <c>70 + 3*lv + (BaseLv - target.Lv)</c>%.
 /// </summary>
 public sealed class MercenaryProvoke : SkillImpl
 {
-    public MercenaryProvoke() : base(SkillIds.MER_PROVOKE) { }
+    private readonly Random _rng;
+
+    public MercenaryProvoke() : base(SkillIds.MER_PROVOKE) => _rng = Random.Shared;
+
+    public MercenaryProvoke(Random? rng = null) : base(SkillIds.MER_PROVOKE)
+        => _rng = rng ?? Random.Shared;
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // mob_data* dstmd = BL_CAST(BL_MOB, target);
-    // 	status_data* tstatus = status_get_status_data(*target);
-    // 	sc_type type = skill_get_sc(getSkillId());
-    // 	map_session_data* sd = BL_CAST(BL_PC, src);
-    // 	int32 i = 0;
-    // 
-    // 	if( status_has_mode(tstatus,MD_STATUSIMMUNE) || battle_check_undead(tstatus->race,tstatus->def_ele) ) {
-    // 		flag |= SKILL_NOCONSUME_REQ;
-    // 		return;
-    // 	}
-    // 	// Official chance is 70% + 3%*skill_lv + srcBaseLevel% - tarBaseLevel%
-    // 	if(!(i = sc_start(src, target, type, 70 + 3 * skill_lv + status_get_lv(src) - status_get_lv(target), skill_lv, skill_get_time(getSkillId(), skill_lv))))
-    // 	{
-    // 		if( sd )
-    // 			clif_skill_fail( *sd, getSkillId() );
-    // 		flag |= SKILL_NOCONSUME_REQ;
-    // 		return;
-    // 	}
-    // 	clif_skill_nodamage(src, *target, getSkillId(), skill_lv, i != 0);
-    // 	unit_skillcastcancel(target, 2);
-    // 
-    // 	if( dstmd )
-    // 	{
-    // 		dstmd->state.provoke_flag = src->id;
-    // 		mob_target(dstmd, src, skill_get_range2(src, getSkillId(), skill_lv, true));
-    // 	}
-    // 	// Provoke can cause Coma even though it's a nodamage skill
-    // 	if (sd && battle_check_coma(*sd, *target, BF_MISC))
-    // 		status_change_start(src, target, SC_COMA, 10000, skill_lv, 0, src->id, 0, 0, SCSTART_NONE);
+        if ((target.Stats.Mode & MobMode.StatusImmune) != 0) return;
+        if (target.Stats.DefenseElement == BattleElement.Undead) return;
+        var rate = 70 + 3 * skillLevel + src.Level - target.Level;
+        if (_rng.Next(100) < rate)
+        {
+            var durationMs = 30_000 - 1_000 * skillLevel;
+            ctx.Sc?.Start(target, StatusType.Provoke, val1: skillLevel, 0, 0, 0, durationMs, src);
+            ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        }
     }
 }

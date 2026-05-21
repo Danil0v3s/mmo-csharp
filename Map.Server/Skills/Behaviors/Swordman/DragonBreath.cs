@@ -1,37 +1,42 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// RK_DRAGONBREATH — auto-generated stub from
-/// <c>src/map/skills/swordman/dragonbreath.hpp</c>.
-///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// RK_DRAGONBREATH — Rune Knight Dragon Breath. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/dragonbreath.cpp</c>.
+/// Hides the cast against hiding targets and otherwise lands a weapon
+/// attack. On hit, 15% to inflict SC_BURNING.
 /// </summary>
 public sealed class DragonBreath : RecursiveDamageSplashSkillImpl
 {
-    public DragonBreath() : base(SkillIds.RK_DRAGONBREATH) { }
+    private readonly Random _rng;
+    private readonly ISkillAttackService? _skillAttack;
+
+    public DragonBreath() : base(SkillIds.RK_DRAGONBREATH) => _rng = Random.Shared;
+
+    public DragonBreath(ISkillAttackService? skillAttack = null, Random? rng = null)
+        : base(SkillIds.RK_DRAGONBREATH)
+    {
+        _skillAttack = skillAttack;
+        _rng = rng ?? Random.Shared;
+    }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start4(src,target,SC_BURNING,15,skill_lv,1000,src->id,0,skill_get_time(getSkillId(),skill_lv));
+        if (_rng.Next(100) < 15)
+            ctx.Sc?.Start(target, StatusType.Burning, val1: skillLevel, val2: 1000, val3: (int)src.Id, 0, durationMs: 10_000, src);
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_change *tsc = status_get_sc(target);
-    // 
-    // 	if( tsc && tsc->getSCE(SC_HIDING) )
-    // 		clif_skill_nodamage(src,*src,getSkillId(),skill_lv);
-    // 	else {
-    // 		skill_attack(BF_WEAPON, src, src, target, getSkillId(), skill_lv, tick, flag);
-    // 	}
+        if (ctx.Sc?.Get(target, StatusType.Hiding) != null)
+        {
+            ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+            return;
+        }
+        _skillAttack?.SkillAttack(BattleAttackType.Weapon, src, src, target, SkillId, skillLevel);
     }
-
 }

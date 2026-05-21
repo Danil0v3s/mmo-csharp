@@ -1,16 +1,16 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SA_ELEMENTFIRE — auto-generated stub from
-/// <c>src/map/skills/mage/elementalchangefire.hpp</c>.
+/// SA_ELEMENTFIRE — Sage Endow / Elemental Change (Fire). Manual port of
+/// <c>rathena-fork/src/map/skills/mage/elementalchangefire.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Forces the target's defensive element to Fire via SC_ELEMENTALCHANGE
+/// (val2 = skill element). rAthena restricts the cast: a player caster
+/// can only land it on monsters and never on status-immune (MVP/Boss)
+/// monsters; we mirror both gates here.</para>
 /// </summary>
 public sealed class ElementalChangeFire : SkillImpl
 {
@@ -18,16 +18,15 @@ public sealed class ElementalChangeFire : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_data* tstatus = status_get_status_data(*target);
-    // 	sc_type type = skill_get_sc(getSkillId());
-    // 	map_session_data* sd = BL_CAST( BL_PC, src );
-    // 	mob_data* dstmd = BL_CAST( BL_MOB, target );
-    // 
-    // 	if (sd && (!dstmd || status_has_mode(tstatus,MD_STATUSIMMUNE))) // Only works on monsters (Except status immune monsters).
-    // 		return;
-    // 	clif_skill_nodamage(src,*target,getSkillId(),skill_lv,
-    // 		sc_start2(src,target, type, 100, skill_lv, skill_get_ele(getSkillId(),skill_lv),
-    // 			skill_get_time(getSkillId(), skill_lv)));
+        // rAthena: player caster can only land on non-status-immune mobs.
+        if (src is PlayerEntity)
+        {
+            if (target is not MobEntity)
+                return;
+            if ((target.Stats.Mode & MobMode.StatusImmune) != 0)
+                return;
+        }
+        ctx.Sc?.Start(target, StatusType.Elementalchange, val1: skillLevel, val2: (int)BattleElement.Fire, 0, 0, durationMs: 30_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

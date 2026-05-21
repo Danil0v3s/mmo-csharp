@@ -3,14 +3,13 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// AG_FROZEN_SLASH — auto-generated stub from
-/// <c>src/map/skills/mage/frozenslash.hpp</c>.
+/// AG_FROZEN_SLASH — Arch Mage Frozen Slash. Manual port of
+/// <c>rathena-fork/src/map/skills/mage/frozenslash.cpp</c>.
 ///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Water AOE splash. Ratio: <c>+(-100 + 450 + 950*lv) + 5*SPL</c>,
+/// with +<c>150 + 350*lv</c> when SC_CLIMAX is active on the caster
+/// (SC readback TODO). RecursiveDamageSplashSkillImpl handles the
+/// splash chain.</para>
 /// </summary>
 public sealed class FrozenSlash : RecursiveDamageSplashSkillImpl
 {
@@ -18,24 +17,6 @@ public sealed class FrozenSlash : RecursiveDamageSplashSkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 	const status_change *sc = status_get_sc(src);
-    // 
-    // 	skillratio += -100 + 450 + 950 * skill_lv + 5 * sstatus->spl;
-    // 
-    // 	if( sc != nullptr && sc->getSCE( SC_CLIMAX ) ){
-    // 		skillratio += 150 + 350 * skill_lv;
-    // 	}
-    // 
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
-    }
-
-    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 	skill_castend_damage_id(src, target, getSkillId(), skill_lv, tick, flag);
+        return baseRatio + (-100 + 450 + 950 * skillLevel) + 5 * src.Stats.Spl;
     }
 }

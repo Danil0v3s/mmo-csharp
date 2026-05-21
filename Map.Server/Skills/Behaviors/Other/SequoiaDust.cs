@@ -1,16 +1,12 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Other;
 
 /// <summary>
-/// ECL_SEQUOIADUST — auto-generated stub from
-/// <c>src/map/skills/other/sequoiadust.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// ECL_SEQUOIADUST — Sequoia Dust cleanse. Manual port of
+/// <c>rathena-fork/src/map/skills/other/sequoiadust.cpp</c>.
+/// Cleanses Stone / Poison / Curse / Blind / Orcish / DecreaseAgi.
 /// </summary>
 public sealed class SequoiaDust : SkillImpl
 {
@@ -18,15 +14,12 @@ public sealed class SequoiaDust : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_change_end(target, SC_STONE);
-    // 	status_change_end(target, SC_POISON);
-    // 	status_change_end(target, SC_CURSE);
-    // 	status_change_end(target, SC_BLIND);
-    // 	status_change_end(target, SC_ORCISH);
-    // 	status_change_end(target, SC_DECREASEAGI);
-    // 
-    // 	clif_skill_damage( *src, *target, tick, status_get_amotion(src), 0, DMGVAL_IGNORE, 1, getSkillId(), 1, DMG_SINGLE );
-    // 	clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
+        ctx.Sc?.End(target, StatusType.Stone);
+        ctx.Sc?.End(target, StatusType.Poison);
+        ctx.Sc?.End(target, StatusType.Curse);
+        ctx.Sc?.End(target, StatusType.Blind);
+        ctx.Sc?.End(target, StatusType.Orcish);
+        ctx.Sc?.End(target, StatusType.DecreaseAgi);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

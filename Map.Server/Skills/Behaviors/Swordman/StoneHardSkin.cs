@@ -1,16 +1,12 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// RK_STONEHARDSKIN — auto-generated stub from
-/// <c>src/map/skills/swordman/stonehardskin.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// RK_STONEHARDSKIN — Rune Knight Stone Hard Skin. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/stonehardskin.cpp</c>.
+/// Requires RK_RUNEMASTERY ≥ 4 (TODO). Applies SC_STONEHARDSKIN.
 /// </summary>
 public sealed class StoneHardSkin : SkillImpl
 {
@@ -18,15 +14,9 @@ public sealed class StoneHardSkin : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // if (map_session_data* sd = BL_CAST(BL_PC, src); sd != nullptr) {
-    // 		if (pc_checkskill(sd, RK_RUNEMASTERY) >= 4) {
-    // 			if (sc_start(src, target, skill_get_sc(getSkillId()), 100, skill_lv, skill_get_time(getSkillId(), skill_lv)))
-    // 				clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    // 			else
-    // 				clif_skill_fail( *sd, getSkillId(), USESKILL_FAIL_HP_INSUFFICIENT );
-    // 		} else
-    // 			clif_skill_fail( *sd, getSkillId() );
-    // 	}
+        if (src is not PlayerEntity) return;
+        // TODO: gate on pc_checkskill(sd, RK_RUNEMASTERY) >= 4.
+        ctx.Sc?.Start(target, StatusType.Stonehardskin, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

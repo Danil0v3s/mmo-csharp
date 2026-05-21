@@ -1,16 +1,18 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// IQ_FIRST_BRAND — auto-generated stub from
-/// <c>src/map/skills/acolyte/firstbrand.hpp</c>.
+/// IQ_FIRST_BRAND — Inquisitor First Brand. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/firstbrand.cpp</c>.
 ///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Holy splash that brands the victim with
+/// <see cref="StatusType.FirstBrand"/>. Brand SCs chain into
+/// Second/Third combo skills: the Second-* family looks for
+/// FirstBrand on the target as a prerequisite.</para>
+///
+/// <para>Ratio: <c>-100 + 1200*lv + 5*POW</c>.</para>
 /// </summary>
 public sealed class FirstBrand : RecursiveDamageSplashSkillImpl
 {
@@ -18,17 +20,14 @@ public sealed class FirstBrand : RecursiveDamageSplashSkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	skillratio += -100 + 1200 * skill_lv + 5 * sstatus->pow;
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
+        return baseRatio + (-100 + 1200 * skillLevel) + 5 * src.Stats.Pow;
     }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, SC_FIRST_BRAND, 100, skill_lv, skill_get_time(getSkillId(), skill_lv));
+        // rAthena: sc_start(SC_FIRST_BRAND, 100%, lv, skill_get_time(...))
+        // 4000 ms baseline per skill_db.yml Duration1.
+        ctx.Sc?.Start(target, StatusType.FirstBrand,
+            val1: skillLevel, 0, 0, 0, durationMs: 4000, src);
     }
 }

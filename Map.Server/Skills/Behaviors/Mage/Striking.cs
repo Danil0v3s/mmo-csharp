@@ -1,16 +1,17 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SO_STRIKING — auto-generated stub from
-/// <c>src/map/skills/mage/striking.hpp</c>.
+/// SO_STRIKING — Sorcerer Striking. Manual port of
+/// <c>rathena-fork/src/map/skills/mage/striking.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Self/party-only weapon-attack buff (SC_STRIKING).
+/// Bonus = <c>20*lv * weapon_level</c> of the target's right-hand
+/// weapon. The weapon-level read isn't exposed on Entity yet, so we
+/// pass the lv-scaled bonus as <c>20*lv*3</c> (assumes a tier-3
+/// weapon as a placeholder).</para>
 /// </summary>
 public sealed class Striking : SkillImpl
 {
@@ -18,23 +19,16 @@ public sealed class Striking : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_type type = skill_get_sc(getSkillId());
-    // 	map_session_data* sd = BL_CAST(BL_PC, src);
-    // 	map_session_data* dstsd = BL_CAST(BL_PC, target);
-    // 
-    // 	if (battle_check_target(src, target, BCT_SELF|BCT_PARTY) > 0) {
-    // 		int32 bonus = 0;
-    // 
-    // 		if (dstsd) {
-    // 			int16 index = dstsd->equip_index[EQI_HAND_R];
-    // 
-    // 			if (index >= 0 && dstsd->inventory_data[index] && dstsd->inventory_data[index]->type == IT_WEAPON)
-    // 				bonus = (20 * skill_lv) * dstsd->inventory_data[index]->weapon_level;
-    // 		}
-    // 
-    // 		clif_skill_nodamage(src, *target, getSkillId(), skill_lv, sc_start2(src,target, type, 100, skill_lv, bonus, skill_get_time(getSkillId(), skill_lv)));
-    // 	} else if (sd)
-    // 		clif_skill_fail( *sd, getSkillId(), USESKILL_FAIL_TOTARGET );
+        // BCT_SELF|BCT_PARTY gate — friendly-only; default to allowing self.
+        if (src.Id != target.Id && target is not PlayerEntity)
+        {
+            if (src is PlayerEntity sd)
+                ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
+            return;
+        }
+        // rAthena bonus = 20*lv * target_weapon_level — placeholder uses lv*60.
+        var bonus = 20 * skillLevel * 3;
+        ctx.Sc?.Start(target, StatusType.Striking, val1: skillLevel, val2: bonus, 0, 0, durationMs: 30_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

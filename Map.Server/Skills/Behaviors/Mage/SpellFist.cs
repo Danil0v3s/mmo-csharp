@@ -1,16 +1,17 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SO_SPELLFIST — auto-generated stub from
-/// <c>src/map/skills/mage/spellfist.hpp</c>.
+/// SO_SPELLFIST — Sorcerer Spell Fist. Manual port of
+/// <c>rathena-fork/src/map/skills/mage/spellfist.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Cancels the caster's currently queued bolt spell and replaces
+/// the next basic attacks with a magic-charged punch. Reads
+/// <c>sd-&gt;skill_id_old</c> / <c>skill_lv_old</c> set during the
+/// preceding bolt cast — that bookkeeping isn't wired in our skill
+/// engine yet, so the SC starts with the bolt slot zeroed out.</para>
 /// </summary>
 public sealed class SpellFist : SkillImpl
 {
@@ -18,17 +19,8 @@ public sealed class SpellFist : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    // 	unit_skillcastcancel(src, 1);
-    // 
-    // 	if (sd) {
-    // 		if (sd->skill_id_old != 0 && sd->skill_lv_old != 0) {
-    // 			sc_start4(src, src, skill_get_sc(getSkillId()), 100, skill_lv, sd->skill_id_old, sd->skill_lv_old, 0, skill_get_time(getSkillId(), skill_lv));
-    // 		}
-    // 		sd->skill_id_old = sd->skill_lv_old = 0;
-    // 	}
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        // TODO: read sd.skill_id_old / skill_lv_old, cancel current cast, then SC start with bolt info.
+        ctx.Sc?.Start(src, StatusType.Spellfist, val1: skillLevel, val2: 0, val3: 0, 0, durationMs: 30_000, src);
     }
 }

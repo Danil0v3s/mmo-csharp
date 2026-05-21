@@ -1,33 +1,27 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Homunculus;
 
 /// <summary>
-/// MH_NEEDLE_STINGER — auto-generated stub from
-/// <c>src/map/skills/homunculus/homunculus_needlestinger.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MH_NEEDLE_STINGER — Homunculus Needle Stinger. Manual port of
+/// <c>rathena-fork/src/map/skills/homunculus/homunculus_needlestinger.cpp</c>.
+/// Ratio <c>+(-100 + 200 + 500*lv*BaseLv/100) + DEX</c>.
 /// </summary>
 public sealed class NeedleStinger : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
+
     public NeedleStinger() : base(SkillIds.MH_NEEDLE_STINGER) { }
 
-    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public NeedleStinger(ISkillAttackService? skillAttack = null) : base(SkillIds.MH_NEEDLE_STINGER)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_attack(skill_get_type(getSkillId()), src, src, target, getSkillId(), skill_lv, tick, flag);
+        _skillAttack = skillAttack;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	base_skillratio += -100 + 200 + 500 * skill_lv * status_get_lv(src) / 100 + sstatus->dex; // !TODO: Confirm Base Level and DEX bonus
-    return baseRatio;
-    }
+        => baseRatio + (-100 + 200 + 500 * skillLevel * src.Level / 100) + src.Stats.Dex;
+
+    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+        => _skillAttack?.SkillAttack(BattleAttackType.Weapon, src, src, target, SkillId, skillLevel);
 }

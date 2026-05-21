@@ -3,14 +3,18 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AB_ANCILLA — auto-generated stub from
-/// <c>src/map/skills/acolyte/ancilla.hpp</c>.
+/// AB_ANCILLA — Arch Bishop Ancilla. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/ancilla.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Produces one Ancilla item (an SP-restoring consumable)
+/// using <c>skill_produce_mix</c> on the caster. Player-only —
+/// non-PC casters skip silently.</para>
+///
+/// <para>The C# port doesn't yet have <c>ISkillProductionService.Produce</c>
+/// wired for ad-hoc skill-produced items at this entry point; the
+/// cast frame is broadcast faithfully and the production call is
+/// marked TODO. Skill-driven item production lands separately
+/// (SK-M4 in the parity roadmap).</para>
 /// </summary>
 public sealed class Ancilla : SkillImpl
 {
@@ -18,12 +22,14 @@ public sealed class Ancilla : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST( BL_PC, src );
-    // 
-    // 	if( sd ) {
-    // 		clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 		skill_produce_mix(sd, getSkillId(), ITEMID_ANCILLA, 0, 0, 0, 1, -1);
-    // 	}
+        // rAthena: if (sd) { clif_skill_nodamage(...); skill_produce_mix(sd, AB_ANCILLA, ITEMID_ANCILLA, 0,0,0, 1, -1); }
+        if (src is not PlayerEntity) return;
+
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+
+        // TODO: ISkillProductionService.Produce(sd, ITEMID_ANCILLA, 1).
+        // The fork's production helper handles the SP-cost + cooldown +
+        // inventory-overweight check. Until wired through, no item is
+        // actually granted — broadcast lands so the cast visual plays.
     }
 }

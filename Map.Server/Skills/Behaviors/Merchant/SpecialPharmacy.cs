@@ -3,14 +3,11 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// GN_S_PHARMACY — auto-generated stub from
-/// <c>src/map/skills/merchant/specialpharmacy.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// GN_S_PHARMACY — Genetic Special Pharmacy. Manual port of
+/// <c>rathena-fork/src/map/skills/merchant/specialpharmacy.cpp</c>.
+/// Stashes skill_id_old / skill_lv_old and opens cooking list type 29
+/// (qty=1, page=6). The cooking dialog UI is not yet wired, so we
+/// broadcast the no-damage animation and TODO the cook list packet.
 /// </summary>
 public sealed class SpecialPharmacy : SkillImpl
 {
@@ -18,15 +15,8 @@ public sealed class SpecialPharmacy : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if( sd ) {
-    // 		int32 qty = 1;
-    // 		sd->skill_id_old = getSkillId();
-    // 		sd->skill_lv_old = skill_lv;
-    // 		clif_cooking_list( *sd, 29, getSkillId(), qty, 6 );
-    // 		clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 	}
+        // TODO: send clif_cooking_list(sd, type=29, GN_S_PHARMACY, qty=1, page=6) once
+        // the production UI is ported. Until then, just animate.
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

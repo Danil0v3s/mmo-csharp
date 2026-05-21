@@ -1,16 +1,15 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// CD_EFFLIGO — auto-generated stub from
-/// <c>src/map/skills/acolyte/effligo.hpp</c>.
+/// CD_EFFLIGO — Cardinal Effligo. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/effligo.cpp</c>.
 ///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Mace melee hit. Emits the cast-frame broadcast before the
+/// weapon hit lands. Ratio: <c>-100 + 1650*lv + 7*POW</c> +150*lv
+/// vs Undead/Demon. CD_MACE_BOOK_M mastery omitted.</para>
 /// </summary>
 public sealed class Effligo : WeaponSkillImpl
 {
@@ -18,26 +17,15 @@ public sealed class Effligo : WeaponSkillImpl
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    // 
-    // 	WeaponSkillImpl::castendDamageId(src, target, skill_lv, tick, flag);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        base.CastendDamageId(src, target, skillLevel, ctx);
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const map_session_data* sd = BL_CAST(BL_PC, src);
-    // 	const status_data* sstatus = status_get_status_data(*src);
-    // 	const status_data* tstatus = status_get_status_data(*target);
-    // 
-    // 	skillratio += -100 + 1650 * skill_lv + 7 * sstatus->pow;
-    // 	skillratio += 8 * pc_checkskill(sd, CD_MACE_BOOK_M);
-    // 	if (tstatus->race == RC_UNDEAD || tstatus->race == RC_DEMON) {
-    // 		skillratio += 150 * skill_lv;
-    // 		skillratio += 7 * pc_checkskill(sd, CD_MACE_BOOK_M);
-    // 	}
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
+        var ratio = baseRatio + (-100 + 1650 * skillLevel) + 7 * src.Stats.Pow;
+        if (target.Stats.Race == BattleRace.Undead || target.Stats.Race == BattleRace.Demon)
+            ratio += 150 * skillLevel;
+        return ratio;
     }
 }

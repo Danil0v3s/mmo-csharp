@@ -3,33 +3,27 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Archer;
 
 /// <summary>
-/// BD_SIEGFRIED — auto-generated stub from
-/// <c>src/map/skills/archer/acousticrhythm.hpp</c>.
+/// BD_SIEGFRIED — Bard Acoustic Rhythm (Mr. Kim a Rich Man, retitled
+/// Siegfried in renewal). Manual port of
+/// <c>rathena-fork/src/map/skills/archer/acousticrhythm.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Renewal: a Performer "song" handled by the song dispatcher
+/// (party-wide buff per tick). Pre-renewal: drops a ground unit at
+/// the cast XY. <c>skill_castend_song</c> isn't wired here yet — we
+/// drop the unit (renewal path) and leave the song dispatcher as
+/// TODO.</para>
 /// </summary>
 public sealed class AcousticRhythm : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+
     public AcousticRhythm() : base(SkillIds.BD_SIEGFRIED) { }
 
-    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public AcousticRhythm(ISkillUnitService? units = null) : base(SkillIds.BD_SIEGFRIED)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // #ifdef RENEWAL
-    // 	skill_castend_song(src, getSkillId(), skill_lv, tick);
-    // #endif
+        _units = units;
     }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // #ifndef RENEWAL
-    // 	flag|=1;//Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
-    // #endif
-    }
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 }

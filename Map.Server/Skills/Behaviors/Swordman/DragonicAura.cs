@@ -1,39 +1,30 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// DK_DRAGONIC_AURA — auto-generated stub from
-/// <c>src/map/skills/swordman/dragonicaura.hpp</c>.
-///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// DK_DRAGONIC_AURA — Dragon Knight Dragonic Aura. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/dragonicaura.cpp</c>.
+/// Ratio <c>+3650*lv + 10*POW</c>; <c>+150*lv</c> against Demi-Human / Angel.
+/// On cast applies SC_DRAGONIC_AURA to the caster.
 /// </summary>
 public sealed class DragonicAura : WeaponSkillImpl
 {
     public DragonicAura() : base(SkillIds.DK_DRAGONIC_AURA) { }
 
-    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    // 	WeaponSkillImpl::castendDamageId(src, target, skill_lv, tick, flag);
-    // 	sc_start(src, src, skill_get_sc(getSkillId()), 100, skill_lv, skill_get_time(getSkillId(),skill_lv));
-    }
-
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 	const status_data* tstatus = status_get_status_data(*target);
-    // 
-    // 	skillratio += 3650 * skill_lv + 10 * sstatus->pow;
-    // 	if (tstatus->race == RC_DEMIHUMAN || tstatus->race == RC_ANGEL)
-    // 		skillratio += 150 * skill_lv;
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
+        var ratio = baseRatio + 3650 * skillLevel + 10 * src.Stats.Pow;
+        if (target.Stats.Race == BattleRace.Demihuman || target.Stats.Race == BattleRace.Angel)
+            ratio += 150 * skillLevel;
+        return ratio;
+    }
+
+    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        base.CastendDamageId(src, target, skillLevel, ctx);
+        ctx.Sc?.Start(src, StatusType.DragonicAura, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
     }
 }

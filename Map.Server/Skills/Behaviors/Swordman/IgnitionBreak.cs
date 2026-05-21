@@ -3,37 +3,18 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// RK_IGNITIONBREAK — auto-generated stub from
-/// <c>src/map/skills/swordman/ignitionbreak.hpp</c>.
-///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// RK_IGNITIONBREAK — Rune Knight Ignition Break. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/ignitionbreak.cpp</c>.
+/// Ratio <c>+(-100 + 450*lv)</c>. Splash dispatch is TODO; for now we
+/// land on the named target and animate.
 /// </summary>
 public sealed class IgnitionBreak : RecursiveDamageSplashSkillImpl
 {
     public IgnitionBreak() : base(SkillIds.RK_IGNITIONBREAK) { }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skillratio += -100 + 450 * skill_lv;
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
-    }
+        => baseRatio + (-100 + 450 * skillLevel);
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_area_temp[1] = 0;
-    // 
-    // #if PACKETVER >= 20180207
-    // 	clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // #else
-    // 	clif_skill_damage( *src, *src, tick, status_get_amotion(src), 0, DMGVAL_IGNORE, 1, getSkillId(), skill_lv, DMG_SINGLE );
-    // #endif
-    // 	map_foreachinrange(skill_area_sub, target, skill_get_splash(getSkillId(), skill_lv), BL_CHAR|BL_SKILL, src, getSkillId(), skill_lv, tick, flag|BCT_ENEMY|SD_SPLASH|1, skill_castend_damage_id);
-    }
+        => ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
 }

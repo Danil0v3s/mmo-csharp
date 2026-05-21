@@ -1,16 +1,13 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// SR_GENTLETOUCH_QUIET — auto-generated stub from
-/// <c>src/map/skills/acolyte/gentletouchquiet.hpp</c>.
-///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// SR_GENTLETOUCH_QUIET — Sura Gentle Touch: Quiet. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/gentletouchquiet.cpp</c>.
+/// Ratio <c>+(-100 + 100*lv) + DEX</c>; silences with rate
+/// <c>5*lv + (DEX + BaseLv) / 10</c>%.
 /// </summary>
 public sealed class GentleTouchQuiet : WeaponSkillImpl
 {
@@ -18,18 +15,20 @@ public sealed class GentleTouchQuiet : WeaponSkillImpl
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // // [(Skill Level x 5) + (Caster?s DEX + Caster?s Base Level) / 10]
-    // 	sc_start(src,target, SC_SILENCE, 5 * skill_lv + (status_get_dex(src) + status_get_lv(src)) / 10, skill_lv, skill_get_time(getSkillId(), skill_lv));
+        // rAthena: chance = 5*lv + (caster.dex + caster.lv) / 10
+        // sc_start(SC_SILENCE, chance%, skill_lv, skill_get_time(...))
+        var chance = 5 * skillLevel + (src.Stats.Dex + src.Level) / 10;
+        if (Random.Shared.Next(100) < chance)
+        {
+            ctx.Sc?.Start(target, StatusType.Silence, val1: skillLevel,
+                0, 0, 0, durationMs: 5000, src);
+        }
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	skillratio += -100 + 100 * skill_lv + sstatus->dex;
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
+        // rAthena: skillratio += -100 + 100*skill_lv + caster.dex;
+        // RE_LVL_DMOD(100) applied later by damage formula.
+        return baseRatio + (-100 + 100 * skillLevel) + src.Stats.Dex;
     }
 }

@@ -1,16 +1,14 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.MercenaryNpc;
 
 /// <summary>
-/// MER_LEXDIVINA — auto-generated stub from
-/// <c>src/map/skills/mercenary/mercenary_lexdivina.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MER_LEXDIVINA — Mercenary Lex Divina. Manual port of
+/// <c>rathena-fork/src/map/skills/mercenary/mercenary_lexdivina.cpp</c>.
+/// If the target is already silenced, the SC is removed; otherwise the
+/// silence is scheduled via timer-skill in +1000 ms. Timer scheduling
+/// is simplified to immediate apply here.
 /// </summary>
 public sealed class MercenaryLexDivina : SkillImpl
 {
@@ -18,15 +16,10 @@ public sealed class MercenaryLexDivina : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_type type = skill_get_sc(getSkillId());
-    // 	status_change *tsc = status_get_sc(target);
-    // 	status_change_entry *tsce = (tsc != nullptr && type != SC_NONE) ? tsc->getSCE(type) : nullptr;
-    // 
-    // 	if (tsce)
-    // 		status_change_end(target, type);
-    // 	else
-    // 		skill_addtimerskill(src, tick+1000, target->id, 0, 0, getSkillId(), skill_lv, 100, flag);
-    // 	clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
+        if (ctx.Sc?.Get(target, StatusType.Silence) != null)
+            ctx.Sc.End(target, StatusType.Silence);
+        else
+            ctx.Sc?.Start(target, StatusType.Silence, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

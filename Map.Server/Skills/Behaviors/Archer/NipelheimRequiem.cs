@@ -1,45 +1,30 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Archer;
 
 /// <summary>
-/// TR_NIPELHEIM_REQUIEM — auto-generated stub from
-/// <c>src/map/skills/archer/nipelheimrequiem.hpp</c>.
+/// TR_NIPELHEIM_REQUIEM — Trouvere Nipelheim Requiem. Manual port of
+/// <c>rathena-fork/src/map/skills/archer/nipelheimrequiem.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Chorus debuff. Splash victims roll <c>4*lv %</c> SC_CURSE
+/// and <c>5*lv %</c> SC_HANDICAPSTATE_DEPRESSION (doubled with a
+/// chorus partner). Splash + partner check TODO.</para>
 /// </summary>
 public sealed class NipelheimRequiem : SkillImpl
 {
-    public NipelheimRequiem() : base(SkillIds.TR_NIPELHEIM_REQUIEM) { }
+    private readonly Random _rng;
+
+    public NipelheimRequiem() : base(SkillIds.TR_NIPELHEIM_REQUIEM) => _rng = Random.Shared;
+
+    public NipelheimRequiem(Random? rng = null) : base(SkillIds.TR_NIPELHEIM_REQUIEM) => _rng = rng ?? Random.Shared;
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if (flag & 1) { // Need official success chances.
-    // 		uint16 success_chance = 5 * skill_lv;
-    // 
-    // 		if (flag & 2)
-    // 			success_chance *= 2;
-    // 
-    // 		// Is it a chance to inflect so and so, or seprate chances for inflicting each status? [Rytech]
-    // 		sc_start(src, target, SC_CURSE, 4 * skill_lv, skill_lv, skill_get_time(getSkillId(), skill_lv));
-    // 		sc_start(src, target, SC_HANDICAPSTATE_DEPRESSION, success_chance, skill_lv, skill_get_time2(getSkillId(), skill_lv));
-    // 	} else if (sd) {
-    // 		clif_skill_nodamage(target, *target, getSkillId(), skill_lv);
-    // 
-    // 		sd->skill_id_song = getSkillId();
-    // 		sd->skill_lv_song = skill_lv;
-    // 
-    // 		if (skill_check_pc_partner(sd, getSkillId(), &skill_lv, AREA_SIZE, 0) > 0)
-    // 			flag |= 2;
-    // 
-    // 		map_foreachinallrange(skill_area_sub, src, skill_get_splash(getSkillId(), skill_lv), BL_CHAR, src, getSkillId(), skill_lv, tick, flag | BCT_ENEMY | 1, skill_castend_nodamage_id);
-    // 	}
+        ctx.Client?.BroadcastSkillNoDamage(target, target, SkillId, skillLevel);
+        if (_rng.Next(100) < 4 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Curse, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
+        if (_rng.Next(100) < 5 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.HandicapstateDepression, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
     }
 }

@@ -1,16 +1,13 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// LG_TRAMPLE — auto-generated stub from
-/// <c>src/map/skills/swordman/trample.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// LG_TRAMPLE — Royal Guard Trample. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/trample.cpp</c>.
+/// 25 + 25*lv% chance to wipe traps in splash range, and ends
+/// SC_SV_ROOTTWIST on the target. Splash trap dispel is TODO.
 /// </summary>
 public sealed class Trample : SkillImpl
 {
@@ -18,13 +15,8 @@ public sealed class Trample : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_damage(*src, *target, tick, status_get_amotion(src), 0, DMGVAL_IGNORE, 1, getSkillId(), skill_lv, DMG_SINGLE);
-    // 
-    // 	if (rnd() % 100 < (25 + 25 * skill_lv)) {
-    // 		map_foreachinallrange(skill_destroy_trap, target, skill_get_splash(getSkillId(), skill_lv), BL_SKILL, tick);
-    // 	}
-    // 
-    // 	status_change_end(target, SC_SV_ROOTTWIST);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        // TODO: 25 + 25*lv % chance to dispel traps in splash range.
+        ctx.Sc?.End(target, StatusType.SvRoottwist);
     }
 }

@@ -1,38 +1,33 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SO_VARETYR_SPEAR — auto-generated stub from
-/// <c>src/map/skills/mage/varetyrspear.hpp</c>.
+/// SO_VARETYR_SPEAR — Sorcerer Varetyr Spear. Manual port of
+/// <c>rathena-fork/src/map/skills/mage/varetyrspear.cpp</c>.
 ///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Wind splash. Ratio:
+/// <c>+(-100 + (2*INT + INT*lv/2) / 3)</c>; the +<c>150*(StrikingLv + LightningLoaderLv)</c>
+/// term and SC_BLAST_OPTION job_level*5 bonus are TODO. Splash victims
+/// roll <c>5*lv %</c> SC_STUN.</para>
 /// </summary>
 public sealed class VaretyrSpear : RecursiveDamageSplashSkillImpl
 {
-    public VaretyrSpear() : base(SkillIds.SO_VARETYR_SPEAR) { }
+    private readonly Random _rng;
 
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src,target, SC_STUN, 5 * skill_lv, skill_lv, skill_get_time(getSkillId(), skill_lv));
-    }
+    public VaretyrSpear() : base(SkillIds.SO_VARETYR_SPEAR) => _rng = Random.Shared;
+
+    public VaretyrSpear(Random? rng = null) : base(SkillIds.SO_VARETYR_SPEAR) => _rng = rng ?? Random.Shared;
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 	const status_change *sc = status_get_sc(src);
-    // 	const map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	skillratio += -100 + (2 * sstatus->int_ + 150 * (pc_checkskill(sd, SO_STRIKING) + pc_checkskill(sd, SA_LIGHTNINGLOADER)) + sstatus->int_ * skill_lv / 2) / 3;
-    // 	RE_LVL_DMOD(100);
-    // 	if (sc && sc->getSCE(SC_BLAST_OPTION))
-    // 		skillratio += (sd ? sd->status.job_level * 5 : 0);
-    return baseRatio;
+        return baseRatio + (-100 + (2 * src.Stats.IntStat + src.Stats.IntStat * skillLevel / 2) / 3);
+    }
+
+    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        if (_rng.Next(100) < 5 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 3000, src);
     }
 }

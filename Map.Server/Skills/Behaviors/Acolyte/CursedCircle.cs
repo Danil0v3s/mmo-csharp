@@ -1,44 +1,67 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// SR_CURSEDCIRCLE — auto-generated stub from
-/// <c>src/map/skills/acolyte/cursedcircle.hpp</c>.
+/// SR_CURSEDCIRCLE — Sura Cursed Circle. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/cursedcircle.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Self-centered AoE that locks every enemy in range into
+/// <see cref="StatusType.CursedcircleTarget"/> (target side), then
+/// applies <see cref="StatusType.CursedcircleAtker"/> to the caster
+/// with Val2 = number of locked targets. The caster is rooted for
+/// the SC duration; targets cannot move or attack.</para>
+///
+/// <para>One Spirit Sphere is consumed per locked target. Boss-
+/// class mobs (<c>CLASS_BOSS</c>) are immune.</para>
 /// </summary>
 public sealed class CursedCircle : SkillImpl
 {
+    private readonly IPlayerOrbService? _orbs;
+
     public CursedCircle() : base(SkillIds.SR_CURSEDCIRCLE) { }
+
+    public CursedCircle(IPlayerOrbService? orbs = null) : base(SkillIds.SR_CURSEDCIRCLE)
+    {
+        _orbs = orbs;
+    }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 	sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 	if (flag & 1) {
-    // 		if (status_get_class_(target) == CLASS_BOSS)
-    // 			return;
-    // 		if (sc_start2(src, target, type, 100, skill_lv, src->id, skill_get_time(getSkillId(), skill_lv))) {
-    // 			if (target->type == BL_MOB)
-    // 				mob_unlocktarget((TBL_MOB*)target, gettick());
-    // 			clif_bladestop(*src, target->id, true);
-    // 			flag |= SKILL_NOCONSUME_REQ;
-    // 		}
-    // 		return;
-    // 	}
-    // 
-    // 	clif_skill_damage(*src, *target, tick, status_get_amotion(src), 0, DMGVAL_IGNORE, 1, getSkillId(), skill_lv, DMG_SINGLE);
-    // 	int32 count = map_forcountinrange(skill_area_sub, src, skill_get_splash(getSkillId(), skill_lv), (sd) ? sd->spiritball_old : 15, // Assume 15 spiritballs in non-characters
-    // 		BL_CHAR, src, getSkillId(), skill_lv, tick, flag | BCT_ENEMY | 1, skill_castend_nodamage_id);
-    // 	if (sd)
-    // 		pc_delspiritball(sd, count, 0);
-    // 	clif_skill_nodamage(src, *src, getSkillId(), skill_lv, sc_start2(src, src, SC_CURSEDCIRCLE_ATKER, 100, skill_lv, count, skill_get_time(getSkillId(), skill_lv)));
+        const short splashRange = 3;
+        var maxLocks = src is PlayerEntity sd ? _orbs?.Get(sd, OrbKind.Spirit) ?? 15 : 15;
+
+        var victims = ctx.Entities.ForEachInRange(src.MapId, src.X, src.Y, splashRange,
+            EntityType.Mob | EntityType.Pc)
+            .Where(v => v.Id != src.Id)
+            .Take(maxLocks)
+            .ToList();
+
+        int lockedCount = 0;
+        foreach (var v in victims)
+        {
+            // rAthena: skip boss-class mobs (CLASS_BOSS).
+            if (v is MobEntity m && (m.Stats.Mode & MobMode.Mvp) != 0) continue;
+
+            // Apply target-side SC (Val2 = caster id for unlock-on-caster-death).
+            var sc = ctx.Sc?.Start(v, StatusType.CursedcircleTarget,
+                val1: skillLevel, val2: src.Id.Value,
+                0, 0, durationMs: 4000, src);
+            if (sc != null) lockedCount++;
+        }
+
+        // Consume one Spirit Sphere per locked target.
+        if (src is PlayerEntity sd2 && lockedCount > 0)
+        {
+            _orbs?.Remove(sd2, OrbKind.Spirit, lockedCount);
+        }
+
+        // Apply caster-side SC (Val2 = count of locked targets).
+        ctx.Sc?.Start(src, StatusType.CursedcircleAtker,
+            val1: skillLevel, val2: lockedCount,
+            0, 0, durationMs: 4000, src);
+
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
     }
 }

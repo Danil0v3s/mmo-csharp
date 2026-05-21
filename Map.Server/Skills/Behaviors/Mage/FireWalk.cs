@@ -3,41 +3,27 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SO_FIREWALK — auto-generated stub from
-/// <c>src/map/skills/mage/firewalk.hpp</c>.
+/// SO_FIREWALK — Sorcerer Fire Walk. Manual port of
+/// <c>rathena-fork/src/map/skills/mage/firewalk.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Self-buff that paints burning ground while the caster moves.
+/// Ratio: <c>+(-100 + 60*lv)</c>; SC_HEATER_OPTION job-level/2 bonus is
+/// TODO. Buff replaces any active SC_FIREWALK before starting fresh —
+/// SC_FIREWALK is not yet on our StatusType enum (TODO).</para>
 /// </summary>
 public sealed class FireWalk : SkillImpl
 {
     public FireWalk() : base(SkillIds.SO_FIREWALK) { }
 
-    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_change* sc = status_get_sc(src);
-    // 	sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 	if (sc && sc->getSCE(type))
-    // 		status_change_end(src, type);
-    // 
-    // 	sc_start2(src, src, type, 100, getSkillId(), skill_lv, skill_get_time(getSkillId(), skill_lv));
-    }
-
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const map_session_data* sd = BL_CAST(BL_PC, src);
-    // 	const status_change* sc = status_get_sc(src);
-    // 
-    // 	skillratio += -100 + 60 * skill_lv;
-    // 	RE_LVL_DMOD(100);
-    // 	if( sc && sc->getSCE(SC_HEATER_OPTION) )
-    // 		skillratio += (sd ? sd->status.job_level / 2 : 0);
-    return baseRatio;
+        // rAthena: skillratio += -100 + 60*lv; SC_HEATER_OPTION job_level/2 TODO.
+        return baseRatio + (-100 + 60 * skillLevel);
+    }
+
+    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        // rAthena ends prior SC_FIREWALK then restarts. SC_FIREWALK not on enum — buff TODO.
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
     }
 }

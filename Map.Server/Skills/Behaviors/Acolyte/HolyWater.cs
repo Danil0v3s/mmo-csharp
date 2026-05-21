@@ -3,14 +3,16 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AL_HOLYWATER — auto-generated stub from
-/// <c>src/map/skills/acolyte/holywater.hpp</c>.
+/// AL_HOLYWATER — Acolyte Aqua Benedicta. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/holywater.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Produces one Holy Water item using <c>skill_produce_mix</c>.
+/// Also wipes the NJ_SUITON ground unit at the target cell on
+/// success (Aqua Benedicta clears the Ninja Water Cell visual).</para>
+///
+/// <para>Player-only. Item-production helper isn't wired through
+/// <c>SkillBehaviorContext</c> yet (SK-M4 in the roadmap), so the
+/// cast emits the visual but doesn't actually grant the item.</para>
 /// </summary>
 public sealed class HolyWater : SkillImpl
 {
@@ -18,19 +20,14 @@ public sealed class HolyWater : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data *sd = BL_CAST(BL_PC, src);
-    // 
-    // 	if (sd)
-    // 	{
-    // 		if (skill_produce_mix(sd, getSkillId(), ITEMID_HOLY_WATER, 0, 0, 0, 1, -1))
-    // 		{
-    // 			if (skill_unit* su = map_find_skill_unit_oncell(bl, bl->x, bl->y, NJ_SUITON, nullptr, 0); su != nullptr)
-    // 				skill_delunit(su);
-    // 			clif_skill_nodamage(src, *bl, getSkillId(), skill_lv);
-    // 		}
-    // 		else
-    // 			clif_skill_fail(*sd, getSkillId());
-    // 	}
+        if (src is not PlayerEntity caster) return;
+
+        // TODO: skill_produce_mix(sd, AL_HOLYWATER, ITEMID_HOLY_WATER, 0,0,0, 1, -1).
+        // For now broadcast the cast visual; once production wires up
+        // it'll deliver the item + clear SUITON at the cell.
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+
+        // TODO: clear NJ_SUITON skill unit at (target.X, target.Y) via
+        // ISkillUnitService.RemoveAt(skillId, x, y) once that accessor lands.
     }
 }

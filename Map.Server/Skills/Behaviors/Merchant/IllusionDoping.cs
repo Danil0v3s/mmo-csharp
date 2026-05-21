@@ -1,25 +1,28 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// GN_ILLUSIONDOPING — auto-generated stub from
-/// <c>src/map/skills/merchant/illusiondoping.hpp</c>.
-///
-/// <para>Inherits <see cref="RecursiveDamageSplashSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// GN_ILLUSIONDOPING — Genetic Illusion Doping. Manual port of
+/// <c>rathena-fork/src/map/skills/merchant/illusiondoping.cpp</c>.
+/// On-hit: SC_ILLUSIONDOPING at <c>100 - 10*lv %</c>; on success also
+/// SC_HALLUCINATION.
 /// </summary>
 public sealed class IllusionDoping : RecursiveDamageSplashSkillImpl
 {
-    public IllusionDoping() : base(SkillIds.GN_ILLUSIONDOPING) { }
+    private readonly Random _rng;
+
+    public IllusionDoping() : base(SkillIds.GN_ILLUSIONDOPING) => _rng = Random.Shared;
+
+    public IllusionDoping(Random? rng = null) : base(SkillIds.GN_ILLUSIONDOPING) => _rng = rng ?? Random.Shared;
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // if( sc_start(src,target,SC_ILLUSIONDOPING,100 - skill_lv * 10,skill_lv,skill_get_time(getSkillId(),skill_lv)) )
-    // 		sc_start(src,target,SC_HALLUCINATION,100,skill_lv,skill_get_time(getSkillId(),skill_lv));
+        if (_rng.Next(100) < 100 - skillLevel * 10)
+        {
+            ctx.Sc?.Start(target, StatusType.Illusiondoping, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
+            ctx.Sc?.Start(target, StatusType.Hallucination, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
+        }
     }
 }

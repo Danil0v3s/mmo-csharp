@@ -1,31 +1,28 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// CR_SHIELDCHARGE — auto-generated stub from
-/// <c>src/map/skills/swordman/smite.hpp</c>.
-///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// CR_SHIELDCHARGE — Crusader Shield Charge / Smite. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/smite.cpp</c>.
+/// Ratio <c>+20*lv</c>. <c>15 + 5*lv</c>% chance to stun on hit.
 /// </summary>
 public sealed class Smite : WeaponSkillImpl
 {
-    public Smite() : base(SkillIds.CR_SHIELDCHARGE) { }
+    private readonly Random _rng;
+
+    public Smite() : base(SkillIds.CR_SHIELDCHARGE) => _rng = Random.Shared;
+
+    public Smite(Random? rng = null) : base(SkillIds.CR_SHIELDCHARGE)
+        => _rng = rng ?? Random.Shared;
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // base_skillratio += 20 * skill_lv;
-    return baseRatio;
-    }
+        => baseRatio + 20 * skillLevel;
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src,target,SC_STUN,(15+skill_lv*5),skill_lv,skill_get_time2(getSkillId(),skill_lv));
+        if (_rng.Next(100) < 15 + 5 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
     }
 }

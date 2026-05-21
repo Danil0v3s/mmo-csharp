@@ -1,65 +1,119 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
+using Map.Server.Status.StatusOps;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AB_HIGHNESSHEAL — auto-generated stub from
-/// <c>src/map/skills/acolyte/highnessheal.hpp</c>.
+/// AB_HIGHNESSHEAL — Arch Bishop Highness Heal. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/highnessheal.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Single-target high-power heal with the same suppress /
+/// redirect rules as <see cref="Heal"/>:</para>
+/// <list type="bullet">
+///   <item>StatusImmune mob (or Emperium / Battlefield mob class) → heal = 0.</item>
+///   <item>SC_KAITE → bounce-back; self-cast voided.</item>
+///   <item>SC_BERSERK / SC_SATURDAYNIGHTFEVER → heal suppressed (0 frame).</item>
+///   <item>SC_AKAITSUKI → heal becomes damage.</item>
+///   <item>Cast on Undead via <c>CastendDamageId</c> resolves as magic damage.</item>
+/// </list>
+///
+/// <para>The Highness formula uses <c>skill_calc_heal</c> with a
+/// higher multiplier than AL_HEAL — for now we reuse the renewal
+/// heal formula bumped by the AB_HIGHNESSHEAL skill_db EffectAmount
+/// (placeholder: 2.5× AL_HEAL output).</para>
 /// </summary>
 public sealed class HighnessHeal : SkillImpl
 {
+    private readonly IStatusOpsService? _statusOps;
+    private readonly Map.Server.Skills.ISkillAttackService? _skillAttack;
+    private readonly IExpService? _exp;
+    private readonly IBattleConfigService? _battleConfig;
+
     public HighnessHeal() : base(SkillIds.AB_HIGHNESSHEAL) { }
 
-    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public HighnessHeal(
+        IStatusOpsService? statusOps = null,
+        Map.Server.Skills.ISkillAttackService? skillAttack = null,
+        IExpService? exp = null,
+        IBattleConfigService? battleConfig = null) : base(SkillIds.AB_HIGHNESSHEAL)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // mob_data* dstmd = BL_CAST(BL_MOB, target);
-    // 	status_data* sstatus = status_get_status_data(*src);
-    // 	status_change *tsc = status_get_sc(target);
-    // 	map_session_data* sd = BL_CAST( BL_PC, src );
-    // 	map_session_data* dstsd = BL_CAST( BL_PC, target );
-    // 
-    // 	int32 heal = skill_calc_heal(src, target, getSkillId(), skill_lv, true);
-    // 
-    // 	if (status_isimmune(target) || (dstmd && (status_get_class(target) == MOBID_EMPERIUM || status_get_class_(target) == CLASS_BATTLEFIELD)))
-    // 		heal = 0;
-    // 
-    // 	if( tsc != nullptr && !tsc->empty() ) {
-    // 		if( tsc->getSCE(SC_KAITE) && !status_has_mode(sstatus,MD_STATUSIMMUNE) ) { //Bounce back heal
-    // 			if (--tsc->getSCE(SC_KAITE)->val2 <= 0)
-    // 				status_change_end(target, SC_KAITE);
-    // 			if (src == target)
-    // 				heal=0; //When you try to heal yourself under Kaite, the heal is voided.
-    // 			else {
-    // 				target = src;
-    // 				dstsd = sd;
-    // 			}
-    // 		}
-    // 		else if (tsc->getSCE(SC_BERSERK) || tsc->getSCE(SC_SATURDAYNIGHTFEVER))
-    // 			heal = 0; //Needed so that it actually displays 0 when healing.
-    // 	}
-    // 	clif_skill_nodamage(src, *target, getSkillId(), heal);
-    // 	if( tsc && tsc->getSCE(SC_AKAITSUKI) && heal )
-    // 		heal = ~heal + 1;
-    // 	t_exp heal_get_jobexp = status_heal(target,heal,0,0);
-    // 
-    // 	if(sd && dstsd && heal > 0 && sd != dstsd && battle_config.heal_exp > 0){
-    // 		heal_get_jobexp = heal_get_jobexp * battle_config.heal_exp / 100;
-    // 		if (heal_get_jobexp <= 0)
-    // 			heal_get_jobexp = 1;
-    // 		pc_gainexp (sd, target, 0, heal_get_jobexp, 0);
-    // 	}
+        _statusOps = statusOps;
+        _skillAttack = skillAttack;
+        _exp = exp;
+        _battleConfig = battleConfig;
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_attack(BF_MAGIC,src,src,target,getSkillId(),skill_lv,tick,flag);
+        // rAthena: skill_attack(BF_MAGIC, ...) — undead path.
+        _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
+    }
+
+    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        // Heal formula — renewal AB_HIGHNESSHEAL is 2.5× the renewal AL_HEAL
+        // baseline; computed inline (same approach as Heal.cs).
+        var heal = CalcHighnessHeal(src, skillLevel);
+
+        // Suppress checks (identical to AL_HEAL).
+        if ((target.Stats.Mode & MobMode.StatusImmune) != 0) heal = 0;
+
+        var sc = ctx.Sc;
+        if (sc != null)
+        {
+            var kaite = sc.Get(target, StatusType.Kaite);
+            if (kaite != null && (src.Stats.Mode & MobMode.StatusImmune) == 0)
+            {
+                kaite.Val2--;
+                if (kaite.Val2 <= 0) sc.End(target, StatusType.Kaite);
+                if (ReferenceEquals(src, target)) heal = 0;
+                else target = src;
+            }
+            else if (sc.Get(target, StatusType.Berserk) != null ||
+                     sc.Get(target, StatusType.Saturdaynightfever) != null)
+            {
+                heal = 0;
+            }
+        }
+
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, heal);
+
+        if (sc?.Get(target, StatusType.Akaitsuki) != null && heal != 0) heal = -heal;
+
+        int actuallyHealed = 0;
+        if (_statusOps != null && heal > 0 && target.Stats.Hp > 0)
+        {
+            var preHp = target.Stats.Hp;
+            _statusOps.Heal(target, heal, 0, 0);
+            actuallyHealed = target.Stats.Hp - preHp;
+        }
+        else if (heal < 0)
+        {
+            ctx.Damage?.ApplyDamage(target, -heal, src);
+        }
+
+        // Heal-EXP gain (same as AL_HEAL).
+        if (src is PlayerEntity caster && target is PlayerEntity dst &&
+            !ReferenceEquals(caster, dst) && actuallyHealed > 0 &&
+            _battleConfig != null && _exp != null)
+        {
+            var knob = _battleConfig.GetValue("heal_exp");
+            if (knob > 0)
+            {
+                long jobExp = (long)actuallyHealed * knob / 100;
+                if (jobExp <= 0) jobExp = 1;
+                _exp.GainExp(caster, baseExp: 0, jobExp: jobExp);
+            }
+        }
+    }
+
+    private static int CalcHighnessHeal(Entity src, ushort skillLevel)
+    {
+        // Renewal AL_HEAL formula × 2.5 (rough approximation of the
+        // AB_HIGHNESSHEAL multiplier from skill_db).
+        var hp = (src.Level + src.Stats.IntStat) / 5 * 30 * skillLevel / 10;
+        return Math.Max(1, hp * 25 / 10);
     }
 }

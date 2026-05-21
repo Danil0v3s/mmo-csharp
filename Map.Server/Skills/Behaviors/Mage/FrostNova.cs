@@ -1,48 +1,42 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// WZ_FROSTNOVA — auto-generated stub from
-/// <c>src/map/skills/mage/frostnova.hpp</c>.
+/// WZ_FROSTNOVA — Wizard Frost Nova. Manual port of
+/// <c>rathena-fork/src/map/skills/mage/frostnova.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Renewal: same MATK formula as Frost Diver (+<c>10*lv</c>).
+/// AOE around the caster; victims roll SC_FREEZE at
+/// <c>5*lv + 33 %</c> (player caster) or <c>3*lv + 35 %</c> (mob).
+/// Full splash dispatch (map_foreachinshootrange) is TODO — for now we
+/// land the freeze attempt on the named target.</para>
 /// </summary>
 public sealed class FrostNova : SkillImpl
 {
-    public FrostNova() : base(SkillIds.WZ_FROSTNOVA) { }
+    private readonly Random _rng;
 
-    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 	skill_area_temp[1] = 0;
-    // 	map_foreachinshootrange(skill_attack_area, src,
-    // 		skill_get_splash(getSkillId(), skill_lv), splash_target(src),
-    // 		BF_MAGIC, src, src, getSkillId(), skill_lv, tick, flag, BCT_ENEMY);
-    }
+    public FrostNova() : base(SkillIds.WZ_FROSTNOVA) => _rng = Random.Shared;
+
+    public FrostNova(Random? rng = null) : base(SkillIds.WZ_FROSTNOVA) => _rng = rng ?? Random.Shared;
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // #ifdef RENEWAL
-    // 	// In renewal the damage formula is identical to MG_FROSTDIVER
-    // 	base_skillratio += 10 * skill_lv;
-    // #else
-    // 	base_skillratio += -100 + (100 + skill_lv * 10) * 2 / 3;
-    // #endif
-    return baseRatio;
+        // Renewal: identical to MG_FROSTDIVER → +10*lv.
+        return baseRatio + 10 * skillLevel;
+    }
+
+    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        // TODO: full splash dispatch via map_foreachinshootrange.
     }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 
-    // 	sc_start(src,target,SC_FREEZE,(sd!=nullptr)?skill_lv*5+33:skill_lv*3+35,skill_lv,skill_get_time2(getSkillId(), skill_lv));
+        var rate = src is PlayerEntity ? skillLevel * 5 + 33 : skillLevel * 3 + 35;
+        if (_rng.Next(100) < rate)
+            ctx.Sc?.Start(target, StatusType.Freeze, val1: skillLevel, 0, 0, 0, durationMs: 8_000, src);
     }
 }

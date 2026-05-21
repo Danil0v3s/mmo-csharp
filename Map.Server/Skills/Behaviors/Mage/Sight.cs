@@ -1,27 +1,19 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// MG_SIGHT — auto-generated stub from
-/// <c>src/map/skills/mage/sight.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MG_SIGHT — Mage Sight. Applies SC_SIGHT (anti-hide detection) on
+/// self with skill id stored in Val2 for unhide identification.
 /// </summary>
 public sealed class Sight : SkillImpl
 {
     public Sight() : base(SkillIds.MG_SIGHT) { }
-
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_type type = skill_get_sc(getSkillId());
-    // 
-    // 	clif_skill_nodamage(src, *target, getSkillId(), skill_lv,
-    // 	                    sc_start2(src, target, type, 100, skill_lv, getSkillId(), skill_get_time(getSkillId(), skill_lv)));
+        bool landed = ctx.Sc?.Start(target, StatusType.Sight,
+            val1: skillLevel, val2: SkillId, 0, 0, durationMs: 30_000, src) != null;
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel, landed);
     }
 }

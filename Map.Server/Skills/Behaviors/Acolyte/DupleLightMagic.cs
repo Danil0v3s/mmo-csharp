@@ -1,33 +1,34 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AB_DUPLELIGHT_MAGIC — auto-generated stub from
-/// <c>src/map/skills/acolyte/duplelight.hpp</c>.
+/// AB_DUPLELIGHT_MAGIC — Arch Bishop Duple Light (Magic component).
+/// Manual port of the AB_DUPLELIGHT_MAGIC half of
+/// <c>rathena-fork/src/map/skills/acolyte/duplelight.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Holy magic component of the Duple Light passive auto-cast.
+/// Ratio: <c>+300 + 40 * lv</c>.</para>
 /// </summary>
 public sealed class DupleLightMagic : SkillImpl
 {
+    private readonly Map.Server.Skills.ISkillAttackService? _skillAttack;
+
     public DupleLightMagic() : base(SkillIds.AB_DUPLELIGHT_MAGIC) { }
+
+    public DupleLightMagic(Map.Server.Skills.ISkillAttackService? skillAttack = null) : base(SkillIds.AB_DUPLELIGHT_MAGIC)
+    {
+        _skillAttack = skillAttack;
+    }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // base_skillratio += 300 + 40 * skill_lv;
-    return baseRatio;
+        return baseRatio + 300 + 40 * skillLevel;
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_attack(BF_MAGIC,src,src,target,getSkillId(),skill_lv,tick,flag);
+        _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
     }
-
-
 }

@@ -1,35 +1,27 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// AG_DEADLY_PROJECTION — auto-generated stub from
-/// <c>src/map/skills/mage/deadlyprojection.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// AG_DEADLY_PROJECTION — Arch Mage Deadly Projection. Applies
+/// SC_DEADLY_DEFEASANCE on cast, then magic damage.
+/// Ratio: +(-100 + 2800*lv + 5*SPL).
 /// </summary>
 public sealed class DeadlyProjection : SkillImpl
 {
+    private readonly Map.Server.Skills.ISkillAttackService? _skillAttack;
     public DeadlyProjection() : base(SkillIds.AG_DEADLY_PROJECTION) { }
+    public DeadlyProjection(Map.Server.Skills.ISkillAttackService? skillAttack = null) : base(SkillIds.AG_DEADLY_PROJECTION) => _skillAttack = skillAttack;
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	skillratio += -100 + 2800 * skill_lv + 5 * sstatus->spl;
-    // 	RE_LVL_DMOD(100);
-    return baseRatio;
-    }
+        => baseRatio + (-100 + 2800 * skillLevel) + 5 * src.Stats.Spl;
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src, target, SC_DEADLY_DEFEASANCE, 100, skill_lv, skill_get_time(getSkillId(), skill_lv));
-    // 	skill_attack(BF_MAGIC, src, src, target, getSkillId(), skill_lv, tick, flag);
+        ctx.Sc?.Start(target, StatusType.DeadlyDefeasance,
+            val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
+        _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
     }
 }

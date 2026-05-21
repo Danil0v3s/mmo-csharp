@@ -3,42 +3,25 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// AM_DEMONSTRATION — auto-generated stub from
-/// <c>src/map/skills/merchant/bomb.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// AM_DEMONSTRATION — Alchemist Bomb (Demonstration). Manual port of
+/// <c>rathena-fork/src/map/skills/merchant/bomb.cpp</c>.
+/// Drops a damage-trap ground unit. Ratio <c>+20*lv</c>. On-hit
+/// break_equip(weapon) TODO.
 /// </summary>
 public sealed class Bomb : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
+
     public Bomb() : base(SkillIds.AM_DEMONSTRATION) { }
 
-    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+    public Bomb(ISkillUnitService? units = null) : base(SkillIds.AM_DEMONSTRATION)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // //Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	flag|=1;
-    // 
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
+        _units = units;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // base_skillratio += 20 * skill_lv;
-    return baseRatio;
-    }
+        => baseRatio + 20 * skillLevel;
 
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // #ifdef RENEWAL
-    // 	skill_break_equip(src,target, EQP_WEAPON, 300 * skill_lv, BCT_ENEMY);
-    // #else
-    // 	skill_break_equip(src,target, EQP_WEAPON, 100*skill_lv, BCT_ENEMY);
-    // #endif
-    }
+    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 }

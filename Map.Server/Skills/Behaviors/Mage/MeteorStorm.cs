@@ -1,47 +1,46 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// WZ_METEOR — auto-generated stub from
-/// <c>src/map/skills/mage/meteorstorm.hpp</c>.
+/// WZ_METEOR — Wizard Meteor Storm. Manual port of
+/// <c>rathena-fork/src/map/skills/mage/meteorstorm.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Drops a sequence of Meteor ground units inside a 3×3 splash
+/// around the cast XY, staggered by the unit interval. Renewal: +25 %
+/// MATK. Hit victims roll <c>3*lv %</c> SC_STUN. The per-meteor
+/// staggered placement requires the unit-interval read which isn't on
+/// our ISkillUnitService — we drop a single unit centered on the cast
+/// for now and leave the stagger as TODO.</para>
 /// </summary>
 public sealed class MeteorStorm : SkillImpl
 {
-    public MeteorStorm() : base(SkillIds.WZ_METEOR) { }
+    private readonly ISkillUnitService? _units;
+    private readonly Random _rng;
 
-    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+    public MeteorStorm() : base(SkillIds.WZ_METEOR) => _rng = Random.Shared;
+
+    public MeteorStorm(ISkillUnitService? units = null, Random? rng = null) : base(SkillIds.WZ_METEOR)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // int32 area = skill_get_splash(getSkillId(), skill_lv);
-    // 	int16 tmpx = 0, tmpy = 0;
-    // 
-    // 	for (int32 i = 1; i <= skill_get_time(getSkillId(), skill_lv) / skill_get_unit_interval(getSkillId()); i++) {
-    // 		// Creates a random Cell in the Splash Area
-    // 		tmpx = x - area + rnd() % (area * 2 + 1);
-    // 		tmpy = y - area + rnd() % (area * 2 + 1);
-    // 		skill_unitsetting(src, getSkillId(), skill_lv, tmpx, tmpy, flag + i * skill_get_unit_interval(getSkillId()));
-    // 	}
+        _units = units;
+        _rng = rng ?? Random.Shared;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // #ifdef RENEWAL
-    // 	base_skillratio += 25;
-    // #endif
-    return baseRatio;
+        return baseRatio + 25;
+    }
+
+    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        _units?.Place(src, SkillId, skillLevel, x, y);
+        // TODO: emit additional meteors at random splash cells staggered by unit_interval.
     }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src,target,SC_STUN,3*skill_lv,skill_lv,skill_get_time2(getSkillId(),skill_lv));
+        if (_rng.Next(100) < 3 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 3000, src);
     }
 }

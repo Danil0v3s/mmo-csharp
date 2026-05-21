@@ -1,89 +1,45 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Novice;
 
 /// <summary>
-/// HN_METEOR_STORM_BUSTER — auto-generated stub from
-/// <c>src/map/skills/novice/meteorstormbuster.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// HN_METEOR_STORM_BUSTER — Hyper Novice Meteor Storm Buster. Manual
+/// port of <c>rathena-fork/src/map/skills/novice/meteorstormbuster.cpp</c>.
+/// Explosion ratio <c>+(-100 + 450 + 160*lv) + 3*SPL</c>; fall ratio is
+/// <c>+(-100 + 300 + 320*lv) + 3*SPL</c>. We use the explosion formula
+/// by default. 3*lv% stun on hit. HN_SELFSTUDY_SOCERY amp +
+/// SC_RULEBREAK boost are TODO.
 /// </summary>
 public sealed class MeteorStormBuster : SkillImpl
 {
-    public MeteorStormBuster() : base(SkillIds.HN_METEOR_STORM_BUSTER) { }
+    private readonly Random _rng;
+    private readonly ISkillAttackService? _skillAttack;
+    private readonly ISkillUnitService? _units;
 
-    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public MeteorStormBuster() : base(SkillIds.HN_METEOR_STORM_BUSTER) => _rng = Random.Shared;
+
+    public MeteorStormBuster(ISkillAttackService? skillAttack = null, ISkillUnitService? units = null, Random? rng = null)
+        : base(SkillIds.HN_METEOR_STORM_BUSTER)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // sc_start(src,target,SC_STUN,3*skill_lv,skill_lv,skill_get_time2(getSkillId(),skill_lv));
+        _skillAttack = skillAttack;
+        _units = units;
+        _rng = rng ?? Random.Shared;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+        => baseRatio + (-100 + 450 + 160 * skillLevel) + 3 * src.Stats.Spl;
+
+    public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const status_data* sstatus = status_get_status_data(*src);
-    // 	const status_change *sc = status_get_sc(src);
-    // 	const map_session_data* sd = BL_CAST( BL_PC, src );
-    // 
-    // 	if (mflag & SKILL_ALTDMG_FLAG) {
-    // 		// Fall damage
-    // 		skillratio += -100 + 300 + 320 * skill_lv;
-    // 	} else {
-    // 		// Explosion damage
-    // 		skillratio += -100 + 450 + 160 * skill_lv;
-    // 	}
-    // 	skillratio += pc_checkskill(sd, HN_SELFSTUDY_SOCERY) * 5 * skill_lv;
-    // 	skillratio += 3 * sstatus->spl;
-    // 	RE_LVL_DMOD(100);
-    // 	// After RE_LVL_DMOD calculation, HN_SELFSTUDY_SOCERY amplifies the skill ratio of HN_METEOR_STORM_BUSTER (fall damage) by (skill level)%
-    // 	if (mflag & SKILL_ALTDMG_FLAG)
-    // 		skillratio += skillratio * pc_checkskill(sd, HN_SELFSTUDY_SOCERY) / 100;
-    // 	// SC_RULEBREAK increases the skill ratio after HN_SELFSTUDY_SOCERY
-    // 	if (sc && sc->getSCE(SC_RULEBREAK))
-    // 		skillratio += skillratio * 50 / 100;
-    return baseRatio;
+        if (_rng.Next(100) < 3 * skillLevel)
+            ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_attack(BF_MAGIC,src,src,target,getSkillId(),skill_lv,tick,flag);
-    }
+        => _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST( BL_PC, src );
-    // 
-    // 	if( map_getcell(src->m, x, y, CELL_CHKLANDPROTECTOR) ) {
-    // 		if( sd != nullptr ){
-    // 			clif_skill_fail( *sd, getSkillId(), USESKILL_FAIL );
-    // 		}
-    // 
-    // 		flag |= SKILL_NOCONSUME_REQ;
-    // 		return;
-    // 	}
-    // 
-    // 	int32 splash = skill_get_splash(getSkillId(), skill_lv);
-    // 
-    // 	map_foreachinarea(skill_area_sub, src->m, x - splash, y - splash, x + splash, y + splash, BL_CHAR, src, getSkillId(), skill_lv, tick, flag | BCT_ENEMY | SD_SPLASH | SKILL_ALTDMG_FLAG | 1, skill_castend_damage_id);
-    // 	skill_unitsetting(src, getSkillId(), skill_lv, x, y, skill_get_unit_interval(getSkillId()));
-    // 
-    // 	for (int32 i = 1; i <= (skill_get_time(getSkillId(), skill_lv) / skill_get_time2(getSkillId(), skill_lv)); i++) {
-    // 		skill_addtimerskill(src, tick + (t_tick)i*skill_get_time2(getSkillId(), skill_lv), 0, x, y, getSkillId(), skill_lv, 0, flag);
-    // 	}
-    }
-
-    public override void ModifyDamageData(ref Map.Server.Combat.BattleDamage dmg, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // if (dmg.miscflag & SKILL_ALTDMG_FLAG) {
-    // 		// Fall damage
-    // 		dmg.div_ = -3;
-    // 	}
-    }
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 }

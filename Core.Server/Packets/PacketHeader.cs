@@ -97,6 +97,11 @@ public enum PacketHeader : short
     ZC_ITEM_FALL_ENTRY = 0x0add,           // floor item just dropped; PACKETVER >= 20180418
     ZC_ITEM_DISAPPEAR = 0x00a1,            // floor item picked up / despawned
     ZC_NOTIFY_ACT3 = 0x08c8,               // combat action / damage (renewal 32-bit damage)
+    ZC_USE_SKILL = 0x09cb,                 // skill cast result, no damage (renewal int32-level; legacy 0x011a)
+    ZC_NOTIFY_SKILL = 0x01de,              // skill cast result, with damage (PACKETVER>=3; legacy 0x0114)
+    ZC_ACK_TOUSESKILL = 0x0110,            // skill cast denied — clif_skill_fail (caster-only)
+    ZC_HIGHJUMP = 0x01ff,                  // entity slide animation — clif_slide (knockback visual)
+    ZC_WARPLIST = 0x011c,                  // AL_WARP destination chooser — variable length
 
     // Client -> Zone (CZ)
     CZ_NOTIFY_ACTORINIT = 0x007d,          // LoadEndAck — client ready to spawn

@@ -1,16 +1,13 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.MercenaryNpc;
 
 /// <summary>
-/// MER_INCAGI — auto-generated stub from
-/// <c>src/map/skills/mercenary/mercenary_increaseagility.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MER_INCAGI — Mercenary Increase Agility. Manual port of
+/// <c>rathena-fork/src/map/skills/mercenary/mercenary_increaseagility.cpp</c>.
+/// On SC_CHANGEUNDEAD player targets, deals damage. Otherwise applies
+/// SC_INCREASEAGI.
 /// </summary>
 public sealed class MercenaryIncreaseAgility : SkillImpl
 {
@@ -18,18 +15,9 @@ public sealed class MercenaryIncreaseAgility : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_data* tstatus = status_get_status_data(*target);
-    // 	status_change *tsc = status_get_sc(target);
-    // 	sc_type type = skill_get_sc(getSkillId());
-    // 	map_session_data* dstsd = BL_CAST(BL_PC, target);
-    // 
-    // 	clif_skill_nodamage(src, *target, getSkillId(), skill_lv);
-    // 	if (dstsd != nullptr && tsc && tsc->getSCE(SC_CHANGEUNDEAD)) {
-    // 		if (tstatus->hp > 1)
-    // 			skill_attack(BF_MISC,src,src,target,getSkillId(),skill_lv,tick,flag);
-    // 		return;
-    // 	}
-    // 	sc_start(src, target, type, 100, skill_lv, skill_get_time(getSkillId(), skill_lv));
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        if (target is PlayerEntity && ctx.Sc?.Get(target, StatusType.Changeundead) != null)
+            return; // TODO: BF_MISC damage.
+        ctx.Sc?.Start(target, StatusType.IncreaseAgi, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
     }
 }

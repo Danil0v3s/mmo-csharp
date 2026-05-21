@@ -1,16 +1,18 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AB_RENOVATIO — auto-generated stub from
-/// <c>src/map/skills/acolyte/renovatio.hpp</c>.
+/// AB_RENOVATIO — Arch Bishop Renovatio. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/renovatio.cpp</c>.
 ///
-/// <para>Inherits <see cref="StatusSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Holy-element HoT buff. Single-target / no-party / inner
+/// recursion path applies <see cref="StatusType.Renovatio"/>; the
+/// partied caster path iterates same-map members and recursively
+/// applies (TODO — needs party iteration helper).</para>
+///
+/// <para>Duration: <c>90000 ms</c> per <c>db/re/skill_db.yml</c>.</para>
 /// </summary>
 public sealed class Renovatio : StatusSkillImpl
 {
@@ -18,12 +20,10 @@ public sealed class Renovatio : StatusSkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST( BL_PC, src );
-    // 
-    // 	if( !sd || sd->status.party_id == 0 || flag&1 ) {
-    // 		StatusSkillImpl::castendNoDamageId(src, target, skill_lv, tick, flag);
-    // 	} else if( sd )
-    // 		party_foreachsamemap(skill_area_sub, sd, skill_get_splash(getSkillId(), skill_lv), src, getSkillId(), skill_lv, tick, flag|BCT_PARTY|1, skill_castend_nodamage_id);
+        ctx.Client?.BroadcastSkillNoDamage(target, target, SkillId, skillLevel);
+        ctx.Sc?.Start(target, StatusType.Renovatio,
+            val1: skillLevel, 0, 0, 0, durationMs: 90_000, src);
+
+        // TODO: party_foreachsamemap iteration when caster is partied.
     }
 }

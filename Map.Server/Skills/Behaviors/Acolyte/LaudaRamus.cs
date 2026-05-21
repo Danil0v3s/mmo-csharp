@@ -1,42 +1,53 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// AB_LAUDARAMUS — auto-generated stub from
-/// <c>src/map/skills/acolyte/laudaramus.hpp</c>.
+/// AB_LAUDARAMUS — Arch Bishop Lauda Ramus. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/laudaramus.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Twin to <see cref="LaudaAgnus"/>: cures the
+/// "sleep / lock-out" debuff family at <c>(60 + 10 * lv) %</c>
+/// chance, or applies +CRIT buff otherwise.</para>
+///
+/// <para>Cure set: Sleep, Stun, Mandragora, Silence, DeepSleep.</para>
 /// </summary>
 public sealed class LaudaRamus : SkillImpl
 {
-    public LaudaRamus() : base(SkillIds.AB_LAUDARAMUS) { }
+    private readonly Random _rng;
+
+    public LaudaRamus() : base(SkillIds.AB_LAUDARAMUS) => _rng = Random.Shared;
+
+    public LaudaRamus(Random? rng = null) : base(SkillIds.AB_LAUDARAMUS) => _rng = rng ?? Random.Shared;
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_change *tsc = status_get_sc(target);
-    // 	sc_type type = skill_get_sc(getSkillId());
-    // 	map_session_data* sd = BL_CAST( BL_PC, src );
-    // 
-    // 	if( flag&1 || !sd || !sd->status.party_id ) {
-    // 		if( tsc && (tsc->getSCE(SC_SLEEP) || tsc->getSCE(SC_STUN) || tsc->getSCE(SC_MANDRAGORA) || tsc->getSCE(SC_SILENCE) || tsc->getSCE(SC_DEEPSLEEP)) ){
-    // 			// Success Chance: (60 + 10 * Skill Level) %
-    // 			if( rnd()%100 > 60+10*skill_lv )  return;
-    // 			status_change_end(target, SC_SLEEP);
-    // 			status_change_end(target, SC_STUN);
-    // 			status_change_end(target, SC_MANDRAGORA);
-    // 			status_change_end(target, SC_SILENCE);
-    // 			status_change_end(target, SC_DEEPSLEEP);
-    // 		} else // Success rate only applies to the curing effect and not stat bonus. Bonus status only applies to non infected targets
-    // 			clif_skill_nodamage(target, *target, getSkillId(), skill_lv,
-    // 				sc_start(src,target, type, 100, skill_lv, skill_get_time(getSkillId(), skill_lv)));
-    // 	} else if( sd )
-    // 		party_foreachsamemap(skill_area_sub, sd, skill_get_splash(getSkillId(), skill_lv),
-    // 			src, getSkillId(), skill_lv, tick, flag|BCT_PARTY|1, skill_castend_nodamage_id);
+        var sc = ctx.Sc;
+        var hasCurable = sc != null && (
+            sc.Get(target, StatusType.Sleep) != null ||
+            sc.Get(target, StatusType.Stun) != null ||
+            sc.Get(target, StatusType.Mandragora) != null ||
+            sc.Get(target, StatusType.Silence) != null ||
+            sc.Get(target, StatusType.Deepsleep) != null);
+
+        if (hasCurable)
+        {
+            var chance = 60 + 10 * skillLevel;
+            if (_rng.Next(100) >= chance) return;
+
+            sc!.End(target, StatusType.Sleep);
+            sc.End(target, StatusType.Stun);
+            sc.End(target, StatusType.Mandragora);
+            sc.End(target, StatusType.Silence);
+            sc.End(target, StatusType.Deepsleep);
+            return;
+        }
+
+        ctx.Client?.BroadcastSkillNoDamage(target, target, SkillId, skillLevel);
+        ctx.Sc?.Start(target, StatusType.Laudaramus,
+            val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+
+        // TODO: party_foreachsamemap iteration when caster is partied.
     }
 }

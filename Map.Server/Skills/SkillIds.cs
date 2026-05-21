@@ -478,6 +478,7 @@ public static class SkillIds
     public const ushort HN_SHIELD_CHAIN_RUSH = 5453;
     public const ushort HN_SPIRAL_PIERCE_MAX = 5454;
     public const ushort HP_BASILICA = 362;
+    public const ushort HP_MEDITATIO = 363;
     public const ushort HT_ANKLESNARE = 117;
     public const ushort HT_BLASTMINE = 122;
     public const ushort HT_CLAYMORETRAP = 123;

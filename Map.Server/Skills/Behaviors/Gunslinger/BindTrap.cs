@@ -1,31 +1,29 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Gunslinger;
 
 /// <summary>
-/// RL_B_TRAP — auto-generated stub from
-/// <c>src/map/skills/gunslinger/bindtrap.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// RL_B_TRAP — Rebellion Bind Trap. Manual port of
+/// <c>rathena-fork/src/map/skills/gunslinger/bindtrap.cpp</c>.
+/// CastendPos2 drops the trap; CastendDamageId hits the bound target.
 /// </summary>
 public sealed class BindTrap : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
+    private readonly ISkillUnitService? _units;
+
     public BindTrap() : base(SkillIds.RL_B_TRAP) { }
 
-    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public BindTrap(ISkillAttackService? skillAttack = null, ISkillUnitService? units = null) : base(SkillIds.RL_B_TRAP)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_attack(skill_get_type(getSkillId()),src,src,target,getSkillId(),skill_lv,tick,flag);
+        _skillAttack = skillAttack;
+        _units = units;
     }
 
+    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+        => _skillAttack?.SkillAttack(BattleAttackType.Weapon, src, src, target, SkillId, skillLevel);
+
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // flag|=1; // Set flag to 1 to prevent deleting ammo (it will be deleted on group-delete).
-    // 	skill_unitsetting(src,getSkillId(),skill_lv,x,y,0);
-    }
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 }

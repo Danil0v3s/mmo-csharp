@@ -1,63 +1,51 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SA_AUTOSPELL — auto-generated stub from
-/// <c>src/map/skills/mage/hindsight.hpp</c>.
+/// SA_AUTOSPELL — Sage Hindsight (Autospell). Manual port of
+/// <c>rathena-fork/src/map/skills/mage/hindsight.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>For a player caster, rAthena opens the spell-selection dialog
+/// (clif_autospell) and lets the user pick which Mage spell to queue —
+/// the SC starts only after the pick. We have no autospell selection
+/// UI yet, so the player-side branch is TODO. The mob-side branch
+/// derives the spell + max level from skill level deterministically:
+/// lv 10 → Frost Diver, lv 8-9 → Fireball, lv 5-7 → Soul Strike,
+/// lv 2-4 → random (Cold/Fire/Lightning Bolt), lv 1 → Napalm Beat.</para>
 /// </summary>
 public sealed class Hindsight : SkillImpl
 {
-    public Hindsight() : base(SkillIds.SA_AUTOSPELL) { }
+    private readonly Random _rng;
+
+    public Hindsight() : base(SkillIds.SA_AUTOSPELL) => _rng = Random.Shared;
+
+    public Hindsight(Random? rng = null) : base(SkillIds.SA_AUTOSPELL) => _rng = rng ?? Random.Shared;
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // // status_change *tsc = status_get_sc(target);
-    // 	map_session_data* sd = BL_CAST( BL_PC, src );
-    // 
-    // 	clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 	if (sd) {
-    // 		sd->state.workinprogress = WIP_DISABLE_ALL;
-    // 		clif_autospell( *sd, skill_lv );
-    // 	} else {
-    // 		int32 maxlv=1,spellid=0;
-    // 		static const int32 spellarray[3] = { MG_COLDBOLT,MG_FIREBOLT,MG_LIGHTNINGBOLT };
-    // 
-    // 		if(skill_lv >= 10) {
-    // 			spellid = MG_FROSTDIVER;
-    // //			if (tsc && tsc->getSCE(SC_SPIRIT) && tsc->getSCE(SC_SPIRIT)->val2 == SA_SAGE)
-    // //				maxlv = 10;
-    // //			else
-    // 				maxlv = skill_lv - 9;
-    // 		}
-    // 		else if(skill_lv >=8) {
-    // 			spellid = MG_FIREBALL;
-    // 			maxlv = skill_lv - 7;
-    // 		}
-    // 		else if(skill_lv >=5) {
-    // 			spellid = MG_SOULSTRIKE;
-    // 			maxlv = skill_lv - 4;
-    // 		}
-    // 		else if(skill_lv >=2) {
-    // 			int32 i_rnd = rnd()%3;
-    // 			spellid = spellarray[i_rnd];
-    // 			maxlv = skill_lv - 1;
-    // 		}
-    // 		else if(skill_lv > 0) {
-    // 			spellid = MG_NAPALMBEAT;
-    // 			maxlv = 3;
-    // 		}
-    // 
-    // 		if(spellid > 0)
-    // 			sc_start4(src,src,SC_AUTOSPELL,100,skill_lv,spellid,maxlv,0,
-    // 				skill_get_time(SA_AUTOSPELL,skill_lv));
-    // 	}
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        if (src is PlayerEntity)
+        {
+            // TODO: open clif_autospell dialog so the player can pick a Bolt — autospell SC
+            // is started after the pick lands.
+            return;
+        }
+        // Non-player branch: deterministic spell pick.
+        ushort spellId = 0;
+        int maxLv = 1;
+        if (skillLevel >= 10) { spellId = SkillIds.MG_FROSTDIVER; maxLv = skillLevel - 9; }
+        else if (skillLevel >= 8) { spellId = SkillIds.MG_FIREBALL; maxLv = skillLevel - 7; }
+        else if (skillLevel >= 5) { spellId = SkillIds.MG_SOULSTRIKE; maxLv = skillLevel - 4; }
+        else if (skillLevel >= 2)
+        {
+            ushort[] bolts = { SkillIds.MG_COLDBOLT, SkillIds.MG_FIREBOLT, SkillIds.MG_LIGHTNINGBOLT };
+            spellId = bolts[_rng.Next(3)];
+            maxLv = skillLevel - 1;
+        }
+        else if (skillLevel > 0) { spellId = SkillIds.MG_NAPALMBEAT; maxLv = 3; }
+        if (spellId == 0) return;
+        ctx.Sc?.Start(src, StatusType.Autospell, val1: skillLevel, val2: spellId, val3: maxLv, 0, durationMs: 30_000, src);
     }
 }

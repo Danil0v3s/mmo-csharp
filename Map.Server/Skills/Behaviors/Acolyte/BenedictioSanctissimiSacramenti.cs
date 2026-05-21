@@ -1,52 +1,65 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// PR_BENEDICTIO — auto-generated stub from
-/// <c>src/map/skills/acolyte/bssacramenti.hpp</c>.
+/// PR_BENEDICTIO — Priest Benedictio Sanctissimi Sacramenti. Manual
+/// port of <c>rathena-fork/src/map/skills/acolyte/bssacramenti.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Ground-target dual-effect:</para>
+/// <list type="bullet">
+///   <item>Living non-Demon targets in splash get
+///         <see cref="StatusType.Benedictio"/> SC.</item>
+///   <item>Undead-race or Demon-race targets take Holy magic damage.</item>
+/// </list>
 /// </summary>
 public sealed class BenedictioSanctissimiSacramenti : SkillImpl
 {
+    private readonly Map.Server.Skills.ISkillAttackService? _skillAttack;
+
     public BenedictioSanctissimiSacramenti() : base(SkillIds.PR_BENEDICTIO) { }
+
+    public BenedictioSanctissimiSacramenti(Map.Server.Skills.ISkillAttackService? skillAttack = null)
+        : base(SkillIds.PR_BENEDICTIO)
+    {
+        _skillAttack = skillAttack;
+    }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_data* tstatus = status_get_status_data(*target);
-    // 
-    // 	if (!battle_check_undead(tstatus->race, tstatus->def_ele) && tstatus->race != RC_DEMON)
-    // 		clif_skill_nodamage(src, *target, getSkillId(), skill_lv, sc_start(src, target, skill_get_sc(getSkillId()), 100, skill_lv, skill_get_time(getSkillId(), skill_lv)));
+        // Apply SC only when target is NOT undead/demon (the SC-side
+        // benefit; undead targets get hit instead).
+        if (target.Stats.Race == BattleRace.Undead ||
+            target.Stats.DefenseElement == BattleElement.Undead ||
+            target.Stats.Race == BattleRace.Demon) return;
+
+        ctx.Sc?.Start(target, StatusType.Benedictio,
+            val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // status_data* tstatus = status_get_status_data(*target);
-    // 
-    // 	//Should attack undead and demons. [Skotlex]
-    // 	if (battle_check_undead(tstatus->race, tstatus->def_ele) || tstatus->race == RC_DEMON)
-    // 		skill_attack(BF_MAGIC, src, src, target, getSkillId(), skill_lv, tick, flag);
+        if (target.Stats.Race != BattleRace.Undead &&
+            target.Stats.DefenseElement != BattleElement.Undead &&
+            target.Stats.Race != BattleRace.Demon) return;
+
+        _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
     }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_area_temp[1] = src->id;
-    // 	int32 i = skill_get_splash(getSkillId(), skill_lv);
-    // 	map_foreachinallarea(skill_area_sub,
-    // 		src->m, x-i, y-i, x+i, y+i, BL_PC,
-    // 		src, getSkillId(), skill_lv, tick, flag|BCT_ALL|1,
-    // 		skill_castend_nodamage_id);
-    // 	map_foreachinallarea(skill_area_sub,
-    // 		src->m, x-i, y-i, x+i, y+i, BL_CHAR,
-    // 		src, getSkillId(), skill_lv, tick, flag|BCT_ENEMY|1,
-    // 		skill_castend_damage_id);
+        // Splash: PCs get buff, mobs/players in undead race get damage.
+        const short splashRange = 5;
+        var victims = ctx.Entities.ForEachInRange(src.MapId, x, y, splashRange,
+            EntityType.Mob | EntityType.Pc);
+        foreach (var v in victims)
+        {
+            if (v.Id == src.Id) continue;
+            CastendNoDamageId(src, v, skillLevel, ctx);
+            CastendDamageId(src, v, skillLevel, ctx);
+        }
     }
 }

@@ -1,61 +1,35 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// LG_PINPOINTATTACK — auto-generated stub from
-/// <c>src/map/skills/swordman/pinpointattack.hpp</c>.
-///
-/// <para>Inherits <see cref="WeaponSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// LG_PINPOINTATTACK — Royal Guard Pinpoint Attack. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/pinpointattack.cpp</c>.
+/// Ratio <c>+(-100 + 100*lv) + 5*AGI</c>. Per-level on-hit effect:
+/// lv1 SC_BLEEDING; lv2-5 break helm/shield/armor/weapon — break-equip
+/// pipeline isn't ported yet so those are TODO.
 /// </summary>
 public sealed class PinpointAttack : WeaponSkillImpl
 {
-    public PinpointAttack() : base(SkillIds.LG_PINPOINTATTACK) { }
+    private readonly Random _rng;
 
-    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // if (skill_check_unit_movepos(5, src, target->x, target->y, 1, 1)) {
-    // 		clif_blown(src);
-    // 	}
-    // 
-    // 	WeaponSkillImpl::castendDamageId(src, target, skill_lv, tick, flag);
-    }
+    public PinpointAttack() : base(SkillIds.LG_PINPOINTATTACK) => _rng = Random.Shared;
+
+    public PinpointAttack(Random? rng = null) : base(SkillIds.LG_PINPOINTATTACK)
+        => _rng = rng ?? Random.Shared;
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skillratio += -100 + 100 * skill_lv + 5 * status_get_agi(src);
-    // 	RE_LVL_DMOD(120);
-    return baseRatio;
-    }
+        => baseRatio + (-100 + 100 * skillLevel) + 5 * src.Stats.Agi;
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 	int32 rate = 30 + 5 * ((sd) ? pc_checkskill(sd, getSkillId()) : skill_lv) + (status_get_agi(src) + status_get_lv(src)) / 10;
-    // 
-    // 	switch (skill_lv) {
-    // 		case 1:
-    // 			sc_start2(src, target, SC_BLEEDING, rate, skill_lv, src->id, skill_get_time(getSkillId(), skill_lv));
-    // 			break;
-    // 		case 2:
-    // 			skill_break_equip(src, target, EQP_HELM, rate * 100, BCT_ENEMY);
-    // 			break;
-    // 		case 3:
-    // 			skill_break_equip(src, target, EQP_SHIELD, rate * 100, BCT_ENEMY);
-    // 			break;
-    // 		case 4:
-    // 			skill_break_equip(src, target, EQP_ARMOR, rate * 100, BCT_ENEMY);
-    // 			break;
-    // 		case 5:
-    // 			skill_break_equip(src, target, EQP_WEAPON, rate * 100, BCT_ENEMY);
-    // 			break;
-    // 	}
+        var rate = 30 + 5 * skillLevel + (src.Stats.Agi + src.Level) / 10;
+        if (skillLevel == 1)
+        {
+            if (_rng.Next(100) < rate)
+                ctx.Sc?.Start(target, StatusType.Bleeding, val1: skillLevel, val2: (int)src.Id, 0, 0, durationMs: 30_000, src);
+        }
+        // TODO: lv2-5 — call skill_break_equip(target, EQP_*, rate*100) once the break-equip path lands.
     }
 }

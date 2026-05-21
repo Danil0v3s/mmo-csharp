@@ -1,16 +1,13 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// CR_REFLECTSHIELD — auto-generated stub from
-/// <c>src/map/skills/swordman/shieldreflect.hpp</c>.
-///
-/// <para>Inherits <see cref="StatusSkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// CR_REFLECTSHIELD — Crusader Reflect Shield. Manual port of
+/// <c>rathena-fork/src/map/skills/swordman/shieldreflect.cpp</c>.
+/// SC_DARKCROW blocks reflect skills — fail when the target is under
+/// that SC. Otherwise defers to the StatusSkillImpl SC-apply path.
 /// </summary>
 public sealed class ShieldReflect : StatusSkillImpl
 {
@@ -18,16 +15,12 @@ public sealed class ShieldReflect : StatusSkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST(BL_PC, src);
-    // 	status_change* tsc = status_get_sc(target);
-    // 
-    // 	if (tsc && tsc->getSCE(SC_DARKCROW)) { // SC_DARKCROW prevents using reflecting skills
-    // 		if (sd)
-    // 			clif_skill_fail( *sd, getSkillId(), USESKILL_FAIL );
-    // 		return;
-    // 	}
-    // 
-    // 	StatusSkillImpl::castendNoDamageId(src, target, skill_lv, tick, flag);
+        if (ctx.Sc?.Get(target, StatusType.Darkcrow) != null)
+        {
+            if (src is PlayerEntity sd)
+                ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
+            return;
+        }
+        base.CastendNoDamageId(src, target, skillLevel, ctx);
     }
 }

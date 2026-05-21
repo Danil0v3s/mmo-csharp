@@ -1,41 +1,47 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
-/// CH_PALMSTRIKE — auto-generated stub from
-/// <c>src/map/skills/acolyte/ragingpalmstrike.hpp</c>.
+/// CH_PALMSTRIKE — Champion Raging Palm Strike. Manual port of
+/// <c>rathena-fork/src/map/skills/acolyte/ragingpalmstrike.cpp</c>.
 ///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// <para>Delayed weapon hit — rAthena comment: "Palm Strike takes
+/// effect 1sec after casting." The hit fires 1000 ms + caster
+/// amotion after the cast resolves; the immediate frame shows an
+/// absorbed-damage placeholder.</para>
+///
+/// <para>Renewal ratio: <c>100 + 100 * lv + STR</c>.</para>
 /// </summary>
 public sealed class RagingPalmStrike : SkillImpl
 {
+    private readonly Map.Server.Skills.ISkillTimerService? _timers;
+    private readonly Map.Server.Skills.ISkillAttackService? _skillAttack;
+
     public RagingPalmStrike() : base(SkillIds.CH_PALMSTRIKE) { }
+
+    public RagingPalmStrike(
+        Map.Server.Skills.ISkillTimerService? timers = null,
+        Map.Server.Skills.ISkillAttackService? skillAttack = null) : base(SkillIds.CH_PALMSTRIKE)
+    {
+        _timers = timers;
+        _skillAttack = skillAttack;
+    }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // //	Palm Strike takes effect 1sec after casting. [Skotlex]
-    // 	// clif_skill_nodamage(src,*target,getSkillId(),skill_lv,false); //Can't make this one display the correct attack animation delay :/
-    // 	clif_damage(*src, *target, tick, status_get_amotion(src), 0, -1, 1, DMG_ENDURE, 0, false); //Display an absorbed damage attack.
-    // 	skill_addtimerskill(src, tick + (1000 + status_get_amotion(src)), target->id, 0, 0, getSkillId(), skill_lv, BF_WEAPON, flag);
+        // Schedule the delayed weapon hit at tick + 1000 + amotion.
+        var delay = 1000 + src.Stats.Amotion;
+        _timers?.Schedule(src, target, delay, SkillId, skillLevel,
+            (s, t, lv) =>
+            {
+                _skillAttack?.SkillAttack(BattleAttackType.Weapon, s, s, t, SkillId, lv);
+            });
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // #ifdef RENEWAL
-    // 	const status_data* sstatus = status_get_status_data(*src);
-    // 
-    // 	skillratio += 100 + 100 * skill_lv + sstatus->str; // !TODO: How does STR play a role?
-    // 	RE_LVL_DMOD(100);
-    // #else
-    // 	skillratio += 100 + 100 * skill_lv;
-    // #endif
-    return baseRatio;
+        return baseRatio + 100 + 100 * skillLevel + src.Stats.Str;
     }
 }

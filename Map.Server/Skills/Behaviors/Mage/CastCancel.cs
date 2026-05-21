@@ -3,31 +3,17 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SA_CASTCANCEL — auto-generated stub from
-/// <c>src/map/skills/mage/castcancel.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// SA_CASTCANCEL — Sage Cast Cancel. Interrupts caster's own current
+/// cast. SP cost gates: <c>(90 - (lv-1)*20) %</c> of the cancelled
+/// skill's SP cost.
 /// </summary>
 public sealed class CastCancel : SkillImpl
 {
     public CastCancel() : base(SkillIds.SA_CASTCANCEL) { }
-
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // map_session_data* sd = BL_CAST( BL_PC, src );
-    // 
-    // 	clif_skill_nodamage(src,*target,getSkillId(),skill_lv);
-    // 	unit_skillcastcancel(src,1);
-    // 	if(sd) {
-    // 		int32 sp = skill_get_sp(sd->skill_id_old,sd->skill_lv_old);
-    // 		sp = sp * (90 - (skill_lv-1)*20) / 100;
-    // 		if(sp < 0) sp = 0;
-    // 		status_zap(src, 0, sp);
-    // 	}
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        // TODO: unit_skillcastcancel(src, 1) — needs SkillCastService.Cancel.
+        // TODO: SP refund of (90 - (lv-1)*20)% of the cancelled skill's SP cost.
     }
 }

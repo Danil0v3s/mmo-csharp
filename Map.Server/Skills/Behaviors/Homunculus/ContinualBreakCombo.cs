@@ -1,27 +1,31 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Homunculus;
 
 /// <summary>
-/// MH_CBC — auto-generated stub from
-/// <c>src/map/skills/homunculus/homunculus_continualbreakcombo.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MH_CBC — Homunculus Continual Break Combo. Manual port of
+/// <c>rathena-fork/src/map/skills/homunculus/homunculus_continualbreakcombo.cpp</c>.
+/// Applies SC_CBC for max(lv, STRsrc/7 − STRtgt/10) seconds; runs a
+/// damaging hit afterward.
 /// </summary>
 public sealed class ContinualBreakCombo : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
+
     public ContinualBreakCombo() : base(SkillIds.MH_CBC) { }
+
+    public ContinualBreakCombo(ISkillAttackService? skillAttack = null) : base(SkillIds.MH_CBC)
+    {
+        _skillAttack = skillAttack;
+    }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // int32 duration = max(skill_lv, (status_get_str(src) / 7 - status_get_str(target) / 10)) * 1000; //Yommy formula
-    // 
-    // 	clif_skill_nodamage(src, *target, getSkillId(), skill_lv, sc_start4(src, target, SC_CBC, 100, skill_lv, src->id, 0, 0, duration));
-    // 	skill_attack(skill_get_type(getSkillId()), src, src, target, getSkillId(), skill_lv, tick, flag);
+        var seconds = Math.Max(skillLevel, src.Stats.Str / 7 - target.Stats.Str / 10);
+        ctx.Sc?.Start(target, StatusType.Cbc, val1: skillLevel, val2: (int)src.Id, 0, 0, durationMs: seconds * 1_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        _skillAttack?.SkillAttack(BattleAttackType.Weapon, src, src, target, SkillId, skillLevel);
     }
 }

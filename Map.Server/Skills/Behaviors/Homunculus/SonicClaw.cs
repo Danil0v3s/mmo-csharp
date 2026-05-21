@@ -1,41 +1,27 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Homunculus;
 
 /// <summary>
-/// MH_SONIC_CRAW — auto-generated stub from
-/// <c>src/map/skills/homunculus/homunculus_sonicclaw.hpp</c>.
-///
-/// <para>Inherits <see cref="SkillImpl"/>. Method bodies are TODOs
-/// with the original C++ body copied as reference comments.
-/// Each per-skill formula needs a real port — the auto-generation
-/// preserves structure (class name, base, overrides, skill id) but
-/// does not translate C++ semantics to C# automatically.</para>
+/// MH_SONIC_CRAW — Homunculus Sonic Craw. Manual port of
+/// <c>rathena-fork/src/map/skills/homunculus/homunculus_sonicclaw.cpp</c>.
+/// Ratio <c>+(-100 + 60*lv*BaseLv/150)</c>. Hit count = spiritballs (TODO).
 /// </summary>
 public sealed class SonicClaw : SkillImpl
 {
+    private readonly ISkillAttackService? _skillAttack;
+
     public SonicClaw() : base(SkillIds.MH_SONIC_CRAW) { }
 
-    public override void ModifyDamageData(ref Map.Server.Combat.BattleDamage dmg, Entity src, Entity target, ushort skillLevel)
+    public SonicClaw(ISkillAttackService? skillAttack = null) : base(SkillIds.MH_SONIC_CRAW)
     {
-    // TODO: port from rathena-fork. Original C++ body:
-    // const homun_data *hd = BL_CAST(BL_HOM, &src);
-    // 
-    // 	if (hd != nullptr) {
-    // 		dmg.div_ = hd->homunculus.spiritball;
-    // 	}
-    }
-
-    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // skill_attack(skill_get_type(getSkillId()), src, src, target, getSkillId(), skill_lv, tick, flag);
+        _skillAttack = skillAttack;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-    {
-    // TODO: port from rathena-fork. Original C++ body:
-    // base_skillratio += -100 + 60 * skill_lv * status_get_lv(src) / 150;
-    return baseRatio;
-    }
+        => baseRatio + (-100 + 60 * skillLevel * src.Level / 150);
+
+    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+        => _skillAttack?.SkillAttack(BattleAttackType.Weapon, src, src, target, SkillId, skillLevel);
 }
