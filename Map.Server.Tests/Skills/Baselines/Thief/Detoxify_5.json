@@ -1,0 +1,26 @@
+[
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 53,
+      "healOrLevel": 5,
+      "success": true
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Poison"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "DeadlyPoison"
+    }
+  }
+]

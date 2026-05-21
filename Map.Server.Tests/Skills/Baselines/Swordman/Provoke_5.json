@@ -1,0 +1,15 @@
+[
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "Provoke",
+      "val1": 5,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 25000,
+      "src": 1
+    }
+  }
+]

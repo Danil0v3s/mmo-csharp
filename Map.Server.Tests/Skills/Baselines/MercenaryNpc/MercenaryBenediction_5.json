@@ -1,0 +1,26 @@
+[
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Curse"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Blind"
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 8228,
+      "healOrLevel": 5,
+      "success": true
+    }
+  }
+]

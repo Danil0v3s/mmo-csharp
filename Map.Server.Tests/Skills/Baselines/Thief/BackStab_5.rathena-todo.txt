@@ -1,0 +1,6 @@
+Missing in C# port (rAthena calls but ours doesn't):
+  fail
+  sc-start
+  sc-end
+  blow
+  move-pos

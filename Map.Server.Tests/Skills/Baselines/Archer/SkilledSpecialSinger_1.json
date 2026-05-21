@@ -1,0 +1,19 @@
+[
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Ensemblefatigue"
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 5068,
+      "healOrLevel": 1,
+      "success": true
+    }
+  }
+]

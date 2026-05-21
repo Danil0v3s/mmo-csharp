@@ -1,0 +1,40 @@
+[
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Sleep"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Bleeding"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Burning"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Deepsleep"
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 3031,
+      "healOrLevel": 1,
+      "success": true
+    }
+  }
+]

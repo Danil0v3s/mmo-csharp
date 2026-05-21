@@ -1,0 +1,52 @@
+[
+  {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 2289,
+      "healOrLevel": 1,
+      "success": true
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Hiding"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Cloaking"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Cloakingexceed"
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "Blind",
+      "val1": 1,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 30000,
+      "src": 1
+    }
+  }
+]

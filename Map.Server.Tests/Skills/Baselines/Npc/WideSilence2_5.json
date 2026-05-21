@@ -1,0 +1,25 @@
+[
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 757,
+      "healOrLevel": 5,
+      "success": true
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "Silence",
+      "val1": 5,
+      "val2": 1,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 30000,
+      "src": 1
+    }
+  }
+]

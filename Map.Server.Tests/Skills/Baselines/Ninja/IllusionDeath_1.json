@@ -1,0 +1,23 @@
+[
+  {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace varies across runs",
+      "historical-kinds": [
+        "fail",
+        "nodamage",
+        "sc-start"
+      ]
+    }
+  },
+  {
+    "kind": "fail",
+    "data": {
+      "caster": 1,
+      "skillId": 3014,
+      "cause": "SkillFail",
+      "btype": 0,
+      "itemId": 0
+    }
+  }
+]

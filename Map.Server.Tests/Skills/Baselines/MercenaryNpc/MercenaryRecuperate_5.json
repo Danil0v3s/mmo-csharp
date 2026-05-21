@@ -1,0 +1,33 @@
+[
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Poison"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "DeadlyPoison"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Silence"
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 8229,
+      "healOrLevel": 5,
+      "success": true
+    }
+  }
+]

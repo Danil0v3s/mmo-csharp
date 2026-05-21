@@ -1,0 +1,12 @@
+[
+  {
+    "kind": "unit-place",
+    "data": {
+      "caster": 1,
+      "skillId": 2450,
+      "skillLevel": 1,
+      "centerX": 105,
+      "centerY": 105
+    }
+  }
+]

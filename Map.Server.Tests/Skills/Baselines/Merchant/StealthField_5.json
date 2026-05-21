@@ -1,0 +1,25 @@
+[
+  {
+    "kind": "unit-place",
+    "data": {
+      "caster": 1,
+      "skillId": 2274,
+      "skillLevel": 5,
+      "centerX": 100,
+      "centerY": 100
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "StealthfieldMaster",
+      "val1": 5,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 30000,
+      "src": 1
+    }
+  }
+]

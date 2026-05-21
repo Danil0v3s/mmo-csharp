@@ -1,0 +1,33 @@
+[
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Freeze"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Freezing"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Crystalize"
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 3032,
+      "healOrLevel": 5,
+      "success": true
+    }
+  }
+]

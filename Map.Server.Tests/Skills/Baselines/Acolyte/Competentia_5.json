@@ -1,0 +1,45 @@
+[
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": null,
+      "target": 1,
+      "skillId": 28,
+      "healOrLevel": 10000,
+      "success": true
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": null,
+      "target": 1,
+      "skillId": 28,
+      "healOrLevel": 1000,
+      "success": true
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "Competentia",
+      "val1": 5,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 30000,
+      "src": 1
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 5278,
+      "healOrLevel": 5,
+      "success": true
+    }
+  }
+]

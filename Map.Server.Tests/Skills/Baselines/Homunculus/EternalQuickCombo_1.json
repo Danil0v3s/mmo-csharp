@@ -1,0 +1,36 @@
+[
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1000,
+      "type": "Eqc",
+      "val1": 1,
+      "val2": 1,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 7000,
+      "src": 1
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1000,
+      "skillId": 8038,
+      "healOrLevel": 1,
+      "success": true
+    }
+  },
+  {
+    "kind": "skill-attack",
+    "data": {
+      "attackType": "Weapon",
+      "source": 1,
+      "damageSource": 1,
+      "target": 1000,
+      "skillId": 8038,
+      "skillLevel": 1
+    }
+  }
+]

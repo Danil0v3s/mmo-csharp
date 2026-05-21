@@ -1,0 +1,19 @@
+[
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 2309,
+      "healOrLevel": 1,
+      "success": true
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "SvRoottwist"
+    }
+  }
+]

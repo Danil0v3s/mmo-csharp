@@ -1,0 +1,52 @@
+[
+  {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 8407,
+      "healOrLevel": 1,
+      "success": true
+    }
+  },
+  {
+    "kind": "blow",
+    "data": {
+      "bl": 1,
+      "dir": 2,
+      "count": 1
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "WindStepOption",
+      "val1": 1,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 60000,
+      "src": 1
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "WindStep",
+      "val1": 1,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 60000,
+      "src": 1
+    }
+  }
+]

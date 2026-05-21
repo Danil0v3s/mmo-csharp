@@ -1,0 +1,20 @@
+[
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 748,
+      "healOrLevel": 1,
+      "success": true
+    }
+  },
+  {
+    "kind": "move-pos",
+    "data": {
+      "bl": 1,
+      "x": 100,
+      "y": 100
+    }
+  }
+]

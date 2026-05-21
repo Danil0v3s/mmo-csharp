@@ -1,0 +1,25 @@
+[
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1000,
+      "skillId": 5451,
+      "healOrLevel": 5,
+      "success": true
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "Hnnoweapon",
+      "val1": 5,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 5000,
+      "src": 1
+    }
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "kind": "unit-place",
+    "data": {
+      "caster": 1,
+      "skillId": 5010,
+      "skillLevel": 5,
+      "centerX": 105,
+      "centerY": 105
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 5010,
+      "healOrLevel": 5,
+      "success": true
+    }
+  }
+]

@@ -4,6 +4,8 @@ using Map.Server.Items;
 using Map.Server.Mob;
 using Map.Server.Movement;
 using Map.Server.Skills;
+using Map.Server.Skills.Units;
+using Map.Server.Skills.Units.Handlers;
 using Map.Server.Spawn;
 using Map.Server.Status;
 using Map.Server.Tests.Visibility;
@@ -56,6 +58,48 @@ public class SkillUnitServiceTests
         Assert.Null(ctx.Units.Place(caster, skillId: 9999, skillLevel: 1, 100, 100));
     }
 
+    [Fact]
+    public void Place_Pneuma_FiresOnPlaceExactlyOnceWhileEntityStaysOnCell()
+    {
+        // T3.4 regression — _presence dict guards against OnPlace
+        // firing every tick. SC re-application via OnTick is fine, but
+        // OnPlace should only run on the first entry to the cell.
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 100, 100);
+        var group = ctx.Units.Place(caster, SkillIds.AL_PNEUMA, 1, 105, 105);
+        Assert.NotNull(group);
+
+        var mob = ctx.AddMob(105, 105, hp: 1000);
+        var startHp = mob.Hp;
+
+        // Three ticks while standing on the cell — no damage expected
+        // since Pneuma is a defensive unit.
+        var now = Environment.TickCount64;
+        ctx.Units.Tick(now + 1100);
+        ctx.Units.Tick(now + 2200);
+        ctx.Units.Tick(now + 3300);
+
+        Assert.Equal(startHp, mob.Hp);
+    }
+
+    [Fact]
+    public void Place_Sanctuary_HealsAlliesOnCell()
+    {
+        var ctx = Build();
+        var caster = ctx.AddPlayer(1, 100, 100);
+        caster.Stats.IntStat = 50;
+        var group = ctx.Units.Place(caster, SkillIds.PR_SANCTUARY, 5, 105, 105);
+        Assert.NotNull(group);
+
+        var ally = ctx.AddPlayer(2, 105, 105);
+        ally.Hp = 100;  // wounded
+        var startHp = ally.Hp;
+
+        // Sanctuary interval = 400ms; one tick = 5*100 + 50*2 = 600 heal.
+        ctx.Units.Tick(Environment.TickCount64 + 500);
+        Assert.True(ally.Hp > startHp, $"expected heal; hp now {ally.Hp}");
+    }
+
     private static TestContext Build()
     {
         const string mapName = "test_map";
@@ -77,7 +121,17 @@ public class SkillUnitServiceTests
             ids, new StatusCalcService(), NullLogger<MobSpawnService>.Instance, new Random(0));
         var damage = new DamageService(visibility, mobSpawn, entities,
             new BattleCalculator(new Random(0)), NullLogger<DamageService>.Instance);
-        var units = new SkillUnitService(entities, damage, NullLogger<SkillUnitService>.Instance);
+        var registry = new SkillUnitTickRegistry(new ISkillUnitTickHandler[]
+        {
+            new MagnusExorcismusUnit(),
+            new StormGustUnit(),
+            new PneumaUnit(),
+            new SafetyWallUnit(),
+            new SanctuaryUnit(),
+        });
+        var unitCtx = new SkillUnitContext(damage);
+        var units = new SkillUnitService(entities, registry, unitCtx,
+            NullLogger<SkillUnitService>.Instance);
         return new TestContext(units, entities, ids, (uint)mapName.GetHashCode());
     }
 

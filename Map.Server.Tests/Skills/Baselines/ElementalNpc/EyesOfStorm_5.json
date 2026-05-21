@@ -1,0 +1,38 @@
+[
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "EyesOfStormOption",
+      "val1": 5,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 60000,
+      "src": 1
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "EyesOfStorm",
+      "val1": 5,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 60000,
+      "src": 1
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 8450,
+      "healOrLevel": 5,
+      "success": true
+    }
+  }
+]

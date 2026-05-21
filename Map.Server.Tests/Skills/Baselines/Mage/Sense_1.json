@@ -1,0 +1,12 @@
+[
+  {
+    "kind": "fail",
+    "data": {
+      "caster": 1,
+      "skillId": 93,
+      "cause": "SkillFail",
+      "btype": 0,
+      "itemId": 0
+    }
+  }
+]

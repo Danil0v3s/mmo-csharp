@@ -1,0 +1,25 @@
+[
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 5303,
+      "healOrLevel": 1,
+      "success": true
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "AbrDualCannon",
+      "val1": 1,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 60000,
+      "src": 1
+    }
+  }
+]

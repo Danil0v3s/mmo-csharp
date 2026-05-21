@@ -1,0 +1,26 @@
+[
+  {
+    "kind": "skill-attack",
+    "data": {
+      "attackType": "Magic",
+      "source": 1,
+      "damageSource": 1,
+      "target": 1000,
+      "skillId": 5357,
+      "skillLevel": 1
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1000,
+      "type": "Soundblend",
+      "val1": 1,
+      "val2": 1,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 30000,
+      "src": 1
+    }
+  }
+]

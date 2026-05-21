@@ -1,0 +1,19 @@
+[
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Confusion"
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 8230,
+      "healOrLevel": 5,
+      "success": true
+    }
+  }
+]

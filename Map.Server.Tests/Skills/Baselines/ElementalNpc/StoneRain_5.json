@@ -1,0 +1,23 @@
+[
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 8442,
+      "healOrLevel": 5,
+      "success": true
+    }
+  },
+  {
+    "kind": "skill-attack",
+    "data": {
+      "attackType": "Magic",
+      "source": 1,
+      "damageSource": 1,
+      "target": 1000,
+      "skillId": 8442,
+      "skillLevel": 5
+    }
+  }
+]

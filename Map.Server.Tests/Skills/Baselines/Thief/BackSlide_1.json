@@ -1,0 +1,20 @@
+[
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 150,
+      "healOrLevel": 1,
+      "success": true
+    }
+  },
+  {
+    "kind": "blow",
+    "data": {
+      "bl": 1,
+      "dir": 0,
+      "count": 5
+    }
+  }
+]

@@ -1663,10 +1663,22 @@ builder.Services.AddSingleton<Map.Server.Skills.Resolvers.SkillResolverRegistry>
 builder.Services.AddSingleton<Map.Server.Skills.ISkillCastService, Map.Server.Skills.SkillCastService>();
 
 // Skill ground units (skill.cpp:skill_unitsetting +
-// skill_unit_onplace_timer). Starter set: Magnus Exorcismus, Storm
-// Gust. Defensive units (Safety Wall / Pneuma) layer in via the
-// same lifecycle once the damage-interception hook lands.
+// skill_unit_onplace_timer). T3.4 — per-skill behavior moved out of
+// SkillUnitService into ISkillUnitTickHandler plugins, indexed by
+// SkillUnitTickRegistry. Add a handler line per ground-unit skill.
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.MagnusExorcismusUnit>();
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.StormGustUnit>();
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.PneumaUnit>();
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.SafetyWallUnit>();
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.SanctuaryUnit>();
+builder.Services.AddSingleton<Map.Server.Skills.Units.SkillUnitTickRegistry>();
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitContext, Map.Server.Skills.Units.SkillUnitContext>();
 builder.Services.AddSingleton<Map.Server.Skills.ISkillUnitService, Map.Server.Skills.SkillUnitService>();
+
+// T3.5 — splash iteration helper. Per-skill behaviors call
+// IMapForeachInRangeService.ForEachEnemyInSplash(...) instead of
+// reimplementing map_foreachinrange + BCT_* filtering inline.
+builder.Services.AddSingleton<Map.Server.Skills.Splash.IMapForeachInRangeService, Map.Server.Skills.Splash.MapForeachInRangeService>();
 
 // Natural HP/SP regen (status.cpp:status_natural_heal). Baseline
 // out-of-combat recovery for both players and mobs; walking gates

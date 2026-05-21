@@ -1,0 +1,49 @@
+[
+  {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace varies across runs",
+      "historical-kinds": [
+        "nodamage",
+        "sc-start",
+        "skill-attack"
+      ]
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 8433,
+      "healOrLevel": 5,
+      "success": true
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "TidalWeapon",
+      "val1": 5,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 60000,
+      "src": 1
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1000,
+      "type": "TidalWeaponOption",
+      "val1": 5,
+      "val2": 1,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 60000,
+      "src": 1
+    }
+  }
+]

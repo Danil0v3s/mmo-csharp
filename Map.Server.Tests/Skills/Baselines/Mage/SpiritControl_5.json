@@ -1,0 +1,12 @@
+[
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 2456,
+      "healOrLevel": 5,
+      "success": true
+    }
+  }
+]

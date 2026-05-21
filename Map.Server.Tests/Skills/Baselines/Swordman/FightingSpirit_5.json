@@ -1,0 +1,25 @@
+[
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "Fightingspirit",
+      "val1": 140,
+      "val2": 40,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 60000,
+      "src": 1
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 2018,
+      "healOrLevel": 5,
+      "success": true
+    }
+  }
+]

@@ -1,0 +1,23 @@
+[
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1000,
+      "skillId": 413,
+      "healOrLevel": 1,
+      "success": true
+    }
+  },
+  {
+    "kind": "skill-attack",
+    "data": {
+      "attackType": "Weapon",
+      "source": 1,
+      "damageSource": 1,
+      "target": 1000,
+      "skillId": 413,
+      "skillLevel": 1
+    }
+  }
+]

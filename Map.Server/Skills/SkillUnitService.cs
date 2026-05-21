@@ -1,44 +1,55 @@
 using Map.Server.Combat;
 using Map.Server.Entities;
-using Map.Server.Status;
+using Map.Server.Skills.Units;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Skills;
 
 /// <summary>
-/// First-slice ground-unit ticker. Each group's interval cadence is set
-/// per skill (e.g. Storm Gust = 450 ms, Magnus = 1000 ms). Damage routes
-/// through <see cref="IDamageService"/> so the AOI broadcast + death
-/// pipeline matches normal combat.
+/// Ground-unit ticker. Delegates per-skill behavior (lifetime, cadence,
+/// radius, per-tick effect, step-on/step-off hooks) to
+/// <see cref="ISkillUnitTickHandler"/> plugins registered via DI and
+/// indexed by <see cref="SkillUnitTickRegistry"/>. The service owns
+/// only the geometry + lifecycle scheduling; the per-skill logic lives
+/// in <see cref="Skills.Units.Handlers"/>.
 ///
-/// The per-skill layout (square radius around the cast point) and per-
-/// skill damage formula are hard-coded for the starter set; richer
-/// shape data (line / cross / arc) plugs into <see cref="LayoutFor"/>
-/// once those skills port.
+/// <para>Mirrors rAthena's <c>skill_unitsetting</c> → <c>skill_unit_onplace_timer</c>
+/// → <c>skill_unit_onleft</c> → <c>skill_delunitgroup</c> lifecycle in
+/// <c>src/map/skill.cpp</c>, with the dispatch table extracted into the
+/// handler registry.</para>
 /// </summary>
 public sealed class SkillUnitService : ISkillUnitService
 {
     private readonly IEntityRegistry _entities;
-    private readonly IDamageService _damage;
+    private readonly SkillUnitTickRegistry _handlers;
+    private readonly ISkillUnitContext _ctx;
     private readonly ILogger<SkillUnitService> _logger;
     private readonly List<SkillUnitGroup> _groups = new();
 
+    // Tracks (group, entityId) → last cell coordinates so we can fire
+    // OnPlace exactly once per entry and OnLeft when the entity moves
+    // off. Without this we'd retrigger SC_SAFETYWALL every tick the
+    // entity stands on the cell.
+    private readonly Dictionary<(SkillUnitGroup, EntityId), (short x, short y)> _presence = new();
+
     public SkillUnitService(
         IEntityRegistry entities,
-        IDamageService damage,
+        SkillUnitTickRegistry handlers,
+        ISkillUnitContext ctx,
         ILogger<SkillUnitService> logger)
     {
         _entities = entities;
-        _damage = damage;
+        _handlers = handlers;
+        _ctx = ctx;
         _logger = logger;
     }
 
     public SkillUnitGroup? Place(Entity caster, ushort skillId, ushort skillLevel, short centerX, short centerY)
     {
-        var spec = SpecFor(skillId);
-        if (spec == null)
+        var h = _handlers.Get(skillId);
+        if (h == null)
         {
-            _logger.LogDebug("SkillUnitService.Place: no spec for skill {Skill}", skillId);
+            _logger.LogDebug("SkillUnitService.Place: no handler for skill {Skill}", skillId);
             return null;
         }
 
@@ -49,11 +60,11 @@ public sealed class SkillUnitService : ISkillUnitService
             SkillLevel = skillLevel,
             CasterId = caster.Id,
             MapId = caster.MapId,
-            ExpiresAt = now + spec.DurationMs,
-            IntervalMs = spec.IntervalMs,
+            ExpiresAt = now + h.DurationMs(skillLevel),
+            IntervalMs = h.IntervalMs(skillLevel),
         };
 
-        var radius = spec.Radius;
+        var radius = h.Radius(skillLevel);
         for (var dy = -radius; dy <= radius; dy++)
         {
             for (var dx = -radius; dx <= radius; dx++)
@@ -63,7 +74,7 @@ public sealed class SkillUnitService : ISkillUnitService
                     Group = group,
                     X = (short)(centerX + dx),
                     Y = (short)(centerY + dy),
-                    NextTick = now + spec.IntervalMs,
+                    NextTick = now + h.IntervalMs(skillLevel),
                 });
             }
         }
@@ -80,11 +91,12 @@ public sealed class SkillUnitService : ISkillUnitService
             var g = _groups[i];
             if (g.ExpiresAt <= nowTick)
             {
+                EvictGroupPresence(g);
                 _groups.RemoveAt(i);
                 continue;
             }
-            var spec = SpecFor(g.SkillId);
-            if (spec == null) continue;
+            var h = _handlers.Get(g.SkillId);
+            if (h == null) continue;
 
             var caster = _entities.Get(g.CasterId);
 
@@ -94,65 +106,66 @@ public sealed class SkillUnitService : ISkillUnitService
                 if (unit.NextTick > nowTick) continue;
                 unit.NextTick = nowTick + g.IntervalMs;
 
-                // Find entities standing on this cell and apply the effect.
                 // Cheap O(N) entity scan — fine for first slice; can swap
                 // for AOI bucket lookup as the spatial index grows.
                 foreach (var e in _entities.All())
                 {
                     if (e.MapId != g.MapId) continue;
                     if (e.X != unit.X || e.Y != unit.Y) continue;
-                    if (e.Id == g.CasterId) continue; // skip self
-                    if (!IsValidVictim(e)) continue;
+                    if (!h.IsValidVictim(caster, e)) continue;
 
-                    var dmg = spec.Damage(g.SkillLevel, caster, e);
-                    if (dmg > 0) _damage.ApplyDamage(e, dmg, caster);
+                    var key = (g, e.Id);
+                    if (!_presence.TryGetValue(key, out var prev) || prev.x != e.X || prev.y != e.Y)
+                    {
+                        // First time we've seen this entity on the cell
+                        // (or it moved to a new cell within the same group).
+                        h.OnPlace(caster, e, g.SkillLevel, nowTick, _ctx);
+                        _presence[key] = (e.X, e.Y);
+                    }
+                    h.OnTick(caster, e, g.SkillLevel, nowTick, _ctx);
                 }
+            }
+
+            // Detect step-offs: any (group, entity) entry whose entity is
+            // no longer on a group cell triggers OnLeft + purge.
+            ReapStepOffs(g, h, caster, nowTick);
+        }
+    }
+
+    private void ReapStepOffs(SkillUnitGroup g, ISkillUnitTickHandler h, Entity? caster, long tick)
+    {
+        // Snapshot keys to allow mutation while iterating.
+        var keys = _presence.Keys.Where(k => k.Item1 == g).ToList();
+        foreach (var key in keys)
+        {
+            var entity = _entities.Get(key.Item2);
+            var stillOn = entity != null
+                && entity.MapId == g.MapId
+                && g.Units.Any(u => !u.Removed && u.X == entity.X && u.Y == entity.Y);
+            if (!stillOn)
+            {
+                if (entity != null)
+                    h.OnLeft(caster, entity, g.SkillLevel, tick, _ctx);
+                _presence.Remove(key);
             }
         }
     }
 
-    // ---- per-skill specs ----
-
-    private static SkillUnitSpec? SpecFor(ushort skillId) => skillId switch
+    private void EvictGroupPresence(SkillUnitGroup g)
     {
-        // PR_MAGNUS — magic damage, holy element, ticks every 1s for 10s.
-        SkillIds.PR_MAGNUSEXORCISMUS => new SkillUnitSpec(
-            DurationMs: 10_000, IntervalMs: 1000, Radius: 2,
-            Damage: (lvl, caster, _) => caster == null ? 0 : (int)(caster.Stats.MatkMin * (1 + lvl) / 5)),
-        // WZ_STORMGUST — wind magic damage, ticks every 450ms for 4.5s.
-        SkillIds.WZ_STORMGUST => new SkillUnitSpec(
-            DurationMs: 4_500, IntervalMs: 450, Radius: 5,
-            Damage: (lvl, caster, _) => caster == null ? 0 : (int)(caster.Stats.MatkMin * (lvl + 4) / 4)),
-        _ => null,
-    };
-
-    private static bool IsValidVictim(Entity e) => e switch
-    {
-        MobEntity m => m.Hp > 0,
-        PlayerEntity p => p.Hp > 0,
-        _ => false,
-    };
-
-    private sealed record SkillUnitSpec(
-        int DurationMs,
-        int IntervalMs,
-        int Radius,
-        Func<ushort, Entity?, Entity, int> Damage);
+        var keys = _presence.Keys.Where(k => k.Item1 == g).ToList();
+        foreach (var k in keys) _presence.Remove(k);
+    }
 
     // -----------------------------------------------------------------
     // rAthena skill_unit_* movement / lifecycle helpers (skill.cpp).
-    // First slice: lifecycle methods perform the mutation but the
-    // per-skill "what happens when you enter a Pneuma cell" hook is
-    // data-pending. Entry points stay canonical so callers don't have
-    // to inline the operation against the _groups list.
     // -----------------------------------------------------------------
 
     public void UnitMove(Entity who, long tick, int flag)
     {
-        // rAthena triggers onplace timers when an entity steps onto a
-        // unit cell. With the polling-tick model we already scan on
-        // every tick (SkillUnitService.Tick), so this entry is a
-        // no-op until an event-driven step-on hook lands.
+        // The tick loop already detects step-on / step-off through
+        // _presence diffing, so this entry remains a no-op until an
+        // event-driven step-on hook is wired in front of the polling.
     }
 
     public void UnitMoveUnit(SkillUnit unit, short newX, short newY)
@@ -175,31 +188,40 @@ public sealed class SkillUnitService : ISkillUnitService
 
     public void UnitOnLeft(SkillUnit unit, Entity who, long tick)
     {
-        // Per-skill "stand-on" SC drop (Bragi, Lullaby). Data-pending
-        // on the SC-by-unit table.
+        var h = _handlers.Get(unit.Group.SkillId);
+        if (h == null) return;
+        var caster = _entities.Get(unit.Group.CasterId);
+        h.OnLeft(caster, who, unit.Group.SkillLevel, tick, _ctx);
+        _presence.Remove((unit.Group, who.Id));
     }
 
-    public void UnitOnOut(SkillUnit unit, Entity who, long tick) { }
+    public void UnitOnOut(SkillUnit unit, Entity who, long tick) => UnitOnLeft(unit, who, tick);
 
     public void UnitOnDamaged(SkillUnit unit, long damage)
     {
-        // Ice Wall HP loss, trap detonate. Until SkillUnit grows an
-        // Hp field, only the canonical entry exists.
+        var h = _handlers.Get(unit.Group.SkillId);
+        if (h == null) return;
+        h.OnDamaged(unit, damage, _ctx);
     }
 
     public void ClearUnitGroup(EntityId casterId)
     {
-        _groups.RemoveAll(g => g.CasterId == casterId);
+        for (var i = _groups.Count - 1; i >= 0; i--)
+        {
+            if (_groups[i].CasterId == casterId)
+            {
+                EvictGroupPresence(_groups[i]);
+                _groups.RemoveAt(i);
+            }
+        }
     }
 
-    public void DelUnit(SkillUnit unit)
-    {
-        unit.Removed = true;
-    }
+    public void DelUnit(SkillUnit unit) => unit.Removed = true;
 
     public void DelUnitGroup(SkillUnitGroup group)
     {
         foreach (var u in group.Units) u.Removed = true;
+        EvictGroupPresence(group);
         _groups.Remove(group);
     }
 }

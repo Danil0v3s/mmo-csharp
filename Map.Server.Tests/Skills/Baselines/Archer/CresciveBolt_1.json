@@ -1,0 +1,33 @@
+[
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1000,
+      "skillId": 5334,
+      "healOrLevel": 1,
+      "success": true
+    }
+  },
+  {
+    "kind": "damage",
+    "data": {
+      "target": 1000,
+      "source": 1,
+      "damage": 20500
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "Crescivebolt",
+      "val1": 1,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 10000,
+      "src": 1
+    }
+  }
+]

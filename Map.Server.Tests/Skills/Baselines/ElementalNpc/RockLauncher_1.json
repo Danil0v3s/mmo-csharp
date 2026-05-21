@@ -1,0 +1,29 @@
+[
+  {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 8440,
+      "healOrLevel": 1,
+      "success": true
+    }
+  },
+  {
+    "kind": "skill-attack",
+    "data": {
+      "attackType": "Magic",
+      "source": 1,
+      "damageSource": 1,
+      "target": 1000,
+      "skillId": 8440,
+      "skillLevel": 1
+    }
+  }
+]

@@ -1,0 +1,13 @@
+[
+  {
+    "kind": "skill-attack",
+    "data": {
+      "attackType": "Magic",
+      "source": 1,
+      "damageSource": 1,
+      "target": 1000,
+      "skillId": 537,
+      "skillLevel": 1
+    }
+  }
+]

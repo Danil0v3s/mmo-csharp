@@ -1,0 +1,24 @@
+[
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Cloaking"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Cloakingexceed"
+    }
+  },
+  {
+    "kind": "damage",
+    "data": {
+      "target": 1000,
+      "source": 1,
+      "damage": 27500
+    }
+  }
+]

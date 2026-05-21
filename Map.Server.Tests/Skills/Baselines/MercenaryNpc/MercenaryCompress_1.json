@@ -1,0 +1,19 @@
+[
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Bleeding"
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 8231,
+      "healOrLevel": 1,
+      "success": true
+    }
+  }
+]

@@ -1,0 +1,145 @@
+[
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 2517,
+      "healOrLevel": 5,
+      "success": true
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Swingdance"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Symphonyoflover"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Moonlitserenade"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Rushwindmill"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Echosong"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Harmonize"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Netherworld"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Voiceofsiren"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Deepsleep"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Sircleofnature"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Gloomyday"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "GloomydaySk"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Songofmana"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Dancewithwug"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Saturdaynightfever"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Leradsdew"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Melodyofsink"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Beyondofwarcry"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Unlimitedhummingvoice"
+    }
+  }
+]

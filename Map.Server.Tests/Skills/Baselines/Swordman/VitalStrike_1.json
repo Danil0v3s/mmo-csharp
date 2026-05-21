@@ -1,0 +1,15 @@
+[
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1000,
+      "type": "Jointbeat",
+      "val1": 1,
+      "val2": 16,
+      "val3": 1,
+      "val4": 0,
+      "durationMs": 30000,
+      "src": 1
+    }
+  }
+]

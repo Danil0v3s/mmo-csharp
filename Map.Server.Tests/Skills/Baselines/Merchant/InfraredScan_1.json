@@ -1,0 +1,36 @@
+[
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Hiding"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Cloaking"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1000,
+      "type": "Camouflage"
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1000,
+      "type": "Infraredscan",
+      "val1": 1,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 5000,
+      "src": 1
+    }
+  }
+]

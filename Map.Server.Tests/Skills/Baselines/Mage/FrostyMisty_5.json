@@ -1,0 +1,26 @@
+[
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1000,
+      "type": "MistyFrost",
+      "val1": 5,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 8000,
+      "src": 1
+    }
+  },
+  {
+    "kind": "skill-attack",
+    "data": {
+      "attackType": "Magic",
+      "source": 1,
+      "damageSource": 1,
+      "target": 1000,
+      "skillId": 2203,
+      "skillLevel": 5
+    }
+  }
+]

@@ -1,0 +1,25 @@
+[
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "Enchantblade",
+      "val1": 1,
+      "val2": 51,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 60000,
+      "src": 1
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 2001,
+      "healOrLevel": 1,
+      "success": true
+    }
+  }
+]

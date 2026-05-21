@@ -1,0 +1,20 @@
+[
+  {
+    "kind": "damage",
+    "data": {
+      "target": 1000,
+      "source": 1,
+      "damage": 8000
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 5072,
+      "healOrLevel": 5,
+      "success": true
+    }
+  }
+]

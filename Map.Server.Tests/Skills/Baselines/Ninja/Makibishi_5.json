@@ -1,0 +1,78 @@
+[
+  {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "unit-place",
+    "data": {
+      "caster": 1,
+      "skillId": 3010,
+      "skillLevel": 5,
+      "centerX": 99,
+      "centerY": 101
+    }
+  },
+  {
+    "kind": "unit-place",
+    "data": {
+      "caster": 1,
+      "skillId": 3010,
+      "skillLevel": 5,
+      "centerX": 100,
+      "centerY": 101
+    }
+  },
+  {
+    "kind": "unit-place",
+    "data": {
+      "caster": 1,
+      "skillId": 3010,
+      "skillLevel": 5,
+      "centerX": 100,
+      "centerY": 101
+    }
+  },
+  {
+    "kind": "unit-place",
+    "data": {
+      "caster": 1,
+      "skillId": 3010,
+      "skillLevel": 5,
+      "centerX": 100,
+      "centerY": 100
+    }
+  },
+  {
+    "kind": "unit-place",
+    "data": {
+      "caster": 1,
+      "skillId": 3010,
+      "skillLevel": 5,
+      "centerX": 99,
+      "centerY": 100
+    }
+  },
+  {
+    "kind": "unit-place",
+    "data": {
+      "caster": 1,
+      "skillId": 3010,
+      "skillLevel": 5,
+      "centerX": 100,
+      "centerY": 101
+    }
+  },
+  {
+    "kind": "unit-place",
+    "data": {
+      "caster": 1,
+      "skillId": 3010,
+      "skillLevel": 5,
+      "centerX": 100,
+      "centerY": 101
+    }
+  }
+]

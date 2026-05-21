@@ -1,0 +1,27 @@
+[
+  {
+    "kind": "skill-attack",
+    "data": {
+      "attackType": "Misc",
+      "source": 1,
+      "damageSource": 1,
+      "target": 1000,
+      "skillId": 544,
+      "skillLevel": 5
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Nen"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Hiding"
+    }
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "kind": "fail",
+    "data": {
+      "caster": 1,
+      "skillId": 5073,
+      "cause": "NeedHelpers",
+      "btype": 0,
+      "itemId": 0
+    }
+  }
+]

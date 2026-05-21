@@ -1,0 +1,22 @@
+[
+  {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace varies across runs",
+      "historical-kinds": [
+        "fail",
+        "nodamage"
+      ]
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 5367,
+      "healOrLevel": 5,
+      "success": true
+    }
+  }
+]

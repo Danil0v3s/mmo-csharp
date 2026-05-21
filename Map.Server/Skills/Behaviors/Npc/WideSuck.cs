@@ -1,15 +1,20 @@
 using Map.Server.Entities;
-using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Npc;
 
-/// <summary>NPC_WIDESUCK — 100% SC_BLOODSUCKER (drain HP) on splash hit.</summary>
+/// <summary>
+/// NPC_WIDESUCK — Mirrors
+/// <c>rathena-fork/src/map/skills/npc/widesuck.cpp</c>.
+/// Cell-placed ground unit (CastendPos2 → skill_unitsetting). NOT an
+/// SC_BLOODSUCKER application — that was a port bug found via the
+/// T3.1 rAthena parity sweep.
+/// </summary>
 public sealed class WideSuck : SkillImpl
 {
+    private readonly ISkillUnitService? _units;
     public WideSuck() : base(SkillIds.NPC_WIDESUCK) { }
-    public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-    {
-        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        ctx.Sc?.Start(target, StatusType.Bloodsucker, val1: skillLevel, val2: (int)src.Id.Value, 0, 0, durationMs: 20_000, src);
-    }
+    public WideSuck(ISkillUnitService? units = null) : base(SkillIds.NPC_WIDESUCK) { _units = units; }
+
+    public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
+        => _units?.Place(src, SkillId, skillLevel, x, y);
 }
