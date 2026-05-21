@@ -30,14 +30,14 @@ Canonical entry points:
 | `mob_ai_sub_hard` skilltimer / OPT1 / SCF_MOBLOSETARGET gate | ❌ | not ported |
 | `mob_ai_sub_hard` `attacked_id` target-switch | ⚠️ | `MobEntity.AttackedId` set on hit; full re-target on unreachable primary still TODO |
 | `mob_ai_sub_hard` master_id slave AI | ⚠️ | `SummonAiService` covers follow + assist; full assist-on-master-target branch TODO |
-| `mob_ai_sub_hard` MD_LOOTER pickup | ❌ | not ported |
-| `mob_ai_sub_hard` `mob_warpchase` | ❌ | not ported |
+| `mob_ai_sub_hard` MD_LOOTER pickup | ✅ | `IMobLooterService` (T4.9c — bag cap, FIFO evict, registry transfer; mob walks to drop, picks up on adjacency) |
+| `mob_ai_sub_hard` `mob_warpchase` | ⚠️ | `IMobWarpChaseService` (T4.9c — canonical entry point, same-map short-circuit; cross-map scan is data-pending until NpcEntity gains the warp subtype) |
 | `mob_ai_sub_hard` BG ally follow | ❌ | not ported (gated on T-BG track) |
 | `mob_ai_sub_lazy` far-from-players idle | ✅ | `MobAiService.TickLazy` (T4.8) — 5% idle-skill roll; warpchase/spotted-log subset TODO |
 | `mob_ai_sub_hard_attacktimer` post-swing re-entry | ❌ | not ported |
 | `mob_setstate` BERSERK/ANGRY + RUSH/FOLLOW swaps | ✅ | `MobFsm.TransitionTo` (T4.8) |
-| `mob_clean_spotted` / `mob_is_spotted` | ❌ | needed for slave-active-with-master + lazy gate refinement |
-| `mob_warpchase` (cross-map follow) | ❌ | not ported (gated on warp IPC parity) |
+| `mob_clean_spotted` / `mob_is_spotted` | ✅ | `MobSpotted.Add` / `Clean` / `IsSpotted` (T4.9c — populated by hard-tick PC scan, pruned per lazy tick; lazy AI gated on `IsSpotted`) |
+| `mob_warpchase` (cross-map follow) | ⚠️ | `IMobWarpChaseService` (T4.9c — interface + same-map gate; warp-NPC scan TODO) |
 | `mob_randomwalk` (idle wander pathing) | ❌ | spawn service handles initial wander; mid-AI re-roll TODO |
 
 ### Skill picker (mobskill_use / mobskill_event) — **T4.3 wave**
@@ -118,16 +118,18 @@ Canonical entry points:
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| AI think loop | 3 | 3 | 7 | 13 |
+| AI think loop | 5 | 5 | 3 | 13 |
 | Skill picker | 11 | 3 | 2 | 16 |
 | Condition evaluators (MSC_*) | 22 | 1 | 4 | 27 |
 | Target modes (MST_*) | 7 | 1 | 0 | 8 |
 | Lifecycle / DB ops | ~16 | 0 | 0 | ~16 |
 
-**Aggregate: 59 ✅ / 8 ⚠️ / 13 ❌ across 80 entries.** Net for the goal:
-13 ❌ + 8 ⚠️ = **21 entries** stand between the current state and a
+**Aggregate: 61 ✅ / 10 ⚠️ / 9 ❌ across 80 entries.** Net for the goal:
+9 ❌ + 10 ⚠️ = **19 entries** stand between the current state and a
 zero-❌ mob.cpp parity audit. T4.9a closed 2 ❌ (MSC_MYSTATUSON/OFF);
-T4.9b closed 2 more (MSC_MOBNEARBYGT, MSC_TRICKCASTING).
+T4.9b closed 2 more (MSC_MOBNEARBYGT, MSC_TRICKCASTING); T4.9c
+closed 2 ❌ (MD_LOOTER + spotted-log) and downgraded 2 more to ⚠️
+(mob_warpchase entries — interface exists, scan body pending).
 
 ## Implementation plan
 
@@ -141,6 +143,55 @@ T4.9b closed 2 more (MSC_MOBNEARBYGT, MSC_TRICKCASTING).
 8. ❌ **T4.9** — final completion wave — see goal doc.
 
 ## History
+
+### 2026-05-21 — T4.9c (spotted-log + warpchase + MD_LOOTER)
+
+Third slice of the T4.9 closure wave. Closes 2 ❌ in the AI think
+loop (spotted log + MD_LOOTER) and converts 2 more (the two
+mob_warpchase rows) from ❌ to ⚠️ with a canonical entry point and
+documented data-pending scan.
+
+**Surface added:**
+- `MobEntity.SpottedLog` (HashSet&lt;int&gt; of char ids) +
+  `IsSpotted`. `MobSpotted.Add` / `Clean` / `IsSpotted` mirror
+  rAthena mob.cpp:99-145; the hard-AI tick populates it via the new
+  `SpotPcsInView` helper, the lazy tick prunes disconnected ids
+  before the random-walk roll.
+- `MobAiService.TickLazy` now gates the idle-skill roll on
+  `mob.IsSpotted` (rAthena mob.cpp:2448) — un-spotted mobs go fully
+  quiet, which fixes the "every mob on the map rolls a buff every
+  20 ticks regardless of player presence" bug.
+- `MobEntity.TrickCasting` already landed in T4.9b; this slice adds
+  `LootItems` (List&lt;MobLootSlot&gt;, cap 10) and `IsLooter`.
+- `IMobLooterService` + `MobLooterService` — `IsLootEligible` checks
+  the Mode bit + bag cap; `FindNearestLoot` scans
+  `IEntityRegistry.ForEachInRange(EntityType.Item, range)` and picks
+  the closest; `Collect` removes the floor item from the registry,
+  appends to the bag (FIFO-evicting at cap, mob.cpp:2119), logs the
+  pickup. Wired into `MobAiService.Tick` between target validation
+  and the aggressive scan, with `MobFsm.TransitionTo(MSS_LOOT)` and
+  walk-to-cell when not yet adjacent.
+- `IMobWarpChaseService` + `MobWarpChaseService` — canonical entry
+  point. Same-map gate (rAthena mob.cpp:1796) short-circuits;
+  cross-map scan is data-pending (NpcEntity has no warp subtype
+  yet). The interface lets callers plug a real impl later without
+  touching call sites.
+
+**Tests:** `Map.Server.Tests/Mob/MobSpottedLootTests.cs` — 8 cases:
+- Spotted: Add grows + dedupes; cap honored (30); Clean evicts
+  disconnected char ids.
+- WarpChase: same-map → NotApplicable; cross-map without warps
+  registered → NotApplicable.
+- Looter: IsLootEligible flips on Mode + bag cap; FindNearestLoot
+  picks closest, ignores out-of-range; Collect evicts oldest at
+  cap + removes floor item from registry.
+
+**Coverage delta:** 59 ✅ / 8 ⚠️ / 13 ❌ → **61 ✅ / 10 ⚠️ / 9 ❌**
+(−4 ❌, +2 ⚠️). Remaining ❌ in AI think loop: skilltimer/OPT1 gate,
+BG ally follow, attacktimer post-swing.
+
+**Tests green:** 2910/2910 in `Map.Server.Tests`
+(PacketReplayTests fixture excluded as usual).
 
 ### 2026-05-21 — T4.9b (spatial + fake-cast condition evaluators)
 

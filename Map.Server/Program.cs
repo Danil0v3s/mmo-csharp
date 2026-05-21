@@ -313,6 +313,12 @@ builder.Services.AddSingleton<Map.Server.Mob.Slaves.ISlaveMobService, Map.Server
 builder.Services.AddSingleton<Map.Server.Mob.MobSkillTargetResolver>();
 builder.Services.AddSingleton<Map.Server.Mob.IMobSkillCastService, Map.Server.Mob.MobSkillCastService>();
 
+// T4.9c — mob_warpchase (mob.cpp:1776) + MD_LOOTER pickup
+// (mob.cpp:2008-2129). Canonical entry points; the warpchase scan is
+// a data-pending no-op until NpcEntity gains the warp subtype.
+builder.Services.AddSingleton<Map.Server.Mob.IMobWarpChaseService, Map.Server.Mob.MobWarpChaseService>();
+builder.Services.AddSingleton<Map.Server.Mob.IMobLooterService, Map.Server.Mob.MobLooterService>();
+
 builder.Services.AddSingleton<Map.Server.Mob.IMobAiService, Map.Server.Mob.MobAiService>();
 
 // Summon AI (mob.cpp:2030 mob_ai_sub_lazy — slave / pet / homun / merc /

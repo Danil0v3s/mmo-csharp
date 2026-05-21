@@ -26,6 +26,7 @@ public sealed class MobAiService : IMobAiService
     private readonly IAttackService _attack;
     private readonly IMovementService? _movement;
     private readonly IMobSkillCastService _mobSkillCast;
+    private readonly IMobLooterService? _looter;
     private readonly Random _rng;
     private readonly Dictionary<EntityId, long> _lastThink = new();
 
@@ -37,11 +38,13 @@ public sealed class MobAiService : IMobAiService
         MobSkillConditionRegistry? conditions = null,
         Random? rng = null,
         IMovementService? movement = null,
-        IMobSkillCastService? mobSkillCast = null)
+        IMobSkillCastService? mobSkillCast = null,
+        IMobLooterService? looter = null)
     {
         _entities = entities;
         _attack = attack;
         _movement = movement;
+        _looter = looter;
         _rng = rng ?? Random.Shared;
 
         // Default to the standard evaluator set so existing tests don't
@@ -110,6 +113,11 @@ public sealed class MobAiService : IMobAiService
                 TickLazy(mob, nowTick);
                 continue;
             }
+            // T4.9c — every PC in view bumps the spotted log so the
+            // lazy AI keeps animating even after the PCs walk out of
+            // range (rAthena mob.cpp:1959, mob_add_spotted from the
+            // per-PC hard-AI scan).
+            SpotPcsInView(mob);
 
             // Validate existing target — drop it if it's gone or unreachable.
             if (mob.Attack != null)
@@ -129,6 +137,33 @@ public sealed class MobAiService : IMobAiService
                     MobFsm.TransitionTo(mob, MobSkillState.Berserk);
                     mob.TargetId = (int)current.Id.Value;
                     _mobSkillCast.TryUseSkill(mob, nowTick);
+                    continue;
+                }
+            }
+
+            // T4.9c — MD_LOOTER scan. Inserted between the slave/target
+            // handling above and the aggressive scan below, mirroring
+            // rAthena mob.cpp:2008-2129. Looter mobs walk to the
+            // nearest floor item before considering aggro.
+            if (_looter != null && _looter.IsLootEligible(mob))
+            {
+                var loot = _looter.FindNearestLoot(mob, IMobLooterService.DefaultLootRange);
+                if (loot != null)
+                {
+                    var dist = Math.Max(Math.Abs(loot.X - mob.X), Math.Abs(loot.Y - mob.Y));
+                    if (dist <= 1)
+                    {
+                        // Adjacent — pick it up this tick.
+                        MobFsm.TransitionTo(mob, MobSkillState.Loot);
+                        _looter.Collect(mob, loot);
+                    }
+                    else if (_movement != null)
+                    {
+                        // Walk toward the drop. Subsequent ticks will
+                        // re-evaluate once the mob is adjacent.
+                        MobFsm.TransitionTo(mob, MobSkillState.Loot);
+                        _movement.TryStartWalk(mob, loot.X, loot.Y);
+                    }
                     continue;
                 }
             }
@@ -207,18 +242,49 @@ public sealed class MobAiService : IMobAiService
     }
 
     /// <summary>
-    /// T4.8 — lazy AI path (rAthena <c>mob_ai_sub_lazy</c>
+    /// rAthena <c>mob_add_spotted</c> (mob.cpp:112). Records every PC
+    /// currently in view onto the mob's spotted log so the lazy AI
+    /// keeps animating even after the PCs walk out of range. Called
+    /// only on hard-AI ticks (lazy ticks prune via
+    /// <see cref="MobSpotted.Clean"/>).
+    /// </summary>
+    private void SpotPcsInView(MobEntity mob)
+    {
+        var viewRange = mob.DbEntry?.ChaseRange > 0
+            ? (short)mob.DbEntry.ChaseRange
+            : (short)12;
+        var nearby = _entities.ForEachInRange(
+            mob.MapId, mob.X, mob.Y, viewRange, EntityType.Pc);
+        foreach (var e in nearby)
+        {
+            if (e is PlayerEntity p && p.Hp > 0)
+                MobSpotted.Add(mob, p.CharacterId);
+        }
+    }
+
+    /// <summary>
+    /// T4.8 + T4.9c — lazy AI path (rAthena <c>mob_ai_sub_lazy</c>
     /// <c>mob.cpp:2359</c>). Far-from-PC mobs only roll an idle-skill
     /// pick at the rAthena-default low rate (~5% of ticks for
-    /// non-boss mobs). No target acquisition, no chase, no swing —
-    /// just an occasional buff/transform/emote.
+    /// non-boss mobs) AND ONLY when the mob has been spotted by at
+    /// least one PC (mob.cpp:2448 — <c>mob_is_spotted</c> gate).
+    /// No target acquisition, no chase, no swing — just an
+    /// occasional buff/transform/emote.
     /// </summary>
     private void TickLazy(MobEntity mob, long nowTick)
     {
-        // rAthena: mob_nopc_idleskill_rate default 5 / mob_active_time.
-        // We approximate with a 5/100 roll per tick. Cooldown is
-        // owned by the IMobSkillCastService picker.
+        // rAthena mob.cpp:2399 — prune disconnected PC ids from the
+        // spotted log before consulting it. We piggy-back on the lazy
+        // tick because it's the same cadence rAthena uses.
+        MobSpotted.Clean(mob, _entities);
+
+        // rAthena mob.cpp:2448-2451 — only roll the idle-skill pick
+        // when the mob has been spotted. Aegis 100%-fires for spotted
+        // mobs; rAthena gates further on mob_nopc_idleskill_rate
+        // (default 5/100). Boss mobs use boss_nopc_idleskill_rate.
+        if (!mob.IsSpotted) return;
         if (_rng.Next(100) >= 5) return;
+
         // Use Idle FSM bucket so the picker only considers
         // MSS_IDLE / MSS_ANY rows.
         MobFsm.TransitionTo(mob, MobSkillState.Idle);

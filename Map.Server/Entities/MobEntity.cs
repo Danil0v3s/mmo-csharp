@@ -113,6 +113,33 @@ public class MobEntity : Entity
     /// </summary>
     public int TrickCasting { get; set; }
 
+    /// <summary>
+    /// rAthena <c>md-&gt;spotted_log[DAMAGELOG_SIZE]</c> (mob.hpp:366).
+    /// Set of char ids that have "seen" this mob (entered its view
+    /// range). <c>mob_ai_sub_lazy</c> (mob.cpp:2418-2451) only rolls
+    /// random-walk / idle-skill ticks when the log is non-empty; bosses
+    /// further gate their AI on <c>battle_config.boss_active_time</c>.
+    /// Reset by <c>mob_spawn</c> (mob.cpp:1200).
+    /// </summary>
+    public HashSet<int> SpottedLog { get; } = new();
+
+    /// <summary>True if any char id is currently in <see cref="SpottedLog"/>.
+    /// rAthena <c>mob_is_spotted</c> (mob.cpp:135).</summary>
+    public bool IsSpotted => SpottedLog.Count > 0;
+
+    /// <summary>
+    /// rAthena <c>md-&gt;lootitems[LOOTITEM_SIZE]</c> + <c>lootitem_count</c>
+    /// (mob.hpp). MD_LOOTER mobs (e.g. Hode, Sandman) pick up floor
+    /// items into this bag during the AI tick; the contents are added
+    /// back to the floor as drops when the mob dies (mob_dead). The
+    /// per-mob cap is rAthena's <c>LOOTITEM_SIZE = 10</c>.
+    /// </summary>
+    public List<MobLootSlot> LootItems { get; } = new();
+
+    /// <summary>True iff the mob has the <see cref="MobMode.Looter"/> bit
+    /// set in its stats. Checked by <c>IMobLooterService</c>.</summary>
+    public bool IsLooter => (Stats.Mode & MobMode.Looter) != 0;
+
     public override EntityType Type => EntityType.Mob;
 
     public MobEntity(EntityId id, int classId, string name, uint mapId, short x, short y)
