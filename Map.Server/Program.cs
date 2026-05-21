@@ -282,6 +282,14 @@ builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvalua
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.SlaveLessThanCondition>();
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.SlaveLessEqCondition>();
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.MobSkillConditionRegistry>();
+
+// T4.3 — mob_skill_use_id picker (rAthena mob.cpp:4275). Walks
+// MobDbEntry.Skills + applies condition + permillage gates + resolves
+// MST_* targets via MobSkillTargetResolver. MobAiService delegates
+// here for both passive ticks and rude-attacked event escalation.
+builder.Services.AddSingleton<Map.Server.Mob.MobSkillTargetResolver>();
+builder.Services.AddSingleton<Map.Server.Mob.IMobSkillCastService, Map.Server.Mob.MobSkillCastService>();
+
 builder.Services.AddSingleton<Map.Server.Mob.IMobAiService, Map.Server.Mob.MobAiService>();
 
 // Summon AI (mob.cpp:2030 mob_ai_sub_lazy — slave / pet / homun / merc /

@@ -59,6 +59,35 @@ public class MobEntity : Entity
     /// </summary>
     public int RudeAttackedCount { get; set; }
 
+    /// <summary>
+    /// rAthena <c>md-&gt;state.skillstate</c> — the FSM bucket the AI is in
+    /// right now (Berserk / Idle / Walk / Loot / Dead / Angry / Rush /
+    /// Follow / AnyTarget). Drives mob_skill_db row filtering: a row's
+    /// State must equal this (or be Any / AnyTarget) for the picker to
+    /// consider it. Default Idle on spawn.
+    /// </summary>
+    public MobSkillState SkillState { get; set; } = MobSkillState.Idle;
+
+    // NOTE: master_id (rAthena md->master_id) lives on the base
+    // <see cref="Entity.MasterId"/> (EntityId?) — used by the slave-AI
+    // follow loop, MST_MASTER target resolver, and
+    // MSC_MASTERHPLTMAXRATE / MSC_MASTERATTACKED conditions.
+
+    /// <summary>
+    /// rAthena <c>md-&gt;target_id</c>. Mirrors the engaged combat target's
+    /// EntityId so MST_TARGET can resolve without re-scanning the AOI.
+    /// 0 = no current target. Set by mob_target / mob_unlocktarget.
+    /// </summary>
+    public int TargetId { get; set; }
+
+    /// <summary>
+    /// rAthena <c>md-&gt;attacked_id</c> — the last entity that hit this mob,
+    /// even if it's not currently <see cref="TargetId"/>. Used as a fallback
+    /// for MST_TARGET when the primary target is null and MD_CANATTACK is
+    /// not set on the mob.
+    /// </summary>
+    public int AttackedId { get; set; }
+
     public override EntityType Type => EntityType.Mob;
 
     public MobEntity(EntityId id, int classId, string name, uint mapId, short x, short y)

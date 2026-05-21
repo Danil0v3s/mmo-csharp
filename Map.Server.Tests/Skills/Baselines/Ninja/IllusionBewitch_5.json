@@ -1,5 +1,16 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace varies across runs",
+      "historical-kinds": [
+        "fail",
+        "nodamage",
+        "sc-start"
+      ]
+    }
+  },
+  {
     "kind": "sc-start",
     "data": {
       "target": 1,

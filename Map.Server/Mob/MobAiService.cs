@@ -24,13 +24,10 @@ public sealed class MobAiService : IMobAiService
 
     private readonly IEntityRegistry _entities;
     private readonly IAttackService _attack;
-    private readonly ISkillCastService? _skillCast;
     private readonly IMovementService? _movement;
-    private readonly MobSkillConditionRegistry _conditions;
+    private readonly IMobSkillCastService _mobSkillCast;
     private readonly Random _rng;
     private readonly Dictionary<EntityId, long> _lastThink = new();
-    /// <summary>Per-mob, per-skill cooldown anchor (Environment.TickCount64).</summary>
-    private readonly Dictionary<(EntityId mobId, int skillIndex), long> _skillDelay = new();
 
     public MobAiService(
         IEntityRegistry entities,
@@ -39,21 +36,46 @@ public sealed class MobAiService : IMobAiService
         ISkillCastService? skillCast = null,
         MobSkillConditionRegistry? conditions = null,
         Random? rng = null,
-        IMovementService? movement = null)
+        IMovementService? movement = null,
+        IMobSkillCastService? mobSkillCast = null)
     {
         _entities = entities;
         _attack = attack;
-        _skillCast = skillCast;
         _movement = movement;
+        _rng = rng ?? Random.Shared;
+
         // Default to the standard evaluator set so existing tests don't
-        // need to construct a registry by hand.
-        _conditions = conditions ?? new MobSkillConditionRegistry(new IMobSkillConditionEvaluator[]
+        // need to construct a registry by hand. Conditions feed the
+        // mob_skill_use_id picker (T4.3) downstream.
+        var defaultConditions = conditions ?? new MobSkillConditionRegistry(new IMobSkillConditionEvaluator[]
         {
             new AlwaysCondition(),
             new MyHpLessThanRateCondition(),
+            new MyHpInRateCondition(),
             new RudeAttackedCondition(),
+            new CloseAttackedCondition(),
+            new LongRangeAttackedCondition(),
+            new GroundAttackedCondition(),
+            new SkillUsedCondition(),
+            new CastTargetedCondition(),
+            new DamagedGreaterCondition(),
+            new AttackerCountGreaterCondition(),
+            new AttackerCountGreaterEqCondition(),
+            new SpawnCondition(),
+            new SlaveLessThanCondition(),
+            new SlaveLessEqCondition(),
         });
-        _rng = rng ?? Random.Shared;
+
+        // If the picker isn't injected, build one inline. This keeps the
+        // existing test ctor signature intact (Skills + RNG + Conditions
+        // is enough to wire a working picker without touching the test
+        // bootstrap).
+        _mobSkillCast = mobSkillCast ?? new MobSkillCastService(
+            defaultConditions,
+            new MobSkillTargetResolver(entities, _rng),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<MobSkillCastService>.Instance,
+            skillCast,
+            _rng);
     }
 
     public void Tick(long nowTick)
@@ -83,10 +105,11 @@ public sealed class MobAiService : IMobAiService
                 else
                 {
                     // Engaged — give the mob a chance to cast a skill instead
-                    // of the basic swing. mobskill_use (mob.cpp:3924) MSS_BERSERK
-                    // path: a skill the mob has assigned can trigger between
-                    // normal attacks once its delay elapsed and the roll passes.
-                    TryUseMobSkill(mob, current, MobSkillState.Berserk, nowTick);
+                    // of the basic swing. T4.3: route through the canonical
+                    // IMobSkillCastService (rAthena mob.cpp:4275 mobskill_use).
+                    mob.SkillState = MobSkillState.Berserk;
+                    mob.TargetId = (int)current.Id.Value;
+                    _mobSkillCast.TryUseSkill(mob, nowTick);
                     continue;
                 }
             }
@@ -169,11 +192,14 @@ public sealed class MobAiService : IMobAiService
         mob.RudeAttackedCount++;
         if (mob.RudeAttackedCount < RudeAttackedCondition.DefaultThreshold) return;
 
-        // Crossed the threshold. Try MSC_RUDEATTACKED first; if the mob
-        // has no matching skill row, fall back to unit_escape.
+        // Crossed the threshold. T4.3: route through the canonical
+        // IMobSkillCastService. First try the broader Berserk-state
+        // picker, then a direct event-driven MSC_RUDEATTACKED trigger;
+        // if neither fires, fall back to unit_escape.
         var now = Environment.TickCount64;
-        var fired = TryUseMobSkill(mob, attacker, MobSkillState.Berserk, now)
-                    || TryUseMobSkillByCondition(mob, attacker, MobSkillCondition.RudeAttacked, now);
+        mob.AttackedId = (int)attacker.Id.Value;
+        var fired = _mobSkillCast.TryUseSkill(mob, now)
+                    || _mobSkillCast.NotifyEvent(mob, attacker, now, MobSkillCondition.RudeAttacked);
         if (!fired)
         {
             Escape(mob, attacker);
@@ -182,36 +208,6 @@ public sealed class MobAiService : IMobAiService
         // before we try again (rAthena: state.attacked_count = 0 after
         // mobskill_use returns true OR after unit_escape).
         mob.RudeAttackedCount = 0;
-    }
-
-    /// <summary>
-    /// Variant of <see cref="TryUseMobSkill"/> filtered to a specific
-    /// condition kind. Used by <see cref="NotifyAttacked"/> so the
-    /// rude-attacked escalation can fire even when the mob isn't yet in
-    /// the Berserk state machine (e.g. ranged-only attacker, target
-    /// undecided).
-    /// </summary>
-    private bool TryUseMobSkillByCondition(MobEntity mob, Entity target, MobSkillCondition wanted, long nowTick)
-    {
-        if (_skillCast == null) return false;
-        if (mob.DbEntry == null || mob.DbEntry.Skills.Count == 0) return false;
-        if ((mob.Stats.Mode & MobMode.NoCast) != 0) return false;
-        for (var i = 0; i < mob.DbEntry.Skills.Count; i++)
-        {
-            var entry = mob.DbEntry.Skills[i];
-            if (entry.Condition != wanted) continue;
-            var key = (mob.Id, i);
-            if (_skillDelay.TryGetValue(key, out var readyAt) && readyAt > nowTick) continue;
-            var evaluator = _conditions.Get(entry.Condition);
-            var ctx = new Conditions.MobConditionContext { Tick = nowTick, Target = target };
-            if (evaluator == null || !evaluator.IsMet(mob, entry, ctx)) continue;
-            if (_rng.Next(10_000) >= entry.Permillage) continue;
-            if (_skillCast.StartCast(mob, target.Id, entry.SkillId, entry.SkillLevel) != SkillCastResult.Started)
-                continue;
-            _skillDelay[key] = nowTick + Math.Max(1, entry.DelayMs);
-            return true;
-        }
-        return false;
     }
 
     /// <summary>
@@ -232,52 +228,5 @@ public sealed class MobAiService : IMobAiService
         var targetX = (short)Math.Clamp(mob.X + dx * 5, 0, short.MaxValue);
         var targetY = (short)Math.Clamp(mob.Y + dy * 5, 0, short.MaxValue);
         _movement.TryStartWalk(mob, targetX, targetY);
-    }
-
-    /// <summary>
-    /// Port of rAthena <c>mobskill_use</c> condition loop (mob.cpp:3924),
-    /// MS3 first slice — evaluates Always / MyHpLessThanRate triggers.
-    /// Returns true if a skill was cast (the caller should usually skip
-    /// the basic-swing path for this tick).
-    /// </summary>
-    private bool TryUseMobSkill(MobEntity mob, Entity target, MobSkillState state, long nowTick)
-    {
-        if (_skillCast == null) return false;
-        if (mob.DbEntry == null || mob.DbEntry.Skills.Count == 0) return false;
-        if ((mob.Stats.Mode & MobMode.NoCast) != 0) return false;
-
-        // rAthena: random starting index when MOB_AI flag 0x100 is set.
-        var start = _rng.Next(mob.DbEntry.Skills.Count);
-        for (var n = 0; n < mob.DbEntry.Skills.Count; n++)
-        {
-            var i = (start + n) % mob.DbEntry.Skills.Count;
-            var entry = mob.DbEntry.Skills[i];
-
-            // State match — only Berserk skills fire while attacking.
-            if (entry.State != MobSkillState.Any && entry.State != state) continue;
-
-            // Per-mob, per-skill cooldown.
-            var key = (mob.Id, i);
-            if (_skillDelay.TryGetValue(key, out var readyAt) && readyAt > nowTick) continue;
-
-            // Condition evaluation — strategy dispatch via
-            // MobSkillConditionRegistry. New rAthena conditions (slave
-            // counts, master-attacked, ground-attacked, etc.) ship as
-            // a new IMobSkillConditionEvaluator class.
-            var evaluator = _conditions.Get(entry.Condition);
-            var ctx = new Conditions.MobConditionContext { Tick = nowTick, Target = target };
-            if (evaluator == null || !evaluator.IsMet(mob, entry, ctx)) continue;
-
-            // Permillage gate (out of 10,000).
-            if (_rng.Next(10_000) >= entry.Permillage) continue;
-
-            var castResult = _skillCast.StartCast(mob, target.Id, entry.SkillId, entry.SkillLevel);
-            if (castResult == SkillCastResult.Started)
-            {
-                _skillDelay[key] = nowTick + Math.Max(1, entry.DelayMs);
-                return true;
-            }
-        }
-        return false;
     }
 }

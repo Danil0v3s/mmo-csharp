@@ -2,7 +2,24 @@
   {
     "kind": "non-deterministic",
     "data": {
-      "reason": "trace diverged across runs"
+      "reason": "trace varies across runs",
+      "historical-kinds": [
+        "nodamage",
+        "sc-start"
+      ]
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "Groomy",
+      "val1": 1,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 30000,
+      "src": 1
     }
   },
   {
