@@ -28,13 +28,17 @@ Canonical entry points:
 |---|---|---|
 | `mob_ai_sub_hard` aggressive-engage spine | ✅ | `MobAiService.Tick` (closest-PC scan + StartAttack handoff) |
 | `mob_ai_sub_hard` skilltimer / OPT1 / SCF_MOBLOSETARGET gate | ❌ | not ported |
-| `mob_ai_sub_hard` `attacked_id` target-switch | ❌ | `MobEntity.AttackedId` exists; switch logic TODO |
-| `mob_ai_sub_hard` master_id slave AI | ⚠️ | `SummonAiService` covers follow + assist; full attack-aggro branch TODO |
+| `mob_ai_sub_hard` `attacked_id` target-switch | ⚠️ | `MobEntity.AttackedId` set on hit; full re-target on unreachable primary still TODO |
+| `mob_ai_sub_hard` master_id slave AI | ⚠️ | `SummonAiService` covers follow + assist; full assist-on-master-target branch TODO |
 | `mob_ai_sub_hard` MD_LOOTER pickup | ❌ | not ported |
 | `mob_ai_sub_hard` `mob_warpchase` | ❌ | not ported |
 | `mob_ai_sub_hard` BG ally follow | ❌ | not ported (gated on T-BG track) |
-| `mob_ai_sub_lazy` far-from-players idle | ❌ | `MobAiService` runs hard path on every tick |
+| `mob_ai_sub_lazy` far-from-players idle | ✅ | `MobAiService.TickLazy` (T4.8) — 5% idle-skill roll; warpchase/spotted-log subset TODO |
 | `mob_ai_sub_hard_attacktimer` post-swing re-entry | ❌ | not ported |
+| `mob_setstate` BERSERK/ANGRY + RUSH/FOLLOW swaps | ✅ | `MobFsm.TransitionTo` (T4.8) |
+| `mob_clean_spotted` / `mob_is_spotted` | ❌ | needed for slave-active-with-master + lazy gate refinement |
+| `mob_warpchase` (cross-map follow) | ❌ | not ported (gated on warp IPC parity) |
+| `mob_randomwalk` (idle wander pathing) | ❌ | spawn service handles initial wander; mid-AI re-roll TODO |
 
 ### Skill picker (mobskill_use / mobskill_event) — **T4.3 wave**
 
@@ -47,7 +51,7 @@ Canonical entry points:
 | `mobskill_use` skilldelay per-row tracking | ✅ | `MobSkillCastService._skillDelay` dict |
 | `mobskill_use` permillage roll (rnd() % 10000) | ✅ | `RunPicker` (deterministic RNG injected) |
 | `mobskill_use` target resolver (MST_TARGET / RANDOM / SELF / FRIEND / MASTER / AROUND1-8) | ✅ | `MobSkillTargetResolver` (T4.3a — 13 modes) |
-| `mobskill_use` ground vs targeted cast dispatch | ⚠️ | C# uses `StartCast(target)` for both; ground-cell path TODO |
+| `mobskill_use` ground vs targeted cast dispatch | ⚠️ | T4.8 routes MST_AROUND* through `StartCastAt(x,y)`; default delegates to `StartCast(self)` until the SkillImpl ground hook is wired |
 | `mobskill_use` battle_check_range gate | ⚠️ | delegated to `SkillCastService.StartCast`'s OutOfRange |
 | `mobskill_use` MSC_SKILLUSED event payload (skill_id encoded in event) | ✅ | `ConditionPasses` reads `triggerSkillId` |
 | `mobskill_use` MSC_GROUNDATTACKED damage>0 gate | ✅ | `ConditionPasses` |
@@ -55,7 +59,7 @@ Canonical entry points:
 | `mobskill_use` msg_id chat broadcast on cast | ❌ | `MobSkillEntry.ChatId` field exists; broadcast path TODO |
 | `mobskill_event` (mob.cpp:4506) entry point | ✅ | `IMobSkillCastService.NotifyEvent` |
 | `mobskill_event` flag handling (rude_attacked counter reset) | ⚠️ | reset lives in `MobAiService.NotifyAttacked` post-fire |
-| `mob_chat_display_message` | ❌ | not ported |
+| `mob_chat_display_message` | ❌ | not ported (depends on mob_chat_db.yml loader) |
 
 ### Condition evaluators (MSC_*) — **T4.2 wave**
 
@@ -64,39 +68,39 @@ Canonical entry points:
 | MSC_ALWAYS | ✅ | `AlwaysCondition` |
 | MSC_MYHPLTMAXRATE | ✅ | `MyHpLessThanRateCondition` |
 | MSC_MYHPINRATE | ✅ | `MyHpInRateCondition` |
-| MSC_FRIENDHPLTMAXRATE | ❌ | enum declared; evaluator pending friend-tracker |
-| MSC_FRIENDHPINRATE | ❌ | enum declared; evaluator pending friend-tracker |
-| MSC_MYSTATUSON | ❌ | enum declared; needs SC dictionary lookup |
-| MSC_MYSTATUSOFF | ❌ | enum declared; needs SC dictionary lookup |
-| MSC_FRIENDSTATUSON | ❌ | pending |
-| MSC_FRIENDSTATUSOFF | ❌ | pending |
-| MSC_ATTACKPCGT | ⚠️ | `AttackerCountGreaterCondition` proxies on `RudeAttackedCount` until DmgListLog ports |
-| MSC_ATTACKPCGE | ⚠️ | `AttackerCountGreaterEqCondition` same caveat |
-| MSC_SLAVELT | ⚠️ | `SlaveLessThanCondition` stub — pending slave registry |
-| MSC_SLAVELE | ⚠️ | `SlaveLessEqCondition` stub — pending slave registry |
+| MSC_FRIENDHPLTMAXRATE | ✅ | `FriendHpLessThanRateCondition` (T4.6 via `ISlaveMobService`) |
+| MSC_FRIENDHPINRATE | ✅ | `FriendHpInRateCondition` (T4.6) |
+| MSC_MYSTATUSON | ❌ | enum declared; needs `IStatusChangeService.Get(mob, type)` wiring into context |
+| MSC_MYSTATUSOFF | ❌ | same as above (inverse) |
+| MSC_FRIENDSTATUSON | ✅ | `FriendStatusOnCondition` (T4.6) |
+| MSC_FRIENDSTATUSOFF | ✅ | `FriendStatusOffCondition` (T4.6) |
+| MSC_ATTACKPCGT | ✅ | `AttackerCountGreaterCondition` (T4.7 — real DmgList count) |
+| MSC_ATTACKPCGE | ✅ | `AttackerCountGreaterEqCondition` (T4.7) |
+| MSC_SLAVELT | ✅ | `SlaveLessThanCondition` (T4.6 via `ISlaveMobService.CountSlaves`) |
+| MSC_SLAVELE | ✅ | `SlaveLessEqCondition` (T4.6) |
 | MSC_CLOSEDATTACKED | ✅ | `CloseAttackedCondition` (reads `MobConditionContext.RecentMelee`) |
 | MSC_LONGRANGEATTACKED | ✅ | `LongRangeAttackedCondition` |
-| MSC_AFTERSKILL | ❌ | enum declared; needs `mob.last_skill` tracking |
+| MSC_AFTERSKILL | ✅ | `AfterSkillCondition` (T4.7 — reads `MobEntity.LastCastSkillId`) |
 | MSC_SKILLUSED | ✅ | `SkillUsedCondition` (matches by cond2) |
 | MSC_CASTTARGETED | ✅ | `CastTargetedCondition` (reads `MobConditionContext.CastTargeted`) |
 | MSC_RUDEATTACKED | ✅ | `RudeAttackedCondition` (default threshold = 2) |
-| MSC_MASTERHPLTMAXRATE | ❌ | pending slave registry + master lookup |
-| MSC_MASTERATTACKED | ❌ | pending master attacker tracking |
-| MSC_ALCHEMIST | ❌ | pending homun bioethics check |
-| MSC_SPAWN | ⚠️ | `SpawnCondition` proxies on `NextWanderTick > now` |
-| MSC_MOBNEARBYGT | ❌ | needs `map_foreachinrange(BL_MOB)` count |
+| MSC_MASTERHPLTMAXRATE | ✅ | `MasterHpLessThanRateCondition` (T4.6 via `ISlaveMobService.GetMasterIfHpBelow`) |
+| MSC_MASTERATTACKED | ❌ | pending master attacker tracking (need `DamageService` to forward hits to master's notifier) |
+| MSC_ALCHEMIST | ❌ | pending homun bioethics check (homun.cpp surface) |
+| MSC_SPAWN | ⚠️ | `SpawnCondition` proxies on `NextWanderTick > now`; precise spawn-tick TODO |
+| MSC_MOBNEARBYGT | ❌ | needs `map_foreachinrange(BL_MOB, class_id)` count |
 | MSC_GROUNDATTACKED | ✅ | `GroundAttackedCondition` (reads `RecentGroundHit`) |
 | MSC_DAMAGEDGT | ✅ | `DamagedGreaterCondition` (reads `CumulativeDamageTaken`) |
-| MSC_TRICKCASTING | ❌ | pending cast-interrupt tracking |
+| MSC_TRICKCASTING | ❌ | pending cast-interrupt counter on `MobEntity.TrickCasting` |
 
 ### Target modes (MST_*) — **T4.3a wave**
 
 | rAthena MST_* | Status | C# resolver branch |
 |---|---|---|
 | MST_TARGET | ✅ | `ResolveEntity` reads `MobEntity.TargetId`, falls back to `AttackedId` if !CanAttack |
-| MST_RANDOM | ⚠️ | `ResolveRandomEnemy` uses `IEntityRegistry.ForEachInRange`; battle_getenemy filter TODO |
+| MST_RANDOM | ⚠️ | `ResolveRandomEnemy` uses `IEntityRegistry.ForEachInRange`; `battle_getenemy` allegiance filter TODO |
 | MST_SELF | ✅ | returns mob |
-| MST_FRIEND | ⚠️ | currently falls back to self (friend-tracker not landed) |
+| MST_FRIEND | ✅ | T4.6 — picks lowest-HP friendly in range via `ISlaveMobService.GetFriendByHpRate(mob, 0, 100)` |
 | MST_MASTER | ✅ | reads `Entity.MasterId`, falls back to self if unowned |
 | MST_AROUND1..AROUND4 | ✅ | `ResolveGroundCell` with range 1..4 |
 | MST_AROUND5..AROUND8 | ✅ | `ResolveGroundCell` with range 1..4 (target-relative) |
@@ -114,22 +118,26 @@ Canonical entry points:
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| AI think loop | 1 | 1 | 7 | 9 |
+| AI think loop | 3 | 3 | 7 | 13 |
 | Skill picker | 11 | 3 | 2 | 16 |
-| Condition evaluators (MSC_*) | 9 | 5 | 13 | 27 |
-| Target modes (MST_*) | 6 | 2 | 0 | 8 |
+| Condition evaluators (MSC_*) | 18 | 1 | 8 | 27 |
+| Target modes (MST_*) | 7 | 1 | 0 | 8 |
 | Lifecycle / DB ops | ~16 | 0 | 0 | ~16 |
+
+**Aggregate: 55 ✅ / 8 ⚠️ / 17 ❌ across 80 entries.** Net for the goal:
+17 ❌ + 8 ⚠️ = **25 entries** stand between the current state and a
+zero-❌ mob.cpp parity audit.
 
 ## Implementation plan
 
 1. ✅ **T4.1** — surface audit + this doc.
 2. ✅ **T4.2** — full MSC_* enum + 15 evaluator classes + MobConditionContext bag.
-3. ✅ **T4.3a** — `IMobSkillCastService` + `MobSkillTargetResolver` (port of mob.cpp:4275-4502).
-4. ✅ **T4.4** — `MobSkillCastServiceTests` (16 picker tests) + `RathenaMobSkillSweepTests` (4 canonical-row tests against actual Poring/Eddga mob_skill_db rows).
-5. ⚠️ **T4.3b** — `NotifyEvent` is wired but the rude-attacked dispatch flow in `MobAiService.NotifyAttacked` still calls `TryUseSkill` first (broader picker), then `NotifyEvent(RudeAttacked)` (event-specific). Should restructure to call only the event-specific path for parity with `mobskill_event` line 4506.
-6. ❌ **T4.6** — slave-mob registry (`mob_countslave` / `mob_getmaster` / `mob_summonslave` follow loop) — unblocks 5 MSC_* + MST_FRIEND.
-7. ❌ **T4.7** — DmgListLog (attacker-id tracking) — unblocks MSC_ATTACKPCGT/GE + MSC_AFTERSKILL.
-8. ❌ **T4.8** — `mob_ai_sub_lazy` + MSS_* FSM transitions + ground-cell cast dispatch.
+3. ✅ **T4.3a** — `IMobSkillCastService` + `MobSkillTargetResolver`.
+4. ✅ **T4.4** — `MobSkillCastServiceTests` + `RathenaMobSkillSweepTests`.
+5. ✅ **T4.6** — slave-mob registry (5 friend/master conditions + MST_FRIEND).
+6. ✅ **T4.7** — DmgListLog (real attacker count + AfterSkill chain).
+7. ✅ **T4.8** — MobFsm + lazy AI + ground-cell dispatch (default-method).
+8. ❌ **T4.9** — final completion wave — see goal doc.
 
 ## History
 
