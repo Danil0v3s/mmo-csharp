@@ -268,6 +268,19 @@ builder.Services.AddSingleton<Map.Server.Handlers.Actions.ActionRegistry>();
 // strategies — one class per rAthena MSC_* condition.
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.AlwaysCondition>();
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.MyHpLessThanRateCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.MyHpInRateCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.RudeAttackedCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.CloseAttackedCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.LongRangeAttackedCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.GroundAttackedCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.SkillUsedCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.CastTargetedCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.DamagedGreaterCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.AttackerCountGreaterCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.AttackerCountGreaterEqCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.SpawnCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.SlaveLessThanCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.SlaveLessEqCondition>();
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.MobSkillConditionRegistry>();
 builder.Services.AddSingleton<Map.Server.Mob.IMobAiService, Map.Server.Mob.MobAiService>();
 

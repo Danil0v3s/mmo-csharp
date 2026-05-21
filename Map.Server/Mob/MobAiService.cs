@@ -203,7 +203,8 @@ public sealed class MobAiService : IMobAiService
             var key = (mob.Id, i);
             if (_skillDelay.TryGetValue(key, out var readyAt) && readyAt > nowTick) continue;
             var evaluator = _conditions.Get(entry.Condition);
-            if (evaluator == null || !evaluator.IsMet(mob, target, entry)) continue;
+            var ctx = new Conditions.MobConditionContext { Tick = nowTick, Target = target };
+            if (evaluator == null || !evaluator.IsMet(mob, entry, ctx)) continue;
             if (_rng.Next(10_000) >= entry.Permillage) continue;
             if (_skillCast.StartCast(mob, target.Id, entry.SkillId, entry.SkillLevel) != SkillCastResult.Started)
                 continue;
@@ -264,7 +265,8 @@ public sealed class MobAiService : IMobAiService
             // counts, master-attacked, ground-attacked, etc.) ship as
             // a new IMobSkillConditionEvaluator class.
             var evaluator = _conditions.Get(entry.Condition);
-            if (evaluator == null || !evaluator.IsMet(mob, target, entry)) continue;
+            var ctx = new Conditions.MobConditionContext { Tick = nowTick, Target = target };
+            if (evaluator == null || !evaluator.IsMet(mob, entry, ctx)) continue;
 
             // Permillage gate (out of 10,000).
             if (_rng.Next(10_000) >= entry.Permillage) continue;
