@@ -140,6 +140,15 @@ public class MobEntity : Entity
     /// set in its stats. Checked by <c>IMobLooterService</c>.</summary>
     public bool IsLooter => (Stats.Mode & MobMode.Looter) != 0;
 
+    /// <summary>
+    /// rAthena <c>md-&gt;special_state.ai</c> (map.hpp:436 <c>enum mob_ai</c>).
+    /// Set when the mob is summoned (homunculus, alchemist sphere,
+    /// Cannibalize, ABR, Bionic, etc.). Non-zero gates MSC_ALCHEMIST
+    /// and the slave-stick-with-master variants. Defaults to
+    /// <see cref="Mob.MobSpecialAi.None"/> for naturally spawned mobs.
+    /// </summary>
+    public Map.Server.Mob.MobSpecialAi SpecialAi { get; set; } = Map.Server.Mob.MobSpecialAi.None;
+
     public override EntityType Type => EntityType.Mob;
 
     public MobEntity(EntityId id, int classId, string name, uint mapId, short x, short y)

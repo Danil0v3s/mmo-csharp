@@ -298,6 +298,11 @@ builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvalua
 // MSC_TRICKCASTING reads MobEntity.TrickCasting directly.
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.MobNearbyGreaterCondition>();
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.TrickCastingCondition>();
+// T4.9e — slave-protect + alchemist summon evaluators.
+// MSC_MASTERATTACKED reads master's DmgList via Entities registry.
+// MSC_ALCHEMIST reads (SpecialAi, TrickCasting, hp<maxhp).
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.MasterAttackedCondition>();
+builder.Services.AddSingleton<Map.Server.Mob.Conditions.IMobSkillConditionEvaluator, Map.Server.Mob.Conditions.AlchemistCondition>();
 builder.Services.AddSingleton<Map.Server.Mob.Conditions.MobSkillConditionRegistry>();
 
 // T4.6 — Slave-mob registry. Read-mostly helpers for mob_countslave /

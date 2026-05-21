@@ -85,8 +85,8 @@ Canonical entry points:
 | MSC_CASTTARGETED | ✅ | `CastTargetedCondition` (reads `MobConditionContext.CastTargeted`) |
 | MSC_RUDEATTACKED | ✅ | `RudeAttackedCondition` (default threshold = 2) |
 | MSC_MASTERHPLTMAXRATE | ✅ | `MasterHpLessThanRateCondition` (T4.6 via `ISlaveMobService.GetMasterIfHpBelow`) |
-| MSC_MASTERATTACKED | ❌ | pending master attacker tracking (need `DamageService` to forward hits to master's notifier) |
-| MSC_ALCHEMIST | ❌ | pending homun bioethics check (homun.cpp surface) |
+| MSC_MASTERATTACKED | ✅ | `MasterAttackedCondition` (T4.9e — resolves `MasterId` via Entities registry, reads master's `DmgList.DistinctAttackerCount`; PC-master branch is data-pending until unit_counttargeted lands on PlayerEntity) |
+| MSC_ALCHEMIST | ✅ | `AlchemistCondition` (T4.9e — fires on summoned mob (`SpecialAi != None`) with `TrickCasting == 0` and `hp < maxhp`) |
 | MSC_SPAWN | ⚠️ | `SpawnCondition` proxies on `NextWanderTick > now`; precise spawn-tick TODO |
 | MSC_MOBNEARBYGT | ✅ | `MobNearbyGreaterCondition` (T4.9b — `Entities.ForEachInRange(BL_MOB, AREA_SIZE)`, excludes self + dead) |
 | MSC_GROUNDATTACKED | ✅ | `GroundAttackedCondition` (reads `RecentGroundHit`) |
@@ -120,17 +120,18 @@ Canonical entry points:
 |---|---|---|---|---|
 | AI think loop | 6 | 4 | 3 | 13 |
 | Skill picker | 11 | 3 | 2 | 16 |
-| Condition evaluators (MSC_*) | 22 | 1 | 4 | 27 |
+| Condition evaluators (MSC_*) | 24 | 1 | 2 | 27 |
 | Target modes (MST_*) | 7 | 1 | 0 | 8 |
 | Lifecycle / DB ops | ~16 | 0 | 0 | ~16 |
 
-**Aggregate: 62 ✅ / 9 ⚠️ / 9 ❌ across 80 entries.** Net for the goal:
-9 ❌ + 9 ⚠️ = **18 entries** stand between the current state and a
-zero-❌ mob.cpp parity audit. T4.9a closed 2 ❌ (MSC_MYSTATUSON/OFF);
-T4.9b closed 2 more (MSC_MOBNEARBYGT, MSC_TRICKCASTING); T4.9c
-closed 2 ❌ (MD_LOOTER + spotted-log) and downgraded 2 more to ⚠️
-(mob_warpchase entries); T4.9d resolved the attacked_id ⚠️ to ✅ via
-the new `IMobChangeTargetService` gate.
+**Aggregate: 64 ✅ / 9 ⚠️ / 7 ❌ across 80 entries.** Net for the goal:
+7 ❌ + 9 ⚠️ = **16 entries** stand between the current state and a
+zero-❌ mob.cpp parity audit. T4.9a-d collectively cleared 6 ❌; T4.9e
+closes the last two MSC_* ❌ rows (MSC_MASTERATTACKED + MSC_ALCHEMIST).
+Remaining ❌ all live in the AI think-loop table: skilltimer / OPT1
+gate, BG ally follow, attacktimer post-swing, mob_chat broadcast,
+random walk, slave full-AI ⚠️ row (still listed under ⚠️), and the
+master_id slave AI branch.
 
 ## Implementation plan
 
@@ -144,6 +145,42 @@ the new `IMobChangeTargetService` gate.
 8. ❌ **T4.9** — final completion wave — see goal doc.
 
 ## History
+
+### 2026-05-21 — T4.9e (MSC_MASTERATTACKED + MSC_ALCHEMIST + MobSpecialAi)
+
+Fifth slice. Closes the last two ❌ rows in the MSC_* condition
+table. Both rely on new state on MobEntity (`MasterId` already
+existed for slaves; `SpecialAi` is brand new for summoned mobs).
+
+**Surface added:**
+- `MobSpecialAi` enum (`Map.Server/Mob/MobSpecialAi.cs`) mirroring
+  rAthena `enum mob_ai` (map.hpp:436): None/Attack/Sphere/Flora/
+  Zanzou/Legion/Faw/Guild/WaveMode/Abr/Bionic. `MobEntity.SpecialAi`
+  defaults to `None`; future summon/script paths (Cannibalize,
+  Bionic, ABR) will set it.
+- `MasterAttackedCondition` — resolves `mob.MasterId` through
+  `context.Entities`, reads master's
+  `MobDmgList.DistinctAttackerCount` when the master is a
+  `MobEntity`. PC-master branch (homunculus / mercenary owner) is
+  a documented data-pending case until PlayerEntity gains a
+  unit_counttargeted equivalent.
+- `AlchemistCondition` — straight three-way conjunction of
+  `SpecialAi != None`, `TrickCasting == 0`, `Hp < MaxHp`. No
+  external state.
+- Registered in `Program.cs` next to the T4.9b spatial/fake-cast
+  block; added to `MobAiService` inline defaults so test harnesses
+  see them.
+
+**Tests:** `Map.Server.Tests/Mob/MobSlaveConditionsTests.cs` —
+8 cases: MasterAttacked (no master, master missing, mob master
+with/without DmgList attackers) + Alchemist (non-summoned,
+full-HP, damaged, trickcasting).
+
+**Coverage delta:** 62 ✅ / 9 ⚠️ / 9 ❌ → **64 ✅ / 9 ⚠️ / 7 ❌**
+(−2 ❌). MSC_* table is now zero-❌; remaining 7 ❌ are all in the
+AI think-loop section.
+
+**Tests green:** 2928/2928 in `Map.Server.Tests`.
 
 ### 2026-05-21 — T4.9d (mob_can_changetarget gate + mob_target)
 

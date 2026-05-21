@@ -76,6 +76,9 @@ public sealed class MobAiService : IMobAiService
             // T4.9b — spatial / fake-cast.
             new MobNearbyGreaterCondition(),
             new TrickCastingCondition(),
+            // T4.9e — slave-protect + alchemist summon.
+            new MasterAttackedCondition(),
+            new AlchemistCondition(),
         });
 
         // If the picker isn't injected, build one inline. This keeps the
