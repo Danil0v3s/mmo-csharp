@@ -45,4 +45,82 @@ public sealed class SkillLayoutService : ISkillLayoutService
         // loader lands, this method reads from it.
         return Array.Empty<(short, short)>();
     }
+
+    /// <inheritdoc />
+    public IReadOnlyList<(short Dx, short Dy)> GetLayoutForSkill(
+        ushort skillId, ushort skillLevel, short defaultRadius, short casterDir = 0)
+    {
+        // SK.100-1b/d — per-skill named shapes. Each block carries its
+        // rAthena citation so reviewers can diff against skill.cpp's
+        // skill_unit_layout[] table (around line 14600+).
+
+        // MG_FIREWALL — horizontal row of 5 cells perpendicular to
+        // caster facing. (skill.cpp ~14605)
+        if (skillId == SkillIds.MG_FIREWALL)
+            return BuildRow(length: 5, vertical: (casterDir % 2) == 0);
+
+        // WZ_ICEWALL — 5-cell cross. (skill.cpp ~14620)
+        if (skillId == SkillIds.WZ_ICEWALL)
+            return BuildCross(arm: 2);
+
+        // GN_WALLOFTHORN — 3x3 hollow ring (8 cells). (skill.cpp ~14660)
+        if (skillId == SkillIds.GN_WALLOFTHORN)
+            return BuildHollowSquare(radius: 1);
+
+        // MG_FIREBALL — 5-cell plus. (skill.cpp:14600 LAYOUT 1)
+        if (skillId == SkillIds.MG_FIREBALL)
+            return BuildCross(arm: 1);
+
+        // RA_FIRINGTRAP / trap variants — 3x3 square.
+        if (skillId == SkillIds.RA_FIRINGTRAP)
+            return BuildSquare(1);
+
+        // Default fallback: square radius (preserves legacy
+        // SkillUnitService.Place behavior).
+        return BuildSquare(defaultRadius);
+    }
+
+    // ---- Layout builders -------------------------------------------------
+
+    private static List<(short, short)> BuildSquare(short r)
+    {
+        var cells = new List<(short, short)>((2 * r + 1) * (2 * r + 1));
+        for (var dy = (short)-r; dy <= r; dy++)
+            for (var dx = (short)-r; dx <= r; dx++)
+                cells.Add((dx, dy));
+        return cells;
+    }
+
+    private static List<(short, short)> BuildHollowSquare(short radius)
+    {
+        var cells = new List<(short, short)>(8);
+        for (var dy = (short)-radius; dy <= radius; dy++)
+            for (var dx = (short)-radius; dx <= radius; dx++)
+                if (dx != 0 || dy != 0)
+                    cells.Add((dx, dy));
+        return cells;
+    }
+
+    private static List<(short, short)> BuildCross(short arm)
+    {
+        var cells = new List<(short, short)>(1 + 4 * arm);
+        cells.Add((0, 0));
+        for (short i = 1; i <= arm; i++)
+        {
+            cells.Add((i, 0));
+            cells.Add(((short)-i, 0));
+            cells.Add((0, i));
+            cells.Add((0, (short)-i));
+        }
+        return cells;
+    }
+
+    private static List<(short, short)> BuildRow(short length, bool vertical)
+    {
+        var half = (short)(length / 2);
+        var cells = new List<(short, short)>(length);
+        for (short i = (short)-half; i <= half; i++)
+            cells.Add(vertical ? ((short)0, i) : (i, (short)0));
+        return cells;
+    }
 }

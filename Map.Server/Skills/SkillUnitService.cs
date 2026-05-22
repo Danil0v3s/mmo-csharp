@@ -23,6 +23,7 @@ public sealed class SkillUnitService : ISkillUnitService
     private readonly IEntityRegistry _entities;
     private readonly SkillUnitTickRegistry _handlers;
     private readonly ISkillUnitContext _ctx;
+    private readonly ISkillLayoutService? _layouts;
     private readonly ILogger<SkillUnitService> _logger;
     private readonly List<SkillUnitGroup> _groups = new();
 
@@ -36,11 +37,13 @@ public sealed class SkillUnitService : ISkillUnitService
         IEntityRegistry entities,
         SkillUnitTickRegistry handlers,
         ISkillUnitContext ctx,
-        ILogger<SkillUnitService> logger)
+        ILogger<SkillUnitService> logger,
+        ISkillLayoutService? layouts = null)
     {
         _entities = entities;
         _handlers = handlers;
         _ctx = ctx;
+        _layouts = layouts;
         _logger = logger;
     }
 
@@ -64,22 +67,36 @@ public sealed class SkillUnitService : ISkillUnitService
             IntervalMs = h.IntervalMs(skillLevel),
         };
 
-        var radius = h.Radius(skillLevel);
-        for (var dy = -radius; dy <= radius; dy++)
+        var radius = (short)h.Radius(skillLevel);
+        // SK.100-1b/d — consult ISkillLayoutService for per-skill
+        // non-square shapes (FireWall row, IceWall cross, WallOfThorn
+        // ring, FireBall plus, traps square). Falls back to the
+        // legacy square radius when no layout service is wired or the
+        // skill has no named layout.
+        var offsets = _layouts?.GetLayoutForSkill(skillId, skillLevel, radius)
+                      ?? BuildSquareFallback(radius);
+        foreach (var (dx, dy) in offsets)
         {
-            for (var dx = -radius; dx <= radius; dx++)
+            group.Units.Add(new SkillUnit
             {
-                group.Units.Add(new SkillUnit
-                {
-                    Group = group,
-                    X = (short)(centerX + dx),
-                    Y = (short)(centerY + dy),
-                    NextTick = now + h.IntervalMs(skillLevel),
-                });
-            }
+                Group = group,
+                X = (short)(centerX + dx),
+                Y = (short)(centerY + dy),
+                NextTick = now + h.IntervalMs(skillLevel),
+            });
         }
         _groups.Add(group);
         return group;
+    }
+
+    /// <summary>Inline square-radius generator used when ISkillLayoutService is not wired.</summary>
+    private static IReadOnlyList<(short Dx, short Dy)> BuildSquareFallback(short radius)
+    {
+        var cells = new List<(short, short)>((2 * radius + 1) * (2 * radius + 1));
+        for (var dy = (short)-radius; dy <= radius; dy++)
+            for (var dx = (short)-radius; dx <= radius; dx++)
+                cells.Add((dx, dy));
+        return cells;
     }
 
     public void Tick(long nowTick)

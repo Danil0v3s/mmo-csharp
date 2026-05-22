@@ -28,4 +28,15 @@ public interface ISkillLayoutService
 {
     /// <summary>Return the cell offsets for the requested layout type.</summary>
     IReadOnlyList<(short dx, short dy)> GetLayout(int layoutType);
+
+    /// <summary>
+    /// SK.100-1b/d — per-skill / per-level layout. Returns the named
+    /// shape for skills with non-square unit footprints (FireWall row,
+    /// IceWall cross, WallOfThorn ring, FireBall plus, trap squares).
+    /// Falls back to a square <paramref name="defaultRadius"/> for
+    /// skills without a named layout — preserves the legacy
+    /// <see cref="SkillUnitService.Place"/> behavior.
+    /// </summary>
+    IReadOnlyList<(short Dx, short Dy)> GetLayoutForSkill(
+        ushort skillId, ushort skillLevel, short defaultRadius, short casterDir = 0);
 }
