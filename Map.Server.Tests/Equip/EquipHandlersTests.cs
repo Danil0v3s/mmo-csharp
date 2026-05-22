@@ -272,6 +272,10 @@ public class EquipHandlersTests
             player.Stats.AttackRange = (short)inputs.AttackRange;
         }
         public void CalcMob(Map.Server.Entities.MobEntity mob) { }
+        public void CalcHomunculus(Map.Server.Entities.MobEntity homun, int levelOverride = 0) { }
+        public void CalcMercenary(Map.Server.Entities.MobEntity merc, int levelOverride = 0) { }
+        public void CalcElemental(Map.Server.Entities.MobEntity ele, int levelOverride = 0) { }
+        public void CalcNpc(Map.Server.Entities.NpcEntity npc) { }
     }
 
     private sealed class StubCatalog : IItemCatalog

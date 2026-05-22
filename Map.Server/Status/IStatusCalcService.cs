@@ -29,6 +29,34 @@ public interface IStatusCalcService
     /// once at spawn — mirrors <c>status_calc_mob_</c> (status.cpp:2731).
     /// </summary>
     void CalcMob(MobEntity mob);
+
+    /// <summary>
+    /// ST.5 — rAthena <c>status_calc_homunculus_</c> (status.cpp:2858).
+    /// Companions in the C# port are <see cref="MobEntity"/> instances
+    /// (no dedicated HomunculusEntity class); delegates to
+    /// <see cref="CalcMob"/> with an optional level override that
+    /// IHomunculusService.RecvData supplies from the char-side payload.
+    /// </summary>
+    void CalcHomunculus(MobEntity homun, int levelOverride = 0);
+
+    /// <summary>
+    /// ST.5 — rAthena <c>status_calc_mercenary_</c> (status.cpp:2887).
+    /// </summary>
+    void CalcMercenary(MobEntity merc, int levelOverride = 0);
+
+    /// <summary>
+    /// ST.5 — rAthena <c>status_calc_elemental_</c> (status.cpp:2920).
+    /// </summary>
+    void CalcElemental(MobEntity ele, int levelOverride = 0);
+
+    /// <summary>
+    /// ST.8 — rAthena <c>status_calc_npc_</c> (status.cpp:2942). Most
+    /// NPCs have no stats; this is a no-op when the NPC doesn't carry
+    /// a MobDbEntry-style stat block (i.e. it's a dialog NPC). Boss-mode
+    /// scripted NPCs that fight back hydrate via the optional stats
+    /// block their script registrar declares.
+    /// </summary>
+    void CalcNpc(NpcEntity npc);
 }
 
 /// <summary>

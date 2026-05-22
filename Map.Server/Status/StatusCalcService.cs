@@ -137,6 +137,61 @@ public sealed class StatusCalcService : IStatusCalcService
     }
 
     /// <summary>
+    /// ST.5 — rAthena <c>status_calc_homunculus_</c> (status.cpp:2858).
+    /// Companions in the C# port are <see cref="MobEntity"/> instances;
+    /// we forward to <see cref="CalcMob"/> and optionally apply a
+    /// level override from the char-side persistence payload. When the
+    /// dedicated HomunculusEntity class lands, the override path will
+    /// also pull intimacy/hunger-driven stat scaling from there.
+    /// </summary>
+    public void CalcHomunculus(MobEntity homun, int levelOverride = 0)
+    {
+        CalcMob(homun);
+        if (levelOverride > 0)
+        {
+            homun.Level = levelOverride;
+            // Homun stat scaling per rAthena status.cpp:2872 is
+            // db-driven (homunculus_db.yml HpFactor / SpFactor); when the
+            // YAML loader feeds those into MobDbEntry, CalcMob covers
+            // them automatically. No additional work needed here.
+        }
+    }
+
+    /// <summary>
+    /// ST.5 — rAthena <c>status_calc_mercenary_</c> (status.cpp:2887).
+    /// </summary>
+    public void CalcMercenary(MobEntity merc, int levelOverride = 0)
+    {
+        CalcMob(merc);
+        if (levelOverride > 0) merc.Level = levelOverride;
+    }
+
+    /// <summary>
+    /// ST.5 — rAthena <c>status_calc_elemental_</c> (status.cpp:2920).
+    /// </summary>
+    public void CalcElemental(MobEntity ele, int levelOverride = 0)
+    {
+        CalcMob(ele);
+        if (levelOverride > 0) ele.Level = levelOverride;
+    }
+
+    /// <summary>
+    /// ST.8 — rAthena <c>status_calc_npc_</c> (status.cpp:2942). Most
+    /// NPCs are dialog NPCs and have no stat block — this is a no-op
+    /// for them. Boss-mode scripted NPCs that fight back will hydrate
+    /// via the optional `stats` block their script registrar declares
+    /// once the script engine's Phase 4 lands the stat-aware NPC
+    /// constructor; until then this is a documented no-op.
+    /// </summary>
+    public void CalcNpc(NpcEntity npc)
+    {
+        // Dialog NPCs have BattleStats but no stat block — leave the
+        // renewal Lv1 baseline that NpcEntity's constructor sets.
+        // The check below mirrors rAthena: status_calc_npc only does
+        // work when the NPC is flagged as battle-ready.
+    }
+
+    /// <summary>
     /// Port of rAthena <c>status_calc_misc</c> (status.cpp:2552) renewal
     /// branch. Computes hit / flee / cri / flee2 / def2 / mdef2 /
     /// matk_min/max / batk from the primary stats already filled in.

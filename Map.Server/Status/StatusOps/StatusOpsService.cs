@@ -152,9 +152,18 @@ public sealed class StatusOpsService : IStatusOpsService
     public void CalcMob(MobEntity mob, byte opt)
         => _calc?.CalcMob(mob);
 
-    public void CalcHomunculus(Entity homun, byte opt) { /* IHomunculusService.RecvData drives this */ }
-    public void CalcMercenary(Entity merc, byte opt) { /* IMercenaryService.RecvData drives this */ }
-    public void CalcElemental(Entity ele, byte opt) { /* IElementalService.DataReceived drives this */ }
+    public void CalcHomunculus(Entity homun, byte opt)
+    {
+        if (homun is MobEntity m) _calc?.CalcHomunculus(m);
+    }
+    public void CalcMercenary(Entity merc, byte opt)
+    {
+        if (merc is MobEntity m) _calc?.CalcMercenary(m);
+    }
+    public void CalcElemental(Entity ele, byte opt)
+    {
+        if (ele is MobEntity m) _calc?.CalcElemental(m);
+    }
     public void CalcPet(Entity pet, byte opt)
     {
         if (pet is MobEntity m) _calc?.CalcMob(m);
