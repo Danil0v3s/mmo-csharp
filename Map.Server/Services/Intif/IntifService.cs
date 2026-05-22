@@ -1,4 +1,5 @@
 using Map.Server.Entities;
+using Map.Server.Services;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Services.Intif;
@@ -12,7 +13,13 @@ namespace Map.Server.Services.Intif;
 public sealed class IntifService : IIntifService
 {
     private readonly ILogger<IntifService> _logger;
-    public IntifService(ILogger<IntifService> logger) => _logger = logger;
+    private readonly ICharServerIpcServiceMail? _mailIpc;
+    public IntifService(ILogger<IntifService> logger,
+        ICharServerIpcServiceMail? mailIpc = null)
+    {
+        _logger = logger;
+        _mailIpc = mailIpc;
+    }
 
     public int RequestChatName(int charId) => 0;
     public int RequestAccInfo(int callerCharId, int targetCharId) => 0;
@@ -51,8 +58,51 @@ public sealed class IntifService : IIntifService
     public int MailRead(int mailId) => 0;
     public int MailGetAttach(int charId, int mailId, byte flag) => 0;
     public int MailDelete(int charId, int mailId) => 0;
-    public int MailSend(int senderCharId, string toName, string title, string body, int zeny) => 0;
-    public int MailReturn(int charId, int mailId) => 0;
+
+    /// <summary>
+    /// T5.4a — rAthena <c>intif_Mail_send</c>. Fire-and-forget RPC
+    /// onto the char server's MailSend handler. Returns the
+    /// synthetic request id (1 on dispatch, 0 when no char server
+    /// is connected) — matches the rAthena pattern of returning 1
+    /// for "sent to inter server."
+    /// </summary>
+    public int MailSend(int senderCharId, string toName, string title, string body, int zeny)
+    {
+        if (_mailIpc == null)
+        {
+            _logger.LogWarning("intif_Mail_send: char server IPC not wired; dropping mail from {Sender}", senderCharId);
+            return 0;
+        }
+        // Async fire-and-forget — the char server saves the row and
+        // notifies the receiver via push when they next log in. We
+        // don't await the response; mail send is best-effort from
+        // the map's perspective.
+        _ = _mailIpc.MailSendAsync(
+            senderAccountId: 0, // account id resolution lives char-side
+            senderCharacterId: senderCharId,
+            senderName: string.Empty, // char server backfills from db
+            receiverAccountId: 0,
+            receiverCharacterId: 0,
+            receiverName: toName ?? string.Empty,
+            title: title ?? string.Empty,
+            body: body ?? string.Empty,
+            zeny: zeny,
+            attachment: Array.Empty<byte>());
+        _logger.LogDebug("intif_Mail_send sender={Sender} to={To} title={Title}",
+            senderCharId, toName, title);
+        return 1;
+    }
+
+    /// <summary>
+    /// T5.4a — rAthena <c>intif_Mail_return</c>. Fire-and-forget
+    /// MailReturn RPC.
+    /// </summary>
+    public int MailReturn(int charId, int mailId)
+    {
+        if (_mailIpc == null) return 0;
+        _ = _mailIpc.MailReturnAsync(accountId: 0, characterId: charId, mailId: mailId);
+        return 1;
+    }
 
     public int AuctionRequestList(int charId, byte type, int price, string search, byte page) => 0;
     public int AuctionRegister(int charId, byte type, int sellerCharId, string sellerName, int now, int hours, int priceStart, int priceBuyNow, int itemId, byte refine, byte attribute, int identify, int amount) => 0;
