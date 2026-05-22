@@ -19,6 +19,7 @@ public sealed class IntifService : IIntifService
     private readonly ICharServerIpcServiceHomunculus? _homunIpc;
     private readonly ICharServerIpcServiceMercenary? _mercIpc;
     private readonly ICharServerIpcServiceElemental? _elemIpc;
+    private readonly ICharServerIpcServiceStorage? _storageIpc;
     private readonly Map.Server.Quest.IQuestService? _questService;
     private readonly Map.Server.Achievement.IAchievementService? _achievementService;
     private readonly Map.Server.Pet.IPetService? _petService;
@@ -32,6 +33,7 @@ public sealed class IntifService : IIntifService
         ICharServerIpcServiceHomunculus? homunIpc = null,
         ICharServerIpcServiceMercenary? mercIpc = null,
         ICharServerIpcServiceElemental? elemIpc = null,
+        ICharServerIpcServiceStorage? storageIpc = null,
         Map.Server.Quest.IQuestService? questService = null,
         Map.Server.Achievement.IAchievementService? achievementService = null,
         Map.Server.Pet.IPetService? petService = null,
@@ -46,6 +48,7 @@ public sealed class IntifService : IIntifService
         _homunIpc = homunIpc;
         _mercIpc = mercIpc;
         _elemIpc = elemIpc;
+        _storageIpc = storageIpc;
         _questService = questService;
         _achievementService = achievementService;
         _petService = petService;
@@ -435,10 +438,49 @@ public sealed class IntifService : IIntifService
 
     public int ClanMessage(int clanId, int charId, string text) => 0;
 
-    public int RequestAccountStorage(int accountId) => 0;
-    public int SaveAccountStorage(int accountId, byte[] data) => 0;
-    public int RequestGuildStorage(int charId, int guildId) => 0;
-    public int SaveGuildStorage(int charId, int guildId, byte[] data) => 0;
+    /// <summary>
+    /// T7.4 — rAthena <c>intif_request_account_storage</c> (intif.cpp:2438).
+    /// Char-side returns the opaque byte payload (account_storage_payload
+    /// table); map side decodes via StorageCodec.
+    /// </summary>
+    public int RequestAccountStorage(int accountId)
+    {
+        if (_storageIpc == null) return 0;
+        _ = _storageIpc.AccountStorageLoadAsync(accountId: accountId, characterId: 0);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.4 — rAthena <c>intif_send_account_storage</c> (intif.cpp:2456).
+    /// Fire-and-forget save of the storage byte payload.
+    /// </summary>
+    public int SaveAccountStorage(int accountId, byte[] data)
+    {
+        if (_storageIpc == null) return 0;
+        _ = _storageIpc.AccountStorageSaveAsync(accountId: accountId, characterId: 0,
+            data: data ?? Array.Empty<byte>());
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.4 — rAthena <c>intif_request_guild_storage</c> (intif.cpp:1066).
+    /// </summary>
+    public int RequestGuildStorage(int charId, int guildId)
+    {
+        if (_storageIpc == null) return 0;
+        _ = _storageIpc.GuildStorageLoadAsync(guildId);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.4 — rAthena <c>intif_send_guild_storage</c> (intif.cpp:1080).
+    /// </summary>
+    public int SaveGuildStorage(int charId, int guildId, byte[] data)
+    {
+        if (_storageIpc == null) return 0;
+        _ = _storageIpc.GuildStorageSaveAsync(guildId, data ?? Array.Empty<byte>());
+        return 1;
+    }
 
     public int CreateBg(int mapIndex, byte side) => 0;
     public int BgRecord(int bgId, int charId, byte score) => 0;
