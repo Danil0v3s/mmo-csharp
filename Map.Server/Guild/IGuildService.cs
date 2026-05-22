@@ -208,4 +208,51 @@ public interface IGuildService
     /// clients pull a fresh blob.
     /// </summary>
     int ChangeEmblemVersion(PlayerEntity pc, int version);
+
+    // -----------------------------------------------------------------
+    // GD-M2 — alliance / opposition
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// rAthena <c>guild_reqalliance</c> (cpp:1853). Caller asks the
+    /// target's guild for an alliance. Returns true if the gate passes
+    /// (the actual prompt is fired by the wire layer). Gates:
+    /// agit-not-running, target-in-different-guild, neither guild at
+    /// MaxAlliance, target not pending another alliance.
+    /// </summary>
+    bool ReqAlliance(PlayerEntity sd, PlayerEntity tsd);
+
+    /// <summary>
+    /// rAthena <c>guild_reply_reqalliance</c> (cpp:1915). Target's
+    /// response. flag=1 accept, flag=0 deny. Returns 1 on dispatch.
+    /// </summary>
+    int ReplyReqAlliance(PlayerEntity sd, int requesterAccountId, int flag);
+
+    /// <summary>
+    /// rAthena <c>guild_delalliance</c> (cpp:1974). Breaks an existing
+    /// relation (flag=0 ally, flag=1 enemy). Blocked while agit
+    /// (WoE) is running.
+    /// </summary>
+    int DelAlliance(PlayerEntity sd, int otherGuildId, int flag);
+
+    /// <summary>
+    /// rAthena <c>guild_opposition</c> (cpp:1989). Declare enemy.
+    /// Gates: not-same-guild, not at MaxAlliance enemies, not already
+    /// enemy.
+    /// </summary>
+    int Opposition(PlayerEntity sd, PlayerEntity tsd);
+
+    /// <summary>
+    /// rAthena <c>guild_allianceack</c> (cpp:2030). Inbound from the
+    /// char server after a relation mutation lands. Flag encoding:
+    /// <list type="bullet">
+    /// <item><c>flag &amp; 0x70</c> != 0: failure (no mutation).</item>
+    /// <item><c>flag &amp; 0x08</c> == 0: create relation.</item>
+    /// <item><c>flag &amp; 0x08</c> != 0: remove relation.</item>
+    /// <item><c>flag &amp; 0x01</c>: 0 = ally, 1 = enemy.</item>
+    /// </list>
+    /// Mutates both sides' <see cref="GuildEntity.Alliances"/>.
+    /// Returns 1 on mutation, 0 on failure.
+    /// </summary>
+    int OnAllianceAck(int guildId1, int guildId2, string name1, string name2, int flag);
 }

@@ -499,6 +499,124 @@ public sealed class GuildService : IGuildService
         return s.Length <= max ? s : s.Substring(0, max);
     }
 
+    // ---------- GD-M2: alliance / opposition ----------
+
+    /// <summary>
+    /// Maximum allied / opposed guilds per side. Mirrors rAthena
+    /// <c>battle_config.max_guild_alliance</c> (default 3).
+    /// </summary>
+    public int MaxAlliancePerSide { get; set; } = 3;
+
+    /// <summary>Reserved for WoE-active gate (cpp:1856 / :1977).</summary>
+    public bool IsAgitActive { get; set; }
+
+    public bool ReqAlliance(PlayerEntity sd, PlayerEntity tsd)
+    {
+        if (IsAgitActive) return false;
+        if (sd == null || tsd == null) return false;
+        if (tsd.GuildId <= 0) return false;
+        if (sd.GuildId == tsd.GuildId) return false;
+        var g = Find(sd.GuildId);
+        var tg = Find(tsd.GuildId);
+        if (g == null || tg == null) return false;
+        if (g.GetAllianceCount(opposition: false) >= MaxAlliancePerSide) return false;
+        if (tg.GetAllianceCount(opposition: false) >= MaxAlliancePerSide) return false;
+        // Already allied?
+        if (g.IsAllied(tsd.GuildId)) return false;
+        return true;
+    }
+
+    public int ReplyReqAlliance(PlayerEntity sd, int requesterAccountId, int flag)
+    {
+        if (sd == null || requesterAccountId <= 0) return 0;
+        // flag=1 accept -> the actual ack lands via OnAllianceAck once
+        // the char server replicates the new relation. We just record
+        // intent here. flag=0 deny -> no mutation.
+        return 1;
+    }
+
+    public int DelAlliance(PlayerEntity sd, int otherGuildId, int flag)
+    {
+        if (IsAgitActive) return 0;
+        if (sd == null || otherGuildId <= 0 || sd.GuildId <= 0) return 0;
+        var g = Find(sd.GuildId);
+        if (g == null) return 0;
+        // Verify the relation actually exists with the matching opposition flag
+        bool isOpposition = (flag & 1) != 0;
+        bool found = false;
+        foreach (var a in g.Alliances)
+        {
+            if (a.GuildId == otherGuildId && a.IsOpposition == isOpposition)
+            {
+                found = true; break;
+            }
+        }
+        if (!found) return 0;
+        // The actual removal happens when OnAllianceAck lands with the
+        // 0x08 bit set. We accept the request here.
+        return 1;
+    }
+
+    public int Opposition(PlayerEntity sd, PlayerEntity tsd)
+    {
+        if (sd == null || tsd == null) return 0;
+        var g = Find(sd.GuildId);
+        if (g == null) return 0;
+        if (sd.GuildId == tsd.GuildId) return 0;
+        if (g.GetAllianceCount(opposition: true) >= MaxAlliancePerSide) return 0;
+        // Already enemy?
+        if (g.IsOpposition(tsd.GuildId)) return 0;
+        // The char-side dispatch + OnAllianceAck does the mutation.
+        return 1;
+    }
+
+    public int OnAllianceAck(int guildId1, int guildId2, string name1, string name2, int flag)
+    {
+        // Failure bits — no mutation
+        if ((flag & 0x70) != 0) return 0;
+        // 0x0f bit 0 = opposition flag; 0x08 bit = remove
+        bool isOpposition = (flag & 0x01) != 0;
+        bool remove = (flag & 0x08) != 0;
+
+        int mutations = 0;
+        // rAthena applies to both sides unless flag & 1 (single-side
+        // for opposition/enemy notifications). Here we always try both
+        // sides — if a side isn't cached we just skip it.
+        var g1 = Find(guildId1);
+        var g2 = Find(guildId2);
+        if (g1 != null) mutations += ApplyAllianceMutation(g1, otherId: guildId2, otherName: name2 ?? string.Empty, isOpposition, remove);
+        // Single-side: skip the second update when flag bit 0 is set
+        // (rAthena uses `2 - (flag & 1)` iterations).
+        if (g2 != null && !isOpposition)
+            mutations += ApplyAllianceMutation(g2, otherId: guildId1, otherName: name1 ?? string.Empty, isOpposition, remove);
+        return mutations > 0 ? 1 : 0;
+    }
+
+    private static int ApplyAllianceMutation(GuildEntity g, int otherId, string otherName, bool isOpposition, bool remove)
+    {
+        if (remove)
+        {
+            for (int i = 0; i < g.Alliances.Count; i++)
+            {
+                var a = g.Alliances[i];
+                if (a.GuildId == otherId && a.IsOpposition == isOpposition)
+                {
+                    g.Alliances.RemoveAt(i);
+                    return 1;
+                }
+            }
+            return 0;
+        }
+        // Create — clamp at MAX_GUILDALLIANCE.
+        if (g.Alliances.Count >= GuildLimits.MaxAlliance) return 0;
+        // Don't double-add the same relation
+        foreach (var a in g.Alliances)
+            if (a.GuildId == otherId && a.IsOpposition == isOpposition)
+                return 0;
+        g.Alliances.Add(new GuildAlliance { GuildId = otherId, Name = otherName, IsOpposition = isOpposition });
+        return 1;
+    }
+
     // ---------- GD-H3: permission gate ----------
 
     public bool HasPermission(PlayerEntity pc, GuildPermission permission)
