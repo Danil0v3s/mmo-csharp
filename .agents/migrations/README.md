@@ -75,6 +75,22 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-22** — **T8 — full rAthena `map/*.cpp` audit sweep.** End-to-end pass across every `rathena/src/map/*.cpp` (42 files) comparing the C# implementation against the existing parity doc. 9 commits (`d3349b7..7453fd0`):
+  - **T8.0** (`d3349b7`) — master audit index ([AUDIT-2026-05-22.md](map/AUDIT-2026-05-22.md)). Found 1 missing doc (`party.cpp`) + 37 docs without T5.2-style rollup tables.
+  - **T8.1..T8.4** (`3bb1a11` aggregated) — 4 parallel Explore agents walked every parity doc against rAthena + C#. Result: **36/42 OK**, 6 stale, 1 gap.
+  - **T8.5** (`d5bd9da`, `9534291`, `7453fd0`) — close gaps:
+    - **New doc:** `party-parity.md` written (18 ✅ / 8 ⚠️ / 15 ❌ baseline + PT-H1..PT-M2 plan).
+    - **Stale fixed (4 small):** mapreg (T7.8 IPC seam not reflected), pc (heading date), pet (T7.2 SerializeSnapshot section added), instance (3 missing entries surfaced — `addmap`/`mapid`/`enter`).
+    - **Stale fixed (2 large):** guild (rewrote with per-function table; **19 ✅ / 10 ⚠️ / 45 ❌** baseline + GD wave plan), status (rewrote framing — 4 services not `IStatusOpsService`; per-fn table **24 ✅ / 24 ⚠️ / 5 ❌**; per-SC table **74 active of ~440** rAthena SCs).
+  - **T8.6** (this commit) — README rollup.
+
+  **Final state:** every `rathena/src/map/*.cpp` (42 files) has a current parity doc. Real implementation gaps that the audit surfaced:
+  - **High value:** guild member-info short broadcasts + `has_permission` gating + `recv_info` hydrate (GD-H1..GD-H3); party invite/reply/joined flow + `PartyEntity` model (PT-H1..PT-H2); instance `enter` + `addmap`/`mapid` (player can't actually walk into freshly-created instances today).
+  - **Medium:** status SC handler backfill (~366 missing of ~440); `status_change_spread`; companion `status_calc_*`.
+  - **Low:** WoE / Castle / Agit (deferred to WoE wave); script-engine consumers (`status_calc_npc`, `guild_npc_request_info`, mapreg `$var` — all wait for Phase 4 of scripting/).
+
+  Acceptance: every rAthena map file walked, every doc verified or fixed, all gaps identified. The audit is the deliverable; impl waves (PT, GD, IN) are queued separately.
+
 - **2026-05-22** — **T6 — login/char/inter audit-doc refresh sweep.** Companion to T5.2's map-tree pass. 5 commits (`af69378..` this entry) across 5 sub-waves:
   - **T6.1** (`af69378`) — drift inventory. Greps `login/`, `char/`, `inter/` for stale `❌` rows; result empty. Per-file tally + cross-reference to L-H1..L-M4 / C-H1..C-M3 / P1..P8 wave landings recorded in [T6-audit-2026-05-22.md](T6-audit-2026-05-22.md).
   - **T6.2** (`61ce5c8`) — `login/status.md` verified 0 ❌ checkpoint history entry.
