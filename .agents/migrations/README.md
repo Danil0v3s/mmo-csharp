@@ -75,6 +75,13 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-22** — **guild.cpp reaches 100% parity (WOE-1 + WOE-2 + WOE-100, 3 commits).** Closed the 9 deferred ⚠️ rows left over from GD-100 by porting the WoE state machine + guild EXP accumulator. See [map/guild-parity.md](map/guild-parity.md). Final state: **74 ✅ / 0 ⚠️ / 0 ❌**. Map.Server.Tests: 3229 → 3262 (+33). Key landings:
+  - **WOE-1** (`3a82c62`) — `IAgitService` + `AgitService` (3 WoE editions × Start/End/IsActive). Each transition fires `OnAgitStart` / `OnAgitEnd` (×3) via `INpcOpsService.EventDoAll`. `GuildService.IsAgitActive` now delegates to `_agit?.IsAnyActive`, so the GD-M2 alliance gates follow real WoE state.
+  - **WOE-2** (`cc13ae5`) — `IGuildExpService` + `GuildExpService`. PayExp (with `exp_mode` tax rate) / GetExp (no-tax NPC tribute) / FlushOne / FlushAll. Per-charId accumulator, MAX_GUILD_EXP=INT32_MAX cap, roster-drift safety.
+  - **WOE-100** (this commit) — doc rollup
+
+  guild.cpp is the fourth per-file rAthena port to reach 100% parity (after status.cpp, skill.cpp, and the GD-100 non-deferred milestone).
+
 - **2026-05-22** — **guild.cpp reaches 100% non-deferred parity (GD-H1 to GD-L3 + GD-100, 9 commits).** Drove the T8.5 baseline (19 ✅ / 10 ⚠️ / 45 ❌) to **65 ✅ / 9 ⚠️ / 0 ❌**. The 9 remaining ⚠️ are *all* WoE/agit timers + the guild-exp payout pipe, explicitly deferred to a dedicated WoE wave. See [map/guild-parity.md](map/guild-parity.md). Map.Server.Tests: 3076 → 3229 (+153). Key landings:
   - **GD-H1** (`11c4b88`) — `GuildEntity` in-memory replica (Members / Positions / Alliances / Skills) + `IGuildService.OnRecvInfo` hydrate from `GuildInfoData` proto + `GuildPermission` flags enum + `GuildLimits` constants
   - **GD-H2** (`375a829`) — Member tracking: `MemberJoined / MemberAdded / MemberWithdraw / SendMemberInfoShort / RecvMemberInfoShort` with `RecomputeAverages` for ConnectMember + AverageLevel; `SendLevelUp` now fans out as SendMemberInfoShort

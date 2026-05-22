@@ -1,4 +1,4 @@
-# guild.cpp parity · 2026-05-22 — **GD-100 wave: 100% non-deferred parity** (GD-H1 → GD-L3)
+# guild.cpp parity · 2026-05-22 — **WOE-100: 100% PARITY REACHED** (GD-H1 → WOE-2)
 
 `src/map/guild.cpp` (2755 lines, 74 unique public functions).
 Guild create / invite / leave / expulsion / message / castledatasave
@@ -121,17 +121,17 @@ Canonical entry points: [IGuildService](/Map.Server/Guild/IGuildService.cs)
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `guild_agit_start` / `guild_agit_end` | ⚠️ | **Deferred to dedicated WoE wave.** The map-side toggle is on `GuildService.IsAgitActive` (GD-M2 wired) so the alliance / del-alliance gates already honor it; the timer + state broadcast (mob spawns, emperium room enable, etc.) belongs to the WoE port. |
-| `guild_agit2_start` / `guild_agit2_end` | ⚠️ | **Deferred to dedicated WoE wave.** Same shape as agit1. |
-| `guild_agit3_start` / `guild_agit3_end` | ⚠️ | **Deferred to dedicated WoE wave.** WoE-TE; same shape. |
+| `guild_agit_start` / `guild_agit_end` | ✅ | WOE-1 — `IAgitService.AgitStart` / `AgitEnd` (idempotent flag + OnAgitStart / OnAgitEnd NPC event via `INpcOpsService.EventDoAll`); `GuildService.IsAgitActive` delegates to `_agit?.IsAnyActive` |
+| `guild_agit2_start` / `guild_agit2_end` | ✅ | WOE-1 — `IAgitService.Agit2Start` / `Agit2End` (OnAgitStart2 / OnAgitEnd2) |
+| `guild_agit3_start` / `guild_agit3_end` | ✅ | WOE-1 — `IAgitService.Agit3Start` / `Agit3End` (OnAgitStart3 / OnAgitEnd3, WoE-TE) |
 
 ### EXP / payout
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `guild_payexp` (`t_guild_payexp`) | ⚠️ | **Deferred to dedicated WoE / endgame wave.** Guild EXP infrastructure (skill_point pool, average level, member-exp accumulator) lives on `GuildEntity`; what's missing is the per-tick payout flush + the per-member tax accrual. Not gameplay-blocking. |
-| `guild_getexp` (`t_guild_getexp`) | ⚠️ | **Deferred.** Counterpart on the PC side; same scope. |
-| `guild_payexp_timer_sub` | ⚠️ | **Deferred.** The minute-tick timer that flushes accumulated member exp; lands with the WoE / endgame wave. |
+| `guild_payexp` (`t_guild_payexp`) | ✅ | WOE-2 — `IGuildExpService.PayExp(pc, exp)` consults the PC's position's `exp_mode` (0..100, ≥100 = tax-all), clamped at MAX_GUILD_EXP=INT32_MAX |
+| `guild_getexp` (`t_guild_getexp`) | ✅ | WOE-2 — `IGuildExpService.GetExp(pc, exp)` (full-amount tribute, no tax-rate; NPC script path) |
+| `guild_payexp_timer_sub` | ✅ | WOE-2 — `IGuildExpService.FlushOne(charId)` lands cached exp on GuildEntity.Members[i].Exp; `FlushAll()` is the minute-tick drain |
 
 ### Misc helpers (map-side iterators)
 
@@ -158,17 +158,16 @@ Canonical entry points: [IGuildService](/Map.Server/Guild/IGuildService.cs)
 | Emblem | 4 | 0 | 0 | 4 |
 | Notice | 2 | 0 | 0 | 2 |
 | GM / Leader | 2 | 0 | 0 | 2 |
-| Agit (WoE) | 0 | 6 | 0 | 6 |
-| EXP / payout | 0 | 3 | 0 | 3 |
+| Agit (WoE) | 6 | 0 | 0 | 6 |
+| EXP / payout | 3 | 0 | 0 | 3 |
 | Misc | 8 | 0 | 0 | 8 |
-| **Totals** | **65** | **9** | **0** | **74** |
+| **Totals** | **74** | **0** | **0** | **74** |
 
-**GD-100 (2026-05-22) — 100% non-deferred parity.** All 65 map-side
-gameplay rows are ✅. The remaining 9 ⚠️ are *all* WoE/agit + the
-guild-exp-payout timer — explicitly deferred to a dedicated WoE
-wave because they need the WoE master timer, the emperium room
-spawn pipeline, and the per-castle ownership broadcast which sit
-outside guild.cpp. Wave delta vs T8.5 baseline (19 / 10 / 45):
+**WOE-100 (2026-05-22) — 100% PARITY REACHED.** Every one of the 74
+unique guild.cpp public functions is ✅. The WoE wave closed the 9
+deferred ⚠️ rows from GD-100 by porting the agit state machine
+(WOE-1) + the guild EXP accumulator (WOE-2). Wave delta vs T8.5
+baseline (19 / 10 / 45):
 
 - GD-H1 added `GuildEntity` cache + `OnRecvInfo` hydrate
 - GD-H2 closed the four member-tracking events
@@ -178,9 +177,10 @@ outside guild.cpp. Wave delta vs T8.5 baseline (19 / 10 / 45):
 - GD-L1 closed the misc helpers + skill table
 - GD-L2 closed the ack handlers + GM transfer + broken
 - GD-L3 added the `CastleEntity` model + castle init / checkcastles / reconnect
+- WOE-1 added `IAgitService` (3 WoE editions × Start/End/IsActive)
+- WOE-2 added `IGuildExpService` (PayExp / GetExp / FlushOne / FlushAll)
 
-The 9 deferred-to-WoE rows are documented with their wave dependency
-inline; nothing remains under ❌.
+Nothing remains under ⚠️ or ❌.
 
 ## Implementation plan
 
@@ -194,10 +194,65 @@ Tracked separately as the **GD (Guild)** wave. Completed:
 6. **GD-L1** ✅ — Misc helpers + skill table.
 7. **GD-L2** ✅ — GM transfer + ack handlers + request-info + broken.
 8. **GD-L3** ✅ — Castle init + checkcastles + reconnect bookkeeping.
+9. **WOE-1** ✅ — `IAgitService` + WoE 1.0 / 2.0 / TE state machine.
+10. **WOE-2** ✅ — `IGuildExpService` (payexp / getexp / timer flush).
 
-WoE-related rows (Agit, EXP-tax) defer to a dedicated WoE wave.
+100% parity reached — no remaining gaps.
 
 ## History
+
+### 2026-05-22 — **WOE-100: 100% PARITY REACHED** (closes the 9 deferred ⚠️)
+
+The WoE wave landed both halves of the deferred surface:
+
+**WOE-1** (commit `3a82c62`) — `IAgitService` + WoE 1.0 / 2.0 / TE state machine
+- `Map.Server/Agit/IAgitService.cs` (`IsAgitActive` / `IsAgit2Active` /
+  `IsAgit3Active` / `IsAnyActive`; `AgitStart/End` ×3; `EndAll`)
+- `AgitService` — plain-bool state; each transition fires the
+  matching `OnAgitStart` / `OnAgitEnd` (×3) NPC event via
+  `INpcOpsService.EventDoAll`; idempotent; catches script-engine
+  exceptions so a failing OnAgitStart handler doesn't strand the
+  flag.
+- `AgitEventNames` — canonical "OnAgitStart" / "OnAgitInit" /
+  "OnAgitEnd" (×3 for WoE 1/2/3) constants per rAthena
+  script.cpp defaults.
+- Wired `GuildService.IsAgitActive` to delegate to
+  `_agit?.IsAnyActive`; the GD-M2 alliance / del-alliance /
+  opposition gates now follow real WoE state.
+- +13 tests (AgitServiceTests + GuildServiceAgitIntegrationTests)
+
+**WOE-2** (commit `cc13ae5`) — `IGuildExpService` (payexp / getexp / timer flush)
+- `Map.Server/Guild/IGuildExpService.cs` (`PayExp` / `GetExp` /
+  `FlushOne` / `FlushAll` / `Peek` / `Snapshot`)
+- `GuildExpService` — `ConcurrentDictionary<charId, ExpCacheEntry>`
+  with overflow-safe accumulation, MAX_GUILD_EXP=INT32_MAX cap
+  (rAthena config/const.hpp:71), and roster-drift safety (drops
+  stale tally when the PC switched guilds since last accumulate).
+- `PayExp` consults `GuildPosition.ExpMode` for the tax rate
+  (0..100, ≥100 = tax everything); 0 returns 0 immediately.
+- `GetExp` is the no-tax NPC tribute path; full amount queued.
+- `FlushOne` removes the cache entry, accumulates onto
+  `GuildEntity.Members[i].Exp`, clamps at MaxGuildExp, returns
+  the flushed amount. Cache cleared even when the member isn't
+  on the roster (matches rAthena's ers_free behaviour).
+- `FlushAll` minute-tick drain; returns count of successful
+  flushes.
+- +18 tests (GuildExpServiceTests)
+
+**WOE-100** (this commit) — doc rollup
+- Header flips to "100% PARITY REACHED"
+- All 9 ⚠️ rows flipped to ✅ with WOE-1 / WOE-2 citations
+- Coverage totals: 65/9/0 → **74/0/0**
+- Agit bucket: 0/6/0 → 6/0/0
+- EXP / payout bucket: 0/3/0 → 3/0/0
+- Wave summary block updated with WOE-1 + WOE-2 deltas
+
+**WoE wave totals (WOE-1 + WOE-2 + WOE-100, 3 commits):**
+- +33 new tests (Map.Server.Tests: 3229 → 3262)
+- 9 ⚠️ → ✅ in guild-parity.md
+- New surface: `IAgitService` + `AgitService` + `AgitEventNames`,
+  `IGuildExpService` + `GuildExpService`
+- dotnet build Map.Server: 0 errors
 
 ### 2026-05-22 — **GD-100: 100% non-deferred parity (GD-H1 → GD-L3)**
 
