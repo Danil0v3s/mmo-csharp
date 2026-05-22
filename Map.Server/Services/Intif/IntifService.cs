@@ -63,10 +63,59 @@ public sealed class IntifService : IIntifService
     public int GuildAllianceAck(int guildId, int allyId, int accountId, int charId, int flag, string mes) => 0;
     public int GuildAddCastle(int castleId, int guildId) => 0;
 
-    public int MailRequestInbox(int charId, byte flag) => 0;
-    public int MailRead(int mailId) => 0;
-    public int MailGetAttach(int charId, int mailId, byte flag) => 0;
-    public int MailDelete(int charId, int mailId) => 0;
+    /// <summary>
+    /// T7.6 — rAthena <c>intif_Mail_requestinbox</c> (intif.cpp:1572).
+    /// Dispatches the async inbox-pull through
+    /// <c>ICharServerIpcServiceMail.MailRequestInboxAsync</c>. The char
+    /// side responds with the full mail list; the response feeds the
+    /// MailInboxService when the player opens the mail UI. Returns 1
+    /// on dispatch, 0 when no char server IPC is wired (matches the
+    /// rAthena <c>intif_check_connection</c> gate).
+    /// </summary>
+    public int MailRequestInbox(int charId, byte flag)
+    {
+        if (_mailIpc == null) return 0;
+        // rAthena passes char_id + a "flag" byte (0 = open / 1 = refresh);
+        // the C# RPC normalizes both into a single inbox-fetch (the
+        // response is the full list either way, so the client distinction
+        // is purely cosmetic).
+        _ = _mailIpc.MailRequestInboxAsync(accountId: 0, characterId: charId);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.6 — rAthena <c>intif_Mail_read</c> (intif.cpp:1601). Marks
+    /// the mail row as READ on the char side.
+    /// </summary>
+    public int MailRead(int mailId)
+    {
+        if (_mailIpc == null) return 0;
+        _ = _mailIpc.MailReadAsync(accountId: 0, characterId: 0, mailId: mailId);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.6 — rAthena <c>intif_Mail_getattach</c> (intif.cpp:1617).
+    /// Pulls the attachment payload + clears the row's attachment +
+    /// zeny on the char side (delete-on-grab semantics).
+    /// </summary>
+    public int MailGetAttach(int charId, int mailId, byte flag)
+    {
+        if (_mailIpc == null) return 0;
+        _ = _mailIpc.MailGetAttachmentAsync(accountId: 0, characterId: charId, mailId: mailId);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.6 — rAthena <c>intif_Mail_delete</c> (intif.cpp:1647). Hard-
+    /// deletes the mail row (cascades to attachments via FK).
+    /// </summary>
+    public int MailDelete(int charId, int mailId)
+    {
+        if (_mailIpc == null) return 0;
+        _ = _mailIpc.MailDeleteAsync(accountId: 0, characterId: charId, mailId: mailId);
+        return 1;
+    }
 
     /// <summary>
     /// T5.4a — rAthena <c>intif_Mail_send</c>. Fire-and-forget RPC

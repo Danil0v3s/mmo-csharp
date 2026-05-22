@@ -57,6 +57,61 @@ public class IntifMailWiringTests
         Assert.Equal(42L, fake.MailReturnCalls[0].MailId);
     }
 
+    // ---- T7.6 — inbox close-out ----
+
+    [Fact]
+    public void MailRequestInbox_WithCharIpc_Dispatches()
+    {
+        var fake = new RecordingCharIpc();
+        var intif = new IntifService(NullLogger<IntifService>.Instance, mailIpc: fake);
+
+        Assert.Equal(1, intif.MailRequestInbox(charId: 11, flag: 0));
+        Assert.Single(fake.MailRequestInboxCalls);
+        Assert.Equal(11L, fake.MailRequestInboxCalls[0].CharacterId);
+    }
+
+    [Fact]
+    public void MailRequestInbox_WithoutCharIpc_ReturnsZero()
+    {
+        var intif = new IntifService(NullLogger<IntifService>.Instance);
+        Assert.Equal(0, intif.MailRequestInbox(charId: 11, flag: 0));
+    }
+
+    [Fact]
+    public void MailRead_WithCharIpc_Dispatches()
+    {
+        var fake = new RecordingCharIpc();
+        var intif = new IntifService(NullLogger<IntifService>.Instance, mailIpc: fake);
+
+        Assert.Equal(1, intif.MailRead(mailId: 33));
+        Assert.Single(fake.MailReadCalls);
+        Assert.Equal(33L, fake.MailReadCalls[0].MailId);
+    }
+
+    [Fact]
+    public void MailGetAttach_WithCharIpc_Dispatches()
+    {
+        var fake = new RecordingCharIpc();
+        var intif = new IntifService(NullLogger<IntifService>.Instance, mailIpc: fake);
+
+        Assert.Equal(1, intif.MailGetAttach(charId: 22, mailId: 44, flag: 0));
+        Assert.Single(fake.MailGetAttachmentCalls);
+        Assert.Equal(22L, fake.MailGetAttachmentCalls[0].CharacterId);
+        Assert.Equal(44L, fake.MailGetAttachmentCalls[0].MailId);
+    }
+
+    [Fact]
+    public void MailDelete_WithCharIpc_Dispatches()
+    {
+        var fake = new RecordingCharIpc();
+        var intif = new IntifService(NullLogger<IntifService>.Instance, mailIpc: fake);
+
+        Assert.Equal(1, intif.MailDelete(charId: 22, mailId: 99));
+        Assert.Single(fake.MailDeleteCalls);
+        Assert.Equal(22L, fake.MailDeleteCalls[0].CharacterId);
+        Assert.Equal(99L, fake.MailDeleteCalls[0].MailId);
+    }
+
     /// <summary>
     /// Records every Mail* dispatch for assertions. Implements only
     /// the Mail subset of ICharServerIpcService.
@@ -67,29 +122,49 @@ public class IntifMailWiringTests
             string SenderName, int ReceiverAccountId, long ReceiverCharacterId,
             string ReceiverName, string Title, string Body, long Zeny);
         public sealed record MailReturnCall(int AccountId, long CharacterId, long MailId);
+        public sealed record MailRequestInboxCall(int AccountId, long CharacterId);
+        public sealed record MailReadCall(int AccountId, long CharacterId, long MailId);
+        public sealed record MailGetAttachmentCall(int AccountId, long CharacterId, long MailId);
+        public sealed record MailDeleteCall(int AccountId, long CharacterId, long MailId);
 
         public List<MailSendCall> MailSendCalls { get; } = new();
         public List<MailReturnCall> MailReturnCalls { get; } = new();
+        public List<MailRequestInboxCall> MailRequestInboxCalls { get; } = new();
+        public List<MailReadCall> MailReadCalls { get; } = new();
+        public List<MailGetAttachmentCall> MailGetAttachmentCalls { get; } = new();
+        public List<MailDeleteCall> MailDeleteCalls { get; } = new();
 
         public Task<Core.Server.IPC.MailRequestInboxResponse?> MailRequestInboxAsync(
             int accountId, long characterId,
             CancellationToken cancellationToken = default)
-            => Task.FromResult<Core.Server.IPC.MailRequestInboxResponse?>(null);
+        {
+            MailRequestInboxCalls.Add(new MailRequestInboxCall(accountId, characterId));
+            return Task.FromResult<Core.Server.IPC.MailRequestInboxResponse?>(null);
+        }
 
         public Task<Core.Server.IPC.MailReadResponse?> MailReadAsync(
             int accountId, long characterId, long mailId,
             CancellationToken cancellationToken = default)
-            => Task.FromResult<Core.Server.IPC.MailReadResponse?>(null);
+        {
+            MailReadCalls.Add(new MailReadCall(accountId, characterId, mailId));
+            return Task.FromResult<Core.Server.IPC.MailReadResponse?>(null);
+        }
 
         public Task<Core.Server.IPC.MailGetAttachmentResponse?> MailGetAttachmentAsync(
             int accountId, long characterId, long mailId,
             CancellationToken cancellationToken = default)
-            => Task.FromResult<Core.Server.IPC.MailGetAttachmentResponse?>(null);
+        {
+            MailGetAttachmentCalls.Add(new MailGetAttachmentCall(accountId, characterId, mailId));
+            return Task.FromResult<Core.Server.IPC.MailGetAttachmentResponse?>(null);
+        }
 
         public Task<Core.Server.IPC.MailDeleteResponse?> MailDeleteAsync(
             int accountId, long characterId, long mailId,
             CancellationToken cancellationToken = default)
-            => Task.FromResult<Core.Server.IPC.MailDeleteResponse?>(null);
+        {
+            MailDeleteCalls.Add(new MailDeleteCall(accountId, characterId, mailId));
+            return Task.FromResult<Core.Server.IPC.MailDeleteResponse?>(null);
+        }
 
         public Task<Core.Server.IPC.MailReturnResponse?> MailReturnAsync(
             int accountId, long characterId, long mailId,
