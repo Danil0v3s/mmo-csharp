@@ -118,7 +118,7 @@ Canonical entry points:
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| AI think loop | 7 | 6 | 0 | 13 |
+| AI think loop | 9 | 4 | 0 | 13 |
 | Skill picker | 13 | 2 | 0 | 16* |
 | Condition evaluators (MSC_*) | 24 | 1 | 0 | 27* |
 | Target modes (MST_*) | 7 | 1 | 0 | 8 |
@@ -128,7 +128,9 @@ Canonical entry points:
 mob_skill_db column (MSC_TRICKCASTING was originally in the wave's
 gap list; the row count rolls up to the same 16/27 totals).
 
-**Aggregate: 68 ✅ / 12 ⚠️ / 0 ❌ across 80 entries.** Zero-❌ goal
+**Aggregate: 70 ✅ / 10 ⚠️ / 0 ❌ across 80 entries.** T5.1c
+promoted both `mob_warpchase` rows to ✅ on top of the T4.9
+zero-❌ baseline. Zero-❌ goal
 reached. The 12 remaining ⚠️ entries all carry documented
 dependencies on out-of-T4.9-scope tracks (status engine OPT1, BG
 parity, attack-timer refactor, mob_chat_db YAML loader, warp NPC
