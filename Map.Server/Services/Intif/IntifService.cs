@@ -20,6 +20,7 @@ public sealed class IntifService : IIntifService
     private readonly ICharServerIpcServiceMercenary? _mercIpc;
     private readonly ICharServerIpcServiceElemental? _elemIpc;
     private readonly ICharServerIpcServiceStorage? _storageIpc;
+    private readonly ICharServerIpcServiceAuction? _auctionIpc;
     private readonly Map.Server.Quest.IQuestService? _questService;
     private readonly Map.Server.Achievement.IAchievementService? _achievementService;
     private readonly Map.Server.Pet.IPetService? _petService;
@@ -34,6 +35,7 @@ public sealed class IntifService : IIntifService
         ICharServerIpcServiceMercenary? mercIpc = null,
         ICharServerIpcServiceElemental? elemIpc = null,
         ICharServerIpcServiceStorage? storageIpc = null,
+        ICharServerIpcServiceAuction? auctionIpc = null,
         Map.Server.Quest.IQuestService? questService = null,
         Map.Server.Achievement.IAchievementService? achievementService = null,
         Map.Server.Pet.IPetService? petService = null,
@@ -49,6 +51,7 @@ public sealed class IntifService : IIntifService
         _mercIpc = mercIpc;
         _elemIpc = elemIpc;
         _storageIpc = storageIpc;
+        _auctionIpc = auctionIpc;
         _questService = questService;
         _achievementService = achievementService;
         _petService = petService;
@@ -189,11 +192,88 @@ public sealed class IntifService : IIntifService
         return 1;
     }
 
-    public int AuctionRequestList(int charId, byte type, int price, string search, byte page) => 0;
-    public int AuctionRegister(int charId, byte type, int sellerCharId, string sellerName, int now, int hours, int priceStart, int priceBuyNow, int itemId, byte refine, byte attribute, int identify, int amount) => 0;
-    public int AuctionCancel(int charId, uint auctionId) => 0;
-    public int AuctionClose(int charId, uint auctionId) => 0;
-    public int AuctionBid(int charId, uint auctionId, int bid, string bidder) => 0;
+    /// <summary>
+    /// T7.5 — rAthena <c>intif_Auction_requestlist</c> (intif.cpp:2569).
+    /// Dispatches the filtered list pull through
+    /// <see cref="ICharServerIpcServiceAuction.AuctionRequestListAsync"/>.
+    /// </summary>
+    public int AuctionRequestList(int charId, byte type, int price, string search, byte page)
+    {
+        if (_auctionIpc == null) return 0;
+        _ = _auctionIpc.AuctionRequestListAsync(
+            characterId: charId,
+            type: type,
+            price: price,
+            searchText: search ?? string.Empty,
+            page: page);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.5 — rAthena <c>intif_Auction_register</c> (intif.cpp:2595).
+    /// Packs the per-auction args into <see cref="Core.Server.IPC.AuctionData"/>
+    /// and dispatches. Char-side allocates the auction_id and writes the row.
+    /// </summary>
+    public int AuctionRegister(int charId, byte type, int sellerCharId, string sellerName,
+        int now, int hours, int priceStart, int priceBuyNow, int itemId,
+        byte refine, byte attribute, int identify, int amount)
+    {
+        if (_auctionIpc == null) return 0;
+        var auction = new Core.Server.IPC.AuctionData
+        {
+            SellerCharacterId = sellerCharId,
+            SellerName = sellerName ?? string.Empty,
+            ItemId = itemId,
+            ItemType = type,
+            Refine = refine,
+            Attribute = attribute,
+            Price = priceStart,
+            BuyNow = priceBuyNow,
+            Hours = hours,
+            // Char-side computes EndTimeUnix = now + hours*3600.
+        };
+        _ = _auctionIpc.AuctionRegisterAsync(auction);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.5 — rAthena <c>intif_Auction_cancel</c> (intif.cpp:2628). Seller-
+    /// initiated cancel; char side issues a refund-mail to any current bidder.
+    /// </summary>
+    public int AuctionCancel(int charId, uint auctionId)
+    {
+        if (_auctionIpc == null) return 0;
+        _ = _auctionIpc.AuctionCancelAsync(characterId: charId, auctionId: (long)auctionId);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.5 — rAthena <c>intif_Auction_close</c> (intif.cpp:2643). Buyer-
+    /// initiated "buy now" close; char side mails item to buyer + zeny to
+    /// seller.
+    /// </summary>
+    public int AuctionClose(int charId, uint auctionId)
+    {
+        if (_auctionIpc == null) return 0;
+        _ = _auctionIpc.AuctionCloseAsync(characterId: charId, auctionId: (long)auctionId);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.5 — rAthena <c>intif_Auction_bid</c> (intif.cpp:2658). Char side
+    /// validates against current high bid + refunds outbid prior bidder
+    /// via mail (P1 fix).
+    /// </summary>
+    public int AuctionBid(int charId, uint auctionId, int bid, string bidder)
+    {
+        if (_auctionIpc == null) return 0;
+        _ = _auctionIpc.AuctionBidAsync(
+            characterId: charId,
+            bidderName: bidder ?? string.Empty,
+            auctionId: (long)auctionId,
+            bid: bid);
+        return 1;
+    }
 
     /// <summary>
     /// T5.4b — rAthena <c>intif_quest_save</c> (intif.cpp:2050).
