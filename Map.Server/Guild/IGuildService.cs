@@ -148,4 +148,20 @@ public interface IGuildService
     /// when the guild or member wasn't found.
     /// </summary>
     int RecvMemberInfoShort(int guildId, int accountId, int charId, bool online, int lv, int classId);
+
+    // -----------------------------------------------------------------
+    // GD-H3 — permission gate
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// rAthena <c>guild_has_permission</c> (cpp:2640). Returns true
+    /// when the PC's guild position has the given bit set. False
+    /// when the PC isn't in a guild, the guild isn't cached, the PC
+    /// isn't on the roster, or the position is missing/None.
+    ///
+    /// Master (position 0) implicitly has every permission; the
+    /// hydrate path forces position 0's mode to
+    /// <see cref="GuildPermission.All"/>.
+    /// </summary>
+    bool HasPermission(PlayerEntity pc, GuildPermission permission);
 }

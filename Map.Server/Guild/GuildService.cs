@@ -137,18 +137,113 @@ public sealed class GuildService : IGuildService
     // GD-H2 / GD-H3 / GD-M1 / GD-M2 alongside the matching gates.
 
     public int Create(PlayerEntity master, string name) => 0;
-    public bool Invite(PlayerEntity inviter, PlayerEntity invitee) => false;
-    public bool ReplyInvite(PlayerEntity invitee, int guildId, byte ok) => false;
-    public bool Leave(PlayerEntity pc, int guildId, int accountId, int charId, string reason) => false;
-    public bool Expulsion(PlayerEntity gm, int guildId, int accountId, int charId, string reason) => false;
+
+    public bool Invite(PlayerEntity inviter, PlayerEntity invitee)
+    {
+        // rAthena guild.cpp:925 — gate matrix: target valid, inviter
+        // in a guild, inviter has GUILD_PERM_INVITE, invitee not
+        // already in a clan/guild. Map-flag MF_GUILDLOCK + instance
+        // checks are caller-side gates (we don't have the map flag
+        // service plumbed in yet — covered when the packet handler
+        // ports next wave).
+        if (inviter == null || invitee == null) return false;
+        if (inviter.GuildId <= 0) return false;
+        var g = Find(inviter.GuildId);
+        if (g == null) return false;
+        if (!HasPermission(inviter, GuildPermission.Invite))
+            return false;
+        // Invitee must not already be in a guild
+        if (invitee.GuildId != 0) return false;
+        // (clan + noask + invite-pending gates would land here)
+        return true;
+    }
+
+    public bool ReplyInvite(PlayerEntity invitee, int guildId, byte ok)
+    {
+        if (invitee == null) return false;
+        if (guildId <= 0) return false;
+        // ok != 0 → accept. The actual roster mutation happens once
+        // the char-side IPC round-trip completes and MemberAdded
+        // fires from the response handler.
+        return ok != 0;
+    }
+
+    public bool Leave(PlayerEntity pc, int guildId, int accountId, int charId, string reason)
+    {
+        // rAthena guild.cpp:1156 — caller-side checks (MF_GUILDLOCK /
+        // BG / GVG / instance lock) gate at the packet boundary;
+        // here we enforce identity match.
+        if (pc == null || guildId <= 0) return false;
+        if (pc.GuildId != guildId) return false;
+        if (pc.AccountId != accountId || pc.CharacterId != charId) return false;
+        var g = Find(guildId);
+        if (g == null) return false;
+        if (g.GetIndex(accountId, charId) < 0) return false;
+        // Leave is dispatched via intif_guild_leave — the wire-up
+        // ports in a later wave when the packet handler lands.
+        return true;
+    }
+
+    public bool Expulsion(PlayerEntity gm, int guildId, int accountId, int charId, string reason)
+    {
+        // rAthena guild.cpp:1189 — gm must be in this guild, must
+        // hold GUILD_PERM_EXPEL, target must be on the roster and
+        // must not be the master.
+        if (gm == null || guildId <= 0) return false;
+        if (gm.GuildId != guildId) return false;
+        var g = Find(guildId);
+        if (g == null) return false;
+        if (!HasPermission(gm, GuildPermission.Expel)) return false;
+        var idx = g.GetIndex(accountId, charId);
+        if (idx < 0) return false;
+        // Can't expel the master
+        if (g.Members[idx].CharId == g.MasterCharId) return false;
+        return true;
+    }
     public int SendMessage(PlayerEntity from, string text) => 0;
     public int RecvMessage(int guildId, string sender, string text) => 0;
-    public bool ChangePosition(PlayerEntity gm, int idx, int mode, int exp_mode, string name) => false;
+    public bool ChangePosition(PlayerEntity gm, int idx, int mode, int exp_mode, string name)
+    {
+        // rAthena guild.cpp:1511 — change_position is master-only in
+        // practice (no per-bit gate beyond gmaster_flag in cpp, but
+        // we honor the GUILD_PERM_ALL convention so a non-master
+        // with the bits cleared can't reshape the rank table).
+        if (gm == null || gm.GuildId <= 0) return false;
+        var g = Find(gm.GuildId);
+        if (g == null) return false;
+        // Only the master may reshape positions.
+        if (g.MasterCharId != gm.CharacterId) return false;
+        if (idx < 0 || idx >= g.Positions.Count) return false;
+        var pos = g.Positions[idx];
+        pos.Name = name ?? string.Empty;
+        // Position 0 always retains All; the rest take the requested
+        // bits (clamped by the All mask to avoid mystery high bits).
+        pos.Mode = idx == 0 ? GuildPermission.All : ((GuildPermission)mode & GuildPermission.All);
+        pos.ExpMode = exp_mode;
+        return true;
+    }
     public int ChangeMemberPosition(int guildId, int accountId, int charId, short idx) => 0;
     public int EmblemChanged(int guildId) => 0;
     public bool SkillUp(PlayerEntity pc, ushort skillId) => false;
     public int AllianceAck(int guildId, int allyId, int accountId, int charId, int flag, string mes) => 0;
-    public bool Break(PlayerEntity gm, string name) => false;
+    public bool Break(PlayerEntity gm, string name)
+    {
+        // rAthena guild.cpp:2289 — break gates: caller must be master,
+        // guild name must match (typed confirmation), only the master
+        // may remain on the roster (no surviving members).
+        if (gm == null || gm.GuildId <= 0) return false;
+        var g = Find(gm.GuildId);
+        if (g == null) return false;
+        if (g.MasterCharId != gm.CharacterId) return false;
+        if (!string.Equals(g.Name, name, System.StringComparison.Ordinal)) return false;
+        // Sole-member check: any non-master account on the roster blocks break.
+        foreach (var m in g.Members)
+        {
+            if (m.AccountId > 0 && (m.AccountId != gm.AccountId || m.CharId != gm.CharacterId))
+                return false;
+        }
+        return true;
+    }
     public int CastleDataLoad() => 0;
     public int CastleDataLoadAck(int castleId, int index, int value) => 0;
     public int CastleDataSave(int castleId, int index, int value) => 0;
@@ -321,6 +416,21 @@ public sealed class GuildService : IGuildService
         // fires from the session layer once it observes the change;
         // returning 1 signals "applied to cache".
         return 1;
+    }
+
+    // ---------- GD-H3: permission gate ----------
+
+    public bool HasPermission(PlayerEntity pc, GuildPermission permission)
+    {
+        // Mirrors rAthena guild.cpp:2640. Pulls the PC's position in
+        // their guild and intersects its mode bits with the requested
+        // permission.
+        if (pc == null || pc.GuildId <= 0) return false;
+        var g = Find(pc.GuildId);
+        if (g == null) return false;
+        var pos = g.GetPosition(pc.AccountId, pc.CharacterId);
+        if (pos < 0 || pos >= g.Positions.Count) return false;
+        return (g.Positions[pos].Mode & permission) != GuildPermission.None;
     }
 
     /// <summary>
