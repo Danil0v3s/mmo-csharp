@@ -30,8 +30,11 @@ public sealed class BattleDamage
     public Core.Server.Packets.Out.ZC.DamageActionType Type =
         Core.Server.Packets.Out.ZC.DamageActionType.Normal;
 
-    /// <summary>True if the attack landed (hit roll passed).</summary>
-    public bool DidHit => Type != Core.Server.Packets.Out.ZC.DamageActionType.Flee;
+    /// <summary>True if the attack landed (hit roll passed). False
+    /// for Flee misses and Lucky-dodge (perfect-dodge) outcomes.</summary>
+    public bool DidHit =>
+        Type != Core.Server.Packets.Out.ZC.DamageActionType.Flee &&
+        Type != Core.Server.Packets.Out.ZC.DamageActionType.LuckyDodge;
 
     /// <summary>True if rolled a critical (always-hits + 1.4× damage in renewal).</summary>
     public bool IsCritical => Type == Core.Server.Packets.Out.ZC.DamageActionType.Critical;

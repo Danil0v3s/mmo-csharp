@@ -66,4 +66,13 @@ public enum DamageActionType : byte
     MultiHit = 6,
     MultiHitCrit = 7,
     Critical = 10,
+    /// <summary>
+    /// rAthena <c>DMG_LUCY_DODGE = 11</c> — perfect dodge from
+    /// LUK/Flee2 roll, distinct from a regular Flee miss
+    /// (T5.3c — added so the client renders the "Lucky!" overlay).
+    /// Numeric value 12 instead of rAthena's 11 to avoid collision
+    /// with the legacy <see cref="RepeatDamage"/> entry; the renumber
+    /// is a follow-up gated on a packet-replay capture sweep.
+    /// </summary>
+    LuckyDodge = 12,
 }

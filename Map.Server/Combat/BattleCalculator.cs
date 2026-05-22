@@ -46,9 +46,12 @@ public sealed class BattleCalculator : IBattleCalculator
         {
             // Lucky dodge — tstatus->flee2 is stored at 10× display
             // (rAthena status.cpp:2689). Roll in [0,1000); pass = miss.
+            // T5.3c: emit LuckyDodge (rAthena DMG_LUCY_DODGE) so the
+            // client renders the "Lucky!" overlay instead of a plain
+            // dodge animation.
             if (t.Flee2 > 0 && _rng.Next(1000) < t.Flee2)
             {
-                result.Type = Core.Server.Packets.Out.ZC.DamageActionType.Flee;
+                result.Type = Core.Server.Packets.Out.ZC.DamageActionType.LuckyDodge;
                 return result;
             }
 
