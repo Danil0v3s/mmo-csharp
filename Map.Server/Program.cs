@@ -1851,6 +1851,27 @@ builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.JailTimeCommand
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.JobChangeCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.JobChangeAliasCommand>();
 
+// AT-R4 — retire info/movement/KS stubs.
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MapmoveCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GoCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ResurrectCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ExpDisplayCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.RatesCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ItemListCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CartListCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.StorageListCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MobInfoCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ItemInfoCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.IdSearchCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.WhoDropsCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.WhereIsCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MobSearchCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.NoksCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AllowKsCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.NoAskCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MuteCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.UnmuteCommand>();
+
 // PC-* phase: player option / appearance / orb services + GM commands.
 // rAthena pc_setoption / pc_setcart / pc_setriding / pc_changelook
 // (pc.cpp:8702 / 8851 / 8810 / clif.cpp:3929) + the pc_addspiritball

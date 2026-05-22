@@ -109,9 +109,8 @@ internal static class StubCommandKinds
         // request system
         new("request", "pc.cpp:request"),
         // /mute / chat moderation
-        new("mute", "pc.cpp:manner"), new("unmute", "pc.cpp:manner"),
-        new("noask", "pc.cpp:noask"), new("noks", "pc.cpp:noks"),
-        new("allowks", "pc.cpp:noks"),
+        // mute/unmute/noask/noks/allowks retired AT-R4 (MuteCommand /
+        // UnmuteCommand / NoAskCommand / NoksCommand / AllowKsCommand).
         // followers / pets
         new("follow", "pc.cpp:follow"),
         // dropall / storeall / itemreset / clearcart / clearstorage
@@ -156,7 +155,7 @@ internal static class StubCommandKinds
         // settings / camera
         new("camerainfo", "clif.cpp:camera"),
         new("changedress", "pc.cpp:dress"),
-        new("resurrect", "pc.cpp:resurrect"),
+        // resurrect retired AT-R4 (ResurrectCommand).
         // weight / showmsp
         new("showexp", "pc.cpp:showmsg"),
         new("showzeny", "pc.cpp:showmsg"),
@@ -184,21 +183,13 @@ internal static class StubCommandKinds
         new("loadnpc", "npc.cpp"), new("unloadnpc", "npc.cpp"),
         new("tonpc", "npc.cpp"),
         new("addwarp", "npc.cpp"),
-        // exp / info / rate
-        new("exp", "pc.cpp:exp"), new("rates", "pc.cpp:exp"),
-        new("mobinfo", "mob.cpp"), new("iteminfo", "item.cpp"),
-        new("whodrops", "mob.cpp"), new("whereis", "mob.cpp"),
+        // exp/rates/mobinfo/iteminfo/whodrops/whereis retired AT-R4.
         new("who2", "pc.cpp:who"), new("who3", "pc.cpp:who"),
         new("whomap", "pc.cpp:who"), new("whomap2", "pc.cpp:who"),
         new("whomap3", "pc.cpp:who"), new("whogm", "pc.cpp:who"),
-        new("idsearch", "item.cpp"),
+        // idsearch retired AT-R4 (IdSearchCommand).
         // stats retired AT-R2 (StatsCommand).
-        new("itemlist", "pc.cpp:inventory"),
-        new("cartlist", "pc.cpp:cart"),
-        new("storagelist", "pc.cpp:storage"),
-        new("mobsearch", "mob.cpp"),
-        new("mapmove", "pc.cpp:setpos"),
-        new("go", "pc.cpp:setpos"),
+        // itemlist/cartlist/storagelist/mobsearch/mapmove/go retired AT-R4.
         new("idle", "pc.cpp:idle"),
         new("skillon", "map.cpp"), new("skilloff", "map.cpp"),
         new("refreshall", "pc.cpp:refresh"),
