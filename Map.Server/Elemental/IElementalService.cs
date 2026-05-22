@@ -42,4 +42,12 @@ public interface IElementalService
     void SummonInit(PlayerEntity master);
     /// <summary>rAthena <c>elemental_summon_stop</c>.</summary>
     void SummonStop(PlayerEntity master);
+
+    /// <summary>
+    /// T7.3 — serialize a live elemental by id into the typed
+    /// <see cref="Core.Server.IPC.ElementalData"/> shape consumed by
+    /// <c>ElementalSaveAsync</c>. Returns null when no live elemental
+    /// matches.
+    /// </summary>
+    Core.Server.IPC.ElementalData? SerializeSnapshot(int elementalId);
 }

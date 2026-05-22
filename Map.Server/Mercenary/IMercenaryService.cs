@@ -55,4 +55,12 @@ public interface IMercenaryService
 
     /// <summary>rAthena <c>mercenary_contract_stop</c>.</summary>
     void ContractStop(PlayerEntity master);
+
+    /// <summary>
+    /// T7.3 — serialize a live mercenary by id into the typed
+    /// <see cref="Core.Server.IPC.MercenaryData"/> shape consumed by
+    /// <c>MercenarySaveAsync</c>. Returns null when no live merc
+    /// matches.
+    /// </summary>
+    Core.Server.IPC.MercenaryData? SerializeSnapshot(int mercId);
 }

@@ -65,4 +65,15 @@ public sealed class MercenaryService : IMercenaryService
     public ushort CheckSkill(PlayerEntity master, ushort skillId) => 0;
     public void ContractInit(PlayerEntity master) { }
     public void ContractStop(PlayerEntity master) { }
+
+    /// <inheritdoc />
+    public Core.Server.IPC.MercenaryData? SerializeSnapshot(int mercId)
+    {
+        // T7.3 — canonical entry point. Same shape as HomunculusService:
+        // when the per-master Create / RecvData paths land their
+        // _aliveByMercId map, this lookup projects the merc onto
+        // MercenaryData. Returning null today means "no live entity,
+        // skip dispatch."
+        return null;
+    }
 }

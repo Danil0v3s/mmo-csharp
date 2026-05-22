@@ -16,24 +16,42 @@ public sealed class IntifService : IIntifService
     private readonly ICharServerIpcServiceMail? _mailIpc;
     private readonly ICharServerIpcServiceQuest? _questIpc;
     private readonly ICharServerIpcServicePet? _petIpc;
+    private readonly ICharServerIpcServiceHomunculus? _homunIpc;
+    private readonly ICharServerIpcServiceMercenary? _mercIpc;
+    private readonly ICharServerIpcServiceElemental? _elemIpc;
     private readonly Map.Server.Quest.IQuestService? _questService;
     private readonly Map.Server.Achievement.IAchievementService? _achievementService;
     private readonly Map.Server.Pet.IPetService? _petService;
+    private readonly Map.Server.Homunculus.IHomunculusService? _homunService;
+    private readonly Map.Server.Mercenary.IMercenaryService? _mercService;
+    private readonly Map.Server.Elemental.IElementalService? _elemService;
     public IntifService(ILogger<IntifService> logger,
         ICharServerIpcServiceMail? mailIpc = null,
         ICharServerIpcServiceQuest? questIpc = null,
         ICharServerIpcServicePet? petIpc = null,
+        ICharServerIpcServiceHomunculus? homunIpc = null,
+        ICharServerIpcServiceMercenary? mercIpc = null,
+        ICharServerIpcServiceElemental? elemIpc = null,
         Map.Server.Quest.IQuestService? questService = null,
         Map.Server.Achievement.IAchievementService? achievementService = null,
-        Map.Server.Pet.IPetService? petService = null)
+        Map.Server.Pet.IPetService? petService = null,
+        Map.Server.Homunculus.IHomunculusService? homunService = null,
+        Map.Server.Mercenary.IMercenaryService? mercService = null,
+        Map.Server.Elemental.IElementalService? elemService = null)
     {
         _logger = logger;
         _mailIpc = mailIpc;
         _questIpc = questIpc;
         _petIpc = petIpc;
+        _homunIpc = homunIpc;
+        _mercIpc = mercIpc;
+        _elemIpc = elemIpc;
         _questService = questService;
         _achievementService = achievementService;
         _petService = petService;
+        _homunService = homunService;
+        _mercService = mercService;
+        _elemService = elemService;
     }
 
     public int RequestChatName(int charId) => 0;
@@ -293,14 +311,127 @@ public sealed class IntifService : IIntifService
         _ = _petIpc.PetDeleteAsync(petId: petId);
         return 1;
     }
-    public int HomunculusCreate(int accountId, byte[] data) => 0;
-    public int HomunculusRequest(int accountId, int homunId) => 0;
-    public int HomunculusSave(byte[] data) => 0;
-    public int HomunculusDelete(int homunId) => 0;
-    public int MercenaryCreate(byte[] data) => 0;
-    public int MercenaryRequest(int accountId, int mercId) => 0;
-    public int MercenarySave(byte[] data) => 0;
-    public int MercenaryDelete(int mercId) => 0;
+    /// <summary>
+    /// T7.3 — rAthena <c>intif_homunculus_create</c> (intif.cpp:1771).
+    /// Legacy <paramref name="data"/> byte[] carries the rAthena
+    /// homunculus struct; the C# proto carries it as
+    /// <see cref="Core.Server.IPC.HomunculusData.Payload"/>. Char-side
+    /// decoder owns interpretation.
+    /// </summary>
+    public int HomunculusCreate(int accountId, byte[] data)
+    {
+        if (_homunIpc == null) return 0;
+        _ = _homunIpc.HomunculusCreateAsync(accountId,
+            new Core.Server.IPC.HomunculusData
+            {
+                Payload = Google.Protobuf.ByteString.CopyFrom(data ?? Array.Empty<byte>()),
+            });
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.3 — rAthena <c>intif_homunculus_requestload</c> (intif.cpp:1793).
+    /// </summary>
+    public int HomunculusRequest(int accountId, int homunId)
+    {
+        if (_homunIpc == null) return 0;
+        _ = _homunIpc.HomunculusLoadAsync(accountId, homunId);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.3 — rAthena <c>intif_homunculus_requestsave</c> (intif.cpp:1813).
+    /// Snapshots via <see cref="Map.Server.Homunculus.IHomunculusService.SerializeSnapshot"/>
+    /// when available, falling back to the legacy <paramref name="data"/>
+    /// byte[] payload otherwise (char-side decoder owns it either way).
+    /// </summary>
+    public int HomunculusSave(byte[] data)
+    {
+        if (_homunIpc == null) return 0;
+        // Legacy byte[] carries the homun_id at offset 0..3 in rAthena.
+        // We only need it to look up the live snapshot.
+        var homunId = (data != null && data.Length >= 4)
+            ? BitConverter.ToInt32(data, 0)
+            : 0;
+        var snapshot = _homunService?.SerializeSnapshot(homunId);
+        if (snapshot == null)
+        {
+            // Data-pending fallback: dispatch the raw payload so the char
+            // side can still write the legacy bytes. Matches rAthena
+            // intif_homunculus_requestsave behavior when sd->hd is null.
+            snapshot = new Core.Server.IPC.HomunculusData
+            {
+                HomunculusId = homunId,
+                Payload = Google.Protobuf.ByteString.CopyFrom(data ?? Array.Empty<byte>()),
+            };
+        }
+        _ = _homunIpc.HomunculusSaveAsync(accountId: 0, homunculus: snapshot);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.3 — rAthena <c>intif_homunculus_requestdelete</c>
+    /// (intif.cpp:1832).
+    /// </summary>
+    public int HomunculusDelete(int homunId)
+    {
+        if (_homunIpc == null) return 0;
+        _ = _homunIpc.HomunculusDeleteAsync(homunId);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.3 — rAthena <c>intif_mercenary_create</c> (intif.cpp:2256).
+    /// </summary>
+    public int MercenaryCreate(byte[] data)
+    {
+        if (_mercIpc == null) return 0;
+        _ = _mercIpc.MercenaryCreateAsync(
+            new Core.Server.IPC.MercenaryData
+            {
+                Payload = Google.Protobuf.ByteString.CopyFrom(data ?? Array.Empty<byte>()),
+            });
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.3 — rAthena <c>intif_mercenary_request</c> (intif.cpp:2274).
+    /// </summary>
+    public int MercenaryRequest(int accountId, int mercId)
+    {
+        if (_mercIpc == null) return 0;
+        _ = _mercIpc.MercenaryLoadAsync(mercenaryId: mercId, characterId: 0);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.3 — rAthena <c>intif_mercenary_save</c> (intif.cpp:2294).
+    /// </summary>
+    public int MercenarySave(byte[] data)
+    {
+        if (_mercIpc == null) return 0;
+        var mercId = (data != null && data.Length >= 4)
+            ? BitConverter.ToInt32(data, 0)
+            : 0;
+        var snapshot = _mercService?.SerializeSnapshot(mercId)
+            ?? new Core.Server.IPC.MercenaryData
+            {
+                MercenaryId = mercId,
+                Payload = Google.Protobuf.ByteString.CopyFrom(data ?? Array.Empty<byte>()),
+            };
+        _ = _mercIpc.MercenarySaveAsync(snapshot);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.3 — rAthena <c>intif_mercenary_delete</c> (intif.cpp:2313).
+    /// </summary>
+    public int MercenaryDelete(int mercId)
+    {
+        if (_mercIpc == null) return 0;
+        _ = _mercIpc.MercenaryDeleteAsync(mercId);
+        return 1;
+    }
 
     public int ClanMessage(int clanId, int charId, string text) => 0;
 
@@ -312,10 +443,57 @@ public sealed class IntifService : IIntifService
     public int CreateBg(int mapIndex, byte side) => 0;
     public int BgRecord(int bgId, int charId, byte score) => 0;
 
-    public int ElementalCreate(byte[] data) => 0;
-    public int ElementalRequest(int accountId, int eleId) => 0;
-    public int ElementalSave(byte[] data) => 0;
-    public int ElementalDelete(int eleId) => 0;
+    /// <summary>
+    /// T7.3 — rAthena <c>intif_elemental_create</c> (intif.cpp:2349).
+    /// </summary>
+    public int ElementalCreate(byte[] data)
+    {
+        if (_elemIpc == null) return 0;
+        _ = _elemIpc.ElementalCreateAsync(
+            new Core.Server.IPC.ElementalData
+            {
+                // ElementalData has no payload field in the proto today;
+                // the create path uses class id from the byte[] header
+                // when the decoder lands.
+                ClassId = (data != null && data.Length >= 4) ? BitConverter.ToInt32(data, 0) : 0,
+            });
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.3 — rAthena <c>intif_elemental_request</c> (intif.cpp:2364).
+    /// </summary>
+    public int ElementalRequest(int accountId, int eleId)
+    {
+        if (_elemIpc == null) return 0;
+        _ = _elemIpc.ElementalLoadAsync(elementalId: eleId, characterId: 0);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.3 — rAthena <c>intif_elemental_save</c> (intif.cpp:2384).
+    /// </summary>
+    public int ElementalSave(byte[] data)
+    {
+        if (_elemIpc == null) return 0;
+        var eleId = (data != null && data.Length >= 4)
+            ? BitConverter.ToInt32(data, 0)
+            : 0;
+        var snapshot = _elemService?.SerializeSnapshot(eleId)
+            ?? new Core.Server.IPC.ElementalData { ElementalId = eleId };
+        _ = _elemIpc.ElementalSaveAsync(snapshot);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.3 — rAthena <c>intif_elemental_delete</c> (intif.cpp:2403).
+    /// </summary>
+    public int ElementalDelete(int eleId)
+    {
+        if (_elemIpc == null) return 0;
+        _ = _elemIpc.ElementalDeleteAsync(eleId);
+        return 1;
+    }
 
     public int RequestMapreg() => 0;
     public int SaveMapreg(byte[] data) => 0;

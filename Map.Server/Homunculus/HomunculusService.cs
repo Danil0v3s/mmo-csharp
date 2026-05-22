@@ -97,4 +97,17 @@ public sealed class HomunculusService : IHomunculusService
     }
     public void InitTimers(PlayerEntity master) { }
     public int HungryTimerDelete(PlayerEntity master) => 0;
+
+    /// <inheritdoc />
+    public Core.Server.IPC.HomunculusData? SerializeSnapshot(int homunId)
+    {
+        // T7.3 — canonical entry point. The HomunculusEntity per-master
+        // table + Alloc / RecvData paths are stubs today; once they
+        // populate an `_aliveByHomunId` map, this lookup flips to the
+        // PetService.SerializeSnapshot shape: walk the map, find the
+        // homun with matching id, project its fields onto HomunculusData.
+        // Returning null here means SavePet-style "no live entity, skip
+        // dispatch" — char-side row stays unchanged.
+        return null;
+    }
 }

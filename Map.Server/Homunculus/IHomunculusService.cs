@@ -120,4 +120,12 @@ public interface IHomunculusService
 
     /// <summary>rAthena <c>hom_hungry_timer_delete</c>.</summary>
     int HungryTimerDelete(PlayerEntity master);
+
+    /// <summary>
+    /// T7.3 — serialize a live homunculus by id into the typed
+    /// <see cref="Core.Server.IPC.HomunculusData"/> shape consumed by
+    /// <c>HomunculusSaveAsync</c>. Returns null when no live homun
+    /// with that id exists (vaporized / not summoned).
+    /// </summary>
+    Core.Server.IPC.HomunculusData? SerializeSnapshot(int homunId);
 }

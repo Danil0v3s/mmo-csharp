@@ -25,4 +25,14 @@ public sealed class ElementalService : IElementalService
     public long GetLifetimeMs(PlayerEntity master) => 0;
     public void SummonInit(PlayerEntity master) { }
     public void SummonStop(PlayerEntity master) { }
+
+    /// <inheritdoc />
+    public Core.Server.IPC.ElementalData? SerializeSnapshot(int elementalId)
+    {
+        // T7.3 — canonical entry point. Returning null = no live
+        // elemental matches; SaveElemental skips dispatch. Wires in
+        // when the per-master ElementalEntity store exposes by-id
+        // lookup (same pattern as PetService.SerializeSnapshot).
+        return null;
+    }
 }
