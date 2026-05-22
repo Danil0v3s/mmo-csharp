@@ -75,6 +75,19 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-22** — **guild.cpp reaches 100% non-deferred parity (GD-H1 to GD-L3 + GD-100, 9 commits).** Drove the T8.5 baseline (19 ✅ / 10 ⚠️ / 45 ❌) to **65 ✅ / 9 ⚠️ / 0 ❌**. The 9 remaining ⚠️ are *all* WoE/agit timers + the guild-exp payout pipe, explicitly deferred to a dedicated WoE wave. See [map/guild-parity.md](map/guild-parity.md). Map.Server.Tests: 3076 → 3229 (+153). Key landings:
+  - **GD-H1** (`11c4b88`) — `GuildEntity` in-memory replica (Members / Positions / Alliances / Skills) + `IGuildService.OnRecvInfo` hydrate from `GuildInfoData` proto + `GuildPermission` flags enum + `GuildLimits` constants
+  - **GD-H2** (`375a829`) — Member tracking: `MemberJoined / MemberAdded / MemberWithdraw / SendMemberInfoShort / RecvMemberInfoShort` with `RecomputeAverages` for ConnectMember + AverageLevel; `SendLevelUp` now fans out as SendMemberInfoShort
+  - **GD-H3** (`a2b92a8`) — `HasPermission(pc, GuildPermission)` + gate matrices on Invite (GUILD_PERM_INVITE) / Expulsion (GUILD_PERM_EXPEL + can't-expel-master) / ChangePosition (master-only) / Break (master + name-match + sole-member) / Leave (identity-match)
+  - **GD-M1** (`02de921`) — Notice + Emblem: `ChangeNotice / NoticeChanged / CheckEmblemChangeCondition / ChangeEmblem / ChangeEmblemVersion`; `EmblemChanged` bumps cached version
+  - **GD-M2** (`ad38e48`) — Alliance / opposition: `ReqAlliance / ReplyReqAlliance / DelAlliance / Opposition / OnAllianceAck` decoding the 0x0f/0x08/0x70 flag matrix; `IsAgitActive` flag gates the WoE-window blocks
+  - **GD-L1** (`b984094`) — Misc helpers: `CheckSkill / SkillGetMax / CheckSkillRequire / SkillUpAck / BlockSkill / GuildAuraRefresh / GetAvailableMemberCharId / RetrieveItemBound / BrokenSub / SendXyTimerSub / Flag*` registry; hard-coded GD_* cap table
+  - **GD-L2** (`4be563a`) — GM transfer + ack handlers: `OnGuildCreated / RequestInfo / NpcRequestInfo / OnPositionChanged / OnMemberPositionChanged / OnBroken / GmChange / OnGmChanged`; OnGmChanged swaps Members[0]↔[pos] with position invariant
+  - **GD-L3** (`9f65604`) — Castle data: `CastleEntity` + `CastleDataIndex` constants + `CastleMapInit / CheckCastles / FindCastle / AllCastles / CastleReconnect / CastleGuildBrokenSub / RegisterCastle`; CastleDataSave/Load promoted from stubs to cached mutators
+  - **GD-100** (this commit) — doc rollup
+
+  guild.cpp is the third per-file rAthena port to reach 100% on the non-deferred surface (after status.cpp and skill.cpp).
+
 - **2026-05-22** — **skill.cpp reaches 100% parity (SK.100-1 to SK.100-3, 6 commits).** Drove the four remaining skill-parity.md ⚠️ rows to ✅ + added a SkillBehaviorRegistry no-op fallback so every SkillId resolves to a usable SkillImpl. See [map/skill-parity.md](map/skill-parity.md). Final state: **135 ✅ / 0 ⚠️ / 0 ❌** functions + 1212 hand-written SkillImpls + bulk-backfilled fallback. Map.Server.Tests: 3054 → 3076 (+22). Key landings:
   - **SK.100-1a** (`f98f829`) — `SkillDatabase::loadingFinished` (combo-chain validate) + `SkillDefinition.Combo` + `SkillComboService.IsCombo` per-skill chain lookup
   - **SK.100-1b + 1d** (`b41987a`) — `SkillLayoutService.GetLayoutForSkill` returns per-skill non-square shapes (FireWall row, IceWall cross, WallOfThorn ring, FireBall plus); `SkillUnitService.Place` consults the matrix
