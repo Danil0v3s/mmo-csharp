@@ -15,19 +15,25 @@ public sealed class IntifService : IIntifService
     private readonly ILogger<IntifService> _logger;
     private readonly ICharServerIpcServiceMail? _mailIpc;
     private readonly ICharServerIpcServiceQuest? _questIpc;
+    private readonly ICharServerIpcServicePet? _petIpc;
     private readonly Map.Server.Quest.IQuestService? _questService;
     private readonly Map.Server.Achievement.IAchievementService? _achievementService;
+    private readonly Map.Server.Pet.IPetService? _petService;
     public IntifService(ILogger<IntifService> logger,
         ICharServerIpcServiceMail? mailIpc = null,
         ICharServerIpcServiceQuest? questIpc = null,
+        ICharServerIpcServicePet? petIpc = null,
         Map.Server.Quest.IQuestService? questService = null,
-        Map.Server.Achievement.IAchievementService? achievementService = null)
+        Map.Server.Achievement.IAchievementService? achievementService = null,
+        Map.Server.Pet.IPetService? petService = null)
     {
         _logger = logger;
         _mailIpc = mailIpc;
         _questIpc = questIpc;
+        _petIpc = petIpc;
         _questService = questService;
         _achievementService = achievementService;
+        _petService = petService;
     }
 
     public int RequestChatName(int charId) => 0;
@@ -221,10 +227,72 @@ public sealed class IntifService : IIntifService
         return 1;
     }
 
-    public int PetCreate(PlayerEntity master, int classId, int nameId, byte rename, int eggItemId, byte intimate, byte hungry, char gender, string petName) => 0;
-    public int RequestPetInfo(int petId, int accountId, byte flag) => 0;
-    public int SavePet(int petId) => 0;
-    public int DeletePet(int petId) => 0;
+    /// <summary>
+    /// T7.2 — rAthena <c>intif_create_pet</c> (intif.cpp:1342). Asks the
+    /// char server to insert a new pet row + assign a pet_id. The
+    /// response feeds <c>PetService.Hydrate</c> on the map side when the
+    /// PetLoad path lands.
+    /// </summary>
+    public int PetCreate(PlayerEntity master, int classId, int nameId, byte rename, int eggItemId, byte intimate, byte hungry, char gender, string petName)
+    {
+        if (_petIpc == null) return 0;
+        _ = _petIpc.PetCreateAsync(
+            accountId: master.AccountId,
+            characterId: master.CharacterId,
+            classId: classId,
+            level: 1, // rAthena pet_data_init starts at lv 1
+            eggItemId: eggItemId,
+            equipItemId: 0,
+            intimacy: intimate,
+            hungry: hungry,
+            renameFlag: rename,
+            incubate: false,
+            name: petName ?? string.Empty);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.2 — rAthena <c>intif_request_petdata</c> (intif.cpp:1370).
+    /// Pulls a saved pet by id (after egg-hatch / login). Char-side
+    /// looks up the row; map side will hydrate via PetService when
+    /// the response handler lands.
+    /// </summary>
+    public int RequestPetInfo(int petId, int accountId, byte flag)
+    {
+        if (_petIpc == null) return 0;
+        _ = _petIpc.PetLoadAsync(accountId: accountId, characterId: 0, petId: petId);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.2 — rAthena <c>intif_save_petdata</c> (intif.cpp:1393). Snapshots
+    /// the live <see cref="Map.Server.Entities.PetEntity"/> by id via
+    /// <see cref="Map.Server.Pet.IPetService.SerializeSnapshot"/> and
+    /// dispatches <c>PetSaveAsync</c>.
+    /// </summary>
+    public int SavePet(int petId)
+    {
+        if (_petIpc == null) return 0;
+        var snapshot = _petService?.SerializeSnapshot(petId);
+        if (snapshot == null)
+        {
+            _logger.LogDebug("intif_save_petdata: no live pet for id {PetId}", petId);
+            return 0;
+        }
+        _ = _petIpc.PetSaveAsync(accountId: snapshot.AccountId, pet: snapshot);
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.2 — rAthena <c>intif_delete_petdata</c> (intif.cpp:1417). Hard-
+    /// deletes the pet row on the char side (cascades to pet_skill).
+    /// </summary>
+    public int DeletePet(int petId)
+    {
+        if (_petIpc == null) return 0;
+        _ = _petIpc.PetDeleteAsync(petId: petId);
+        return 1;
+    }
     public int HomunculusCreate(int accountId, byte[] data) => 0;
     public int HomunculusRequest(int accountId, int homunId) => 0;
     public int HomunculusSave(byte[] data) => 0;

@@ -109,4 +109,43 @@ public sealed class PetService : IPetService
     /// </summary>
     private static PlayerEntity GetOwnerStub(int charId)
         => new(charId, 0, "", Guid.Empty, 0, 0, 0);
+
+    /// <inheritdoc />
+    public Core.Server.IPC.PetData? SerializeSnapshot(int petId)
+    {
+        // Walk live pets by persistent pet_id. rAthena's intif_save_petdata
+        // reads off `sd->pd->pet` directly; the C# side maps char_id →
+        // EntityId, so we scan owners. Cheap — at most one live pet per
+        // PC, and the map process owns << 1k PCs typically.
+        foreach (var (charId, entityId) in _ownerToPet)
+        {
+            if (_entities.Get(entityId) is not PetEntity pet) continue;
+            if (pet.PetId != petId) continue;
+            return ToPetData(pet, charId);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Maps a live <see cref="PetEntity"/> to the
+    /// <see cref="Core.Server.IPC.PetData"/> shape consumed by
+    /// <c>PetSaveAsync</c>. Mirrors rAthena <c>pet_data_init</c> field
+    /// projection.
+    /// </summary>
+    private static Core.Server.IPC.PetData ToPetData(PetEntity pet, int ownerCharId)
+        => new()
+        {
+            PetId = (int)pet.PetId,
+            AccountId = 0, // owner's account id resolved char-side from char_id
+            CharacterId = ownerCharId,
+            ClassId = pet.ClassId,
+            Level = pet.Level,
+            EggItemId = 0, // populated when egg → pet mapping ports
+            EquipItemId = (int)pet.EquipItemId,
+            Intimacy = pet.Intimacy,
+            Hungry = pet.Hunger,
+            RenameFlag = 0,
+            Incubate = false,
+            Name = pet.PetName ?? string.Empty,
+        };
 }

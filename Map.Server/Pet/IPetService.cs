@@ -24,4 +24,12 @@ public interface IPetService
 
     /// <summary>Game-loop pump — hunger decay, intimacy adjustments, runaway check.</summary>
     void Tick(long nowTick);
+
+    /// <summary>
+    /// T7.2 — serialize the live pet (looked up by persistent pet_id)
+    /// into the gRPC <see cref="Core.Server.IPC.PetData"/> shape
+    /// consumed by <c>PetSaveAsync</c>. Returns null if no live pet
+    /// with that id exists (e.g. recalled to egg).
+    /// </summary>
+    Core.Server.IPC.PetData? SerializeSnapshot(int petId);
 }
