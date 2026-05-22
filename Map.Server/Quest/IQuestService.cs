@@ -34,4 +34,22 @@ public interface IQuestService
 
     /// <summary>rAthena <c>QuestDatabase::parseBodyNode</c>.</summary>
     void Reload();
+
+    /// <summary>
+    /// T7.1 — serialize the PC's active quest log into the gRPC
+    /// payload shape consumed by <c>QuestSaveAsync</c>. Reads
+    /// <see cref="Map.Server.Entities.PlayerEntity.QuestLog"/>.
+    /// Empty list = no quests; the char-side write is a DELETE-then-
+    /// INSERT against the <c>quest</c> table (rAthena parity), so
+    /// returning empty wipes the row set rather than no-ops it —
+    /// only call this after the PC's quest state has been hydrated.
+    /// </summary>
+    IReadOnlyList<Core.Server.IPC.QuestEntryData> SnapshotFor(PlayerEntity pc);
+
+    /// <summary>
+    /// T7.1 — hydrate the PC's quest log from a load-response payload.
+    /// Called once per session enter after <c>QuestLoadAsync</c>
+    /// returns. Replaces any existing entries.
+    /// </summary>
+    void Hydrate(PlayerEntity pc, IEnumerable<Core.Server.IPC.QuestEntryData> entries);
 }

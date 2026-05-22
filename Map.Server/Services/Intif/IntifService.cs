@@ -15,13 +15,19 @@ public sealed class IntifService : IIntifService
     private readonly ILogger<IntifService> _logger;
     private readonly ICharServerIpcServiceMail? _mailIpc;
     private readonly ICharServerIpcServiceQuest? _questIpc;
+    private readonly Map.Server.Quest.IQuestService? _questService;
+    private readonly Map.Server.Achievement.IAchievementService? _achievementService;
     public IntifService(ILogger<IntifService> logger,
         ICharServerIpcServiceMail? mailIpc = null,
-        ICharServerIpcServiceQuest? questIpc = null)
+        ICharServerIpcServiceQuest? questIpc = null,
+        Map.Server.Quest.IQuestService? questService = null,
+        Map.Server.Achievement.IAchievementService? achievementService = null)
     {
         _logger = logger;
         _mailIpc = mailIpc;
         _questIpc = questIpc;
+        _questService = questService;
+        _achievementService = achievementService;
     }
 
     public int RequestChatName(int charId) => 0;
@@ -114,19 +120,19 @@ public sealed class IntifService : IIntifService
     public int AuctionBid(int charId, uint auctionId, int bid, string bidder) => 0;
 
     /// <summary>
-    /// T5.4b — rAthena <c>intif_quest_save</c>. Fire-and-forget RPC
-    /// to persist the PC's quest log. Returns 1 on dispatch, 0 when
-    /// no char server IPC is wired.
+    /// T5.4b — rAthena <c>intif_quest_save</c> (intif.cpp:2050).
+    /// T7.1 — now dispatches a real per-objective snapshot via
+    /// <see cref="Map.Server.Quest.IQuestService.SnapshotFor"/>
+    /// (falls back to empty when no QuestService is wired, matching
+    /// the char-side DELETE-then-INSERT pattern). Returns 1 on
+    /// dispatch, 0 when no char server IPC is wired.
     /// </summary>
     public int QuestSave(PlayerEntity pc)
     {
         if (_questIpc == null) return 0;
-        // The full quest-list serializer lands when QuestService
-        // exposes its in-memory snapshot. For now we ship the
-        // canonical entry point with an empty list — the char side
-        // treats this as "no change" rather than blowing away rows.
-        _ = _questIpc.QuestSaveAsync(pc.CharacterId,
-            quests: Array.Empty<Core.Server.IPC.QuestEntryData>());
+        var snapshot = _questService?.SnapshotFor(pc)
+            ?? (IReadOnlyList<Core.Server.IPC.QuestEntryData>)Array.Empty<Core.Server.IPC.QuestEntryData>();
+        _ = _questIpc.QuestSaveAsync(pc.CharacterId, quests: snapshot);
         return 1;
     }
 
@@ -143,16 +149,16 @@ public sealed class IntifService : IIntifService
     }
 
     /// <summary>
-    /// T5.4c — rAthena <c>intif_achievement_save</c>. Same shape as
-    /// QuestSave — empty list at first to ship the canonical entry
-    /// point; AchievementService snapshot wires in when its in-memory
-    /// store lands.
+    /// T5.4c — rAthena <c>intif_achievement_save</c> (intif.cpp:2125).
+    /// T7.1 — now dispatches a real per-achievement snapshot via
+    /// <see cref="Map.Server.Achievement.IAchievementService.SnapshotFor"/>.
     /// </summary>
     public int AchievementSave(PlayerEntity pc)
     {
         if (_questIpc == null) return 0;
-        _ = _questIpc.AchievementSaveAsync(pc.CharacterId,
-            achievements: Array.Empty<Core.Server.IPC.AchievementEntryData>());
+        var snapshot = _achievementService?.SnapshotFor(pc)
+            ?? (IReadOnlyList<Core.Server.IPC.AchievementEntryData>)Array.Empty<Core.Server.IPC.AchievementEntryData>();
+        _ = _questIpc.AchievementSaveAsync(pc.CharacterId, achievements: snapshot);
         return 1;
     }
 

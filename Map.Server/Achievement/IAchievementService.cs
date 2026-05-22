@@ -36,4 +36,20 @@ public interface IAchievementService
     int Level(PlayerEntity pc);
     /// <summary>rAthena <c>AchievementDatabase::mobexists</c>.</summary>
     bool MobExists(int mobId);
+
+    /// <summary>
+    /// T7.1 — serialize the PC's achievement progress into the gRPC
+    /// payload shape consumed by <c>AchievementSaveAsync</c>. Reads
+    /// <see cref="Map.Server.Entities.PlayerEntity.AchievementLog"/>.
+    /// Char-side persists via upsert (rAthena
+    /// <c>mapif_parse_AchievementSave</c>), so empty list = leave the
+    /// existing rows alone (different from Quest, which DELETEs).
+    /// </summary>
+    IReadOnlyList<Core.Server.IPC.AchievementEntryData> SnapshotFor(PlayerEntity pc);
+
+    /// <summary>
+    /// T7.1 — hydrate the PC's achievement log from a load-response
+    /// payload. Replaces any existing entries.
+    /// </summary>
+    void Hydrate(PlayerEntity pc, IEnumerable<Core.Server.IPC.AchievementEntryData> entries);
 }

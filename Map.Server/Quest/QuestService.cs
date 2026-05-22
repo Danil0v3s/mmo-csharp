@@ -59,4 +59,47 @@ public sealed class QuestService : IQuestService
     /// <summary>Catalog lookup — null if unknown id.</summary>
     public QuestDbEntity? GetCatalogEntry(uint questId)
         => _catalog.TryGetValue(questId, out var v) ? v : null;
+
+    /// <inheritdoc />
+    public IReadOnlyList<Core.Server.IPC.QuestEntryData> SnapshotFor(PlayerEntity pc)
+    {
+        // Mirrors rAthena `intif_quest_save` payload shape: one entry
+        // per active quest with the per-objective counters + the
+        // unix-time + state field.
+        var log = pc.QuestLog;
+        if (log.Count == 0) return Array.Empty<Core.Server.IPC.QuestEntryData>();
+        var snapshot = new Core.Server.IPC.QuestEntryData[log.Count];
+        for (int i = 0; i < log.Count; i++)
+        {
+            var q = log[i];
+            var entry = new Core.Server.IPC.QuestEntryData
+            {
+                QuestId = q.QuestId,
+                TimeUnix = q.TimeUnix,
+                State = q.State,
+            };
+            if (q.Counts != null)
+                foreach (var c in q.Counts)
+                    entry.Counts.Add(c);
+            snapshot[i] = entry;
+        }
+        return snapshot;
+    }
+
+    /// <inheritdoc />
+    public void Hydrate(PlayerEntity pc, IEnumerable<Core.Server.IPC.QuestEntryData> entries)
+    {
+        pc.QuestLog.Clear();
+        if (entries == null) return;
+        foreach (var e in entries)
+        {
+            pc.QuestLog.Add(new QuestEntry
+            {
+                QuestId = e.QuestId,
+                TimeUnix = e.TimeUnix,
+                State = e.State,
+                Counts = e.Counts?.ToArray() ?? Array.Empty<int>(),
+            });
+        }
+    }
 }

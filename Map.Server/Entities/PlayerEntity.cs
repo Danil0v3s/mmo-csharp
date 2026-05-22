@@ -215,6 +215,24 @@ public sealed class PlayerEntity : Entity
     /// </summary>
     public Map.Server.Mob.MobDmgList AttackerLog { get; } = new();
 
+    /// <summary>
+    /// T7.1 — per-PC active quest log. Mirror of rAthena
+    /// <c>sd-&gt;quest_log[]</c> (pc.hpp). Hydrated at session enter
+    /// from the char-side <c>QuestLoadAsync</c> RPC (via
+    /// <see cref="Map.Server.Quest.IQuestService.Hydrate"/>),
+    /// snapshotted at save time by
+    /// <see cref="Map.Server.Quest.IQuestService.SnapshotFor"/>.
+    /// </summary>
+    public List<Map.Server.Quest.QuestEntry> QuestLog { get; } = new();
+
+    /// <summary>
+    /// T7.1 — per-PC achievement progress log. Mirror of rAthena
+    /// <c>sd-&gt;achievement_data.achievements</c>
+    /// (achievement.hpp). Same hydrate/snapshot pattern as
+    /// <see cref="QuestLog"/>.
+    /// </summary>
+    public List<Map.Server.Achievement.AchievementEntry> AchievementLog { get; } = new();
+
 
     public override EntityType Type => EntityType.Pc;
 

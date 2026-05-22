@@ -62,4 +62,46 @@ public sealed class AchievementService : IAchievementService
     /// <summary>Catalog lookup — null if unknown.</summary>
     public AchievementDbEntity? GetCatalogEntry(uint achievementId)
         => _catalog.TryGetValue(achievementId, out var v) ? v : null;
+
+    /// <inheritdoc />
+    public IReadOnlyList<Core.Server.IPC.AchievementEntryData> SnapshotFor(PlayerEntity pc)
+    {
+        var log = pc.AchievementLog;
+        if (log.Count == 0) return Array.Empty<Core.Server.IPC.AchievementEntryData>();
+        var snapshot = new Core.Server.IPC.AchievementEntryData[log.Count];
+        for (int i = 0; i < log.Count; i++)
+        {
+            var a = log[i];
+            var entry = new Core.Server.IPC.AchievementEntryData
+            {
+                AchievementId = a.AchievementId,
+                CompletedUnix = a.CompletedUnix,
+                RewardedUnix = a.RewardedUnix,
+                Score = a.Score,
+            };
+            if (a.Counts != null)
+                foreach (var c in a.Counts)
+                    entry.Counts.Add(c);
+            snapshot[i] = entry;
+        }
+        return snapshot;
+    }
+
+    /// <inheritdoc />
+    public void Hydrate(PlayerEntity pc, IEnumerable<Core.Server.IPC.AchievementEntryData> entries)
+    {
+        pc.AchievementLog.Clear();
+        if (entries == null) return;
+        foreach (var e in entries)
+        {
+            pc.AchievementLog.Add(new AchievementEntry
+            {
+                AchievementId = e.AchievementId,
+                CompletedUnix = e.CompletedUnix,
+                RewardedUnix = e.RewardedUnix,
+                Score = e.Score,
+                Counts = e.Counts?.ToArray() ?? Array.Empty<int>(),
+            });
+        }
+    }
 }
