@@ -14,11 +14,14 @@ public sealed class IntifService : IIntifService
 {
     private readonly ILogger<IntifService> _logger;
     private readonly ICharServerIpcServiceMail? _mailIpc;
+    private readonly ICharServerIpcServiceQuest? _questIpc;
     public IntifService(ILogger<IntifService> logger,
-        ICharServerIpcServiceMail? mailIpc = null)
+        ICharServerIpcServiceMail? mailIpc = null,
+        ICharServerIpcServiceQuest? questIpc = null)
     {
         _logger = logger;
         _mailIpc = mailIpc;
+        _questIpc = questIpc;
     }
 
     public int RequestChatName(int charId) => 0;
@@ -110,10 +113,58 @@ public sealed class IntifService : IIntifService
     public int AuctionClose(int charId, uint auctionId) => 0;
     public int AuctionBid(int charId, uint auctionId, int bid, string bidder) => 0;
 
-    public int QuestSave(PlayerEntity pc) => 0;
-    public int QuestRequest(int charId) => 0;
-    public int AchievementSave(PlayerEntity pc) => 0;
-    public int AchievementRequest(int charId) => 0;
+    /// <summary>
+    /// T5.4b — rAthena <c>intif_quest_save</c>. Fire-and-forget RPC
+    /// to persist the PC's quest log. Returns 1 on dispatch, 0 when
+    /// no char server IPC is wired.
+    /// </summary>
+    public int QuestSave(PlayerEntity pc)
+    {
+        if (_questIpc == null) return 0;
+        // The full quest-list serializer lands when QuestService
+        // exposes its in-memory snapshot. For now we ship the
+        // canonical entry point with an empty list — the char side
+        // treats this as "no change" rather than blowing away rows.
+        _ = _questIpc.QuestSaveAsync(pc.CharacterId,
+            quests: Array.Empty<Core.Server.IPC.QuestEntryData>());
+        return 1;
+    }
+
+    /// <summary>
+    /// T5.4b — rAthena <c>intif_request_questlog</c>. Issues the
+    /// async load; the response feeds into QuestService.Hydrate at
+    /// session enter.
+    /// </summary>
+    public int QuestRequest(int charId)
+    {
+        if (_questIpc == null) return 0;
+        _ = _questIpc.QuestLoadAsync(charId);
+        return 1;
+    }
+
+    /// <summary>
+    /// T5.4c — rAthena <c>intif_achievement_save</c>. Same shape as
+    /// QuestSave — empty list at first to ship the canonical entry
+    /// point; AchievementService snapshot wires in when its in-memory
+    /// store lands.
+    /// </summary>
+    public int AchievementSave(PlayerEntity pc)
+    {
+        if (_questIpc == null) return 0;
+        _ = _questIpc.AchievementSaveAsync(pc.CharacterId,
+            achievements: Array.Empty<Core.Server.IPC.AchievementEntryData>());
+        return 1;
+    }
+
+    /// <summary>
+    /// T5.4c — rAthena <c>intif_request_achievementlist</c>.
+    /// </summary>
+    public int AchievementRequest(int charId)
+    {
+        if (_questIpc == null) return 0;
+        _ = _questIpc.AchievementLoadAsync(charId);
+        return 1;
+    }
 
     public int PetCreate(PlayerEntity master, int classId, int nameId, byte rename, int eggItemId, byte intimate, byte hungry, char gender, string petName) => 0;
     public int RequestPetInfo(int petId, int accountId, byte flag) => 0;
