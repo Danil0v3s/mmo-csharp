@@ -86,8 +86,7 @@ internal static class StubCommandKinds
         new("rmvperm", "pc_groups.cpp"), new("adjgroup", "pc_groups.cpp"),
         // changegm retired AT-R1 (ChangeGmCommand).
         new("changeleader", "party.cpp"),
-        // job change / skill grant
-        new("jobchange", "pc.cpp:jobchange"), new("job", "pc.cpp:jobchange"),
+        // jobchange/job retired AT-R3 (JobChangeCommand + JobChangeAliasCommand).
         // allskill/questskill/lostskill retired AT-R2 (AllSkillCommand /
         // QuestSkillCommand / LostSkillCommand).
         // refine / grade
@@ -115,12 +114,9 @@ internal static class StubCommandKinds
         new("allowks", "pc.cpp:noks"),
         // followers / pets
         new("follow", "pc.cpp:follow"),
-        // dropall / storeall / itemreset / cleargstorage etc.
-        new("dropall", "pc.cpp:inventory"),
-        new("storeall", "pc.cpp:inventory"),
-        new("itemreset", "pc.cpp:inventory"),
-        new("clearcart", "pc.cpp:cart"),
-        new("clearstorage", "pc.cpp:inventory"),
+        // dropall / storeall / itemreset / clearcart / clearstorage
+        // retired AT-R3 (DropAllCommand / StoreAllCommand /
+        // ItemResetCommand / ClearCartCommand / ClearStorageCommand).
         // cleargstorage retired AT-R1 (ClearGuildStorageCommand).
         // guild — partially retired AT-R1 (BreakGuildCommand,
         // GuildStorageCommand, ClearGuildStorageCommand, ChangeGmCommand,
@@ -128,12 +124,10 @@ internal static class StubCommandKinds
         // observation backend).
         new("guildspy", "guild.cpp"),
         new("partyspy", "party.cpp"),
-        // identify / repair
-        new("identifyall", "pc.cpp:inventory"), new("repair", "pc.cpp:inventory"),
-        new("repairall", "pc.cpp:inventory"),
-        // jail
-        new("jail", "pc.cpp:jail"), new("unjail", "pc.cpp:jail"),
-        new("jailfor", "pc.cpp:jail"), new("jailtime", "pc.cpp:jail"),
+        // identify / repair retired AT-R3 (IdentifyAllCommand /
+        // RepairCommand / RepairAllCommand).
+        // jail retired AT-R3 (JailCommand / UnjailCommand / JailForCommand
+        // / JailTimeCommand).
         // map exit / stopnpc
         new("mapexit", "map.cpp"), new("reloaditemdb", "item.cpp"),
         new("reloadmobdb", "mob.cpp"), new("reloadskilldb", "skill.cpp"),

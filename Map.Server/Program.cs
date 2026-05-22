@@ -1835,6 +1835,22 @@ builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AllSkillCommand
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.QuestSkillCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.LostSkillCommand>();
 
+// AT-R3 — retire inventory / jail / job stubs.
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.IdentifyAllCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ItemResetCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DropAllCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.StoreAllCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ClearCartCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ClearStorageCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.RepairCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.RepairAllCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.JailCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.UnjailCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.JailForCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.JailTimeCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.JobChangeCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.JobChangeAliasCommand>();
+
 // PC-* phase: player option / appearance / orb services + GM commands.
 // rAthena pc_setoption / pc_setcart / pc_setriding / pc_changelook
 // (pc.cpp:8702 / 8851 / 8810 / clif.cpp:3929) + the pc_addspiritball
