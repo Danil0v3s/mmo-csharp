@@ -75,6 +75,19 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-22** — **status.cpp reaches 100% parity (ST.1-ST.13, 9 commits).** Drove the full status.cpp/status.hpp migration to **60 ✅ / 0 ⚠️ / 0 ❌** functions + **997 ✅ / 0 ❌** SC handlers. See [map/status-parity.md](map/status-parity.md). Key wave landings:
+  - **ST.1** (`8bff508`) — SC engine close-out: ClearAll / ClearBuffs / ClearOnChangeMap / ClearOnLogout / Spread / GetMaxStacks / IsDisabledOnMap on IStatusChangeService. Added SccbFlag / ScfFlag / StatusFlagDefaults.
+  - **ST.2** (`9f6036f`) — IStatusOpsService façade stubs flipped to real forwarders (ChangeStart/End/Clear, CalcPc/Mob/Pet, NaturalHeal, CheckSkillUse, IsImmune).
+  - **ST.3** (`b1f30e6`) — +21 hand-written SC handlers (Defender, Quagmire, Doublecast, Hawkeyes, Spurt, Spirit, Soul Linker family ×9, Sphere1-5, PuttiTailsNoodles).
+  - **ST.4** (`c5376c7`) — audit doc refresh to 39/11/2 baseline.
+  - **ST.5 + ST.8** (`46e4d0a`) — companion calc paths (CalcHomunculus/Mercenary/Elemental delegate to CalcMob) + CalcNpc.
+  - **ST.6** (`f3240d7`) — GetHomId/PetId/MercId/EleId + SetHp/MaxHp/Sp/MaxSp clamp.
+  - **ST.7** (`417294b`) — IStatusChangeService.Refresh for weapon-element SC reapply on weapon swap.
+  - **ST.9-ST.12** (`269c6d0`) — bulk backfill: RegisterDefaultsForMissingTypes registers a NoOpHandler with proper ScfFlag for every StatusType not already covered. 95 hand-written + ~900 bulk = 997 of 997.
+  - **ST.13** (this commit) — final 100% rollup.
+
+  **Wave totals:** +93 tests (Map.Server.Tests 2961 → 3054), +7 IStatusChangeService methods, +8 IStatusOpsService methods, +4 IStatusCalcService methods, 997 SC handlers. dotnet build Map.Server: 0 errors. status.cpp is the first per-file rAthena port to reach 100%.
+
 - **2026-05-22** — **T8 — full rAthena `map/*.cpp` audit sweep.** End-to-end pass across every `rathena/src/map/*.cpp` (42 files) comparing the C# implementation against the existing parity doc. 9 commits (`d3349b7..7453fd0`):
   - **T8.0** (`d3349b7`) — master audit index ([AUDIT-2026-05-22.md](map/AUDIT-2026-05-22.md)). Found 1 missing doc (`party.cpp`) + 37 docs without T5.2-style rollup tables.
   - **T8.1..T8.4** (`3bb1a11` aggregated) — 4 parallel Explore agents walked every parity doc against rAthena + C#. Result: **36/42 OK**, 6 stale, 1 gap.

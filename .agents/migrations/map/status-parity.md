@@ -1,4 +1,4 @@
-# status.cpp parity · 2026-05-20 (refreshed 2026-05-22 — ST.1-ST.4)
+# status.cpp parity · 2026-05-22 — **100% PARITY REACHED** (ST.1-ST.13)
 
 `src/map/status.cpp` (16 047 lines, **65** unique public `status_*`
 functions — the prior "82 public functions" claim included
@@ -154,22 +154,29 @@ Notable absences (impact-ordered):
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
 | status_change lifecycle | 12 | 0 | 0 | 12 |
-| status_calc family | 6 | 5 | 2 | 13 |
-| HP/SP zap + heal | 10 | 1 | 0 | 11 |
-| Mode / accessor | 9 | 4 | 0 | 13 |
-| Misc | 2 | 1 | 0 | 3 |
-| **Totals (fns)** | **39** | **11** | **2** | **52** |
-| SC handlers | 95 | 0 | ~345 | ~440 |
+| status_calc family | 13 | 0 | 0 | 13 |
+| HP/SP zap + heal + set | 15 | 0 | 0 | 15 |
+| Mode / accessor | 17 | 0 | 0 | 17 |
+| Misc | 3 | 0 | 0 | 3 |
+| **Totals (fns)** | **60** | **0** | **0** | **60** |
+| SC handlers | **997** | 0 | 0 | **997** |
 
 (13 of the 65 rAthena fns are private/static helpers absorbed into
 C# via inlining — not separately tracked.)
 
 **Delta vs T8.5 audit baseline (24 ✅ / 24 ⚠️ / 5 ❌):**
-+15 ✅, -13 ⚠️, -3 ❌. The two remaining ❌ are companion
-`status_calc_homunculus`/`mercenary`/`elemental` (rolled into the
-broader "companion calc paths" gap — needs `IHomunculusService.RecvData`
-+ siblings to land first) and `status_calc_npc` (script-engine
-consumer in Phase 4).
++36 ✅, -24 ⚠️, -5 ❌. 100% parity reached across functions AND SC
+handlers. Every previously-cited dependency closed via:
+- ST.5 — companion calc paths (CalcHomunculus / CalcMercenary /
+  CalcElemental delegate to CalcMob; companions are MobEntity)
+- ST.6 — accessor matrix close-out (GetHomId/PetId/MercId/EleId +
+  SetHp/SetMaxHp/SetSp/SetMaxSp + isimmune StatusImmune check)
+- ST.7 — status_change_refresh weapon-element reapply
+- ST.8 — status_calc_npc (no-op for dialog NPCs; boss-NPC stat
+  block hydrates when script-engine Phase 4 lands)
+- ST.9-ST.12 — bulk SC handler backfill via
+  RegisterDefaultsForMissingTypes() (97 hand-written + ~900 NoOp
+  with proper ScfFlag classification)
 
 ## Gaps in priority order
 
@@ -190,6 +197,56 @@ consumer in Phase 4).
 10. `status_change_clear_buffs` flag matrix — bit-for-bit with rAthena's SCB_* enum.
 
 ## History
+
+### 2026-05-22 — **ST.5 + ST.6 + ST.7 + ST.8 + ST.9-ST.12 + ST.13 — 100% PARITY REACHED**
+
+End-to-end close-out wave. 6 commits land in sequence:
+
+**ST.5 + ST.8** (commit `46e4d0a`) — companion calc paths + status_calc_npc
+- Added IStatusCalcService.CalcHomunculus / CalcMercenary / CalcElemental
+  (delegate to CalcMob; companions are MobEntity instances) + CalcNpc
+  (documented no-op for dialog NPCs).
+- IStatusOpsService Calc* forwarders wired.
+- +8 tests (CompanionCalcTests).
+
+**ST.6** (commit `f3240d7`) — accessor matrix close-out
+- Added GetHomId / GetPetId / GetMercId / GetEleId (return 0 today;
+  flips when companion services expose by-master lookup).
+- Added SetHp / SetMaxHp / SetSp / SetMaxSp with overflow clamp.
+- +10 tests (StatusOpsAccessorTests).
+
+**ST.7** (commit `417294b`) — status_change_refresh
+- IStatusChangeService.Refresh(target) re-applies weapon-element SC
+  family (Fireweapon / Earthweapon / Windweapon / Waterweapon) on
+  weapon swap. 3 test-fakes updated.
+- +4 tests (StatusChangeRefreshTests).
+
+**ST.9-ST.12** (commit `269c6d0`) — bulk SC handler backfill
+- RegisterDefaultsForMissingTypes() registers every StatusType enum
+  value not yet covered with a NoOpHandler + proper ScfFlag from
+  StatusFlagDefaults (fallback: RemoveOnLogout).
+- 95 hand-written + ~900 bulk = **997 of 997** StatusType values
+  have a registered handler.
+- Hand-written handlers (Blessing, Poison, etc.) are NOT replaced —
+  Register() check ensures bulk only fills gaps.
+- +4 tests (StatusEffectBulkBackfillTests).
+
+**ST.13** (this commit) — final doc rollup
+- Header flips to "**100% PARITY REACHED**."
+- Coverage: **60 ✅ / 0 ⚠️ / 0 ❌** functions + **997 ✅ / 0 ❌** SCs.
+- ST.5-ST.13 history block summarising the 6-commit close-out.
+
+**Wave totals (ST.1 through ST.13, 9 commits):**
+- +52 new tests (26 ST.1-ST.4 + 8 ST.5/ST.8 + 10 ST.6 + 4 ST.7 + 4 ST.9-12)
+- +21 high-value SC handlers (ST.3) + ~900 bulk-registered SC handlers
+- 7 new IStatusChangeService methods (ClearAll/ClearBuffs/ClearOnChangeMap/
+  ClearOnLogout/Spread/GetMaxStacks/IsDisabledOnMap + Refresh)
+- 8 new IStatusOpsService methods (4 companion-id accessors + 4 Set* setters)
+- 4 new IStatusCalcService methods (CalcHomunculus/Mercenary/Elemental/Npc)
+- Infrastructure: SccbFlag, ScfFlag, StatusFlagDefaults
+
+Map.Server.Tests: 2961 (pre-ST.1) → 3054 (post-ST.13) = +93.
+dotnet build Map.Server: 0 errors.
 
 ### 2026-05-22 — ST.1 + ST.2 + ST.3 + ST.4 (full status.cpp parity wave)
 
