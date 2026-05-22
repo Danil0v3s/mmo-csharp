@@ -13,12 +13,14 @@ public sealed class SkillComboService : ISkillComboService
 {
     private readonly Dictionary<EntityId, (ushort skill, ushort level, long expiresAt)> _comboState = new();
     private readonly IEntityRegistry _entities;
+    private readonly ISkillDb? _skillDb;
     private readonly ILogger<SkillComboService> _logger;
 
-    public SkillComboService(IEntityRegistry entities, ILogger<SkillComboService> logger)
+    public SkillComboService(IEntityRegistry entities, ILogger<SkillComboService> logger, ISkillDb? skillDb = null)
     {
         _entities = entities;
         _logger = logger;
+        _skillDb = skillDb;
     }
 
     public void Combo(PlayerEntity caster, ushort skillId, ushort skillLevel, int durationMs)
@@ -30,6 +32,16 @@ public sealed class SkillComboService : ISkillComboService
     {
         if (!_comboState.TryGetValue(caster.Id, out var s)) return false;
         if (s.expiresAt < Environment.TickCount64) { _comboState.Remove(caster.Id); return false; }
+        // SK.100-1a — consult per-skill Combo chain. If the in-flight
+        // combo's "next allowed" list (from skill_db) contains the
+        // requested skill, the chain is alive. Falls back to the
+        // legacy same-skill check when no SkillDb is wired.
+        if (_skillDb != null)
+        {
+            var chain = _skillDb.GetCombo(s.skill);
+            foreach (var nextId in chain)
+                if (nextId == skillId) return true;
+        }
         return s.skill == skillId;
     }
 

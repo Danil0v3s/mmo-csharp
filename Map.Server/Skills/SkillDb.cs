@@ -22,6 +22,23 @@ public interface ISkillDb
     /// <summary>Reload the catalog from the backing source (DB if seeded, else the hand-built fallback).</summary>
     void Reload();
 
+    /// <summary>
+    /// SK.100-1a — rAthena <c>SkillDatabase::loadingFinished</c>
+    /// (skill.cpp:25856). Validates the catalog post-load: MAX_SKILL
+    /// guard + per-skill <see cref="SkillDefinition.Combo"/> chain
+    /// references resolve to known skill ids. Logged warnings for
+    /// unresolvable refs; doesn't throw (matches rAthena's
+    /// <c>ShowError</c> + continue pattern).
+    /// </summary>
+    void LoadingFinished();
+
+    /// <summary>
+    /// SK.100-1a — combo-chain accessor used by
+    /// <see cref="ISkillComboService.IsCombo"/>. Returns an empty
+    /// array when the skill doesn't start a chain.
+    /// </summary>
+    System.ReadOnlySpan<ushort> GetCombo(ushort skillId);
+
     // ---- rAthena skill_get_* accessors (skill.cpp ~120..520).
     // Per-level columns clamp to MaxLevel; out-of-range levels return 0.
 
@@ -178,6 +195,7 @@ public sealed class SkillDb : ISkillDb
                 {
                     _byId = loaded;
                     _logger?.LogInformation("Loaded {N} skills from skill_db SQL table", rows.Count);
+                    LoadingFinished();
                     return;
                 }
             }
@@ -189,6 +207,7 @@ public sealed class SkillDb : ISkillDb
         // Empty DB or load failure → starter catalog.
         _byId = new Dictionary<ushort, SkillDefinition>();
         LoadFallback();
+        LoadingFinished();
     }
 
     private void LoadFallback()
@@ -279,6 +298,19 @@ public sealed class SkillDb : ISkillDb
 
     private void Add(SkillDefinition def) => _byId[def.Id] = def;
 
+    /// <summary>
+    /// SK.100-1a — test/seed hook to register or overwrite a single
+    /// skill definition. Lets parity tests + future YAML loaders inject
+    /// entries without subclassing the sealed SkillDb. Calls
+    /// <see cref="LoadingFinished"/> when <paramref name="revalidate"/>
+    /// is true so combo refs re-resolve.
+    /// </summary>
+    public void Register(SkillDefinition def, bool revalidate = false)
+    {
+        _byId[def.Id] = def;
+        if (revalidate) LoadingFinished();
+    }
+
     // -----------------------------------------------------------------
     // rAthena skill_get_* accessors. Each helper resolves the catalog
     // row then reads the matching column with a safe per-level clamp.
@@ -355,6 +387,55 @@ public sealed class SkillDb : ISkillDb
     public int GetUnitInterval(ushort id) => Get(id)?.UnitIntervalMs ?? 0;
     public int GetUnitRange(ushort id) => Get(id)?.UnitRange ?? 0;
     public int GetUnitLayoutType(ushort id) => Get(id)?.UnitLayoutType ?? 0;
+
+    // SK.100-1a — rAthena MAX_SKILL guard (skill.hpp). The C# port
+    // doesn't pre-allocate by index, but we mirror the warning so a
+    // skill_db that overshoots a sensible cap shows up at boot.
+    private const int MaxSkillSoftCap = 8192;
+
+    /// <inheritdoc />
+    public void LoadingFinished()
+    {
+        if (_byId.Count > MaxSkillSoftCap)
+        {
+            _logger?.LogError(
+                "skill_db has {Count} entries, exceeds the soft cap {Cap}. " +
+                "rAthena MAX_SKILL guard equivalent — extend SkillDb._byId capacity " +
+                "or raise MaxSkillSoftCap if intentional.",
+                _byId.Count, MaxSkillSoftCap);
+        }
+
+        // Validate combo references: every entry in SkillDefinition.Combo
+        // should resolve to a catalog row. Unresolvable refs warn but
+        // don't fail loading (matches rAthena ShowError + continue).
+        var unresolved = 0;
+        foreach (var def in _byId.Values)
+        {
+            if (def.Combo.Length == 0) continue;
+            foreach (var nextId in def.Combo)
+            {
+                if (nextId == 0) continue;
+                if (!_byId.ContainsKey(nextId))
+                {
+                    unresolved++;
+                    _logger?.LogWarning(
+                        "skill_db combo: skill '{Skill}' (id {Id}) chains to undefined skill id {NextId}",
+                        def.Name, def.Id, nextId);
+                }
+            }
+        }
+        if (unresolved > 0)
+        {
+            _logger?.LogInformation(
+                "SkillDb.LoadingFinished: {N} unresolved combo references " +
+                "(safe to ignore if those skills are pre-port).",
+                unresolved);
+        }
+    }
+
+    /// <inheritdoc />
+    public System.ReadOnlySpan<ushort> GetCombo(ushort skillId)
+        => Get(skillId)?.Combo ?? System.ReadOnlySpan<ushort>.Empty;
     public bool GetUnitFlag(ushort id, SkillUnitFlag flag) => (Get(id)?.UnitFlags ?? SkillUnitFlag.None).HasFlag(flag);
     public int GetElementalType(ushort id) => Get(id)?.ElementalType ?? 0;
 

@@ -218,4 +218,14 @@ public sealed record SkillDefinition
     public SkillNk Nk { get; init; }
     /// <summary>rAthena <c>UF_*</c> bitfield (ground-unit flags).</summary>
     public SkillUnitFlag UnitFlags { get; init; }
+
+    /// <summary>
+    /// SK.100-1a — rAthena <c>Combo:</c> field. List of skill IDs that
+    /// can immediately follow this skill (the "combo chain"). Empty
+    /// when the skill doesn't start a combo. Consumed by
+    /// <see cref="ISkillComboService.IsCombo"/> via <c>ISkillDb</c>
+    /// so the in-flight combo gate checks the per-skill chain table
+    /// instead of returning the raw caster state.
+    /// </summary>
+    public ushort[] Combo { get; init; } = Array.Empty<ushort>();
 }
