@@ -4,21 +4,32 @@ using Microsoft.Extensions.Logging;
 namespace Map.Server.Status.StatusOps;
 
 /// <summary>
-/// Default <see cref="IStatusOpsService"/>. Real reads come from
-/// <see cref="BattleStats"/> on the entity; the SC engine forwarders
-/// delegate to <see cref="IStatusChangeService"/> when wired. Calc
-/// + regen + readDB methods are entry points whose body lives on
-/// the existing IStatusCalcService — surfaced here so the rAthena
-/// port reads 1:1.
+/// Default <see cref="IStatusOpsService"/>. ST.2 refresh — stubs that
+/// returned 0 / no-op now forward to the real services
+/// (<see cref="IStatusChangeService"/>, <see cref="IStatusCalcService"/>,
+/// <see cref="INaturalHealService"/>, <see cref="EntityActionGates"/>,
+/// <see cref="MobMode.StatusImmune"/>) so the rAthena-named entry
+/// points actually do the right thing.
+///
+/// HP/SP delta + ATK/DEF/HIT/FLEE accessors stay backed by <see cref="BattleStats"/>
+/// directly (cheapest path; matches rAthena's <c>status_get_*</c> field reads).
 /// </summary>
 public sealed class StatusOpsService : IStatusOpsService
 {
     private readonly IStatusChangeService _sc;
+    private readonly IStatusCalcService? _calc;
+    private readonly INaturalHealService? _natural;
     private readonly ILogger<StatusOpsService> _logger;
 
-    public StatusOpsService(IStatusChangeService sc, ILogger<StatusOpsService> logger)
+    public StatusOpsService(
+        IStatusChangeService sc,
+        ILogger<StatusOpsService> logger,
+        IStatusCalcService? calc = null,
+        INaturalHealService? natural = null)
     {
         _sc = sc;
+        _calc = calc;
+        _natural = natural;
         _logger = logger;
     }
 
@@ -101,14 +112,53 @@ public sealed class StatusOpsService : IStatusOpsService
         return false;
     }
 
-    // --- calc forwarders ---------------------------------------------
-    public void CalcBl(Entity bl, int flag) { }
-    public void CalcPc(PlayerEntity pc, int opt) { }
-    public void CalcMob(MobEntity mob, byte opt) { }
-    public void CalcHomunculus(Entity homun, byte opt) { }
-    public void CalcMercenary(Entity merc, byte opt) { }
-    public void CalcElemental(Entity ele, byte opt) { }
-    public void CalcPet(Entity pet, byte opt) { }
+    // --- calc forwarders (ST.2 — real wiring) ------------------------
+    /// <inheritdoc />
+    public void CalcBl(Entity bl, int flag)
+    {
+        // rAthena status_calc_bl dispatches by entity type; mirror that here.
+        switch (bl)
+        {
+            case PlayerEntity pc: CalcPc(pc, flag); break;
+            case MobEntity mob: CalcMob(mob, (byte)flag); break;
+        }
+    }
+
+    /// <inheritdoc />
+    public void CalcPc(PlayerEntity pc, int opt)
+    {
+        // rAthena status_calc_pc_ rebuilds BattleStats from the PC's
+        // base stats + equipment + bonuses. The real impl lives on
+        // IStatusCalcService and needs a PcBaseInputs payload — the
+        // EquipBonus aggregator already populates that pipeline when
+        // the caller goes through pc_calcstats. From the StatusOps
+        // surface we can only rebuild from the current stat block;
+        // callers that need a full equip-aware rebuild route through
+        // IPlayerLifecycleHelpers or IEquipService.
+        if (_calc == null) return;
+        var inputs = new PcBaseInputs(
+            BaseLevel: pc.Level, JobLevel: pc.JobLevel,
+            Str: pc.Stats.Str, Agi: pc.Stats.Agi, Vit: pc.Stats.Vit,
+            Int: pc.Stats.IntStat, Dex: pc.Stats.Dex, Luk: pc.Stats.Luk,
+            Pow: 0, Sta: 0, Wis: 0, Spl: 0, Con: 0, Crt: 0,
+            WeaponAtkMin: pc.Stats.WatkMin, WeaponAtkMax: pc.Stats.WatkMax,
+            EquipDef: pc.Stats.Def, EquipMdef: pc.Stats.Mdef,
+            AttackRange: pc.Stats.AttackRange,
+            WeaponElement: (BattleElement)pc.Stats.WeaponElement);
+        _calc.CalcPc(pc, inputs);
+    }
+
+    /// <inheritdoc />
+    public void CalcMob(MobEntity mob, byte opt)
+        => _calc?.CalcMob(mob);
+
+    public void CalcHomunculus(Entity homun, byte opt) { /* IHomunculusService.RecvData drives this */ }
+    public void CalcMercenary(Entity merc, byte opt) { /* IMercenaryService.RecvData drives this */ }
+    public void CalcElemental(Entity ele, byte opt) { /* IElementalService.DataReceived drives this */ }
+    public void CalcPet(Entity pet, byte opt)
+    {
+        if (pet is MobEntity m) _calc?.CalcMob(m);
+    }
 
     // --- ATK / DEF derivatives ---------------------------------------
     public int GetAtk(Entity bl, byte flag) => (bl.Stats.WatkMin + bl.Stats.WatkMax) / 2;
@@ -157,21 +207,69 @@ public sealed class StatusOpsService : IStatusOpsService
     public int GetMaxSp(Entity bl) => bl is PlayerEntity p ? p.MaxSp : 0;
     public int GetLv(Entity bl) => bl.Level;
 
-    // --- regen / refresh ---------------------------------------------
-    public int NaturalHeal(long tick) => 0;
-    public void CalcRegen(Entity bl) { }
-    public void CalcRegenRate(Entity bl) { }
-    public int ChangeClear(Entity bl, byte type) => 0;
-    public void ChangeClearBuffs(Entity bl, byte type) { }
-    public void ChangeClearDebuffs(Entity bl) { }
+    // --- regen / refresh (ST.2 — real wiring) ------------------------
+    /// <inheritdoc />
+    public int NaturalHeal(long tick)
+    {
+        _natural?.Tick(tick);
+        return 0;
+    }
 
-    // --- SC engine forwarders ----------------------------------------
-    public int ChangeStart(Entity src, Entity bl, int type, int rate, int val1, int val2, int val3, int val4, int duration, byte flag) => 0;
-    public int ChangeEnd(Entity bl, int type, int timerId) => 0;
-    public object? GetSc(Entity bl) => null;
-    public bool CheckSkillUse(Entity src, Entity target, ushort skillId, byte flag) => true;
+    public void CalcRegen(Entity bl) { /* NaturalHealService computes regen on the fly */ }
+    public void CalcRegenRate(Entity bl) { /* same — rate isn't cached */ }
+
+    /// <inheritdoc />
+    public int ChangeClear(Entity bl, byte type)
+        => _sc.ClearAll(bl, type);
+
+    /// <inheritdoc />
+    public void ChangeClearBuffs(Entity bl, byte type)
+    {
+        // rAthena passes a uint8 mask matching the SccbFlag bits.
+        _sc.ClearBuffs(bl, (SccbFlag)type);
+    }
+
+    /// <inheritdoc />
+    public void ChangeClearDebuffs(Entity bl)
+        => _sc.ClearBuffs(bl, SccbFlag.Debuffs);
+
+    // --- SC engine forwarders (ST.2 — real wiring) -------------------
+    /// <inheritdoc />
+    public int ChangeStart(Entity src, Entity bl, int type, int rate, int val1, int val2, int val3, int val4, int duration, byte flag)
+    {
+        // rAthena rate is a 0-10000 chance scaled to 100% — caller
+        // pre-rolled if rate < 10000. Mirror that: caller is expected
+        // to gate on rate; we always start (matches the existing
+        // rAthena pattern when SCSTART_NOAVOID is set).
+        var sc = _sc.Start(bl, (StatusType)type, val1, val2, val3, val4, duration, src);
+        return sc != null ? 1 : 0;
+    }
+
+    /// <inheritdoc />
+    public int ChangeEnd(Entity bl, int type, int timerId)
+        => _sc.End(bl, (StatusType)type) ? 1 : 0;
+
+    /// <inheritdoc />
+    public object? GetSc(Entity bl) => null; // rAthena returns a raw sc_data pointer; our model uses per-type Get().
+
+    /// <inheritdoc />
+    public bool CheckSkillUse(Entity src, Entity target, ushort skillId, byte flag)
+    {
+        // rAthena status_check_skilluse gate. Our EntityActionGates
+        // already covers the OPT1 / Silence / Confusion subset.
+        return src.CanCastSkill(_sc);
+    }
+
     public bool IsDead(Entity bl) => bl switch { PlayerEntity p => p.Hp <= 0, MobEntity m => m.Hp <= 0, _ => false };
-    public bool IsImmune(Entity bl) => false;
+
+    /// <inheritdoc />
+    public bool IsImmune(Entity bl)
+    {
+        // rAthena: status_isimmune checks MD_STATUSIMMUNE on mob mode
+        // plus Emperium / Battlefield mob class. Our MobMode.StatusImmune
+        // covers the mode bit; per-class checks live in the calling skill.
+        return bl is MobEntity m && (m.Stats.Mode & MobMode.StatusImmune) != 0;
+    }
 
     public void ReadDb() { }
     public void DbReload() { }
