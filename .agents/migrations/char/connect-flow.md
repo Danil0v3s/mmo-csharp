@@ -61,6 +61,12 @@ None.
 
 ## History
 
+- **2026-05-22** — **T6.3 audit-doc refresh — verified 0 ❌.** Companion
+  to T5.2's map-tree sweep. Per-step parity table all ✅; pincode flow
+  fully aligned with rAthena (P2); cross-server dup-online wired (P3);
+  `ResolveKickTargetServerId` extracted (P4). Full audit rollup at
+  [../T6-audit-2026-05-22.md](../T6-audit-2026-05-22.md). No code
+  changes — this is a checkpoint for future audits.
 - **2026-05-16** — **P4 closed.** Extracted `ResolveKickTargetServerId` static helper that decides whether to kick a cross-server live session given the login server's `IsAccountOnlineAnywhere` response. Added 4 unit tests in [ConnectFlowRegressionGuardTests.cs](../../../Char.Server.Tests/Services/ConnectFlowRegressionGuardTests.cs) covering: RPC null/unreachable, account not online elsewhere, online on a different server, defensive guard against server_id=0 in malformed responses. Full multi-server integration harness (in-process gRPC, two char servers + one login) deferred to P7.
 - **2026-05-16** — **P3 connect-flow items closed:**
   - Cross-server duplicate-online check wired: [ClientConnectHandler.cs](../../../Char.Server/Handlers/ClientConnectHandler.cs) now calls `IsAccountOnlineAnywhereAsync` after the local duplicate-session guard. If positive, kicks the older session via `NotifyAccountStatusAsync(online: false)` so login fans out a force-disconnect to the other char server.

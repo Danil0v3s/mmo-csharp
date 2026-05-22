@@ -57,6 +57,12 @@ Per-handler tests in [Char.Server.Tests/Handlers/](../../../Char.Server.Tests/Ha
 
 ## History
 
+- **2026-05-22** — **T6.3 audit-doc refresh — verified 0 ❌.** Companion
+  to T5.2's map-tree sweep. All 17 client packet handlers ✅; the two
+  deliberate divergences (`CH_KEEP_ALIVE` stricter check, `CH_REQ_CHANGE_CHARNAME`
+  resend burst) remain resolved in the P2 history entry below. Full audit
+  rollup at [../T6-audit-2026-05-22.md](../T6-audit-2026-05-22.md). No
+  code changes — this is a checkpoint for future audits.
 - **2026-05-16** — **P2 closed for packets:**
   - `CH_KEEP_ALIVE 0x187` stricter check (validate account_id, disconnect on mismatch) kept as a **deliberate divergence** — catches forged keep-alive packets that rAthena lets through. Marked won't-fix.
   - `CH_REQ_CHANGE_CHARNAME 0x8fc` resend burst: re-audited [`CharacterRenameApplyHandler.cs:74-113`](../../../Char.Server/Handlers/CharacterRenameApplyHandler.cs) against rAthena `chclif_mmo_char_send` ([char_clif.cpp:440-453](/Volumes/1TB/Projetos/rathena/src/char/char_clif.cpp)). Both send the same 4 packets in order: `HC_ACCEPT_ENTER2` + `HC_ACCEPT_ENTER` + `HC_CHARLIST_NOTIFY` + `HC_BLOCK_CHARACTER`. Earlier audit was wrong; no change needed.

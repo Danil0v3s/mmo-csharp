@@ -82,6 +82,13 @@ None.
 
 ## History
 
+- **2026-05-22** — **T6.3 audit-doc refresh — verified 0 ❌.** Companion
+  to T5.2's map-tree sweep. Re-grepped this doc against the acceptance
+  criterion `awk '/^\| / && /❌/'` — no stale rows. C-H1 / C-H2 / C-M1 /
+  C-M2 / C-M3 (2026-05-19 entry below) and the P1 data-loss fixes
+  (2026-05-16) are cited in the per-RPC tables above. Full audit rollup
+  at [../T6-audit-2026-05-22.md](../T6-audit-2026-05-22.md). No code
+  changes — this is a checkpoint for future audits.
 - **2026-05-19** — **Final char-side parity gaps closed (100%).**
   - **Periodic housekeeping**: new [CharMaintenanceService](../../../Char.Server/Services/CharMaintenanceService.cs) ports rAthena's three background timers (`mail_return_timer` + `mail_delete_timer` from `int_mail.cpp:317/321`, `char_clan_member_cleanup` from `char.cpp:2216`). `MailReturnDays` / `MailDeleteDays` / `ClanRemoveInactiveDays` / `MailReturnEmpty` config knobs now drive real behavior. Driven from `CharServerImpl.UpdateGameLogicAsync` per game tick; each pass is deadline-gated internally so the loop call is cheap. 7 regression tests in `CharMaintenanceServiceTests.cs` cover return + delete + clan flows including the `MailReturnEmpty=0` skip and the disabled-knob no-op.
   - **`MailRetrieve` gate**: [CharGrpcService.MailGetAttachment](../../../Char.Server/CharGrpcService.cs) now refuses attachment retrieval when `mail_retrieve == 0` and the mail isn't yet `MAIL_READ`, matching `int_mail.cpp:385`.
