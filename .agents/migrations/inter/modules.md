@@ -135,6 +135,15 @@ None. All HIGH/MEDIUM bugs closed in P1; LOW `PartyShareLevel` closed in P2.
 
 ## History
 
+- **2026-05-22** — **T6.4 audit-doc refresh — verified 0 ❌.** Companion
+  to T5.2's map-tree sweep. All 12 module families (party / guild /
+  storage / mail / auction / quest / achievement / pet / homun / merc /
+  elem / clan) ✅ char-side; map-side callers tracked separately in
+  [../map/ipc-integration.md](../map/ipc-integration.md) as legitimate
+  🔁 pending-integration (not stale ❌). P1 data-loss + P8 cascade waves
+  cited in entries below. Full audit rollup at
+  [../T6-audit-2026-05-22.md](../T6-audit-2026-05-22.md). No code
+  changes — this is a checkpoint for future audits.
 - **2026-05-16** — **P8 cascade & persistence fixes** (pre-gameplay audit closed 4 gaps):
   - **PartyLeave**: when the leader leaves, party now fully disbands (clears all members' `party_id` + removes the party row) matching rAthena's `mapif_parse_PartyLeave` → `mapif_parse_BreakParty` chain in `int_party.cpp:633`. Non-leader leaves still just remove that member.
   - **GuildBreak**: now cascades cleanup to `guild_member`, `guild_position`, `guild_skill`, `guild_alliance` (both sides), `guild_expulsion`, and `guild_storage_payload`. `guild_castle` rows are kept but `guild_id` is cleared (rAthena parity — castles re-capturable, not deleted).

@@ -37,6 +37,13 @@ gameplay work — map handlers currently log + queue.
 
 ## History
 
+- **2026-05-22** — **T6.4 audit-doc refresh — verified 0 ❌.** Companion
+  to T5.2's map-tree sweep. All routing (broadcast / whisper / name-change /
+  address-sync) wired via P5; the map-side client emission noted as
+  "gameplay work" is the legitimate 🔁 pending-integration tail, not
+  a stale ❌. Full audit rollup at
+  [../T6-audit-2026-05-22.md](../T6-audit-2026-05-22.md). No code
+  changes — this is a checkpoint for future audits.
 - **2026-05-16** — **P5 complete.** All inter-base routing wired:
   - Added 6 push RPCs to [map_service.proto](../../../Core.Server/Protos/map_service.proto): `ReceiveBroadcast`, `ReceiveItemBroadcast`, `ReceiveWhisper`, `ReceiveWhisperToGm`, `NotifyNameChange`, `NotifyAddressSync`.
   - Added `IMapServerIpcService` + `MapServerIpcService` char-side wrapper that fans out to all connected maps (and aggregates whisper acks).
