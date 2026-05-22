@@ -1,4 +1,4 @@
-# pc_groups.cpp parity · 2026-05-20
+# pc_groups.cpp parity · 2026-05-22 (T9.F — per-fn rollup)
 
 `src/map/pc_groups.cpp` (406 lines, 10 functions) — `groups.yml`
 loader + per-PC permission resolution.
@@ -22,7 +22,22 @@ arg have a single call.
 | `pc_groups_reload` | ✅ | `PlayerGroupsService.Reload` |
 | `do_init_pc_groups` / `do_final_pc_groups` | ✅ | DI lifecycle |
 
+## Coverage summary
+
+| Bucket | ✅ | ⚠️ | ❌ | Total |
+|---|---|---|---|---|
+| Group YAML loader + permission resolver | 9 | 1 | 0 | 10 |
+| **Totals** | **9** | **1** | **0** | **10** |
+
 ## History
+
+### 2026-05-22 — T9.F per-fn rollup
+
+Per-function audit. Baseline: **9 ✅ / 1 ⚠️ / 0 ❌**. Group YAML
+loader (parseBodyNode / parseCommands / loadingFinished) + per-PC
+permission resolver (HasPermission / CanUseCommand / PcLoad /
+Reload) + DI lifecycle all ✅. Lone ⚠️ is `should_log_commands`
+(knob default rather than real per-group flag — easy fix).
 
 ### 2026-05-20 — initial audit + service
 - `IPlayerGroupsService` / `PlayerGroupsService` covers all 10 functions.
