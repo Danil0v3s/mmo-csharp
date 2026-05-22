@@ -18,6 +18,7 @@ public sealed class StatusChangeService : IStatusChangeService
     private readonly IDamageService _damage;
     private readonly IEntityRegistry _entities;
     private readonly StatusEffectRegistry _effects;
+    private readonly Map.Server.Handlers.ClifWire.IClifWireService? _clif;
     private readonly ILogger<StatusChangeService> _logger;
 
     /// <summary>
@@ -30,11 +31,13 @@ public sealed class StatusChangeService : IStatusChangeService
         IDamageService damage,
         IEntityRegistry entities,
         StatusEffectRegistry effects,
-        ILogger<StatusChangeService> logger)
+        ILogger<StatusChangeService> logger,
+        Map.Server.Handlers.ClifWire.IClifWireService? clif = null)
     {
         _damage = damage;
         _entities = entities;
         _effects = effects;
+        _clif = clif;
         _logger = logger;
     }
 
@@ -79,6 +82,14 @@ public sealed class StatusChangeService : IStatusChangeService
         perEntity[type] = sc;
 
         handler.OnStart(target, sc, source);
+
+        // T5.3b — clif_status_change to AOI. The client uses this to
+        // turn on the buff/debuff icon over the target. Per rAthena
+        // (status.cpp:status_change_start) the broadcast fires AFTER
+        // the handler has populated its visible state.
+        _clif?.StatusChange(target, type, active: true, durationMs,
+            val1, val2, val3);
+
         return sc;
     }
 
@@ -91,6 +102,10 @@ public sealed class StatusChangeService : IStatusChangeService
         handler?.OnEnd(target, sc);
 
         if (perEntity.Count == 0) _active.Remove(target.Id);
+
+        // T5.3b — icon-off broadcast.
+        _clif?.StatusChange(target, type, active: false);
+
         return true;
     }
 

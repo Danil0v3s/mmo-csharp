@@ -37,6 +37,24 @@ public interface IClifWireService
     /// </summary>
     void MobChat(Entities.MobEntity mob, uint colorRgb, string text);
 
+    /// <summary>
+    /// T5.3b — rAthena <c>clif_status_change</c> (clif.cpp:9852) +
+    /// <c>clif_efst_status_change</c>. Broadcasts the SC icon on/off
+    /// frame (ZC_MSG_STATE_CHANGE / ZC_EFST_STATUS_CHANGE) to AOI so
+    /// every nearby PC's HUD shows the buff/debuff icon over the target.
+    /// Fires from <see cref="Map.Server.Status.IStatusChangeService.Start"/> /
+    /// <see cref="Map.Server.Status.IStatusChangeService.End"/>.
+    /// </summary>
+    /// <param name="target">Entity carrying the SC.</param>
+    /// <param name="type">SC id (mapped to rAthena SC_*).</param>
+    /// <param name="active">True for SC start (icon on), false for SC end (icon off).</param>
+    /// <param name="totalMs">Total SC duration in ms (only meaningful when active).</param>
+    /// <param name="val1">Per-SC value 1 (e.g. ATK% boost amount).</param>
+    /// <param name="val2">Per-SC value 2.</param>
+    /// <param name="val3">Per-SC value 3.</param>
+    void StatusChange(Entities.Entity target, Map.Server.Status.StatusType type, bool active,
+        int totalMs = 0, int val1 = 0, int val2 = 0, int val3 = 0);
+
     /// <summary>rAthena <c>clif_displaymessage</c> — single-line message in chat.</summary>
     void DisplayMessage(PlayerEntity pc, string text);
 

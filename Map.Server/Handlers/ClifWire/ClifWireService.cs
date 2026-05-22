@@ -15,6 +15,21 @@ public sealed class ClifWireService : IClifWireService
 
     public void MessageColor(PlayerEntity pc, uint colorRgb, string text)
         => _logger.LogDebug("clif_messagecolor pc={Pc} #{Color:X6} {Text}", pc.Id, colorRgb, text);
+    public void StatusChange(Entity target, Map.Server.Status.StatusType type, bool active,
+        int totalMs = 0, int val1 = 0, int val2 = 0, int val3 = 0)
+    {
+        // T5.3b — rAthena clif_status_change (clif.cpp:9852) +
+        // clif_efst_status_change. The wire packet is one of
+        // ZC_MSG_STATE_CHANGE (0x0196) / ZC_MSG_STATE_CHANGE2 (0x043f) /
+        // ZC_EFST_STATUS_CHANGE (0x0983) depending on PACKETVER. We
+        // log here so consumers can wire the canonical name; the
+        // per-packet OutgoingPacket emitter lands when the live
+        // client's status-icon set is mapped end-to-end.
+        _logger.LogDebug(
+            "clif_status_change target={Target} sc={Sc} active={Active} ms={Ms} val1={V1} val2={V2} val3={V3}",
+            target.Id, type, active, totalMs, val1, val2, val3);
+    }
+
     public void MobChat(MobEntity mob, uint colorRgb, string text)
     {
         // rAthena mob.cpp:4210-4217 — drop everything after the first
