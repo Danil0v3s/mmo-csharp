@@ -499,6 +499,181 @@ public sealed class GuildService : IGuildService
         return s.Length <= max ? s : s.Substring(0, max);
     }
 
+    // ---------- GD-L1: misc helpers + skill table ----------
+
+    /// <summary>
+    /// Hard-coded per-skill caps for the GD_* family. Mirrors the
+    /// max levels in rAthena's guild_skill_tree.yml. We keep this
+    /// as an in-process table because the YAML loader for the
+    /// guild skill tree hasn't ported yet; the cap is the part the
+    /// gameplay code actually needs.
+    /// </summary>
+    private static readonly System.Collections.Generic.Dictionary<ushort, ushort> SkillMaxLevels = new()
+    {
+        // GD_APPROVAL = 10000, single-level prereq
+        { 10000, 1 },
+        // GD_KAFRACONTRACT = 10001 — 5 levels of kafra cost reduction
+        { 10001, 5 },
+        // GD_GUARDRESEARCH = 10002 — 10 levels (castle guards)
+        { 10002, 10 },
+        // GD_GUARDUP = 10003 — 3 levels (castle guard hp)
+        { 10003, 3 },
+        // GD_EXTENSION = 10004 — 10 levels (member cap +6 each)
+        { 10004, 10 },
+        // GD_GLORYGUILD = 10005 — emblem-change prereq
+        { 10005, 1 },
+        // GD_LEADERSHIP / GLORYWOUNDS / SOULCOLD / HAWKEYES — aura skills (1 lvl)
+        { 10006, 1 }, { 10007, 1 }, { 10008, 1 }, { 10009, 1 },
+        // GD_BATTLEORDER / REGENERATION / RESTORE / EMERGENCYCALL — combat skills (1 lvl)
+        { 10010, 1 }, { 10011, 1 }, { 10012, 1 }, { 10013, 1 },
+        // GD_DEVELOPMENT = 10014 — donation efficiency (1 lvl)
+        { 10014, 1 },
+        // GD_GUILD_STORAGE = 10015 — guild storage gate (1 lvl)
+        { 10015, 1 },
+    };
+
+    public int CheckSkill(int guildId, ushort skillId)
+    {
+        var g = Find(guildId);
+        return g?.GetSkillLevel(skillId) ?? 0;
+    }
+
+    public ushort SkillGetMax(ushort skillId)
+        => SkillMaxLevels.TryGetValue(skillId, out var max) ? max : (ushort)0;
+
+    public bool CheckSkillRequire(int guildId, ushort skillId)
+    {
+        // The full prereq table (guild_skill_tree_db.yml `need:`) isn't
+        // loaded; rAthena defaults to allow when the skill isn't in
+        // the tree. We mirror that for now — flips to a real lookup
+        // once the loader ports.
+        return Find(guildId) != null;
+    }
+
+    /// <summary>Per-PC cooldown map keyed by (charId, skillId) -> expiry tick.</summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<(int, ushort), long> _skillBlocks = new();
+
+    /// <summary>GD_BATTLEORDER / GD_REGENERATION / GD_RESTORE / GD_EMERGENCYCALL.</summary>
+    private static readonly ushort[] BlockableSkills = new ushort[] { 10010, 10011, 10012, 10013 };
+
+    public void BlockSkill(PlayerEntity pc, int durationMs)
+    {
+        if (pc == null || durationMs <= 0) return;
+        var expiry = System.Environment.TickCount64 + durationMs;
+        foreach (var sid in BlockableSkills)
+            _skillBlocks[(pc.CharacterId, sid)] = expiry;
+    }
+
+    public int GetBlockedSkillRemaining(PlayerEntity pc, ushort skillId)
+    {
+        if (pc == null) return 0;
+        if (!_skillBlocks.TryGetValue((pc.CharacterId, skillId), out var expiry)) return 0;
+        var remaining = expiry - System.Environment.TickCount64;
+        if (remaining <= 0)
+        {
+            _skillBlocks.TryRemove((pc.CharacterId, skillId), out _);
+            return 0;
+        }
+        return (int)System.Math.Min(remaining, int.MaxValue);
+    }
+
+    public int SkillUpAck(int guildId, ushort skillId, int accountId)
+    {
+        var g = Find(guildId);
+        if (g == null) return 0;
+        // Promote the cached level. The actual cap check happened on
+        // the outbound SkillUp; here we just mirror the new value.
+        var current = g.GetSkillLevel(skillId);
+        var max = SkillGetMax(skillId);
+        if (max > 0 && current >= max) return 0;
+        g.Skills[skillId] = current + 1;
+        // Spend a skill point if any are pending.
+        if (g.SkillPoints > 0) g.SkillPoints--;
+        return 1;
+    }
+
+    public void GuildAuraRefresh(PlayerEntity caster, ushort skillId, ushort skillLevel)
+    {
+        // rAthena guild.cpp:1786 — creates a ground unit + applies an
+        // SC on each member in range. Status engine isn't wired in
+        // here; we log so the consumer can observe the trigger.
+        if (caster == null) return;
+        _logger.LogDebug("GuildAuraRefresh: guild {GuildId} caster {CharId} skill {SkillId} lv {Lv}",
+            caster.GuildId, caster.CharacterId, skillId, skillLevel);
+    }
+
+    public int GetAvailableMemberCharId(int guildId)
+    {
+        var g = Find(guildId);
+        if (g == null) return 0;
+        foreach (var m in g.Members)
+            if (m.Online && m.CharId > 0)
+                return m.CharId;
+        return 0;
+    }
+
+    public int RetrieveItemBound(int charId, int accountId, int guildId)
+    {
+        // BOUND_ITEMS path — char-side mails the items back. Smoke
+        // logging until the storage IPC consumer ports.
+        _logger.LogDebug("RetrieveItemBound: char {CharId}/{AID} from guild {GuildId}", charId, accountId, guildId);
+        return 1;
+    }
+
+    public int BrokenSub(int brokenGuildId)
+    {
+        if (brokenGuildId <= 0) return 0;
+        int touched = 0;
+        foreach (var g in _byId.Values)
+        {
+            for (int i = g.Alliances.Count - 1; i >= 0; i--)
+            {
+                if (g.Alliances[i].GuildId == brokenGuildId)
+                {
+                    g.Alliances.RemoveAt(i);
+                    touched++;
+                }
+            }
+        }
+        _byId.TryRemove(brokenGuildId, out _);
+        return touched;
+    }
+
+    public System.Collections.Generic.IReadOnlyList<int> SendXyTimerSub(int guildId)
+    {
+        var g = Find(guildId);
+        if (g == null) return System.Array.Empty<int>();
+        var list = new System.Collections.Generic.List<int>();
+        foreach (var m in g.Members)
+            if (m.Online && m.CharId > 0) list.Add(m.CharId);
+        return list;
+    }
+
+    // Flag NPC registry — rAthena guild.cpp:2650+. Plain set; the
+    // ground-unit / npc layer drives lookup.
+    private readonly System.Collections.Generic.HashSet<int> _flagNpcs = new();
+
+    public void FlagAdd(int npcId)
+    {
+        if (npcId == 0) return;
+        lock (_flagNpcs) _flagNpcs.Add(npcId);
+    }
+
+    public void FlagRemove(int npcId)
+    {
+        lock (_flagNpcs) _flagNpcs.Remove(npcId);
+    }
+
+    public void FlagsClear()
+    {
+        lock (_flagNpcs) _flagNpcs.Clear();
+    }
+
+    public System.Collections.Generic.IReadOnlyList<int> GetFlagNpcs()
+    {
+        lock (_flagNpcs) return _flagNpcs.ToArray();
+    }
+
     // ---------- GD-M2: alliance / opposition ----------
 
     /// <summary>

@@ -255,4 +255,55 @@ public interface IGuildService
     /// Returns 1 on mutation, 0 on failure.
     /// </summary>
     int OnAllianceAck(int guildId1, int guildId2, string name1, string name2, int flag);
+
+    // -----------------------------------------------------------------
+    // GD-L1 — misc helpers + skill table
+    // -----------------------------------------------------------------
+
+    /// <summary>rAthena <c>guild_checkskill</c> (cpp:246). Returns the guild's learned skill level or 0.</summary>
+    int CheckSkill(int guildId, ushort skillId);
+
+    /// <summary>rAthena <c>guild_skill_get_max</c> (cpp:235). Per-skill max-level lookup (GD_*).</summary>
+    ushort SkillGetMax(ushort skillId);
+
+    /// <summary>rAthena <c>guild_check_skill_require</c> (cpp:255). True if all prereqs are met.</summary>
+    bool CheckSkillRequire(int guildId, ushort skillId);
+
+    /// <summary>rAthena <c>guild_block_skill</c> (cpp:1825). Registers a per-PC cooldown for the common guild skills (Battle Orders / Regen / Restore / Emergency Call).</summary>
+    void BlockSkill(PlayerEntity pc, int durationMs);
+
+    /// <summary>Returns the remaining cooldown for the given guild skill on the given PC, or 0 if none.</summary>
+    int GetBlockedSkillRemaining(PlayerEntity pc, ushort skillId);
+
+    /// <summary>rAthena <c>guild_skillupack</c> (cpp:1754). Inbound: mutate cached skill table.</summary>
+    int SkillUpAck(int guildId, ushort skillId, int accountId);
+
+    /// <summary>rAthena <c>guild_guildaura_refresh</c> (cpp:1786). Reapply guild-aura SC on each online member. Marker only here — the SC apply lands when the status consumer ports.</summary>
+    void GuildAuraRefresh(PlayerEntity caster, ushort skillId, ushort skillLevel);
+
+    /// <summary>rAthena <c>guild_getavailablesd</c> (cpp:576). Returns the first online member's CharId, or 0 if none.</summary>
+    int GetAvailableMemberCharId(int guildId);
+
+    /// <summary>
+    /// rAthena <c>guild_retrieveitembound</c> (cpp:1321). When a member
+    /// is expelled with bound items, char-side mails them back. The
+    /// map-side trigger fires here; the actual fetch is char-side
+    /// (BOUND_ITEMS path).
+    /// </summary>
+    int RetrieveItemBound(int charId, int accountId, int guildId);
+
+    /// <summary>rAthena <c>guild_broken_sub</c> (cpp:2114). When guild X is disbanded, clear references to it from every other cached guild's alliance table.</summary>
+    int BrokenSub(int brokenGuildId);
+
+    /// <summary>rAthena <c>guild_send_xy_timer_sub</c> (cpp:656). For each cached guild, return the online member CharIds. The wire side iterates these to emit <c>clif_guild_xy</c>.</summary>
+    System.Collections.Generic.IReadOnlyList<int> SendXyTimerSub(int guildId);
+
+    /// <summary>rAthena <c>guild_flag_add</c> (cpp:2650). Register a guild-flag NPC.</summary>
+    void FlagAdd(int npcId);
+    /// <summary>rAthena <c>guild_flag_remove</c> (cpp:2667).</summary>
+    void FlagRemove(int npcId);
+    /// <summary>rAthena <c>guild_flags_clear</c> (cpp:2715).</summary>
+    void FlagsClear();
+    /// <summary>Snapshot of currently registered guild-flag NPC ids.</summary>
+    System.Collections.Generic.IReadOnlyList<int> GetFlagNpcs();
 }
