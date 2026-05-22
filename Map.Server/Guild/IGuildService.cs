@@ -1,3 +1,4 @@
+using Core.Server.IPC;
 using Map.Server.Entities;
 
 namespace Map.Server.Guild;
@@ -5,12 +6,14 @@ namespace Map.Server.Guild;
 /// <summary>
 /// Top-level guild operations (creation / membership / GvG /
 /// emblems / castle handoffs). Canonical entry points for rAthena
-/// <c>guild.cpp</c> (2 755 lines, 79 public functions).
+/// <c>guild.cpp</c> (2 755 lines, 74 public functions).
 ///
 /// Guild data + persistence already live on the char server side
 /// (CreateGuildAsync / GuildAddMemberAsync / etc.). The map-side
 /// service here owns the in-world fan-out (chat broadcast, online
-/// map-id sync) + per-guild emergency state.
+/// map-id sync) + the per-guild in-memory replica that the rest of
+/// the gameplay code reads from (member iteration, alliance check,
+/// permission gate).
 /// </summary>
 public interface IGuildService
 {
@@ -68,4 +71,28 @@ public interface IGuildService
     void Init();
     /// <summary>rAthena <c>do_final_guild</c>.</summary>
     void Final();
+
+    // -----------------------------------------------------------------
+    // GD-H1 — in-memory replica + lookup surface
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// rAthena <c>guild_search</c> (cpp:166). Returns the in-memory
+    /// <see cref="GuildEntity"/> if known to the map server, or null
+    /// if no <see cref="OnRecvInfo"/> hydrate has landed yet.
+    /// </summary>
+    GuildEntity? Find(int guildId);
+
+    /// <summary>
+    /// rAthena <c>guild_recv_info</c> (cpp:822) — hydrate or refresh
+    /// the in-memory replica from the char-side proto. Returns the
+    /// updated entity. Idempotent; safe to call on every refresh.
+    /// </summary>
+    GuildEntity OnRecvInfo(GuildInfoData proto);
+
+    /// <summary>Iterate all known guild entities. Used by xy-timer and reload helpers.</summary>
+    System.Collections.Generic.IEnumerable<GuildEntity> All();
+
+    /// <summary>Helper: count of cached guilds.</summary>
+    int CachedCount { get; }
 }
