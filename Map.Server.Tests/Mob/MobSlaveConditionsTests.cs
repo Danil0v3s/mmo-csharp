@@ -72,6 +72,49 @@ public class MobSlaveConditionsTests
             new MobConditionContext { Entities = registry }));
     }
 
+    [Fact]
+    public void MasterAttacked_PcMaster_WithAttackers_True()
+    {
+        // T5.1a — homunculus / mercenary master is a PC. The MobMaster
+        // path reads through PlayerEntity.AttackerLog which mirrors the
+        // rAthena PC side of unit_counttargeted.
+        var pcMaster = new PlayerEntity(
+            characterId: 7, accountId: 7, name: "Owner",
+            sessionId: Guid.NewGuid(), mapId: 1, x: 0, y: 0);
+        pcMaster.AttackerLog.Record(new EntityId(101), damage: 25);
+
+        var slave = MakeMob(id: 9);
+        slave.MasterId = pcMaster.Id;
+
+        var registry = new FakeRegistry();
+        registry.Add(pcMaster);
+        registry.Add(slave);
+
+        var ev = new MasterAttackedCondition();
+        Assert.True(ev.IsMet(slave, MakeEntry(MobSkillCondition.MasterAttacked),
+            new MobConditionContext { Entities = registry }));
+    }
+
+    [Fact]
+    public void MasterAttacked_PcMaster_NoAttackers_False()
+    {
+        var pcMaster = new PlayerEntity(
+            characterId: 7, accountId: 7, name: "Owner",
+            sessionId: Guid.NewGuid(), mapId: 1, x: 0, y: 0);
+        // AttackerLog empty.
+
+        var slave = MakeMob(id: 9);
+        slave.MasterId = pcMaster.Id;
+
+        var registry = new FakeRegistry();
+        registry.Add(pcMaster);
+        registry.Add(slave);
+
+        var ev = new MasterAttackedCondition();
+        Assert.False(ev.IsMet(slave, MakeEntry(MobSkillCondition.MasterAttacked),
+            new MobConditionContext { Entities = registry }));
+    }
+
     // ---- MSC_ALCHEMIST ----
 
     [Fact]

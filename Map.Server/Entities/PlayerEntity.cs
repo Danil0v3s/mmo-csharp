@@ -200,6 +200,21 @@ public sealed class PlayerEntity : Entity
     /// </summary>
     public Dictionary<ushort, Skills.SkillFlag> SkillFlags { get; } = new();
 
+    /// <summary>
+    /// T5.1a — incoming-hit log mirroring the rAthena PC side of
+    /// <c>unit_counttargeted</c> (unit.cpp). Populated by
+    /// <see cref="Combat.IDamageService.ApplyDamage"/> on every hit
+    /// the PC takes from a known source. Read by
+    /// <see cref="Mob.Conditions.MasterAttackedCondition"/> — when a
+    /// homunculus / mercenary's master is a PC, the slave's
+    /// MSC_MASTERATTACKED rule queries
+    /// <see cref="Mob.MobDmgList.DistinctAttackerCount"/>.
+    /// Same shape as <see cref="MobEntity.DmgList"/> so future
+    /// distinct-attacker queries (PVP last-hit, BG MVP, fame
+    /// attribution) read through one canonical surface.
+    /// </summary>
+    public Map.Server.Mob.MobDmgList AttackerLog { get; } = new();
+
 
     public override EntityType Type => EntityType.Pc;
 

@@ -85,7 +85,7 @@ Canonical entry points:
 | MSC_CASTTARGETED | ✅ | `CastTargetedCondition` (reads `MobConditionContext.CastTargeted`) |
 | MSC_RUDEATTACKED | ✅ | `RudeAttackedCondition` (default threshold = 2) |
 | MSC_MASTERHPLTMAXRATE | ✅ | `MasterHpLessThanRateCondition` (T4.6 via `ISlaveMobService.GetMasterIfHpBelow`) |
-| MSC_MASTERATTACKED | ✅ | `MasterAttackedCondition` (T4.9e — resolves `MasterId` via Entities registry, reads master's `DmgList.DistinctAttackerCount`; PC-master branch is data-pending until unit_counttargeted lands on PlayerEntity) |
+| MSC_MASTERATTACKED | ✅ | `MasterAttackedCondition` (T4.9e + T5.1a — resolves `MasterId` via Entities; reads `MobEntity.DmgList` for mob masters and the new `PlayerEntity.AttackerLog` for PC masters — DamageService populates both on every incoming hit) |
 | MSC_ALCHEMIST | ✅ | `AlchemistCondition` (T4.9e — fires on summoned mob (`SpecialAi != None`) with `TrickCasting == 0` and `hp < maxhp`) |
 | MSC_SPAWN | ⚠️ | `SpawnCondition` proxies on `NextWanderTick > now`; precise spawn-tick TODO |
 | MSC_MOBNEARBYGT | ✅ | `MobNearbyGreaterCondition` (T4.9b — `Entities.ForEachInRange(BL_MOB, AREA_SIZE)`, excludes self + dead) |
@@ -151,6 +151,32 @@ the dependency tracks first and is out of T4.9 scope.
 8. ✅ **T4.9** — final completion wave (T4.9a-g, 7 commits). Zero ❌ rows achieved; 12 ⚠️ remain with documented out-of-scope dependencies.
 
 ## History
+
+### 2026-05-22 — T5.1a (PC unit_counttargeted)
+
+First slice of the T5.1 foundation-closure wave. Resolves the
+data-pending PC branch of `MasterAttackedCondition`.
+
+**Surface added:**
+- `PlayerEntity.AttackerLog` (`MobDmgList`-typed) — same shape as
+  `MobEntity.DmgList`. Single canonical surface for any "distinct
+  recent attackers" query on a PC (PVP last-hit, BG MVP, fame
+  attribution all reuse it later).
+- `DamageService.ApplyResolved` records the hit on PC targets next
+  to the existing mob recording (both gated on `actual > 0` and
+  non-null source).
+- `MasterAttackedCondition` PC branch now reads
+  `PlayerEntity.AttackerLog.DistinctAttackerCount` — homunculus /
+  mercenary protect path works against any PC owner that's taking
+  hits.
+
+**Tests:** `MobSlaveConditionsTests` +2 — PC master with attackers
+fires; PC master with empty log doesn't. Total mob-slave coverage
+8 → 10.
+
+**Coverage delta:** no row change (MSC_MASTERATTACKED was already
+✅); inline note flipped from "data-pending PC branch" to a real
+reference. Test count 2939 → **2941 green**.
 
 ### 2026-05-21 — T4.9g (ground-cell SkillImpl chain)
 

@@ -157,6 +157,13 @@ public sealed class DamageService : IDamageService
         {
             dmgMob.DmgList.Record(source.Id, actual);
         }
+        // T5.1a — same log, PC side. Mirrors rAthena's
+        // unit_counttargeted PC code path so MSC_MASTERATTACKED can read
+        // the homun/merc master's attacker count.
+        if (target is PlayerEntity dmgPc && source != null && actual > 0)
+        {
+            dmgPc.AttackerLog.Record(source.Id, actual);
+        }
 
         BroadcastAct(target, source, actual, action);
 

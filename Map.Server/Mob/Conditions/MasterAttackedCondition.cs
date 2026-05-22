@@ -33,9 +33,10 @@ public sealed class MasterAttackedCondition : IMobSkillConditionEvaluator
         return master switch
         {
             MobEntity mm => mm.DmgList.DistinctAttackerCount > 0,
-            // PC masters: data-pending unit_counttargeted equivalent. The
-            // canonical surface is in place; once PC-side attacker count
-            // lands the branch flips to that read.
+            // T5.1a — PC masters (homunculus / mercenary owners) read
+            // through the same DmgList shape via PlayerEntity.AttackerLog,
+            // populated by IDamageService on every incoming hit.
+            PlayerEntity pm => pm.AttackerLog.DistinctAttackerCount > 0,
             _ => false,
         };
     }
