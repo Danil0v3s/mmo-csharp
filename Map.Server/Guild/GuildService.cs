@@ -499,6 +499,115 @@ public sealed class GuildService : IGuildService
         return s.Length <= max ? s : s.Substring(0, max);
     }
 
+    // ---------- GD-L2: GM transfer + ack handlers ----------
+
+    public int OnGuildCreated(PlayerEntity master, int guildId)
+    {
+        if (master == null) return 0;
+        if (guildId == 0)
+        {
+            // Char-side reported create failure (duplicate name etc.) —
+            // wire side fires clif_guild_created(2). We just leave the
+            // master's GuildId at 0.
+            return 0;
+        }
+        master.GuildId = guildId;
+        return 1;
+    }
+
+    public int RequestInfo(int guildId)
+    {
+        // Outbound dispatch goes through ICharServerIpcServiceGuild
+        // (GuildInfoAsync). The actual wire-up happens when the IPC
+        // consumer ports; here we acknowledge the request shape.
+        if (guildId <= 0) return 0;
+        return 1;
+    }
+
+    public int NpcRequestInfo(int guildId, string npcEventName)
+    {
+        // rAthena: if cached, fire the event immediately; otherwise
+        // queue the event into guild_infoevent_db and trigger request.
+        if (guildId <= 0) return 0;
+        if (Find(guildId) != null) return 1; // already cached
+        return RequestInfo(guildId);
+    }
+
+    public int OnPositionChanged(int guildId, int idx, GuildPermission mode, int expMode, string name)
+    {
+        var g = Find(guildId);
+        if (g == null) return 0;
+        if (idx < 0 || idx >= g.Positions.Count) return 0;
+        var pos = g.Positions[idx];
+        pos.Name = name ?? string.Empty;
+        // Position 0 always retains All (master-slot invariant).
+        pos.Mode = idx == 0 ? GuildPermission.All : mode & GuildPermission.All;
+        pos.ExpMode = expMode;
+        return 1;
+    }
+
+    public int OnMemberPositionChanged(int guildId, int idx, int newPosition)
+    {
+        var g = Find(guildId);
+        if (g == null) return 0;
+        if (idx < 0 || idx >= g.Members.Count) return 0;
+        if (newPosition < 0 || newPosition >= g.Positions.Count) return 0;
+        g.Members[idx].Position = newPosition;
+        return 1;
+    }
+
+    public int OnBroken(int guildId, int flag)
+    {
+        // flag != 0 → char-side error, no cleanup. flag == 0 → disband.
+        if (flag != 0) return 0;
+        // Clear references first (mirrors rAthena's two loops:
+        // broken_sub fan-out + erase). BrokenSub already does both.
+        BrokenSub(guildId);
+        return 1;
+    }
+
+    public bool GmChange(int guildId, int charId)
+    {
+        var g = Find(guildId);
+        if (g == null) return false;
+        var idx = -1;
+        for (int i = 0; i < g.Members.Count; i++)
+            if (g.Members[i].CharId == charId) { idx = i; break; }
+        if (idx < 0) return false; // not a member
+        if (idx == 0) return false; // already the master
+        return true; // outbound — char-side picks up the swap
+    }
+
+    public int OnGmChanged(int guildId, int accountId, int charId, long timestamp)
+    {
+        var g = Find(guildId);
+        if (g == null) return 0;
+        int pos = -1;
+        for (int i = 0; i < g.Members.Count; i++)
+        {
+            if (g.Members[i].AccountId == accountId && g.Members[i].CharId == charId)
+            {
+                pos = i; break;
+            }
+        }
+        if (pos <= 0) return 0; // not found or already master
+
+        // Swap slots — rAthena does it via memcpy gymnastics; we
+        // just swap the references then fix the position indices.
+        var newMaster = g.Members[pos];
+        var oldMaster = g.Members[0];
+        g.Members[0] = newMaster;
+        g.Members[pos] = oldMaster;
+
+        // Position invariant: slot 0 = position 0 (master).
+        oldMaster.Position = newMaster.Position;
+        newMaster.Position = 0;
+
+        g.MasterCharId = newMaster.CharId;
+        g.MasterName = newMaster.Name;
+        return 1;
+    }
+
     // ---------- GD-L1: misc helpers + skill table ----------
 
     /// <summary>

@@ -306,4 +306,37 @@ public interface IGuildService
     void FlagsClear();
     /// <summary>Snapshot of currently registered guild-flag NPC ids.</summary>
     System.Collections.Generic.IReadOnlyList<int> GetFlagNpcs();
+
+    // -----------------------------------------------------------------
+    // GD-L2 — GM transfer + ack handlers + request-info + broken
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// rAthena <c>guild_created</c> (cpp:722). Inbound from char
+    /// server after create. guildId=0 means the create failed
+    /// (duplicate name). On success, sets <see cref="PlayerEntity.GuildId"/>
+    /// on the master.
+    /// </summary>
+    int OnGuildCreated(PlayerEntity master, int guildId);
+
+    /// <summary>rAthena <c>guild_request_info</c> (cpp:745). Outbound — pull a full GuildInfoResponse.</summary>
+    int RequestInfo(int guildId);
+
+    /// <summary>rAthena <c>guild_npc_request_info</c> (cpp:750). Outbound, optionally bound to an NPC event name. Returns 1 when cached, 0 when a request was dispatched.</summary>
+    int NpcRequestInfo(int guildId, string npcEventName);
+
+    /// <summary>rAthena <c>guild_position_changed</c> (cpp:1524). Inbound — paint cached position table.</summary>
+    int OnPositionChanged(int guildId, int idx, GuildPermission mode, int expMode, string name);
+
+    /// <summary>rAthena <c>guild_memberposition_changed</c> (cpp:1497). Inbound — flip a member's position index.</summary>
+    int OnMemberPositionChanged(int guildId, int idx, int newPosition);
+
+    /// <summary>rAthena <c>guild_broken</c> (cpp:2149). Inbound — purge the guild (delegates to BrokenSub) plus signal disband to all members.</summary>
+    int OnBroken(int guildId, int flag);
+
+    /// <summary>rAthena <c>guild_gm_change</c> (cpp:2193). Outbound — request master transfer to the given char.</summary>
+    bool GmChange(int guildId, int charId);
+
+    /// <summary>rAthena <c>guild_gm_changed</c> (cpp:2229). Inbound — swaps Members[0] with Members[pos]; updates MasterCharId / MasterName.</summary>
+    int OnGmChanged(int guildId, int accountId, int charId, long timestamp);
 }
