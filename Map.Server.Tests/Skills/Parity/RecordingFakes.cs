@@ -201,6 +201,15 @@ public sealed class RecordingStatusChangeService : IStatusChangeService
         => _active.GetValueOrDefault(((int)target.Id, type));
 
     public void Tick(long nowTick) { /* unused */ }
+
+    // ST.1 no-op fakes — parity-trace tests don't exercise the clear/spread paths.
+    public int ClearAll(Entity target, byte type = 0) => 0;
+    public int ClearBuffs(Entity target, SccbFlag flag) => 0;
+    public int ClearOnChangeMap(Entity target) => 0;
+    public int ClearOnLogout(Entity target) => 0;
+    public int Spread(Entity source, Entity target) => 0;
+    public int GetMaxStacks(StatusType type) => 1;
+    public bool IsDisabledOnMap(uint mapId, StatusType type) => false;
 }
 
 public sealed class RecordingSplashService : IMapForeachInRangeService

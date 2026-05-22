@@ -176,6 +176,14 @@ public class ItemThrowHandlerTests
         public bool End(Entity target, StatusType type) => false;
         public Map.Server.Status.StatusChange? Get(Entity target, StatusType type) => null;
         public void Tick(long nowTick) { }
+        // ST.1 no-op fakes.
+        public int ClearAll(Entity target, byte type = 0) => 0;
+        public int ClearBuffs(Entity target, SccbFlag flag) => 0;
+        public int ClearOnChangeMap(Entity target) => 0;
+        public int ClearOnLogout(Entity target) => 0;
+        public int Spread(Entity source, Entity target) => 0;
+        public int GetMaxStacks(StatusType type) => 1;
+        public bool IsDisabledOnMap(uint mapId, StatusType type) => false;
     }
 
     private sealed record TestContext(

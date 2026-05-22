@@ -459,6 +459,26 @@ public sealed class StatusEffectRegistry
     public void Register(StatusType type, StatusEffectHandler handler) => _handlers[type] = handler;
 
     public StatusEffectHandler? Get(StatusType type) => _handlers.GetValueOrDefault(type);
+
+    /// <summary>
+    /// ST.1 — effective <see cref="ScfFlag"/> mask for an SC: combines
+    /// the handler's own <see cref="StatusEffectHandler.Flags"/> with
+    /// the <see cref="StatusFlagDefaults"/> lookup. Falls back to the
+    /// defaults table when the handler doesn't set its own — most of
+    /// the T2.4b wave handlers don't, so this is the path that lets
+    /// <see cref="StatusChangeService.ClearBuffs"/> /
+    /// <see cref="StatusChangeService.ClearOnChangeMap"/> /
+    /// <see cref="StatusChangeService.Spread"/> classify them
+    /// correctly without touching 74 registration sites.
+    /// </summary>
+    public ScfFlag GetEffectiveFlags(StatusType type)
+    {
+        var handler = Get(type);
+        var explicitFlags = handler?.Flags ?? ScfFlag.None;
+        return explicitFlags == ScfFlag.None
+            ? StatusFlagDefaults.For(type)
+            : explicitFlags;
+    }
 }
 
 /// <summary>
@@ -476,4 +496,6 @@ public sealed record StatusEffectHandler(
     Action<Entity, StatusChange, Entity?> OnStart,
     Action<Entity, StatusChange> OnEnd,
     int PeriodMs = 0,
-    Action<Entity, StatusChange, Action<int>>? OnPeriodic = null);
+    Action<Entity, StatusChange, Action<int>>? OnPeriodic = null,
+    ScfFlag Flags = ScfFlag.None,
+    int MaxStacks = 1);

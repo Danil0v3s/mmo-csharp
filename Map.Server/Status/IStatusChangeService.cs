@@ -48,4 +48,59 @@ public interface IStatusChangeService
     /// Pumped from the map game loop.
     /// </summary>
     void Tick(long nowTick);
+
+    /// <summary>
+    /// ST.1 — rAthena <c>status_change_clear</c> (status.cpp:11497).
+    /// Wipes every active SC on <paramref name="target"/>. <paramref name="type"/>
+    /// mirrors rAthena semantics: 0 = leave permanent SCs alone,
+    /// 1 = include them (used on PC death / disconnect), 2 = death-
+    /// cleanup variant. Returns the number of SCs cleared.
+    /// </summary>
+    int ClearAll(Entity target, byte type = 0);
+
+    /// <summary>
+    /// ST.1 — rAthena <c>status_change_clear_buffs</c> (status.cpp:11616).
+    /// Selectively wipes SCs whose handler <see cref="StatusEffectHandler.Flags"/>
+    /// match the requested <see cref="SccbFlag"/> mask. Refresh skill,
+    /// Dispell, Banishing Buster, Luxanima, Hermode all flow through here.
+    /// </summary>
+    int ClearBuffs(Entity target, SccbFlag flag);
+
+    /// <summary>
+    /// ST.1 — rAthena <c>status_change_clear_onChangeMap</c>
+    /// (status.cpp:11848). Removes SCs flagged
+    /// <see cref="ScfFlag.RemoveOnChangeMap"/>; leaves WoE-persistent /
+    /// equipment-buff SCs intact. Called from the warp + map-change paths.
+    /// </summary>
+    int ClearOnChangeMap(Entity target);
+
+    /// <summary>
+    /// ST.1 — rAthena <c>status_change_clear_onLogout</c>. Removes SCs
+    /// flagged <see cref="ScfFlag.RemoveOnLogout"/>. WoE god-item SCs
+    /// and permanent equipment buffs survive.
+    /// </summary>
+    int ClearOnLogout(Entity target);
+
+    /// <summary>
+    /// ST.1 — rAthena <c>status_change_spread</c> (status.cpp:12188).
+    /// For every active SC on <paramref name="source"/> whose handler
+    /// is flagged <see cref="ScfFlag.SpreadEffect"/>, re-apply it to
+    /// <paramref name="target"/>. Returns the number propagated.
+    /// </summary>
+    int Spread(Entity source, Entity target);
+
+    /// <summary>
+    /// ST.1 — rAthena <c>status_get_sc_max</c>. Stackable-buff cap.
+    /// For non-stackable SCs returns 1.
+    /// </summary>
+    int GetMaxStacks(StatusType type);
+
+    /// <summary>
+    /// ST.1 — rAthena <c>status_change_isDisabledOnMap</c>
+    /// (status.cpp:11992). Returns true when the map has a
+    /// <c>nostatus</c> mapflag covering this SC. Wires through
+    /// <c>IMapFlagService</c> when registered; returns false otherwise
+    /// (parity with rAthena's default).
+    /// </summary>
+    bool IsDisabledOnMap(uint mapId, StatusType type);
 }

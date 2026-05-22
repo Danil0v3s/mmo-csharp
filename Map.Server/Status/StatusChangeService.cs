@@ -149,4 +149,134 @@ public sealed class StatusChangeService : IStatusChangeService
             }
         }
     }
+
+    // ============= ST.1 — close-out methods =============
+
+    /// <inheritdoc />
+    public int ClearAll(Entity target, byte type = 0)
+    {
+        // rAthena status.cpp:11497. type=0 leaves Permanent SCs alone
+        // (Wedding, Casket, equipment-set buffs); type=1 includes them
+        // (PC disconnect / death cleanup).
+        if (!_active.TryGetValue(target.Id, out var perEntity) || perEntity.Count == 0)
+            return 0;
+        var cleared = 0;
+        foreach (var t in perEntity.Keys.ToArray())
+        {
+            var flags = _effects.GetEffectiveFlags(t);
+            if (type == 0 && (flags & ScfFlag.Permanent) != 0)
+                continue;
+            if (End(target, t)) cleared++;
+        }
+        return cleared;
+    }
+
+    /// <inheritdoc />
+    public int ClearBuffs(Entity target, SccbFlag flag)
+    {
+        // rAthena status.cpp:11616. The flag mask selects which SCs to
+        // wipe: SCCB_BUFFS removes ScfFlag.Buff entries, SCCB_DEBUFFS
+        // removes ScfFlag.Debuff, SCCB_REFRESH removes
+        // ScfFlag.RemoveOnRefresh. Permanent flag wins (parity).
+        if (flag == SccbFlag.None) return 0;
+        if (!_active.TryGetValue(target.Id, out var perEntity) || perEntity.Count == 0)
+            return 0;
+
+        var cleared = 0;
+        foreach (var t in perEntity.Keys.ToArray())
+        {
+            var flags = _effects.GetEffectiveFlags(t);
+            if ((flags & ScfFlag.Permanent) != 0) continue;
+
+            var match = false;
+            if ((flag & SccbFlag.Buffs) != 0 && (flags & ScfFlag.Buff) != 0) match = true;
+            if ((flag & SccbFlag.Debuffs) != 0 && (flags & ScfFlag.Debuff) != 0) match = true;
+            if ((flag & SccbFlag.Refresh) != 0 && (flags & ScfFlag.RemoveOnRefresh) != 0) match = true;
+            // ChemProtect / Luxanima / Hermode wire in as their consumer
+            // skills land; for now they no-op so callers don't get
+            // a surprise wipe.
+
+            if (match && End(target, t)) cleared++;
+        }
+        return cleared;
+    }
+
+    /// <inheritdoc />
+    public int ClearOnChangeMap(Entity target)
+    {
+        // rAthena status.cpp:11848. Drop SCs flagged RemoveOnChangeMap;
+        // keep everything else (equipment buffs, WoE persistent SCs).
+        if (!_active.TryGetValue(target.Id, out var perEntity) || perEntity.Count == 0)
+            return 0;
+        var cleared = 0;
+        foreach (var t in perEntity.Keys.ToArray())
+        {
+            var flags = _effects.GetEffectiveFlags(t);
+            if ((flags & ScfFlag.RemoveOnChangeMap) != 0)
+            {
+                if (End(target, t)) cleared++;
+            }
+        }
+        return cleared;
+    }
+
+    /// <inheritdoc />
+    public int ClearOnLogout(Entity target)
+    {
+        // rAthena: most SCs drop on logout; WoE-pinning + Permanent
+        // SCs persist (re-applied on next login from char-side scdata
+        // table once the persistence pipe lands).
+        if (!_active.TryGetValue(target.Id, out var perEntity) || perEntity.Count == 0)
+            return 0;
+        var cleared = 0;
+        foreach (var t in perEntity.Keys.ToArray())
+        {
+            var flags = _effects.GetEffectiveFlags(t);
+            // Drop unless Permanent. Buffs / Debuffs / explicit
+            // RemoveOnLogout all qualify (rAthena default).
+            if ((flags & ScfFlag.Permanent) != 0) continue;
+            if ((flags & (ScfFlag.RemoveOnLogout | ScfFlag.Buff | ScfFlag.Debuff)) != 0)
+            {
+                if (End(target, t)) cleared++;
+            }
+        }
+        return cleared;
+    }
+
+    /// <inheritdoc />
+    public int Spread(Entity source, Entity target)
+    {
+        // rAthena status.cpp:12188. For each SCF_SPREADEFFECT SC on
+        // source, restart the SC on target with the same val1..val4 +
+        // remaining duration. Source / target must both be alive.
+        if (!_active.TryGetValue(source.Id, out var perEntity) || perEntity.Count == 0)
+            return 0;
+        var nowTick = Environment.TickCount64;
+        var propagated = 0;
+        foreach (var sc in perEntity.Values.ToArray())
+        {
+            var flags = _effects.GetEffectiveFlags(sc.Type);
+            if ((flags & ScfFlag.SpreadEffect) == 0) continue;
+            var remaining = sc.ExpiresAt > 0 ? (int)Math.Max(1, sc.ExpiresAt - nowTick) : 30_000;
+            if (Start(target, sc.Type, sc.Val1, sc.Val2, sc.Val3, sc.Val4, remaining, source, nowTick) != null)
+                propagated++;
+        }
+        return propagated;
+    }
+
+    /// <inheritdoc />
+    public int GetMaxStacks(StatusType type)
+    {
+        var handler = _effects.Get(type);
+        return handler?.MaxStacks ?? 1;
+    }
+
+    /// <inheritdoc />
+    public bool IsDisabledOnMap(uint mapId, StatusType type)
+    {
+        // Map-flag service (IMapFlagService.IsStatusDisabled) wires in
+        // when the `nostatus` mapflag SQL table lands. Until then we
+        // mirror rAthena's default: no restriction.
+        return false;
+    }
 }
