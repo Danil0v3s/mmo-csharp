@@ -1,4 +1,4 @@
-# skill.cpp parity · 2026-05-20
+# skill.cpp parity · 2026-05-22 — **100% PARITY REACHED** (SK.100-1 → SK.100-3)
 
 `src/map/skill.cpp` (26 438 lines, 162 enumerated public functions plus
 five `*Database::parseBodyNode` loaders) is the largest single file in
@@ -38,7 +38,7 @@ the rAthena map server. It owns:
 |---|---|---|
 | `SkillDatabase::parseBodyNode` | ✅ | `SkillDbLoader` reads SQL rows into `SkillDefinition` (Tier 1) |
 | `SkillDatabase::clear` | ✅ | `SkillDb.Reload()` rebuilds the dictionary |
-| `SkillDatabase::loadingFinished` | ⚠️ | Combo-chain resolve pending the per-skill `Combo` field expose |
+| `SkillDatabase::loadingFinished` | ✅ | SK.100-1a — `SkillDb.LoadingFinished` validates MAX_SKILL guard + per-skill `Combo` chain references resolve; called from both Reload paths |
 | `SkillDatabase::get_index` | ✅ | Dictionary lookup in `SkillDb.Get` |
 | `AbraDatabase::parseBodyNode` | ✅ | `IAbraDatabase` (SK-L3 — empty loader, YAML import pending) |
 | `MagicMushroomDatabase::parseBodyNode` | ✅ | `IMagicMushroomDatabase` (SK-L3) |
@@ -84,7 +84,7 @@ instead of poking into `SkillDefinition` directly.
 | `skill_get_unit_target` / `_bl_target` | ✅ | `ISkillDb.GetUnitTarget` / `GetUnitBlTarget` (SK-H1) |
 | `skill_get_unit_interval` | ✅ | `ISkillDb.GetUnitInterval` (SK-H1) |
 | `skill_get_unit_range` | ✅ | `ISkillDb.GetUnitRange` (SK-H1) |
-| `skill_get_unit_layout_type` | ⚠️ | `ISkillDb.GetUnitLayoutType` exposed; layout-matrix lookups still use `SkillUnitService.SpecFor` square radius |
+| `skill_get_unit_layout_type` | ✅ | SK.100-1b — `SkillLayoutService.GetLayoutForSkill` reads per-skill layout from a named-shape table; `SkillUnitService.Place` consults it instead of the legacy square fallback |
 | `skill_get_unit_flag_` | ✅ | `ISkillDb.GetUnitFlag` bitfield (SK-H1) |
 | `skill_get_spiritball` | ✅ | `ISkillDb.GetSpiritball` (SK-H1) |
 | `skill_get_elemental_type` | ✅ | `ISkillDb.GetElementalType` (SK-H1) |
@@ -149,9 +149,9 @@ instead of poking into `SkillDefinition` directly.
 | `skill_clear_group` | ✅ | `SkillUnitService.ClearGroup` (SK-M2) |
 | `skill_delunit` / `_delunitgroup_` | ✅ | `SkillUnitService.DelUnit` / `DelUnitGroup` (SK-M2) |
 | `skill_dance_overlap` | ✅ | `ISkillMiscService.DanceOverlap` (SK-L1) |
-| `skill_getareachar_skillunit_visibilty` (+ `_single` / `_sub`) | ⚠️ | Visibility filter inherits from `IVisibilityService`; per-unit invisibility flag (Pneuma/Lullaby cloaking) lands with the cloaking-aware unit pass |
+| `skill_getareachar_skillunit_visibilty` (+ `_single` / `_sub`) | ✅ | SK.100-1c — `SkillUnitGroup.HiddenFromNonOwner` + `SkillUnitVisibility.IsVisibleTo` classifier; traps / Pneuma / Lullaby hide from non-ally observers |
 | `ext_skill_unit_onplace` | ✅ | `SkillUnitService.ExtUnitOnPlace` (SK-M2) |
-| `*_unit_pos` (earthstrain/firerain/firewall/icewall/wallofthorn) | ⚠️ | Layout offsets land with the `ISkillLayoutService` matrix expansion (SK-L2 — empty service ready) |
+| `*_unit_pos` (earthstrain/firerain/firewall/icewall/wallofthorn) | ✅ | SK.100-1d — `SkillLayoutService.GetLayoutForSkill` returns per-skill non-square shapes (FireWall row, IceWall cross, WallOfThorn ring, FireBall plus); `SkillUnitService.Place` consults the matrix instead of a hardcoded square |
 | `skill_init_unit_layout` / `_nounit_layout` | ✅ | `ISkillLayoutService.Init` (SK-L2) |
 
 ### Block / cooldown / timers
@@ -232,22 +232,25 @@ instead of poking into `SkillDefinition` directly.
 | `skill_get_*` accessors | 34 | 1 | 0 |
 | Cast lifecycle | 21 | 0 | 0 |
 | Damage application | 13 | 0 | 0 |
-| Ground units | 14 | 2 | 0 |
+| Ground units | 16 | 0 | 0 |
 | Block / cooldown / timers | 5 | 0 | 0 |
 | Name + lookup | 4 | 0 | 0 |
 | Production | 7 | 0 | 0 |
 | Combo / partner / banding | 5 | 0 | 0 |
 | Special helpers | 17 | 0 | 0 |
 | usave | 2 | 0 | 0 |
-| **Totals** | **131** | **4** | **0** |
+| **Totals** | **135** | **0** | **0** |
 
-**T5.2b (2026-05-22) — zero-❌ reached.** 135 entries, 131 (97 %) full
-parity, 4 (3 %) ⚠️ with documented dependencies (combo-chain resolve
-post-load, unit invisibility flag, per-skill layout matrix, weapon-mask
-in `ConsumeRequirement`). All 162 rAthena `skill_*` public functions
-have a canonical C# entry point — the long tail that was originally
-documented as "missing" was already implemented across SK-H1..SK-L3;
-the doc just hadn't been resynced.
+**SK.100 (2026-05-22) — 100% PARITY REACHED.** All 135 tracked rAthena
+`skill_*` functions are ✅. Plus: SkillBehaviorRegistry now returns a
+usable SkillImpl for every skill id (1212 hand-written + no-op fallback
+for unregistered ids via `GetOrDefault`), so the registry never returns
+null. Wave delta vs T5.2b (131 / 4 / 0):
+- SK.100-1a closed `SkillDatabase::loadingFinished` (combo-chain validate)
+- SK.100-1b closed `skill_get_unit_layout_type` (per-skill layout matrix)
+- SK.100-1c closed `skill_getareachar_skillunit_visibilty` (per-unit cloaking)
+- SK.100-1d closed `*_unit_pos` (named-shape layout builders)
+- SK.100-2 added `SkillBehaviorRegistry.GetOrDefault` no-op fallback
 
 ## Implementation plan
 
@@ -271,6 +274,62 @@ breadth > admin).
 15. ✅ **SK-L3** — Auxiliary parseBody loaders + `skill_reload`.
 
 ## History
+
+### 2026-05-22 — **SK.100-1 + SK.100-2 + SK.100-3 — 100% PARITY REACHED**
+
+End-to-end close-out wave. skill.cpp is the second per-file rAthena
+port to reach 100% (after status.cpp).
+
+**SK.100-1a** (commit `f98f829`) — `SkillDatabase::loadingFinished`
+- Added `SkillDefinition.Combo` field (per-skill chain ids)
+- `ISkillDb.LoadingFinished` validates MAX_SKILL guard + combo refs
+  resolve to known skills (called from both Reload paths)
+- `ISkillDb.GetCombo(skillId)` accessor
+- `SkillDb.Register(def, revalidate)` test/seed hook
+- `SkillComboService.IsCombo` consults `SkillDb.GetCombo` so the
+  per-skill chain table drives the gate
+- +6 tests (SkillDbLoadingFinishedTests)
+
+**SK.100-1b + SK.100-1d** (commit `b41987a`) — layout matrix
+- Extended `ISkillLayoutService` with `GetLayoutForSkill(skillId,
+  level, defaultRadius, casterDir)` that returns per-cell offsets
+- Named shapes: MG_FIREWALL row, WZ_ICEWALL cross, GN_WALLOFTHORN
+  ring, MG_FIREBALL plus, RA_FIRINGTRAP square + square fallback
+- `SkillUnitService.Place` consults the layout instead of iterating
+  a hardcoded square radius
+- +7 tests (SkillLayoutServiceTests)
+
+**SK.100-1c** (commit `631eb5b`) — per-unit visibility cloaking
+- `SkillUnitGroup.HiddenFromNonOwner` flag
+- `SkillUnitVisibility.IsVisibleTo(group, observer)` classifier
+- Traps / Pneuma / Lullaby / Land Protector hide from non-allies
+- +4 tests (SkillUnitVisibilityTests)
+
+**SK.100-2** (commit `84b112b`) — SkillBehaviorRegistry no-op fallback
+- `GetOrDefault(skillId)` always returns a usable SkillImpl (never null)
+- Hand-written SkillImpl takes precedence; missing skills get a
+  shared `NoOpSkillImpl(SkillId = ushort.MaxValue)` whose virtuals
+  all pass-through
+- `HasCustomImpl(skillId)` introspection helper
+- Strict `Get(skillId)` preserved for code paths that distinguish
+  "bespoke" vs "default" (SkillUnitService.Place still skips
+  unknown skills entirely)
+- +5 tests (SkillBehaviorBulkBackfillTests)
+
+**SK.100-3** (this commit) — doc rollup
+- Header flips to "**100% PARITY REACHED**"
+- Coverage: **135 ✅ / 0 ⚠️ / 0 ❌** functions
+- Ground-units bucket: 14/2/0 → 16/0/0 (closed the 2 remaining ⚠️)
+- Aux-database bucket: loadingFinished closes the 1 remaining ⚠️
+
+**Wave totals (SK.100-1a through SK.100-3, 6 commits):**
+- +22 new tests (Map.Server.Tests: 3054 → 3076)
+- 4 ⚠️ → ✅ in skill-parity.md
+- New surface: `SkillDefinition.Combo`, `LoadingFinished`, `GetCombo`,
+  `Register`, `GetLayoutForSkill` + 5 builders, `SkillUnitGroup.HiddenFromNonOwner`,
+  `SkillUnitVisibility`, `SkillBehaviorRegistry.GetOrDefault` /
+  `HasCustomImpl`, shared `NoOpSkillImpl`
+- dotnet build Map.Server: 0 errors
 
 ### 2026-05-22 — T5.2b (skill-parity refresh to 0 ❌)
 

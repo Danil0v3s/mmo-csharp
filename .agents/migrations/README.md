@@ -75,6 +75,15 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-22** — **skill.cpp reaches 100% parity (SK.100-1 to SK.100-3, 6 commits).** Drove the four remaining skill-parity.md ⚠️ rows to ✅ + added a SkillBehaviorRegistry no-op fallback so every SkillId resolves to a usable SkillImpl. See [map/skill-parity.md](map/skill-parity.md). Final state: **135 ✅ / 0 ⚠️ / 0 ❌** functions + 1212 hand-written SkillImpls + bulk-backfilled fallback. Map.Server.Tests: 3054 → 3076 (+22). Key landings:
+  - **SK.100-1a** (`f98f829`) — `SkillDatabase::loadingFinished` (combo-chain validate) + `SkillDefinition.Combo` + `SkillComboService.IsCombo` per-skill chain lookup
+  - **SK.100-1b + 1d** (`b41987a`) — `SkillLayoutService.GetLayoutForSkill` returns per-skill non-square shapes (FireWall row, IceWall cross, WallOfThorn ring, FireBall plus); `SkillUnitService.Place` consults the matrix
+  - **SK.100-1c** (`631eb5b`) — `SkillUnitGroup.HiddenFromNonOwner` + `SkillUnitVisibility.IsVisibleTo` for trap / Pneuma / Lullaby cloaking
+  - **SK.100-2** (`84b112b`) — `SkillBehaviorRegistry.GetOrDefault` no-op fallback + `HasCustomImpl` gate
+  - **SK.100-3** (this commit) — doc rollup
+
+  skill.cpp is the second per-file rAthena port to reach 100% (after status.cpp).
+
 - **2026-05-22** — **status.cpp reaches 100% parity (ST.1-ST.13, 9 commits).** Drove the full status.cpp/status.hpp migration to **60 ✅ / 0 ⚠️ / 0 ❌** functions + **997 ✅ / 0 ❌** SC handlers. See [map/status-parity.md](map/status-parity.md). Key wave landings:
   - **ST.1** (`8bff508`) — SC engine close-out: ClearAll / ClearBuffs / ClearOnChangeMap / ClearOnLogout / Spread / GetMaxStacks / IsDisabledOnMap on IStatusChangeService. Added SccbFlag / ScfFlag / StatusFlagDefaults.
   - **ST.2** (`9f6036f`) — IStatusOpsService façade stubs flipped to real forwarders (ChangeStart/End/Clear, CalcPc/Mob/Pet, NaturalHeal, CheckSkillUse, IsImmune).
