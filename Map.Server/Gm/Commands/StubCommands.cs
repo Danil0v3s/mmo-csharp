@@ -36,9 +36,8 @@ internal static class StubCommandKinds
         new("instancelist", "instance.cpp"),
         new("instancesignup", "instance.cpp"),
         new("instancenoavailable", "instance.cpp"),
-        // duel.cpp
-        new("duel", "duel.cpp"), new("invite", "duel.cpp"), new("accept", "duel.cpp"),
-        new("reject", "duel.cpp"), new("leave", "duel.cpp"),
+        // duel.cpp — retired AT-R1 (DuelCommand + DuelInviteCommand +
+        // DuelAcceptCommand + DuelRejectCommand + DuelLeaveCommand)
         // mail.cpp (map-side; char side ports exist for the data plane)
         new("mailbox", "mail.cpp"),
         // auction.cpp (map-side)
@@ -85,7 +84,8 @@ internal static class StubCommandKinds
         // GM information
         new("accinfo", "map_session_data"), new("addperm", "pc_groups.cpp"),
         new("rmvperm", "pc_groups.cpp"), new("adjgroup", "pc_groups.cpp"),
-        new("changegm", "guild.cpp"), new("changeleader", "party.cpp"),
+        // changegm retired AT-R1 (ChangeGmCommand).
+        new("changeleader", "party.cpp"),
         // job change / skill grant
         new("jobchange", "pc.cpp:jobchange"), new("job", "pc.cpp:jobchange"),
         new("allskill", "pc.cpp:skills"), new("questskill", "pc.cpp:skills"),
@@ -122,10 +122,12 @@ internal static class StubCommandKinds
         new("itemreset", "pc.cpp:inventory"),
         new("clearcart", "pc.cpp:cart"),
         new("clearstorage", "pc.cpp:inventory"),
-        new("cleargstorage", "guild.cpp"),
-        // guild
-        new("breakguild", "guild.cpp"), new("guildstorage", "guild.cpp"),
-        new("guildlevelup", "guild.cpp"), new("guildspy", "guild.cpp"),
+        // cleargstorage retired AT-R1 (ClearGuildStorageCommand).
+        // guild — partially retired AT-R1 (BreakGuildCommand,
+        // GuildStorageCommand, ClearGuildStorageCommand, ChangeGmCommand,
+        // GuildLevelUpCommand). guildspy/partyspy remain pending (no
+        // observation backend).
+        new("guildspy", "guild.cpp"),
         new("partyspy", "party.cpp"),
         // identify / repair
         new("identifyall", "pc.cpp:inventory"), new("repair", "pc.cpp:inventory"),

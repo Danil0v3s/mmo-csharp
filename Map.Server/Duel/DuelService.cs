@@ -77,6 +77,17 @@ public sealed class DuelService : IDuelService
         return $"Duel #{r.Id}: {r.Members.Count}/{r.MaxMembers} members";
     }
 
+    public int GetDuelIdFor(PlayerEntity pc)
+    {
+        if (pc == null) return 0;
+        foreach (var kv in _rooms)
+        {
+            if (kv.Value.Members.Contains(pc.AccountId))
+                return kv.Key;
+        }
+        return 0;
+    }
+
     private sealed class DuelRoom
     {
         public int Id;

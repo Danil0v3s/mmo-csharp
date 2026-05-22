@@ -44,4 +44,13 @@ public interface IDuelService
 
     /// <summary>rAthena <c>duel_showinfo</c> — list the duel participants.</summary>
     string ShowInfo(int duelId);
+
+    /// <summary>
+    /// Scan the active duel registry for one whose membership includes
+    /// the given PC. Returns 0 if the PC isn't in any duel. Mirrors
+    /// rAthena's <c>sd-&gt;duel_group</c> per-PC pointer; we resolve by
+    /// lookup since the C# port doesn't carry the duel id on
+    /// PlayerEntity.
+    /// </summary>
+    int GetDuelIdFor(PlayerEntity pc);
 }

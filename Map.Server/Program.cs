@@ -1811,6 +1811,18 @@ builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.PvpOffCommand>(
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GvgOnCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GvgOffCommand>();
 
+// AT-R1 — retire guild + duel stubs by porting real impls.
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BreakGuildCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GuildStorageCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ClearGuildStorageCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ChangeGmCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GuildLevelUpCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DuelCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DuelInviteCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DuelAcceptCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DuelRejectCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DuelLeaveCommand>();
+
 // PC-* phase: player option / appearance / orb services + GM commands.
 // rAthena pc_setoption / pc_setcart / pc_setriding / pc_changelook
 // (pc.cpp:8702 / 8851 / 8810 / clif.cpp:3929) + the pc_addspiritball
