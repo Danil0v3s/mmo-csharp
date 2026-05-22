@@ -16,7 +16,7 @@ T2.2 + T2.4a + T2.4b + four combat-side SC consumer closures
 (SteelBody / Kyrie / AutoGuard / Bleeding / Magnificat / Strip).
 ~51 new tests. See History.
 
-## Tier scoreboard (re-evaluated 2026-05-20)
+## Tier scoreboard (re-evaluated 2026-05-22 after T5 + T6 sweeps)
 
 | Tier | Theme | Status | Notes |
 |---|---|---|---|
@@ -25,10 +25,11 @@ T2.2 + T2.4a + T2.4b + four combat-side SC consumer closures
 | T2.2 | Card modifier port | ✅ **DONE** | `BattleCardService.CalcCardFix` reads `PlayerEntity.EquipBonuses`; `EquipBonusBundle` + `BonusScriptExtractor` ship; Hydra-card test exercises +20% vs Demi-Human |
 | T2.3 | Per-skill behavior | 🟢 hierarchy + **1,209 files** + 5 helpers + 10 manual ports | Full rathena-fork structural parity. 5 missing helpers built (clif_skill_nodamage/_fail/_damage, skill_addtimerskill, BlownBy, ZC_WARPLIST). Wave 1 of manual per-skill ports done: AL_HEAL (full renewal formula + Kaite/Berserk/Akaitsuki branches + 9 dedicated tests), AL_INCAGI/AL_DECAGI/AL_BLESSING/AL_RUWACH/AL_PNEUMA, AL_WARP destination chooser, MG_SAFETYWALL/MG_SOULSTRIKE/MG_NAPALMBEAT. Per-skill body fill-in is the additive backlog from here. |
 | T2.4 | SC engine completion | 🟡 enum full / behavior ~30 of ~250 + combat hooks | T2.4a + T2.4b done: enum mirrors all 1006 SC ids; first wave of handlers (CC gates / DoT / stat buffs / cast-time SCs) registered; `CastFixSc` honors Suffragium/Memorize/Slowcast/Paralysis/Izayoi/Bragi; `DamageService` reads SteelBody / Kyrie / AutoGuard on every hit. Long-tail SC handlers ride the same registry pattern. |
-| T3 | Wire packets | 🟡 113 emitters exist | Per-handler audit needed; the surface is bigger than initially scoped |
-| T4 | IPC + persistence | ❌ pending | 73 `IIntifService` stubs — biggest single block of behavior gap |
-| T5 | Per-file deep audits | ❌ pending | The pc/battle/skill style tables — 38 files left |
-| T6 | Endgame content | ❌ pending | WoE, instances, BG queues, pet evolution, vending autotrade |
+| T3 | Wire packets | ✅ **DONE** (T5.3) | T5.3 closed clif_skillcasting + clif_status_change + DamageActionType.LuckyDodge + companion display + InventoryList canonical seams. 113 emitters across the surface; per-packet audit in `map/clif-parity.md`. |
+| T4 | IPC + persistence | ✅ **DONE** (T5.4) | All 75 IIntifService entry points dispatch (40 ✅ + 35 ⚠️ data-pending); zero ❌. Mail send/return + Quest save/load + Achievement save/load wired via typed ICharServerIpcService* sub-IPCs. The 35 ⚠️ all key off one gating dependency — per-subsystem snapshot serializer (Pet/Homun/Merc/Storage/Auction); tracked as Goal A. See `map/intif-parity.md`. |
+| T5 | Per-file deep audits | ✅ **DONE** (T5.2) | All map/*-parity.md docs at 0 ❌ as of 2026-05-22 (battle / skill / pc deep-audit refresh in commits `95ce4a5..f9bd8d9`; mob via T4.9 in `acccd3e..e851a2c`; intif via T5.4 in `bc39af0`). |
+| T6 | Endgame content | ✅ **DONE** (T5.5) | WoE / instances / BG queues / pet evolution / vending — each has its own parity doc at 0 ❌. Canonical entry points exist; gameplay content fills land as a separate gameplay-content track. |
+| T6-doc | Login/Char/Inter doc refresh | ✅ **DONE** (T6) | T6.1..T6.5 sweep (2026-05-22) verified login/char/inter audit docs at 0 ❌; per-file tally + wave cross-reference in `T6-audit-2026-05-22.md`. This row tracks the documentation pass, not new code. |
 
 **Where the gap is now**:
 - ~70 % of the original gap (56 → 23 data-pending markers + the big
@@ -659,6 +660,15 @@ gameplay on Tier 4 completeness if Tier 1–3 already cover the
 hot path.
 
 ## History
+
+### 2026-05-22 — T6 audit-doc rollup refresh + T4/T5/T6 tier-row flip
+
+Tier scoreboard rebuilt after T5 (`fa8b494..bc39af0`) closed every
+`map/*-parity.md` to 0 ❌. T3 / T4 / T5 / T6 rows now ✅; new T6-doc
+row tracks the login/char/inter doc-refresh sweep (T6.1..T6.5, 5
+commits, 2026-05-22). Per-tree audit rollup at
+[T6-audit-2026-05-22.md](T6-audit-2026-05-22.md). No code changes
+in this commit — tier scoreboard refresh only.
 
 ### 2026-05-21 — T2.3-P4: Archer directory complete (126/126) + Merchant wave (~24/105)
 

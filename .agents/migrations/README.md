@@ -75,6 +75,14 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-22** — **T6 — login/char/inter audit-doc refresh sweep.** Companion to T5.2's map-tree pass. 5 commits (`af69378..` this entry) across 5 sub-waves:
+  - **T6.1** (`af69378`) — drift inventory. Greps `login/`, `char/`, `inter/` for stale `❌` rows; result empty. Per-file tally + cross-reference to L-H1..L-M4 / C-H1..C-M3 / P1..P8 wave landings recorded in [T6-audit-2026-05-22.md](T6-audit-2026-05-22.md).
+  - **T6.2** (`61ce5c8`) — `login/status.md` verified 0 ❌ checkpoint history entry.
+  - **T6.3** (`f695163`) — `char/{grpc,packets,connect-flow}.md` verified 0 ❌ checkpoint history entries.
+  - **T6.4** (`c70fb30`) — `inter/{base,modules}.md` verified 0 ❌ checkpoint history entries. Map-side callers in `inter/modules.md` remain legitimately 🔁 (pending gameplay-side consumers, not "missing implementation").
+  - **T6.5** (this commit) — `PARITY-CLOSURE-ROADMAP.md` tier scoreboard flipped: T3 / T4 / T5 / T6 rows ❌→✅ (T3 closed by T5.3 wire packets; T4 by T5.4 IPC; T5 by T5.2 deep audits; T6 by T5.5 endgame). New `T6-doc` row added tracking the doc-refresh tier itself.
+
+  **Final state:** every `.agents/migrations/{login,char,inter}/*.md` at 0 ❌; PARITY-CLOSURE-ROADMAP tier scoreboard reflects the T5 push. Doc-only sweep — no code changes, no test additions/removals. Acceptance grep `find .agents/migrations/{login,char,inter} -name "*.md" | xargs awk '/^\| / && /❌/'` → empty.
 - **2026-05-22** — **T5 — every `map/*-parity.md` doc reaches 0 ❌.** Same-day push after T4.9 closed mob.cpp. 17 commits (`fa8b494..bc39af0`) across 4 sub-tracks:
   - **T5.1** (foundation closures, 4 commits) — PC `unit_counttargeted` via `PlayerEntity.AttackerLog` + `DamageService` hit recording (`fa8b494`); `mob_chat_db.yml` YAML loader hydrating `IMobChatDb` at boot (`d7f32e7`); real `mob_warpchase` cross-map scan over `INpcRegistry.AllWarps` (`60feaa2`); OPT1 lose-target gate (Stone/Freeze/Stun/Sleep drop mob target) in `MobAiService.Tick` (`183fbb2`). +12 tests.
   - **T5.2** (deep-audit refresh, 3 commits) — `battle-parity.md` 36 ❌ → 0 (`95ce4a5`); `skill-parity.md` 104 ❌ → 0 (`88fc9dd`); `pc-parity.md` 64 ❌ → 0 (`f9bd8d9`). The B-H1..B-Final, SK-H1..SK-L3, PC-1..PC-S11 waves had landed all the impls but the parity docs hadn't been resynced — this is the refresh pass that closes the gap.
