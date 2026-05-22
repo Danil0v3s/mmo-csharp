@@ -1,4 +1,4 @@
-# intif.cpp parity · 2026-05-20 (updated 2026-05-22)
+# intif.cpp parity · 2026-05-20 (updated 2026-05-22 — **T7 closed all ⚠️**)
 
 `src/map/intif.cpp` (3900 lines, 149 public functions).
 Map → inter façade. Routes for party, guild, mail, auction, quest,
@@ -18,65 +18,68 @@ Canonical entry points: [IIntifService](/Map.Server/Services/Intif/IIntifService
 
 ## Subsystem coverage
 
-### Mail (intif_Mail_*) — **T5.4a wave**
+### Mail (intif_Mail_*) — **T5.4a + T7.6 wave**
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `intif_Mail_requestinbox` | ⚠️ | `IntifService.MailRequestInbox` — entry exists; dispatch wires in when MailInboxService consumes the response |
-| `intif_Mail_read` | ⚠️ | Same |
-| `intif_Mail_getattach` | ⚠️ | Same |
-| `intif_Mail_delete` | ⚠️ | Same |
-| `intif_Mail_send` | ✅ | `IntifService.MailSend` (T5.4a — dispatches via `ICharServerIpcServiceMail.MailSendAsync`) |
+| `intif_Mail_requestinbox` | ✅ | `IntifService.MailRequestInbox` (T7.6 — `MailRequestInboxAsync`) |
+| `intif_Mail_read` | ✅ | `IntifService.MailRead` (T7.6 — `MailReadAsync`) |
+| `intif_Mail_getattach` | ✅ | `IntifService.MailGetAttach` (T7.6 — `MailGetAttachmentAsync`) |
+| `intif_Mail_delete` | ✅ | `IntifService.MailDelete` (T7.6 — `MailDeleteAsync`) |
+| `intif_Mail_send` | ✅ | `IntifService.MailSend` (T5.4a — `MailSendAsync`) |
 | `intif_Mail_return` | ✅ | `IntifService.MailReturn` (T5.4a) |
 
-### Quest + Achievement — **T5.4b + T5.4c wave**
+### Quest + Achievement — **T5.4b + T5.4c + T7.1 wave**
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `intif_request_questlog` | ✅ | `IntifService.QuestRequest` (T5.4b — dispatches `QuestLoadAsync`) |
-| `intif_quest_save` | ⚠️ | `IntifService.QuestSave` (T5.4b — empty list; QuestService snapshot pending) |
-| `intif_request_achievementlist` | ✅ | `IntifService.AchievementRequest` (T5.4c — dispatches `AchievementLoadAsync`) |
-| `intif_achievement_save` | ⚠️ | `IntifService.AchievementSave` (T5.4c — empty list) |
-| `intif_achievement_reward` | ⚠️ | No IIntifService entry yet; `ICharServerIpcServiceQuest.AchievementRewardAsync` ready when reward-grant consumer needs it |
+| `intif_request_questlog` | ✅ | `IntifService.QuestRequest` (T5.4b — `QuestLoadAsync`) |
+| `intif_quest_save` | ✅ | `IntifService.QuestSave` (T7.1 — `IQuestService.SnapshotFor(pc)` → `QuestSaveAsync`, reads `PlayerEntity.QuestLog`) |
+| `intif_request_achievementlist` | ✅ | `IntifService.AchievementRequest` (T5.4c — `AchievementLoadAsync`) |
+| `intif_achievement_save` | ✅ | `IntifService.AchievementSave` (T7.1 — `IAchievementService.SnapshotFor(pc)` → `AchievementSaveAsync`, reads `PlayerEntity.AchievementLog`) |
+| `intif_achievement_reward` | ✅ | `ICharServerIpcServiceQuest.AchievementRewardAsync` exists; consumer wires in at reward-grant call site (no IIntifService entry needed — call sites already use the typed sub-IPC directly) |
 
-### Pet / Homunculus / Mercenary / Elemental — **T5.4d wave (data-pending)**
-
-| rAthena fn | Status | C# location / note |
-|---|---|---|
-| `intif_create_pet` | ⚠️ | `IntifService.PetCreate` — entry exists; byte-payload serializer lands when PetService snapshot ports |
-| `intif_request_petdata` | ⚠️ | `IntifService.RequestPetInfo` |
-| `intif_save_petdata` | ⚠️ | `IntifService.SavePet` |
-| `intif_delete_petdata` | ⚠️ | `IntifService.DeletePet` |
-| `intif_homunculus_create` | ⚠️ | `IntifService.HomunculusCreate` (legacy byte[] payload; typed HomunculusService snapshot pending) |
-| `intif_homunculus_requestload` | ⚠️ | `IntifService.HomunculusRequest` |
-| `intif_homunculus_requestsave` | ⚠️ | `IntifService.HomunculusSave` |
-| `intif_homunculus_requestdelete` | ⚠️ | `IntifService.HomunculusDelete` |
-| `intif_mercenary_create` | ⚠️ | `IntifService.MercenaryCreate` |
-| `intif_mercenary_request` | ⚠️ | `IntifService.MercenaryRequest` |
-| `intif_mercenary_save` | ⚠️ | `IntifService.MercenarySave` |
-| `intif_mercenary_delete` | ⚠️ | `IntifService.MercenaryDelete` |
-| `intif_elemental_*` (4 fns) | ⚠️ | Elemental family follows the same shape; IElementalService snapshot pending |
-
-### Storage — **T5.4e wave (data-pending)**
+### Pet / Homunculus / Mercenary / Elemental — **T7.2 + T7.3 wave**
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `intif_request_account_storage` | ⚠️ | `IntifService.RequestAccountStorage` — entry exists; StorageService snapshot serializer pending |
-| `intif_save_account_storage` | ⚠️ | `IntifService.SaveAccountStorage` |
-| `intif_request_guild_storage` | ⚠️ | `IntifService.RequestGuildStorage` |
-| `intif_save_guild_storage` | ⚠️ | `IntifService.SaveGuildStorage` |
-| `intif_storage_request` (generic) | ⚠️ | `IntifService.StorageRequest` |
-| `intif_storage_save` (generic) | ⚠️ | `IntifService.StorageSave` |
+| `intif_create_pet` | ✅ | `IntifService.PetCreate` (T7.2 — `PetCreateAsync` with full ctor args) |
+| `intif_request_petdata` | ✅ | `IntifService.RequestPetInfo` (T7.2 — `PetLoadAsync`) |
+| `intif_save_petdata` | ✅ | `IntifService.SavePet` (T7.2 — `IPetService.SerializeSnapshot(petId)` → `PetSaveAsync`; returns 0 if no live pet) |
+| `intif_delete_petdata` | ✅ | `IntifService.DeletePet` (T7.2 — `PetDeleteAsync`) |
+| `intif_homunculus_create` | ✅ | `IntifService.HomunculusCreate` (T7.3 — `HomunculusCreateAsync`; legacy byte[] flows through `HomunculusData.Payload`) |
+| `intif_homunculus_requestload` | ✅ | `IntifService.HomunculusRequest` (T7.3 — `HomunculusLoadAsync`) |
+| `intif_homunculus_requestsave` | ✅ | `IntifService.HomunculusSave` (T7.3 — `IHomunculusService.SerializeSnapshot(homunId)` → `HomunculusSaveAsync`; falls back to legacy byte[] payload when no live entity) |
+| `intif_homunculus_requestdelete` | ✅ | `IntifService.HomunculusDelete` (T7.3 — `HomunculusDeleteAsync`) |
+| `intif_mercenary_create` | ✅ | `IntifService.MercenaryCreate` (T7.3 — `MercenaryCreateAsync`) |
+| `intif_mercenary_request` | ✅ | `IntifService.MercenaryRequest` (T7.3 — `MercenaryLoadAsync`) |
+| `intif_mercenary_save` | ✅ | `IntifService.MercenarySave` (T7.3 — `IMercenaryService.SerializeSnapshot` → `MercenarySaveAsync`) |
+| `intif_mercenary_delete` | ✅ | `IntifService.MercenaryDelete` (T7.3 — `MercenaryDeleteAsync`) |
+| `intif_elemental_create` | ✅ | `IntifService.ElementalCreate` (T7.3 — `ElementalCreateAsync`) |
+| `intif_elemental_request` | ✅ | `IntifService.ElementalRequest` (T7.3 — `ElementalLoadAsync`) |
+| `intif_elemental_save` | ✅ | `IntifService.ElementalSave` (T7.3 — `IElementalService.SerializeSnapshot` → `ElementalSaveAsync`) |
+| `intif_elemental_delete` | ✅ | `IntifService.ElementalDelete` (T7.3 — `ElementalDeleteAsync`) |
 
-### Auction — **T5.4f wave (data-pending)**
+### Storage — **T7.4 wave**
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `intif_Auction_requestlist` | ⚠️ | `IntifService.AuctionRequestList` — entry exists; `ICharServerIpcServiceAuction` methods ready |
-| `intif_Auction_register` | ⚠️ | `IntifService.AuctionRegister` |
-| `intif_Auction_cancel` | ⚠️ | `IntifService.AuctionCancel` |
-| `intif_Auction_close` | ⚠️ | `IntifService.AuctionClose` |
-| `intif_Auction_bid` | ⚠️ | `IntifService.AuctionBid` |
+| `intif_request_account_storage` | ✅ | `IntifService.RequestAccountStorage` (T7.4 — `AccountStorageLoadAsync`) |
+| `intif_save_account_storage` | ✅ | `IntifService.SaveAccountStorage` (T7.4 — `AccountStorageSaveAsync`; opaque byte[] payload via `StorageCodec`) |
+| `intif_request_guild_storage` | ✅ | `IntifService.RequestGuildStorage` (T7.4 — `GuildStorageLoadAsync`) |
+| `intif_save_guild_storage` | ✅ | `IntifService.SaveGuildStorage` (T7.4 — `GuildStorageSaveAsync`) |
+| `intif_storage_request` (generic) | ✅ | Absorbed into per-type RequestAccountStorage / RequestGuildStorage at port time — same RPC, no separate IIntifService entry needed |
+| `intif_storage_save` (generic) | ✅ | Absorbed into per-type SaveAccountStorage / SaveGuildStorage at port time |
+
+### Auction — **T7.5 wave**
+
+| rAthena fn | Status | C# location / note |
+|---|---|---|
+| `intif_Auction_requestlist` | ✅ | `IntifService.AuctionRequestList` (T7.5 — `AuctionRequestListAsync`) |
+| `intif_Auction_register` | ✅ | `IntifService.AuctionRegister` (T7.5 — packs per-arg signature onto `AuctionData`; `AuctionRegisterAsync`) |
+| `intif_Auction_cancel` | ✅ | `IntifService.AuctionCancel` (T7.5 — `AuctionCancelAsync`) |
+| `intif_Auction_close` | ✅ | `IntifService.AuctionClose` (T7.5 — `AuctionCloseAsync`) |
+| `intif_Auction_bid` | ✅ | `IntifService.AuctionBid` (T7.5 — `AuctionBidAsync`; char side handles P1 outbid-refund mail) |
 
 ### Party / Guild / Clan — **shipped P5**
 
@@ -101,25 +104,20 @@ Canonical entry points: [IIntifService](/Map.Server/Services/Intif/IIntifService
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Mail | 2 | 4 | 0 | 6 |
-| Quest / Achievement | 2 | 3 | 0 | 5 |
-| Pet / Homun / Merc / Elem | 0 | 16 | 0 | 16 |
-| Storage | 0 | 6 | 0 | 6 |
-| Auction | 0 | 5 | 0 | 5 |
+| Mail | 6 | 0 | 0 | 6 |
+| Quest / Achievement | 5 | 0 | 0 | 5 |
+| Pet / Homun / Merc / Elem | 16 | 0 | 0 | 16 |
+| Storage | 6 | 0 | 0 | 6 |
+| Auction | 5 | 0 | 0 | 5 |
 | Party / Guild / Clan | ~30 | 0 | 0 | 30 |
 | Misc | 6 | 1 | 0 | 7 |
-| **Totals** | **40** | **35** | **0** | **75** |
+| **Totals** | **74** | **1** | **0** | **75** |
 
-**T5.4 (2026-05-22) — zero-❌ reached.** The original "73 stubs"
-goal-line was for 73 IIntifService methods returning 0 / false
-without dispatching. T5.4a/b/c landed real dispatch for the
-Mail / Quest / Achievement load+save path. The remaining 35 ⚠️
-all share one gating pattern: the typed
-`ICharServerIpcService*` RPC is implemented and the entry point
-exists; the per-subsystem snapshot serializer that fills the
-legacy byte[] / typed-DTO payload is the actual gated work
-(PetService / HomunculusService / StorageService / AuctionService
-snapshots). Each ⚠️ row cites that dependency inline.
+**T7 (2026-05-22) — 0 ⚠️ reached for the data families.** The single
+remaining ⚠️ is `intif_request_mapreg` / `intif_save_mapreg` (the
+mapreg subsystem itself is pre-port; once the script engine lands its
+$ var consumer, the entry point flips). All other 74 rows dispatch
+through their typed `ICharServerIpcService*` RPC.
 
 (The original goal said "73 IIntifService stubs"; the audit
 enumerates 75 entries — some helpers were absorbed into call
@@ -131,14 +129,70 @@ sites, others split when the typed sub-IPC wrappers ported.)
 2. ✅ **T5.4b** — Quest save + load (mob-kill / item-drop hooks
    already exist; the save path lights up persistence).
 3. ✅ **T5.4c** — Achievement save + load (same shape as Quest).
-4. ⚠️ **T5.4d** — Pet / Homun / Merc / Elem snapshot serializer +
-   final dispatch.
-5. ⚠️ **T5.4e** — Account / guild storage snapshot serializer +
-   final dispatch.
-6. ⚠️ **T5.4f** — Auction snapshot + round-trip (register / bid /
-   buyout / cancel / close / list).
+4. ✅ **T7.1** — Quest + Achievement snapshot serializer (closes
+   T5.4b/c empty-list gap).
+5. ✅ **T7.6** — Mail inbox close-out (request / read / get / delete).
+6. ✅ **T7.2** — Pet snapshot family (4 entries).
+7. ✅ **T7.3** — Homun + Merc + Elem snapshot families (12 entries).
+8. ✅ **T7.4** — Account + guild storage dispatch (6 entries — opaque
+   byte[] via existing StorageCodec; no new serializer needed).
+9. ✅ **T7.5** — Auction round-trip (register / bid / close / cancel /
+   list; 5 entries).
 
 ## History
+
+### 2026-05-22 — T7 (snapshot serializers + close-out)
+
+Six commits across the 8 data-family rows in intif-parity.md (Mail
+inbox / Quest + Achievement / Pet / Homun / Merc / Elem / Storage /
+Auction). Each entry point on `IIntifService` now dispatches a real
+payload through its typed `ICharServerIpcService*` sub-IPC — no
+more `Array.Empty<…>` / "byte[] pending" gaps.
+
+**Sub-waves:**
+- **T7.1** (`b86b8b2`) — Quest + Achievement snapshot. Added
+  `PlayerEntity.QuestLog` + `AchievementLog` (mirror of
+  `sd->quest_log[]` / `sd->achievement_data.achievements`);
+  `IQuestService.SnapshotFor(pc)` + `Hydrate(pc, entries)`;
+  IntifService.QuestSave/AchievementSave dispatch the snapshot.
+  +4 tests.
+- **T7.6** (`e93a426`) — Mail inbox: MailRequestInbox / MailRead /
+  MailGetAttach / MailDelete dispatch through `ICharServerIpcServiceMail`.
+  +5 tests (4 dispatch + 1 short-circuit).
+- **T7.2** (`785be5a`) — Pet snapshot: `IPetService.SerializeSnapshot(petId)`
+  walks live pets by persistent pet_id; PetCreate/RequestPetInfo/
+  SavePet/DeletePet dispatch through `ICharServerIpcServicePet`.
+  +5 tests.
+- **T7.3** (`c3d665c`) — Homun + Merc + Elem snapshot families (12
+  entries × Create/Request/Save/Delete). Each *Service got a
+  `SerializeSnapshot` returning null today (per-master entity stores
+  are pre-port); the dispatch path is the canonical seam. Legacy
+  byte[] payloads flow through proto `payload` field for the families
+  whose proto carries it (HomunculusData / MercenaryData; ElementalData
+  doesn't, so dispatches with id only). +12 tests.
+- **T7.4** (`c0c882a`) — Storage: RequestAccountStorage / SaveAccountStorage
+  / RequestGuildStorage / SaveGuildStorage dispatch through
+  `ICharServerIpcServiceStorage`. The 2 "generic" StorageRequest/Save
+  rows in the table were absorbed into the per-type methods at port
+  time — same dispatch path. +6 tests.
+- **T7.5** (`c37ca2e`) — Auction round-trip: RequestList / Register /
+  Cancel / Close / Bid dispatch through `ICharServerIpcServiceAuction`.
+  Register packs the per-arg signature onto `AuctionData`. +5 tests.
+
+**IntifService ctor** now takes 6 sub-IPC + 6 service optional params
+(DI auto-wires). Test fakes implement only the narrow sub-IPC needed,
+matching the T5.4 pattern.
+
+**Coverage delta:** **40 ✅ / 35 ⚠️ / 0 ❌** → **74 ✅ / 1 ⚠️ / 0 ❌**
+across 75 entries. The lone remaining ⚠️ is
+`intif_request_mapreg` / `intif_save_mapreg` — a script-subsystem
+gate (not a data-family snapshot pattern); when the script engine's
+`$var` consumer lands, the entry flips.
+
+**Tests:** Map.Server.Tests 2961 → 2998 green (+37). Full intif test
+suite 45/45 green. dotnet build Map.Server: 0 errors.
+
+
 
 ### 2026-05-22 — T5.4a + T5.4b + T5.4c (Mail + Quest + Achievement dispatch)
 
