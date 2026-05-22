@@ -1823,6 +1823,18 @@ builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DuelAcceptComma
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DuelRejectCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DuelLeaveCommand>();
 
+// AT-R2 — retire stats / skill-points stubs by porting real impls.
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.StatAllCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.StatsAllCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AllStatsCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.StatusPointCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.TraitPointCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.SkillPointCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.StatsCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AllSkillCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.QuestSkillCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.LostSkillCommand>();
+
 // PC-* phase: player option / appearance / orb services + GM commands.
 // rAthena pc_setoption / pc_setcart / pc_setriding / pc_changelook
 // (pc.cpp:8702 / 8851 / 8810 / clif.cpp:3929) + the pc_addspiritball

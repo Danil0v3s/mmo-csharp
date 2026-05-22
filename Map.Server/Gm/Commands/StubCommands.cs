@@ -88,15 +88,14 @@ internal static class StubCommandKinds
         new("changeleader", "party.cpp"),
         // job change / skill grant
         new("jobchange", "pc.cpp:jobchange"), new("job", "pc.cpp:jobchange"),
-        new("allskill", "pc.cpp:skills"), new("questskill", "pc.cpp:skills"),
-        new("lostskill", "pc.cpp:skills"),
+        // allskill/questskill/lostskill retired AT-R2 (AllSkillCommand /
+        // QuestSkillCommand / LostSkillCommand).
         // refine / grade
         new("refine", "pc.cpp:refine"), new("grade", "pc.cpp:enchantgrade"),
         new("produce", "pc.cpp:produce"),
-        // bonus / stat allocation extras
-        new("statall", "pc.cpp:status"), new("statsall", "pc.cpp:status"),
-        new("allstats", "pc.cpp:status"), new("traitpoint", "pc.cpp:traits"),
-        new("statuspoint", "pc.cpp:status"), new("skillpoint", "pc.cpp:skills"),
+        // bonus / stat allocation extras — retired AT-R2 (StatAllCommand /
+        // StatsAllCommand / AllStatsCommand / TraitPointCommand /
+        // StatusPointCommand / SkillPointCommand).
         // misc world toggles
         new("day", "pc.cpp:option"), new("night", "pc.cpp:option"),
         new("clearweather", "pc.cpp:weather"),
@@ -199,7 +198,7 @@ internal static class StubCommandKinds
         new("whomap", "pc.cpp:who"), new("whomap2", "pc.cpp:who"),
         new("whomap3", "pc.cpp:who"), new("whogm", "pc.cpp:who"),
         new("idsearch", "item.cpp"),
-        new("stats", "pc.cpp:status"),
+        // stats retired AT-R2 (StatsCommand).
         new("itemlist", "pc.cpp:inventory"),
         new("cartlist", "pc.cpp:cart"),
         new("storagelist", "pc.cpp:storage"),
