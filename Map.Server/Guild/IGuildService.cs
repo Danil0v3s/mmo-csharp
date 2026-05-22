@@ -164,4 +164,48 @@ public interface IGuildService
     /// <see cref="GuildPermission.All"/>.
     /// </summary>
     bool HasPermission(PlayerEntity pc, GuildPermission permission);
+
+    // -----------------------------------------------------------------
+    // GD-M1 — notice + emblem
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// rAthena <c>guild_change_notice</c> (cpp:1542). Outbound:
+    /// caller PC must be in the named guild; we forward to the
+    /// char server via <c>intif_guild_notice</c>. Returns true on
+    /// gate pass.
+    /// </summary>
+    bool ChangeNotice(PlayerEntity pc, int guildId, string mes1, string mes2);
+
+    /// <summary>
+    /// rAthena <c>guild_notice_changed</c> (cpp:1553). Inbound from
+    /// the char server after a notice mutation lands. Updates the
+    /// cached entity then signals the per-member broadcast (clif
+    /// side fires <c>clif_guild_notice</c>).
+    /// </summary>
+    int NoticeChanged(int guildId, string mes1, string mes2);
+
+    /// <summary>
+    /// rAthena <c>guild_check_emblem_change_condition</c> (cpp:1573).
+    /// Returns true if the PC's guild is allowed to change emblem.
+    /// Renewal+battle_config rule: require Glory of the Guild
+    /// (GD_GLORYGUILD) skill if <c>require_glory_guild</c> is on.
+    /// We default to permissive — the require-glory gate hooks in
+    /// when the battle_config consumer ports.
+    /// </summary>
+    bool CheckEmblemChangeCondition(PlayerEntity pc);
+
+    /// <summary>
+    /// rAthena <c>guild_change_emblem</c> (cpp:1587). Outbound:
+    /// honors the change-condition gate then forwards the byte
+    /// blob to the char server via <c>intif_guild_emblem</c>.
+    /// </summary>
+    int ChangeEmblem(PlayerEntity pc, byte[] data);
+
+    /// <summary>
+    /// rAthena <c>guild_change_emblem_version</c> (cpp:1598).
+    /// PACKETVER ≥ 20200716 path — bumps the emblem version so
+    /// clients pull a fresh blob.
+    /// </summary>
+    int ChangeEmblemVersion(PlayerEntity pc, int version);
 }

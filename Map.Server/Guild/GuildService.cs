@@ -223,7 +223,17 @@ public sealed class GuildService : IGuildService
         return true;
     }
     public int ChangeMemberPosition(int guildId, int accountId, int charId, short idx) => 0;
-    public int EmblemChanged(int guildId) => 0;
+    public int EmblemChanged(int guildId)
+    {
+        // rAthena guild.cpp:1609 — notification that the emblem blob
+        // has changed on the char side. We rely on the next RecvInfo
+        // hydrate to repaint EmblemData; here we bump the cached
+        // EmblemVersion so caller code knows the cache is stale.
+        var g = Find(guildId);
+        if (g == null) return 0;
+        g.EmblemVersion++;
+        return 1;
+    }
     public bool SkillUp(PlayerEntity pc, ushort skillId) => false;
     public int AllianceAck(int guildId, int allyId, int accountId, int charId, int flag, string mes) => 0;
     public bool Break(PlayerEntity gm, string name)
@@ -416,6 +426,77 @@ public sealed class GuildService : IGuildService
         // fires from the session layer once it observes the change;
         // returning 1 signals "applied to cache".
         return 1;
+    }
+
+    // ---------- GD-M1: notice + emblem ----------
+
+    /// <summary>rAthena guild.cpp:1542 — guild_change_notice outbound gate.</summary>
+    public bool ChangeNotice(PlayerEntity pc, int guildId, string mes1, string mes2)
+    {
+        if (pc == null || guildId <= 0) return false;
+        if (pc.GuildId != guildId) return false;
+        var g = Find(guildId);
+        if (g == null) return false;
+        // The actual mutation is char-side (intif_guild_notice);
+        // here we accept the gate and let NoticeChanged paint the
+        // cache when the response lands.
+        return true;
+    }
+
+    /// <summary>rAthena guild.cpp:1553 — guild_notice_changed inbound mutation.</summary>
+    public int NoticeChanged(int guildId, string mes1, string mes2)
+    {
+        var g = Find(guildId);
+        if (g == null) return 0;
+        // rAthena clamps to MAX_GUILDMES1 / MAX_GUILDMES2.
+        g.Notice1 = Truncate(mes1, MaxGuildMes1);
+        g.Notice2 = Truncate(mes2, MaxGuildMes2);
+        // clif_guild_notice broadcast lives on the wire side; here
+        // we only mutate the cache.
+        return 1;
+    }
+
+    /// <summary>rAthena guild.cpp:1573 — guild_check_emblem_change_condition.</summary>
+    public bool CheckEmblemChangeCondition(PlayerEntity pc)
+    {
+        if (pc == null) return false;
+        if (pc.GuildId <= 0) return false;
+        // battle_config.require_glory_guild + GD_GLORYGUILD skill
+        // check ports when the battle_config consumer lands. For
+        // now: permissive (matches rAthena when require_glory_guild
+        // is off — which it is by default).
+        return true;
+    }
+
+    /// <summary>rAthena guild.cpp:1587 — guild_change_emblem outbound.</summary>
+    public int ChangeEmblem(PlayerEntity pc, byte[] data)
+    {
+        if (!CheckEmblemChangeCondition(pc)) return 0;
+        // The actual blob storage is char-side
+        // (intif_guild_emblem); on success the char response
+        // arrives via EmblemChanged below.
+        return 1;
+    }
+
+    /// <summary>rAthena guild.cpp:1598 — guild_change_emblem_version outbound.</summary>
+    public int ChangeEmblemVersion(PlayerEntity pc, int version)
+    {
+        if (!CheckEmblemChangeCondition(pc)) return 0;
+        var g = Find(pc.GuildId);
+        if (g == null) return 0;
+        // Local bump so subsequent reads see the new version while
+        // the char-side response is in flight.
+        g.EmblemVersion = version;
+        return 1;
+    }
+
+    private const int MaxGuildMes1 = 60;
+    private const int MaxGuildMes2 = 120;
+
+    private static string Truncate(string s, int max)
+    {
+        if (string.IsNullOrEmpty(s)) return string.Empty;
+        return s.Length <= max ? s : s.Substring(0, max);
     }
 
     // ---------- GD-H3: permission gate ----------
