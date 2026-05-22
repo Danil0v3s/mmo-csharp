@@ -75,6 +75,16 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-23** — **AT-R wave — 71 atcommand stubs retired (6 commits).** Drove atcommand.cpp from T9.A baseline (53 ✅ / 1 ⚠️ / 236 ❌) to **124 ✅ / 1 ⚠️ / 165 ❌** by porting 71 stubbed commands to real impls backed by the now-shipped parent services (guild WOE-100 100%, duel T9.F 100%, PC stat/skill/inv/jail/job waves). See [map/atcommand-parity.md](map/atcommand-parity.md). Commit chain:
+  - **AT-R1** (`ac92f47`) — Guild + Duel (10): @breakguild, @guildstorage, @cleargstorage, @changegm, @guildlevelup, @duel, @invite, @accept, @reject, @leave
+  - **AT-R2** (`087f6a5`) — Stats + Skill points (10): @statall, @statsall, @allstats, @statuspoint, @traitpoint, @skillpoint, @stats, @allskill, @questskill, @lostskill
+  - **AT-R3** (`4bc9713`) — Inventory + Jail + Job (14): @identifyall, @itemreset, @dropall, @storeall, @clearcart, @clearstorage, @repair, @repairall, @jail, @unjail, @jailfor, @jailtime, @jobchange, @job
+  - **AT-R4** (`c96fc26`) — Info + Movement + KS (19): @mapmove, @go, @resurrect, @exp, @rates, @itemlist, @cartlist, @storagelist, @mobinfo, @iteminfo, @idsearch, @whodrops, @whereis, @mobsearch, @noks, @allowks, @noask, @mute, @unmute
+  - **AT-R5** (`1b18a5e`) — Reload + Cleanup (18): per-DB reload family + @killmonster / @killmonster2 / @cleanmap / @cleanarea
+  - **AT-100** (this commit) — doc rollup
+
+  Added shared `GmCommandReply` helper + `IDuelService.GetDuelIdFor`. 132 → 61 stubs remaining (all parent-subsystem-pending). dotnet build Map.Server: 0 errors. Map.Server.Tests: 3262 passing (no change — atcommand impls have no behavior tests in this wave).
+
 - **2026-05-22** — **T9 wave — per-fn rollup backfill across 29 map parity docs (10 commits).** All 42 map docs now have the T5.2-pattern `| ✅ / ⚠️ / ❌ | Totals |` rollup tables; the 29 docs T8 left as prose-only got per-function audits in 8 batched commits + AUDIT refresh + this README entry. Aggregate across the 29 backfilled docs: **~283 ✅ / ~290 ⚠️ / ~319 ❌**. Methodology: T8.5 pattern (`scripts/enumerate.sh` → grep C# tree → categorize). Wave breakdown:
   - **T9.A** (`d2186af`) atcommand: 53 ✅ / 1 ⚠️ / 236 ❌ (290)
   - **T9.B** (`f48ee20`) map + unit + itemdb: 14 ✅ / 83 ⚠️ / 21 ❌ (118 gameplay surface)

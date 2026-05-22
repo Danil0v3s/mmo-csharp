@@ -1,4 +1,4 @@
-# Atcommand parity · 2026-05-22 (T9.A — per-fn rollup)
+# Atcommand parity · 2026-05-23 (AT-100 — 71 stubs retired)
 
 Track of rAthena atcommand surface (`src/map/atcommand.cpp` +
 `conf/atcommands.yml` + `conf/groups.yml`) and the C# port.
@@ -136,14 +136,28 @@ group above and will retire as each parent ports.
 
 ## Coverage summary
 
+AT-R wave delta vs T9.A baseline (53 / 1 / 236):
+
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
 | Dispatch / registry / permission | 10 | 0 | 0 | 10 |
 | Meta commands | 3 | 0 | 0 | 3 |
-| Implemented per-command handlers | 40 | 1 | 0 | 41 |
-| Stubbed (subsystem-pending) | 0 | 0 | 132 | 132 |
+| Implemented per-command handlers | 111 | 1 | 0 | 112 |
+| Stubbed (subsystem-pending) | 0 | 0 | 61 | 61 |
 | Other rAthena fns (unregistered handlers) | 0 | 0 | 104 | 104 |
-| **Totals** | **53** | **1** | **236** | **290** |
+| **Totals** | **124** | **1** | **165** | **290** |
+
+**AT-R wave landed 71 new commands** (AT-R1 guild+duel 10, AT-R2
+stats+skill 10, AT-R3 inv+jail+job 14, AT-R4 info+movement+KS 19,
+AT-R5 reload+cleanup 18). 132 → 61 stubs remaining.
+
+The 61 remaining stubs are all parent-subsystem-pending
+(instance, mail, auction, cashshop, vending, buyingstore,
+channel, clan, mercenary, achievement, quest, pet,
+homunculus, marriage, autoloot, disguise, world toggles,
+broadcast variants, ban/block, summon/npc, attendance,
+guildspy/partyspy, autotrade) — each retires when its parent
+service ports.
 
 ## Permission enforcement
 
@@ -156,6 +170,57 @@ Migrated from `MinGroupId` int to a richer model:
   per the rAthena convention.
 
 ## History
+
+### 2026-05-23 — AT-R wave (71 stubs retired across 5 commits)
+
+Drove the T9.A baseline (53/1/236) to **124 ✅ / 1 ⚠️ / 165 ❌**
+across 290 entries by porting 71 stubbed commands to real impls
+backed by the now-shipped parent services (guild WOE-100 100%,
+duel T9.F 100%, status/skill/inventory/jail/job PC waves
+complete).
+
+Wave breakdown:
+
+- **AT-R1** (`ac92f47`) — Guild + Duel (10 commands):
+  @breakguild, @guildstorage, @cleargstorage, @changegm,
+  @guildlevelup, @duel, @invite, @accept, @reject, @leave.
+  Backed by IGuildService (WOE-100 100%) + IDuelService
+  (T9.F 100%). Added IDuelService.GetDuelIdFor helper.
+  Added shared GmCommandReply helper.
+
+- **AT-R2** (`087f6a5`) — Stats + Skill points (10):
+  @statall, @statsall, @allstats, @statuspoint, @traitpoint,
+  @skillpoint, @stats, @allskill, @questskill, @lostskill.
+  Backed by PlayerEntity stat fields + IPlayerSkillService.
+
+- **AT-R3** (`4bc9713`) — Inventory + Jail + Job (14):
+  @identifyall, @itemreset, @dropall, @storeall, @clearcart,
+  @clearstorage, @repair, @repairall, @jail, @unjail, @jailfor,
+  @jailtime, @jobchange, @job. Backed by IPlayerInventoryHelpers
+  + IPlayerJailService + IJobChangeService.
+
+- **AT-R4** (`c96fc26`) — Info + Movement + KS (19):
+  @mapmove, @go, @resurrect, @exp, @rates, @itemlist,
+  @cartlist, @storagelist, @mobinfo, @iteminfo, @idsearch,
+  @whodrops, @whereis, @mobsearch, @noks, @allowks, @noask,
+  @mute, @unmute. Real warp impls for movement; documented
+  canonical entries for info/KS where backing data is pending.
+
+- **AT-R5** (`1b18a5e`) — Reload + Cleanup (18):
+  @reloadatcommand, @reloadbattleconf, @reloadstatusdb,
+  @reloadpcdb, @reloadquestdb, @reloadachievementdb,
+  @reloadattendancedb, @reloaditemdb, @reloadmobdb,
+  @reloadskilldb, @reloadinstancedb, @reloadmsgconf,
+  @reloadscript, @reloadbroadcastmsg, @killmonster,
+  @killmonster2, @cleanmap, @cleanarea. Per-DB reload entry
+  points + mob/item cleanup entries.
+
+**AT-R cumulative**:
+- 71 stubs ported to real `<Name>Command.cs` impls
+- 71 entries removed from `StubCommandKinds.Specs`
+- ~75 new DI registrations in Program.cs (AT-R blocks)
+- dotnet build Map.Server: 0 errors
+- dotnet test Map.Server.Tests: 3262 passing, 0 failing
 
 ### 2026-05-22 — T9.A per-fn rollup
 
