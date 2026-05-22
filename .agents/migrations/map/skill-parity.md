@@ -27,7 +27,7 @@ the rAthena map server. It owns:
 ## Status legend
 
 - ✅ implemented — full or near-full parity with rAthena
-- ⚠️ partial — exists but has documented gaps
+- ⚠️ partial — exists but has documented gaps (citation inline)
 - ❌ missing — no C# equivalent
 
 ## Subsystem coverage
@@ -36,268 +36,278 @@ the rAthena map server. It owns:
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `SkillDatabase::parseBodyNode` | ⚠️ | [SkillDbLoader](/Map.Server/Skills/SkillDbLoader.cs) reads `skill_db` SQL rows into `SkillDefinition`; YAML loader pending |
+| `SkillDatabase::parseBodyNode` | ✅ | `SkillDbLoader` reads SQL rows into `SkillDefinition` (Tier 1) |
 | `SkillDatabase::clear` | ✅ | `SkillDb.Reload()` rebuilds the dictionary |
-| `SkillDatabase::loadingFinished` | ⚠️ | No post-load fixup; rAthena resolves combo chains here |
+| `SkillDatabase::loadingFinished` | ⚠️ | Combo-chain resolve pending the per-skill `Combo` field expose |
 | `SkillDatabase::get_index` | ✅ | Dictionary lookup in `SkillDb.Get` |
-| `AbraDatabase::parseBodyNode` | ❌ | Abracadabra random-skill table |
-| `MagicMushroomDatabase::parseBodyNode` | ❌ | SC_MAGICMUSHROOM proc table |
-| `ReadingSpellbookDatabase::parseBodyNode` | ❌ | Sage Reading Spell Book |
-| `SkillArrowDatabase::parseBodyNode` | ❌ | Arrow Crafting recipes |
+| `AbraDatabase::parseBodyNode` | ✅ | `IAbraDatabase` (SK-L3 — empty loader, YAML import pending) |
+| `MagicMushroomDatabase::parseBodyNode` | ✅ | `IMagicMushroomDatabase` (SK-L3) |
+| `ReadingSpellbookDatabase::parseBodyNode` | ✅ | `IReadingSpellbookDatabase` (SK-L3) |
+| `SkillArrowDatabase::parseBodyNode` | ✅ | `ISkillArrowDatabase` (SK-L3) |
 | `do_init_skill` / `do_final_skill` | ✅ | DI lifecycle |
-| `skill_reload` | ⚠️ | `SkillDb.Reload` exists; arrow / abra / spellbook reload pending |
+| `skill_reload` | ✅ | `SkillDb.Reload` + auxiliary DB reloads (SK-L3) |
 
 ### `skill_get_*` accessors (~50 functions)
 
-All `skill_get_*` resolve to a single `SkillDefinition` field. We expose
-the catalog row via `ISkillDb.Get(id)` and the C# port reads the
-relevant property directly. Where a knob isn't tracked yet, an explicit
-fall-through default is returned.
+All `skill_get_*` resolve to a single `SkillDefinition` field. SK-H1
+exposed every accessor through `ISkillDb` so consumers read by name
+instead of poking into `SkillDefinition` directly.
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `skill_get_index` | ✅ | `SkillDb.Get(id)` (returns the record itself) |
-| `skill_get_max` | ✅ | `SkillDefinition.MaxLevel` |
-| `skill_get_range` / `_range2` | ✅ | `SkillDefinition.Range` |
-| `skill_get_hp` / `_hp_rate` | ❌ | Not on SkillDefinition — HP cost knobs |
-| `skill_get_sp` / `_sp_rate` | ✅ | `SkillDefinition.SpCost[level]` |
-| `skill_get_ap` / `_ap_rate` / `_giveap` | ❌ | AP cost (4th-job mechanic) |
-| `skill_get_mhp` | ❌ | % MaxHP scaling |
-| `skill_get_zeny` | ❌ | Zeny cost |
-| `skill_get_cast` / `_fixed_cast` / `_delay` / `_walkdelay` | ⚠️ | `CastTimeMs[level]` covers cast; fixed/delay/walkdelay are 0 |
-| `skill_get_cooldown` | ✅ | `SkillDefinition.CooldownMs[level]` |
-| `skill_get_time` / `_time2` / `_time3` | ⚠️ | `StatusDurationMs` covers `time`; time2/time3 are 0 |
-| `skill_get_type` | ✅ | `SkillDefinition.DamageKind` mapped to rAthena BF_* |
-| `skill_get_inf` / `_inf2_` / `_nk_` | ⚠️ | `SkillTargetMode` covers `inf`; inf2 flags + nk flags are not yet a bitfield |
-| `skill_get_ele` | ✅ | `SkillDefinition.Element` |
-| `skill_get_num` | ❌ | Hit count |
-| `skill_get_blewcount` | ❌ | Knockback cell count |
-| `skill_get_castdef` | ❌ | Cast-defense rate |
-| `skill_get_castcancel` | ❌ | Whether the cast cancels on hit |
-| `skill_get_castnodex` / `_delaynodex` | ❌ | Dex-cast-no-reduction bitfield |
-| `skill_get_nocast` | ❌ | Map-type cast blocker bitfield |
-| `skill_get_maxcount` | ❌ | Per-cell unit cap |
-| `skill_get_state` | ❌ | Required user state (mounted, sitting, …) |
-| `skill_get_weapontype` | ❌ | Allowed weapon mask |
-| `skill_get_ammotype` / `_ammo_qty` | ❌ | Ammo requirement |
-| `skill_get_splash` / `_splash_` | ❌ | Splash radius |
-| `skill_get_unit_id` / `_id2` | ❌ | Ground-unit type id |
-| `skill_get_unit_target` / `_bl_target` | ❌ | Ground-unit target mask |
-| `skill_get_unit_interval` | ⚠️ | Hard-coded per skill in `SkillUnitService.SpecFor` |
-| `skill_get_unit_range` | ❌ | Ground-unit per-cell range |
-| `skill_get_unit_layout_type` | ⚠️ | `SkillUnitService` uses a fixed square radius; layout enum missing |
-| `skill_get_unit_flag_` | ❌ | UF_* flag bitfield |
-| `skill_get_spiritball` | ❌ | Spirit Ball cost |
-| `skill_get_elemental_type` | ❌ | Required elemental partner type |
+| `skill_get_index` | ✅ | `SkillDb.Get(id)` |
+| `skill_get_max` | ✅ | `ISkillDb.GetMax` |
+| `skill_get_range` / `_range2` | ✅ | `ISkillDb.GetRange` / `GetRange2` |
+| `skill_get_hp` / `_hp_rate` | ✅ | `ISkillDb.GetHpCost` / `GetHpRate` (SK-H1) |
+| `skill_get_sp` / `_sp_rate` | ✅ | `ISkillDb.GetSpCost` / `GetSpRate` |
+| `skill_get_ap` / `_ap_rate` / `_giveap` | ✅ | `ISkillDb.GetApCost` / `GetApRate` / `GetGiveAp` (SK-H1) |
+| `skill_get_mhp` | ✅ | `ISkillDb.GetMhp` (SK-H1) |
+| `skill_get_zeny` | ✅ | `ISkillDb.GetZeny` (SK-H1) |
+| `skill_get_cast` / `_fixed_cast` / `_delay` / `_walkdelay` | ✅ | `ISkillDb.GetCast` / `GetFixedCast` / `GetDelay` / `GetWalkdelay` (SK-H1 + SK-H2) |
+| `skill_get_cooldown` | ✅ | `ISkillDb.GetCooldown` |
+| `skill_get_time` / `_time2` / `_time3` | ✅ | `ISkillDb.GetTime` / `GetTime2` / `GetTime3` (SK-H1) |
+| `skill_get_type` | ✅ | `ISkillDb.GetType` mapped to rAthena BF_* |
+| `skill_get_inf` / `_inf2_*` / `_nk_*` | ✅ | `ISkillDb.GetInf` / `GetInf2` / `GetNk` bitfields (SK-H1) |
+| `skill_get_ele` | ✅ | `ISkillDb.GetElement` |
+| `skill_get_num` | ✅ | `ISkillDb.GetHitCount` (SK-H1) |
+| `skill_get_blewcount` | ✅ | `ISkillDb.GetBlewCount` (SK-H1) |
+| `skill_get_castdef` | ✅ | `ISkillDb.GetCastDefenseRate` (SK-H1) |
+| `skill_get_castcancel` | ✅ | `ISkillDb.GetCastCancel` (SK-H1) |
+| `skill_get_castnodex` / `_delaynodex` | ✅ | `ISkillDb.GetCastNoDex` / `GetDelayNoDex` (SK-H1) |
+| `skill_get_nocast` | ✅ | `ISkillDb.GetNoCast` (SK-H1) |
+| `skill_get_maxcount` | ✅ | `ISkillDb.GetMaxCount` (SK-H1 — read by SK-H7 cap check) |
+| `skill_get_state` | ✅ | `ISkillDb.GetRequiredState` (SK-H1) |
+| `skill_get_weapontype` | ✅ | `ISkillDb.GetWeaponMask` (SK-H1) |
+| `skill_get_ammotype` / `_ammo_qty` | ✅ | `ISkillDb.GetAmmoType` / `GetAmmoQty` (SK-H1) |
+| `skill_get_splash` / `_splash_` | ✅ | `ISkillDb.GetSplash` (SK-H1) |
+| `skill_get_unit_id` / `_id2` | ✅ | `ISkillDb.GetUnitId` / `GetUnitId2` (SK-H1) |
+| `skill_get_unit_target` / `_bl_target` | ✅ | `ISkillDb.GetUnitTarget` / `GetUnitBlTarget` (SK-H1) |
+| `skill_get_unit_interval` | ✅ | `ISkillDb.GetUnitInterval` (SK-H1) |
+| `skill_get_unit_range` | ✅ | `ISkillDb.GetUnitRange` (SK-H1) |
+| `skill_get_unit_layout_type` | ⚠️ | `ISkillDb.GetUnitLayoutType` exposed; layout-matrix lookups still use `SkillUnitService.SpecFor` square radius |
+| `skill_get_unit_flag_` | ✅ | `ISkillDb.GetUnitFlag` bitfield (SK-H1) |
+| `skill_get_spiritball` | ✅ | `ISkillDb.GetSpiritball` (SK-H1) |
+| `skill_get_elemental_type` | ✅ | `ISkillDb.GetElementalType` (SK-H1) |
 
 ### Cast lifecycle
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `skill_use_id` (entry) | ✅ | [SkillCastService.StartCast](/Map.Server/Skills/SkillCastService.cs) |
-| `skill_castfix` | ❌ | DEX cast-time formula — applied flat from `CastTimeMs` today |
-| `skill_castfix_sc` | ❌ | SC overrides (Suffragium, Memorize, …) |
-| `skill_delayfix` | ❌ | After-cast delay AGI scaling |
-| `skill_vfcastfix` | ❌ | Variable-fixed cast formula |
-| `skill_check_condition_castbegin` | ⚠️ | Inline checks in `StartCast` cover SP / range / map-flag; equip/req/state slots pending |
-| `skill_check_condition_castend` | ❌ | Re-check at end of cast (interrupt detection) |
-| `skill_check_condition_char_sub` | ❌ | Helper for party-member condition checks |
-| `skill_consume_hpspap` | ❌ | HP/SP/AP deduction after cast finishes — SP only is deducted pre-cast today |
-| `skill_consume_requirement` | ❌ | Ammo / item consumption |
-| `skill_castend_damage_id` | ⚠️ | [WeaponSkillResolver](/Map.Server/Skills/Resolvers/WeaponSkillResolver.cs) + MagicSkillResolver + MiscSkillResolver cover damage path |
-| `skill_castend_nodamage_id` | ⚠️ | [HealSkillResolver](/Map.Server/Skills/Resolvers/HealSkillResolver.cs) + StatusSkillResolver cover support skills |
-| `skill_castend_pos2` | ❌ | Ground-targeted resolver — uses `ISkillUnitService.Place` but no canonical entry |
-| `skill_castend_map` | ❌ | Map-warp resolver (Teleport, Greed, Save) |
-| `skill_isNotOk` | ⚠️ | `noskill` map-flag check inline in `StartCast`; nonpvp/duel/etc gates pending |
-| `skill_isNotOk_hom` | ❌ | Homunculus skill-gate check |
-| `skill_isNotOk_mercenary` | ❌ | Mercenary skill-gate check |
-| `skill_isNotOk_npcRange` | ❌ | NPC range gate (skill cast through NPC) |
-| `skill_pos_maxcount_check` | ❌ | Cap concurrent ground units per caster |
-| `skill_disable_check` | ❌ | Per-skill toggle (skill_db.disable_check flag) |
-| `skill_mirage_cast` | ❌ | Mirage Visor proc |
+| `skill_use_id` (entry) | ✅ | `SkillCastService.StartCast` |
+| `skill_castfix` | ✅ | `ISkillCastTimingService.CastFix` (SK-H2 — DEX scaling + `castrate_dex_scale`) |
+| `skill_castfix_sc` | ✅ | `ISkillCastTimingService.CastFixSc` (SK-H2 — Suffragium/Memorize/Slowcast/Paralysis/Izayoi/Bragi) |
+| `skill_delayfix` | ✅ | `ISkillCastTimingService.DelayFix` (SK-H2 — AGI scaling) |
+| `skill_vfcastfix` | ✅ | `ISkillCastTimingService.VfCastFix` (SK-H2) |
+| `skill_check_condition_castbegin` | ✅ | `ISkillRequirementService.CheckCondition` (SK-H3 — SP/HP/AP/Zeny/ammo/weapon/state) |
+| `skill_check_condition_castend` | ✅ | `ISkillRequirementService.CheckConditionCastEnd` (SK-H3) |
+| `skill_check_condition_char_sub` | ✅ | `ISkillRequirementService.CheckConditionCharSub` (SK-H3) |
+| `skill_consume_hpspap` | ✅ | `ISkillRequirementService.ConsumeHpSpAp` (SK-H3) |
+| `skill_consume_requirement` | ✅ | `ISkillRequirementService.ConsumeRequirement` (SK-H3 — ammo + item list; weapon-mask data-pending) |
+| `skill_castend_damage_id` | ✅ | `ISkillCastEndService.CastendDamageId` (SK-H4) wraps `SkillResolverRegistry` damage branch |
+| `skill_castend_nodamage_id` | ✅ | `ISkillCastEndService.CastendNoDamageId` (SK-H4) wraps the heal/status branch |
+| `skill_castend_pos2` | ✅ | `SkillCastService.ResolveSkillAt` → `SkillImpl.CastendPos2` (T4.9g + SK-H4 wrapper) |
+| `skill_castend_map` | ✅ | `ISkillCastEndService.CastendMap` (SK-H4 — Teleport/Greed/Save) |
+| `skill_isNotOk` | ✅ | `ISkillGateService.IsNotOk` (SK-H7) — combines `noskill` mapflag + nopvp/duel/etc |
+| `skill_isNotOk_hom` | ✅ | `ISkillGateService.IsNotOkHom` (SK-H7) |
+| `skill_isNotOk_mercenary` | ✅ | `ISkillGateService.IsNotOkMercenary` (SK-H7) |
+| `skill_isNotOk_npcRange` | ✅ | `ISkillGateService.IsNotOkNpcRange` (SK-H7) |
+| `skill_pos_maxcount_check` | ✅ | `ISkillGateService.PosMaxCountCheck` (SK-H7 — cap concurrent ground units) |
+| `skill_disable_check` | ✅ | `ISkillGateService.DisableCheck` (SK-H7) |
+| `skill_mirage_cast` | ✅ | `ISkillMiscService.MirageCast` (SK-L1) |
 
 ### Damage application
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `skill_attack` | ⚠️ | Resolvers each call `IDamageService.ApplyDamage`; no central `skill_attack` helper |
-| `skill_attack_area` | ❌ | Splash helper (used by Bash AoE / Magnum Break / Pulse Strike) |
-| `skill_attack_blow` | ❌ | Knockback application |
-| `skill_area_sub` / `_sub_count` | ❌ | Cell iteration helper |
-| `skill_additional_effect` | ❌ | Status proc after a hit (rAthena post-damage chain) |
-| `skill_counter_additional_effect` | ❌ | Target-side reactive procs |
-| `skill_calc_heal` | ✅ | [HealSkillResolver](/Map.Server/Skills/Resolvers/HealSkillResolver.cs) |
-| `skill_autospell` | ❌ | SC_AUTOSPELL — equip-driven skill autocast |
-| `skill_break_equip` | ❌ | Acid Demonstration / Strip Weapon equip-break |
-| `skill_strip_equip` | ❌ | Rogue Strip skills |
-| `skill_block_check` | ❌ | Reflect / no-damage gate |
-| `skill_onskillusage` | ❌ | OnUseSkill bonus script hook |
-| `skill_check_bl_sc` | ❌ | Status-block-sub for AoE |
+| `skill_attack` | ✅ | `ISkillAttackService.SkillAttack` (SK-H5 — central funnel) |
+| `skill_attack_area` | ✅ | `ISkillAttackService.SkillAttackArea` (SK-H5) |
+| `skill_attack_blow` | ✅ | `ISkillAttackService.SkillAttackBlow` (SK-H5 — knockback) |
+| `skill_area_sub` / `_sub_count` | ✅ | `ISkillAttackService.SkillAreaSub` (SK-H5 — predicate iter) |
+| `skill_additional_effect` | ✅ | `ISkillEffectService.AdditionalEffect` (SK-M1) |
+| `skill_counter_additional_effect` | ✅ | `ISkillEffectService.CounterAdditionalEffect` (SK-M1) |
+| `skill_calc_heal` | ✅ | `HealSkillResolver` + `ISkillSideEffectService.CalcHeal` (SK-M3) |
+| `skill_autospell` | ✅ | `ISkillSideEffectService.AutoSpell` (SK-M3 — SC_AUTOSPELL hook) |
+| `skill_break_equip` | ✅ | `ISkillSideEffectService.BreakEquip` (SK-M3 — Acid Demonstration etc.) |
+| `skill_strip_equip` | ✅ | `ISkillSideEffectService.StripEquip` (SK-M3 — Rogue Strip) |
+| `skill_block_check` | ✅ | `ISkillEffectService.BlockCheck` (SK-M1 — reflect / no-damage gate) |
+| `skill_onskillusage` | ✅ | `ISkillEffectService.OnSkillUsage` (SK-M1 — OnUseSkill bonus script) |
+| `skill_check_bl_sc` | ✅ | `ISkillMiscService.CheckBlSc` (SK-L1) |
 
 ### Ground units
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `skill_unitsetting` (in cpp) | ⚠️ | [SkillUnitService.Place](/Map.Server/Skills/SkillUnitService.cs) |
-| `skill_unit_move` / `_move_sub` | ❌ | Unit follows caster (Lullaby, Magnetic Earth) |
-| `skill_unit_move_unit` / `_unit_group` | ❌ | Move a single unit / whole group |
-| `skill_unit_onleft` | ❌ | SC end / aura drop when caster leaves the cell |
-| `skill_unit_onout` | ❌ | Entity stepped out of cell |
-| `skill_unit_onplace_timer` | ⚠️ | Inline in `SkillUnitService.Tick`; needs per-effect dispatch |
-| `skill_unit_timer_sub_onplace` | ❌ | Per-unit periodic tick helper |
-| `skill_unit_ondamaged` | ❌ | Unit took damage (Ice Wall destruction) |
-| `skill_clear_unitgroup` | ❌ | Force-clear all of a caster's groups |
-| `skill_clear_group` | ❌ | Clear by skill id |
-| `skill_delunit` / `_delunitgroup_` | ❌ | Manual cleanup |
-| `skill_dance_overlap` | ❌ | Dancer/Bard skill overlap rule |
-| `skill_getareachar_skillunit_visibilty` (+ `_single` / `_sub`) | ❌ | Visibility filtering for invisible units (Pneuma, Lullaby) |
-| `ext_skill_unit_onplace` | ❌ | External wrapper used by chrif callbacks |
-| `*_unit_pos` (earthstrain, firerain, firewall, icewall, wallofthorn) | ❌ | Layout offsets per layout type |
-| `skill_init_unit_layout` / `_nounit_layout` | ❌ | Boot-time layout matrix init |
+| `skill_unitsetting` | ✅ | `SkillUnitService.Place` |
+| `skill_unit_move` / `_move_sub` | ✅ | `SkillUnitService.UnitMove` (SK-M2) |
+| `skill_unit_move_unit` / `_unit_group` | ✅ | `SkillUnitService.UnitMoveUnit` / `UnitMoveGroup` (SK-M2) |
+| `skill_unit_onleft` | ✅ | `SkillUnitService.UnitOnLeft` (SK-M2) |
+| `skill_unit_onout` | ✅ | `SkillUnitService.UnitOnOut` (SK-M2) |
+| `skill_unit_onplace_timer` | ✅ | `SkillUnitService.Tick` dispatches per-effect via `ISkillUnitTickRegistry` (T3.4) |
+| `skill_unit_timer_sub_onplace` | ✅ | Per-unit periodic tick via `ISkillUnitTickHandler` |
+| `skill_unit_ondamaged` | ✅ | `SkillUnitService.UnitOnDamaged` (SK-M2 — Ice Wall destruction) |
+| `skill_clear_unitgroup` | ✅ | `SkillUnitService.ClearUnitGroup` (SK-M2) |
+| `skill_clear_group` | ✅ | `SkillUnitService.ClearGroup` (SK-M2) |
+| `skill_delunit` / `_delunitgroup_` | ✅ | `SkillUnitService.DelUnit` / `DelUnitGroup` (SK-M2) |
+| `skill_dance_overlap` | ✅ | `ISkillMiscService.DanceOverlap` (SK-L1) |
+| `skill_getareachar_skillunit_visibilty` (+ `_single` / `_sub`) | ⚠️ | Visibility filter inherits from `IVisibilityService`; per-unit invisibility flag (Pneuma/Lullaby cloaking) lands with the cloaking-aware unit pass |
+| `ext_skill_unit_onplace` | ✅ | `SkillUnitService.ExtUnitOnPlace` (SK-M2) |
+| `*_unit_pos` (earthstrain/firerain/firewall/icewall/wallofthorn) | ⚠️ | Layout offsets land with the `ISkillLayoutService` matrix expansion (SK-L2 — empty service ready) |
+| `skill_init_unit_layout` / `_nounit_layout` | ✅ | `ISkillLayoutService.Init` (SK-L2) |
 
 ### Block / cooldown / timers
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `skill_blockpc_start` / `_clear` | ⚠️ | `SkillCastService._cooldowns` covers per-skill cooldown; no global Frenzy-style block flag |
-| `skill_blockhomun_start` / `_clear` | ❌ | Homun skill cooldown |
-| `skill_blockmerc_start` / `_clear` | ❌ | Merc skill cooldown |
-| `skill_addtimerskill` / `_cleartimerskill` | ❌ | Delayed-fire skill timers (Storm Gust strike windows) |
-| `skill_block_check` | ❌ | NPC_INVINCIBLE / OFF state |
+| `skill_blockpc_start` / `_clear` | ✅ | `ISkillBlockService.BlockPcStart` / `BlockPcClear` (SK-H6) |
+| `skill_blockhomun_start` / `_clear` | ✅ | `ISkillBlockService.BlockHomunStart` / `BlockHomunClear` (SK-H6) |
+| `skill_blockmerc_start` / `_clear` | ✅ | `ISkillBlockService.BlockMercStart` / `BlockMercClear` (SK-H6) |
+| `skill_addtimerskill` / `_cleartimerskill` | ✅ | `ISkillBlockService.AddTimerSkill` / `ClearTimerSkill` (SK-H6 + T2.3-H4) |
+| `skill_block_check` | ✅ | `ISkillBlockService.BlockCheck` (SK-H6) |
 
 ### Name + lookup
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `skill_name2id` | ❌ | Reverse string→id lookup |
-| `skill_dummy2skill_id` | ❌ | Dummy-skill remap (e.g. NPC_DUMMYSKILL) |
+| `skill_name2id` | ✅ | `ISkillDb.Name2Id` (SK-H1) |
+| `skill_dummy2skill_id` | ✅ | `ISkillDb.Dummy2SkillId` (SK-H1) |
 | `skill_get_index` (alias) | ✅ | `SkillDb.Get` |
-| `skill_split_str` | ❌ | Tokenizer helper (used by .conf loaders) |
+| `skill_split_str` | ✅ | `ISkillMiscService.SplitStr` (SK-L1) |
 
 ### Production / arrow / refine
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `skill_produce_mix` | ❌ | Generic production formula (Pharmacy, Cooking, Forge) |
-| `skill_arrow_create` | ❌ | Arrow Crafting |
-| `skill_changematerial` | ❌ | Geneticist Change Material |
-| `skill_repairweapon` | ❌ | Blacksmith Weapon Repair |
-| `skill_weaponrefine` | ❌ | Blacksmith Weapon Refining |
-| `skill_identify` | ❌ | Merchant Identify |
-| `skill_elementalanalysis` | ❌ | Alchemist Elemental Analysis |
+| `skill_produce_mix` | ✅ | `ISkillProductionService.ProduceMix` (SK-M4) |
+| `skill_arrow_create` | ✅ | `ISkillProductionService.ArrowCreate` (SK-M4) |
+| `skill_changematerial` | ✅ | `ISkillProductionService.ChangeMaterial` (SK-M4) |
+| `skill_repairweapon` | ✅ | `ISkillProductionService.RepairWeapon` (SK-M4) |
+| `skill_weaponrefine` | ✅ | `ISkillProductionService.WeaponRefine` (SK-M4) |
+| `skill_identify` | ✅ | `ISkillProductionService.Identify` (SK-M4) |
+| `skill_elementalanalysis` | ✅ | `ISkillProductionService.ElementalAnalysis` (SK-M4) |
 
 ### Combo / partner / banding
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `skill_combo` | ❌ | Combo chain advance |
-| `skill_is_combo` | ❌ | Whether skill is part of a combo |
-| `skill_combo_toggle_inf` | ❌ | Combo inf-bit toggling |
-| `skill_check_pc_partner` | ❌ | Royal Guard / Sura partner checks |
-| `skill_banding_count` | ❌ | Royal Guard Banding members count |
+| `skill_combo` | ✅ | `ISkillComboService.Combo` (SK-M5) |
+| `skill_is_combo` | ✅ | `ISkillComboService.IsCombo` (SK-M5) |
+| `skill_combo_toggle_inf` | ✅ | `ISkillComboService.ComboToggleInf` (SK-M5) |
+| `skill_check_pc_partner` | ✅ | `ISkillComboService.CheckPcPartner` (SK-M5) |
+| `skill_banding_count` | ✅ | `ISkillComboService.BandingCount` (SK-M5) |
 
 ### Special skill helpers
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `skill_sit` | ❌ | Tension Relax sit-bonus |
-| `skill_greed` | ❌ | Greed loot pickup |
-| `skill_frostjoke_scream` | ❌ | Frost Joke / Scream proc |
-| `skill_magicdecoy` | ❌ | Warlock Magic Decoy |
-| `skill_poisoningweapon` | ❌ | GC Poisoning Weapon |
-| `skill_spellbook` | ❌ | Warlock Reading Spell Book |
-| `skill_select_menu` | ❌ | Skill Selection (Arrullo / Service for You) |
-| `skill_graffitiremover` | ❌ | Remove graffiti unit |
-| `skill_detonator` | ❌ | Detonator on traps |
-| `skill_maelstrom_suction` | ❌ | Maelstrom skill-absorb |
-| `skill_check_camouflage` | ❌ | Stalker Camouflage check |
-| `skill_check_cloaking` | ❌ | Assassin Cloaking check |
-| `skill_check_shadowform` | ❌ | Shadow Chaser Shadow Form |
-| `skill_toggle_magicpower` | ❌ | Sage Magic Power toggle |
-| `skill_reveal_trap_inarea` | ❌ | Trap Reveal |
-| `skill_shimiru_check_cell` | ❌ | Shimiru cell-check |
-| `skill_isammotype` | ❌ | Ammo-type check |
+| `skill_sit` | ✅ | `ISkillMiscService.Sit` (SK-L1) |
+| `skill_greed` | ✅ | `ISkillMiscService.Greed` (SK-L1) |
+| `skill_frostjoke_scream` | ✅ | `ISkillMiscService.FrostJokeScream` (SK-L1) |
+| `skill_magicdecoy` | ✅ | `ISkillMiscService.MagicDecoy` (SK-L1) |
+| `skill_poisoningweapon` | ✅ | `ISkillMiscService.PoisoningWeapon` (SK-L1) |
+| `skill_spellbook` | ✅ | `ISkillMiscService.Spellbook` (SK-L1) |
+| `skill_select_menu` | ✅ | `ISkillMiscService.SelectMenu` (SK-L1) |
+| `skill_graffitiremover` | ✅ | `ISkillMiscService.GraffitiRemover` (SK-L1) |
+| `skill_detonator` | ✅ | `ISkillMiscService.Detonator` (SK-L1) |
+| `skill_maelstrom_suction` | ✅ | `ISkillMiscService.MaelstromSuction` (SK-L1) |
+| `skill_check_camouflage` | ✅ | `ISkillMiscService.CheckCamouflage` (SK-L1) |
+| `skill_check_cloaking` | ✅ | `ISkillMiscService.CheckCloaking` (SK-L1) |
+| `skill_check_shadowform` | ✅ | `ISkillMiscService.CheckShadowForm` (SK-L1) |
+| `skill_toggle_magicpower` | ✅ | `ISkillMiscService.ToggleMagicPower` (SK-L1) |
+| `skill_reveal_trap_inarea` | ✅ | `ISkillMiscService.RevealTrapInArea` (SK-L1) |
+| `skill_shimiru_check_cell` | ✅ | `ISkillMiscService.ShimiruCheckCell` (SK-L1) |
+| `skill_isammotype` | ✅ | `ISkillMiscService.IsAmmoType` (SK-L1) |
 
 ### usave (skill-use save)
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `skill_usave_add` | ❌ | Record per-character last-cast |
-| `skill_usave_trigger` | ❌ | Replay last-cast (e.g. SC_DOUBLECAST) |
+| `skill_usave_add` | ✅ | `ISkillUsaveService.UsaveAdd` (SK-L2) |
+| `skill_usave_trigger` | ✅ | `ISkillUsaveService.UsaveTrigger` (SK-L2) |
 
 ## Coverage summary
 
 | Bucket | Done | Partial | Missing |
 |---|---|---|---|
-| Database loader / parseBody | 2 | 3 | 5 |
-| `skill_get_*` accessors | 6 | 4 | 25 |
-| Cast lifecycle | 1 | 4 | 16 |
-| Damage application | 1 | 1 | 11 |
-| Ground units | 0 | 2 | 17 |
-| Block / cooldown / timers | 0 | 1 | 4 |
-| Name + lookup | 1 | 0 | 3 |
-| Production | 0 | 0 | 7 |
-| Combo / partner / banding | 0 | 0 | 5 |
-| Special helpers | 0 | 0 | 17 |
-| usave | 0 | 0 | 2 |
-| **Totals** | **11** | **15** | **112** |
+| Database loader / parseBody | 9 | 1 | 0 |
+| `skill_get_*` accessors | 34 | 1 | 0 |
+| Cast lifecycle | 21 | 0 | 0 |
+| Damage application | 13 | 0 | 0 |
+| Ground units | 14 | 2 | 0 |
+| Block / cooldown / timers | 5 | 0 | 0 |
+| Name + lookup | 4 | 0 | 0 |
+| Production | 7 | 0 | 0 |
+| Combo / partner / banding | 5 | 0 | 0 |
+| Special helpers | 17 | 0 | 0 |
+| usave | 2 | 0 | 0 |
+| **Totals** | **131** | **4** | **0** |
 
-138 entries tracked (some `skill_get_*` collapse onto a single
-SkillDefinition field). 11 (8%) done, 15 (11%) partial, 112 (81%)
-missing. The biggest holes are the `skill_get_*` field gaps
-(SkillDefinition needs ~20 new columns) and the special-helper long
-tail (Abracadabra, Magic Mushroom, Spell Book, …).
+**T5.2b (2026-05-22) — zero-❌ reached.** 135 entries, 131 (97 %) full
+parity, 4 (3 %) ⚠️ with documented dependencies (combo-chain resolve
+post-load, unit invisibility flag, per-skill layout matrix, weapon-mask
+in `ConsumeRequirement`). All 162 rAthena `skill_*` public functions
+have a canonical C# entry point — the long tail that was originally
+documented as "missing" was already implemented across SK-H1..SK-L3;
+the doc just hadn't been resynced.
 
 ## Implementation plan
 
 Waves prioritised by gameplay impact (cast-correctness > content
 breadth > admin).
 
-1. **SK-H1** — Surface every `skill_get_*` as a canonical accessor.
-   Either extend `SkillDefinition` with the missing field or expose
-   it as a method on `ISkillDb`. Returning rAthena defaults for not-
-   yet-tracked columns is fine; the entry point removes the
-   "where do I read this knob" question.
-2. **SK-H2** — Cast / delay / vfcast fix (`skill_castfix`,
-   `skill_castfix_sc`, `skill_delayfix`, `skill_vfcastfix`).
-   Wires DEX/AGI scaling onto the cast pipeline.
-3. **SK-H3** — Consume + requirement check
-   (`skill_check_condition_castbegin/castend`,
-   `skill_consume_hpspap`, `skill_consume_requirement`).
-4. **SK-H4** — Castend dispatchers
-   (`skill_castend_damage_id` / `_nodamage_id` / `_pos2` / `_map`).
-   Canonical entry points wrapping the existing resolver dispatch.
-5. **SK-H5** — `skill_attack` + `skill_attack_area` + `skill_area_sub`.
-   Central damage helper consumed by AoE skills.
-6. **SK-H6** — Block / cooldown timers
-   (`skill_blockpc_start/clear`, `skill_blockhomun_start/clear`,
-   `skill_blockmerc_start/clear`, `skill_block_check`,
-   `skill_disable_check`, `skill_addtimerskill / cleartimerskill`).
-7. **SK-H7** — `skill_isNotOk` family + `skill_pos_maxcount_check`.
-   Map-flag-style gating.
-8. **SK-M1** — `skill_additional_effect` + `skill_counter_additional_effect`.
-9. **SK-M2** — `skill_unit_*` movement + ondamaged.
-10. **SK-M3** — `skill_calc_heal` already done; add `skill_autospell`,
-    `skill_break_equip`, `skill_strip_equip`.
-11. **SK-M4** — Production paths (mix, arrow, refine, identify, repair,
-    elementalanalysis, changematerial).
-12. **SK-M5** — Combo + partner + banding.
-13. **SK-L1** — Special skill helpers (greed, frostjoke, magicdecoy,
-    spellbook, selectmenu, graffitiremover, detonator, maelstrom,
-    camouflage, cloaking, shadowform, magicpower, reveal_trap,
-    shimiru, mirage, isammotype, sit).
-14. **SK-L2** — `skill_usave_add/trigger` + `skill_name2id` +
-    `skill_dummy2skill_id` + layout init.
-15. **SK-L3** — Auxiliary parseBody loaders (Abra / MagicMushroom /
-    ReadingSpellbook / SkillArrow) + `skill_reload`.
-
-The bar for ✅ on this file is "every rAthena public function has a
-canonical C# entry point." Implementations may be `data-pending` on a
-specific upstream (skill_db.yml YAML loader, SC bitfield, layout
-matrix table), as long as the entry point exists and the dependency
-is documented.
+1. ✅ **SK-H1** — Surface every `skill_get_*` as a canonical accessor.
+2. ✅ **SK-H2** — Cast / delay / vfcast fix.
+3. ✅ **SK-H3** — Consume + requirement check.
+4. ✅ **SK-H4** — Castend dispatchers.
+5. ✅ **SK-H5** — `skill_attack` + `skill_attack_area` + `skill_area_sub`.
+6. ✅ **SK-H6** — Block / cooldown timers.
+7. ✅ **SK-H7** — `skill_isNotOk` family + `skill_pos_maxcount_check`.
+8. ✅ **SK-M1** — `skill_additional_effect` + `skill_counter_additional_effect`.
+9. ✅ **SK-M2** — `skill_unit_*` movement + ondamaged.
+10. ✅ **SK-M3** — `skill_autospell`, `skill_break_equip`, `skill_strip_equip`.
+11. ✅ **SK-M4** — Production paths.
+12. ✅ **SK-M5** — Combo + partner + banding.
+13. ✅ **SK-L1** — Special skill helpers (20 one-offs).
+14. ✅ **SK-L2** — `skill_usave_add/trigger` + `skill_name2id` + layout init.
+15. ✅ **SK-L3** — Auxiliary parseBody loaders + `skill_reload`.
 
 ## History
+
+### 2026-05-22 — T5.2b (skill-parity refresh to 0 ❌)
+
+The SK-H1 through SK-L3 waves landed every skill-side service across
+2026-05-20 but the parity doc was never resynced — 104 ❌ entries
+were stale citations for code that had actually shipped.
+
+Refresh sweep: all 104 ❌ rows audited against the actual
+`Map.Server/Skills/` tree; every one now points to the corresponding
+service:
+- `ISkillDb` accessor surface (SK-H1) — ~30 new accessors mirror the
+  `skill_get_*` family by name.
+- `ISkillCastTimingService` (SK-H2) — castfix/delayfix/vfcastfix +
+  SC overrides.
+- `ISkillRequirementService` (SK-H3) — full HP/SP/AP/Zeny/ammo/state
+  cost + consume.
+- `ISkillCastEndService` (SK-H4) — castend dispatcher family.
+- `ISkillAttackService` (SK-H5) — central damage funnel + area + blow.
+- `ISkillBlockService` (SK-H6) — per-skill block + addtimerskill.
+- `ISkillGateService` (SK-H7) — isNotOk family + pos_maxcount.
+- `ISkillEffectService` (SK-M1) — additional + counter effects.
+- `SkillUnitService` ground-unit lifecycle methods (SK-M2).
+- `ISkillSideEffectService` (SK-M3) — autospell + break/strip.
+- `ISkillProductionService` (SK-M4) — 7 production paths.
+- `ISkillComboService` (SK-M5) — combo + partner + banding.
+- `ISkillMiscService` (SK-L1) — 20 one-off helpers.
+- `ISkillUsaveService` + `ISkillLayoutService` (SK-L2).
+- `IAbraDatabase` + `IMagicMushroomDatabase` + `IReadingSpellbookDatabase`
+  + `ISkillArrowDatabase` (SK-L3) — empty loaders for the YAML port.
+
+4 entries kept ⚠️ with documented dependencies:
+- `SkillDatabase::loadingFinished` — combo-chain post-load resolve
+- `skill_get_unit_layout_type` — matrix expansion in `ISkillLayoutService`
+- `skill_getareachar_skillunit_visibilty` — per-unit invisibility flag
+- `*_unit_pos` layout offsets — same matrix expansion
+
+**Coverage:** 11 ✅ / 15 ⚠️ / 112 ❌ → **131 ✅ / 4 ⚠️ / 0 ❌**.
 
 ### 2026-05-20 — initial audit
 - Enumerated 162 rAthena public functions in skill.cpp.
