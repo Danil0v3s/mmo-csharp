@@ -76,6 +76,13 @@ None — P5 closed the char→map address-sync fan-out by adding `NotifyAddressS
 
 ## History
 
+- **2026-05-22** — **T6.2 audit-doc refresh — verified 0 ❌.** Companion
+  to T5.2's map-tree sweep. Re-grepped this doc against the acceptance
+  criterion `awk '/^\| / && /❌/'` — no stale rows. All L-H1 / L-M1 /
+  L-M2 / L-M3 / L-M4 wave landings (2026-05-19 entry below) are cited
+  in the per-feature tables above. Full audit rollup at
+  [../T6-audit-2026-05-22.md](../T6-audit-2026-05-22.md). No code
+  changes — this is a checkpoint for future audits.
 - **2026-05-19** — **Final three parity knobs closed (100%).**
   - `IpSyncInterval` config knob wired into [LoginServerImpl.RequestCharServerAddressSyncAsync](../../../Login.Server/LoginServerImpl.cs); replaces hardcoded 60-second cadence. Mirrors rAthena `loginchrif.cpp:logchrif_sync_ip_addresses` (default 10 min; 0 disables sync). The C# side asks all connected char servers to re-resolve their address via the existing `RequestAddressSync` IPC.
   - `login_get_usercount` colorization (login.cpp:484) ported as [CharServerUserCountClassifier.Classify](../../../Login.Server/UseCase/CharServerUserCountClassifier.cs); the AC_ACCEPT_LOGIN char-server entries now ship the 0-4 status code (green/yellow/red/purple/hidden) that the client renders as a colored dot instead of the raw user count, per PACKETVER ≥ 20170726. 9 unit tests pin the boundary mapping.
