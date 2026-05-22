@@ -31,13 +31,13 @@ Canonical entry points:
 | `mob_ai_sub_hard` `attacked_id` target-switch | ✅ | `MobAiService.NotifyAttacked` calls `IMobChangeTargetService.TrySetTarget` (T4.9d — gated by MSS_BERSERK + MD_CHANGETARGETMELEE / MSS_RUSH + MD_CHANGETARGETCHASE matrix) |
 | `mob_ai_sub_hard` master_id slave AI | ⚠️ | `SummonAiService` covers follow + assist; full assist-on-master-target branch TODO |
 | `mob_ai_sub_hard` MD_LOOTER pickup | ✅ | `IMobLooterService` (T4.9c — bag cap, FIFO evict, registry transfer; mob walks to drop, picks up on adjacency) |
-| `mob_ai_sub_hard` `mob_warpchase` | ⚠️ | `IMobWarpChaseService` (T4.9c — canonical entry point, same-map short-circuit; cross-map scan is data-pending until NpcEntity gains the warp subtype) |
+| `mob_ai_sub_hard` `mob_warpchase` | ✅ | `IMobWarpChaseService` (T4.9c + T5.1c — same-map gate; cross-map scan walks `INpcRegistry.AllWarps()`, filters by mob/target map hash, picks closest warp cell, walks via `IMovementService`) |
 | `mob_ai_sub_hard` BG ally follow | ⚠️ | gated on T-BG (battleground-parity) track — out of T4.9 scope per goal "Out of scope" |
 | `mob_ai_sub_lazy` far-from-players idle | ✅ | `MobAiService.TickLazy` (T4.8) — 5% idle-skill roll; warpchase/spotted-log subset TODO |
 | `mob_ai_sub_hard_attacktimer` post-swing re-entry | ⚠️ | depends on attack-timer refactor — out of T4.9 scope per goal "Out of scope" |
 | `mob_setstate` BERSERK/ANGRY + RUSH/FOLLOW swaps | ✅ | `MobFsm.TransitionTo` (T4.8) |
 | `mob_clean_spotted` / `mob_is_spotted` | ✅ | `MobSpotted.Add` / `Clean` / `IsSpotted` (T4.9c — populated by hard-tick PC scan, pruned per lazy tick; lazy AI gated on `IsSpotted`) |
-| `mob_warpchase` (cross-map follow) | ⚠️ | `IMobWarpChaseService` (T4.9c — interface + same-map gate; warp-NPC scan TODO) |
+| `mob_warpchase` (cross-map follow) | ✅ | `IMobWarpChaseService` (T4.9c + T5.1c — full scan over `INpcRegistry.AllWarps`; mob walks to closest warp connecting its map to the target's) |
 | `mob_randomwalk` (idle wander pathing) | ✅ | `IMobRandomWalkService` (T4.9f — gates on NextWanderTick + MD_NORANDOMWALK + MD_CANMOVE, picks random offset ±7, walks via IMovementService) |
 
 ### Skill picker (mobskill_use / mobskill_event) — **T4.3 wave**
@@ -151,6 +151,32 @@ the dependency tracks first and is out of T4.9 scope.
 8. ✅ **T4.9** — final completion wave (T4.9a-g, 7 commits). Zero ❌ rows achieved; 12 ⚠️ remain with documented out-of-scope dependencies.
 
 ## History
+
+### 2026-05-22 — T5.1c (mob_warpchase cross-map scan)
+
+Third slice of T5.1. Replaces the T4.9c data-pending stub in
+`MobWarpChaseService` with a real scan over registered warps.
+Both `mob_warpchase` rows flip ⚠️ → ✅.
+
+**Surface added:**
+- `MobWarpChaseService` ctor now takes `INpcRegistry` and an
+  optional `IMovementService`. The cross-map branch walks
+  `INpcRegistry.AllWarps()`, filters rows whose `FromMap` hashes
+  to the mob's `MapId` and whose `ToMap` hashes to the target's,
+  picks the closest source cell (Chebyshev), and walks the mob to
+  that cell via `IMovementService.TryStartWalk`. Returns
+  `Walking` on success.
+- Map name → id bridge: same `(uint)mapName.GetHashCode()`
+  convention `EntityRegistry` uses, so once a real `MapIndex`
+  layer lands it flips both call sites in one shot.
+
+**Tests:** `MobSpottedLootTests` +1 — cross-map with two warps
+registered picks the closer one and the movement service records
+the expected walk target.
+
+**Coverage delta:** AI-think-loop ⚠️ count 4 → 2 (both
+warpchase rows promoted); aggregate **68 ✅ / 12 ⚠️ / 0 ❌
+→ 70 ✅ / 10 ⚠️ / 0 ❌**. Test count 2945 → **2946 green**.
 
 ### 2026-05-22 — T5.1b (mob_chat_db.yml loader)
 

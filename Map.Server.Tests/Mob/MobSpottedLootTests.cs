@@ -1,5 +1,7 @@
 using Map.Server.Entities;
 using Map.Server.Mob;
+using Map.Server.Scripting;
+using Map.Server.Scripting.Records;
 using Map.Server.Spawn;
 using Map.Server.Status;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -70,26 +72,97 @@ public class MobSpottedLootTests
         var target = MakeMob(10, 10, id: 99);
 
         var svc = new MobWarpChaseService(
-            new FakeRegistry(), NullLogger<MobWarpChaseService>.Instance);
+            new FakeRegistry(), new FakeNpcRegistry(),
+            NullLogger<MobWarpChaseService>.Instance);
         Assert.Equal(WarpChaseResult.NotApplicable, svc.TryWarpChase(mob, target));
     }
 
     [Fact]
     public void WarpChase_CrossMap_NoWarpRegistered_ReturnsNotApplicable()
     {
-        // Data-pending: with no warp NPCs in the registry we still
-        // return NotApplicable. The canonical surface is what we're
-        // shipping; the scan body lands once NpcEntity gains the
-        // warp subtype.
         var mob = MakeMob(0, 0);
-        var target = MakeMob(10, 10, id: 99);
-        // Force the target onto a different map via reflection-free path:
-        // the helper accepts mapId in its ctor, so build a fresh one.
         var farTarget = MakeMobOnMap(10, 10, id: 99, mapId: 99);
 
         var svc = new MobWarpChaseService(
-            new FakeRegistry(), NullLogger<MobWarpChaseService>.Instance);
+            new FakeRegistry(), new FakeNpcRegistry(),
+            NullLogger<MobWarpChaseService>.Instance);
         Assert.Equal(WarpChaseResult.NotApplicable, svc.TryWarpChase(mob, farTarget));
+    }
+
+    [Fact]
+    public void WarpChase_CrossMap_WarpRegistered_Walks()
+    {
+        // T5.1c — when a registerWarp record connects mob's map to
+        // target's map, the chase walks the mob to the warp cell.
+        // mob's map = 1 (hash of "M1"), target's map = 99 (hash of "M99").
+        // We forge map ids by setting the hash explicitly.
+        const string fromMapName = "MapA";
+        const string toMapName = "MapB";
+        var fromMapId = (uint)fromMapName.GetHashCode();
+        var toMapId = (uint)toMapName.GetHashCode();
+        var mob = MakeMobOnMap(0, 0, id: 1, mapId: fromMapId);
+        var target = MakeMobOnMap(0, 0, id: 99, mapId: toMapId);
+
+        var npcs = new FakeNpcRegistry();
+        npcs.AddWarp(fromMapName, fromX: 5, fromY: 5, toMapName);
+        npcs.AddWarp(fromMapName, fromX: 50, fromY: 50, toMapName); // farther
+
+        var movement = new RecordingMovement2();
+        var svc = new MobWarpChaseService(
+            new FakeRegistry(), npcs,
+            NullLogger<MobWarpChaseService>.Instance, movement);
+
+        Assert.Equal(WarpChaseResult.Walking, svc.TryWarpChase(mob, target));
+        Assert.Single(movement.Walks);
+        // Picked the closest warp (5, 5) — not (50, 50).
+        Assert.Equal((5, 5), movement.Walks[0]);
+    }
+
+    private sealed class FakeNpcRegistry : INpcRegistry
+    {
+        private readonly List<WarpRegistration> _warps = new();
+        public IReadOnlyCollection<WarpRegistration> AllWarps() => _warps;
+        public void AddWarp(string from, short fromX, short fromY, string to)
+            => _warps.Add(new WarpRegistration
+            {
+                FromMap = from, FromX = fromX, FromY = fromY,
+                AreaXs = 0, AreaYs = 0,
+                ToMap = to, ToX = 0, ToY = 0,
+            });
+
+        // Full INpcRegistry surface — only Warps are exercised here.
+        public void AddNpc(NpcRegistration r) { }
+        public void AddFloatingNpc(FloatingNpcRegistration r) { }
+        public void AddShop(ShopRegistration r) { }
+        public void AddWarp(WarpRegistration r) => _warps.Add(r);
+        public void AddSpawn(SpawnRegistration r) { }
+        public void AddMapFlag(MapFlagRegistration r) { }
+        public IReadOnlyCollection<NpcRegistration> AllNpcs() => Array.Empty<NpcRegistration>();
+        public IReadOnlyCollection<FloatingNpcRegistration> AllFloatingNpcs()
+            => Array.Empty<FloatingNpcRegistration>();
+        public IReadOnlyCollection<ShopRegistration> AllShops() => Array.Empty<ShopRegistration>();
+        public IReadOnlyCollection<SpawnRegistration> AllSpawns() => Array.Empty<SpawnRegistration>();
+        public IReadOnlyCollection<MapFlagRegistration> AllMapFlags() => Array.Empty<MapFlagRegistration>();
+        public NpcRegistration? GetNpcByName(string n) => null;
+        public FloatingNpcRegistration? GetFloatingByName(string n) => null;
+        public void Clear() => _warps.Clear();
+        public int NpcCount => 0;
+        public int FloatingCount => 0;
+        public int ShopCount => 0;
+        public int WarpCount => _warps.Count;
+        public int SpawnCount => 0;
+        public int MapFlagCount => 0;
+    }
+
+    private sealed class RecordingMovement2 : Map.Server.Movement.IMovementService
+    {
+        public List<(short x, short y)> Walks { get; } = new();
+        public bool TryStartWalk(Entity entity, short toX, short toY)
+        {
+            Walks.Add((toX, toY));
+            return true;
+        }
+        public void CancelWalk(Entity entity) { }
     }
 
     // ---- looter ----
