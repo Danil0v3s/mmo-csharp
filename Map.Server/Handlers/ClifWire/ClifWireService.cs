@@ -15,6 +15,20 @@ public sealed class ClifWireService : IClifWireService
 
     public void MessageColor(PlayerEntity pc, uint colorRgb, string text)
         => _logger.LogDebug("clif_messagecolor pc={Pc} #{Color:X6} {Text}", pc.Id, colorRgb, text);
+    public void CompanionSpawn(Entity companion, Entity master)
+        => _logger.LogDebug("clif_companion_spawn companion={Companion} master={Master}",
+            companion.Id, master.Id);
+
+    public void CompanionVanish(Entity companion)
+        => _logger.LogDebug("clif_companion_vanish companion={Companion}", companion.Id);
+
+    public void CompanionLevelUp(PlayerEntity master, Entity companion, int newLevel)
+        => _logger.LogDebug("clif_companion_levelup master={Master} companion={Companion} lv={Lv}",
+            master.Id, companion.Id, newLevel);
+
+    public void InventoryList(PlayerEntity owner, InventoryListKind kind)
+        => _logger.LogDebug("clif_inventorylist owner={Owner} kind={Kind}", owner.Id, kind);
+
     public void StatusChange(Entity target, Map.Server.Status.StatusType type, bool active,
         int totalMs = 0, int val1 = 0, int val2 = 0, int val3 = 0)
     {

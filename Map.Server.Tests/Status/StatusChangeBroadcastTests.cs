@@ -125,6 +125,10 @@ public class StatusChangeBroadcastTests
         public void AuthOk(PlayerEntity pc) { }
         public void AuthRefuse(int r) { }
         public void AuthFailFd(int fd, byte r) { }
+        public void CompanionSpawn(Entity c, Entity m) { }
+        public void CompanionVanish(Entity c) { }
+        public void CompanionLevelUp(PlayerEntity m, Entity c, int lv) { }
+        public void InventoryList(PlayerEntity o, InventoryListKind k) { }
     }
 
     private sealed class StubMobDb : Map.Server.Mob.IMobDb

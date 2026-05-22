@@ -55,6 +55,41 @@ public interface IClifWireService
     void StatusChange(Entities.Entity target, Map.Server.Status.StatusType type, bool active,
         int totalMs = 0, int val1 = 0, int val2 = 0, int val3 = 0);
 
+    /// <summary>
+    /// T5.3d — rAthena <c>clif_spawn(pet/homun/merc/elem)</c> family.
+    /// Broadcasts a companion entity entering AOI. Distinct from the
+    /// generic mob/PC spawn since the wire packets carry the master
+    /// relationship for color-name tinting + the pet-egg / homun-form
+    /// flags.
+    /// </summary>
+    void CompanionSpawn(Entities.Entity companion, Entities.Entity master);
+
+    /// <summary>
+    /// T5.3d — rAthena <c>clif_clearchar_skillunit</c> family for
+    /// companion despawn (master unsummons, companion dies, or master
+    /// disconnects). Broadcasts to AOI so onlookers stop rendering.
+    /// </summary>
+    void CompanionVanish(Entities.Entity companion);
+
+    /// <summary>
+    /// T5.3d — rAthena <c>clif_send_homdata</c> / <c>clif_pet_food</c>
+    /// level-up frame. Updates the pet hunger / homun intimacy / level
+    /// HUD on the master's client. Self-only (companion HUDs are
+    /// caster-private).
+    /// </summary>
+    void CompanionLevelUp(Entities.PlayerEntity master, Entities.Entity companion, int newLevel);
+
+    /// <summary>
+    /// T5.3e — rAthena <c>clif_inventorylist</c> / <c>clif_cart_list</c> /
+    /// <c>clif_storage_list</c> full serialization. Sent on map enter,
+    /// cart toggle, storage open, equip swap (changes invalidate
+    /// per-slot state). The per-slot incremental packets are still
+    /// emitted by individual handlers (this is the all-at-once dump).
+    /// </summary>
+    /// <param name="owner">PC the list is being sent to (caster-only).</param>
+    /// <param name="kind">Inventory / Cart / Storage / GuildStorage.</param>
+    void InventoryList(Entities.PlayerEntity owner, InventoryListKind kind);
+
     /// <summary>rAthena <c>clif_displaymessage</c> — single-line message in chat.</summary>
     void DisplayMessage(PlayerEntity pc, string text);
 
@@ -84,4 +119,16 @@ public interface IClifWireService
 
     /// <summary>rAthena <c>clif_authfail_fd</c>.</summary>
     void AuthFailFd(int fd, byte reason);
+}
+
+/// <summary>
+/// Discriminator for <see cref="IClifWireService.InventoryList"/>.
+/// Mirrors rAthena's distinct emitter functions.
+/// </summary>
+public enum InventoryListKind : byte
+{
+    Inventory = 0,
+    Cart = 1,
+    Storage = 2,
+    GuildStorage = 3,
 }
