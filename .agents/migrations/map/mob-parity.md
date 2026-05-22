@@ -59,7 +59,7 @@ Canonical entry points:
 | `mobskill_use` msg_id chat broadcast on cast | ✅ | `MobSkillCastService` reads `entry.ChatId`, looks up via `IMobChatDb`, broadcasts through `IClifWireService.MobChat` (T4.9f — db loader is data-pending; broadcast pipe is live) |
 | `mobskill_event` (mob.cpp:4506) entry point | ✅ | `IMobSkillCastService.NotifyEvent` |
 | `mobskill_event` flag handling (rude_attacked counter reset) | ⚠️ | reset lives in `MobAiService.NotifyAttacked` post-fire |
-| `mob_chat_display_message` | ✅ | `IClifWireService.MobChat` (T4.9f — name "#suffix" strip + "<name> : <text>" format mirrors mob.cpp:4210-4217; AOI broadcaster still TODO — currently logs) |
+| `mob_chat_display_message` | ✅ | `IClifWireService.MobChat` (T4.9f — name "#suffix" strip + "<name> : <text>" format mirrors mob.cpp:4210-4217; AOI broadcaster still TODO — currently logs). T5.1b: `MobChatYmlLoader` populates `IMobChatDb` from rAthena `db/mob_chat_db.yml` at boot, so configured rows actually broadcast. |
 
 ### Condition evaluators (MSC_*) — **T4.2 wave**
 
@@ -151,6 +151,32 @@ the dependency tracks first and is out of T4.9 scope.
 8. ✅ **T4.9** — final completion wave (T4.9a-g, 7 commits). Zero ❌ rows achieved; 12 ⚠️ remain with documented out-of-scope dependencies.
 
 ## History
+
+### 2026-05-22 — T5.1b (mob_chat_db.yml loader)
+
+Second slice of T5.1. Closes the "MobChatDb empty at boot" gap
+flagged in T4.9f — the broadcast pipe was wired but the table was
+permanently empty. Now `db/mob_chat_db.yml` is parsed at boot.
+
+**Surface added:**
+- `MobChatYmlLoader` (`Map.Server/Mob/MobChatYmlLoader.cs`) —
+  YamlDotNet-backed reader mirroring rAthena's
+  `MobChatDatabase::parseBodyNode` (mob.cpp:6316). Reads Body[]
+  rows of {Id, Color?, Dialog}; default color 0xFF0000
+  (mob.cpp:6334). Missing file → 0 rows + info log. Reload-safe
+  (overwrite by Id).
+- `Program.cs` builds the singleton `IMobChatDb` via a factory
+  that runs `loader.Load(ResolveDbPath("mob_chat_db.yml"), db)`
+  at boot. New `ResolveDbPath` helper mirrors `ResolveConfigPath`
+  (local override → rathena-fork → rathena legacy).
+
+**Tests:** `Map.Server.Tests/Mob/MobChatYmlLoaderTests.cs` — 4
+cases: missing file → 0 rows; round-trip with default + custom
+color; rows missing Id or Dialog are skipped; reload overwrites.
+
+**Coverage delta:** no ❌/⚠️ row change (the surface was already
+✅ from T4.9f); the inline note flips from "DB loader pending" to
+a real reference. Test count 2941 → **2945 green**.
 
 ### 2026-05-22 — T5.1a (PC unit_counttargeted)
 

@@ -329,10 +329,17 @@ builder.Services.AddSingleton<Map.Server.Mob.IMobLooterService, Map.Server.Mob.M
 builder.Services.AddSingleton<Map.Server.Mob.IMobChangeTargetService, Map.Server.Mob.MobChangeTargetService>();
 
 // T4.9f — mob_chat_db (mob.cpp:86) + mob_randomwalk (mob.cpp:1673).
-// MobChatDb is empty until the YAML loader lands; the broadcast
-// surface (IClifWireService.MobChat) is wired now so post-cast
-// chat lines emit as soon as data is loaded.
-builder.Services.AddSingleton<Map.Server.Mob.IMobChatDb, Map.Server.Mob.MobChatDb>();
+// T5.1b — Now backed by MobChatYmlLoader at boot — reads db/mob_chat_db.yml
+// into IMobChatDb; downstream IClifWireService.MobChat broadcasts the
+// configured rows when a mob_skill row sets ChatId.
+builder.Services.AddSingleton<Map.Server.Mob.MobChatYmlLoader>();
+builder.Services.AddSingleton<Map.Server.Mob.IMobChatDb>(sp =>
+{
+    var db = new Map.Server.Mob.MobChatDb();
+    var loader = sp.GetRequiredService<Map.Server.Mob.MobChatYmlLoader>();
+    loader.Load(ResolveDbPath("mob_chat_db.yml"), db);
+    return db;
+});
 builder.Services.AddSingleton<Map.Server.Mob.IMobRandomWalkService, Map.Server.Mob.MobRandomWalkService>();
 
 builder.Services.AddSingleton<Map.Server.Mob.IMobAiService, Map.Server.Mob.MobAiService>();
@@ -1904,6 +1911,22 @@ static string ResolveConfigPath(string name)
     if (File.Exists(local)) return local;
     var rathena = Path.Combine("/Volumes/1TB/Projetos/rathena/conf", name);
     return rathena;
+}
+
+/// <summary>
+/// Resolve a rAthena <c>db/</c> file (T5.1b: mob_chat_db.yml). Same
+/// shape as <see cref="ResolveConfigPath"/> but reads from the
+/// upstream db root. Local override path mirrors the conf layout.
+/// </summary>
+static string ResolveDbPath(string name)
+{
+    var local = Path.Combine(AppContext.BaseDirectory, "db", name);
+    if (File.Exists(local)) return local;
+    // Prefer the rathena-fork tree (current dev path); fall back to
+    // the legacy rathena root if only that is mounted.
+    var fork = Path.Combine("/Volumes/1TB/Projetos/rathena-fork/db", name);
+    if (File.Exists(fork)) return fork;
+    return Path.Combine("/Volumes/1TB/Projetos/rathena/db", name);
 }
 
 // Core services
