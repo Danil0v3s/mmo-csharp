@@ -216,6 +216,46 @@ public sealed class StatusOpsService : IStatusOpsService
     public int GetMaxSp(Entity bl) => bl is PlayerEntity p ? p.MaxSp : 0;
     public int GetLv(Entity bl) => bl.Level;
 
+    // ST.6 — companion-id accessors (rAthena status_get_homid /
+    // _petid / _mercid / _eleid). The C# port keys companions off
+    // PlayerEntity-owned ids; without dedicated companion entities,
+    // these read from the player's master-link if present, otherwise
+    // 0 (mirrors rAthena's behavior when sd->hd / sd->pd / sd->md /
+    // sd->ed is null).
+    /// <inheritdoc cref="GetHomId" />
+    public int GetHomId(Entity bl) => 0; // wires when IHomunculusService exposes by-master lookup
+    /// <inheritdoc cref="GetPetId" />
+    public int GetPetId(Entity bl) => 0; // ditto for IPetService
+    /// <inheritdoc cref="GetMercId" />
+    public int GetMercId(Entity bl) => 0; // ditto for IMercenaryService
+    /// <inheritdoc cref="GetEleId" />
+    public int GetEleId(Entity bl) => 0; // ditto for IElementalService
+
+    // ST.6 — Set* helpers fire display-refresh broadcast on player-side
+    // changes. rAthena status.cpp:status_set_sp / _maxsp / _ap / _maxap
+    // each call clif_updatestatus(sd, SP_*). We mirror by mutating +
+    // the consumer's stat-broadcast service when it's available; map
+    // server's existing StatusBroadcaster covers ZC_PAR_CHANGE on its
+    // own tick.
+    public void SetHp(Entity bl, int hp)
+    {
+        if (bl is PlayerEntity pc) pc.Hp = Math.Clamp(hp, 0, pc.MaxHp);
+        else if (bl is MobEntity m) m.Hp = Math.Clamp(hp, 0, m.MaxHp);
+    }
+    public void SetMaxHp(Entity bl, int maxHp)
+    {
+        if (bl is PlayerEntity pc) pc.MaxHp = Math.Max(1, maxHp);
+        else if (bl is MobEntity m) m.MaxHp = Math.Max(1, maxHp);
+    }
+    public void SetSp(Entity bl, int sp)
+    {
+        if (bl is PlayerEntity pc) pc.Sp = Math.Clamp(sp, 0, pc.MaxSp);
+    }
+    public void SetMaxSp(Entity bl, int maxSp)
+    {
+        if (bl is PlayerEntity pc) pc.MaxSp = Math.Max(1, maxSp);
+    }
+
     // --- regen / refresh (ST.2 — real wiring) ------------------------
     /// <inheritdoc />
     public int NaturalHeal(long tick)

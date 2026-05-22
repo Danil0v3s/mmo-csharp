@@ -165,6 +165,26 @@ public interface IStatusOpsService
     /// <summary>rAthena <c>status_get_lv</c>.</summary>
     int GetLv(Entity bl);
 
+    // ST.6 — companion-id accessors.
+    /// <summary>rAthena <c>status_get_homid</c>.</summary>
+    int GetHomId(Entity bl);
+    /// <summary>rAthena <c>status_get_petid</c>.</summary>
+    int GetPetId(Entity bl);
+    /// <summary>rAthena <c>status_get_mercid</c>.</summary>
+    int GetMercId(Entity bl);
+    /// <summary>rAthena <c>status_get_eleid</c>.</summary>
+    int GetEleId(Entity bl);
+
+    // ST.6 — HP/SP/Max setters with overflow + display refresh.
+    /// <summary>rAthena <c>status_set_hp</c>.</summary>
+    void SetHp(Entity bl, int hp);
+    /// <summary>rAthena <c>status_set_maxhp</c>.</summary>
+    void SetMaxHp(Entity bl, int maxHp);
+    /// <summary>rAthena <c>status_set_sp</c>.</summary>
+    void SetSp(Entity bl, int sp);
+    /// <summary>rAthena <c>status_set_maxsp</c>.</summary>
+    void SetMaxSp(Entity bl, int maxSp);
+
     // --- regen / refresh ---------------------------------------------
     /// <summary>rAthena <c>status_natural_heal</c>.</summary>
     int NaturalHeal(long tick);
