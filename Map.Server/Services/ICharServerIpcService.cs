@@ -13,6 +13,7 @@ public interface ICharServerIpcService :
     ICharServerIpcServiceHomunculus,
     ICharServerIpcServiceMercenary,
     ICharServerIpcServiceElemental,
-    ICharServerIpcServiceClan
+    ICharServerIpcServiceClan,
+    ICharServerIpcServiceMapreg
 {
 }

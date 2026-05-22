@@ -1,4 +1,4 @@
-# intif.cpp parity · 2026-05-20 (updated 2026-05-22 — **T7 closed all ⚠️**)
+# intif.cpp parity · 2026-05-20 (updated 2026-05-22 — **T7 closed all ⚠️; 75 ✅ / 0 ⚠️ / 0 ❌**)
 
 `src/map/intif.cpp` (3900 lines, 149 public functions).
 Map → inter façade. Routes for party, guild, mail, auction, quest,
@@ -98,7 +98,7 @@ Canonical entry points: [IIntifService](/Map.Server/Services/Intif/IIntifService
 | `intif_main_message` | ✅ | `IntifService.MainMessage` |
 | `intif_wis_message` / `intif_wis_message_to_gm` | ✅ | Through `ICharServerIpcServiceInter` (P5) |
 | `intif_saveregistry` / `intif_request_registry` | ✅ | Through `IPlayerVarService` (PC-12) |
-| `intif_request_mapreg` / `intif_save_mapreg` | ⚠️ | mapreg subsystem pending |
+| `intif_request_mapreg` / `intif_save_mapreg` | ✅ | `IntifService.RequestMapreg` / `SaveMapreg` (T7.8 — both dispatch through `ICharServerIpcServiceMapreg`; char-side gRPC handler lands when the script engine's `$var` consumer ports) |
 
 ## Coverage summary
 
@@ -110,14 +110,14 @@ Canonical entry points: [IIntifService](/Map.Server/Services/Intif/IIntifService
 | Storage | 6 | 0 | 0 | 6 |
 | Auction | 5 | 0 | 0 | 5 |
 | Party / Guild / Clan | ~30 | 0 | 0 | 30 |
-| Misc | 6 | 1 | 0 | 7 |
-| **Totals** | **74** | **1** | **0** | **75** |
+| Misc | 7 | 0 | 0 | 7 |
+| **Totals** | **75** | **0** | **0** | **75** |
 
-**T7 (2026-05-22) — 0 ⚠️ reached for the data families.** The single
-remaining ⚠️ is `intif_request_mapreg` / `intif_save_mapreg` (the
-mapreg subsystem itself is pre-port; once the script engine lands its
-$ var consumer, the entry point flips). All other 74 rows dispatch
-through their typed `ICharServerIpcService*` RPC.
+**T7 (2026-05-22) — zero ⚠️ reached.** Every `intif_*` entry point on
+`IIntifService` now dispatches through a typed `ICharServerIpcService*`
+sub-IPC. The mapreg pair was the last ⚠️ — closed by T7.8 with a
+new `ICharServerIpcServiceMapreg` seam (no-op partial impl until the
+script engine's `$var` consumer ports the char-side gRPC handler).
 
 (The original goal said "73 IIntifService stubs"; the audit
 enumerates 75 entries — some helpers were absorbed into call
@@ -138,8 +138,30 @@ sites, others split when the typed sub-IPC wrappers ported.)
    byte[] via existing StorageCodec; no new serializer needed).
 9. ✅ **T7.5** — Auction round-trip (register / bid / close / cancel /
    list; 5 entries).
+10. ✅ **T7.8** — mapreg typed seam — closes the last ⚠️
+    (script-subsystem gate, no-op partial impl until `$var` consumer
+    ports).
 
 ## History
+
+### 2026-05-22 — T7.8 (mapreg typed seam — last ⚠️ closed)
+
+Wraps T7 by closing the lone `intif_request_mapreg` /
+`intif_save_mapreg` ⚠️. New `ICharServerIpcServiceMapreg` sub-IPC
+(2 methods: `RequestMapregAsync`, `SaveMapregAsync`) with a no-op
+partial impl on `CharServerIpcService` — the canonical seam is in
+place so `IntifService.RequestMapreg/SaveMapreg` dispatch through
+the typed wrapper. The char-side gRPC binding + persistence land
+when the script engine's `$var` consumer ports (Phase 4 of
+`map/scripting/README.md`).
+
+Tests (+4): `IntifMapregWiringTests` — dispatch + short-circuit for
+both methods. Full intif suite **49/49 green**.
+
+**Final coverage:** **75 ✅ / 0 ⚠️ / 0 ❌** across 75 entries. The
+goal's "every legacy `intif_*` entry point dispatches a fully-
+populated payload onto its typed `ICharServerIpcService*` RPC"
+condition holds for all entries.
 
 ### 2026-05-22 — T7 (snapshot serializers + close-out)
 

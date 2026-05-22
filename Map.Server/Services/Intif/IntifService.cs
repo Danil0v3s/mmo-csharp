@@ -21,6 +21,7 @@ public sealed class IntifService : IIntifService
     private readonly ICharServerIpcServiceElemental? _elemIpc;
     private readonly ICharServerIpcServiceStorage? _storageIpc;
     private readonly ICharServerIpcServiceAuction? _auctionIpc;
+    private readonly ICharServerIpcServiceMapreg? _mapregIpc;
     private readonly Map.Server.Quest.IQuestService? _questService;
     private readonly Map.Server.Achievement.IAchievementService? _achievementService;
     private readonly Map.Server.Pet.IPetService? _petService;
@@ -36,6 +37,7 @@ public sealed class IntifService : IIntifService
         ICharServerIpcServiceElemental? elemIpc = null,
         ICharServerIpcServiceStorage? storageIpc = null,
         ICharServerIpcServiceAuction? auctionIpc = null,
+        ICharServerIpcServiceMapreg? mapregIpc = null,
         Map.Server.Quest.IQuestService? questService = null,
         Map.Server.Achievement.IAchievementService? achievementService = null,
         Map.Server.Pet.IPetService? petService = null,
@@ -52,6 +54,7 @@ public sealed class IntifService : IIntifService
         _elemIpc = elemIpc;
         _storageIpc = storageIpc;
         _auctionIpc = auctionIpc;
+        _mapregIpc = mapregIpc;
         _questService = questService;
         _achievementService = achievementService;
         _petService = petService;
@@ -617,8 +620,33 @@ public sealed class IntifService : IIntifService
         return 1;
     }
 
-    public int RequestMapreg() => 0;
-    public int SaveMapreg(byte[] data) => 0;
+    /// <summary>
+    /// T7.8 — rAthena <c>intif_request_mapreg</c> (intif.cpp:3211).
+    /// Dispatches the typed mapreg pull through
+    /// <see cref="ICharServerIpcServiceMapreg.RequestMapregAsync"/>.
+    /// The char-side gRPC handler + persistence land when the script
+    /// engine's <c>$var</c> consumer ports (Phase 4 of
+    /// <c>map/scripting/README.md</c>); the canonical seam is in
+    /// place either way so the rAthena entry point stays 1:1.
+    /// </summary>
+    public int RequestMapreg()
+    {
+        if (_mapregIpc == null) return 0;
+        _ = _mapregIpc.RequestMapregAsync();
+        return 1;
+    }
+
+    /// <summary>
+    /// T7.8 — rAthena <c>intif_save_mapreg</c> (intif.cpp:3232). Pushes
+    /// the opaque mapreg byte payload through
+    /// <see cref="ICharServerIpcServiceMapreg.SaveMapregAsync"/>.
+    /// </summary>
+    public int SaveMapreg(byte[] data)
+    {
+        if (_mapregIpc == null) return 0;
+        _ = _mapregIpc.SaveMapregAsync(data ?? Array.Empty<byte>());
+        return 1;
+    }
 
     public bool CheckConnection() => true;
     public void Init() { }
