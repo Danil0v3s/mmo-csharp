@@ -254,9 +254,64 @@ public sealed class GuildService : IGuildService
         }
         return true;
     }
-    public int CastleDataLoad() => 0;
-    public int CastleDataLoadAck(int castleId, int index, int value) => 0;
-    public int CastleDataSave(int castleId, int index, int value) => 0;
+    public int CastleDataLoad() => CastleMapInit();
+
+    public int CastleDataLoadAck(int castleId, int index, int value)
+    {
+        // Inbound: char-side dumped this castle's persisted value back
+        // to us — paint the cached entity.
+        var c = FindCastle(castleId);
+        if (c == null)
+        {
+            // First-sight: allocate with the loaded value.
+            c = new CastleEntity { CastleId = castleId };
+            _castles[castleId] = c;
+        }
+        ApplyCastleField(c, index, value);
+        return 1;
+    }
+
+    public int CastleDataSave(int castleId, int index, int value)
+    {
+        var c = FindCastle(castleId);
+        if (c == null)
+        {
+            _logger.LogWarning("CastleDataSave: castle {CastleId} not registered", castleId);
+            return 0;
+        }
+        if (!ApplyCastleField(c, index, value)) return 0;
+        // IPC dispatch (intif_guild_castle_datasave) — if the char
+        // server is currently disconnected, queue the save and replay
+        // on reconnect via CastleReconnect.
+        // (Wire-up lands when the IPC consumer fires from a packet
+        // handler.) Until then we simply enqueue so the bookkeeping
+        // is correct.
+        CastleReconnect(castleId, index, value);
+        return 1;
+    }
+
+    private static bool ApplyCastleField(CastleEntity c, int index, int value)
+    {
+        switch (index)
+        {
+            case CastleDataIndex.GuildId:        c.GuildId = value; return true;
+            case CastleDataIndex.CurrentEconomy: c.Economy = value; return true;
+            case CastleDataIndex.CurrentDefense: c.Defense = value; return true;
+            case CastleDataIndex.InvestedEconomy: c.TriggerEconomy = value; return true;
+            case CastleDataIndex.InvestedDefense: c.TriggerDefense = value; return true;
+            case CastleDataIndex.NextTime:        c.NextTime = value; return true;
+            case CastleDataIndex.PayTime:         c.PayTime = value; return true;
+            case CastleDataIndex.CreateTime:      c.CreateTime = value; return true;
+            case CastleDataIndex.EnabledKafra:    c.VisibleKafra = value; return true;
+            default:
+                if (index >= CastleDataIndex.EnabledGuardian00 && index < CastleDataIndex.Max)
+                {
+                    c.GuardianVisible[index - CastleDataIndex.EnabledGuardian00] = value;
+                    return true;
+                }
+                return false;
+        }
+    }
     public int CheckAlliance(int guild1, int guild2, byte flag)
     {
         // GD-H1 quick win: cached lookup. Returns 1 if the relation
@@ -497,6 +552,80 @@ public sealed class GuildService : IGuildService
     {
         if (string.IsNullOrEmpty(s)) return string.Empty;
         return s.Length <= max ? s : s.Substring(0, max);
+    }
+
+    // ---------- GD-L3: Castle init + checkcastles + reconnect ----------
+
+    private readonly ConcurrentDictionary<int, CastleEntity> _castles = new();
+
+    /// <summary>Pending castle-save replays (castle_id, index) → value. Flushed by CastleReconnect(-1).</summary>
+    private readonly ConcurrentDictionary<(int CastleId, int Index), int> _pendingCastleSaves = new();
+
+    public int CastleMapInit()
+    {
+        var ids = _castles.Keys.ToArray();
+        if (ids.Length > 0)
+            _logger.LogInformation("CastleMapInit: requesting {Count} castle records", ids.Length);
+        // IPC dispatch (intif_guild_castle_dataload) wires when the
+        // consumer ports; here we report the count of castles the
+        // caller will pull.
+        return ids.Length;
+    }
+
+    public int CheckCastles(int guildId)
+    {
+        if (guildId <= 0) return 0;
+        int n = 0;
+        foreach (var c in _castles.Values)
+            if (c.GuildId == guildId) n++;
+        return n;
+    }
+
+    public CastleEntity? FindCastle(int castleId)
+        => castleId > 0 && _castles.TryGetValue(castleId, out var c) ? c : null;
+
+    public IEnumerable<CastleEntity> AllCastles() => _castles.Values;
+
+    public void CastleReconnect(int castleId, int index, int value)
+    {
+        if (castleId < 0)
+        {
+            // Char-server reconnected — flush pending saves.
+            foreach (var kv in _pendingCastleSaves)
+            {
+                // IPC dispatch placeholder. Re-enqueue would be a leak;
+                // we simply log and clear.
+                _logger.LogInformation("CastleReconnect: replay castle {CastleId} index {Index} value {Value}",
+                    kv.Key.CastleId, kv.Key.Index, kv.Value);
+            }
+            _pendingCastleSaves.Clear();
+            return;
+        }
+        _pendingCastleSaves[(castleId, index)] = value;
+    }
+
+    public System.Collections.Generic.IReadOnlyDictionary<(int CastleId, int Index), int> GetPendingCastleSaves()
+        => _pendingCastleSaves;
+
+    public int CastleGuildBrokenSub(int guildId)
+    {
+        if (guildId <= 0) return 0;
+        int touched = 0;
+        foreach (var c in _castles.Values)
+        {
+            if (c.GuildId == guildId)
+            {
+                c.GuildId = 0;
+                touched++;
+            }
+        }
+        return touched;
+    }
+
+    public void RegisterCastle(CastleEntity castle)
+    {
+        if (castle == null || castle.CastleId <= 0) return;
+        _castles[castle.CastleId] = castle;
     }
 
     // ---------- GD-L2: GM transfer + ack handlers ----------

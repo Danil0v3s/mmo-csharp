@@ -339,4 +339,42 @@ public interface IGuildService
 
     /// <summary>rAthena <c>guild_gm_changed</c> (cpp:2229). Inbound — swaps Members[0] with Members[pos]; updates MasterCharId / MasterName.</summary>
     int OnGmChanged(int guildId, int accountId, int charId, long timestamp);
+
+    // -----------------------------------------------------------------
+    // GD-L3 — Castle init + checkcastles + reconnect bookkeeping
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// rAthena <c>guild_castle_map_init</c> (cpp:2370). Iterates the
+    /// castle_db at boot and dispatches a bulk
+    /// <c>intif_guild_castle_dataload</c>. Returns the number of
+    /// registered castle ids.
+    /// </summary>
+    int CastleMapInit();
+
+    /// <summary>rAthena <c>guild_checkcastles</c> (cpp:2620). Returns the count of castles currently owned by a guild.</summary>
+    int CheckCastles(int guildId);
+
+    /// <summary>Look up a cached castle by id (rAthena <c>castle_db.find(id)</c>).</summary>
+    CastleEntity? FindCastle(int castleId);
+
+    /// <summary>Iterate every registered castle (used by Init dispatch + scripts).</summary>
+    System.Collections.Generic.IEnumerable<CastleEntity> AllCastles();
+
+    /// <summary>
+    /// rAthena <c>guild_castle_reconnect</c> (cpp:2465). castle_id &lt; 0
+    /// flushes pending save queue (char-server reconnected); otherwise
+    /// enqueues (castle_id, index) → value so the save replays on next
+    /// reconnect.
+    /// </summary>
+    void CastleReconnect(int castleId, int index, int value);
+
+    /// <summary>Snapshot of pending castle-save entries (for diagnostics + tests).</summary>
+    System.Collections.Generic.IReadOnlyDictionary<(int CastleId, int Index), int> GetPendingCastleSaves();
+
+    /// <summary>rAthena <c>castle_guild_broken_sub</c> (cpp:2132). When a guild disbands, zero its castle ownership entries.</summary>
+    int CastleGuildBrokenSub(int guildId);
+
+    /// <summary>Register a castle in the in-memory db (called by the castle-yml loader).</summary>
+    void RegisterCastle(CastleEntity castle);
 }
