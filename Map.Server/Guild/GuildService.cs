@@ -23,8 +23,14 @@ public sealed class GuildService : IGuildService
 {
     private readonly ILogger<GuildService> _logger;
     private readonly ConcurrentDictionary<int, GuildEntity> _byId = new();
+    private readonly Map.Server.Agit.IAgitService? _agit;
 
-    public GuildService(ILogger<GuildService> logger) => _logger = logger;
+    public GuildService(ILogger<GuildService> logger,
+        Map.Server.Agit.IAgitService? agit = null)
+    {
+        _logger = logger;
+        _agit = agit;
+    }
 
     // ---------- GD-H1: in-memory replica ----------
 
@@ -920,8 +926,18 @@ public sealed class GuildService : IGuildService
     /// </summary>
     public int MaxAlliancePerSide { get; set; } = 3;
 
-    /// <summary>Reserved for WoE-active gate (cpp:1856 / :1977).</summary>
-    public bool IsAgitActive { get; set; }
+    /// <summary>
+    /// Override flag for tests that don't wire <see cref="Map.Server.Agit.IAgitService"/>.
+    /// Setting it true forces WoE-active behaviour even when no agit
+    /// service is present. The real runtime reads
+    /// <c>_agit?.IsAnyActive</c> first.
+    /// </summary>
+    public bool IsAgitActive
+    {
+        get => _agit?.IsAnyActive ?? _agitOverride;
+        set => _agitOverride = value;
+    }
+    private bool _agitOverride;
 
     public bool ReqAlliance(PlayerEntity sd, PlayerEntity tsd)
     {
