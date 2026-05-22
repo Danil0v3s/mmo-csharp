@@ -1872,6 +1872,26 @@ builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.NoAskCommand>()
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MuteCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.UnmuteCommand>();
 
+// AT-R5 — retire reload + cleanup stubs.
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadAtCommandCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadBattleConfCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadStatusDbCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadPcDbCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadQuestDbCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadAchievementDbCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadAttendanceDbCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadItemDbCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadMobDbCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadSkillDbCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadInstanceDbCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadMsgConfCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadScriptCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ReloadBroadcastMsgCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.KillMonsterCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.KillMonster2Command>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CleanMapCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CleanAreaCommand>();
+
 // PC-* phase: player option / appearance / orb services + GM commands.
 // rAthena pc_setoption / pc_setcart / pc_setriding / pc_changelook
 // (pc.cpp:8702 / 8851 / 8810 / clif.cpp:3929) + the pc_addspiritball

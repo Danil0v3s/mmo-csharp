@@ -101,9 +101,7 @@ internal static class StubCommandKinds
         new("doom", "pc.cpp:doom"), new("doommap", "pc.cpp:doom"),
         new("raise", "pc.cpp:raise"), new("raisemap", "pc.cpp:raise"),
         new("memo", "pc.cpp:memo"), new("gat", "pc.cpp:gat"),
-        // killmonster variants
-        new("killmonster", "mob.cpp"), new("killmonster2", "mob.cpp"),
-        new("cleanmap", "item.cpp"), new("cleanarea", "item.cpp"),
+        // killmonster/killmonster2/cleanmap/cleanarea retired AT-R5.
         // option toggles
         new("option", "pc.cpp:option"), new("displaystatus", "pc.cpp:status"),
         // request system
@@ -127,15 +125,9 @@ internal static class StubCommandKinds
         // RepairCommand / RepairAllCommand).
         // jail retired AT-R3 (JailCommand / UnjailCommand / JailForCommand
         // / JailTimeCommand).
-        // map exit / stopnpc
-        new("mapexit", "map.cpp"), new("reloaditemdb", "item.cpp"),
-        new("reloadmobdb", "mob.cpp"), new("reloadskilldb", "skill.cpp"),
-        new("reloadatcommand", "atcommand.cpp"),
-        new("reloadbattleconf", "battle.cpp"), new("reloadstatusdb", "status.cpp"),
-        new("reloadpcdb", "pc.cpp"), new("reloadmsgconf", "msg.cpp"),
-        new("reloadscript", "npc.cpp"), new("reloadquestdb", "quest.cpp"),
-        new("reloadinstancedb", "instance.cpp"), new("reloadbroadcastmsg", "channel.cpp"),
-        new("reloadachievementdb", "achievement.cpp"), new("reloadattendancedb", "attendance.cpp"),
+        // mapexit kept as stub (server shutdown helper — defer).
+        new("mapexit", "map.cpp"),
+        // reload family retired AT-R5 (Reload* commands).
         // jobs
         new("baselevelup", "pc.cpp:joblevel"),
         // misc broadcast variants
