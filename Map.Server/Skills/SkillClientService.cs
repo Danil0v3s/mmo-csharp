@@ -71,6 +71,29 @@ public sealed class SkillClientService : ISkillClientService
         _visibility.SendToArea(src, packet);
     }
 
+    public void BroadcastSkillCasting(Entity src, Entity? target, short targetX, short targetY,
+        ushort skillId, ushort skillLevel, int castTimeMs)
+    {
+        // T5.3a — rAthena clif_skillcasting (clif.cpp:5930). The wire
+        // packet (PACKET_ZC_USESKILL_ACK / 0x0119 on legacy, 0x07fb on
+        // PACKETVER 20091201+) carries the casting bar over the caster.
+        // We don't have a dedicated wire packet here yet — log for now
+        // so call sites have the canonical entry point, and the
+        // OutgoingPacket once the per-packet emitter lands.
+        _logger.LogDebug(
+            "clif_skillcasting src={Src} target={Target} cell=({X},{Y}) skill={Skill}@{Lv} cast={Cast}ms",
+            src.Id, target?.Id, targetX, targetY, skillId, skillLevel, castTimeMs);
+    }
+
+    public void BroadcastSkillCastCancel(Entity caster)
+    {
+        // T5.3a — rAthena clif_skillcastcancel (clif.cpp:5973). Wire
+        // packet PACKET_ZC_DISPEL (0x01b9) carries the cast-cancel to
+        // AOI; clients clear the casting bar. Same logging-only first
+        // slice until the wire emitter lands.
+        _logger.LogDebug("clif_skillcastcancel caster={Caster}", caster.Id);
+    }
+
     public void BroadcastSkillFail(PlayerEntity caster, ushort skillId, SkillFailCause cause,
         int btype = 0, uint itemId = 0)
     {

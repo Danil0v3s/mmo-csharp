@@ -175,6 +175,12 @@ public sealed class SkillCastService : ISkillCastService
         }
         else
         {
+            // T5.3a — broadcast cast-start so clients render the
+            // casting bar. Instant casts skip the bar (rAthena does
+            // the same: clif_skillcasting is only called when
+            // skill_castfix returns > 0).
+            _client?.BroadcastSkillCasting(source, target, target.X, target.Y,
+                skillId, skillLevel, castTime);
             _pending.Add(new PendingCast
             {
                 Source = source.Id,
@@ -251,6 +257,9 @@ public sealed class SkillCastService : ISkillCastService
         }
         else
         {
+            // T5.3a — broadcast ground-targeted cast-start.
+            _client?.BroadcastSkillCasting(source, target: null, x, y,
+                skillId, skillLevel, castTime);
             _pendingPos.Add(new PendingPosCast
             {
                 Source = source.Id,

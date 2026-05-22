@@ -146,6 +146,25 @@ public sealed class RecordingSkillClientService : ISkillClientService
             ["btype"] = btype,
             ["itemId"] = (long)itemId,
         });
+
+    public void BroadcastSkillCasting(Entity src, Entity? target, short targetX, short targetY,
+        ushort skillId, ushort skillLevel, int castTimeMs)
+        => _rec.Record("casting", new()
+        {
+            ["src"] = (int)src.Id,
+            ["target"] = (int?)target?.Id,
+            ["x"] = targetX,
+            ["y"] = targetY,
+            ["skillId"] = (int)skillId,
+            ["skillLevel"] = (int)skillLevel,
+            ["castTimeMs"] = castTimeMs,
+        });
+
+    public void BroadcastSkillCastCancel(Entity caster)
+        => _rec.Record("cast-cancel", new()
+        {
+            ["caster"] = (int)caster.Id,
+        });
 }
 
 public sealed class RecordingStatusChangeService : IStatusChangeService

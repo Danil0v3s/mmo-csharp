@@ -71,4 +71,32 @@ public interface ISkillClientService
     /// fail string (e.g. "You need 1 Red Gemstone").</param>
     void BroadcastSkillFail(PlayerEntity caster, ushort skillId, SkillFailCause cause,
         int btype = 0, uint itemId = 0);
+
+    /// <summary>
+    /// rAthena <c>clif_skillcasting(src, dst, dst_x, dst_y, skill_id, skill_lv,
+    /// property, casttime)</c> (clif.cpp:5930). Broadcasts the cast-start
+    /// frame to AOI — clients render the casting bar over the caster.
+    /// T5.3a wires this into <see cref="ISkillCastService.StartCast"/> /
+    /// <see cref="ISkillCastService.StartCastAt"/> when the cast time is
+    /// non-zero (instant casts skip the bar).
+    /// </summary>
+    /// <param name="src">Caster.</param>
+    /// <param name="target">Target entity, or null for ground-targeted casts.</param>
+    /// <param name="targetX">Ground cell X (when target is null).</param>
+    /// <param name="targetY">Ground cell Y (when target is null).</param>
+    /// <param name="skillId">Skill id constant.</param>
+    /// <param name="skillLevel">Effective skill level.</param>
+    /// <param name="castTimeMs">Total cast time in ms (post-fix).</param>
+    void BroadcastSkillCasting(Entity src, Entity? target, short targetX, short targetY,
+        ushort skillId, ushort skillLevel, int castTimeMs);
+
+    /// <summary>
+    /// rAthena <c>clif_skillcastcancel(bl)</c> (clif.cpp:5973). Broadcasts
+    /// the cast-cancel frame to AOI — clients clear the casting bar over
+    /// <paramref name="caster"/>. Fires when the cast is interrupted by
+    /// damage (rAthena <c>battle_check_dmg_reflect</c>), the caster moves
+    /// (rAthena <c>skill_cancel_cast</c>), or a SC ends the cast (Stone /
+    /// Freeze / Sleep starting mid-cast).
+    /// </summary>
+    void BroadcastSkillCastCancel(Entity caster);
 }
