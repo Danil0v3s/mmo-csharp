@@ -34,4 +34,42 @@ public sealed class SkillUnitGroup
     public required long ExpiresAt;
     public required int IntervalMs;
     public List<SkillUnit> Units = new();
+
+    /// <summary>
+    /// SK.100-1c — per-unit visibility cloaking. When true, the unit is
+    /// only visible to the caster + party/guild allies (rAthena's
+    /// <c>UF_HIDDEN_TRAP</c> / Pneuma / Lullaby / Land Protector
+    /// non-owner blackout pattern). Visibility filters consult this
+    /// before broadcasting unit-place / unit-vanish packets.
+    /// </summary>
+    public bool HiddenFromNonOwner;
+}
+
+/// <summary>
+/// SK.100-1c — runtime visibility classifier for skill units.
+/// </summary>
+public static class SkillUnitVisibility
+{
+    /// <summary>
+    /// True iff <paramref name="observer"/> may see <paramref name="group"/>'s
+    /// units. Cloaking groups (Pneuma / Lullaby / trap variants) hide
+    /// from non-allies; non-cloaking groups (Storm Gust, Magnus
+    /// Exorcismus, etc.) are visible to everyone.
+    /// </summary>
+    public static bool IsVisibleTo(SkillUnitGroup group, Entity observer)
+    {
+        if (!group.HiddenFromNonOwner) return true;
+        if (observer.Id == group.CasterId) return true;
+        // Ally check — same party or same guild keeps the unit visible.
+        if (observer is PlayerEntity pc)
+        {
+            // We don't have the caster's PlayerEntity here without a
+            // registry lookup; the visibility-service caller should pass
+            // an already-resolved owner-ally bit when it has one. Until
+            // wired we default to "hide" which is the safe rAthena
+            // behavior for traps.
+            return false;
+        }
+        return false;
+    }
 }
