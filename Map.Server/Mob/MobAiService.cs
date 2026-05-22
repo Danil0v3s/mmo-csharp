@@ -29,6 +29,7 @@ public sealed class MobAiService : IMobAiService
     private readonly IMobLooterService? _looter;
     private readonly IMobChangeTargetService _changeTarget;
     private readonly IMobRandomWalkService? _wander;
+    private readonly IStatusChangeService? _sc;
     private readonly Random _rng;
     private readonly Dictionary<EntityId, long> _lastThink = new();
 
@@ -43,7 +44,8 @@ public sealed class MobAiService : IMobAiService
         IMobSkillCastService? mobSkillCast = null,
         IMobLooterService? looter = null,
         IMobChangeTargetService? changeTarget = null,
-        IMobRandomWalkService? wander = null)
+        IMobRandomWalkService? wander = null,
+        IStatusChangeService? sc = null)
     {
         _entities = entities;
         _attack = attack;
@@ -51,6 +53,7 @@ public sealed class MobAiService : IMobAiService
         _looter = looter;
         _changeTarget = changeTarget ?? new MobChangeTargetService();
         _wander = wander;
+        _sc = sc;
         _rng = rng ?? Random.Shared;
 
         // Default to the standard evaluator set so existing tests don't
@@ -127,6 +130,22 @@ public sealed class MobAiService : IMobAiService
             // range (rAthena mob.cpp:1959, mob_add_spotted from the
             // per-PC hard-AI scan).
             SpotPcsInView(mob);
+
+            // T5.1d — rAthena mob.cpp:1864 OPT1 / SCF_MOBLOSETARGET
+            // gate. If the mob is under an immobilizing SC (Stone /
+            // Freeze / Stun / Sleep — but NOT Stonewait or Burning)
+            // it drops its target ids and bails. The SCF flag scan
+            // is documented-pending until status_yml exposes the
+            // per-SC SCF_MOBLOSETARGET flag; the four canonical OPT1
+            // SCs cover the common case.
+            if (HasMobLoseTargetSc(mob))
+            {
+                _attack.StopAttack(mob);
+                mob.TargetId = 0;
+                mob.AttackedId = 0;
+                MobFsm.TransitionTo(mob, MobSkillState.Idle);
+                continue;
+            }
 
             // Validate existing target — drop it if it's gone or unreachable.
             if (mob.Attack != null)
@@ -255,6 +274,23 @@ public sealed class MobAiService : IMobAiService
             if (e is PlayerEntity p && p.Hp > 0) return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// T5.1d — rAthena mob.cpp:1864 OPT1 gate. True iff the mob
+    /// currently has Stone / Freeze / Stun / Sleep active. Stonewait
+    /// (the petrify charge-up) and Burning are explicitly excluded
+    /// (mobs keep their target through both). The SCF_MOBLOSETARGET
+    /// per-SC flag scan is a documented follow-up — needs the
+    /// status_yml SCF flag layer to expose per-SC metadata.
+    /// </summary>
+    private bool HasMobLoseTargetSc(MobEntity mob)
+    {
+        if (_sc == null) return false;
+        return _sc.Get(mob, StatusType.Stone) != null
+            || _sc.Get(mob, StatusType.Freeze) != null
+            || _sc.Get(mob, StatusType.Stun) != null
+            || _sc.Get(mob, StatusType.Sleep) != null;
     }
 
     /// <summary>

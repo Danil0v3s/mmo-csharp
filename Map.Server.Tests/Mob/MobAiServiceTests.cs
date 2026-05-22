@@ -55,6 +55,50 @@ public class MobAiServiceTests
     }
 
     [Fact]
+    public void Opt1Stone_DropsTargetAndRefusesEngage()
+    {
+        // T5.1d — rAthena mob.cpp:1864 OPT1 gate. Stone-petrified mob
+        // must drop its target and not re-engage on the next tick.
+        var ctx = Build();
+        var mob = ctx.AddAggressiveMob(50, 50, range2: 10);
+        var pc = ctx.AddPlayer(52, 50, 1);
+
+        // First tick — engages normally (no SC yet).
+        ctx.Ai.Tick(0);
+        Assert.NotNull(mob.Attack);
+
+        // Apply Stone (OPT1_STONE in rAthena), tick after the throttle
+        // expires.
+        ctx.Sc.Start(mob, StatusType.Stone, 1, 0, 0, 0,
+            durationMs: 5_000, source: null, nowTick: 200);
+        ctx.Ai.Tick(200);
+
+        Assert.Null(mob.Attack);
+        Assert.Equal(0, mob.TargetId);
+        Assert.Equal(0, mob.AttackedId);
+    }
+
+    [Fact]
+    public void Opt1Burning_KeepsTarget()
+    {
+        // Burning is the OPT1 exception (mob.cpp:1864 — explicitly
+        // excluded from the lose-target check). Mob should keep
+        // engaging through it.
+        var ctx = Build();
+        var mob = ctx.AddAggressiveMob(50, 50, range2: 10);
+        var pc = ctx.AddPlayer(52, 50, 1);
+
+        ctx.Ai.Tick(0);
+        Assert.NotNull(mob.Attack);
+
+        ctx.Sc.Start(mob, StatusType.Burning, 1, 0, 0, 0,
+            durationMs: 5_000, source: null, nowTick: 200);
+        ctx.Ai.Tick(200);
+
+        Assert.NotNull(mob.Attack); // still engaged
+    }
+
+    [Fact]
     public void Throttle_BlocksRepeatedTicksUntilMinThinkTime()
     {
         var ctx = Build();
@@ -96,14 +140,17 @@ public class MobAiServiceTests
         var damage = new DamageService(visibility, mobSpawn, entities,
             new BattleCalculator(new Random(0)), NullLogger<DamageService>.Instance);
         var attack = new AttackService(entities, damage, movement, NullLogger<AttackService>.Instance);
-        var ai = new MobAiService(entities, attack, NullLogger<MobAiService>.Instance);
-        return new TestContext(ai, entities, ids, (uint)mapName.GetHashCode());
+        var sc = new StatusChangeService(damage, entities,
+            new StatusEffectRegistry(), NullLogger<StatusChangeService>.Instance);
+        var ai = new MobAiService(entities, attack, NullLogger<MobAiService>.Instance, sc: sc);
+        return new TestContext(ai, entities, ids, sc, (uint)mapName.GetHashCode());
     }
 
     private sealed record TestContext(
         MobAiService Ai,
         EntityRegistry Entities,
         EntityIdAllocator Ids,
+        StatusChangeService Sc,
         uint MapId)
     {
         public PlayerEntity AddPlayer(short x, short y, int charId)

@@ -27,7 +27,7 @@ Canonical entry points:
 | rAthena fn | Status | C# location / note |
 |---|---|---|
 | `mob_ai_sub_hard` aggressive-engage spine | ✅ | `MobAiService.Tick` (closest-PC scan + StartAttack handoff) |
-| `mob_ai_sub_hard` skilltimer / OPT1 / SCF_MOBLOSETARGET gate | ⚠️ | depends on status engine OPT1 field + SCF_MOBLOSETARGET flag (out of T4.9 scope per goal "Out of scope") |
+| `mob_ai_sub_hard` skilltimer / OPT1 / SCF_MOBLOSETARGET gate | ⚠️ | T5.1d — OPT1 (Stone/Freeze/Stun/Sleep) gate landed in `MobAiService.HasMobLoseTargetSc`; drops `TargetId` + `AttackedId` and bails. Per-SC SCF_MOBLOSETARGET flag scan still pending status_yml SCF column expose. |
 | `mob_ai_sub_hard` `attacked_id` target-switch | ✅ | `MobAiService.NotifyAttacked` calls `IMobChangeTargetService.TrySetTarget` (T4.9d — gated by MSS_BERSERK + MD_CHANGETARGETMELEE / MSS_RUSH + MD_CHANGETARGETCHASE matrix) |
 | `mob_ai_sub_hard` master_id slave AI | ⚠️ | `SummonAiService` covers follow + assist; full assist-on-master-target branch TODO |
 | `mob_ai_sub_hard` MD_LOOTER pickup | ✅ | `IMobLooterService` (T4.9c — bag cap, FIFO evict, registry transfer; mob walks to drop, picks up on adjacency) |
@@ -153,6 +153,30 @@ the dependency tracks first and is out of T4.9 scope.
 8. ✅ **T4.9** — final completion wave (T4.9a-g, 7 commits). Zero ❌ rows achieved; 12 ⚠️ remain with documented out-of-scope dependencies.
 
 ## History
+
+### 2026-05-22 — T5.1d (OPT1 / SCF_MOBLOSETARGET gate)
+
+Fourth slice of T5.1. Lands the OPT1 lose-target gate from rAthena
+`mob.cpp:1864` at the top of the per-mob hard-AI block.
+
+**Surface added:**
+- `MobAiService` takes an optional `IStatusChangeService` ctor
+  param; the DI container auto-wires the existing singleton.
+- New `HasMobLoseTargetSc(mob)` private helper checks for the four
+  canonical OPT1 SCs that drop a mob's target: Stone, Freeze,
+  Stun, Sleep. Stonewait (the petrify charge-up) and Burning are
+  intentionally excluded — they don't lose target per rAthena's
+  exclusion list.
+- `Tick` consults the gate immediately after `SpotPcsInView`; on
+  hit it calls `StopAttack`, zeros `TargetId` + `AttackedId`, and
+  transitions FSM → Idle, then continues to the next mob.
+
+**Tests:** `MobAiServiceTests` +2 — Stone drops target on next
+tick; Burning keeps it.
+
+**Coverage delta:** the AI-think-loop skilltimer/OPT1 row stays
+⚠️ (SCF flag scan still pending) but the OPT1 portion is now
+real. Test count 2946 → **2948 green**.
 
 ### 2026-05-22 — T5.1c (mob_warpchase cross-map scan)
 
