@@ -1,4 +1,4 @@
-# pc.cpp parity · 2026-05-19
+# pc.cpp parity · 2026-05-22 (T5.2c refresh; baseline 2026-05-19)
 
 `src/map/pc.cpp` (15 989 lines, 157 unique `pc_*` functions) is the
 player-character core: lifecycle, stats, skills, equipment, inventory,
