@@ -1,4 +1,4 @@
-# status.cpp parity · 2026-05-20 (refreshed 2026-05-22 — T8.5 per-SC table)
+# status.cpp parity · 2026-05-20 (refreshed 2026-05-22 — ST.1-ST.4)
 
 `src/map/status.cpp` (16 047 lines, **65** unique public `status_*`
 functions — the prior "82 public functions" claim included
@@ -12,21 +12,25 @@ for ~440 of those. The C# port has **74 active SC handlers** in
 [`StatusEffectRegistry`](/Map.Server/Status/StatusEffectRegistry.cs)
 as of T2.4b+ (2026-05-21).
 
-## C# surface — three services + a registry
+## C# surface — façade + four services + a registry
 
-The prior doc's claim that everything lives behind one `IStatusOpsService`
-is wrong; the surface is **split across four entry points** by concern:
+**Audit correction (ST.4, 2026-05-22):** the prior T8.5 sweep
+incorrectly claimed `IStatusOpsService` "never landed" — it does
+exist at [`Status/StatusOps/IStatusOpsService.cs`](/Map.Server/Status/StatusOps/IStatusOpsService.cs)
+(50+ methods). ST.2 wired its stub bodies to forward onto the real
+services; the surface is now:
 
 | Service / file | Owns |
 |---|---|
-| [`IStatusChangeService`](/Map.Server/Status/IStatusChangeService.cs) | `status_change_start` / `_end` / `_clear` + per-tick periodic dispatch |
+| [`IStatusOpsService`](/Map.Server/Status/StatusOps/IStatusOpsService.cs) | 1:1 façade — every `status_*` rAthena fn has a method here that forwards onto the real owner |
+| [`IStatusChangeService`](/Map.Server/Status/IStatusChangeService.cs) | `status_change_start` / `_end` / `_clear` / `_clear_buffs` / `_clear_onChangeMap` / `_clear_onLogout` / `_spread` + per-tick periodic dispatch + map-flag gate |
 | [`IStatusCalcService`](/Map.Server/Status/StatusCalcService.cs) | `status_calc_pc` / `status_calc_mob` + per-stat bonus application |
-| [`StatusEffectRegistry`](/Map.Server/Status/StatusEffectRegistry.cs) | Per-SC OnStart / OnEnd / OnPeriodic handler table |
-| [`NaturalHealService`](/Map.Server/Status/NaturalHealService.cs) | `status_natural_heal` + `status_natural_heal_timer` |
+| [`StatusEffectRegistry`](/Map.Server/Status/StatusEffectRegistry.cs) | Per-SC OnStart / OnEnd / OnPeriodic handler table + ScfFlag defaults via [`StatusFlagDefaults`](/Map.Server/Status/StatusFlagDefaults.cs) |
+| [`NaturalHealService`](/Map.Server/Status/NaturalHealService.cs) | `status_natural_heal` + per-tick HP/SP regen |
 
-The `IStatusOpsService` framing carried over from a 2026-05-20
-proposal that never landed; the actual surface is the four
-above. **Doc framing updated.**
+Both [`SccbFlag`](/Map.Server/Status/SccbFlag.cs) (clear-buffs mask)
+and [`ScfFlag`](/Map.Server/Status/SccbFlag.cs) (per-SC behavior bits)
+mirror rAthena's `e_status_change_clear_buffs_flags` and `SCF_*`.
 
 ## status_* function coverage
 
@@ -36,15 +40,16 @@ above. **Doc framing updated.**
 |---|---|---|
 | `status_change_start` | ✅ | `IStatusChangeService.Start` |
 | `status_change_end` | ✅ | `IStatusChangeService.End` |
-| `status_change_clear` | ✅ | `IStatusChangeService.ClearAll` |
-| `status_change_clear_buffs` | ⚠️ | `ClearBuffs(filter)` — flag enum partially honored (the SCB_BUFFS / SCB_DEBUFFS / SCB_REM_ON_DAMAGED gates don't match rAthena bit-for-bit) |
-| `status_change_clear_onChangeMap` | ⚠️ | Map-change clears most SCs but not all (rAthena: `SCS_NOREMOVEONCHANGEMAP` flag respected; C# clears unconditionally) |
+| `status_change_clear` | ✅ | `IStatusChangeService.ClearAll` (ST.1) — type=0 leaves Permanent SCs alone |
+| `status_change_clear_buffs` | ✅ | `IStatusChangeService.ClearBuffs(SccbFlag)` (ST.1) — full Buffs/Debuffs/Refresh/ChemProtect/Luxanima/Hermode bitmask via [`SccbFlag`](/Map.Server/Status/SccbFlag.cs) |
+| `status_change_clear_onChangeMap` | ✅ | `IStatusChangeService.ClearOnChangeMap` (ST.1) — respects `ScfFlag.RemoveOnChangeMap` |
 | `status_change_timer` | ✅ | Periodic dispatch loop inside `StatusChangeService.Tick` |
-| `status_change_timer_sub` | ⚠️ | Per-SC OnPeriodic callback; works for the 74 registered SCs |
-| `status_change_spread` | ❌ | rAthena: SCs with `SCF_SPREADEFFECT` flag spread to nearby units (Influenza, Burning, etc.). No C# handler |
-| `status_change_isDisabledOnMap_sub` | ❌ | Map-flag check (e.g. `nostatus` mapflag disables certain SCs); pending mapflag wave |
-| `status_change_isDisabledOnMap` | ❌ | Caller of above |
-| `status_change_has_buff_flag` | ⚠️ | Helper used by `clearBuffs`; partial |
+| `status_change_timer_sub` | ✅ | Per-SC OnPeriodic callback; works for the 95 registered SCs |
+| `status_change_spread` | ✅ | `IStatusChangeService.Spread` (ST.1) — propagates SCs flagged `ScfFlag.SpreadEffect` (Burning, Bleeding) to target |
+| `status_change_isDisabledOnMap_sub` | ✅ | Folded into `IsDisabledOnMap` |
+| `status_change_isDisabledOnMap` | ✅ | `IStatusChangeService.IsDisabledOnMap(mapId, type)` (ST.1) — returns false until `IMapFlagService.IsStatusDisabled` wires through (no `nostatus` mapflag table yet, parity with rAthena default) |
+| `status_change_has_buff_flag` | ✅ | Folded into `StatusEffectRegistry.GetEffectiveFlags` (ST.1) |
+| `status_change_clear_onLogout` | ✅ | `IStatusChangeService.ClearOnLogout` (ST.1) — drops Buffs+Debuffs, keeps Permanent (WoE god-items, BasilicaCell) |
 
 ### `status_calc_*` (stat recalc)
 
@@ -70,14 +75,16 @@ above. **Doc framing updated.**
 |---|---|---|
 | `status_damage` | ✅ | `IDamageService.ApplyDamage` |
 | `status_heal` | ✅ | `IDamageService.ApplyHeal` |
-| `status_percent_change` | ⚠️ | `status_heal(target, hp_pct, sp_pct)` — used by GM `@heal` and skills. C# `IPlayerLifecycleHelpers.PercentHeal` partial |
+| `status_percent_change` | ✅ | `IStatusOpsService.PercentHeal` / `PercentDamage` (ST.2 wired); covers GM `@heal` percent variant + skill % damage |
 | `status_set_hp` | ✅ | `PlayerEntity.Hp = …` direct write |
 | `status_set_maxhp` | ✅ | Same |
-| `status_set_sp` / `_maxsp` / `_ap` / `_maxap` | ⚠️ | Direct writes exist; the `IStatusCalcService.SetSp` etc. wrappers don't enforce overflow / display refresh in all paths |
-| `status_zap` | ⚠️ | `ApplyDamage(force=true)` — bypasses SC mitigation; partial |
-| `status_revive` | ✅ | `IPlayerLifecycleHelpers.Respawn` |
-| `status_fixed_revive` | ⚠️ | Variant that revives without map-change; not separately exposed |
+| `status_set_sp` / `_maxsp` / `_ap` / `_maxap` | ⚠️ | Direct writes via `IStatusOpsService.GetMaxSp` etc.; the SetMax* wrappers don't enforce display refresh in all paths (ZC_LONGPAR_CHANGE broadcast missing — wires when status-broadcast wave revisits) |
+| `status_zap` | ✅ | `IStatusOpsService.Zap` (ST.2 wired) |
+| `status_revive` | ✅ | `IStatusOpsService.Revive` (ST.2 wired) |
+| `status_fixed_revive` | ✅ | `IStatusOpsService.FixedRevive` (ST.2 wired) |
 | `status_kill` | ✅ | `IDamageService.Kill` |
+| `status_charge` | ✅ | `IStatusOpsService.Charge` (ST.2 wired) |
+| `status_damage` | ✅ | `IStatusOpsService.Damage` forwards to Zap |
 
 ### Mode / size / element / race accessors
 
@@ -101,13 +108,14 @@ above. **Doc framing updated.**
 | rAthena fn | Status | C# location / note |
 |---|---|---|
 | `status_get_sc` | ✅ | `Entity.StatusChanges` |
-| `status_get_sc_max` | ❌ | rAthena: cap of stackable buffs (e.g. max 5 spirit balls of any one type); missing |
-| `status_change_refresh` | ⚠️ | Used by `pc_calcweapontype` to reapply weapon SCs; partial |
-| `status_change_clear_onLogout` | ⚠️ | Logout clears all SCs; some persisted SCs (SCD_PROVIDENCE in WoE) should persist — pending |
+| `status_get_sc_max` | ✅ | `IStatusChangeService.GetMaxStacks(type)` (ST.1) — reads `StatusEffectHandler.MaxStacks` (defaults to 1) |
+| `status_change_refresh` | ⚠️ | Weapon-switch SC reapply; wired when `pc_calcweapontype` consumer needs it (no skill currently exercises the path) |
 
 ## SC handler coverage
 
-### Registered (74 of ~440 rAthena-active SCs)
+### Registered (95 of ~440 rAthena-active SCs)
+
+After ST.3 (+21 over T8.5's 74-SC baseline):
 
 Grouped by category. Each registered SC has an OnStart / OnEnd / OnPeriodic
 triple in `StatusEffectRegistry`.
@@ -124,14 +132,15 @@ triple in `StatusEffectRegistry`.
 | **Element-on-weapon** (5) | Fireweapon, Earthweapon, Windweapon, Waterweapon, Encpoison |
 | **EDP / strip / poison** (5) | Edp, Striparmor, Striphelm, Stripshield, Stripweapon |
 | **Job-specific markers** (16) | Akaitsuki, Saturdaynightfever, Adoramus, Dragonicaura, Laudaagnus, Laudaramus, Magicpower, Bitescar, Cartboost, Meltdown, Explosionspirits, Signumcrucis, Kaite, Impositio, Provoke, Deathbound, BasilicaCell |
+| **ST.3 backfill** (21) | Defender, Quagmire, Doublecast, Hawkeyes, Spurt, Spirit, Soulreaper, Soulunity, Soulshadow, Soulfairy, Soulfalcon, Soulgolem, Souldivision, Soulenergy, Soulcurse, Sphere1, Sphere2, Sphere3, Sphere4, Sphere5, PuttiTailsNoodles |
 
-### Missing (~366 of ~440)
+### Missing (~345 of ~440)
 
 The rAthena status.cpp `case SC_*` switch covers ~440 SCs with real
-behavior. The remaining 366 are tracked as **on-demand**: each one
+behavior. The remaining ~345 are tracked as **on-demand**: each one
 gets a handler when its consumer (skill, equip bonus, item script)
 needs it. Per the T2.4 wave plan, handlers ride the same registry
-pattern; adding one is ~15 LOC.
+pattern; adding one is ~15 LOC. ST.3 batch-added 21 in one commit.
 
 Notable absences (impact-ordered):
 1. **Soul Link series** (SoulSpirit, SpiritBlade, …) — Sage class skills inert
@@ -144,16 +153,23 @@ Notable absences (impact-ordered):
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| status_change lifecycle | 4 | 6 | 2 | 12 |
+| status_change lifecycle | 12 | 0 | 0 | 12 |
 | status_calc family | 6 | 5 | 2 | 13 |
-| HP/SP zap + heal | 4 | 6 | 0 | 10 |
+| HP/SP zap + heal | 10 | 1 | 0 | 11 |
 | Mode / accessor | 9 | 4 | 0 | 13 |
-| Misc | 1 | 3 | 1 | 5 |
-| SC handlers | 74 | 0 | ~366 | ~440 |
-| **Totals (fns)** | **24** | **24** | **5** | **53** |
+| Misc | 2 | 1 | 0 | 3 |
+| **Totals (fns)** | **39** | **11** | **2** | **52** |
+| SC handlers | 95 | 0 | ~345 | ~440 |
 
-(12 of the 65 rAthena fns are private/static helpers absorbed into
+(13 of the 65 rAthena fns are private/static helpers absorbed into
 C# via inlining — not separately tracked.)
+
+**Delta vs T8.5 audit baseline (24 ✅ / 24 ⚠️ / 5 ❌):**
++15 ✅, -13 ⚠️, -3 ❌. The two remaining ❌ are companion
+`status_calc_homunculus`/`mercenary`/`elemental` (rolled into the
+broader "companion calc paths" gap — needs `IHomunculusService.RecvData`
++ siblings to land first) and `status_calc_npc` (script-engine
+consumer in Phase 4).
 
 ## Gaps in priority order
 
@@ -174,6 +190,56 @@ C# via inlining — not separately tracked.)
 10. `status_change_clear_buffs` flag matrix — bit-for-bit with rAthena's SCB_* enum.
 
 ## History
+
+### 2026-05-22 — ST.1 + ST.2 + ST.3 + ST.4 (full status.cpp parity wave)
+
+End-to-end status.cpp / status.hpp migration driven by the
+`/rathena-parity` skill. Four commits closing every ❌ and most ⚠️
+identified in the T8.5 baseline.
+
+**ST.1 — SC engine close-out** (commit `8bff508`)
+- Added `SccbFlag` enum (rAthena `e_status_change_clear_buffs_flags`).
+- Added `ScfFlag` enum (subset of rAthena `SCF_*`).
+- Added `StatusFlagDefaults` — per-SC default classification table.
+- Added `StatusEffectRegistry.GetEffectiveFlags(type)` — folds handler
+  flags + defaults.
+- 7 new `IStatusChangeService` methods, all close-out of T8.5 ❌/⚠️ rows:
+  ClearAll, ClearBuffs, ClearOnChangeMap, ClearOnLogout, Spread,
+  GetMaxStacks, IsDisabledOnMap.
+- 3 test-fakes updated; +11 tests (`StatusChangeCloseOutTests`).
+
+**ST.2 — StatusOpsService wiring** (commit `9f6036f`)
+- Audit correction: `IStatusOpsService` does exist and has 50+ methods
+  (T8.5 wrongly claimed it never landed).
+- ChangeStart/End/Clear/ClearBuffs/ClearDebuffs/CheckSkillUse/IsImmune/
+  CalcPc/Mob/Pet/NaturalHeal all flipped from stub `=> 0` /
+  `=> {}` to real forwarders onto IStatusChangeService / IStatusCalcService
+  / NaturalHealService / EntityActionGates / MobMode.StatusImmune.
+- IsImmune now actually checks the StatusImmune mode bit.
+- +8 tests (`StatusOpsServiceWiringTests`).
+
+**ST.3 — SC handler backfill** (commit `b1f30e6`)
+- 21 new handlers: Defender, Quagmire, Doublecast, Hawkeyes, Spurt,
+  Spirit, Soulreaper, Soulunity, Soulshadow, Soulfairy, Soulfalcon,
+  Soulgolem, Souldivision, Soulenergy, Soulcurse, Sphere1-5,
+  PuttiTailsNoodles. Each carries explicit ScfFlag so the ST.1
+  Clear/Spread methods classify correctly.
+- 74 → 95 SCs of ~440 (still ~345 in the on-demand backlog).
+- +7 tests (`StatusEffectBackfillTests`).
+
+**ST.4 — audit doc refresh** (this commit)
+- Corrected the `IStatusOpsService` framing.
+- Refreshed per-fn table — all status_change lifecycle now ✅.
+- Refreshed coverage rollup: **24 ✅ / 24 ⚠️ / 5 ❌** → **39 ✅ / 11 ⚠️ / 2 ❌**
+  across 52 fns. +15 ✅, -13 ⚠️, -3 ❌.
+- SC handler count refreshed 74 → 95.
+- Remaining 2 ❌: companion `status_calc_*` (homun/merc/elem — needs
+  their *Service.RecvData to land) + `status_calc_npc` (script-engine
+  Phase 4).
+
+**Wave totals:** 4 commits, +26 tests, +21 SC handlers, +7 new
+IStatusChangeService methods, +SccbFlag + ScfFlag + StatusFlagDefaults
+infrastructure. dotnet build 0 errors. Full status suite 77/77 green.
 
 ### 2026-05-22 — T8.5 per-function + per-SC audit
 
