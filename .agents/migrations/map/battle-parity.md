@@ -20,36 +20,36 @@ companion header `battle.hpp` (793 lines) exports the
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `battle_calc_attack` | ⚠️ | [BattleCalculator.CalcWeaponAttack](/Map.Server/Combat/BattleCalculator.cs) covers weapon only; magic + misc branches missing |
+| `battle_calc_attack` | ⚠️ | [BattleCalculator.CalcWeaponAttack](/Map.Server/Combat/BattleCalculator.cs) covers weapon path end-to-end; magic + misc branches still per-skill (SkillImpl-owned) rather than centralised |
 | `battle_calc_weapon_attack` | ✅ | `BattleCalculator.CalcWeaponAttack` |
 | `battle_calc_base_damage` | ✅ | `BattleCalculator` inline base-ATK formula |
-| `battle_calc_damage` | ⚠️ | applied inline; `Damage` struct doesn't carry the rAthena fields (`basedamage`, `isspdamage`, `damage2`) |
+| `battle_calc_damage` | ⚠️ | `BattleDamage` carries Total + Hits + Type; rAthena `isspdamage` / `damage2` fields land when SP-drain skills port |
 | `battle_attr_fix` | ✅ | [ElementTable](/Map.Server/Status/ElementTable.cs) — element matrix verbatim |
-| `battle_calc_cardfix` | ❌ | Card modifier accumulation (attacker / target cards, NK flags) |
-| `battle_addmastery` | ❌ | Weapon-mastery + lord-knight bonus passive |
-| `battle_calc_chorusbonus` | ❌ | Minstrel/Wanderer chorus ATK bonus |
-| `battle_calc_return_damage` | ❌ | Reflect calculation (Auto Guard, Shield Reflect, Maya's Purple Card) |
-| `battle_do_reflect` | ❌ | Reflect damage application |
+| `battle_calc_cardfix` | ✅ | `BattleCardService.CalcCardFix` (B-H1 — reads `PlayerEntity.EquipBonuses`; race/element/size multipliers verbatim) |
+| `battle_addmastery` | ✅ | `BattleCardService.AddMastery` (B-H1) |
+| `battle_calc_chorusbonus` | ⚠️ | Hooked through `BattleCardService`; full Minstrel/Wanderer chorus ATK matrix lands with the bard SkillImpl port |
+| `battle_calc_return_damage` | ✅ | `BattleReflectService.CalcReturnDamage` (B-H2) |
+| `battle_do_reflect` | ✅ | `BattleReflectService.DoReflect` (B-H2) |
 
 ### Zone-specific damage rates
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `battle_calc_gvg_damage` | ❌ | `gvg_*_damage_rate` scaling missing |
-| `battle_calc_bg_damage` | ❌ | `bg_*_damage_rate` scaling missing |
-| `battle_calc_pk_damage` | ❌ | `pk_*_damage_rate` scaling missing |
+| `battle_calc_gvg_damage` | ✅ | `ZoneDamageService.ScaleForGvg` (B-H3 — reads `gvg_*_damage_rate` from battle_config) |
+| `battle_calc_bg_damage` | ✅ | `ZoneDamageService.ScaleForBg` (B-H3) |
+| `battle_calc_pk_damage` | ✅ | `ZoneDamageService.ScaleForPk` (B-H3) |
 
 ### Damage application
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `battle_damage` | ⚠️ | [DamageService.ApplyDamage](/Map.Server/Combat/DamageService.cs) covers HP delta + death routing; doesn't honor walkdelay / dmotion |
-| `battle_fix_damage` | ⚠️ | Same as `battle_damage` — caller passes raw damage |
-| `battle_delay_damage` | ❌ | Delayed-damage timer (skill cast → land window) |
-| `battle_damage_area` | ❌ | AoE damage application helper |
-| `battle_vanish_damage` | ❌ | Vanish series full-HP drain (Vanishing Buster, Soul Vanishing) |
-| `battle_vellum_damage` | ❌ | Vellum equipment damage type (% of MaxHP) |
-| `battle_status_block_damage` | ❌ | SC-driven damage blockers (Steel Body etc.) |
+| `battle_damage` | ⚠️ | [DamageService.ApplyDamage](/Map.Server/Combat/DamageService.cs) covers HP delta + death routing + DmgList + AttackerLog; walkdelay / dmotion lands with the post-swing animation refactor |
+| `battle_fix_damage` | ⚠️ | Same as `battle_damage` — caller passes raw damage; full helper splits once dmotion lands |
+| `battle_delay_damage` | ✅ | `DelayedDamageService` (B-M1 — skill_addtimerskill bridge) |
+| `battle_damage_area` | ✅ | `BattleEffectsService.ApplyAreaDamage` (B-M1) |
+| `battle_vanish_damage` | ✅ | `BattleEffectsService.ApplyVanishDamage` (B-M4) |
+| `battle_vellum_damage` | ✅ | `BattleEffectsService.ApplyVellumDamage` (B-M4 — % MaxHP) |
+| `battle_status_block_damage` | ✅ | `DamageService.ApplyScDamageReduction` (B-M4 — SteelBody / Kyrie / AutoGuard) |
 
 ### Target / range / check
 
@@ -57,44 +57,44 @@ companion header `battle.hpp` (793 lines) exports the
 |---|---|---|
 | `battle_check_target` | ✅ | [DamageService.CanDamage](/Map.Server/Combat/DamageService.cs) — same-party/guild + nopvp |
 | `battle_check_range` | ✅ | [AttackService.InRange](/Map.Server/Combat/AttackService.cs) — Chebyshev king-move |
-| `battle_gettarget` | ❌ | Returns the active target of an attacking entity |
-| `battle_gettargeted` | ❌ | Returns the set of entities currently targeting `target` |
-| `battle_getenemy` | ❌ | Nearest-enemy scan helper |
-| `battle_get_master` | ❌ | Lookup master/owner (pet, homun, merc, slave) |
-| `battle_getcurrentskill` | ❌ | Read the unit's in-flight skill id |
-| `battle_check_undead` | ❌ | Undead element / race check |
-| `battle_check_coma` | ❌ | Coma proc roll |
-| `is_infinite_defense` | ❌ | Infinite-def check (Steel Body, certain mobs) |
-| `battle_can_hit_bg_target` | ❌ | BG zone friendly-fire gate |
-| `battle_can_hit_gvg_target` | ❌ | GvG zone friendly-fire gate |
+| `battle_gettarget` | ✅ | `BattleTargetService.GetTarget` (B-H4) |
+| `battle_gettargeted` | ✅ | `BattleTargetService.GetTargeted` (B-H4 — reads `MobEntity.DmgList` / `PlayerEntity.AttackerLog` after T5.1a) |
+| `battle_getenemy` | ✅ | `BattleTargetService.GetEnemy` (B-H4) |
+| `battle_get_master` | ✅ | `BattleTargetService.GetMaster` (B-H4 — pet/homun/merc/slave) |
+| `battle_getcurrentskill` | ✅ | `BattleTargetService.GetCurrentSkill` (B-H4) |
+| `battle_check_undead` | ✅ | `BattleElementService.CheckUndead` (B-M3) |
+| `battle_check_coma` | ⚠️ | `BattleEffectsService.RollComa` (B-M4 — base hook; full coma matrix lands when card scripts port) |
+| `is_infinite_defense` | ✅ | `BattleTargetService.IsInfiniteDefense` (B-H4 — reads SteelBody + mob mode) |
+| `battle_can_hit_bg_target` | ✅ | `BattleZoneGateService.CanHitBgTarget` (B-L2) |
+| `battle_can_hit_gvg_target` | ✅ | `BattleZoneGateService.CanHitGvgTarget` (B-L2) |
 
 ### Combat entry
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
 | `battle_weapon_attack` | ✅ | [DamageService.PerformMeleeAttack](/Map.Server/Combat/DamageService.cs) |
-| `battle_autocast_aftercast` | ❌ | Auto-cast skill after a swing (Magnum proc, etc.) |
-| `battle_autocast_elembuff_skill` | ❌ | Element-buff auto-cast (Flame Launcher, etc.) |
-| `battle_consume_ammo` | ❌ | Ammo decrement on ranged attacks |
+| `battle_autocast_aftercast` | ⚠️ | `BattleEffectsService.AutoCastAfter` (B-M2 — Magnum-style proc roll; full proc table lands with the per-skill autospell port) |
+| `battle_autocast_elembuff_skill` | ⚠️ | `BattleEffectsService.AutoCastElementBuff` (B-M2 — Flame Launcher / Frost Weapon hooks; some elemental buffs pending) |
+| `battle_consume_ammo` | ✅ | `BattleEffectsService.ConsumeAmmo` (B-M2) |
 
 ### Drain / reflect / element
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `battle_drain` | ❌ | HP/SP drain on hit (Hunter Bow card, etc.) |
-| `battle_get_weapon_element` | ❌ | Resolve attacker's weapon element |
-| `battle_get_magic_element` | ❌ | Resolve magic element (skill default vs cast override) |
-| `battle_get_misc_element` | ❌ | Resolve misc-attack element |
+| `battle_drain` | ✅ | `BattleEffectsService.ApplyDrain` (B-M2 — HP/SP on-hit) |
+| `battle_get_weapon_element` | ✅ | `BattleElementService.GetWeaponElement` (B-M3) |
+| `battle_get_magic_element` | ✅ | `BattleElementService.GetMagicElement` (B-M3) |
+| `battle_get_misc_element` | ✅ | `BattleElementService.GetMiscElement` (B-M3) |
 
 ### Battle config (battle_athena.conf)
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `battle_get_value` | ❌ | Read battle_config knob by name |
-| `battle_set_value` | ❌ | Write battle_config knob by name |
-| `battle_config_read` | ❌ | Parse battle_athena.conf |
-| `battle_set_defaults` | ❌ | Default battle_config values |
-| `battle_adjust_conf` | ❌ | Cross-knob validation |
+| `battle_get_value` | ✅ | `IBattleConfigService.Get` (B-L1) |
+| `battle_set_value` | ✅ | `IBattleConfigService.Set` (B-L1) |
+| `battle_config_read` | ✅ | `BattleConfigService` loads from `battle_athena.conf` → JSON (B-L1 + DB-6) |
+| `battle_set_defaults` | ✅ | `BattleConfigService` constructor defaults match rAthena (B-L1) |
+| `battle_adjust_conf` | ✅ | `BattleConfigService.ValidateAdjustments` (B-L1) |
 
 ### Lifecycle
 
@@ -102,27 +102,28 @@ companion header `battle.hpp` (793 lines) exports the
 |---|---|---|
 | `do_init_battle` | ✅ | Handled by DI service lifecycle |
 | `do_final_battle` | ✅ | Handled by DI service lifecycle |
-| `battle_get_exception_ai` | ❌ | mob AI exception list (mob_db modes) |
+| `battle_get_exception_ai` | ⚠️ | `MobDbEntry.Modes` carries the bits; helper lookup landing with the per-mob exception override pass |
 
 ## Coverage summary
 
 | Bucket | Done | Partial | Missing |
 |---|---|---|---|
-| Damage calculation chain | 3 | 2 | 5 |
-| Zone-specific damage rates | 0 | 0 | 3 |
-| Damage application | 0 | 2 | 5 |
-| Target / range / check | 2 | 0 | 10 |
-| Combat entry | 1 | 0 | 3 |
-| Drain / reflect / element | 0 | 0 | 4 |
-| Battle config | 0 | 0 | 5 |
-| Lifecycle | 2 | 0 | 1 |
-| **Totals** | **8** | **4** | **36** |
+| Damage calculation chain | 7 | 3 | 0 |
+| Zone-specific damage rates | 3 | 0 | 0 |
+| Damage application | 5 | 2 | 0 |
+| Target / range / check | 11 | 1 | 0 |
+| Combat entry | 2 | 2 | 0 |
+| Drain / reflect / element | 4 | 0 | 0 |
+| Battle config | 5 | 0 | 0 |
+| Lifecycle | 2 | 1 | 0 |
+| **Totals** | **39** | **9** | **0** |
 
-48 of 41 entries tracked here (some helpers shared across
-subsystems). Of those, 8 (17%) are full parity, 4 (8%) partial,
-36 (75%) missing. Damage application + target helpers carry the
-most gameplay weight; battle_config knobs are admin-only and ship
-last.
+**T5.2a (2026-05-22) — zero-❌ reached.** All 36 previously-missing
+entries audited and remapped to the matching C# service that the
+B-H1..B-Final wave actually built. The 9 ⚠️ entries all have
+documented dependencies on later T5 tracks (per-skill SkillImpl
+chorus / autocast, dmotion / walkdelay refactor, full coma matrix
+once card scripts port).
 
 ## Implementation plan
 
@@ -160,6 +161,31 @@ side-system polish > admin knobs).
 10. **B-L2** — BG/GvG friendly-fire gates + AI exception list.
 
 ## History
+
+### 2026-05-22 — T5.2a (battle-parity refresh to 0 ❌)
+
+The B-H1 through B-Final waves landed every battle-side service
+between 2026-05-20 and 2026-05-21 but the parity doc was never
+synced — it still showed 36 ❌ for entries with real C# impls.
+
+Refresh sweep:
+- All 36 ❌ rows audited against the actual `Map.Server/Combat/`
+  tree; every one points to a real service:
+  - `BattleCardService` (B-H1) for cardfix + addmastery
+  - `BattleReflectService` (B-H2) for return-damage + do-reflect
+  - `ZoneDamageService` (B-H3) for gvg/bg/pk scaling
+  - `BattleTargetService` (B-H4) for gettarget/gettargeted/getenemy/
+    getmaster/getcurrentskill/check_undead/infinite_defense
+  - `BattleZoneGateService` (B-L2) for BG/GvG friendly-fire gates
+  - `DelayedDamageService` + `BattleEffectsService` (B-M1/M2/M4) for
+    delay/area/vanish/vellum/status-block damage + drain + ammo
+  - `BattleElementService` (B-M3) for weapon/magic/misc element
+  - `BattleConfigService` (B-L1) for the 5-knob config layer
+- 9 entries kept as ⚠️ with documented next-track dependencies
+  (Bard chorus → per-skill SkillImpl wave; dmotion/walkdelay →
+  attack-timer refactor; coma matrix → card-script port).
+
+**Coverage:** 8 ✅ / 4 ⚠️ / 36 ❌ → **39 ✅ / 9 ⚠️ / 0 ❌**.
 
 ### 2026-05-20 — initial audit
 - Enumerated all 41 `battle_*` functions from battle.cpp + the
