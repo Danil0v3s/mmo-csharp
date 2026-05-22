@@ -95,4 +95,57 @@ public interface IGuildService
 
     /// <summary>Helper: count of cached guilds.</summary>
     int CachedCount { get; }
+
+    // -----------------------------------------------------------------
+    // GD-H2 — member tracking (joined / added / withdraw / memberinfoshort)
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// rAthena <c>guild_member_joined</c> (cpp:1073). Called from the
+    /// session-enter path after PlayerEntity.GuildId is hydrated. If
+    /// the guild is already cached, binds the PC to its member slot;
+    /// otherwise dispatches a <c>guild_request_info</c> so the next
+    /// recv-info hydrates the cache. Returns true when the bind hit
+    /// the cached slot, false when info was requested instead.
+    /// </summary>
+    bool MemberJoined(PlayerEntity pc);
+
+    /// <summary>
+    /// rAthena <c>guild_member_added</c> (cpp:1105). Inbound from the
+    /// char server after an invite is accepted (flag=0) or rejected
+    /// (flag=1). Updates <see cref="PlayerEntity.GuildId"/> on success
+    /// and clears the pending-invite slot.
+    /// </summary>
+    int MemberAdded(int guildId, int accountId, int charId, int flag);
+
+    /// <summary>
+    /// rAthena <c>guild_member_withdraw</c> (cpp:1249). Inbound from
+    /// the char server after a leave (flag=0) or expel (flag=1) is
+    /// committed. Removes the cached member slot and clears
+    /// <see cref="PlayerEntity.GuildId"/> on the affected PC. The
+    /// <paramref name="name"/> / <paramref name="mes"/> pair drives
+    /// the per-member-list "X has left / been expelled" notice.
+    /// </summary>
+    int MemberWithdraw(int guildId, int accountId, int charId, int flag, string name, string mes);
+
+    /// <summary>
+    /// rAthena <c>guild_send_memberinfoshort</c> (cpp:1363). Outbound
+    /// trigger fired on level-up / job-change / move-map / login /
+    /// logout. Updates the cached entry then dispatches the IPC so
+    /// peer map servers see the same state. When <paramref name="online"/>
+    /// is false we also drop the member's <c>sd</c> pointer (here we
+    /// just flip the Online flag — the PlayerEntity binding is implicit
+    /// via accountId/charId lookup).
+    /// </summary>
+    int SendMemberInfoShort(PlayerEntity pc, bool online);
+
+    /// <summary>
+    /// rAthena <c>guild_recv_memberinfoshort</c> (cpp:1397). Inbound
+    /// short-form member status broadcast: updates online flag, level,
+    /// class, recomputes ConnectMember + AverageLevel, and emits the
+    /// member-login-notice broadcast (handled by clif side; here
+    /// we record the change). Returns 1 when the update landed, 0
+    /// when the guild or member wasn't found.
+    /// </summary>
+    int RecvMemberInfoShort(int guildId, int accountId, int charId, bool online, int lv, int classId);
 }

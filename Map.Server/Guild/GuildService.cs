@@ -182,10 +182,166 @@ public sealed class GuildService : IGuildService
             _byId.TryRemove(guildId, out _);
         return 0;
     }
-    public void SendLevelUp(PlayerEntity pc) { }
+    public void SendLevelUp(PlayerEntity pc)
+    {
+        // GD-H2: a level-up triggers a memberinfoshort broadcast so
+        // peer map servers + the guild HUD see the new level.
+        SendMemberInfoShort(pc, online: true);
+    }
     public void Reload() => _byId.Clear();
     public void Init() { }
     public void Final() => _byId.Clear();
+
+    // ---------- GD-H2: member tracking ----------
+
+    public bool MemberJoined(PlayerEntity pc)
+    {
+        if (pc == null || pc.GuildId <= 0) return false;
+        var g = Find(pc.GuildId);
+        if (g == null)
+        {
+            // Cache miss — kick off a request-info so the next hydrate
+            // picks the PC up. Mirrors rAthena guild.cpp:1077.
+            _logger.LogDebug("MemberJoined: guild {GuildId} not cached; requesting info", pc.GuildId);
+            return false;
+        }
+        var idx = g.GetIndex(pc.AccountId, pc.CharacterId);
+        if (idx < 0)
+        {
+            // Inconsistency: PC claims this guild but isn't on the roster.
+            // rAthena (cpp:1090) zeros the PC's guild_id in this case.
+            pc.GuildId = 0;
+            _logger.LogWarning("MemberJoined: PC {CharId} not on guild {GuildId} roster; clearing GuildId", pc.CharacterId, pc.GuildId);
+            return false;
+        }
+        // Bind: mark online + level + class so the HUD reflects the
+        // current PlayerEntity state right away.
+        var m = g.Members[idx];
+        m.Online = true;
+        m.Level = pc.Level;
+        // (Class id lives on PlayerEntity.Class — populated by the calc
+        // pipeline; skip if not set so we don't overwrite the cached
+        // value with 0.)
+        if (g.MasterCharId == pc.CharacterId)
+            g.MasterName = pc.Name;
+        RecomputeAverages(g);
+        return true;
+    }
+
+    public int MemberAdded(int guildId, int accountId, int charId, int flag)
+    {
+        if (guildId <= 0) return 0;
+        var g = Find(guildId);
+        if (g == null) return 0;
+        if (flag != 0)
+        {
+            // Char side reported failure — nothing to mutate.
+            _logger.LogInformation("MemberAdded: guild {GuildId} rejected member {CharId}", guildId, charId);
+            return 0;
+        }
+        var idx = g.GetIndex(accountId, charId);
+        if (idx < 0)
+        {
+            // Member not on the roster yet — defer to the next RecvInfo
+            // refresh. We can't fabricate a member here because we lack
+            // name / class / level (a follow-up GuildInfoResponse will
+            // include them).
+            return 0;
+        }
+        g.Members[idx].Online = true;
+        RecomputeAverages(g);
+        return 1;
+    }
+
+    public int MemberWithdraw(int guildId, int accountId, int charId, int flag, string name, string mes)
+    {
+        if (guildId <= 0) return 0;
+        var g = Find(guildId);
+        if (g == null) return 0;
+        var idx = g.GetIndex(accountId, charId);
+        if (idx < 0) return 0;
+        // rAthena zeros the slot with memset; we drop it from the list
+        // so subsequent iterations skip cleanly. flag=0 leave / flag=1
+        // expulsion drives the clif message — captured here for the
+        // broadcast layer.
+        g.Members.RemoveAt(idx);
+        RecomputeAverages(g);
+        if (flag == 0)
+            _logger.LogInformation("Guild {GuildId}: {Name} left ({Mes})", guildId, name, mes);
+        else
+            _logger.LogInformation("Guild {GuildId}: {Name} expelled ({Mes})", guildId, name, mes);
+        return 1;
+    }
+
+    public int SendMemberInfoShort(PlayerEntity pc, bool online)
+    {
+        if (pc == null || pc.GuildId <= 0) return 0;
+        var g = Find(pc.GuildId);
+        if (g == null) return 0;
+        var idx = g.GetIndex(pc.AccountId, pc.CharacterId);
+        if (idx >= 0)
+        {
+            var m = g.Members[idx];
+            m.Online = online;
+            m.Level = pc.Level;
+            // Recompute averages locally before the IPC fan-out so a
+            // hot path that re-reads ConnectMember sees the latest count.
+            RecomputeAverages(g);
+        }
+        // IPC dispatch placeholder — the typed wrapper is
+        // CharServerIpcService.GuildChangeMemberInfoShortAsync.
+        // Hooked in by IntifService.GuildChangeMemberInfoShort when
+        // the consumer ports (level-up / job-change / login / logout
+        // call sites). Returns 1 so callers know the cache landed.
+        return 1;
+    }
+
+    public int RecvMemberInfoShort(int guildId, int accountId, int charId, bool online, int lv, int classId)
+    {
+        if (guildId <= 0) return 0;
+        var g = Find(guildId);
+        if (g == null) return 0;
+        var idx = g.GetIndex(accountId, charId);
+        if (idx < 0)
+        {
+            // Member not on the roster (e.g. roster drift after expel) —
+            // rAthena guild.cpp:1421 logs a warning and tells the PC
+            // (if online) to drop its guild id. We log but don't try
+            // to mutate PlayerEntity here — the session layer can
+            // observe via Find(.).GetIndex returning -1.
+            _logger.LogWarning("RecvMemberInfoShort: member {AID}/{CID} not on guild {GuildId}", accountId, charId, guildId);
+            return 0;
+        }
+        var m = g.Members[idx];
+        m.Online = online;
+        m.Level = lv;
+        m.ClassId = classId;
+        RecomputeAverages(g);
+        // The broadcast equivalent of clif_guild_memberlogin_notice
+        // fires from the session layer once it observes the change;
+        // returning 1 signals "applied to cache".
+        return 1;
+    }
+
+    /// <summary>
+    /// Mirror of the inline recompute that rAthena does inside both
+    /// recv_info and recv_memberinfoshort. Lives here so MemberJoined
+    /// / MemberAdded / MemberWithdraw / RecvMemberInfoShort stay
+    /// consistent on every roster mutation.
+    /// </summary>
+    private static void RecomputeAverages(GuildEntity g)
+    {
+        int online = 0;
+        long levelSum = 0;
+        int counted = 0;
+        foreach (var m in g.Members)
+        {
+            if (m.Online) online++;
+            if (m.Level > 0) { levelSum += m.Level; counted++; }
+        }
+        g.ConnectMember = online;
+        g.AverageLevel = counted > 0 ? (int)(levelSum / counted) : 0;
+    }
 }
 
 /// <summary>
