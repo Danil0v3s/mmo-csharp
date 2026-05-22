@@ -1,4 +1,4 @@
-# trade.cpp parity · 2026-05-20
+# trade.cpp parity · 2026-05-22 (T9.D — per-fn rollup)
 
 `src/map/trade.cpp` (666 lines, 9 functions) — player-to-player
 trade wire stages (request / ack / ok / additem / addzeny / commit
@@ -24,7 +24,24 @@ audit catalogs the rAthena-named entry points so callers can read
 Wrapper service `ITradeWireService` provides rAthena-name passthrough
 for script + GM callers.
 
+## Coverage summary
+
+| Bucket | ✅ | ⚠️ | ❌ | Total |
+|---|---|---|---|---|
+| Trade wire stages | 9 | 0 | 0 | 9 |
+| **Totals** | **9** | **0** | **0** | **9** |
+
+100% parity — every public trade.cpp function has a real C# impl
+backed by TradeService.
+
 ## History
+
+### 2026-05-22 — T9.D per-fn rollup
+
+Per-function audit. Baseline: **9 ✅ / 0 ⚠️ / 0 ❌** — 100% parity.
+Trade is feature-complete: invite, accept, decline, distance
+checks, deal lock (2-stage commit), item/zeny exchange, hack
+detection.
 
 ### 2026-05-20 — initial audit + wrapper service
 - 9 functions covered. Trade engine reused from prior wave.
