@@ -75,6 +75,20 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-22** — **T9 wave — per-fn rollup backfill across 29 map parity docs (10 commits).** All 42 map docs now have the T5.2-pattern `| ✅ / ⚠️ / ❌ | Totals |` rollup tables; the 29 docs T8 left as prose-only got per-function audits in 8 batched commits + AUDIT refresh + this README entry. Aggregate across the 29 backfilled docs: **~283 ✅ / ~290 ⚠️ / ~319 ❌**. Methodology: T8.5 pattern (`scripts/enumerate.sh` → grep C# tree → categorize). Wave breakdown:
+  - **T9.A** (`d2186af`) atcommand: 53 ✅ / 1 ⚠️ / 236 ❌ (290)
+  - **T9.B** (`f48ee20`) map + unit + itemdb: 14 ✅ / 83 ⚠️ / 21 ❌ (118 gameplay surface)
+  - **T9.C** (`4f09111`) pet + homunculus + elemental + mercenary: 9 ✅ / 95 ⚠️ / 8 ❌ (112)
+  - **T9.D** (`569677a`) storage + trade + vending + buyingstore + cashshop + searchstore: 87 ✅ / 10 ⚠️ / 6 ❌ (103)
+  - **T9.E** (`8b0898b`) chat + npc_chat + channel + chrif: 27 ✅ / 43 ⚠️ / 46 ❌ (116)
+  - **T9.F** (`df300ac`) battleground + clan + duel + pc_groups: 31 ✅ / 26 ⚠️ / 2 ❌ (59)
+  - **T9.G** (`b1fe4a1`) quest + achievement + mail: 38 ✅ / 4 ⚠️ / 0 ❌ (42, mapreg already had rollup from T7.8)
+  - **T9.H** (`ff8e6f3`) log + navi + path + date: 24 ✅ / 28 ⚠️ / 0 ❌ (52)
+  - **T9.I** (`0dbff87`) AUDIT-2026-05-22.md per-file rows refreshed
+  - **T9.100** (this commit) README top-of-history entry
+
+  Newly visible 100%-parity files (existing impls just made readable in the rollup): trade.cpp (9/9), searchstore.cpp (13/13), duel.cpp (11/11), date.cpp (11/11). dotnet build Map.Server: 0 errors. Map.Server.Tests: 3262 passing (no change — T9 was doc-only).
+
 - **2026-05-22** — **guild.cpp reaches 100% parity (WOE-1 + WOE-2 + WOE-100, 3 commits).** Closed the 9 deferred ⚠️ rows left over from GD-100 by porting the WoE state machine + guild EXP accumulator. See [map/guild-parity.md](map/guild-parity.md). Final state: **74 ✅ / 0 ⚠️ / 0 ❌**. Map.Server.Tests: 3229 → 3262 (+33). Key landings:
   - **WOE-1** (`3a82c62`) — `IAgitService` + `AgitService` (3 WoE editions × Start/End/IsActive). Each transition fires `OnAgitStart` / `OnAgitEnd` (×3) via `INpcOpsService.EventDoAll`. `GuildService.IsAgitActive` now delegates to `_agit?.IsAnyActive`, so the GD-M2 alliance gates follow real WoE state.
   - **WOE-2** (`cc13ae5`) — `IGuildExpService` + `GuildExpService`. PayExp (with `exp_mode` tax rate) / GetExp (no-tax NPC tribute) / FlushOne / FlushAll. Per-charId accumulator, MAX_GUILD_EXP=INT32_MAX cap, roster-drift safety.
