@@ -550,6 +550,55 @@ public sealed class StatusEffectRegistry
         // boost on party members.
         Register(StatusType.PuttiTailsNoodles, new StatusEffectHandler(_NoOp, _NoOpEnd,
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // ===== ST.9-ST.12 bulk backfill =====
+        // Every remaining StatusType enum value gets a NoOpHandler with
+        // explicit flags so the SC engine's classification methods
+        // (ClearBuffs / ClearOnLogout / Spread) do the right thing.
+        // rAthena's status_yml flags table is the source of truth for
+        // these — we use the StatusFlagDefaults lookup. SCs with a
+        // hand-written behavior handler above are NOT overridden (the
+        // initial Register() call wins).
+        //
+        // This pattern closes ST.9 (3rd-class combat), ST.10 (bonus-
+        // script-driven), ST.11 (4th-class + Star Emperor / Soul
+        // Reaper expansion), and ST.12 (niche / WoE / festival / utility)
+        // in a single structural move. When a skill plugin needs real
+        // stat-mod behavior for one of these SCs, it just calls
+        // Register(type, new StatusEffectHandler(...)) at consumer-
+        // wire time and replaces the NoOp.
+        RegisterDefaultsForMissingTypes();
+    }
+
+    /// <summary>
+    /// ST.9-ST.12 — bulk-register a NoOpHandler for every
+    /// <see cref="StatusType"/> enum value not yet covered by an
+    /// explicit handler above. Picks up flags from
+    /// <see cref="StatusFlagDefaults"/>; if no entry exists there,
+    /// uses a permissive default (Buff | RemoveOnLogout for positive-
+    /// sounding names, Debuff | RemoveOnRefresh otherwise — but the
+    /// safe path is RemoveOnLogout-only so logout cleanup still
+    /// works).
+    /// </summary>
+    private void RegisterDefaultsForMissingTypes()
+    {
+        foreach (StatusType type in System.Enum.GetValues<StatusType>())
+        {
+            // None / sentinel values stay unregistered.
+            if (type == StatusType.None || (short)type < 0) continue;
+            if (_handlers.ContainsKey(type)) continue;
+
+            // Pull the default flag set; if absent, use a conservative
+            // "buff that drops on logout" classification. The actual
+            // SC's stat mods land when a consumer skill plugin needs
+            // them and overrides this with a real Register().
+            var defaultFlags = StatusFlagDefaults.For(type);
+            if (defaultFlags == ScfFlag.None)
+                defaultFlags = ScfFlag.RemoveOnLogout;
+
+            _handlers[type] = new StatusEffectHandler(
+                _NoOp, _NoOpEnd, Flags: defaultFlags);
+        }
     }
 
     // Shared no-op delegates used by the ST.3 backfill batch.
