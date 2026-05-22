@@ -446,7 +446,115 @@ public sealed class StatusEffectRegistry
         // removed when the player steps off. Checked by
         // PlayerPositionHelpers.IsBasilicaCell.
         Register(StatusType.BasilicaCell, NoOpHandler());
+
+        // ===== ST.3 — backfill: combat-relevant SCs that consumers gate on =====
+
+        // SC_DEFENDER (Crusader CR_DEFENDER) — ranged dmg reduction +
+        // walk-speed penalty. The damage gate lives in the ranged-attack
+        // path; our handler just attaches so consumers can query it.
+        // Val1 stores the skill level (1-5).
+        Register(StatusType.Defender, new StatusEffectHandler(
+            OnStart: (_, _, _) => { },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_QUAGMIRE (Wizard WZ_QUAGMIRE) — ground unit halves Move +
+        // ASPD + Dex/Agi on stepped-on target. The unit applies it; the
+        // SC marks the affected target. Cleared by Refresh.
+        Register(StatusType.Quagmire, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                // Renewal: -50 % MoveSpeed via AspdRate bump. Halving is
+                // not exact; matching rAthena's quick approximation.
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + 50);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - 50);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_DOUBLECAST (Sage SA_DOUBLECASTING) — 50 % chance per cast
+        // to trigger an extra hit. Cast pipeline reads the SC presence.
+        Register(StatusType.Doublecast, new StatusEffectHandler(
+            OnStart: (_, _, _) => { },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_HAWKEYES (Sniper TT_HAWKEYE) — passive +Hit. Val1 = level.
+        Register(StatusType.Hawkeyes, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var hit = (short)(sc.Val1 * 3);
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + hit);
+            },
+            OnEnd: (target, sc) =>
+            {
+                var hit = (short)(sc.Val1 * 3);
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - hit);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SPURT (TaeKwon's stance — Tornado Kick / Heelfall) — ATK
+        // bonus on the next hit. Stored on Batk; cleared on attack
+        // (rAthena pc_skill_check_spurt). Here it just persists until
+        // expired.
+        Register(StatusType.Spurt, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SPIRIT (Soul Linker spirit — generic). Val2 = job id of the
+        // linked class; downstream skills check this to gate their
+        // boosted behavior. Most skills just need "is the SC active";
+        // detailed per-job branching lives in the skill behavior plugin.
+        Register(StatusType.Spirit, new StatusEffectHandler(
+            OnStart: (_, _, _) => { },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // ===== Soul Linker family — Val1 = soul-orb count / lv =====
+        // All carry the SC presence so per-job skill plugins can dispatch
+        // (Soulreaper boosts Reaper Trample, Soulshadow gives auto-Hiding,
+        // etc.). Stat mods land per-skill when those plugins port.
+        var soulLink = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+        Register(StatusType.Soulreaper, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: soulLink));
+        Register(StatusType.Soulunity, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: soulLink));
+        Register(StatusType.Soulshadow, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: soulLink));
+        Register(StatusType.Soulfairy, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: soulLink));
+        Register(StatusType.Soulfalcon, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: soulLink));
+        Register(StatusType.Soulgolem, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: soulLink));
+        Register(StatusType.Souldivision, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: soulLink));
+        Register(StatusType.Soulenergy, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: soulLink));
+        // Soulcurse is a debuff (Reaper class hit): Refresh-clear-able.
+        Register(StatusType.Soulcurse, new StatusEffectHandler(_NoOp, _NoOpEnd,
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // ===== Sphere1..5 — Gunslinger coin orbs =====
+        // Each sphere is a separate SC slot so they can stack to 5.
+        // Per-coin Val1 holds the coin type (1-5).
+        var sphereBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+        Register(StatusType.Sphere1, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: sphereBuff));
+        Register(StatusType.Sphere2, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: sphereBuff));
+        Register(StatusType.Sphere3, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: sphereBuff));
+        Register(StatusType.Sphere4, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: sphereBuff));
+        Register(StatusType.Sphere5, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: sphereBuff));
+
+        // SC_PUTTI_TAILS_NOODLES — Wanderer's noodle song: HP regen
+        // boost on party members.
+        Register(StatusType.PuttiTailsNoodles, new StatusEffectHandler(_NoOp, _NoOpEnd,
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
     }
+
+    // Shared no-op delegates used by the ST.3 backfill batch.
+    private static readonly Action<Entity, StatusChange, Entity?> _NoOp = (_, _, _) => { };
+    private static readonly Action<Entity, StatusChange> _NoOpEnd = (_, _) => { };
 
     /// <summary>
     /// Empty handler — for SCs whose only effect is "I'm present so a
