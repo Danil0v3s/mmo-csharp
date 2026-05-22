@@ -103,4 +103,16 @@ public interface IStatusChangeService
     /// (parity with rAthena's default).
     /// </summary>
     bool IsDisabledOnMap(uint mapId, StatusType type);
+
+    /// <summary>
+    /// ST.7 — rAthena <c>status_change_refresh</c>
+    /// (status.cpp:12222). Re-applies SCs whose duration / stat mod
+    /// depends on the entity's current equipment (notably the
+    /// weapon-element family: Fireweapon / Earthweapon / Windweapon /
+    /// Waterweapon — when the PC swaps weapons the SC should drop
+    /// + re-attach with the new weapon's element). Called from
+    /// <c>IPlayerWeaponService.ChangeWeapon</c>. Returns the number
+    /// of SCs refreshed.
+    /// </summary>
+    int Refresh(Entity target);
 }

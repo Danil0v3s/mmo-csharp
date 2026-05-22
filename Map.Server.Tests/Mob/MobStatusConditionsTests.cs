@@ -150,5 +150,6 @@ public class MobStatusConditionsTests
         public int Spread(Entity source, Entity target) => 0;
         public int GetMaxStacks(StatusType type) => 1;
         public bool IsDisabledOnMap(uint mapId, StatusType type) => false;
+        public int Refresh(Entity target) => 0;
     }
 }

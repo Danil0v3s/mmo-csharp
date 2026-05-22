@@ -279,4 +279,48 @@ public sealed class StatusChangeService : IStatusChangeService
         // mirror rAthena's default: no restriction.
         return false;
     }
+
+    // Weapon-element SC set — used by ST.7 Refresh to know which SCs
+    // to drop + reapply on weapon swap. Matches rAthena
+    // pc_calcweapontype's SC reapply list (status.cpp:status_change_refresh).
+    private static readonly StatusType[] _weaponElementScs = new[]
+    {
+        StatusType.Fireweapon,
+        StatusType.Earthweapon,
+        StatusType.Windweapon,
+        StatusType.Waterweapon,
+    };
+
+    /// <inheritdoc />
+    public int Refresh(Entity target)
+    {
+        // rAthena status_change_refresh re-applies a fixed set of SCs:
+        // weapon-element family + ASPD potion + Berserk + Concentration
+        // are the common ones. Map-side we cover the weapon-element set;
+        // other SCs that need refresh on equip change land as their
+        // consumer code paths port (e.g. SC_ENDURE on shield equip).
+        if (!_active.TryGetValue(target.Id, out var perEntity) || perEntity.Count == 0)
+            return 0;
+
+        var refreshed = 0;
+        var nowTick = Environment.TickCount64;
+        foreach (var type in _weaponElementScs)
+        {
+            if (!perEntity.TryGetValue(type, out var sc)) continue;
+            var remaining = sc.ExpiresAt > 0 ? (int)Math.Max(1, sc.ExpiresAt - nowTick) : -1;
+            var val1 = sc.Val1; var val2 = sc.Val2;
+            var val3 = sc.Val3; var val4 = sc.Val4;
+            // End drops the OnEnd stat mod + cleans the dictionary.
+            End(target, type);
+            // Re-Start re-applies OnStart with current entity state
+            // (e.g. picks up the new weapon's element). 0 duration means
+            // "use the original SC duration" — we pass `remaining`
+            // explicitly so the SC keeps its tail.
+            Start(target, type, val1, val2, val3, val4,
+                durationMs: remaining > 0 ? remaining : 60_000,
+                source: null, nowTick: nowTick);
+            refreshed++;
+        }
+        return refreshed;
+    }
 }
