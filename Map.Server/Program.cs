@@ -459,6 +459,7 @@ builder.Services.AddSingleton<Map.Server.Movement.UnitOps.IUnitOpsService, Map.S
 builder.Services.AddSingleton<Map.Server.World.MapOps.IMapOpsService, Map.Server.World.MapOps.MapOpsService>();
 builder.Services.AddSingleton<Map.Server.Agit.IAgitService, Map.Server.Agit.AgitService>();
 builder.Services.AddSingleton<Map.Server.Guild.IGuildService, Map.Server.Guild.GuildService>();
+builder.Services.AddSingleton<Map.Server.Guild.IGuildExpService, Map.Server.Guild.GuildExpService>();
 builder.Services.AddSingleton<Map.Server.Pet.PetOps.IPetOpsService, Map.Server.Pet.PetOps.PetOpsService>();
 builder.Services.AddSingleton<Map.Server.Services.Chrif.IChrifService, Map.Server.Services.Chrif.ChrifService>();
 builder.Services.AddSingleton<Map.Server.Services.Intif.IIntifService, Map.Server.Services.Intif.IntifService>();
