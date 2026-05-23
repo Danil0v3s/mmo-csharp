@@ -187,6 +187,10 @@ builder.Services.AddSingleton<Map.Server.Inventory.IItemCombosService, Map.Serve
 // Lapine UI handlers when they port.
 builder.Services.AddSingleton<Map.Server.Inventory.IItemReformService, Map.Server.Inventory.ItemReformService>();
 builder.Services.AddSingleton<Map.Server.Inventory.ILaphineService, Map.Server.Inventory.LaphineService>();
+// DBR-2g: item package / gift-box opener pipeline. Loaded from the
+// DB-8b item_package_db. Consumer is the item-use handler when it
+// detects an opener item.
+builder.Services.AddSingleton<Map.Server.Inventory.IItemPackageService, Map.Server.Inventory.ItemPackageService>();
 
 // Account storage (storage.cpp). Mediates inventory ↔ storage
 // transfers; load/save via the existing P5 AccountStorageLoad/Save IPC.

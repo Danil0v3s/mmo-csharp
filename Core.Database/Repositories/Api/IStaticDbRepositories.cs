@@ -167,6 +167,8 @@ public interface IItemPackageDbRepository
 {
     Task<IReadOnlyList<ItemPackageDbEntity>> GetAllAsync(CancellationToken ct = default);
     Task<IReadOnlyList<ItemPackageEntryDbEntity>> GetEntriesAsync(string itemAegis, CancellationToken ct = default);
+    /// <summary>All entries across every package — single query, used at boot.</summary>
+    Task<IReadOnlyList<ItemPackageEntryDbEntity>> GetAllEntriesAsync(CancellationToken ct = default);
 }
 
 /// <summary>DB-8b: equipment-combo bonuses (rAthena item_combos.yml).</summary>

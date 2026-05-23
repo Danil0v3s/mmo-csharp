@@ -198,6 +198,8 @@ internal sealed class ItemPackageDbRepository(GameDbContext ctx) : IItemPackageD
         => await ctx.ItemPackageDb.AsNoTracking().ToListAsync(ct);
     public async Task<IReadOnlyList<ItemPackageEntryDbEntity>> GetEntriesAsync(string itemAegis, CancellationToken ct = default)
         => await ctx.ItemPackageEntryDb.AsNoTracking().Where(e => e.ItemAegis == itemAegis).OrderBy(e => e.GroupId).ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemPackageEntryDbEntity>> GetAllEntriesAsync(CancellationToken ct = default)
+        => await ctx.ItemPackageEntryDb.AsNoTracking().OrderBy(e => e.ItemAegis).ThenBy(e => e.GroupId).ToListAsync(ct);
 }
 
 internal sealed class ItemComboDbRepository(GameDbContext ctx) : IItemComboDbRepository
