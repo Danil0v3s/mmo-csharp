@@ -3,6 +3,7 @@ using Map.Server.Entities;
 using Map.Server.Mob;
 using Map.Server.Spawn;
 using Map.Server.Status;
+using AttrFixDbEntity = Core.Database.Entities.AttrFixDbEntity;
 
 namespace Map.Server.Tests.Combat;
 
@@ -13,6 +14,24 @@ namespace Map.Server.Tests.Combat;
 /// </summary>
 public class BattleCalculatorTests
 {
+    /// <summary>
+    /// DBR-1a: <see cref="ElementTable"/> is now DB-backed at boot.
+    /// Tests that exercise specific attacker × defender lookups have to
+    /// seed the static matrix themselves (the DI cache service isn't
+    /// alive here). Re-seeds only the slots this fixture needs;
+    /// untouched slots stay at the neutral 100 default.
+    /// </summary>
+    static BattleCalculatorTests()
+    {
+        ElementTable.Initialize(new[]
+        {
+            // Lv1 Fire → Water = 90% (db/re/attr_fix.yml)
+            new AttrFixDbEntity { Level = 1, AttackerElement = "Fire", DefenderElement = "Water", Multiplier = 90 },
+            // Lv1 Water → Fire = 150% (db/re/attr_fix.yml)
+            new AttrFixDbEntity { Level = 1, AttackerElement = "Water", DefenderElement = "Fire", Multiplier = 150 },
+        });
+    }
+
     [Fact]
     public void ZeroStatTarget_AlwaysHits()
     {

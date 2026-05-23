@@ -203,6 +203,12 @@ builder.Services.AddSingleton<Map.Server.Status.StatusBroadcaster>();
 // change / SC apply) and mobs (at spawn). Consumed by combat, skill, AI.
 builder.Services.AddSingleton<Map.Server.Status.IStatusCalcService, Map.Server.Status.StatusCalcService>();
 
+// DBR-1a: hydrate the static ElementTable matrix from attr_fix_db at
+// boot. Constructor runs once during DI resolution and seeds the 400
+// (level, atk, def) → multiplier slots. Combat code keeps calling
+// ElementTable.GetRate directly — no per-tick repo hit.
+builder.Services.AddSingleton<Map.Server.Status.AttrFixCacheService>();
+
 // Floor-item drop / pickup (see .agents/migrations/map/adjacent/items.md).
 // MS3 first slice: the entity-on-the-floor lifecycle (drop, pickup, TTL
 // despawn). Inventory persistence + item_db catalog land later.
@@ -2192,6 +2198,11 @@ builder.WebHost.ConfigureKestrel(options =>
 
 var app = builder.Build();
 app.MapGrpcService<MapGrpcService>();
+
+// DBR-1a: force-construct the AttrFix cache before the game loop ticks
+// so combat code sees the hydrated elemental matrix on the first
+// damage event. Singleton — first GetRequiredService runs the ctor.
+_ = app.Services.GetRequiredService<Map.Server.Status.AttrFixCacheService>();
 
 // Get server instance from DI
 var server = app.Services.GetRequiredService<MapServerImpl>();
