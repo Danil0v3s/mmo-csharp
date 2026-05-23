@@ -297,3 +297,25 @@ internal sealed class ElementalCatalogDbRepository(GameDbContext ctx) : IElement
     public async Task<IReadOnlyList<ElementalModeDbEntity>> GetModesAsync(int elementalId, CancellationToken ct = default)
         => await ctx.ElementalModeDb.AsNoTracking().Where(m => m.ElementalId == elementalId).ToListAsync(ct);
 }
+
+// DB-8i — drop override repos
+
+internal sealed class MapDropDbRepository(GameDbContext ctx) : IMapDropDbRepository
+{
+    public async Task<IReadOnlyList<MapDropDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.MapDropDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<MapDropEntryDbEntity>> GetEntriesAsync(string mapName, CancellationToken ct = default)
+        => await ctx.MapDropEntryDb.AsNoTracking().Where(e => e.MapName == mapName).OrderBy(e => e.EntryIndex).ToListAsync(ct);
+    public async Task<IReadOnlyList<MapDropEntryDbEntity>> GetAllEntriesAsync(CancellationToken ct = default)
+        => await ctx.MapDropEntryDb.AsNoTracking().OrderBy(e => e.MapName).ThenBy(e => e.EntryIndex).ToListAsync(ct);
+}
+
+internal sealed class MobItemRatioDbRepository(GameDbContext ctx) : IMobItemRatioDbRepository
+{
+    public async Task<IReadOnlyList<MobItemRatioDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.MobItemRatioDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<MobItemRatioMobDbEntity>> GetMobFiltersAsync(string itemAegis, CancellationToken ct = default)
+        => await ctx.MobItemRatioMobDb.AsNoTracking().Where(m => m.ItemAegis == itemAegis).ToListAsync(ct);
+    public async Task<IReadOnlyList<MobItemRatioMobDbEntity>> GetAllMobFiltersAsync(CancellationToken ct = default)
+        => await ctx.MobItemRatioMobDb.AsNoTracking().ToListAsync(ct);
+}

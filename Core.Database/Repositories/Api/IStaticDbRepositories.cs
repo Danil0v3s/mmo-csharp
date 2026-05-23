@@ -263,3 +263,33 @@ public interface IElementalCatalogDbRepository
     Task<ElementalCatalogDbEntity?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<IReadOnlyList<ElementalModeDbEntity>> GetModesAsync(int elementalId, CancellationToken ct = default);
 }
+
+// ============================================================================
+// DB-8i: drop override repos
+// ============================================================================
+
+/// <summary>
+/// DB-8i: per-map drop overrides (rAthena <c>db/map_drops.yml</c>).
+/// Each map row carries N <see cref="MapDropEntryDbEntity"/> children;
+/// the consumer rolls these AFTER the mob's own drop table on death.
+/// </summary>
+public interface IMapDropDbRepository
+{
+    Task<IReadOnlyList<MapDropDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<MapDropEntryDbEntity>> GetEntriesAsync(string mapName, CancellationToken ct = default);
+    /// <summary>All entries across every map — single query, used at boot to fill the in-memory cache.</summary>
+    Task<IReadOnlyList<MapDropEntryDbEntity>> GetAllEntriesAsync(CancellationToken ct = default);
+}
+
+/// <summary>
+/// DB-8i: per-item drop-rate modifier (rAthena <c>db/mob_item_ratio.yml</c>).
+/// Optional mob filter restricts the multiplier to a subset of monsters
+/// (no mob rows = applies to every monster that drops the item).
+/// </summary>
+public interface IMobItemRatioDbRepository
+{
+    Task<IReadOnlyList<MobItemRatioDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<MobItemRatioMobDbEntity>> GetMobFiltersAsync(string itemAegis, CancellationToken ct = default);
+    /// <summary>All mob-filter rows across every item — used at boot to fill the in-memory cache.</summary>
+    Task<IReadOnlyList<MobItemRatioMobDbEntity>> GetAllMobFiltersAsync(CancellationToken ct = default);
+}

@@ -23,6 +23,7 @@ public sealed class MobSpawnService : IMobSpawnService, IMobDeathSink
     private readonly IMobDb _mobDb;
     private readonly IItemCatalog _itemCatalog;
     private readonly IItemDropService _itemDrops;
+    private readonly IMapDropService? _mapDrops;
     private readonly IMovementService _movement;
     private readonly IVisibilityService _visibility;
     private readonly EntityIdAllocator _idAllocator;
@@ -47,7 +48,8 @@ public sealed class MobSpawnService : IMobSpawnService, IMobDeathSink
         EntityIdAllocator idAllocator,
         IStatusCalcService statusCalc,
         ILogger<MobSpawnService> logger,
-        Random? rng = null)
+        Random? rng = null,
+        IMapDropService? mapDrops = null)
     {
         _registry = registry;
         _entities = entities;
@@ -55,6 +57,7 @@ public sealed class MobSpawnService : IMobSpawnService, IMobDeathSink
         _mobDb = mobDb;
         _itemCatalog = itemCatalog;
         _itemDrops = itemDrops;
+        _mapDrops = mapDrops;
         _movement = movement;
         _visibility = visibility;
         _idAllocator = idAllocator;
@@ -230,32 +233,47 @@ public sealed class MobSpawnService : IMobSpawnService, IMobDeathSink
     /// </summary>
     private void RollAndDropLoot(MobEntity mob, PlayerEntity? lastHitter)
     {
-        if (mob.DbEntry == null || mob.DbEntry.Drops.Count == 0) return;
-
-        foreach (var drop in mob.DbEntry.Drops)
+        if (mob.DbEntry != null && mob.DbEntry.Drops.Count > 0)
         {
-            if (drop.Rate <= 0) continue;
-            if (_rng.Next(10_000) >= drop.Rate) continue;
-
-            var itemRow = _itemCatalog.GetByAegisName(drop.Item);
-            if (itemRow == null)
+            foreach (var drop in mob.DbEntry.Drops)
             {
-                _logger.LogWarning(
-                    "Mob {Class} drops unknown item '{Item}' (no row in item_db)",
-                    mob.ClassId, drop.Item);
-                continue;
-            }
+                if (drop.Rate <= 0) continue;
+                if (_rng.Next(10_000) >= drop.Rate) continue;
 
-            _itemDrops.DropOnFloor(
-                mob.MapId, mob.X, mob.Y,
-                itemId: (int)itemRow.Id,
-                amount: 1,
-                subX: (byte)_rng.Next(0, 16),
-                subY: (byte)_rng.Next(0, 16),
-                // Last-hitter gets exclusive pickup priority — matches
-                // rAthena's first_charid attribution (mob.cpp:mob_dead).
-                ownerCharId: lastHitter?.CharacterId ?? 0,
-                ownerPartyId: lastHitter?.PartyId ?? 0);
+                var itemRow = _itemCatalog.GetByAegisName(drop.Item);
+                if (itemRow == null)
+                {
+                    _logger.LogWarning(
+                        "Mob {Class} drops unknown item '{Item}' (no row in item_db)",
+                        mob.ClassId, drop.Item);
+                    continue;
+                }
+
+                _itemDrops.DropOnFloor(
+                    mob.MapId, mob.X, mob.Y,
+                    itemId: (int)itemRow.Id,
+                    amount: 1,
+                    subX: (byte)_rng.Next(0, 16),
+                    subY: (byte)_rng.Next(0, 16),
+                    // Last-hitter gets exclusive pickup priority — matches
+                    // rAthena's first_charid attribution (mob.cpp:mob_dead).
+                    ownerCharId: lastHitter?.CharacterId ?? 0,
+                    ownerPartyId: lastHitter?.PartyId ?? 0);
+            }
+        }
+
+        // DBR-1g: map_drops.yml — per-map override drop pass AFTER the
+        // mob's own drop table. GlobalDrops fire for every mob on the
+        // map; per-mob filtered entries match the dead mob's aegis name.
+        // rAthena bypasses the global drop_rate multipliers here, which
+        // MapDropService preserves internally.
+        if (_mapDrops != null && _mapDrops.HasData)
+        {
+            var map = ResolveMap(mob.MapId);
+            if (map != null)
+            {
+                _mapDrops.RollAndDrop(map, mob, lastHitter, mob.X, mob.Y);
+            }
         }
     }
 

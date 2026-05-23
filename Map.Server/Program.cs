@@ -208,6 +208,11 @@ builder.Services.AddSingleton<Map.Server.Status.IStatusCalcService, Map.Server.S
 // despawn). Inventory persistence + item_db catalog land later.
 builder.Services.AddSingleton<IItemDropService, ItemDropService>();
 
+// DBR-1g: per-map drop overrides (rAthena db/map_drops.yml). Snapshots
+// map_drop_db (17 maps) + map_drop_entry_db (654 entries) at boot;
+// consumed by MobSpawnService after each mob's own drop pass.
+builder.Services.AddSingleton<Map.Server.Items.IMapDropService, Map.Server.Items.MapDropService>();
+
 // Combat (see .agents/migrations/map/adjacent/combat.md). BattleCalculator
 // owns the renewal damage formula (battle.cpp:7635 battle_calc_weapon_attack
 // trimmed first slice); DamageService is the calc-then-apply façade that
