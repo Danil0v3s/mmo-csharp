@@ -80,6 +80,22 @@ public static class BonusScriptExtractor
         }
     }
 
+    /// <summary>
+    /// Apply a single flat bonus (one indexed by key only) to the bundle.
+    /// Exposed for the V8 host (<see cref="Map.Server.Inventory.Script.ScriptedBonusHost"/>)
+    /// so JS-translated scripts route through the same keyword switch as
+    /// the regex extractor — no parallel keyword tables to drift apart.
+    /// </summary>
+    internal static void ApplyFlatBonus(EquipBonusBundle b, string key, int v)
+        => ApplyFlat(b, key, v);
+
+    /// <summary>
+    /// Apply a single indexed bonus (key + RC_/Ele_/Size_/Class_ token).
+    /// Same intent as <see cref="ApplyFlatBonus"/>.
+    /// </summary>
+    internal static void ApplyIndexedBonus(EquipBonusBundle b, string key, string idxToken, int v)
+        => ApplyIndexed(b, key, idxToken, v);
+
     private static void ApplyFlat(EquipBonusBundle b, string key, int v)
     {
         // Case-insensitive comparison; we lower-case the key for the switch.

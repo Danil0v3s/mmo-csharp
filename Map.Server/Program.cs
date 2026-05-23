@@ -2123,6 +2123,12 @@ builder.Services.AddSingleton<Map.Server.Status.IJobChangeService, Map.Server.St
 builder.Services.AddSingleton<Map.Server.Inventory.IPlayerEquipHelpers, Map.Server.Inventory.PlayerEquipHelpers>();
 builder.Services.AddSingleton<Map.Server.Inventory.IPlayerInventoryHelpers, Map.Server.Inventory.PlayerInventoryHelpers>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerBonusService, Map.Server.Status.PlayerBonusService>();
+// DSL-3: V8-backed scripted bonus pipeline for dynamic item scripts
+// (conditionals, autobonus, autospell) that the regex extractor
+// can't decode. Dedicated V8 engine — separate from the NPC script
+// engine — so item-script host APIs don't leak into the NPC scope.
+builder.Services.AddSingleton<Map.Server.Inventory.Script.IScriptedBonusService,
+    Map.Server.Inventory.Script.ScriptedBonusService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerTimerService, Map.Server.Status.PlayerTimerService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerBgQueueTimerService, Map.Server.Status.PlayerBgQueueTimerService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerHateService, Map.Server.Status.PlayerHateService>();
