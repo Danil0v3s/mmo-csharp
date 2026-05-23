@@ -44,7 +44,7 @@ public sealed class PetService : IPetService
         _logger = logger;
     }
 
-    public PetEntity? Summon(PlayerEntity owner, int petClassId, string petName)
+    public PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0)
     {
         // Only one live pet at a time per owner (rAthena pc_setpet rule).
         if (_ownerToPet.ContainsKey(owner.CharacterId)) return null;
@@ -54,6 +54,7 @@ public sealed class PetService : IPetService
         var pet = new PetEntity(_ids.NextMob(), db, owner.MapId, owner.X, owner.Y)
         {
             PetName = string.IsNullOrEmpty(petName) ? db.Name : petName,
+            EggId = eggItemId,
         };
         pet.MasterId = owner.Id;
         _statusCalc.CalcMob(pet);
@@ -140,7 +141,7 @@ public sealed class PetService : IPetService
             CharacterId = ownerCharId,
             ClassId = pet.ClassId,
             Level = pet.Level,
-            EggItemId = 0, // populated when egg → pet mapping ports
+            EggItemId = pet.EggId,
             EquipItemId = (int)pet.EquipItemId,
             Intimacy = pet.Intimacy,
             Hungry = pet.Hunger,

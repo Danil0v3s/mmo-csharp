@@ -214,9 +214,12 @@ public sealed class PetOpsService : IPetOpsService
         if (pet == null) return;
         if (!EvolutionRequirementsCheck(master, evoTo)) return;
         // Pet evolution mutates the underlying class; PetEntity uses
-        // init ClassId so we recall + reflate at the new class.
+        // init ClassId so we recall + reflate at the new class. Carry
+        // the EggId across so getpetinfo(PETINFO_EGGID) stays stable
+        // for item-script reads against the evolved pet.
+        var carriedEgg = pet.EggId;
         _pet?.Recall(master);
-        _pet?.Summon(master, evoTo, pet.PetName);
+        _pet?.Summon(master, evoTo, pet.PetName, carriedEgg);
         _logger.LogInformation("pet_evolution: {Master} promoted to class={Cls}", master.Name, evoTo);
     }
 
@@ -249,10 +252,11 @@ public sealed class PetOpsService : IPetOpsService
         // PetName is init-only; the rename actually requires re-spawn.
         // Stash on the entity by recalling + re-summoning with new name.
         var className = pet.ClassId;
+        var carriedEgg = pet.EggId;
         var newName = master.PetPendingRename;
         master.PetPendingRename = null;
         _pet?.Recall(master);
-        _pet?.Summon(master, className, newName);
+        _pet?.Summon(master, className, newName, carriedEgg);
         return 0;
     }
 

@@ -66,6 +66,21 @@ declare global {
      *  is equipped simultaneously. Generated from rAthena's
      *  item_combo_db + item_combo_member_db by Tools.ItemScriptConvert. */
     function registerCombo(...combos: ComboRegistration[]): void;
+
+    // ===== Ambient type aliases ============================================
+    //
+    // Re-export the runtime context interfaces as ambient globals so
+    // hand-written scripts can annotate helper signatures without needing
+    // an explicit import (the registrar functions above are already
+    // global; matching the runtime types to that scope keeps authoring
+    // ergonomic). The generated converter output never needs these — it
+    // only sees `ctx` parameters inferred from `ItemEquipHandler` etc.
+    type NpcContext        = import("./api").NpcContext;
+    type ItemUseContext    = import("./api").ItemUseContext;
+    type ItemEquipContext  = import("./api").ItemEquipContext;
+    type ItemUseHandler    = import("./api").ItemUseHandler;
+    type ItemEquipHandler  = import("./api").ItemEquipHandler;
+    type NpcHandler        = import("./api").NpcHandler;
 }
 
 // ===== Registration shapes =================================================
@@ -198,8 +213,21 @@ export interface ItemUseContext {
     /** The item triggering this hook (id, refine, slot, etc.). */
     item: ItemInfo;
 
-    rand(max: number): number;
+    /** rAthena `rand(n)` — uniform `[0, n)`. The converter sometimes
+     *  emits the legacy 2-arg `rand(min, max)` form too; variadic to
+     *  absorb both. */
+    rand(...args: number[]): number;
+    /** rAthena `rand(min, max)` — inclusive on both ends. */
     randRange(min: number, max: number): number;
+
+    /** rAthena-builtin escape hatch — converter-emitted DSL calls
+     *  (`sc_start`, `getgroupitem`, `itemheal`, `laphine_synthesis`, …)
+     *  resolve at runtime through `ScriptHost.__invokeHookWithCtx`'s
+     *  Proxy fallback to a function that returns 0. The runtime is
+     *  fail-soft; the typing here mirrors that so converter output
+     *  doesn't choke `npm run typecheck`. Hand-written items should
+     *  prefer the explicit methods on `player` / `world`. */
+    [builtin: string]: any;
 }
 
 export interface ItemEquipContext {
@@ -211,40 +239,164 @@ export interface ItemEquipContext {
     item: ItemInfo;
 
     // ===== Bonus mutation (writes to the active EquipBonusBundle) =====
+    //
+    // rAthena's bonus family is genuinely variadic (1-arg flag form,
+    // 2-arg numeric, 2-arg indexed, larger autospell/autobonus
+    // variants), and ScriptedBonusHost.bonus*(params object[])
+    // dispatches inside. The TS declarations cover the common shapes
+    // explicitly; the catch-all index signature at the bottom of the
+    // interface absorbs the rare ones.
 
-    /** rAthena `bonus bKey,val;` — flat numeric bonus. */
-    bonus(key: string, value: number): void;
-    /** rAthena `bonus2 bKey,idx,val;` — indexed bonus (race, ele, class…). */
-    bonus2(key: string, index: string | number, value: number): void;
-    /** rAthena `bonus3`. */
-    bonus3(key: string, a: string | number, b: string | number, value: number): void;
+    /** rAthena `bonus bKey, [val];` — flat numeric bonus. The host
+     *  also accepts string values for type-keyed bonuses like
+     *  `bonus bDefEle, Ele_Ghost;`, so `value` is widened. */
+    bonus(key: string, value?: number | string): void;
+    /** rAthena `bonus2 bKey, idx, val;` — indexed bonus (race, ele, class…). */
+    bonus2(key: string, index: string | number, value: number | string): void;
+    /** rAthena `bonus3`. The trailing value is widened to `number | string`
+     *  because converter-emitted scripts pass element / flag constants
+     *  like `"ATF_SHORT"` in the value slot. */
+    bonus3(key: string, a: string | number, b: string | number, value: number | string): void;
     /** rAthena `bonus4`. */
-    bonus4(key: string, a: string | number, b: string | number, c: string | number, value: number): void;
+    bonus4(key: string, a: string | number, b: string | number, c: string | number, value: number | string): void;
     /** rAthena `bonus5`. */
-    bonus5(key: string, a: string | number, b: string | number, c: string | number, d: string | number, value: number): void;
+    bonus5(key: string, a: string | number, b: string | number, c: string | number, d: string | number, value: number | string): void;
 
-    /** rAthena `autobonus "{ body }", rate, duration, [atkType];` */
-    autobonus(body: string, rate: number, durationMs: number, atkType?: string | number): void;
-    /** rAthena `autobonus2` — fires when hit. */
-    autobonus2(body: string, rate: number, durationMs: number, atkType?: string | number): void;
-    /** rAthena `autobonus3` — fires on a specific skill. */
-    autobonus3(body: string, rate: number, durationMs: number, skillName: string): void;
+    /** rAthena `autobonus "{ body }", rate, duration, [atkType], [onfailScript];` */
+    autobonus(body: string, rate: number, durationMs: number, atkType?: string | number, onfailScript?: string): void;
+    /** rAthena `autobonus2 "{ body }", rate, duration, [atkType], [onfailScript];` — fires when hit. */
+    autobonus2(body: string, rate: number, durationMs: number, atkType?: string | number, onfailScript?: string): void;
+    /** rAthena `autobonus3 "{ body }", rate, duration, "SkillName", [onfailScript];` — fires on a specific skill. */
+    autobonus3(body: string, rate: number, durationMs: number, skillName: string, onfailScript?: string): void;
+
+    // ===== SC / skill family (variadic on the host; data-pending) =====
+
+    /** rAthena `sc_start SC, duration, val1, [rate];` — data-pending. */
+    sc_start(...args: any[]): void;
+    /** rAthena `sc_start2 SC, duration, val1, rate;` — data-pending. */
+    sc_start2(...args: any[]): void;
+    /** rAthena `sc_start4 SC, duration, val1..val4;` — data-pending. */
+    sc_start4(...args: any[]): void;
+    /** rAthena `sc_end SC;` — data-pending. */
+    sc_end(...args: any[]): void;
+    /** rAthena `skill "SkillName", lv, [type];` — grant a permanent skill
+     *  while the item is equipped. Data-pending against IPlayerSkillService. */
+    skill(...args: any[]): void;
+
+    // ===== HP / SP / effect family (variadic; data-pending) =====
+
+    /** rAthena `heal hp, sp;` — data-pending. */
+    heal(...args: any[]): void;
+    /** rAthena `percentheal hp%, sp%;` — data-pending. */
+    percentheal(...args: any[]): void;
+    /** rAthena `itemheal hp, sp;` — data-pending. */
+    itemheal(...args: any[]): void;
+    /** rAthena `specialeffect effectId;` — visual-only no-op. */
+    specialeffect(...args: any[]): void;
+    /** rAthena `specialeffect2 effectId;` — visual-only no-op. */
+    specialeffect2(...args: any[]): void;
+    /** rAthena `hateffect effectId, state;` — cosmetic no-op. */
+    hateffect(...args: any[]): void;
+    /** rAthena `petloot count;` — pet AI data-pending. */
+    petloot(...args: any[]): void;
+    /** rAthena `setoption flag, [value];` — state mod no-op. */
+    setoption(...args: any[]): void;
+    /** rAthena `message "..."` — UI text no-op in equip context. */
+    message(...args: any[]): void;
+    /** rAthena `dispbottom "..."` — UI text no-op in equip context. */
+    dispbottom(...args: any[]): void;
 
     // ===== Equip queries =====
 
+    /** rAthena `getrefine()` — right-hand refine. */
     getrefine(): number;
+    /** rAthena `getequiprefinerycnt(EQI_SLOT)`. */
     getequiprefinerycnt(slot: string | number): number;
+    /** rAthena `getequipid(EQI_SLOT)`. */
     getequipid(slot: string | number): number;
+    /** rAthena `getequipweaponlv([slot])`. */
     getequipweaponlv(slot?: string | number): number;
+    /** rAthena `getenchantgrade([slot])`. */
     getenchantgrade(slot?: string | number): number;
 
-    // ===== PC queries (subset useful in bonus context) =====
+    // ===== PC queries (read-only on PlayerEntity) =====
 
-    readparam(name: string | number): number;
-    /** rAthena getskilllv("AL_HEAL") — 0 until skill engine wires in. */
+    /** rAthena `readparam(SP_X)` — synonym for `getParam`. Returns `any`
+     *  because converter-emitted scripts sometimes compare the result
+     *  against string constants (`readparam("Class") === "Job_Acolyte"`),
+     *  which is a known rAthena DSL footgun the converter preserves. */
+    readparam(name: string | number): any;
+    /** PC parameter read. Generated combo scripts call `ctx.getParam("Class")`
+     *  / `ctx.getParam("Luk")` etc. Whitelisted in
+     *  `ScriptedBonusHost.GetParamCore`. Returns `any` for the same
+     *  string-vs-number compare reasons as `readparam`. */
+    getParam(name: string | number): any;
+    /** rAthena `getskilllv("AL_HEAL")` — 0 until skill engine wires in. */
     getskilllv(skillName: string): number;
+    /** rAthena `getiteminfo(itemId, n)` — data-pending. */
+    getiteminfo(...args: any[]): number;
+    /** rAthena `getitemcount(itemId)` — data-pending. */
+    getitemcount(...args: any[]): number;
+    /** rAthena `countitem(itemId)` — data-pending. */
+    countitem(...args: any[]): number;
+    /** rAthena `checkoption(opt)` — data-pending. */
+    checkoption(...args: any[]): number;
+    /** rAthena `checkmount()` — data-pending. */
+    checkmount(...args: any[]): number;
+    /** rAthena `isequipped(itemId, ...)` — data-pending. */
+    isequipped(...args: any[]): number;
+    /** rAthena `isequippedcnt(itemId, ...)` — data-pending. */
+    isequippedcnt(...args: any[]): number;
+    /** rAthena `basicskillcheck()` — returns 1. */
+    basicskillcheck(): number;
+    /** rAthena `checkfalcon()` — data-pending. */
+    checkfalcon(): number;
+    /** rAthena `checkriding()` — data-pending. */
+    checkriding(): number;
+    /** rAthena `checkcart()` — data-pending. */
+    checkcart(): number;
+    /** rAthena `checkidle()` — data-pending. */
+    checkidle(): number;
+    /** rAthena `eaclass()` — expanded-class bitmask. 0 until class
+     *  resolver wires in; conditional combos gated on
+     *  `eaclass() & EAJL_THIRD` silently skip. */
+    eaclass(...args: any[]): number;
 
-    rand(max: number): number;
+    // ===== Math helpers (rAthena built-ins) =====
+
+    /** rAthena `max(a, b, …)`. */
+    max(...args: number[]): number;
+    /** rAthena `min(a, b, …)`. */
+    min(...args: number[]): number;
+    /** rAthena `pow(a, b)`. */
+    pow(a: number, b: number): number;
+    /** rAthena `rand(n)` — uniform `[0, n)`. The host accepts the
+     *  legacy 2-arg `rand(min, max)` form too; variadic to absorb both. */
+    rand(...args: number[]): number;
+
+    // ===== Pet queries =====
+
+    /** rAthena `getpetinfo(type)` — see script.cpp:15911. Accepts either
+     *  the constant name (`"PETINFO_EGGID"`) or the integer enum value
+     *  (PETINFO_EGGID = 8). Returns the matching pet field, or 0 (or
+     *  the string `"null"` for PETINFO_NAME) when the player has no
+     *  active pet. The host resolves the live pet through
+     *  `IEntityRegistry` + `PetEntity.MasterId`; egg id flows in from
+     *  `PetEntity.EggId` at hatch time. */
+    getpetinfo(type: string | number): number | string;
+
+    /** rAthena-builtin escape hatch — converter-emitted DSL calls
+     *  not in the explicit list above (`vip_status`, `setarray`, `set`,
+     *  `gettime`, `getarraysize`, `strcharinfo`, `callfunc`,
+     *  `showscript`, `getmapflag`, `setfont`, `geteleminfo`,
+     *  `getequiparmorlv`, `checkmadogear`, `setmadogear`, `setmounting`,
+     *  `ismounting`, `itemskill`, …) resolve at runtime through
+     *  `ScriptHost.__invokeHookWithCtx`'s Proxy fallback to a function
+     *  returning 0. The runtime is fail-soft; this index signature
+     *  mirrors that so converter output doesn't choke `npm run
+     *  typecheck`. Hand-written items should prefer the explicit
+     *  methods above. */
+    [builtin: string]: any;
 }
 
 export interface ItemInfo {

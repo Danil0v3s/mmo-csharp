@@ -30,6 +30,7 @@ public sealed class ScriptedBonusHost
     private readonly IReadOnlyList<InventoryItem>? _equipped;
     private readonly IItemCatalog? _catalog;
     private readonly IPlayerBonusService? _bonusSvc;
+    private readonly IEntityRegistry? _entities;
 
     /// <summary>
     /// Exposed as <c>ctx.player</c> on the TypeScript surface (lowercase
@@ -45,13 +46,15 @@ public sealed class ScriptedBonusHost
         EquipBonusBundle bundle,
         IReadOnlyList<InventoryItem>? equipped = null,
         IItemCatalog? catalog = null,
-        IPlayerBonusService? bonusSvc = null)
+        IPlayerBonusService? bonusSvc = null,
+        IEntityRegistry? entities = null)
     {
         _pc = pc;
         _bundle = bundle;
         _equipped = equipped;
         _catalog = catalog;
         _bonusSvc = bonusSvc;
+        _entities = entities;
     }
 
     // ----- bonus / bonus2 / bonus3 / bonus4 / bonus5 -----
@@ -278,6 +281,80 @@ public sealed class ScriptedBonusHost
     public int checkcart(params object[] _) => 0;
     /// <summary>rAthena <c>checkidle()</c>.</summary>
     public int checkidle(params object[] _) => 0;
+
+    /// <summary>
+    /// rAthena <c>getpetinfo(type)</c> — see script.cpp:15911 BUILDIN_FUNC(getpetinfo).
+    /// Returns 0 (or empty string for PETINFO_NAME) when the owner has no
+    /// live pet. <paramref name="args"/>[0] may be the integer enum value
+    /// (0..9) or the constant name ("PETINFO_EGGID" etc.) — both forms
+    /// arrive from the TS/V8 bridge depending on whether the script was
+    /// hand-ported or converter-emitted.
+    ///
+    /// <para>
+    /// Used by item scripts like Wonder Egg Basket (id 15980 / 410027 /
+    /// 410028) and Beast Rings (490405) to branch on the egg the pet
+    /// hatched from. PETINFO_EGGID resolves against
+    /// <see cref="PetEntity.EggId"/>, populated by
+    /// <see cref="Pet.IPetService.Summon"/> at hatch time.
+    /// </para>
+    /// </summary>
+    public object getpetinfo(params object[] args)
+    {
+        if (args.Length == 0) return 0;
+        var typeArg = args[0];
+        var type = ResolvePetInfoType(typeArg);
+        var pet = FindLivePet();
+        if (pet == null)
+        {
+            // rAthena returns "null" string for PETINFO_NAME, 0 otherwise.
+            return type == 2 ? (object)"null" : 0;
+        }
+        return type switch
+        {
+            0 => (int)pet.PetId,            // PETINFO_ID
+            1 => pet.ClassId,               // PETINFO_CLASS (mob_db class)
+            2 => pet.PetName ?? "",         // PETINFO_NAME
+            3 => (int)pet.Intimacy,         // PETINFO_INTIMATE
+            4 => (int)pet.Hunger,           // PETINFO_HUNGRY
+            5 => 0,                         // PETINFO_RENAMED — no live flag yet
+            6 => pet.Level,                 // PETINFO_LEVEL
+            7 => pet.Id.Value,              // PETINFO_BLOCKID
+            8 => pet.EggId,                 // PETINFO_EGGID
+            9 => 0,                         // PETINFO_FOODID — needs pet_db food row
+            _ => 0,
+        };
+    }
+
+    private static int ResolvePetInfoType(object? arg) => arg switch
+    {
+        int i => i,
+        long l => (int)l,
+        double d => (int)d,
+        float f => (int)f,
+        string s => s switch
+        {
+            "PETINFO_ID" or "PET_ID" => 0,
+            "PETINFO_CLASS" or "PET_CLASS" => 1,
+            "PETINFO_NAME" or "PET_NAME" => 2,
+            "PETINFO_INTIMATE" or "PET_INTIMATE" => 3,
+            "PETINFO_HUNGRY" or "PET_HUNGRY" => 4,
+            "PETINFO_RENAMED" => 5,
+            "PETINFO_LEVEL" => 6,
+            "PETINFO_BLOCKID" => 7,
+            "PETINFO_EGGID" => 8,
+            "PETINFO_FOODID" => 9,
+            _ => int.TryParse(s, out var n) ? n : -1,
+        },
+        _ => -1,
+    };
+
+    private Entities.PetEntity? FindLivePet()
+    {
+        if (_entities == null) return null;
+        foreach (var e in _entities.All())
+            if (e is Entities.PetEntity pet && pet.MasterId == _pc.Id) return pet;
+        return null;
+    }
 
     /// <summary>rAthena <c>max(a, b)</c>.</summary>
     public int max(params object[] args)

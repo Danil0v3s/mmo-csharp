@@ -16,8 +16,11 @@ public interface IPetService
     /// Summon a pet entity for <paramref name="owner"/> at their cell.
     /// Returns the new <see cref="PetEntity"/> or null if the owner
     /// already has an active pet (rAthena lets only one out at a time).
+    /// <paramref name="eggItemId"/> is the egg row that hatched the pet
+    /// — written to <see cref="PetEntity.EggId"/> so item-script reads
+    /// of <c>getpetinfo(PETINFO_EGGID)</c> resolve at recalc time.
     /// </summary>
-    PetEntity? Summon(PlayerEntity owner, int petClassId, string petName);
+    PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0);
 
     /// <summary>Recall the pet — removes the entity from the world.</summary>
     void Recall(PlayerEntity owner);

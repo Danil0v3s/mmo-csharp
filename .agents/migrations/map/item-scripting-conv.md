@@ -243,11 +243,68 @@ Deleted the dead code now that CONV-3 + CONV-4 cover all dispatch.
 | Gap | Note |
 |---|---|
 | 27 items the converter skipped, 3 of which still lack their `unequip_script` (HP-drain cards 4263 / 4499 / 300403) | Documented inline in `scripts/items/manual/skipped.ts`. Niche cards; bug-for-bug parity with rAthena's `heal(1-Hp),0;` mis-shape isn't worth the parser extension. |
-| Pet-egg switch (`getpetinfo(PETINFO_EGGID)`) in 4 hand-ported items (15980, 410027, 410028, 490405) | Always-on prefix bonuses port cleanly; per-egg branches are TODO until pet info surfaces on `ItemEquipContext`. Documented inline. |
-| Megaphone items (12221, 14840, 23340) | Skip the `input` prompt — item-use has no dialog session. Broadcast a placeholder. Future: per-item input UI. |
+| Megaphone items (12221, 14840, 23340) | Skip the `input` prompt — item-use has no dialog session. Broadcast a placeholder. Future: per-item input UI (GAP-4). |
 | `bAutoSpell` / `autobonus` family in combo + item bonuses | Translated cleanly to host calls but the host's autobonus registration path was DSL-3 era; CONV-3/4 kept the surface but the actual proc behavior depends on `IPlayerBonusService.AddAutobonus`, which is independently wired and unchanged. |
+| `npm run typecheck` reports ~5,400 converter-output bugs (TS2362 / TS2363 / TS2365 / TS2367 / TS18048 / TS6133) | Converter emits rAthena DSL precedence bugs verbatim (`2 + ($r >= 9) ? 1 : 0`), string-or'd flag unions (`"BF_WEAPON" \| "BF_MAGIC"`), and `noUnusedLocals` violations from hoisted `.@var` decls. Bug-for-bug parity with rAthena's broken `script.cpp` parser — wouldn't fix without diverging from upstream. |
 
 ## History
+
+### 2026-05-23 — GAP-3: tighten api.d.ts
+
+Rewrote `ItemEquipContext` and `ItemUseContext` in
+`scripts/types/api.d.ts` to mirror the full `ScriptedBonusHost` /
+`ItemUseHostContext` surfaces. Every method on the host class is
+now declared explicitly with sensible param + return types (bonus
+family, autobonus family, SC family, heal/effect family, equip
+queries, PC queries, math helpers, pet queries). Added an indexed
+escape-hatch signature `[builtin: string]: any` documented as the
+home for rAthena builtins the converter emits but we haven't
+surfaced — they resolve through the `ScriptHost.__invokeHookWithCtx`
+Proxy to a no-op returning 0, and the index sig mirrors that.
+
+Exposed `ItemUseContext`, `ItemEquipContext`, `NpcContext` and
+their handler types as ambient globals so hand-port files like
+`scripts/items/manual/skipped.ts` can annotate helper signatures
+without explicit imports — matches the existing pattern where
+`registerItem` etc. are global.
+
+`npm run typecheck` errors dropped from **19,311 → 5,407**
+(72% reduction). The 11,930 `Property does not exist on type`
+errors are entirely gone. Remaining errors are all converter-output
+bugs (rAthena precedence quirks like `2 + ($r >= 9) ? 1 : 0`,
+string-or'd flag unions like `"BF_WEAPON" | "BF_MAGIC"`, and
+`noUnusedLocals` violations from hoisted `.@var` decls) — bug-for-bug
+parity with rAthena's broken `script.cpp`, not API surface gaps.
+Tightening the converter to emit valid TS is a separate workstream.
+
+`npm run build` (esbuild) still completes; full test sweep stays
+green (3,323 + 87 + 29).
+
+### 2026-05-23 — GAP-1: getpetinfo + 4 pet-egg item ports
+
+Added `getpetinfo(type)` to `ScriptedBonusHost` (dispatches on
+both the rAthena enum integer and the constant-name string —
+`"PETINFO_EGGID"`, `"PETINFO_CLASS"`, etc.), backed by a new
+`PetEntity.EggId` field that `IPetService.Summon` populates at
+hatch time. The host resolves the live pet through an injected
+`IEntityRegistry` and matches against `PetEntity.MasterId == _pc.Id`.
+
+Re-ported the 4 pet-egg hand-port items (15980, 410027, 410028,
+490405) from their always-on-only stubs to the full per-egg
+switch from rAthena's `db/re/item_db_equip.yml`. JS switch
+fall-through covers the rAthena `case X: case Y: ...; break;`
+grouping in item 410028. Both dispatchers (`ItemHookDispatcher`
+and `ComboDispatcher`) now inject `IEntityRegistry` as an
+optional dep and forward it to every `ScriptedBonusHost`.
+
+Coverage stays at 99.99% (no new converter wins), but the 4
+hand-ported items move from "always-on prefix only" to **full
+parity** with rAthena. Skipped-items table in the Known-gaps
+section shrinks from 4 entries to 3. Added
+`Map.Server.Tests/Inventory/ScriptedBonusHostGetPetInfoTests.cs`
+covering string + integer forms, no-pet fallback, no-registry
+back-compat, and pet-by-other-master filtering. Full test sweep
+green (3,323 + 87 + 29).
 
 ### 2026-05-23 — GAP-2: parser fix for paren-wrapped first arg
 

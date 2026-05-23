@@ -36,6 +36,7 @@ public sealed class ComboDispatcher : IComboDispatcher
     private readonly INpcRegistry _registry;
     private readonly IItemCatalog _catalog;
     private readonly IPlayerBonusService? _bonusSvc;
+    private readonly IEntityRegistry? _entities;
     private readonly ILogger<ComboDispatcher> _logger;
 
     /// <summary>
@@ -51,12 +52,14 @@ public sealed class ComboDispatcher : IComboDispatcher
         INpcRegistry registry,
         IItemCatalog catalog,
         ILogger<ComboDispatcher> logger,
-        IPlayerBonusService? bonusSvc = null)
+        IPlayerBonusService? bonusSvc = null,
+        IEntityRegistry? entities = null)
     {
         _scriptHost = scriptHost;
         _registry = registry;
         _catalog = catalog;
         _bonusSvc = bonusSvc;
+        _entities = entities;
         _logger = logger;
     }
 
@@ -85,7 +88,7 @@ public sealed class ComboDispatcher : IComboDispatcher
             // Each combo gets its own host instance so per-combo state
             // (host caches, ambient args) doesn't bleed. The host writes
             // into the shared bundle in-place.
-            var host = new ScriptedBonusHost(player, bundle, equipped, _catalog, _bonusSvc);
+            var host = new ScriptedBonusHost(player, bundle, equipped, _catalog, _bonusSvc, _entities);
             try
             {
                 invoker(handle.Value, host);

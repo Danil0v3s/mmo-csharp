@@ -32,6 +32,7 @@ public sealed class ItemHookDispatcher : IItemHookDispatcher
     private readonly IItemCatalog _catalog;
     private readonly IInventoryService _inventory;
     private readonly IPlayerBonusService? _bonusSvc;
+    private readonly IEntityRegistry? _entities;
     private readonly ILogger<ItemHookDispatcher> _logger;
 
     public ItemHookDispatcher(
@@ -40,13 +41,15 @@ public sealed class ItemHookDispatcher : IItemHookDispatcher
         IItemCatalog catalog,
         IInventoryService inventory,
         ILogger<ItemHookDispatcher> logger,
-        IPlayerBonusService? bonusSvc = null)
+        IPlayerBonusService? bonusSvc = null,
+        IEntityRegistry? entities = null)
     {
         _scriptHost = scriptHost;
         _registry = registry;
         _catalog = catalog;
         _inventory = inventory;
         _bonusSvc = bonusSvc;
+        _entities = entities;
         _logger = logger;
     }
 
@@ -128,7 +131,7 @@ public sealed class ItemHookDispatcher : IItemHookDispatcher
         ScriptHandle handle, uint itemId, EquipBonusBundle bundle, PlayerEntity player,
         IReadOnlyList<InventoryItem> equipped, string hookName)
     {
-        var host = new ScriptedBonusHost(player, bundle, equipped, _catalog, _bonusSvc);
+        var host = new ScriptedBonusHost(player, bundle, equipped, _catalog, _bonusSvc, _entities);
         try
         {
             var invoker = _scriptHost.Engine.Script.__invokeHookWithCtx;

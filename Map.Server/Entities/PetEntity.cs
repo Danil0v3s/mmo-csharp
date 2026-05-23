@@ -17,6 +17,15 @@ public sealed class PetEntity : MobEntity
     /// <summary>Persistent pet id from char-server (pet table primary key).</summary>
     public long PetId { get; init; }
 
+    /// <summary>
+    /// Item id of the egg this pet hatched from. Mirrors rAthena
+    /// <c>s_pet.egg_id</c> (pet.hpp), exposed to scripts via
+    /// <c>getpetinfo(PETINFO_EGGID)</c>. Item-script conditionals like the
+    /// Wonder Egg Basket family branch on this value to grant per-egg
+    /// bonuses, so it has to be available at recalc time.
+    /// </summary>
+    public int EggId { get; init; }
+
     /// <summary>Intimacy (0..1000). Pet befriends / dislikes the player as this moves.</summary>
     public ushort Intimacy { get; set; } = 250; // rAthena PETINTIMATE_NEUTRAL
 

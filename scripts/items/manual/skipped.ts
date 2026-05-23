@@ -200,35 +200,139 @@ registerItem({
 // AND onUnequip for these cards. No hand-port needed here.
 
 // Pet-egg-conditional armors. rAthena uses `switch( getpetinfo(PETINFO_EGGID) )`
-// to grant different bonuses per egg. ItemEquipContext doesn't surface pet
-// info yet — port the always-on prefix bonuses and leave the per-egg
-// switch as a TODO until the pet surface wires in.
+// to grant different bonuses per egg. GAP-1 added getpetinfo() to
+// ScriptedBonusHost (resolves against PetEntity.EggId via IEntityRegistry),
+// so the per-egg switches now port cleanly. The host accepts either the
+// rAthena enum string or the integer constant — we use the string for
+// readability.
+
+// Wonder Egg Basket (id 15980) — db/re/item_db_equip.yml Id: 15980
 registerItem({
     id: 15980,
     onEquip(ctx) {
         ctx.bonus2("bAddSize", "Size_All", 5);
         ctx.bonus2("bMagicAddSize", "Size_All", 5);
-        // TODO: switch on getpetinfo(PETINFO_EGGID) for per-egg bonuses.
+        const egg = Number(ctx.getpetinfo("PETINFO_EGGID")) || 0;
+        switch (egg) {
+            case 9121: // Ork_Hero_EGG
+                ctx.bonus2("bAddClass", "Class_Boss", 10);
+                break;
+            case 9115: // Bacsojin_Egg2
+                ctx.skill("AB_RENOVATIO", 4);
+                break;
+            case 9113: // Roost_Of_Skelion
+                ctx.bonus2("bAddItemHealRate", 579, 333);
+                break;
+            case 9088: { // Angeling_Egg
+                const lukDiv3 = Math.floor(ctx.readparam("Luk") / 3);
+                ctx.bonus2("bExpAddRace", "RC_All", 10);
+                ctx.bonus("bBaseAtk", lukDiv3);
+                ctx.bonus("bMatk", lukDiv3);
+                break;
+            }
+            case 9087: // High_Orc_Egg
+                ctx.bonus2("bAddRace", "RC_Demon", 10);
+                break;
+            case 9055: // Succubus_Egg
+                ctx.bonus2("bSPDrainRate", 10, 1);
+                break;
+            case 9052: // Incubus_Egg
+                ctx.bonus2("bHPDrainRate", 20, 5);
+                break;
+            case 9119: // Alicel_EGG
+                ctx.bonus("bVariableCastrate", -10);
+                ctx.bonus2("bMagicAtkEle", "Ele_Neutral", 5);
+                break;
+        }
     },
 });
 
+// Wonder Egg Basket (id 410027) — db/re/item_db_equip.yml Id: 410027
 registerItem({
     id: 410027,
     onEquip(ctx) {
         ctx.bonus2("bAddSize", "Size_All", 10);
         ctx.bonus2("bMagicAddSize", "Size_All", 10);
-        // TODO: switch on getpetinfo(PETINFO_EGGID) for per-egg bonuses.
+        const egg = Number(ctx.getpetinfo("PETINFO_EGGID")) || 0;
+        switch (egg) {
+            case 9112: // Moonlight_Egg
+                ctx.bonus2("bHPVanishRate", 40, 4);
+                break;
+            case 9088: { // Angeling_Egg
+                const luk = ctx.readparam("Luk");
+                ctx.bonus("bBaseAtk", luk);
+                ctx.bonus("bMatk", luk);
+                ctx.bonus2("bExpAddClass", "Class_All", 5);
+                break;
+            }
+            case 9096: // Cat_O_Nine_Tail_Egg
+                ctx.bonus2("bAddRace", "RC_Demon", 30);
+                ctx.bonus2("bMagicAddRace", "RC_Demon", 30);
+                ctx.bonus2("bSubRace", "RC_Demon", 5);
+                break;
+            case 9087: // High_Orc_Egg
+                ctx.bonus2("bAddRace", "RC_Brute", 30);
+                ctx.bonus2("bMagicAddRace", "RC_Brute", 30);
+                ctx.bonus2("bSubRace", "RC_Brute", 5);
+                break;
+            case 9069: // Mastering_Egg
+                ctx.bonus2("bAddRace", "RC_Plant", 30);
+                ctx.bonus2("bMagicAddRace", "RC_Plant", 30);
+                ctx.bonus2("bSubRace", "RC_Plant", 5);
+                break;
+            case 9106: // Metaller_Egg
+                ctx.bonus3("bAutoSpell", "WM_METALICSOUND", 5, 150);
+                break;
+        }
     },
 });
 
+// Wonder Egg Basket (id 410028) — db/re/item_db_equip.yml Id: 410028
+// rAthena groups multiple eggs per case via `case X: case Y: ...; break;`.
+// JS switch fall-through handles the same pattern naturally.
 registerItem({
     id: 410028,
     onEquip(ctx) {
         ctx.bonus("bAspdRate", 10);
-        // TODO: switch on getpetinfo(PETINFO_EGGID) for per-egg bonuses.
+        const egg = Number(ctx.getpetinfo("PETINFO_EGGID")) || 0;
+        switch (egg) {
+            case 9109: // Sweet_Drops_Egg
+            case 9112: // Moonlight_Egg
+            case 9115: // Bacsojin_Egg2
+            case 9121: // Orc_Hero_Egg_
+            case 9126: // Kiel_Egg
+            case 9136: // Eddga_Egg
+                ctx.bonus("bBaseAtk", 200);
+                ctx.bonus("bMatk", 200);
+                ctx.bonus("bAllStats", 10);
+                break;
+            case 9088: // Angeling_Egg
+            case 9108: // Xm_Teddybear_Egg
+            case 9113: // Roost_Of_Skelion
+                ctx.bonus("bBaseAtk", 200);
+                ctx.bonus("bMatk", 200);
+                ctx.bonus2("bAddSize", "Size_All", 10);
+                ctx.bonus2("bMagicAddSize", "Size_All", 10);
+                break;
+            case 9069: // Mastering_Egg
+            case 9087: // High_Orc_Egg
+            case 9096: // Cat_O_Nine_Tail_Egg
+            case 9106: // Metaller_Egg
+            case 9117: // Contaminated_Wanderer_Egg
+            case 9118: // Aliot_Egg
+            case 9119: // Alicel_Egg
+            case 9120: // Aliza_Egg
+            case 9124: // Ep17_2_C_Admin2_Egg
+                ctx.bonus("bBaseAtk", 200);
+                ctx.bonus("bMatk", 200);
+                ctx.bonus("bDef", 150);
+                ctx.bonus("bMdef", 15);
+                break;
+        }
     },
 });
 
+// Beast Rings (id 490405) — db/re/item_db_equip.yml Id: 490405
 registerItem({
     id: 490405,
     onEquip(ctx) {
@@ -236,6 +340,48 @@ registerItem({
         ctx.bonus2("bSubRace", "RC_Player_Doram", -5);
         ctx.bonus2("bSubRace", "RC_Player_Human", -5);
         ctx.bonus2("bExpAddRace", "RC_All", 5);
-        // TODO: switch on getpetinfo(PETINFO_EGGID) for per-egg bonuses.
+        const egg = Number(ctx.getpetinfo("PETINFO_EGGID")) || 0;
+        switch (egg) {
+            case 9003: // Poporing_Egg
+                ctx.bonus2("bSubRace", "RC_Plant", 5);
+                ctx.bonus2("bExpAddRace", "RC_All", 15);
+                break;
+            case 9040: // Civil_Servant_Egg
+                ctx.bonus2("bSubRace", "RC_Angel", 5);
+                ctx.bonus2("bExpAddRace", "RC_All", 15);
+                break;
+            case 9015: // Smokie_Egg
+                ctx.bonus2("bSubRace", "RC_Brute", 5);
+                ctx.bonus2("bExpAddRace", "RC_All", 15);
+                break;
+            case 9020: // Sohee_Egg
+                ctx.bonus2("bSubRace", "RC_Demon", 5);
+                ctx.bonus2("bExpAddRace", "RC_All", 15);
+                break;
+            case 9046: // Goblin_Leader_Egg
+                ctx.bonus2("bSubRace", "RC_Dragon", 5);
+                ctx.bonus2("bExpAddRace", "RC_All", 15);
+                break;
+            case 9044: // Shinobi_Egg
+                ctx.bonus2("bSubRace", "RC_DemiHuman", 5);
+                ctx.bonus2("bExpAddRace", "RC_All", 15);
+                break;
+            case 9007: // Steel_Chonchon_Egg
+                ctx.bonus2("bSubRace", "RC_Insect", 5);
+                ctx.bonus2("bExpAddRace", "RC_All", 15);
+                break;
+            case 9018: // Munak_Egg
+                ctx.bonus2("bSubRace", "RC_Undead", 5);
+                ctx.bonus2("bExpAddRace", "RC_All", 15);
+                break;
+            case 9050: // Medusa_Egg
+                ctx.bonus2("bSubRace", "RC_Formless", 5);
+                ctx.bonus2("bExpAddRace", "RC_All", 15);
+                break;
+            case 9062: // Novice_Poring_Egg
+                ctx.bonus2("bSubRace", "RC_Fish", 5);
+                ctx.bonus2("bExpAddRace", "RC_All", 15);
+                break;
+        }
     },
 });
