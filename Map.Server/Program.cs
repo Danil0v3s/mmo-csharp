@@ -450,6 +450,9 @@ builder.Services.AddSingleton<Map.Server.BattleGround.IBattlegroundService, Map.
 // name entry points; most ops forward to dedicated services or
 // document data-pending.
 builder.Services.AddSingleton<Map.Server.Items.Db.IItemDbService, Map.Server.Items.Db.ItemDbService>();
+// DBR-2b: typed item-group catalog (2722 groups / 30809 entries) — random
+// bag rolls for Bloody/Dead/RWC Branches, Old Card Album, gift boxes, etc.
+builder.Services.AddSingleton<Map.Server.Items.IItemGroupService, Map.Server.Items.ItemGroupService>();
 builder.Services.AddSingleton<Map.Server.Status.StatusOps.IStatusOpsService, Map.Server.Status.StatusOps.StatusOpsService>();
 builder.Services.AddSingleton<Map.Server.Handlers.ClifWire.IClifWireService, Map.Server.Handlers.ClifWire.ClifWireService>();
 builder.Services.AddSingleton<Map.Server.Scripting.ScriptApi.IScriptApiService, Map.Server.Scripting.ScriptApi.ScriptApiService>();
