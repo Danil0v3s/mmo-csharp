@@ -456,6 +456,9 @@ builder.Services.AddSingleton<Map.Server.Items.IItemGroupService, Map.Server.Ite
 // DBR-2c: typed refine catalog (4 groups / 160 level rows / 390 chance
 // rows) — refine UI + @refine GM cmd consume rates/materials.
 builder.Services.AddSingleton<Map.Server.Inventory.IRefineService, Map.Server.Inventory.RefineService>();
+// DBR-2d: typed enchantgrade catalog (per EquipType × ItemLevel × Grade ×
+// Refine → Chance/10000) — equipment grade-upgrade UI + @grade GM cmd.
+builder.Services.AddSingleton<Map.Server.Inventory.IEnchantGradeService, Map.Server.Inventory.EnchantGradeService>();
 builder.Services.AddSingleton<Map.Server.Status.StatusOps.IStatusOpsService, Map.Server.Status.StatusOps.StatusOpsService>();
 builder.Services.AddSingleton<Map.Server.Handlers.ClifWire.IClifWireService, Map.Server.Handlers.ClifWire.ClifWireService>();
 builder.Services.AddSingleton<Map.Server.Scripting.ScriptApi.IScriptApiService, Map.Server.Scripting.ScriptApi.ScriptApiService>();
