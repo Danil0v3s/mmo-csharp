@@ -82,4 +82,16 @@ public interface IBattlegroundService
 
     /// <summary>rAthena <c>bg_send_message</c>.</summary>
     void SendMessage(int bgId, string sender, string text);
+
+    /// <summary>Snapshot a named queue (returns null if not registered) — backs <c>@bg &lt;name&gt;</c>.</summary>
+    (int QueueId, string Name, BgQueueState State, int Members, byte Required)? GetQueueSnapshot(string queueName);
+
+    /// <summary>List every registered queue — backs <c>@bg</c> with no args.</summary>
+    IReadOnlyList<(int QueueId, string Name, BgQueueState State, int Members, byte Required)> GetAllQueues();
+
+    /// <summary>End a queue immediately (rAthena <c>bg_queue_clear(true)</c>) — backs <c>@bgend</c>.</summary>
+    void QueueEnd(int queueId);
+
+    /// <summary>Mark a player as queue leader — backs <c>@bgleader</c>.</summary>
+    bool SetQueueLeader(PlayerEntity pc);
 }

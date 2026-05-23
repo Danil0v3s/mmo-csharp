@@ -1177,13 +1177,20 @@ public sealed class RequestCommand(IVisibilityService visibility) : IGmCommand
         return Task.CompletedTask;
     }
 }
-public sealed class MapExitCommand(IVisibilityService visibility) : IGmCommand
+public sealed class MapExitCommand(
+    IVisibilityService visibility,
+    Microsoft.Extensions.Hosting.IHostApplicationLifetime lifetime) : IGmCommand
 {
     public string Name => "mapexit";
-    public string Description => "@mapexit — graceful map-server shutdown.";
+    public string Description => "@mapexit — immediate map-server shutdown.";
     public Task ExecuteAsync(PlayerEntity caller, IReadOnlyList<string> args, CancellationToken ct)
     {
-        GmCommandReply.Send(visibility, caller, "@mapexit: shutdown signal dispatched (server-shutdown coordinator pending; use SIGTERM for now).");
+        // rAthena atcommand_mapexit (atcommand.cpp ~4099): global_core->signal_shutdown()
+        // — kicks the shutdown timer. IHostApplicationLifetime.StopApplication is the
+        // .NET-host equivalent: triggers ApplicationStopping → graceful Stop on every
+        // HostedService (game loop, packet pumps, IPC reconciler).
+        GmCommandReply.Send(visibility, caller, "@mapexit: shutdown signalled.");
+        lifetime.StopApplication();
         return Task.CompletedTask;
     }
 }

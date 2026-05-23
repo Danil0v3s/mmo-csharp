@@ -2013,6 +2013,32 @@ builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.SkillOffCommand
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MonsterSmallCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MonsterBigCommand>();
 
+// AT-D1 wave — promote the 18 final "deferred subsystem" stubs to real handlers.
+// baselevelup → alias of @level; mapexit2 → announce + delayed shutdown;
+// displaystatus → real ZC_MSG_STATE_CHANGE3 emit; @who2/@who3/@whomap/@whomap2/
+// @whomap3/@whogm → real formatter variants; bgsmall/bgmedium/bglarge/bg/bgstart/
+// bgend/bgleave/bgleader/bginvite → wired through real IBattlegroundService queue
+// state machine (SETUP → SETUP_DELAY → ACTIVE → ENDED).
+builder.Services.AddSingleton<Map.Server.Gm.Commands.LevelCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BaseLevelUpCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MapExit2Command>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DisplayStatusCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.Who2Command>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.Who3Command>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.WhoMapCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.WhoMap2Command>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.WhoMap3Command>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.WhoGmCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BgSmallCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BgMediumCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BgLargeCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BgCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BgStartCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BgEndCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BgLeaveCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BgLeaderCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BgInviteCommand>();
+
 // PC-* phase: player option / appearance / orb services + GM commands.
 // rAthena pc_setoption / pc_setcart / pc_setriding / pc_changelook
 // (pc.cpp:8702 / 8851 / 8810 / clif.cpp:3929) + the pc_addspiritball
