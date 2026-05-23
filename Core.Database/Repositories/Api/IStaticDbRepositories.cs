@@ -234,6 +234,11 @@ public interface IStatusDbRepository
     Task<StatusDbEntity?> GetByNameAsync(string statusName, CancellationToken ct = default);
     /// <summary>All flag rows for an SC, regardless of category.</summary>
     Task<IReadOnlyList<StatusDbFlagEntity>> GetAllFlagsAsync(string statusName, CancellationToken ct = default);
+    /// <summary>
+    /// All flag rows across every SC and every category — single query,
+    /// used at boot to fill the in-memory fail/end matrix cache.
+    /// </summary>
+    Task<IReadOnlyList<StatusDbFlagEntity>> GetAllFlagsAsync(CancellationToken ct = default);
     /// <summary>Flag rows for an SC in one category (State / CalcFlag / Flag / Fail / EndOnStart / EndOnEnd / EndOnRestart).</summary>
     Task<IReadOnlyList<StatusDbFlagEntity>> GetFlagsByCategoryAsync(string statusName, string category, CancellationToken ct = default);
 }

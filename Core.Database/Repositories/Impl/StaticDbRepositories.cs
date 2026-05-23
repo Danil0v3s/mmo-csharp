@@ -268,6 +268,8 @@ internal sealed class StatusDbRepository(GameDbContext ctx) : IStatusDbRepositor
         => await ctx.StatusDb.AsNoTracking().FirstOrDefaultAsync(s => s.StatusName == statusName, ct);
     public async Task<IReadOnlyList<StatusDbFlagEntity>> GetAllFlagsAsync(string statusName, CancellationToken ct = default)
         => await ctx.StatusDbFlag.AsNoTracking().Where(f => f.StatusName == statusName).ToListAsync(ct);
+    public async Task<IReadOnlyList<StatusDbFlagEntity>> GetAllFlagsAsync(CancellationToken ct = default)
+        => await ctx.StatusDbFlag.AsNoTracking().ToListAsync(ct);
     public async Task<IReadOnlyList<StatusDbFlagEntity>> GetFlagsByCategoryAsync(string statusName, string category, CancellationToken ct = default)
         => await ctx.StatusDbFlag.AsNoTracking().Where(f => f.StatusName == statusName && f.Category == category).ToListAsync(ct);
 }

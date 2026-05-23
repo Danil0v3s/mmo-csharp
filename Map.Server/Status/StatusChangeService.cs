@@ -18,6 +18,7 @@ public sealed class StatusChangeService : IStatusChangeService
     private readonly IDamageService _damage;
     private readonly IEntityRegistry _entities;
     private readonly StatusEffectRegistry _effects;
+    private readonly IStatusDbFlagCache? _flagCache;
     private readonly Map.Server.Handlers.ClifWire.IClifWireService? _clif;
     private readonly ILogger<StatusChangeService> _logger;
 
@@ -32,11 +33,13 @@ public sealed class StatusChangeService : IStatusChangeService
         IEntityRegistry entities,
         StatusEffectRegistry effects,
         ILogger<StatusChangeService> logger,
+        IStatusDbFlagCache? flagCache = null,
         Map.Server.Handlers.ClifWire.IClifWireService? clif = null)
     {
         _damage = damage;
         _entities = entities;
         _effects = effects;
+        _flagCache = flagCache;
         _clif = clif;
         _logger = logger;
     }
@@ -54,6 +57,46 @@ public sealed class StatusChangeService : IStatusChangeService
         {
             _logger.LogDebug("StatusChange.Start: no handler registered for {Type}", type);
             return null;
+        }
+
+        // DBR-1e: rAthena Fail/EndReturn/EndOnStart matrix from status.yml
+        // (status_db_flag). Fail wins first — if any of the SCs listed in
+        // <type>'s Fail set are currently active on the target, the
+        // start is rejected (parity with status_change_start's fail check).
+        if (_flagCache != null && _active.TryGetValue(target.Id, out var existingActive))
+        {
+            foreach (var failType in _flagCache.GetFailScs(type))
+            {
+                if (existingActive.ContainsKey(failType))
+                {
+                    _logger.LogDebug("StatusChange.Start: {Type} on {Target} blocked by active {Fail}",
+                        type, target.Id, failType);
+                    return null;
+                }
+            }
+            // EndReturn: end the listed SCs and abort the start when ANY matched.
+            // rAthena yml semantic: "end these SCs when this one activates
+            // and won't give its effect." Used by Stone/StoneWait self-suppression.
+            var aborted = false;
+            foreach (var endType in _flagCache.GetEndReturn(type))
+            {
+                if (existingActive.ContainsKey(endType))
+                {
+                    End(target, endType);
+                    aborted = true;
+                }
+            }
+            if (aborted)
+            {
+                _logger.LogDebug("StatusChange.Start: {Type} on {Target} aborted by EndReturn",
+                    type, target.Id);
+                return null;
+            }
+            // EndOnStart: end the listed SCs but proceed with the start.
+            foreach (var endType in _flagCache.GetEndOnStart(type))
+            {
+                if (existingActive.ContainsKey(endType)) End(target, endType);
+            }
         }
 
         // Refresh-on-restart: end the previous instance so its OnEnd
@@ -105,6 +148,15 @@ public sealed class StatusChangeService : IStatusChangeService
 
         // T5.3b — icon-off broadcast.
         _clif?.StatusChange(target, type, active: false);
+
+        // DBR-1e: EndOnEnd matrix — when this SC ends, end every SC
+        // listed in its EndOnEnd set too. Recursive cleanup: e.g. ending
+        // a buff that maintains downstream SCs (rare in stock yml: 23 rows).
+        if (_flagCache != null)
+        {
+            foreach (var cascadeType in _flagCache.GetEndOnEnd(type))
+                End(target, cascadeType);
+        }
 
         return true;
     }

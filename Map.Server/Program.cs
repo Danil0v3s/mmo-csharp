@@ -394,6 +394,10 @@ builder.Services.AddSingleton<Map.Server.Status.IExpService, Map.Server.Status.E
 // effect registry — new SCs add a Register() call without touching
 // the engine itself.
 builder.Services.AddSingleton<Map.Server.Status.StatusEffectRegistry>();
+// DBR-1e: status.yml Fail/EndOnStart/EndReturn/EndOnEnd matrix cache.
+// Loaded once at boot from status_db + status_db_flag (1001 SCs +
+// 4935 flag rows); StatusChangeService injects + consults on Start/End.
+builder.Services.AddSingleton<Map.Server.Status.IStatusDbFlagCache, Map.Server.Status.StatusDbFlagCache>();
 builder.Services.AddSingleton<Map.Server.Status.IStatusChangeService, Map.Server.Status.StatusChangeService>();
 
 // Skill system (skill.cpp:skill_use_id + skill_castend_*). First slice:
