@@ -309,9 +309,8 @@ public class ScriptHostTests
             $"Expected at least 2 items from scripts/dist/main.js, got {registry.ItemCount}");
         Assert.True(registry.ComboCount >= 1,
             $"Expected at least 1 combo from scripts/dist/main.js, got {registry.ComboCount}");
-        Assert.NotNull(registry.GetItemByAegis("_DevTest_Potion"));
-        Assert.NotNull(registry.GetItemByAegis("_DevTest_Knife"));
         Assert.NotNull(registry.GetItemById(999001));
+        Assert.NotNull(registry.GetItemById(999002));
     }
 
     // ===== registerItem / registerCombo (CONV-1) =====
@@ -324,8 +323,6 @@ public class ScriptHostTests
             (() => {
                 registerItem({
                     id: 501,
-                    nameAegis: ""Red_Potion"",
-                    nameEnglish: ""Red Potion"",
                     onUse: async (ctx) => { await ctx.player.itemHeal(50, 0); }
                 });
             })();
@@ -336,13 +333,10 @@ public class ScriptHostTests
             Assert.Equal(1, registry.ItemCount);
             var item = registry.GetItemById(501);
             Assert.NotNull(item);
-            Assert.Equal("Red_Potion", item!.NameAegis);
-            Assert.Equal("Red Potion", item.NameEnglish);
+            Assert.Equal(501, item!.Id);
             Assert.NotNull(item.Hooks.OnUse);
             Assert.Null(item.Hooks.OnEquip);
             Assert.Null(item.Hooks.OnUnequip);
-            // Index agreement: by-aegis returns the same record as by-id.
-            Assert.Same(item, registry.GetItemByAegis("Red_Potion"));
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -355,7 +349,6 @@ public class ScriptHostTests
             (() => {
                 registerItem({
                     id: 1201,
-                    nameAegis: ""Knife"",
                     onEquip: (ctx) => { ctx.bonus(""bAtk"", 10); },
                     onUnequip: (ctx) => { /* no-op */ }
                 });
@@ -379,8 +372,8 @@ public class ScriptHostTests
         var (host, _, dir) = Build(@"
             ""use strict"";
             (() => {
-                registerItem({ id: 501, nameAegis: ""Red_Potion"" });
-                registerItem({ id: 501, nameAegis: ""Red_Potion_Override"" });
+                registerItem({ id: 501 });
+                registerItem({ id: 501 });
             })();
         ");
         try
@@ -393,39 +386,41 @@ public class ScriptHostTests
     }
 
     [Fact]
-    public void RegisterItem_duplicate_aegis_throws()
-    {
-        var (host, _, dir) = Build(@"
-            ""use strict"";
-            (() => {
-                registerItem({ id: 501, nameAegis: ""Red_Potion"" });
-                registerItem({ id: 502, nameAegis: ""Red_Potion"" });
-            })();
-        ");
-        try
-        {
-            var ex = Assert.ThrowsAny<Exception>(() => host.LoadEntryPoint());
-            Assert.Contains("Red_Potion", ex.Message + (ex.InnerException?.Message ?? ""));
-        }
-        finally { Directory.Delete(dir, recursive: true); }
-    }
-
-    [Fact]
     public void RegisterItem_varargs_registers_each()
     {
         var (host, registry, dir) = Build(@"
             ""use strict"";
             (() => {
                 registerItem(
-                    { id: 501, nameAegis: ""A"" },
-                    { id: 502, nameAegis: ""B"" },
-                    { id: 503, nameAegis: ""C"" });
+                    { id: 501 },
+                    { id: 502 },
+                    { id: 503 });
             })();
         ");
         try
         {
             host.LoadEntryPoint();
             Assert.Equal(3, registry.ItemCount);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void RegisterItem_with_no_hooks_is_a_pointless_registration_but_does_not_throw()
+    {
+        // Authors may legitimately write `registerItem({ id: 501 })` as a
+        // placeholder before adding hooks; the registrar shouldn't reject
+        // it. The Hooks bundle just records nothing.
+        var (host, registry, dir) = Build(@"
+            ""use strict"";
+            (() => { registerItem({ id: 999999 }); })();
+        ");
+        try
+        {
+            host.LoadEntryPoint();
+            var item = registry.GetItemById(999999);
+            Assert.NotNull(item);
+            Assert.False(item!.Hooks.Any);
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

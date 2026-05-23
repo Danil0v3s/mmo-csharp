@@ -154,13 +154,13 @@ export interface MapFlagRegistration {
 }
 
 export interface ItemRegistration {
-    /** Numeric item id (rAthena item_db.id). Globally unique across the bundle. */
+    /** Numeric item id (rAthena item_db.id). Globally unique across the bundle.
+     *
+     *  This is the *only* required field — every other item-db column
+     *  (name_aegis, name_english, type, weight, slots, …) already lives
+     *  in SQL and is owned by IItemCatalog. The registrar attaches hooks;
+     *  the catalog provides the rest. */
     id: number;
-    /** Aegis name — script-side identifier (e.g. "Red_Potion"). Globally unique;
-     *  combos cite this string in their `members` array. */
-    nameAegis: string;
-    /** Display name (rAthena item_db.name_english). Optional — for logging only. */
-    nameEnglish?: string;
 
     /** Fires when a player uses the item via CZ_USE_ITEM (potions, scrolls,
      *  boxes). Async — the closure may await player ops. */

@@ -251,16 +251,17 @@ public sealed class RegistrarBindings
 
     private static void RegisterItem(object raw, INpcRegistry registry)
     {
+        // Items are pure hook attachment by id — every other column
+        // (name_aegis, name_english, type, weight, …) lives in the SQL
+        // catalog. Authors only declare what's truly script-level:
+        // the id and the hooks.
         var obj = JsObjectReader.RequireObject(raw, "registerItem");
         var id = JsObjectReader.RequireInt(obj, "id", "registerItem");
-        var nameAegis = JsObjectReader.RequireString(obj, "nameAegis", $"registerItem(id={id})");
-        var ctx = $"registerItem(id={id}, '{nameAegis}')";
+        var ctx = $"registerItem(id={id})";
 
         registry.AddItem(new ItemRegistration
         {
             Id = id,
-            NameAegis = nameAegis,
-            NameEnglish = JsObjectReader.OptionalString(obj, "nameEnglish"),
             Hooks = new ItemHooks(
                 OnUse:     JsObjectReader.OptionalHandle(obj, "onUse",     ctx),
                 OnEquip:   JsObjectReader.OptionalHandle(obj, "onEquip",   ctx),

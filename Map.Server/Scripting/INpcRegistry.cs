@@ -36,8 +36,6 @@ public interface INpcRegistry
     FloatingNpcRegistration? GetFloatingByName(string name);
     /// <summary>Lookup by numeric item id (rAthena item_db.id).</summary>
     ItemRegistration? GetItemById(int id);
-    /// <summary>Lookup by aegis name (rAthena item_db.name_aegis).</summary>
-    ItemRegistration? GetItemByAegis(string aegisName);
 
     IReadOnlyCollection<NpcRegistration> AllNpcs();
     IReadOnlyCollection<FloatingNpcRegistration> AllFloatingNpcs();

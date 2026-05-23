@@ -150,7 +150,6 @@ public class MobSpottedLootTests
         public NpcRegistration? GetNpcByName(string n) => null;
         public FloatingNpcRegistration? GetFloatingByName(string n) => null;
         public ItemRegistration? GetItemById(int id) => null;
-        public ItemRegistration? GetItemByAegis(string aegisName) => null;
         public void Clear() => _warps.Clear();
         public int NpcCount => 0;
         public int FloatingCount => 0;

@@ -6,8 +6,6 @@ import type { ItemRegistration } from "../../types/api";
 
 export const testKnife: ItemRegistration = {
     id: 999002,
-    nameAegis: "_DevTest_Knife",
-    nameEnglish: "Dev Test Knife",
     onEquip(ctx) {
         ctx.bonus("bAtk", 10);
     },

@@ -6,24 +6,16 @@ namespace Map.Server.Scripting.Records;
 /// is the C# mirror.
 ///
 /// <para>
-/// Items are keyed by numeric <c>Id</c> (rAthena <c>id</c> column).
-/// <c>NameAegis</c> is the script-side identifier (e.g. "Red_Potion")
-/// that combos cite as a member; <c>NameEnglish</c> is the display name.
-/// All three come from <c>item_db</c>. The <see cref="Hooks"/> bundle
-/// carries any of OnUse / OnEquip / OnUnequip the author defined.
-/// </para>
-///
-/// <para>
-/// This record only captures the *scriptable* surface — the static stats
-/// (type, weight, slots, jobs, etc.) stay in SQL / IItemCatalog. Authors
-/// who want to override stats can do so through the existing catalog
-/// service; the registrar is purely for hook attachment.
+/// Items are keyed by numeric <c>Id</c> (rAthena <c>id</c> column) only —
+/// every other item-db column (name_aegis, name_english, type, weight,
+/// slots, jobs, …) already lives in SQL / <c>IItemCatalog</c>, so the
+/// registrar is purely for hook attachment by id. Combo members cite
+/// aegis names, which get resolved to ids via the catalog at dispatch
+/// time; they don't need to be re-declared on each item registration.
 /// </para>
 /// </summary>
 public sealed record ItemRegistration
 {
     public required int Id { get; init; }
-    public required string NameAegis { get; init; }
-    public string? NameEnglish { get; init; }
     public required ItemHooks Hooks { get; init; }
 }
