@@ -92,6 +92,10 @@ public static class ServiceCollectionExtensions
         // DB-8c: skill tree catalogs.
         services.AddScoped<ISkillTreeDbRepository, SkillTreeDbRepository>();
         services.AddScoped<IGuildSkillTreeDbRepository, GuildSkillTreeDbRepository>();
+        // DB-8d: job tables.
+        services.AddScoped<IJobInfoDbRepository, JobInfoDbRepository>();
+        services.AddScoped<IJobExpDbRepository, JobExpDbRepository>();
+        services.AddScoped<IJobBasePointsDbRepository, JobBasePointsDbRepository>();
 
         return services;
     }

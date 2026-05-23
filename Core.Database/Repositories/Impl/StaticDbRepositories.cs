@@ -231,3 +231,29 @@ internal sealed class GuildSkillTreeDbRepository(GameDbContext ctx) : IGuildSkil
     public async Task<IReadOnlyList<GuildSkillTreeRequirementDbEntity>> GetRequirementsAsync(string skillAegis, CancellationToken ct = default)
         => await ctx.GuildSkillTreeRequirementDb.AsNoTracking().Where(r => r.SkillAegis == skillAegis).ToListAsync(ct);
 }
+
+// DB-8d — job table repos
+
+internal sealed class JobInfoDbRepository(GameDbContext ctx) : IJobInfoDbRepository
+{
+    public async Task<IReadOnlyList<JobInfoDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.JobInfoDb.AsNoTracking().ToListAsync(ct);
+    public async Task<JobInfoDbEntity?> GetByJobAsync(string jobAegis, CancellationToken ct = default)
+        => await ctx.JobInfoDb.AsNoTracking().FirstOrDefaultAsync(j => j.JobAegis == jobAegis, ct);
+    public async Task<IReadOnlyList<JobBonusStatsDbEntity>> GetBonusStatsAsync(string jobAegis, CancellationToken ct = default)
+        => await ctx.JobBonusStatsDb.AsNoTracking().Where(b => b.JobAegis == jobAegis).OrderBy(b => b.Level).ToListAsync(ct);
+}
+
+internal sealed class JobExpDbRepository(GameDbContext ctx) : IJobExpDbRepository
+{
+    public async Task<IReadOnlyList<JobExpDbEntity>> GetByJobAsync(string jobAegis, CancellationToken ct = default)
+        => await ctx.JobExpDb.AsNoTracking().Where(e => e.JobAegis == jobAegis).OrderBy(e => e.Level).ToListAsync(ct);
+    public async Task<JobMaxLevelDbEntity?> GetMaxLevelAsync(string jobAegis, CancellationToken ct = default)
+        => await ctx.JobMaxLevelDb.AsNoTracking().FirstOrDefaultAsync(m => m.JobAegis == jobAegis, ct);
+}
+
+internal sealed class JobBasePointsDbRepository(GameDbContext ctx) : IJobBasePointsDbRepository
+{
+    public async Task<IReadOnlyList<JobBasePointsDbEntity>> GetByJobAsync(string jobAegis, CancellationToken ct = default)
+        => await ctx.JobBasePointsDb.AsNoTracking().Where(p => p.JobAegis == jobAegis).OrderBy(p => p.Level).ToListAsync(ct);
+}

@@ -168,9 +168,8 @@ public class BattlegroundDbEntityConfiguration : IEntityTypeConfiguration<Battle
 public class ItemRandomOptGroupEntityConfiguration : IEntityTypeConfiguration<ItemRandomOptGroupEntity> { public void Configure(EntityTypeBuilder<ItemRandomOptGroupEntity> b) => PayloadConfig.IntKey(b, "item_randomopt_group", "group_id"); }
 // AttrFixEntityConfiguration / LevelPenaltyEntityConfiguration removed
 // in DB-8a — see StaticDbConfigurations.cs for the typed replacements.
-public class JobStatsEntityConfiguration : IEntityTypeConfiguration<JobStatsEntity> { public void Configure(EntityTypeBuilder<JobStatsEntity> b) => PayloadConfig.RowIndex(b, "job_stats"); }
-public class JobExpEntityConfiguration : IEntityTypeConfiguration<JobExpEntity> { public void Configure(EntityTypeBuilder<JobExpEntity> b) => PayloadConfig.RowIndex(b, "job_exp"); }
-public class JobBasePointsEntityConfiguration : IEntityTypeConfiguration<JobBasePointsEntity> { public void Configure(EntityTypeBuilder<JobBasePointsEntity> b) => PayloadConfig.RowIndex(b, "job_basepoints"); }
+// JobStatsEntityConfiguration / JobExpEntityConfiguration / JobBasePointsEntityConfiguration
+// removed in DB-8d.
 public class StatusYmlEntityConfiguration : IEntityTypeConfiguration<StatusYmlEntity> { public void Configure(EntityTypeBuilder<StatusYmlEntity> b) => PayloadConfig.StringKey(b, "status_yml", "status_name"); }
 // ItemCombosEntityConfiguration / ItemPackagesEntityConfiguration / ItemGroupDbEntityConfiguration
 // removed in DB-8b.

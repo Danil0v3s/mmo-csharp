@@ -91,9 +91,9 @@ public class BattlegroundDbEntity : PayloadIntKeyEntity { } // bg_id
 public class ItemRandomOptGroupEntity : PayloadIntKeyEntity { } // group_id
 // AttrFixEntity / LevelPenaltyEntity removed in DB-8a — replaced by
 // typed AttrFixDbEntity + LevelPenaltyDbEntity / LevelPenaltyDifferenceDbEntity.
-public class JobStatsEntity : PayloadRowIndexEntity { }
-public class JobExpEntity : PayloadRowIndexEntity { }
-public class JobBasePointsEntity : PayloadRowIndexEntity { }
+// JobStatsEntity / JobExpEntity / JobBasePointsEntity removed in DB-8d —
+// see JobCatalogDbEntities.cs (JobInfoDbEntity + JobBonusStatsDbEntity +
+// JobExpDbEntity + JobMaxLevelDbEntity + JobBasePointsDbEntity).
 public class StatusYmlEntity : PayloadStringKeyEntity { } // status_name
 // ItemCombosEntity removed in DB-8b — see ItemComboDbEntity + ItemComboMemberDbEntity.
 // ItemPackagesEntity removed in DB-8b — see ItemPackageDbEntity + ItemPackageEntryDbEntity.

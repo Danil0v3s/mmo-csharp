@@ -594,3 +594,84 @@ public class GuildSkillTreeRequirementDbEntityConfiguration : IEntityTypeConfigu
         b.Property(e => e.RequiredLevel).HasColumnName("required_level");
     }
 }
+
+// ============================================================================
+// DB-8d: job table re-normalized catalogs
+// ============================================================================
+
+public class JobInfoDbEntityConfiguration : IEntityTypeConfiguration<JobInfoDbEntity>
+{
+    public void Configure(EntityTypeBuilder<JobInfoDbEntity> b)
+    {
+        b.ToTable("job_info_db");
+        b.HasKey(e => e.JobAegis);
+        b.Property(e => e.JobAegis).HasColumnName("job_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.MaxWeight).HasColumnName("max_weight");
+        b.Property(e => e.HpFactor).HasColumnName("hp_factor");
+        b.Property(e => e.HpIncrease).HasColumnName("hp_increase");
+        b.Property(e => e.SpFactor).HasColumnName("sp_factor");
+        b.Property(e => e.SpIncrease).HasColumnName("sp_increase");
+    }
+}
+
+public class JobBonusStatsDbEntityConfiguration : IEntityTypeConfiguration<JobBonusStatsDbEntity>
+{
+    public void Configure(EntityTypeBuilder<JobBonusStatsDbEntity> b)
+    {
+        b.ToTable("job_bonus_stats_db");
+        b.HasKey(e => new { e.JobAegis, e.Level });
+        b.Property(e => e.JobAegis).HasColumnName("job_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Level).HasColumnName("level");
+        b.Property(e => e.Str).HasColumnName("str");
+        b.Property(e => e.Agi).HasColumnName("agi");
+        b.Property(e => e.Vit).HasColumnName("vit");
+        b.Property(e => e.IntStat).HasColumnName("int_stat");
+        b.Property(e => e.Dex).HasColumnName("dex");
+        b.Property(e => e.Luk).HasColumnName("luk");
+        b.Property(e => e.Pow).HasColumnName("pow");
+        b.Property(e => e.Sta).HasColumnName("sta");
+        b.Property(e => e.Wis).HasColumnName("wis");
+        b.Property(e => e.Spl).HasColumnName("spl");
+        b.Property(e => e.Con).HasColumnName("con");
+        b.Property(e => e.Crt).HasColumnName("crt");
+    }
+}
+
+public class JobExpDbEntityConfiguration : IEntityTypeConfiguration<JobExpDbEntity>
+{
+    public void Configure(EntityTypeBuilder<JobExpDbEntity> b)
+    {
+        b.ToTable("job_exp_db");
+        b.HasKey(e => new { e.JobAegis, e.Level });
+        b.Property(e => e.JobAegis).HasColumnName("job_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Level).HasColumnName("level");
+        b.Property(e => e.BaseExp).HasColumnName("base_exp");
+        b.Property(e => e.JobExp).HasColumnName("job_exp");
+    }
+}
+
+public class JobMaxLevelDbEntityConfiguration : IEntityTypeConfiguration<JobMaxLevelDbEntity>
+{
+    public void Configure(EntityTypeBuilder<JobMaxLevelDbEntity> b)
+    {
+        b.ToTable("job_max_level_db");
+        b.HasKey(e => e.JobAegis);
+        b.Property(e => e.JobAegis).HasColumnName("job_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.MaxBaseLevel).HasColumnName("max_base_level");
+        b.Property(e => e.MaxJobLevel).HasColumnName("max_job_level");
+    }
+}
+
+public class JobBasePointsDbEntityConfiguration : IEntityTypeConfiguration<JobBasePointsDbEntity>
+{
+    public void Configure(EntityTypeBuilder<JobBasePointsDbEntity> b)
+    {
+        b.ToTable("job_base_points_db");
+        b.HasKey(e => new { e.JobAegis, e.Level });
+        b.Property(e => e.JobAegis).HasColumnName("job_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Level).HasColumnName("level");
+        b.Property(e => e.Hp).HasColumnName("hp");
+        b.Property(e => e.Sp).HasColumnName("sp");
+        b.Property(e => e.Ap).HasColumnName("ap");
+    }
+}

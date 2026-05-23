@@ -171,9 +171,7 @@ public class GameDbContext : DbContext
     // DB-8b: MobSummonDb moved to typed entity below.
     public DbSet<ItemRandomOptGroupEntity> ItemRandomOptGroupDb => Set<ItemRandomOptGroupEntity>();
     // DB-8a: AttrFixDb / LevelPenaltyDb moved to typed entities below.
-    public DbSet<JobStatsEntity> JobStatsDb => Set<JobStatsEntity>();
-    public DbSet<JobExpEntity> JobExpDb => Set<JobExpEntity>();
-    public DbSet<JobBasePointsEntity> JobBasePointsDb => Set<JobBasePointsEntity>();
+    // DB-8d: JobStatsDb / JobExpDb / JobBasePointsDb moved to typed entities below.
     public DbSet<StatusYmlEntity> StatusYmlDb => Set<StatusYmlEntity>();
     // DB-8b: ItemCombosDb / ItemPackagesDb / ItemGroupDb moved to typed entities below.
     public DbSet<ItemEnchantEntity> ItemEnchantDb => Set<ItemEnchantEntity>();
@@ -215,6 +213,13 @@ public class GameDbContext : DbContext
     public DbSet<SkillTreeRequirementDbEntity> SkillTreeRequirementDb => Set<SkillTreeRequirementDbEntity>();
     public DbSet<GuildSkillTreeDbEntity> GuildSkillTreeDb => Set<GuildSkillTreeDbEntity>();
     public DbSet<GuildSkillTreeRequirementDbEntity> GuildSkillTreeRequirementDb => Set<GuildSkillTreeRequirementDbEntity>();
+
+    // ---- DB-8d: job table re-normalized typed catalogs ----
+    public DbSet<JobInfoDbEntity> JobInfoDb => Set<JobInfoDbEntity>();
+    public DbSet<JobBonusStatsDbEntity> JobBonusStatsDb => Set<JobBonusStatsDbEntity>();
+    public DbSet<JobExpDbEntity> JobExpDb => Set<JobExpDbEntity>();
+    public DbSet<JobMaxLevelDbEntity> JobMaxLevelDb => Set<JobMaxLevelDbEntity>();
+    public DbSet<JobBasePointsDbEntity> JobBasePointsDb => Set<JobBasePointsDbEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

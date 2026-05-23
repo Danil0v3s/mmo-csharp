@@ -197,3 +197,28 @@ public interface IGuildSkillTreeDbRepository
     Task<IReadOnlyList<GuildSkillTreeDbEntity>> GetAllAsync(CancellationToken ct = default);
     Task<IReadOnlyList<GuildSkillTreeRequirementDbEntity>> GetRequirementsAsync(string skillAegis, CancellationToken ct = default);
 }
+
+// ============================================================================
+// DB-8d: job table repos
+// ============================================================================
+
+/// <summary>DB-8d: per-job stat constants (rAthena job_stats.yml).</summary>
+public interface IJobInfoDbRepository
+{
+    Task<IReadOnlyList<JobInfoDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<JobInfoDbEntity?> GetByJobAsync(string jobAegis, CancellationToken ct = default);
+    Task<IReadOnlyList<JobBonusStatsDbEntity>> GetBonusStatsAsync(string jobAegis, CancellationToken ct = default);
+}
+
+/// <summary>DB-8d: per-job per-level EXP curves (rAthena job_exp.yml).</summary>
+public interface IJobExpDbRepository
+{
+    Task<IReadOnlyList<JobExpDbEntity>> GetByJobAsync(string jobAegis, CancellationToken ct = default);
+    Task<JobMaxLevelDbEntity?> GetMaxLevelAsync(string jobAegis, CancellationToken ct = default);
+}
+
+/// <summary>DB-8d: per-job per-level HP/SP/AP base values (rAthena job_basepoints.yml).</summary>
+public interface IJobBasePointsDbRepository
+{
+    Task<IReadOnlyList<JobBasePointsDbEntity>> GetByJobAsync(string jobAegis, CancellationToken ct = default);
+}
