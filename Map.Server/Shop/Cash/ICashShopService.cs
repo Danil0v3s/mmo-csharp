@@ -27,4 +27,10 @@ public interface ICashShopService
 
     /// <summary>rAthena <c>sale_notify_login</c>.</summary>
     void SaleNotifyLogin(PlayerEntity pc);
+
+    /// <summary>rAthena <c>sale_add_item</c> — schedule a timed sale window.</summary>
+    void SaleAddItem(int itemId, int amount, DateTime startAt, DateTime endAt);
+
+    /// <summary>rAthena <c>sale_find_item</c> — true when an active sale exists for the item.</summary>
+    bool SaleFindItem(int itemId);
 }

@@ -284,6 +284,18 @@ public sealed class PlayerEntity : Entity
     /// <summary>Fake name overlay for <c>@fakename</c>; empty = use real name.</summary>
     public string FakeName { get; set; } = string.Empty;
 
+    // ----- Per-PC working drafts (AT-D2 wave) -----
+    /// <summary>
+    /// rAthena <c>mail.msg</c> — per-PC mail draft. Attached items + zeny
+    /// are held here between <c>mail_setattachment</c> /
+    /// <c>mail_removeitem</c> and the actual <c>mail_send</c>; the draft
+    /// is wiped on send or on <c>mail_clear</c>. Index: inventory slot.
+    /// </summary>
+    public Dictionary<int, int> MailDraftItems { get; } = new();
+    /// <summary>rAthena <c>mail.msg.zeny</c>.</summary>
+    public long MailDraftZeny { get; set; }
+    /// <summary>rAthena <c>mail.opened</c> — mail UI open flag.</summary>
+    public bool MailOpened { get; set; }
 
     public override EntityType Type => EntityType.Pc;
 
