@@ -175,8 +175,7 @@ public class GameDbContext : DbContext
     // DB-8e: StatusYmlDb moved to typed entities below.
     // DB-8b: ItemCombosDb / ItemPackagesDb / ItemGroupDb moved to typed entities below.
     // DB-8g: ItemEnchant/Reform/Laphine moved to typed entities below.
-    public DbSet<RefineEntity> RefineDb => Set<RefineEntity>();
-    public DbSet<EnchantGradeEntity> EnchantGradeDb => Set<EnchantGradeEntity>();
+    // DB-8h: RefineDb / EnchantGradeDb moved to typed entities below.
     public DbSet<MapDropsEntity> MapDropsDb => Set<MapDropsEntity>();
     public DbSet<MobItemRatioEntity> MobItemRatioDb => Set<MobItemRatioEntity>();
     // DB-8b: ItemCashDb / AttendanceDb moved to typed entities below.
@@ -243,6 +242,14 @@ public class GameDbContext : DbContext
     public DbSet<LaphineUpgradeTargetDbEntity> LaphineUpgradeTargetDb => Set<LaphineUpgradeTargetDbEntity>();
     public DbSet<ItemRandomOptGroupDbEntity> ItemRandomOptGroupDb => Set<ItemRandomOptGroupDbEntity>();
     public DbSet<ItemRandomOptGroupOptionDbEntity> ItemRandomOptGroupOptionDb => Set<ItemRandomOptGroupOptionDbEntity>();
+
+    // ---- DB-8h: refine + enchantgrade re-normalized ----
+    public DbSet<RefineGroupDbEntity> RefineGroupDb => Set<RefineGroupDbEntity>();
+    public DbSet<RefineLevelDbEntity> RefineLevelDb => Set<RefineLevelDbEntity>();
+    public DbSet<RefineChanceDbEntity> RefineChanceDb => Set<RefineChanceDbEntity>();
+    public DbSet<EnchantGradeDbEntity> EnchantGradeDb => Set<EnchantGradeDbEntity>();
+    public DbSet<EnchantGradeLevelDbEntity> EnchantGradeLevelDb => Set<EnchantGradeLevelDbEntity>();
+    public DbSet<EnchantGradeChanceDbEntity> EnchantGradeChanceDb => Set<EnchantGradeChanceDbEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

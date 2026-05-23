@@ -100,8 +100,7 @@ public abstract class PayloadRowIndexEntity { public int RowId { get; set; } pub
 // ItemGroupDbEntity removed in DB-8b — see ItemGroupCatalogDbEntity + ItemGroupCatalogEntryDbEntity.
 // ItemEnchantEntity / ItemReformEntity / LaphineSynthesisEntity /
 // LaphineUpgradeEntity removed in DB-8g — see EnchantPipelineDbEntities.cs.
-public class RefineEntity : PayloadStringKeyEntity { } // refine_group
-public class EnchantGradeEntity : PayloadStringKeyEntity { } // equip_type
+// RefineEntity / EnchantGradeEntity removed in DB-8h — see RefineGradeDbEntities.cs.
 public class MapDropsEntity : PayloadStringKeyEntity { } // map_name
 public class MobItemRatioEntity : PayloadStringKeyEntity { } // item_aegis
 // ItemCashEntity removed in DB-8b — see ItemCashDbEntity + ItemCashEntryDbEntity.

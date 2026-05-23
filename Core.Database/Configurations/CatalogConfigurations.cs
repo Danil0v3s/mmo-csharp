@@ -174,8 +174,7 @@ internal static class PayloadConfig
 // ItemCombosEntityConfiguration / ItemPackagesEntityConfiguration / ItemGroupDbEntityConfiguration
 // removed in DB-8b.
 // Item enchant pipeline configurations removed in DB-8g.
-public class RefineEntityConfiguration : IEntityTypeConfiguration<RefineEntity> { public void Configure(EntityTypeBuilder<RefineEntity> b) => PayloadConfig.StringKey(b, "refine", "refine_group"); }
-public class EnchantGradeEntityConfiguration : IEntityTypeConfiguration<EnchantGradeEntity> { public void Configure(EntityTypeBuilder<EnchantGradeEntity> b) => PayloadConfig.StringKey(b, "enchantgrade", "equip_type"); }
+// RefineEntityConfiguration / EnchantGradeEntityConfiguration removed in DB-8h.
 public class MapDropsEntityConfiguration : IEntityTypeConfiguration<MapDropsEntity> { public void Configure(EntityTypeBuilder<MapDropsEntity> b) => PayloadConfig.StringKey(b, "map_drops", "map_name"); }
 public class MobItemRatioEntityConfiguration : IEntityTypeConfiguration<MobItemRatioEntity> { public void Configure(EntityTypeBuilder<MobItemRatioEntity> b) => PayloadConfig.StringKey(b, "mob_item_ratio", "item_aegis"); }
 // ItemCashEntityConfiguration / AttendanceDbEntityConfiguration removed in DB-8b.

@@ -953,3 +953,82 @@ public class ItemRandomOptGroupOptionDbEntityConfiguration : IEntityTypeConfigur
         b.Property(e => e.Chance).HasColumnName("chance");
     }
 }
+
+// ============================================================================
+// DB-8h: refine + enchantgrade configurations
+// ============================================================================
+
+public class RefineGroupDbEntityConfiguration : IEntityTypeConfiguration<RefineGroupDbEntity>
+{
+    public void Configure(EntityTypeBuilder<RefineGroupDbEntity> b)
+    {
+        b.ToTable("refine_group_db");
+        b.HasKey(e => e.GroupName);
+        b.Property(e => e.GroupName).HasColumnName("group_name").HasMaxLength(32).IsRequired();
+    }
+}
+
+public class RefineLevelDbEntityConfiguration : IEntityTypeConfiguration<RefineLevelDbEntity>
+{
+    public void Configure(EntityTypeBuilder<RefineLevelDbEntity> b)
+    {
+        b.ToTable("refine_level_db");
+        b.HasKey(e => new { e.GroupName, e.ItemLevel, e.RefineLevel });
+        b.Property(e => e.GroupName).HasColumnName("group_name").HasMaxLength(32).IsRequired();
+        b.Property(e => e.ItemLevel).HasColumnName("item_level");
+        b.Property(e => e.RefineLevel).HasColumnName("refine_level");
+        b.Property(e => e.Bonus).HasColumnName("bonus");
+    }
+}
+
+public class RefineChanceDbEntityConfiguration : IEntityTypeConfiguration<RefineChanceDbEntity>
+{
+    public void Configure(EntityTypeBuilder<RefineChanceDbEntity> b)
+    {
+        b.ToTable("refine_chance_db");
+        b.HasKey(e => new { e.GroupName, e.ItemLevel, e.RefineLevel, e.ChanceType });
+        b.Property(e => e.GroupName).HasColumnName("group_name").HasMaxLength(32).IsRequired();
+        b.Property(e => e.ItemLevel).HasColumnName("item_level");
+        b.Property(e => e.RefineLevel).HasColumnName("refine_level");
+        b.Property(e => e.ChanceType).HasColumnName("chance_type").HasMaxLength(24).IsRequired();
+        b.Property(e => e.Rate).HasColumnName("rate");
+        b.Property(e => e.Price).HasColumnName("price");
+        b.Property(e => e.MaterialAegis).HasColumnName("material_aegis").HasMaxLength(64).IsRequired();
+    }
+}
+
+public class EnchantGradeDbEntityConfiguration : IEntityTypeConfiguration<EnchantGradeDbEntity>
+{
+    public void Configure(EntityTypeBuilder<EnchantGradeDbEntity> b)
+    {
+        b.ToTable("enchantgrade_db");
+        b.HasKey(e => e.EquipType);
+        b.Property(e => e.EquipType).HasColumnName("equip_type").HasMaxLength(32).IsRequired();
+    }
+}
+
+public class EnchantGradeLevelDbEntityConfiguration : IEntityTypeConfiguration<EnchantGradeLevelDbEntity>
+{
+    public void Configure(EntityTypeBuilder<EnchantGradeLevelDbEntity> b)
+    {
+        b.ToTable("enchantgrade_level_db");
+        b.HasKey(e => new { e.EquipType, e.ItemLevel, e.Grade });
+        b.Property(e => e.EquipType).HasColumnName("equip_type").HasMaxLength(32).IsRequired();
+        b.Property(e => e.ItemLevel).HasColumnName("item_level");
+        b.Property(e => e.Grade).HasColumnName("grade").HasMaxLength(8).IsRequired();
+    }
+}
+
+public class EnchantGradeChanceDbEntityConfiguration : IEntityTypeConfiguration<EnchantGradeChanceDbEntity>
+{
+    public void Configure(EntityTypeBuilder<EnchantGradeChanceDbEntity> b)
+    {
+        b.ToTable("enchantgrade_chance_db");
+        b.HasKey(e => new { e.EquipType, e.ItemLevel, e.Grade, e.Refine });
+        b.Property(e => e.EquipType).HasColumnName("equip_type").HasMaxLength(32).IsRequired();
+        b.Property(e => e.ItemLevel).HasColumnName("item_level");
+        b.Property(e => e.Grade).HasColumnName("grade").HasMaxLength(8).IsRequired();
+        b.Property(e => e.Refine).HasColumnName("refine");
+        b.Property(e => e.Chance).HasColumnName("chance");
+    }
+}
