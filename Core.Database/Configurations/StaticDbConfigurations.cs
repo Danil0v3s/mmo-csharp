@@ -1032,3 +1032,53 @@ public class EnchantGradeChanceDbEntityConfiguration : IEntityTypeConfiguration<
         b.Property(e => e.Chance).HasColumnName("chance");
     }
 }
+
+// ============================================================================
+// DB-8i: drop override configurations
+// ============================================================================
+
+public class MapDropDbEntityConfiguration : IEntityTypeConfiguration<MapDropDbEntity>
+{
+    public void Configure(EntityTypeBuilder<MapDropDbEntity> b)
+    {
+        b.ToTable("map_drop_db");
+        b.HasKey(e => e.MapName);
+        b.Property(e => e.MapName).HasColumnName("map_name").HasMaxLength(64).IsRequired();
+    }
+}
+
+public class MapDropEntryDbEntityConfiguration : IEntityTypeConfiguration<MapDropEntryDbEntity>
+{
+    public void Configure(EntityTypeBuilder<MapDropEntryDbEntity> b)
+    {
+        b.ToTable("map_drop_entry_db");
+        b.HasKey(e => new { e.MapName, e.EntryIndex });
+        b.Property(e => e.MapName).HasColumnName("map_name").HasMaxLength(64).IsRequired();
+        b.Property(e => e.EntryIndex).HasColumnName("entry_index");
+        b.Property(e => e.ItemAegis).HasColumnName("item_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Rate).HasColumnName("rate");
+        b.Property(e => e.MobFilterAegis).HasColumnName("mob_filter_aegis").HasMaxLength(64);
+    }
+}
+
+public class MobItemRatioDbEntityConfiguration : IEntityTypeConfiguration<MobItemRatioDbEntity>
+{
+    public void Configure(EntityTypeBuilder<MobItemRatioDbEntity> b)
+    {
+        b.ToTable("mob_item_ratio_db");
+        b.HasKey(e => e.ItemAegis);
+        b.Property(e => e.ItemAegis).HasColumnName("item_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Ratio).HasColumnName("ratio");
+    }
+}
+
+public class MobItemRatioMobDbEntityConfiguration : IEntityTypeConfiguration<MobItemRatioMobDbEntity>
+{
+    public void Configure(EntityTypeBuilder<MobItemRatioMobDbEntity> b)
+    {
+        b.ToTable("mob_item_ratio_mob_db");
+        b.HasKey(e => new { e.ItemAegis, e.MobAegis });
+        b.Property(e => e.ItemAegis).HasColumnName("item_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.MobAegis).HasColumnName("mob_aegis").HasMaxLength(64).IsRequired();
+    }
+}

@@ -176,8 +176,7 @@ public class GameDbContext : DbContext
     // DB-8b: ItemCombosDb / ItemPackagesDb / ItemGroupDb moved to typed entities below.
     // DB-8g: ItemEnchant/Reform/Laphine moved to typed entities below.
     // DB-8h: RefineDb / EnchantGradeDb moved to typed entities below.
-    public DbSet<MapDropsEntity> MapDropsDb => Set<MapDropsEntity>();
-    public DbSet<MobItemRatioEntity> MobItemRatioDb => Set<MobItemRatioEntity>();
+    // DB-8i: MapDropsDb / MobItemRatioDb moved to typed entities below.
     // DB-8b: ItemCashDb / AttendanceDb moved to typed entities below.
     // DB-8a: ReputationGroupDb moved to typed entity below.
 
@@ -250,6 +249,12 @@ public class GameDbContext : DbContext
     public DbSet<EnchantGradeDbEntity> EnchantGradeDb => Set<EnchantGradeDbEntity>();
     public DbSet<EnchantGradeLevelDbEntity> EnchantGradeLevelDb => Set<EnchantGradeLevelDbEntity>();
     public DbSet<EnchantGradeChanceDbEntity> EnchantGradeChanceDb => Set<EnchantGradeChanceDbEntity>();
+
+    // ---- DB-8i: drop override catalogs re-normalized ----
+    public DbSet<MapDropDbEntity> MapDropDb => Set<MapDropDbEntity>();
+    public DbSet<MapDropEntryDbEntity> MapDropEntryDb => Set<MapDropEntryDbEntity>();
+    public DbSet<MobItemRatioDbEntity> MobItemRatioDb => Set<MobItemRatioDbEntity>();
+    public DbSet<MobItemRatioMobDbEntity> MobItemRatioMobDb => Set<MobItemRatioMobDbEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
