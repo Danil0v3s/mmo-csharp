@@ -172,4 +172,74 @@ public class EquipBonusAggregatorTests
         // Stale value gone — only the equipped item's script counts.
         Assert.Equal(10, bundle.FlatAtk);
     }
+
+    // ---- DBR-2a+ — combo script layering ----
+
+    [Fact]
+    public void BuildBundle_ActiveCombos_LayerOntoItemBonuses()
+    {
+        // Per-item gives FlatAtk=10; the combo gives bAddRace,RC_Dragon,+5.
+        // Both should land on the same bundle.
+        var catalog = new StubCatalog
+        {
+            [1201] = new ItemEntity { Id = 1201, NameAegis = "Knife", Script = "bonus bAtk,10;" },
+        };
+        var inv = new[]
+        {
+            new InventoryItem { NameId = 1201, Equip = EquipBonusAggregator.EquipRightHand },
+        };
+        var bundle = new EquipBonusBundle();
+        var combos = new[]
+        {
+            new ActiveCombo(1, "bonus2 bAddRace,RC_Dragon,5;"),
+        };
+
+        EquipBonusAggregator.BuildBundle(inv, catalog, bundle, combos);
+
+        Assert.Equal(10, bundle.FlatAtk);
+        Assert.Equal(5, bundle.AddRace[(int)BattleRace.Dragon]);
+    }
+
+    [Fact]
+    public void BuildBundle_MultipleCombos_StackBonuses()
+    {
+        // Two combos hitting the same race slot accumulate; a third hits
+        // a different stat. Confirms combo scripts go through the same
+        // accumulator path as per-item bonuses.
+        var catalog = new StubCatalog();
+        var inv = Array.Empty<InventoryItem>();
+        var bundle = new EquipBonusBundle();
+        var combos = new[]
+        {
+            new ActiveCombo(1, "bonus2 bAddRace,RC_Dragon,5;"),
+            new ActiveCombo(2, "bonus2 bAddRace,RC_Dragon,25;"),
+            new ActiveCombo(3, "bonus bMaxHP,500;"),
+        };
+
+        EquipBonusAggregator.BuildBundle(inv, catalog, bundle, combos);
+
+        Assert.Equal(30, bundle.AddRace[(int)BattleRace.Dragon]);
+        Assert.Equal(500, bundle.FlatMaxHp);
+    }
+
+    [Fact]
+    public void BuildBundle_NullCombos_NoOp()
+    {
+        // Pre-DBR-2a+ callers passed no combos parameter; backwards-compat
+        // path must leave the bundle untouched by the combo phase.
+        var catalog = new StubCatalog
+        {
+            [1201] = new ItemEntity { Id = 1201, NameAegis = "Knife", Script = "bonus bAtk,7;" },
+        };
+        var inv = new[]
+        {
+            new InventoryItem { NameId = 1201, Equip = EquipBonusAggregator.EquipRightHand },
+        };
+        var bundle = new EquipBonusBundle();
+
+        EquipBonusAggregator.BuildBundle(inv, catalog, bundle, activeCombos: null);
+
+        Assert.Equal(7, bundle.FlatAtk);
+        Assert.Equal(0, bundle.AddRace[(int)BattleRace.Dragon]);
+    }
 }

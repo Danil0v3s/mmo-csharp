@@ -98,11 +98,22 @@ public static class EquipBonusAggregator
     /// weapon attributes); dynamic patterns (<c>getrefine()</c>,
     /// conditional bonuses) flow through when the script engine
     /// ports, without touching this call site.
+    ///
+    /// <para>
+    /// DBR-2a+: if <paramref name="activeCombos"/> is provided, every
+    /// firing combo's rAthena bonus script is also applied through the
+    /// same extractor. Combo bonuses accumulate into the same bundle
+    /// so the BattleCalculator + cast/drain hooks see them
+    /// indistinguishably from per-item bonuses. Conditional combos
+    /// (the ~2,700 yml entries using <c>if (getrefine() &gt;= 7) {...}</c>)
+    /// silently no-op for now — they need the V8 DSL→JS bridge.
+    /// </para>
     /// </summary>
     public static void BuildBundle(
         IEnumerable<InventoryItem>? inventory,
         IItemCatalog catalog,
-        EquipBonusBundle bundle)
+        EquipBonusBundle bundle,
+        IReadOnlyList<ActiveCombo>? activeCombos = null)
     {
         bundle.Reset();
         if (inventory == null) return;
@@ -119,6 +130,16 @@ public static class EquipBonusAggregator
             // effectively never applied — that matches rAthena's
             // status_calc_pc cadence.
             BonusScriptExtractor.Apply(row.EquipScript, bundle);
+        }
+
+        // DBR-2a+: layer combo bonuses on top of per-item bonuses.
+        // Same DSL ↔ same extractor; combo scripts are flat
+        // bonus*() statements in ~30k of ~37k cases (the conditional
+        // / autobonus ~7k cases need the V8 bridge).
+        if (activeCombos != null)
+        {
+            for (var i = 0; i < activeCombos.Count; i++)
+                BonusScriptExtractor.Apply(activeCombos[i].Script, bundle);
         }
     }
 }

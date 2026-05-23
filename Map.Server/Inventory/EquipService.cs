@@ -175,25 +175,29 @@ public sealed class EquipService : IEquipService
         if (_entities.Get(eid) is not PlayerEntity player) return;
 
         var summary = EquipBonusAggregator.Aggregate(session.Inventory, _catalog);
+
+        // DBR-2a+: recompute firing combos BEFORE the bonus bundle so we
+        // can layer the combo scripts on top in one BuildBundle pass.
+        // Same DSL as per-item scripts; routed through the existing
+        // regex extractor. Conditional / autobonus combos (~7k of ~37k)
+        // need the V8 DSL→JS bridge — they no-op silently for now.
+        IReadOnlyList<ActiveCombo>? activeCombos = null;
+        if (_combos != null)
+        {
+            activeCombos = _combos.RecomputeCombos(session);
+            if (activeCombos.Count > 0)
+            {
+                _logger.LogDebug("item_combo: {N} combo(s) firing for {Player} (ids: {Ids})",
+                    activeCombos.Count, player.Name, string.Join(",", activeCombos.Select(c => c.ComboId)));
+            }
+        }
+
         // T2.2 — rebuild the indexed bonus bundle from each equip's
         // bonus script (regex pass over the item_db `script` column).
         // Read by IBattleCardService.CalcCardFix + cast / drain hooks.
-        EquipBonusAggregator.BuildBundle(session.Inventory, _catalog, player.EquipBonuses);
-
-        // DBR-2a: recompute firing combos for the new equipped set.
-        // Today: log-only (script body application waits on the Jint
-        // bonus pipeline). The detection itself is the unblocked
-        // primitive — set-bonus UIs + future stat consumers can read
-        // back which combos fire without re-walking the catalog.
-        if (_combos != null)
-        {
-            var active = _combos.RecomputeCombos(session);
-            if (active.Count > 0)
-            {
-                _logger.LogDebug("item_combo: {N} combo(s) firing for {Player} (ids: {Ids})",
-                    active.Count, player.Name, string.Join(",", active.Select(c => c.ComboId)));
-            }
-        }
+        // DBR-2a+: activeCombos layer onto the same bundle so combo
+        // bonuses are indistinguishable from per-item bonuses downstream.
+        EquipBonusAggregator.BuildBundle(session.Inventory, _catalog, player.EquipBonuses, activeCombos);
         var stats = player.Stats;
         _statusCalc.CalcPc(player, new PcBaseInputs(
             BaseLevel: player.Level,
