@@ -10,14 +10,11 @@ namespace Map.Server.Gm.Commands;
 /// gating like a real command, and on invocation replies with a
 /// well-formed "feature not yet ported — see X" message.
 ///
-/// This lets <c>@commands</c> / <c>@help</c> surface the rAthena name +
-/// help text from <c>atcommands.yml</c>; the user finds out at execute
-/// time which subsystem we're still waiting on. As each backend lands,
-/// the real command file moves into the registry and supersedes the
-/// stub via DI ordering (last-wins for the same key).
-///
-/// rAthena reference paths in the comments below help reviewers know
-/// what to delete here once the parent subsystem ports.
+/// After AT-R + AT-C waves (2026-05-23) the only remaining stubs are
+/// battleground queue commands (depend on the queue state machine
+/// landing — tracked as a separate BG wave) + a handful of niche
+/// observer commands. Everything else has a real <c>IGmCommand</c>
+/// in this folder.
 /// </summary>
 internal static class StubCommandKinds
 {
@@ -25,171 +22,34 @@ internal static class StubCommandKinds
     public sealed record Spec(string Name, string Subsystem);
 
     /// <summary>
-    /// Curated list of atcommands whose backend isn't ported yet. Listed
-    /// by rAthena source file so the work to retire each stub is visible.
-    /// Generated 2026-05-19; refresh when atcommands.yml diverges.
+    /// Curated list of atcommands whose backend isn't ported yet.
     /// </summary>
     public static readonly Spec[] Specs =
     {
-        // instance.cpp (dungeon instances)
-        new("instance", "instance.cpp"),
-        new("instancelist", "instance.cpp"),
-        new("instancesignup", "instance.cpp"),
-        new("instancenoavailable", "instance.cpp"),
-        // duel.cpp — retired AT-R1 (DuelCommand + DuelInviteCommand +
-        // DuelAcceptCommand + DuelRejectCommand + DuelLeaveCommand)
-        // mail.cpp (map-side; char side ports exist for the data plane)
-        new("mailbox", "mail.cpp"),
-        // auction.cpp (map-side)
-        new("auction", "auction.cpp"),
-        // marriage (in pc.cpp:8870 marry/divorce)
-        new("marry", "pc.cpp"), new("divorce", "pc.cpp"), new("adopt", "pc.cpp"),
-        new("famerank", "pc.cpp"), new("addfame", "pc.cpp"),
-        // mercenary.cpp ext
-        new("mercenary", "mercenary.cpp"),
-        // clan.cpp map side
-        new("clan", "clan.cpp"), new("clanspy", "clan.cpp"),
-        // bg.cpp (battlegrounds)
-        new("bgsmall", "bg.cpp"), new("bgmedium", "bg.cpp"), new("bglarge", "bg.cpp"),
-        new("bg", "bg.cpp"), new("bgstart", "bg.cpp"), new("bgend", "bg.cpp"),
-        new("bgleave", "bg.cpp"), new("bgleader", "bg.cpp"), new("bginvite", "bg.cpp"),
-        // cashshop.cpp
-        new("cash", "cashshop.cpp"), new("points", "cashshop.cpp"),
-        // vending.cpp / buyingstore.cpp
-        new("vending", "vending.cpp"), new("buyingstore", "buyingstore.cpp"),
-        // channel.cpp
-        new("channel", "channel.cpp"),
-        // achievement.cpp ext
-        new("achievement", "achievement.cpp"),
-        // quest.cpp ext
-        new("questrelay", "quest.cpp"), new("checkquest", "quest.cpp"),
-        // pet ext (intimacy/friendly/hatch/etc.)
-        new("hatch", "pet.cpp"), new("makeegg", "pet.cpp"),
-        new("petfriendly", "pet.cpp"), new("pethungry", "pet.cpp"),
-        new("petrename", "pet.cpp"), new("birthpet", "pet.cpp"),
-        // homunculus ext
-        new("homevolution", "homunculus.cpp"), new("homreset", "homunculus.cpp"),
-        new("homshuffle", "homunculus.cpp"), new("hominfo", "homunculus.cpp"),
-        new("homstats", "homunculus.cpp"), new("hommutate", "homunculus.cpp"),
-        // disguise / model / size
-        new("disguise", "pc.cpp:vd_view"), new("undisguise", "pc.cpp:vd_view"),
-        new("disguiseall", "pc.cpp:vd_view"), new("undisguiseall", "pc.cpp:vd_view"),
-        new("size", "pc.cpp:vd_view"), new("model", "pc.cpp:vd_view"),
-        new("fakename", "pc.cpp:fakename"),
-        // autoloot tier
-        new("autoloot", "pc.cpp:autoloot"), new("alootid", "pc.cpp:autoloot"),
-        new("autoloottype", "pc.cpp:autoloot"),
-        // autotrade
-        new("autotrade", "vending.cpp"),
-        // GM information
-        new("accinfo", "map_session_data"), new("addperm", "pc_groups.cpp"),
-        new("rmvperm", "pc_groups.cpp"), new("adjgroup", "pc_groups.cpp"),
-        // changegm retired AT-R1 (ChangeGmCommand).
-        new("changeleader", "party.cpp"),
-        // jobchange/job retired AT-R3 (JobChangeCommand + JobChangeAliasCommand).
-        // allskill/questskill/lostskill retired AT-R2 (AllSkillCommand /
-        // QuestSkillCommand / LostSkillCommand).
-        // refine / grade
-        new("refine", "pc.cpp:refine"), new("grade", "pc.cpp:enchantgrade"),
-        new("produce", "pc.cpp:produce"),
-        // bonus / stat allocation extras — retired AT-R2 (StatAllCommand /
-        // StatsAllCommand / AllStatsCommand / TraitPointCommand /
-        // StatusPointCommand / SkillPointCommand).
-        // misc world toggles
-        new("day", "pc.cpp:option"), new("night", "pc.cpp:option"),
-        new("clearweather", "pc.cpp:weather"),
-        new("doom", "pc.cpp:doom"), new("doommap", "pc.cpp:doom"),
-        new("raise", "pc.cpp:raise"), new("raisemap", "pc.cpp:raise"),
-        new("memo", "pc.cpp:memo"), new("gat", "pc.cpp:gat"),
-        // killmonster/killmonster2/cleanmap/cleanarea retired AT-R5.
-        // option toggles
-        new("option", "pc.cpp:option"), new("displaystatus", "pc.cpp:status"),
-        // request system
-        new("request", "pc.cpp:request"),
-        // /mute / chat moderation
-        // mute/unmute/noask/noks/allowks retired AT-R4 (MuteCommand /
-        // UnmuteCommand / NoAskCommand / NoksCommand / AllowKsCommand).
-        // followers / pets
-        new("follow", "pc.cpp:follow"),
-        // dropall / storeall / itemreset / clearcart / clearstorage
-        // retired AT-R3 (DropAllCommand / StoreAllCommand /
-        // ItemResetCommand / ClearCartCommand / ClearStorageCommand).
-        // cleargstorage retired AT-R1 (ClearGuildStorageCommand).
-        // guild — partially retired AT-R1 (BreakGuildCommand,
-        // GuildStorageCommand, ClearGuildStorageCommand, ChangeGmCommand,
-        // GuildLevelUpCommand). guildspy/partyspy remain pending (no
-        // observation backend).
-        new("guildspy", "guild.cpp"),
-        new("partyspy", "party.cpp"),
-        // identify / repair retired AT-R3 (IdentifyAllCommand /
-        // RepairCommand / RepairAllCommand).
-        // jail retired AT-R3 (JailCommand / UnjailCommand / JailForCommand
-        // / JailTimeCommand).
-        // mapexit kept as stub (server shutdown helper — defer).
-        new("mapexit", "map.cpp"),
-        // reload family retired AT-R5 (Reload* commands).
-        // jobs
-        new("baselevelup", "pc.cpp:joblevel"),
-        // misc broadcast variants
-        new("kami", "broadcast"), new("kamib", "broadcast"),
-        new("kamic", "broadcast"), new("lkami", "broadcast"),
-        // healap (ap = abyss points, renewal extra)
-        new("healap", "pc.cpp:ap"),
-        // spirit / soul ball
-        new("spiritball", "pc.cpp:spiritball"), new("soulball", "pc.cpp:soulball"),
-        // ban / block
-        new("ban", "pc.cpp:ban"), new("unban", "pc.cpp:ban"),
-        new("block", "pc.cpp:block"), new("unblock", "pc.cpp:block"),
-        new("charban", "pc.cpp:ban"), new("char_ban", "pc.cpp:ban"),
-        new("char_unban", "pc.cpp:ban"), new("char_block", "pc.cpp:block"),
-        new("char_unblock", "pc.cpp:block"),
-        new("kick", "pc.cpp:kick"), new("kickall", "pc.cpp:kick"),
-        // settings / camera
-        new("camerainfo", "clif.cpp:camera"),
-        new("changedress", "pc.cpp:dress"),
-        // resurrect retired AT-R4 (ResurrectCommand).
-        // weight / showmsp
-        new("showexp", "pc.cpp:showmsg"),
-        new("showzeny", "pc.cpp:showmsg"),
-        new("showdelay", "pc.cpp:showmsg"),
-        new("showmobs", "mob.cpp"),
-        // bodystyle
-        new("bodystyle", "pc.cpp:bodystyle"),
-        // language / etc
-        new("langtype", "pc.cpp:lang"),
-        // clone
-        new("clone", "mob.cpp:clone"),
-        new("slaveclone", "mob.cpp:clone"),
-        new("evilclone", "mob.cpp:clone"),
-        // changesex / changecharsex
-        new("changesex", "pc.cpp:sex"),
-        new("changecharsex", "pc.cpp:sex"),
-        // feeling
-        new("feelreset", "pc.cpp:feeling"),
-        new("feel", "pc.cpp:feeling"),
-        new("hate", "pc.cpp:feeling"),
-        // summon (companion / temp)
-        new("summon", "mob.cpp"),
-        new("npcmove", "npc.cpp"),
-        new("hidenpc", "npc.cpp"), new("shownpc", "npc.cpp"),
-        new("loadnpc", "npc.cpp"), new("unloadnpc", "npc.cpp"),
-        new("tonpc", "npc.cpp"),
-        new("addwarp", "npc.cpp"),
-        // exp/rates/mobinfo/iteminfo/whodrops/whereis retired AT-R4.
+        // battleground.cpp queue commands — depend on the QUEUE_STATE_*
+        // state machine which lands with the dedicated BG wave.
+        new("bgsmall", "battleground.cpp"), new("bgmedium", "battleground.cpp"),
+        new("bglarge", "battleground.cpp"), new("bg", "battleground.cpp"),
+        new("bgstart", "battleground.cpp"), new("bgend", "battleground.cpp"),
+        new("bgleave", "battleground.cpp"), new("bgleader", "battleground.cpp"),
+        new("bginvite", "battleground.cpp"),
+        // option bitmask + display status — pending OPT2/OPT3 toggle table
+        new("option", "pc.cpp:option"),
+        new("displaystatus", "pc.cpp:status"),
+        // who-variants (display formatting only — defer the per-variant
+        // formatter shape until the wire layer rework)
         new("who2", "pc.cpp:who"), new("who3", "pc.cpp:who"),
         new("whomap", "pc.cpp:who"), new("whomap2", "pc.cpp:who"),
         new("whomap3", "pc.cpp:who"), new("whogm", "pc.cpp:who"),
-        // idsearch retired AT-R4 (IdSearchCommand).
-        // stats retired AT-R2 (StatsCommand).
-        // itemlist/cartlist/storagelist/mobsearch/mapmove/go retired AT-R4.
-        new("idle", "pc.cpp:idle"),
-        new("skillon", "map.cpp"), new("skilloff", "map.cpp"),
-        new("refreshall", "pc.cpp:refresh"),
-        new("monstersmall", "mob.cpp"), new("monsterbig", "mob.cpp"),
-        // attendance
-        new("checkattendance", "attendance.cpp"),
-        // server-shutdown helpers
+        // mapexit2 — defer alongside @mapexit (server-shutdown coordinator
+        // is its own thing)
         new("mapexit2", "map.cpp"),
+        // baselevelup — alias of @level (existing LevelCommand). Stub
+        // kept to maintain the canonical name → no-op route until the
+        // alias table absorbs it.
+        new("baselevelup", "pc.cpp:joblevel"),
+        // spiritball / soulball — real impls already registered
+        // (SpiritballCommand / SoulballCommand). No stub needed.
     };
 }
 

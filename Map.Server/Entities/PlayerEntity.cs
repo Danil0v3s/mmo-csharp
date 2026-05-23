@@ -233,6 +233,57 @@ public sealed class PlayerEntity : Entity
     /// </summary>
     public List<Map.Server.Achievement.AchievementEntry> AchievementLog { get; } = new();
 
+    // ----- GM atcommand flags (AT-C wave) -----
+    // Most of these are toggle/state fields that atcommands set on the
+    // PC. They live here so the wire layer can read them without a
+    // service lookup and so future status_calc paths see them as
+    // part of PlayerEntity state.
+
+    /// <summary>rAthena <c>sd-&gt;state.showexp</c> — toggle EXP-gain popup.</summary>
+    public bool ShowExp { get; set; }
+    /// <summary>rAthena <c>sd-&gt;state.showzeny</c> — toggle zeny-gain popup.</summary>
+    public bool ShowZeny { get; set; }
+    /// <summary>rAthena <c>sd-&gt;state.showdelay</c> — show skill-delay debug.</summary>
+    public bool ShowDelay { get; set; }
+    /// <summary>Server-side toggle for the <c>@showmobs</c> persistent mob marker overlay.</summary>
+    public bool ShowMobs { get; set; }
+    /// <summary>rAthena <c>sd-&gt;state.noask</c> — auto-reject invites.</summary>
+    public bool NoAsk { get; set; }
+    /// <summary>rAthena <c>sd-&gt;state.noks</c> — kill-steal protection.</summary>
+    public bool NoKs { get; set; }
+    /// <summary>rAthena <c>sd-&gt;status.manner</c> — chat mute level (minutes remaining ×−1; 0 = unmuted).</summary>
+    public short Manner { get; set; }
+    /// <summary>Target char-id for <c>@follow</c>. 0 = not following.</summary>
+    public int FollowTargetCharId { get; set; }
+    /// <summary>rAthena <c>sd-&gt;status.body</c> — alt-costume body style id.</summary>
+    public short BodyStyle { get; set; }
+    /// <summary>rAthena <c>sd-&gt;langtype</c> — message language index.</summary>
+    public byte LangType { get; set; }
+    /// <summary>rAthena <c>sd-&gt;disguise</c> — overriding sprite class id (0 = normal).</summary>
+    public int DisguiseClassId { get; set; }
+    /// <summary>rAthena <c>sd-&gt;state.size</c> — visual size (0=small, 1=normal, 2=large).</summary>
+    public byte ViewSize { get; set; } = 1;
+    /// <summary>rAthena <c>sd-&gt;status.ap</c> — Abyss Points (renewal aux resource).</summary>
+    public int Ap { get; set; }
+    /// <summary>rAthena <c>sd-&gt;status.max_ap</c> — Abyss Points cap.</summary>
+    public int MaxAp { get; set; } = 100;
+    /// <summary>rAthena Taekwon <c>sd-&gt;hate_mob[3]</c> — three hate-target mob class ids; -1 = unset.</summary>
+    public int[] HateMobs { get; } = new int[] { -1, -1, -1 };
+    /// <summary>rAthena Taekwon <c>sd-&gt;feel_map[3]</c> — three feeling map ids; 0 = unset.</summary>
+    public (string MapName, int Index)[] FeelMaps { get; } = new (string, int)[3];
+    /// <summary>rAthena <c>sd-&gt;state.guildspy</c> — observe guild id (0 = off).</summary>
+    public int GuildSpyId { get; set; }
+    /// <summary>rAthena <c>sd-&gt;state.partyspy</c> — observe party id (0 = off).</summary>
+    public int PartySpyId { get; set; }
+    /// <summary>rAthena <c>sd-&gt;state.autoloot</c> — auto-pick all dropped items.</summary>
+    public byte AutoLootRate { get; set; }
+    /// <summary>rAthena <c>sd-&gt;state.autolootid</c> — per-itemid whitelist.</summary>
+    public HashSet<int> AutoLootIds { get; } = new();
+    /// <summary>Idle-flag for the <c>@idle</c> command — purely informational.</summary>
+    public bool Idle { get; set; }
+    /// <summary>Fake name overlay for <c>@fakename</c>; empty = use real name.</summary>
+    public string FakeName { get; set; } = string.Empty;
+
 
     public override EntityType Type => EntityType.Pc;
 

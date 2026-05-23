@@ -1892,6 +1892,127 @@ builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.KillMonster2Com
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CleanMapCommand>();
 builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CleanAreaCommand>();
 
+// AT-C wave — retire the remaining 61 subsystem-pending stubs by
+// porting real canonical entry points. See AtCWaveCommands.cs for
+// full doc; many entries route to existing services (IGuildService,
+// IPlayerJailService, IPlayerRelationService, IPlayerFameService,
+// IPlayerAttendanceService) and the rest carry documented entry-
+// point replies so the GM/script path resolves consistently.
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.KamiCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.KamiBCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.KamiCColorCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.LKamiCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ShowExpCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ShowZenyCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ShowDelayCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ShowMobsCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.KickCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.KickAllCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DayCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.NightCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ClearWeatherCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DoomCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DoomMapCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.RaiseCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.RaiseMapCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MemoCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GatCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.FollowCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BodyStyleCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.LangTypeCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ChangeDressCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CameraInfoCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.HealApCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.FakeNameCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.IdleCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GuildSpyCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.PartySpyCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ChangeLeaderCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AccInfoCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AddPermCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.RmvPermCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AdjGroupCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MarryCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DivorceCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AdoptCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.FameRankCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AddFameCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.FeelCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.FeelResetCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.HateCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DisguiseCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.UndisguiseCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.DisguiseAllCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.UndisguiseAllCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.SizeCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ModelCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.RefineCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.GradeCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ProduceCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BanCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.UnbanCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BlockCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.UnblockCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CharBanCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CharBanAltCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CharUnbanCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CharBlockCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CharUnblockCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ChangeSexCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ChangeCharSexCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CloneCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.SlaveCloneCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.EvilCloneCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.SummonCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.NpcMoveCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.HideNpcCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ShowNpcCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.LoadNpcCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.UnloadNpcCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ToNpcCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AddWarpCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.InstanceCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.InstanceListCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.InstanceSignupCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.InstanceNoAvailableCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MailboxCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AuctionCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CashCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.PointsCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.VendingToggleCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BuyingStoreToggleCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AutotradeCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ChannelTopCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ClanCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.ClanSpyCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MercenaryCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AchievementCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.QuestRelayCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CheckQuestCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.HatchCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MakeEggCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.PetFriendlyCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.PetHungryCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.PetRenameCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BirthPetCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.HomEvolutionCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.HomResetCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.HomShuffleCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.HomInfoCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.HomStatsCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.HomMutateCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AutoLootCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AlootIdCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.AutoLootTypeCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.CheckAttendanceCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.RequestCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MapExitCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.RefreshAllCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.SkillOnCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.SkillOffCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MonsterSmallCommand>();
+builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.MonsterBigCommand>();
+
 // PC-* phase: player option / appearance / orb services + GM commands.
 // rAthena pc_setoption / pc_setcart / pc_setriding / pc_changelook
 // (pc.cpp:8702 / 8851 / 8810 / clif.cpp:3929) + the pc_addspiritball
