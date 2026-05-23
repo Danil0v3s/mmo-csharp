@@ -31,6 +31,15 @@ public sealed class ScriptedBonusHost
     private readonly IItemCatalog? _catalog;
     private readonly IPlayerBonusService? _bonusSvc;
 
+    /// <summary>
+    /// Exposed as <c>ctx.player</c> on the TypeScript surface (lowercase
+    /// name so the JS literal matches api.d.ts <c>ItemEquipContext.player</c>).
+    /// Generated combo scripts don't reach for this — they go through
+    /// <c>ctx.getParam</c> / <c>ctx.readparam</c> — but hand-written items
+    /// touch it for things like <c>ctx.player.hp = 1</c> on unequip.
+    /// </summary>
+    public PlayerEntity player => _pc;
+
     public ScriptedBonusHost(
         PlayerEntity pc,
         EquipBonusBundle bundle,

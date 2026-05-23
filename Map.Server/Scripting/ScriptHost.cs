@@ -98,7 +98,49 @@ public sealed class ScriptHost : IDisposable
                   | V8ScriptEngineFlags.EnableValueTaskPromiseConversion;
         var engine = new V8ScriptEngine("mmo-scripts", flags);
         RegistrarBindings.Bind(engine, _registry);
+        InstallHookInvoker(engine);
         return engine;
+    }
+
+    /// <summary>
+    /// Install a globalThis helper <c>__invokeHookWithCtx(fn, rawCtx)</c>
+    /// that wraps <c>rawCtx</c> in a JS Proxy and invokes <c>fn(ctx)</c>.
+    /// Used by <c>IComboDispatcher</c> (and future item-hook dispatchers)
+    /// to call registered <c>onActive</c> / <c>onEquip</c> closures with
+    /// the fallback semantics established by DSL-4:
+    ///
+    /// <list type="bullet">
+    ///   <item>Known property → pass through (ClearScript's binding stays
+    ///         intact, args marshall correctly).</item>
+    ///   <item>Missing property → no-op function returning 0. Generated
+    ///         scripts may call rAthena builtins our C# host doesn't
+    ///         model yet (<c>ctx.getenchantgrade()</c>, <c>ctx.setarray()</c>,
+    ///         …); we want them to silently skip rather than throw.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// The Proxy approach is identical to what runs in the dedicated
+    /// <c>mmo-bonus-scripts</c> engine today (ScriptedBonusService). CONV-3
+    /// brings combo dispatch under the shared <c>mmo-scripts</c> engine
+    /// using the same trick.
+    /// </para>
+    /// </summary>
+    private static void InstallHookInvoker(V8ScriptEngine engine)
+    {
+        engine.Execute(@"
+            globalThis.__invokeHookWithCtx = function(fn, rawCtx) {
+                const ctx = new Proxy(rawCtx, {
+                    get: function(t, p) {
+                        const v = t[p];
+                        if (v === undefined || v === null) {
+                            return function() { return 0; };
+                        }
+                        return v;
+                    }
+                });
+                return fn(ctx);
+            };
+        ");
     }
 
     public void Dispose()

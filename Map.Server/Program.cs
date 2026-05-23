@@ -2129,6 +2129,11 @@ builder.Services.AddSingleton<Map.Server.Status.IPlayerBonusService, Map.Server.
 // engine — so item-script host APIs don't leak into the NPC scope.
 builder.Services.AddSingleton<Map.Server.Inventory.Script.IScriptedBonusService,
     Map.Server.Inventory.Script.ScriptedBonusService>();
+// CONV-3: combo onActive hooks fire through the shared mmo-scripts V8
+// engine. The dispatcher pulls every combo registration the TS bundle
+// installed and invokes those whose member items are all equipped.
+builder.Services.AddSingleton<Map.Server.Inventory.IComboDispatcher,
+    Map.Server.Inventory.ComboDispatcher>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerTimerService, Map.Server.Status.PlayerTimerService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerBgQueueTimerService, Map.Server.Status.PlayerBgQueueTimerService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerHateService, Map.Server.Status.PlayerHateService>();
