@@ -46,156 +46,265 @@ public sealed class ScriptedBonusHost
     }
 
     // ----- bonus / bonus2 / bonus3 / bonus4 / bonus5 -----
+    // All take params object[] so V8 can dispatch any arity. rAthena's
+    // bonus family is genuinely variadic — there's a 1-arg flag form
+    // (`bonus bNoCastCancel;`), a 2-arg numeric form, a 2-arg indexed
+    // form, and bigger variants for autospell / autobonus-on-skill.
+    // Arity-based dispatch inside each method picks the right path.
 
-    /// <summary>rAthena <c>bonus bKey, val;</c> — flat stat bump.</summary>
-    public void bonus(string key, int value)
+    /// <summary>rAthena <c>bonus bKey[, val];</c>.</summary>
+    public void bonus(params object[] args)
     {
-        // Tokenizer strips the leading 'b' from the dispatch table
-        // (BonusScriptExtractor.ApplyFlat); we keep the 'b'-stripping
-        // there so both paths share the same case-insensitive switch.
-        var stripped = StripBPrefix(key);
-        BonusScriptExtractor.ApplyFlatBonus(_bundle, stripped, value);
+        if (args.Length == 0) return;
+        var key = StripBPrefix(args[0]?.ToString() ?? "");
+        if (args.Length == 1)
+        {
+            // Flag bonus (e.g. bonus bNoCastCancel;). The regex
+            // extractor doesn't handle this form either — silently
+            // skip for now; specific flags wire in as needed.
+            return;
+        }
+        var value = ToInt(args[1]);
+        BonusScriptExtractor.ApplyFlatBonus(_bundle, key, value);
     }
 
-    /// <summary>rAthena <c>bonus2 bKey, idx, val;</c> — race/element/size/class indexed.</summary>
-    public void bonus2(string key, object idxToken, int value)
+    /// <summary>rAthena <c>bonus2 bKey, idx, val;</c>.</summary>
+    public void bonus2(params object[] args)
     {
-        var stripped = StripBPrefix(key);
-        BonusScriptExtractor.ApplyIndexedBonus(_bundle, stripped, idxToken?.ToString() ?? "", value);
+        if (args.Length < 3) return;
+        var key = StripBPrefix(args[0]?.ToString() ?? "");
+        var idx = args[1]?.ToString() ?? "";
+        var value = ToInt(args[2]);
+        BonusScriptExtractor.ApplyIndexedBonus(_bundle, key, idx, value);
     }
 
     /// <summary>
     /// rAthena <c>bonus3 bKey, a, b, val;</c>. Most bonus3 in stock
     /// item_combos are <c>bAutoSpell</c> / <c>bAutoSpellWhenHit</c>
-    /// (handled via the autobonus registry below); a handful of
-    /// flat bonus3 patterns are silently skipped — the regex extractor
-    /// already covers the major flat patterns, and this DSL path
-    /// inherits the same coverage.
+    /// (registered as autobonus entries); a handful of flat bonus3
+    /// patterns are silently skipped — the regex extractor covers the
+    /// major flat patterns and this DSL path inherits the same
+    /// coverage gap.
     /// </summary>
-    public void bonus3(string key, object a, object b, int value)
+    public void bonus3(params object[] args)
     {
-        var stripped = StripBPrefix(key);
-        // bonus3 bAutoSpell, "SkillName", lv, rate — register as
-        // an OnHit autobonus that fires the skill at <rate>/10000.
-        // The script body is a synthetic "skill" call.
-        if (string.Equals(stripped, "AutoSpell", StringComparison.OrdinalIgnoreCase))
+        if (args.Length < 4) return;
+        var key = StripBPrefix(args[0]?.ToString() ?? "");
+        if (string.Equals(key, "AutoSpell", StringComparison.OrdinalIgnoreCase))
         {
-            var skillName = a?.ToString() ?? "";
-            var script = $"skill \"{skillName}\",{value};";
+            var skillName = args[1]?.ToString() ?? "";
+            var lvl = ToInt(args[2]);
+            var rate = ToInt(args[3]);
+            var script = $"skill \"{skillName}\",{lvl};";
             _bonusSvc?.AddAutobonus(_pc, AutobonusTrigger.OnHit, script,
-                rate: value, durationMs: 0, flag: 0);
+                rate: rate, durationMs: 0, flag: 0);
             return;
         }
-        if (string.Equals(stripped, "AutoSpellWhenHit", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(key, "AutoSpellWhenHit", StringComparison.OrdinalIgnoreCase))
         {
-            var skillName = a?.ToString() ?? "";
-            var script = $"skill \"{skillName}\",{value};";
+            var skillName = args[1]?.ToString() ?? "";
+            var lvl = ToInt(args[2]);
+            var rate = ToInt(args[3]);
+            var script = $"skill \"{skillName}\",{lvl};";
             _bonusSvc?.AddAutobonus(_pc, AutobonusTrigger.WhenHit, script,
-                rate: value, durationMs: 0, flag: 0);
-            return;
+                rate: rate, durationMs: 0, flag: 0);
         }
-        // Other bonus3 patterns are no-ops in the regex extractor too;
-        // documenting parity: skip silently.
     }
 
-    /// <summary>rAthena <c>bonus4 bKey, a, b, c, val;</c>. No-op for now (most are autocast).</summary>
-    public void bonus4(string key, object a, object b, object c, int value)
+    /// <summary>rAthena <c>bonus4 bKey, a, b, c, val;</c>.</summary>
+    public void bonus4(params object[] args)
     {
+        if (args.Length < 5) return;
+        var key = StripBPrefix(args[0]?.ToString() ?? "");
         // bonus4 bAutoSpellOnSkill, "Source", "Spell", lv, rate
-        var stripped = StripBPrefix(key);
-        if (string.Equals(stripped, "AutoSpellOnSkill", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(key, "AutoSpellOnSkill", StringComparison.OrdinalIgnoreCase))
         {
-            var triggerSkill = a?.ToString() ?? "";
-            var spell = b?.ToString() ?? "";
-            var script = $"skill \"{spell}\",{c};";
+            var spell = args[2]?.ToString() ?? "";
+            var lvl = ToInt(args[3]);
+            var rate = ToInt(args[4]);
+            var script = $"skill \"{spell}\",{lvl};";
             _bonusSvc?.AddAutobonus(_pc, AutobonusTrigger.OnSkill, script,
-                rate: value, durationMs: 0, flag: 0);
+                rate: rate, durationMs: 0, flag: 0);
         }
     }
 
-    /// <summary>rAthena <c>bonus5</c>. Unhandled — no stock combo uses bonus5 in a parseable way.</summary>
-    public void bonus5(string key, object a, object b, object c, object d, int value) { }
+    /// <summary>rAthena <c>bonus5</c>. Variants are rare in item scripts; no-op for parity with the regex path.</summary>
+    public void bonus5(params object[] args) { }
+
+    /// <summary>
+    /// Defensive int coercion — V8 numbers arrive as double; ClearScript
+    /// auto-converts but rare edge cases (strings like "1") need an
+    /// explicit pass.
+    /// </summary>
+    private static int ToInt(object? o)
+    {
+        if (o == null) return 0;
+        if (o is int i) return i;
+        if (o is long l) return (int)l;
+        if (o is double d) return (int)d;
+        if (o is float f) return (int)f;
+        return int.TryParse(o.ToString(), out var n) ? n : 0;
+    }
 
     // ----- autobonus family -----
+    // All three variadic — autobonus / autobonus2 take an optional
+    // 5th-arg "on-fail" script, autobonus3 takes a skill name string.
 
-    /// <summary>
-    /// rAthena <c>autobonus "{body}", rate, duration, atkType;</c>.
-    /// Registers an OnHit autobonus whose wrapped script body fires
-    /// (rate/10000) on weapon attack landing.
-    /// </summary>
-    public void autobonus(string body, int rate, int durationMs, object flag)
+    /// <summary>rAthena <c>autobonus "{body}", rate, duration, [atkType], [onfailScript];</c>.</summary>
+    public void autobonus(params object[] args)
     {
-        _bonusSvc?.AddAutobonus(_pc, AutobonusTrigger.OnHit, body,
-            rate, durationMs, ParseAtkType(flag));
+        if (args.Length < 3) return;
+        var body = args[0]?.ToString() ?? "";
+        var rate = ToInt(args[1]);
+        var dur = ToInt(args[2]);
+        var flag = args.Length > 3 ? ParseAtkType(args[3]) : (ushort)0;
+        _bonusSvc?.AddAutobonus(_pc, AutobonusTrigger.OnHit, body, rate, dur, flag);
     }
 
-    /// <summary>
-    /// rAthena <c>autobonus2 "{body}", rate, duration, atkType;</c>.
-    /// Triggers when the PC takes damage (WhenHit).
-    /// </summary>
-    public void autobonus2(string body, int rate, int durationMs, object flag)
+    /// <summary>rAthena <c>autobonus2 "{body}", rate, duration, [atkType], [onfailScript];</c>.</summary>
+    public void autobonus2(params object[] args)
     {
-        _bonusSvc?.AddAutobonus(_pc, AutobonusTrigger.WhenHit, body,
-            rate, durationMs, ParseAtkType(flag));
+        if (args.Length < 3) return;
+        var body = args[0]?.ToString() ?? "";
+        var rate = ToInt(args[1]);
+        var dur = ToInt(args[2]);
+        var flag = args.Length > 3 ? ParseAtkType(args[3]) : (ushort)0;
+        _bonusSvc?.AddAutobonus(_pc, AutobonusTrigger.WhenHit, body, rate, dur, flag);
     }
 
-    /// <summary>
-    /// rAthena <c>autobonus3 "{body}", rate, duration, "SkillName";</c>.
-    /// Triggers when the PC casts the named skill.
-    /// </summary>
-    public void autobonus3(string body, int rate, int durationMs, object skillName)
+    /// <summary>rAthena <c>autobonus3 "{body}", rate, duration, "SkillName", [onfailScript];</c>.</summary>
+    public void autobonus3(params object[] args)
     {
-        _bonusSvc?.AddAutobonus(_pc, AutobonusTrigger.OnSkill, body,
-            rate, durationMs, flag: 0);
+        if (args.Length < 3) return;
+        var body = args[0]?.ToString() ?? "";
+        var rate = ToInt(args[1]);
+        var dur = ToInt(args[2]);
+        _bonusSvc?.AddAutobonus(_pc, AutobonusTrigger.OnSkill, body, rate, dur, flag: 0);
     }
 
     // ----- SC / skill family -----
+    // Variadic — rAthena overloads vary: sc_start SC,dur,val1 or
+    // sc_start2 SC,dur,val1,rate or sc_start4 SC,dur,val1,val2,val3,val4
+    // plus skill_id forms. We log-only here until consumer services wire in.
 
-    /// <summary>
-    /// rAthena <c>sc_start SC, duration, val1;</c>. Apply a status
-    /// change with the given duration. Routes through the SC engine
-    /// when it's wired into the host (today: log-only).
-    /// </summary>
-    public void sc_start(object sc, int durationMs, int val1) { /* SC engine wire-up data-pending */ }
+    /// <summary>rAthena <c>sc_start SC, duration, val1, [rate];</c>.</summary>
+    public void sc_start(params object[] args) { /* SC engine wire-up data-pending */ }
+    /// <summary>rAthena <c>sc_start2 SC, duration, val1, rate;</c>.</summary>
+    public void sc_start2(params object[] args) { /* same as sc_start */ }
+    /// <summary>rAthena <c>sc_start4 SC, duration, val1, val2, val3, val4;</c>.</summary>
+    public void sc_start4(params object[] args) { /* same as sc_start */ }
+    /// <summary>rAthena <c>sc_end SC;</c>.</summary>
+    public void sc_end(params object[] args) { /* same as sc_start */ }
 
-    /// <summary>rAthena <c>skill SkillName, level, [type];</c> — grant a skill.</summary>
-    public void skill(object skillName, int level) { /* IPlayerSkillService.Grant data-pending wire-up */ }
+    /// <summary>rAthena <c>skill SkillName, level, [type];</c>.</summary>
+    public void skill(params object[] args) { /* IPlayerSkillService.Grant wire-up data-pending */ }
+
+    /// <summary>rAthena <c>heal hp, sp;</c>.</summary>
+    public void heal(params object[] args) { /* data-pending */ }
+    /// <summary>rAthena <c>percentheal hp%, sp%;</c>.</summary>
+    public void percentheal(params object[] args) { /* data-pending */ }
+    /// <summary>rAthena <c>itemheal hp, sp;</c>.</summary>
+    public void itemheal(params object[] args) { /* data-pending */ }
+    /// <summary>rAthena <c>specialeffect effectId;</c>.</summary>
+    public void specialeffect(params object[] args) { /* visual-only */ }
+    /// <summary>rAthena <c>specialeffect2 effectId;</c>.</summary>
+    public void specialeffect2(params object[] args) { /* visual-only */ }
+    /// <summary>rAthena <c>hateffect effectId, state;</c>.</summary>
+    public void hateffect(params object[] args) { /* cosmetic */ }
+    /// <summary>rAthena <c>petloot count;</c>.</summary>
+    public void petloot(params object[] args) { /* pet AI data-pending */ }
+    /// <summary>rAthena <c>setoption flag, [value];</c>.</summary>
+    public void setoption(params object[] args) { /* state mod */ }
+    /// <summary>rAthena <c>message "..."</c>.</summary>
+    public void message(params object[] args) { /* UI message */ }
+    /// <summary>rAthena <c>dispbottom "..."</c>.</summary>
+    public void dispbottom(params object[] args) { /* UI message */ }
 
     // ----- expression helpers -----
+    // All variadic; the few cases that need a fixed-arity invariant
+    // (max/min/pow) check inside. JS-side calls fall through cleanly
+    // even when V8 hands us floating-point numbers instead of ints.
 
+    /// <summary>rAthena <c>getrefine()</c>.</summary>
+    public int getrefine(params object[] _) => GetRefineForSlot("EQI_HAND_R");
+    /// <summary>rAthena <c>getequiprefinerycnt(EQI_SLOT)</c>.</summary>
+    public int getequiprefinerycnt(params object[] args)
+        => args.Length == 0 ? 0 : GetRefineForSlot(args[0]?.ToString() ?? "");
+    /// <summary>rAthena <c>getskilllv("SkillName")</c>. Returns 0 until skill service wires in.</summary>
+    public int getskilllv(params object[] _) => 0;
+    /// <summary>rAthena <c>getequipid(EQI_SLOT)</c>.</summary>
+    public int getequipid(params object[] _) => 0;
     /// <summary>
-    /// rAthena <c>getrefine()</c> — refine of the item triggering the
-    /// script. For combo / item bonus scripts the convention is to use
-    /// the weapon refine; until per-item context plumbs through, we
-    /// default to the right-hand weapon's refine.
+    /// rAthena <c>eaclass()</c> — returns a bitmask describing the PC's
+    /// expanded job class (EAJL_THIRD, EAJL_BABY, etc.). Returns 0 until
+    /// the class resolver wires in; conditional combos gated on
+    /// <c>eaclass() &amp; EAJL_THIRD</c> will silently skip — safer than
+    /// firing on the wrong class.
     /// </summary>
-    public int getrefine() => GetRefineForSlot("EQI_HAND_R");
-
-    /// <summary>
-    /// rAthena <c>getequiprefinerycnt(EQI_SLOT)</c> — refine of the
-    /// item in the given equip slot. Returns 0 if no item is equipped
-    /// there or the slot token is unknown.
-    /// </summary>
-    public int getequiprefinerycnt(string slotToken) => GetRefineForSlot(slotToken);
-
-    /// <summary>rAthena <c>getskilllv("SkillName")</c> — caller's learned level (0 if unknown).</summary>
-    public int getskilllv(string skillName) => 0; // IPlayerSkillService wire-up data-pending
+    public int eaclass(params object[] _) => 0;
+    /// <summary>rAthena <c>readparam(SP_X)</c> — synonym for getParam.</summary>
+    public int readparam(params object[] args)
+        => args.Length == 0 ? 0 : getParam(args[0]?.ToString() ?? "");
+    /// <summary>rAthena <c>getiteminfo(itemId, n)</c>.</summary>
+    public int getiteminfo(params object[] _) => 0;
+    /// <summary>rAthena <c>getitemcount(itemId)</c>.</summary>
+    public int getitemcount(params object[] _) => 0;
+    /// <summary>rAthena <c>checkoption(opt)</c>.</summary>
+    public int checkoption(params object[] _) => 0;
+    /// <summary>rAthena <c>checkmount()</c>.</summary>
+    public int checkmount(params object[] _) => 0;
+    /// <summary>rAthena <c>countitem(itemId)</c>.</summary>
+    public int countitem(params object[] _) => 0;
+    /// <summary>rAthena <c>isequipped(itemId, ...)</c>.</summary>
+    public int isequipped(params object[] _) => 0;
+    /// <summary>rAthena <c>isequippedcnt(itemId, ...)</c>.</summary>
+    public int isequippedcnt(params object[] _) => 0;
+    /// <summary>rAthena <c>basicskillcheck()</c>.</summary>
+    public int basicskillcheck(params object[] _) => 1;
+    /// <summary>rAthena <c>checkfalcon()</c>.</summary>
+    public int checkfalcon(params object[] _) => 0;
+    /// <summary>rAthena <c>checkriding()</c>.</summary>
+    public int checkriding(params object[] _) => 0;
+    /// <summary>rAthena <c>checkcart()</c>.</summary>
+    public int checkcart(params object[] _) => 0;
+    /// <summary>rAthena <c>checkidle()</c>.</summary>
+    public int checkidle(params object[] _) => 0;
 
     /// <summary>rAthena <c>max(a, b)</c>.</summary>
-    public int max(int a, int b) => Math.Max(a, b);
+    public int max(params object[] args)
+    {
+        if (args.Length == 0) return 0;
+        var n = ToInt(args[0]);
+        for (var i = 1; i < args.Length; i++) n = Math.Max(n, ToInt(args[i]));
+        return n;
+    }
     /// <summary>rAthena <c>min(a, b)</c>.</summary>
-    public int min(int a, int b) => Math.Min(a, b);
+    public int min(params object[] args)
+    {
+        if (args.Length == 0) return 0;
+        var n = ToInt(args[0]);
+        for (var i = 1; i < args.Length; i++) n = Math.Min(n, ToInt(args[i]));
+        return n;
+    }
     /// <summary>rAthena <c>pow(a, b)</c>.</summary>
-    public int pow(int a, int b) => (int)Math.Pow(a, b);
+    public int pow(params object[] args)
+        => args.Length < 2 ? 0 : (int)Math.Pow(ToInt(args[0]), ToInt(args[1]));
     /// <summary>rAthena <c>rand(n)</c> — uniform [0, n).</summary>
-    public int rand(int n) => Random.Shared.Next(n);
+    public int rand(params object[] args)
+        => args.Length == 0 ? 0 : Random.Shared.Next(Math.Max(1, ToInt(args[0])));
 
     /// <summary>
     /// PC parameter read (rAthena <c>pc_readparam</c>). Translator
     /// emits <c>h.getParam("Class")</c> etc. for the whitelisted
     /// param names.
     /// </summary>
-    public int getParam(string name) => name switch
+    public int getParam(params object[] args)
+    {
+        if (args.Length == 0) return 0;
+        var name = args[0]?.ToString() ?? "";
+        return GetParamCore(name);
+    }
+    private int GetParamCore(string name) => name switch
     {
         "BaseLevel"     => _pc.Level,
         "JobLevel"      => _pc.JobLevel,

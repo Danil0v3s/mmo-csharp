@@ -23,10 +23,12 @@ public class RathenaToJsTranslatorTests
     }
 
     [Fact]
-    public void LocalAssign_EmitsLetWithDollarPrefix()
+    public void LocalAssign_HoistsDeclarationToTopAndUsesAssignmentInline()
     {
         var js = Translate(".@r = getequiprefinerycnt(EQI_HAND_R);");
-        Assert.Contains("let $r = h.getequiprefinerycnt(\"EQI_HAND_R\");", js);
+        // .@vars are hoisted to function scope so cross-branch refs work.
+        Assert.Contains("let $r;", js);
+        Assert.Contains("$r = h.getequiprefinerycnt(\"EQI_HAND_R\");", js);
     }
 
     [Fact]
@@ -105,9 +107,15 @@ public class RathenaToJsTranslatorTests
             }
         ";
         var js = Translate(src);
+        // Locals are hoisted to a single function-scope `let` so cross-
+        // branch references stay visible — order inside the let isn't
+        // semantically meaningful.
         Assert.Contains("h.bonus(\"bBaseAtk\", 40)", js);
-        Assert.Contains("let $eq = h.getequiprefinerycnt(\"EQI_SHOES\");", js);
-        Assert.Contains("let $weapon = h.getequiprefinerycnt(\"EQI_HAND_R\");", js);
+        Assert.Contains("let $eq", js);
+        Assert.Contains("let ", js); // hoisted declaration present
+        Assert.Contains("$weapon", js);
+        Assert.Contains("$eq = h.getequiprefinerycnt(\"EQI_SHOES\");", js);
+        Assert.Contains("$weapon = h.getequiprefinerycnt(\"EQI_HAND_R\");", js);
         Assert.Contains("$eq >= 7 && $weapon >= 7", js);
         Assert.Contains("h.bonus2(\"bSkillAtk\", \"NC_AXEBOOMERANG\", 15)", js);
         Assert.Contains("($eq + $weapon) >= 18", js);

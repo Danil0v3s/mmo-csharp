@@ -51,8 +51,83 @@ public static class RathenaToJsTranslator
     public static string Translate(IReadOnlyList<Stmt> stmts)
     {
         var sb = new StringBuilder();
+        // Pre-declare every .@var seen anywhere in the body at function
+        // scope. rAthena .@vars are per-script-execution flat scope —
+        // JS `let` is block-scoped, so if we declared a var inside an
+        // if-branch the outer code would see ReferenceError. Hoisting
+        // mirrors rAthena's flat scope.
+        var locals = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var s in stmts) CollectLocals(s, locals);
+        if (locals.Count > 0)
+        {
+            sb.Append("let ");
+            var first = true;
+            foreach (var l in locals)
+            {
+                if (!first) sb.Append(", ");
+                first = false;
+                sb.Append(SafeVarName(l));
+            }
+            sb.AppendLine(";");
+        }
         foreach (var s in stmts) EmitStmt(sb, s, indent: 0);
         return sb.ToString();
+    }
+
+    private static void CollectLocals(Stmt s, HashSet<string> locals)
+    {
+        switch (s)
+        {
+            case AssignStmt a:
+                locals.Add(a.VarName);
+                CollectLocalsExpr(a.Value, locals);
+                break;
+            case IfStmt i:
+                CollectLocalsExpr(i.Condition, locals);
+                foreach (var ts in i.Then) CollectLocals(ts, locals);
+                if (i.Else != null) foreach (var es in i.Else) CollectLocals(es, locals);
+                break;
+            case CallStmt c:
+                foreach (var a in c.Args) CollectLocalsExpr(a, locals);
+                break;
+            case ExprStmt e:
+                CollectLocalsExpr(e.Expr, locals);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Collect every <c>.@var</c> name referenced by an expression tree.
+    /// rAthena combo scripts often read locals set by sibling scripts in
+    /// the same combo run (the seed dump only carries the combo body, not
+    /// the per-item script that initialised <c>.@r</c>). Pre-declaring
+    /// referenced names as <c>let</c> at function scope makes them
+    /// <c>undefined</c> at read-time; <c>undefined &gt;= N</c> is false in
+    /// JS, which matches rAthena's "unset numeric var compares as 0/false"
+    /// behavior closely enough to avoid spurious ReferenceErrors.
+    /// </summary>
+    private static void CollectLocalsExpr(Expr e, HashSet<string> locals)
+    {
+        switch (e)
+        {
+            case VarRef v:
+                locals.Add(v.Name);
+                break;
+            case CallExpr c:
+                foreach (var a in c.Args) CollectLocalsExpr(a, locals);
+                break;
+            case BinaryOp b:
+                CollectLocalsExpr(b.Left, locals);
+                CollectLocalsExpr(b.Right, locals);
+                break;
+            case UnaryOp u:
+                CollectLocalsExpr(u.Operand, locals);
+                break;
+            case ParenExpr p:
+                CollectLocalsExpr(p.Inner, locals);
+                break;
+            // NumberLit / StringLit / IdentExpr never reference .@vars.
+        }
     }
 
     private static void EmitStmt(StringBuilder sb, Stmt stmt, int indent)
@@ -65,12 +140,10 @@ public static class RathenaToJsTranslator
                 sb.AppendLine(";");
                 break;
             case AssignStmt a:
-                // First-use declares with `let`; subsequent assignments to
-                // the same name in the same scope would shadow. rAthena
-                // script semantics treat .@var as a flat per-script scope,
-                // and the bodies we accept don't re-declare, so `let`
-                // each time is correct without leak risk.
-                sb.Append("let ").Append(SafeVarName(a.VarName)).Append(" = ");
+                // Plain assignment — declarations are hoisted to function
+                // scope by Translate(), so subsequent assignments inside
+                // branches stay visible after the branch closes.
+                sb.Append(SafeVarName(a.VarName)).Append(" = ");
                 EmitExpr(sb, a.Value);
                 sb.AppendLine(";");
                 break;
@@ -170,6 +243,17 @@ public static class RathenaToJsTranslator
                 EmitExpr(sb, u.Operand);
                 break;
             case BinaryOp b:
+                // Ternary special-case — parser packs cond ? a : b as
+                // BinaryOp("?:", cond, BinaryOp(":", a, b)).
+                if (b.Op == "?:" && b.Right is BinaryOp inner && inner.Op == ":")
+                {
+                    EmitExpr(sb, b.Left);
+                    sb.Append(" ? ");
+                    EmitExpr(sb, inner.Left);
+                    sb.Append(" : ");
+                    EmitExpr(sb, inner.Right);
+                    break;
+                }
                 EmitExpr(sb, b.Left);
                 // rAthena's == / != map to JS === / !== so the JS
                 // engine doesn't surprise us with type coercion (the

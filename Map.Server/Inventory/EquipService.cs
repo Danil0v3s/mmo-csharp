@@ -1,4 +1,5 @@
 using Map.Server.Entities;
+using Map.Server.Inventory.Script;
 using Map.Server.Items;
 using Map.Server.Status;
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,7 @@ public sealed class EquipService : IEquipService
     private readonly IEntityRegistry _entities;
     private readonly IStatusCalcService _statusCalc;
     private readonly IItemCombosService? _combos;
+    private readonly IScriptedBonusService? _scriptedBonuses;
     private readonly ILogger<EquipService> _logger;
 
     public EquipService(
@@ -26,12 +28,14 @@ public sealed class EquipService : IEquipService
         IEntityRegistry entities,
         IStatusCalcService statusCalc,
         ILogger<EquipService> logger,
-        IItemCombosService? combos = null)
+        IItemCombosService? combos = null,
+        IScriptedBonusService? scriptedBonuses = null)
     {
         _catalog = catalog;
         _entities = entities;
         _statusCalc = statusCalc;
         _combos = combos;
+        _scriptedBonuses = scriptedBonuses;
         _logger = logger;
     }
 
@@ -197,7 +201,13 @@ public sealed class EquipService : IEquipService
         // Read by IBattleCardService.CalcCardFix + cast / drain hooks.
         // DBR-2a+: activeCombos layer onto the same bundle so combo
         // bonuses are indistinguishable from per-item bonuses downstream.
-        EquipBonusAggregator.BuildBundle(session.Inventory, _catalog, player.EquipBonuses, activeCombos);
+        // DSL-4: scriptedBonuses + player thread the V8 bridge into the
+        // build so conditional / autobonus combos (~3,275 of 7,767)
+        // also land — the bridge no-ops for static scripts (the regex
+        // fast path handles them) per the NeedsDynamicEval gate.
+        EquipBonusAggregator.BuildBundle(
+            session.Inventory, _catalog, player.EquipBonuses, activeCombos,
+            _scriptedBonuses, player);
         var stats = player.Stats;
         _statusCalc.CalcPc(player, new PcBaseInputs(
             BaseLevel: player.Level,

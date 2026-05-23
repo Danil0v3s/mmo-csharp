@@ -1,3 +1,5 @@
+using Map.Server.Entities;
+using Map.Server.Inventory.Script;
 using Map.Server.Items;
 using Map.Server.Status;
 
@@ -113,33 +115,74 @@ public static class EquipBonusAggregator
         IEnumerable<InventoryItem>? inventory,
         IItemCatalog catalog,
         EquipBonusBundle bundle,
-        IReadOnlyList<ActiveCombo>? activeCombos = null)
+        IReadOnlyList<ActiveCombo>? activeCombos = null,
+        IScriptedBonusService? scriptedBonuses = null,
+        PlayerEntity? pc = null)
     {
         bundle.Reset();
         if (inventory == null) return;
+
+        // Snapshot the equipped items once for the script host's
+        // getrefine() / getequiprefinerycnt() lookups. Cheap walk
+        // through the inventory — equipped slots are a small subset.
+        List<InventoryItem>? equippedSnapshot = null;
+        if (scriptedBonuses != null && pc != null)
+        {
+            equippedSnapshot = new List<InventoryItem>();
+            foreach (var item in inventory)
+                if (item.Equip != 0) equippedSnapshot.Add(item);
+        }
 
         foreach (var item in inventory)
         {
             if (item.Equip == 0) continue;
             var row = catalog.Get(item.NameId);
             if (row == null) continue;
-            BonusScriptExtractor.Apply(row.Script, bundle);
+            ApplyOne(row.Script, bundle, scriptedBonuses, pc, equippedSnapshot);
             // EquipScript runs on equip (unfolded into the bundle);
             // UnequipScript would reverse on unequip but in this model
             // we re-run BuildBundle from scratch, so UnequipScript is
             // effectively never applied — that matches rAthena's
             // status_calc_pc cadence.
-            BonusScriptExtractor.Apply(row.EquipScript, bundle);
+            ApplyOne(row.EquipScript, bundle, scriptedBonuses, pc, equippedSnapshot);
         }
 
         // DBR-2a+: layer combo bonuses on top of per-item bonuses.
-        // Same DSL ↔ same extractor; combo scripts are flat
-        // bonus*() statements in ~30k of ~37k cases (the conditional
-        // / autobonus ~7k cases need the V8 bridge).
+        // Same DSL → same extractor. Conditional / autobonus combos
+        // (~3,275 of 7,767) route through the V8 bridge when
+        // scriptedBonuses + pc are provided.
         if (activeCombos != null)
         {
             for (var i = 0; i < activeCombos.Count; i++)
-                BonusScriptExtractor.Apply(activeCombos[i].Script, bundle);
+                ApplyOne(activeCombos[i].Script, bundle, scriptedBonuses, pc, equippedSnapshot);
         }
+    }
+
+    /// <summary>
+    /// DSL-4: dispatch one script body. Always runs the regex extractor
+    /// (it's a cheap pass that catches the ~30k static bonus/bonus2
+    /// statements). For dynamic scripts (if/.@/autobonus markers), also
+    /// runs the V8 bridge so conditional + autobonus + autospell paths
+    /// land. The two passes layer onto the same bundle; double-applying
+    /// a static `bonus bAtk,10;` would double the value, so we gate the
+    /// V8 path on <see cref="IScriptedBonusService.NeedsDynamicEval"/>.
+    /// </summary>
+    private static void ApplyOne(
+        string? script, EquipBonusBundle bundle,
+        IScriptedBonusService? scriptedBonuses, PlayerEntity? pc,
+        IReadOnlyList<InventoryItem>? equipped)
+    {
+        if (string.IsNullOrEmpty(script)) return;
+        if (scriptedBonuses != null && pc != null
+            && IScriptedBonusService.NeedsDynamicEval(script))
+        {
+            // V8 path handles BOTH the dynamic stuff AND the static
+            // bonus/bonus2 calls inside the same script — host
+            // delegates to the same keyword switch as the regex.
+            scriptedBonuses.Apply(script, pc, bundle, equipped);
+            return;
+        }
+        // Static-only fast path.
+        BonusScriptExtractor.Apply(script, bundle);
     }
 }
