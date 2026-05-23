@@ -82,6 +82,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILevelPenaltyDbRepository, LevelPenaltyDbRepository>();
         services.AddScoped<IAttrFixDbRepository, AttrFixDbRepository>();
         services.AddScoped<IReputationGroupDbRepository, ReputationGroupDbRepository>();
+        // DB-8b: tier-2 single-child re-normalized catalogs.
+        services.AddScoped<IMobSummonDbRepository, MobSummonDbRepository>();
+        services.AddScoped<IAttendanceCatalogDbRepository, AttendanceCatalogDbRepository>();
+        services.AddScoped<IItemCashDbRepository, ItemCashDbRepository>();
+        services.AddScoped<IItemGroupCatalogDbRepository, ItemGroupCatalogDbRepository>();
+        services.AddScoped<IItemPackageDbRepository, ItemPackageDbRepository>();
+        services.AddScoped<IItemComboDbRepository, ItemComboDbRepository>();
 
         return services;
     }

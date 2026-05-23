@@ -87,7 +87,7 @@ public class ElementalDbEntity : PayloadIntKeyEntity { } // ele_id
 public class BattlegroundDbEntity : PayloadIntKeyEntity { } // bg_id
 public class SkillTreeEntity : PayloadStringKeyEntity { } // job_name
 public class GuildSkillTreeEntity : PayloadStringKeyEntity { } // skill_name
-public class MobSummonEntity : PayloadStringKeyEntity { } // group_name
+// MobSummonEntity removed in DB-8b — see MobSummonDbEntity + MobSummonEntryDbEntity.
 public class ItemRandomOptGroupEntity : PayloadIntKeyEntity { } // group_id
 // AttrFixEntity / LevelPenaltyEntity removed in DB-8a — replaced by
 // typed AttrFixDbEntity + LevelPenaltyDbEntity / LevelPenaltyDifferenceDbEntity.
@@ -95,9 +95,9 @@ public class JobStatsEntity : PayloadRowIndexEntity { }
 public class JobExpEntity : PayloadRowIndexEntity { }
 public class JobBasePointsEntity : PayloadRowIndexEntity { }
 public class StatusYmlEntity : PayloadStringKeyEntity { } // status_name
-public class ItemCombosEntity : PayloadRowIndexEntity { }
-public class ItemPackagesEntity : PayloadStringKeyEntity { } // item_aegis
-public class ItemGroupDbEntity : PayloadStringKeyEntity { } // group_name
+// ItemCombosEntity removed in DB-8b — see ItemComboDbEntity + ItemComboMemberDbEntity.
+// ItemPackagesEntity removed in DB-8b — see ItemPackageDbEntity + ItemPackageEntryDbEntity.
+// ItemGroupDbEntity removed in DB-8b — see ItemGroupCatalogDbEntity + ItemGroupCatalogEntryDbEntity.
 public class ItemEnchantEntity : PayloadIntKeyEntity { } // enchant_id
 public class ItemReformEntity : PayloadStringKeyEntity { } // item_aegis
 public class LaphineSynthesisEntity : PayloadStringKeyEntity { } // recipe_item
@@ -106,7 +106,7 @@ public class RefineEntity : PayloadStringKeyEntity { } // refine_group
 public class EnchantGradeEntity : PayloadStringKeyEntity { } // equip_type
 public class MapDropsEntity : PayloadStringKeyEntity { } // map_name
 public class MobItemRatioEntity : PayloadStringKeyEntity { } // item_aegis
-public class ItemCashEntity : PayloadRowIndexEntity { }
-public class AttendanceDbEntity : PayloadIntKeyEntity { } // attendance_id
+// ItemCashEntity removed in DB-8b — see ItemCashDbEntity + ItemCashEntryDbEntity.
+// AttendanceDbEntity (payload) removed in DB-8b — see AttendanceCatalogDbEntity + AttendanceCatalogRewardDbEntity.
 // ReputationGroupEntity removed in DB-8a — replaced by typed
 // ReputationGroupDbEntity + ReputationGroupMemberDbEntity.

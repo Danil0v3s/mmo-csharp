@@ -165,7 +165,7 @@ public class ElementalDbEntityConfiguration : IEntityTypeConfiguration<Elemental
 public class BattlegroundDbEntityConfiguration : IEntityTypeConfiguration<BattlegroundDbEntity> { public void Configure(EntityTypeBuilder<BattlegroundDbEntity> b) => PayloadConfig.IntKey(b, "battleground_db", "bg_id"); }
 public class SkillTreeEntityConfiguration : IEntityTypeConfiguration<SkillTreeEntity> { public void Configure(EntityTypeBuilder<SkillTreeEntity> b) => PayloadConfig.StringKey(b, "skill_tree", "job_name"); }
 public class GuildSkillTreeEntityConfiguration : IEntityTypeConfiguration<GuildSkillTreeEntity> { public void Configure(EntityTypeBuilder<GuildSkillTreeEntity> b) => PayloadConfig.StringKey(b, "guild_skill_tree", "skill_name"); }
-public class MobSummonEntityConfiguration : IEntityTypeConfiguration<MobSummonEntity> { public void Configure(EntityTypeBuilder<MobSummonEntity> b) => PayloadConfig.StringKey(b, "mob_summon", "group_name"); }
+// MobSummonEntityConfiguration removed in DB-8b.
 public class ItemRandomOptGroupEntityConfiguration : IEntityTypeConfiguration<ItemRandomOptGroupEntity> { public void Configure(EntityTypeBuilder<ItemRandomOptGroupEntity> b) => PayloadConfig.IntKey(b, "item_randomopt_group", "group_id"); }
 // AttrFixEntityConfiguration / LevelPenaltyEntityConfiguration removed
 // in DB-8a — see StaticDbConfigurations.cs for the typed replacements.
@@ -173,9 +173,8 @@ public class JobStatsEntityConfiguration : IEntityTypeConfiguration<JobStatsEnti
 public class JobExpEntityConfiguration : IEntityTypeConfiguration<JobExpEntity> { public void Configure(EntityTypeBuilder<JobExpEntity> b) => PayloadConfig.RowIndex(b, "job_exp"); }
 public class JobBasePointsEntityConfiguration : IEntityTypeConfiguration<JobBasePointsEntity> { public void Configure(EntityTypeBuilder<JobBasePointsEntity> b) => PayloadConfig.RowIndex(b, "job_basepoints"); }
 public class StatusYmlEntityConfiguration : IEntityTypeConfiguration<StatusYmlEntity> { public void Configure(EntityTypeBuilder<StatusYmlEntity> b) => PayloadConfig.StringKey(b, "status_yml", "status_name"); }
-public class ItemCombosEntityConfiguration : IEntityTypeConfiguration<ItemCombosEntity> { public void Configure(EntityTypeBuilder<ItemCombosEntity> b) => PayloadConfig.RowIndex(b, "item_combos"); }
-public class ItemPackagesEntityConfiguration : IEntityTypeConfiguration<ItemPackagesEntity> { public void Configure(EntityTypeBuilder<ItemPackagesEntity> b) => PayloadConfig.StringKey(b, "item_packages", "item_aegis"); }
-public class ItemGroupDbEntityConfiguration : IEntityTypeConfiguration<ItemGroupDbEntity> { public void Configure(EntityTypeBuilder<ItemGroupDbEntity> b) => PayloadConfig.StringKey(b, "item_group_db", "group_name"); }
+// ItemCombosEntityConfiguration / ItemPackagesEntityConfiguration / ItemGroupDbEntityConfiguration
+// removed in DB-8b.
 public class ItemEnchantEntityConfiguration : IEntityTypeConfiguration<ItemEnchantEntity> { public void Configure(EntityTypeBuilder<ItemEnchantEntity> b) => PayloadConfig.IntKey(b, "item_enchant", "enchant_id"); }
 public class ItemReformEntityConfiguration : IEntityTypeConfiguration<ItemReformEntity> { public void Configure(EntityTypeBuilder<ItemReformEntity> b) => PayloadConfig.StringKey(b, "item_reform", "item_aegis"); }
 public class LaphineSynthesisEntityConfiguration : IEntityTypeConfiguration<LaphineSynthesisEntity> { public void Configure(EntityTypeBuilder<LaphineSynthesisEntity> b) => PayloadConfig.StringKey(b, "laphine_synthesis", "recipe_item"); }
@@ -184,6 +183,5 @@ public class RefineEntityConfiguration : IEntityTypeConfiguration<RefineEntity> 
 public class EnchantGradeEntityConfiguration : IEntityTypeConfiguration<EnchantGradeEntity> { public void Configure(EntityTypeBuilder<EnchantGradeEntity> b) => PayloadConfig.StringKey(b, "enchantgrade", "equip_type"); }
 public class MapDropsEntityConfiguration : IEntityTypeConfiguration<MapDropsEntity> { public void Configure(EntityTypeBuilder<MapDropsEntity> b) => PayloadConfig.StringKey(b, "map_drops", "map_name"); }
 public class MobItemRatioEntityConfiguration : IEntityTypeConfiguration<MobItemRatioEntity> { public void Configure(EntityTypeBuilder<MobItemRatioEntity> b) => PayloadConfig.StringKey(b, "mob_item_ratio", "item_aegis"); }
-public class ItemCashEntityConfiguration : IEntityTypeConfiguration<ItemCashEntity> { public void Configure(EntityTypeBuilder<ItemCashEntity> b) => PayloadConfig.RowIndex(b, "item_cash"); }
-public class AttendanceDbEntityConfiguration : IEntityTypeConfiguration<AttendanceDbEntity> { public void Configure(EntityTypeBuilder<AttendanceDbEntity> b) => PayloadConfig.IntKey(b, "attendance_db", "attendance_id"); }
+// ItemCashEntityConfiguration / AttendanceDbEntityConfiguration removed in DB-8b.
 // ReputationGroupEntityConfiguration removed in DB-8a.

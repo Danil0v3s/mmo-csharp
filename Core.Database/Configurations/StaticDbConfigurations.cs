@@ -369,3 +369,154 @@ public class ReputationGroupMemberDbEntityConfiguration : IEntityTypeConfigurati
         b.Property(e => e.ReputationId).HasColumnName("reputation_id");
     }
 }
+
+// ============================================================================
+// DB-8b: tier-2 single-child re-normalized catalogs
+// ============================================================================
+
+public class MobSummonDbEntityConfiguration : IEntityTypeConfiguration<MobSummonDbEntity>
+{
+    public void Configure(EntityTypeBuilder<MobSummonDbEntity> b)
+    {
+        b.ToTable("mob_summon_db");
+        b.HasKey(e => e.GroupName);
+        b.Property(e => e.GroupName).HasColumnName("group_name").HasMaxLength(64).IsRequired();
+        b.Property(e => e.DefaultMobAegis).HasColumnName("default_mob_aegis").HasMaxLength(64).IsRequired();
+    }
+}
+
+public class MobSummonEntryDbEntityConfiguration : IEntityTypeConfiguration<MobSummonEntryDbEntity>
+{
+    public void Configure(EntityTypeBuilder<MobSummonEntryDbEntity> b)
+    {
+        b.ToTable("mob_summon_entry_db");
+        b.HasKey(e => new { e.GroupName, e.MobAegis });
+        b.Property(e => e.GroupName).HasColumnName("group_name").HasMaxLength(64).IsRequired();
+        b.Property(e => e.MobAegis).HasColumnName("mob_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Rate).HasColumnName("rate");
+    }
+}
+
+public class AttendanceCatalogDbEntityConfiguration : IEntityTypeConfiguration<AttendanceCatalogDbEntity>
+{
+    public void Configure(EntityTypeBuilder<AttendanceCatalogDbEntity> b)
+    {
+        b.ToTable("attendance_catalog_db");
+        b.HasKey(e => e.AttendanceId);
+        b.Property(e => e.AttendanceId).HasColumnName("attendance_id");
+        b.Property(e => e.StartDate).HasColumnName("start_date");
+        b.Property(e => e.EndDate).HasColumnName("end_date");
+    }
+}
+
+public class AttendanceCatalogRewardDbEntityConfiguration : IEntityTypeConfiguration<AttendanceCatalogRewardDbEntity>
+{
+    public void Configure(EntityTypeBuilder<AttendanceCatalogRewardDbEntity> b)
+    {
+        b.ToTable("attendance_catalog_reward_db");
+        b.HasKey(e => new { e.AttendanceId, e.Day });
+        b.Property(e => e.AttendanceId).HasColumnName("attendance_id");
+        b.Property(e => e.Day).HasColumnName("day");
+        b.Property(e => e.ItemId).HasColumnName("item_id");
+        b.Property(e => e.Amount).HasColumnName("amount");
+    }
+}
+
+public class ItemCashDbEntityConfiguration : IEntityTypeConfiguration<ItemCashDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemCashDbEntity> b)
+    {
+        b.ToTable("item_cash_db");
+        b.HasKey(e => e.Tab);
+        b.Property(e => e.Tab).HasColumnName("tab").HasMaxLength(32).IsRequired();
+    }
+}
+
+public class ItemCashEntryDbEntityConfiguration : IEntityTypeConfiguration<ItemCashEntryDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemCashEntryDbEntity> b)
+    {
+        b.ToTable("item_cash_entry_db");
+        b.HasKey(e => new { e.Tab, e.ItemAegis });
+        b.Property(e => e.Tab).HasColumnName("tab").HasMaxLength(32).IsRequired();
+        b.Property(e => e.ItemAegis).HasColumnName("item_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Price).HasColumnName("price");
+    }
+}
+
+public class ItemGroupCatalogDbEntityConfiguration : IEntityTypeConfiguration<ItemGroupCatalogDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemGroupCatalogDbEntity> b)
+    {
+        b.ToTable("item_group_catalog_db");
+        b.HasKey(e => e.GroupName);
+        b.Property(e => e.GroupName).HasColumnName("group_name").HasMaxLength(64).IsRequired();
+    }
+}
+
+public class ItemGroupCatalogEntryDbEntityConfiguration : IEntityTypeConfiguration<ItemGroupCatalogEntryDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemGroupCatalogEntryDbEntity> b)
+    {
+        b.ToTable("item_group_catalog_entry_db");
+        b.HasKey(e => new { e.GroupName, e.SubGroup, e.Index });
+        b.Property(e => e.GroupName).HasColumnName("group_name").HasMaxLength(64).IsRequired();
+        b.Property(e => e.SubGroup).HasColumnName("sub_group");
+        b.Property(e => e.Index).HasColumnName("entry_index");
+        b.Property(e => e.ItemAegis).HasColumnName("item_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Rate).HasColumnName("rate");
+        b.Property(e => e.Announced).HasColumnName("announced");
+        b.Property(e => e.Amount).HasColumnName("amount");
+        b.Property(e => e.DurationHours).HasColumnName("duration_hours");
+        b.Property(e => e.Refine).HasColumnName("refine");
+        b.Property(e => e.RandomOptionGroup).HasColumnName("random_option_group").HasMaxLength(64);
+    }
+}
+
+public class ItemPackageDbEntityConfiguration : IEntityTypeConfiguration<ItemPackageDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemPackageDbEntity> b)
+    {
+        b.ToTable("item_package_db");
+        b.HasKey(e => e.ItemAegis);
+        b.Property(e => e.ItemAegis).HasColumnName("item_aegis").HasMaxLength(64).IsRequired();
+    }
+}
+
+public class ItemPackageEntryDbEntityConfiguration : IEntityTypeConfiguration<ItemPackageEntryDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemPackageEntryDbEntity> b)
+    {
+        b.ToTable("item_package_entry_db");
+        b.HasKey(e => new { e.ItemAegis, e.GroupId, e.ContainedItemAegis });
+        b.Property(e => e.ItemAegis).HasColumnName("item_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.GroupId).HasColumnName("group_id");
+        b.Property(e => e.ContainedItemAegis).HasColumnName("contained_item_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Amount).HasColumnName("amount");
+        b.Property(e => e.Refine).HasColumnName("refine");
+        b.Property(e => e.RentalHours).HasColumnName("rental_hours");
+        b.Property(e => e.RandomOptionGroup).HasColumnName("random_option_group").HasMaxLength(64);
+    }
+}
+
+public class ItemComboDbEntityConfiguration : IEntityTypeConfiguration<ItemComboDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemComboDbEntity> b)
+    {
+        b.ToTable("item_combo_db");
+        b.HasKey(e => e.ComboId);
+        b.Property(e => e.ComboId).HasColumnName("combo_id");
+        b.Property(e => e.Script).HasColumnName("script").HasColumnType("text").IsRequired();
+    }
+}
+
+public class ItemComboMemberDbEntityConfiguration : IEntityTypeConfiguration<ItemComboMemberDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemComboMemberDbEntity> b)
+    {
+        b.ToTable("item_combo_member_db");
+        b.HasKey(e => new { e.ComboId, e.MemberItemAegis });
+        b.Property(e => e.ComboId).HasColumnName("combo_id");
+        b.Property(e => e.MemberItemAegis).HasColumnName("member_item_aegis").HasMaxLength(64).IsRequired();
+    }
+}

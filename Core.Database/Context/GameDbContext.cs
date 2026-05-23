@@ -169,16 +169,14 @@ public class GameDbContext : DbContext
     public DbSet<BattlegroundDbEntity> BattlegroundDb => Set<BattlegroundDbEntity>();
     public DbSet<SkillTreeEntity> SkillTreeDb => Set<SkillTreeEntity>();
     public DbSet<GuildSkillTreeEntity> GuildSkillTreeDb => Set<GuildSkillTreeEntity>();
-    public DbSet<MobSummonEntity> MobSummonDb => Set<MobSummonEntity>();
+    // DB-8b: MobSummonDb moved to typed entity below.
     public DbSet<ItemRandomOptGroupEntity> ItemRandomOptGroupDb => Set<ItemRandomOptGroupEntity>();
     // DB-8a: AttrFixDb / LevelPenaltyDb moved to typed entities below.
     public DbSet<JobStatsEntity> JobStatsDb => Set<JobStatsEntity>();
     public DbSet<JobExpEntity> JobExpDb => Set<JobExpEntity>();
     public DbSet<JobBasePointsEntity> JobBasePointsDb => Set<JobBasePointsEntity>();
     public DbSet<StatusYmlEntity> StatusYmlDb => Set<StatusYmlEntity>();
-    public DbSet<ItemCombosEntity> ItemCombosDb => Set<ItemCombosEntity>();
-    public DbSet<ItemPackagesEntity> ItemPackagesDb => Set<ItemPackagesEntity>();
-    public DbSet<ItemGroupDbEntity> ItemGroupDb => Set<ItemGroupDbEntity>();
+    // DB-8b: ItemCombosDb / ItemPackagesDb / ItemGroupDb moved to typed entities below.
     public DbSet<ItemEnchantEntity> ItemEnchantDb => Set<ItemEnchantEntity>();
     public DbSet<ItemReformEntity> ItemReformDb => Set<ItemReformEntity>();
     public DbSet<LaphineSynthesisEntity> LaphineSynthesisDb => Set<LaphineSynthesisEntity>();
@@ -187,8 +185,7 @@ public class GameDbContext : DbContext
     public DbSet<EnchantGradeEntity> EnchantGradeDb => Set<EnchantGradeEntity>();
     public DbSet<MapDropsEntity> MapDropsDb => Set<MapDropsEntity>();
     public DbSet<MobItemRatioEntity> MobItemRatioDb => Set<MobItemRatioEntity>();
-    public DbSet<ItemCashEntity> ItemCashDb => Set<ItemCashEntity>();
-    public DbSet<AttendanceDbEntity> AttendanceDb => Set<AttendanceDbEntity>();
+    // DB-8b: ItemCashDb / AttendanceDb moved to typed entities below.
     // DB-8a: ReputationGroupDb moved to typed entity below.
 
     // ---- DB-8a: re-normalized typed catalogs (was PayloadJson blobs) ----
@@ -197,6 +194,20 @@ public class GameDbContext : DbContext
     public DbSet<LevelPenaltyDifferenceDbEntity> LevelPenaltyDifferenceDb => Set<LevelPenaltyDifferenceDbEntity>();
     public DbSet<ReputationGroupDbEntity> ReputationGroupDb => Set<ReputationGroupDbEntity>();
     public DbSet<ReputationGroupMemberDbEntity> ReputationGroupMemberDb => Set<ReputationGroupMemberDbEntity>();
+
+    // ---- DB-8b: re-normalized typed catalogs (was PayloadJson blobs) ----
+    public DbSet<MobSummonDbEntity> MobSummonDb => Set<MobSummonDbEntity>();
+    public DbSet<MobSummonEntryDbEntity> MobSummonEntryDb => Set<MobSummonEntryDbEntity>();
+    public DbSet<AttendanceCatalogDbEntity> AttendanceCatalogDb => Set<AttendanceCatalogDbEntity>();
+    public DbSet<AttendanceCatalogRewardDbEntity> AttendanceCatalogRewardDb => Set<AttendanceCatalogRewardDbEntity>();
+    public DbSet<ItemCashDbEntity> ItemCashDb => Set<ItemCashDbEntity>();
+    public DbSet<ItemCashEntryDbEntity> ItemCashEntryDb => Set<ItemCashEntryDbEntity>();
+    public DbSet<ItemGroupCatalogDbEntity> ItemGroupCatalogDb => Set<ItemGroupCatalogDbEntity>();
+    public DbSet<ItemGroupCatalogEntryDbEntity> ItemGroupCatalogEntryDb => Set<ItemGroupCatalogEntryDbEntity>();
+    public DbSet<ItemPackageDbEntity> ItemPackageDb => Set<ItemPackageDbEntity>();
+    public DbSet<ItemPackageEntryDbEntity> ItemPackageEntryDb => Set<ItemPackageEntryDbEntity>();
+    public DbSet<ItemComboDbEntity> ItemComboDb => Set<ItemComboDbEntity>();
+    public DbSet<ItemComboMemberDbEntity> ItemComboMemberDb => Set<ItemComboMemberDbEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

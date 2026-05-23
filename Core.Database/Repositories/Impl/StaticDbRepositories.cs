@@ -155,3 +155,57 @@ internal sealed class ReputationGroupDbRepository(GameDbContext ctx) : IReputati
     public async Task<IReadOnlyList<ReputationGroupMemberDbEntity>> GetMembersAsync(int groupId, CancellationToken ct = default)
         => await ctx.ReputationGroupMemberDb.AsNoTracking().Where(m => m.GroupId == groupId).ToListAsync(ct);
 }
+
+// DB-8b — tier-2 single-child re-normalized catalog repos
+
+internal sealed class MobSummonDbRepository(GameDbContext ctx) : IMobSummonDbRepository
+{
+    public async Task<IReadOnlyList<MobSummonDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.MobSummonDb.AsNoTracking().ToListAsync(ct);
+    public async Task<MobSummonDbEntity?> GetByGroupAsync(string groupName, CancellationToken ct = default)
+        => await ctx.MobSummonDb.AsNoTracking().FirstOrDefaultAsync(g => g.GroupName == groupName, ct);
+    public async Task<IReadOnlyList<MobSummonEntryDbEntity>> GetEntriesAsync(string groupName, CancellationToken ct = default)
+        => await ctx.MobSummonEntryDb.AsNoTracking().Where(e => e.GroupName == groupName).ToListAsync(ct);
+}
+
+internal sealed class AttendanceCatalogDbRepository(GameDbContext ctx) : IAttendanceCatalogDbRepository
+{
+    public async Task<IReadOnlyList<AttendanceCatalogDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.AttendanceCatalogDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<AttendanceCatalogRewardDbEntity>> GetRewardsAsync(int attendanceId, CancellationToken ct = default)
+        => await ctx.AttendanceCatalogRewardDb.AsNoTracking().Where(r => r.AttendanceId == attendanceId).OrderBy(r => r.Day).ToListAsync(ct);
+}
+
+internal sealed class ItemCashDbRepository(GameDbContext ctx) : IItemCashDbRepository
+{
+    public async Task<IReadOnlyList<ItemCashDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.ItemCashDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemCashEntryDbEntity>> GetEntriesAsync(string tab, CancellationToken ct = default)
+        => await ctx.ItemCashEntryDb.AsNoTracking().Where(e => e.Tab == tab).ToListAsync(ct);
+}
+
+internal sealed class ItemGroupCatalogDbRepository(GameDbContext ctx) : IItemGroupCatalogDbRepository
+{
+    public async Task<IReadOnlyList<ItemGroupCatalogDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.ItemGroupCatalogDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemGroupCatalogEntryDbEntity>> GetEntriesAsync(string groupName, CancellationToken ct = default)
+        => await ctx.ItemGroupCatalogEntryDb.AsNoTracking().Where(e => e.GroupName == groupName).OrderBy(e => e.SubGroup).ThenBy(e => e.Index).ToListAsync(ct);
+}
+
+internal sealed class ItemPackageDbRepository(GameDbContext ctx) : IItemPackageDbRepository
+{
+    public async Task<IReadOnlyList<ItemPackageDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.ItemPackageDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemPackageEntryDbEntity>> GetEntriesAsync(string itemAegis, CancellationToken ct = default)
+        => await ctx.ItemPackageEntryDb.AsNoTracking().Where(e => e.ItemAegis == itemAegis).OrderBy(e => e.GroupId).ToListAsync(ct);
+}
+
+internal sealed class ItemComboDbRepository(GameDbContext ctx) : IItemComboDbRepository
+{
+    public async Task<IReadOnlyList<ItemComboDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.ItemComboDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemComboMemberDbEntity>> GetMembersAsync(int comboId, CancellationToken ct = default)
+        => await ctx.ItemComboMemberDb.AsNoTracking().Where(m => m.ComboId == comboId).ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemComboMemberDbEntity>> GetCombosForItemAsync(string itemAegis, CancellationToken ct = default)
+        => await ctx.ItemComboMemberDb.AsNoTracking().Where(m => m.MemberItemAegis == itemAegis).ToListAsync(ct);
+}

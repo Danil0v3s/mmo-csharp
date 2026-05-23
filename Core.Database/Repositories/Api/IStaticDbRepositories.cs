@@ -128,3 +128,52 @@ public interface IReputationGroupDbRepository
     Task<ReputationGroupDbEntity?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<IReadOnlyList<ReputationGroupMemberDbEntity>> GetMembersAsync(int groupId, CancellationToken ct = default);
 }
+
+// ============================================================================
+// DB-8b: tier-2 single-child re-normalized catalog repos
+// ============================================================================
+
+/// <summary>DB-8b: weighted random mob groups (rAthena mob_summon.yml).</summary>
+public interface IMobSummonDbRepository
+{
+    Task<IReadOnlyList<MobSummonDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<MobSummonDbEntity?> GetByGroupAsync(string groupName, CancellationToken ct = default);
+    Task<IReadOnlyList<MobSummonEntryDbEntity>> GetEntriesAsync(string groupName, CancellationToken ct = default);
+}
+
+/// <summary>DB-8b: attendance event catalog (rAthena db/attendance.yml).</summary>
+public interface IAttendanceCatalogDbRepository
+{
+    Task<IReadOnlyList<AttendanceCatalogDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<AttendanceCatalogRewardDbEntity>> GetRewardsAsync(int attendanceId, CancellationToken ct = default);
+}
+
+/// <summary>DB-8b: cash shop tabs + per-tab items (rAthena item_cash.yml).</summary>
+public interface IItemCashDbRepository
+{
+    Task<IReadOnlyList<ItemCashDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ItemCashEntryDbEntity>> GetEntriesAsync(string tab, CancellationToken ct = default);
+}
+
+/// <summary>DB-8b: item-group random bags (rAthena item_group_db.yml).</summary>
+public interface IItemGroupCatalogDbRepository
+{
+    Task<IReadOnlyList<ItemGroupCatalogDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ItemGroupCatalogEntryDbEntity>> GetEntriesAsync(string groupName, CancellationToken ct = default);
+}
+
+/// <summary>DB-8b: gift-box/package contents (rAthena item_packages.yml).</summary>
+public interface IItemPackageDbRepository
+{
+    Task<IReadOnlyList<ItemPackageDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ItemPackageEntryDbEntity>> GetEntriesAsync(string itemAegis, CancellationToken ct = default);
+}
+
+/// <summary>DB-8b: equipment-combo bonuses (rAthena item_combos.yml).</summary>
+public interface IItemComboDbRepository
+{
+    Task<IReadOnlyList<ItemComboDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ItemComboMemberDbEntity>> GetMembersAsync(int comboId, CancellationToken ct = default);
+    /// <summary>All combos that include the given item — used by the EquipBonus calc.</summary>
+    Task<IReadOnlyList<ItemComboMemberDbEntity>> GetCombosForItemAsync(string itemAegis, CancellationToken ct = default);
+}
