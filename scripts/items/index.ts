@@ -4,4 +4,5 @@
 // converter pass; hand-edits go under _dev_test/ or sibling subfolders.
 
 import "./generated";
+import "./manual";
 import "./_dev_test";
