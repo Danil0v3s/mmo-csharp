@@ -19,8 +19,6 @@ public sealed class EquipService : IEquipService
     private readonly IItemCatalog _catalog;
     private readonly IEntityRegistry _entities;
     private readonly IStatusCalcService _statusCalc;
-    private readonly IItemCombosService? _combos;
-    private readonly IScriptedBonusService? _scriptedBonuses;
     private readonly IComboDispatcher? _comboDispatcher;
     private readonly IItemHookDispatcher? _hookDispatcher;
     private readonly ILogger<EquipService> _logger;
@@ -30,16 +28,12 @@ public sealed class EquipService : IEquipService
         IEntityRegistry entities,
         IStatusCalcService statusCalc,
         ILogger<EquipService> logger,
-        IItemCombosService? combos = null,
-        IScriptedBonusService? scriptedBonuses = null,
         IComboDispatcher? comboDispatcher = null,
         IItemHookDispatcher? hookDispatcher = null)
     {
         _catalog = catalog;
         _entities = entities;
         _statusCalc = statusCalc;
-        _combos = combos;
-        _scriptedBonuses = scriptedBonuses;
         _comboDispatcher = comboDispatcher;
         _hookDispatcher = hookDispatcher;
         _logger = logger;
@@ -203,46 +197,23 @@ public sealed class EquipService : IEquipService
 
         var summary = EquipBonusAggregator.Aggregate(session.Inventory, _catalog);
 
-        // CONV-3: combo dispatch moved to IComboDispatcher, which walks
-        // the TypeScript-registered combo set in INpcRegistry and fires
-        // onActive hooks through the shared mmo-scripts V8 engine. When
-        // the dispatcher is wired we skip the old IItemCombosService +
-        // ActiveCombo + runtime-DSL path entirely — same data feeds both
-        // (CONV-2 generated the .ts modules from item_combo_db), so the
-        // dispatcher is the authoritative source. Without the dispatcher
-        // we fall back to the legacy path so the surface stays viable in
-        // tests that don't spin up a ScriptHost.
-        IReadOnlyList<ActiveCombo>? activeCombos = null;
-        if (_comboDispatcher == null && _combos != null)
-        {
-            activeCombos = _combos.RecomputeCombos(session);
-            if (activeCombos.Count > 0)
-            {
-                _logger.LogDebug("item_combo: {N} legacy combo(s) firing for {Player} (ids: {Ids})",
-                    activeCombos.Count, player.Name, string.Join(",", activeCombos.Select(c => c.ComboId)));
-            }
-        }
-
-        // T2.2 — rebuild the indexed bonus bundle from each equip's
-        // bonus script (regex pass over the item_db `script` column).
-        // Read by IBattleCardService.CalcCardFix + cast / drain hooks.
-        // DSL-4: scriptedBonuses + player thread the V8 bridge into the
-        // build for the per-item dynamic-script fallback (CONV-4 will
-        // move per-item dispatch onto the shared engine too).
+        // CONV-4: per-item onEquip hooks accumulate into player.EquipBonuses
+        // via IItemHookDispatcher. The aggregator dispatches one hook per
+        // equipped item; items without a registration contribute only the
+        // static fields surfaced by Aggregate (Atk / Def / range / element).
         EquipBonusAggregator.BuildBundle(
-            session.Inventory, _catalog, player.EquipBonuses, activeCombos,
-            _scriptedBonuses, player, _hookDispatcher);
+            session.Inventory, _catalog, player.EquipBonuses, player, _hookDispatcher);
 
         // CONV-3: layer combo onActive bonuses on top of per-item bonuses
         // via the registry-driven dispatcher. Each combo's hook writes
         // into player.EquipBonuses in-place using the same host surface
-        // (ScriptedBonusHost) the runtime DSL bridge uses, so downstream
+        // (ScriptedBonusHost) the per-item dispatcher uses, so downstream
         // combat / cast code sees combo bonuses indistinguishably from
         // per-item ones.
-        if (_comboDispatcher != null)
+        if (_comboDispatcher != null && session.Inventory != null)
         {
             var equipped = new List<InventoryItem>();
-            for (var i = 0; i < session.Inventory!.Count; i++)
+            for (var i = 0; i < session.Inventory.Count; i++)
                 if (session.Inventory[i].Equip != 0) equipped.Add(session.Inventory[i]);
             _comboDispatcher.ApplyActiveCombos(equipped, player.EquipBonuses, player);
         }
