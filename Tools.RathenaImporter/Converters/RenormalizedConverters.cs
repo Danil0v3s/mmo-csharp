@@ -563,27 +563,37 @@ public sealed class JobExpRenormConverter : IYamlToSqlConverter
             if (jobs.Count == 0) continue;
             var maxBase = row.Int("MaxBaseLevel");
             var maxJob = row.Int("MaxJobLevel");
-            // rAthena yml uses Exp: [{Level: 1, Exp: <n>}, …]; "Exp" is BaseExp if MaxBaseLevel set,
-            // JobExp if MaxJobLevel set. The row carries one of the two — split into the right column.
-            var hasBaseLevel = maxBase != null;
+            // rAthena yml has two sibling arrays at row level: BaseExp:[]
+            // and JobExp:[], each a list of {Level, Exp} pairs. Merge
+            // per-level so a single composite-PK row carries both columns
+            // when present (rAthena MaxBaseLevel rows ship BaseExp only;
+            // MaxJobLevel rows ship JobExp only).
+            var perLevel = new Dictionary<int, (long? baseExp, long? jobExp)>();
+            foreach (var e in row.Rows("BaseExp"))
+            {
+                var l = e.Int("Level"); var v = e.Long("Exp");
+                if (l == null || v == null) continue;
+                var cur = perLevel.TryGetValue(l.Value, out var c) ? c : (null, null);
+                perLevel[l.Value] = (v, cur.jobExp);
+            }
+            foreach (var e in row.Rows("JobExp"))
+            {
+                var l = e.Int("Level"); var v = e.Long("Exp");
+                if (l == null || v == null) continue;
+                var cur = perLevel.TryGetValue(l.Value, out var c) ? c : (null, null);
+                perLevel[l.Value] = (cur.baseExp, v);
+            }
             foreach (var job in jobs)
             {
                 sb.AppendLine(SqlEmit.Replace("job_max_level_db",
                     new[] { "job_aegis", "max_base_level", "max_job_level" },
                     new object?[] { job, maxBase, maxJob }));
                 n++;
-                foreach (var e in row.Rows("Exp"))
+                foreach (var (lvl, vals) in perLevel.OrderBy(kv => kv.Key))
                 {
-                    var lvl = e.Int("Level");
-                    var exp = e.Long("Exp");
-                    if (lvl == null || exp == null) continue;
                     sb.AppendLine(SqlEmit.Replace("job_exp_db",
                         new[] { "job_aegis", "level", "base_exp", "job_exp" },
-                        new object?[] {
-                            job, lvl.Value,
-                            hasBaseLevel ? (object)exp.Value : null,
-                            hasBaseLevel ? null : (object?)exp.Value
-                        }));
+                        new object?[] { job, lvl, vals.baseExp, vals.jobExp }));
                 }
             }
         }
@@ -1325,16 +1335,20 @@ public sealed class MercenarySkillRenormConverter : IYamlToSqlConverter
         {
             var mercId = row.Int("Id");
             if (mercId == null) continue;
+            // SkillId is part of the composite PK (merc_id, skill_id) but
+            // the rAthena yml only carries the Aegis name. Use a synthetic
+            // per-merc ordinal (1..N) so multiple skills per merc don't
+            // collide. The runtime resolves the real numeric skill id via
+            // the skill_aegis column joined against skill_db.
+            ushort ordinal = 1;
             foreach (var s in row.Rows("Skills"))
             {
                 var aegis = s.Str("Name");
                 if (string.IsNullOrEmpty(aegis)) continue;
-                // SkillId is not in the yml — set to 0; runtime resolves
-                // by name via skill_db. The composite key tolerates this.
                 sb.AppendLine(SqlEmit.Replace("mercenary_skill_db",
                     new[] { "merc_id", "skill_id", "skill_aegis", "max_level" },
                     new object?[] {
-                        (uint)mercId.Value, (ushort)0, aegis,
+                        (uint)mercId.Value, ordinal++, aegis,
                         (ushort)(s.Int("MaxLevel") ?? 1)
                     }));
                 n++;
@@ -1364,6 +1378,10 @@ public sealed class HomunculusSkillTreeRenormConverter : IYamlToSqlConverter
         {
             var classAegis = row.Str("Class");
             if (string.IsNullOrEmpty(classAegis)) continue;
+            // Same composite-PK collision as mercenary_skill_db — use
+            // synthetic per-class ordinal as skill_id; runtime joins
+            // skill_aegis against skill_db to resolve the numeric id.
+            ushort ordinal = 1;
             foreach (var s in row.Rows("SkillTree"))
             {
                 var skill = s.Str("Skill");
@@ -1381,7 +1399,7 @@ public sealed class HomunculusSkillTreeRenormConverter : IYamlToSqlConverter
                     new[] { "class_aegis", "skill_id", "skill_aegis", "max_level",
                             "required_level", "required_intimacy", "require_evolution" },
                     new object?[] {
-                        classAegis, (ushort)0, skill,
+                        classAegis, ordinal++, skill,
                         (ushort)(s.Int("MaxLevel") ?? 1),
                         requiredLevel,
                         (ushort)(s.Int("RequiredIntimacy") ?? 0),
