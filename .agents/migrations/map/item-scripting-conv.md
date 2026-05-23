@@ -21,7 +21,7 @@ use (`Map.Server.Scripting.ScriptHost`).
 
 | Corpus | Coverage |
 |---|---|
-| `item_db.script` + `equip_script` + `unequip_script` (19,913 rows) | 19,886 auto-converted (99.86%) + 24 hand-ported = **99.98%** |
+| `item_db.script` + `equip_script` + `unequip_script` (19,913 rows) | 19,889 auto-converted (99.88%) + 24 hand-ported = **99.99%** (post-GAP-2) |
 | `item_combo_db.script` (7,767 rows) | **7,767 auto-converted (100%)** |
 | All 7,767 combos invoke through dispatcher | **100% (smoke test green)** |
 | All ≥8,000 onEquip hooks invoke through dispatcher | **100% (smoke test green)** |
@@ -248,6 +248,15 @@ Deleted the dead code now that CONV-3 + CONV-4 cover all dispatch.
 | `bAutoSpell` / `autobonus` family in combo + item bonuses | Translated cleanly to host calls but the host's autobonus registration path was DSL-3 era; CONV-3/4 kept the surface but the actual proc behavior depends on `IPlayerBonusService.AddAutobonus`, which is independently wired and unchanged. |
 
 ## History
+
+### 2026-05-23 — GAP-2: parser fix for paren-wrapped first arg
+
+`RathenaScriptParser.ParseCallStmt` now handles three call shapes
+instead of two: bare-comma, paren-all, and paren-first (where
+`name(expr)` is the first bare-call arg with more comma-separated
+args following). Recovered the 3 HPLoss cards' `unequip_script`
+columns (4263 / 4499 / 300403) — converter coverage moves from
+19,886 → 19,889 (99.88% → 99.99% with hand-ports).
 
 ### 2026-05-23 — CONV-6: audit + sweep
 

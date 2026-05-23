@@ -2340,13 +2340,20 @@ registerItem({
   },
 });
 
-// SKIPPED id=4263 UnequipScript: parse: Expected ';' but got ',' at pos 160
 registerItem({
   id: 4263,
   onEquip(ctx) {
     ctx.bonus("bIgnoreDefClass", "Class_Normal");
     ctx.bonus("bNoRegen", 1);
     ctx.bonus2("bHPLossRate", 666, 10000);
+
+  },
+  onUnequip(ctx) {
+    if ((ctx.getParam("Hp") <= 999) && !ctx.getmapflag(ctx.strcharinfo(3), "mf_pvp") && !ctx.getmapflag(ctx.strcharinfo(3), "mf_pvp_noparty") && !ctx.getmapflag(ctx.strcharinfo(3), "mf_pvp_noguild")) {
+      ctx.heal((1 - ctx.getParam("Hp")), 0);
+    } else {
+      ctx.heal(-999, 0);
+    }
 
   },
 });
@@ -4613,7 +4620,6 @@ registerItem({
   },
 });
 
-// SKIPPED id=4499 UnequipScript: parse: Expected ';' but got ',' at pos 160
 registerItem({
   id: 4499,
   onEquip(ctx) {
@@ -4623,6 +4629,14 @@ registerItem({
       ctx.bonus2("bHPLossRate", 777, 8000);
     } else {
       ctx.bonus2("bHPLossRate", 888, 5000);
+    }
+
+  },
+  onUnequip(ctx) {
+    if (ctx.getParam("Hp") <= 999 && !ctx.getmapflag(ctx.strcharinfo(3), "mf_pvp") && !ctx.getmapflag(ctx.strcharinfo(3), "mf_pvp_noparty") && !ctx.getmapflag(ctx.strcharinfo(3), "mf_pvp_noguild")) {
+      ctx.heal((1 - ctx.getParam("Hp")), 0);
+    } else {
+      ctx.heal(-999, 0);
     }
 
   },

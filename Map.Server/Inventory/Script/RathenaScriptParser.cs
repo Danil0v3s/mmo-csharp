@@ -419,21 +419,57 @@ public static class RathenaScriptParser
         {
             var name = Expect(TokKind.Ident, "call name").Text;
             var args = new List<Expr>();
-            // Two call-statement shapes coexist in rAthena's grammar:
-            //   1. Bare:    bonus bAtk,10;             — comma-separated args, no parens
-            //   2. Parens:  laphine_upgrade();         — C-style empty parens
-            //               getgroupitem(IG_X);        — C-style with args
-            // We disambiguate by peeking: an immediate '(' picks shape 2,
-            // anything else picks shape 1. ExpectSemi closes either.
+            // Three call-statement shapes coexist in rAthena's grammar:
+            //   1. Bare:        bonus bAtk,10;            — comma args, no parens
+            //   2. Paren-all:   laphine_upgrade();        — C-style; (...) IS the arg list
+            //                   getgroupitem(IG_X);       — single arg in (...)
+            //   3. Paren-first: heal(1-Hp),0;             — bare-shape where the first
+            //                                               arg is parenthesised but
+            //                                               more args follow outside.
+            //
+            // (3) is rare but real (a handful of HPLoss card scripts use it).
+            // Algorithm:
+            //   - No '(' → shape 1.
+            //   - '(' present → speculatively parse the parens. After the
+            //     closing ')', if the next token is ',' the whole thing was
+            //     shape 3 — wrap the inner expression back into a ParenExpr
+            //     and continue collecting bare args. Otherwise it's shape 2.
             if (Peek().Kind == TokKind.LParen)
             {
                 Take();
+                Expr? innerSingle = null;
                 if (Peek().Kind != TokKind.RParen)
                 {
-                    args.Add(ParseExpr());
-                    while (Peek().Kind == TokKind.Comma) { Take(); args.Add(ParseExpr()); }
+                    var first = ParseExpr();
+                    if (Peek().Kind == TokKind.Comma)
+                    {
+                        // Shape 2 with multi-arg paren list.
+                        args.Add(first);
+                        while (Peek().Kind == TokKind.Comma) { Take(); args.Add(ParseExpr()); }
+                    }
+                    else
+                    {
+                        // Single-arg paren content — could be shape 2 OR the
+                        // first arg of shape 3. Defer the decision until we
+                        // see what's past ')'.
+                        innerSingle = first;
+                    }
                 }
                 Expect(TokKind.RParen, "')'");
+                if (innerSingle != null)
+                {
+                    if (Peek().Kind == TokKind.Comma)
+                    {
+                        // Shape 3: paren-first bare-call. Wrap and continue.
+                        args.Add(new ParenExpr(innerSingle));
+                        while (Peek().Kind == TokKind.Comma) { Take(); args.Add(ParseExpr()); }
+                    }
+                    else
+                    {
+                        // Shape 2 with one arg.
+                        args.Add(innerSingle);
+                    }
+                }
             }
             else if (Peek().Kind != TokKind.Semi)
             {

@@ -194,15 +194,10 @@ registerItem({
     },
 });
 
-// HPLoss cards 4263 / 4499 / 300403 are NOT hand-ported here. Their
-// `script` column (onEquip) translated cleanly — the converter already
-// emitted registerItem({ id, onEquip }) for each. Only the
-// `unequip_script` failed (the `heal(1-Hp),0;` paren-wrapped first-arg
-// shape the parser can't disambiguate). The lost behavior is a niche
-// HP-drain-to-1 on unequip ("the curse holds even off your hand");
-// rare enough that we accept the gap rather than override the
-// generated registrations (the registry rejects duplicate ids by
-// design — preserves the "one canonical source per id" invariant).
+// HPLoss cards 4263 / 4499 / 300403 — RECOVERED by GAP-2. The parser
+// now accepts the `name(expr),more,...;` paren-wrapped-first-arg shape
+// rAthena uses in `heal(1-Hp),0;`, so the converter emits both onEquip
+// AND onUnequip for these cards. No hand-port needed here.
 
 // Pet-egg-conditional armors. rAthena uses `switch( getpetinfo(PETINFO_EGGID) )`
 // to grant different bonuses per egg. ItemEquipContext doesn't surface pet

@@ -3488,13 +3488,20 @@ registerItem({
   },
 });
 
-// SKIPPED id=300403 UnequipScript: parse: Expected ';' but got ',' at pos 158
 registerItem({
   id: 300403,
   onEquip(ctx) {
     ctx.bonus2("bIgnoreDefClassRate", "Class_Normal", 30);
     ctx.bonus("bNoRegen", 1);
     ctx.bonus2("bHPLossRate", 666, 10000);
+
+  },
+  onUnequip(ctx) {
+    if (ctx.getParam("Hp") <= 999 && !ctx.getmapflag(ctx.strcharinfo(3), "mf_pvp") && !ctx.getmapflag(ctx.strcharinfo(3), "mf_pvp_noparty") && !ctx.getmapflag(ctx.strcharinfo(3), "mf_pvp_noguild")) {
+      ctx.heal((1 - ctx.getParam("Hp")), 0);
+    } else {
+      ctx.heal(-999, 0);
+    }
 
   },
 });
