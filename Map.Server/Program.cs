@@ -453,6 +453,9 @@ builder.Services.AddSingleton<Map.Server.Items.Db.IItemDbService, Map.Server.Ite
 // DBR-2b: typed item-group catalog (2722 groups / 30809 entries) — random
 // bag rolls for Bloody/Dead/RWC Branches, Old Card Album, gift boxes, etc.
 builder.Services.AddSingleton<Map.Server.Items.IItemGroupService, Map.Server.Items.ItemGroupService>();
+// DBR-2c: typed refine catalog (4 groups / 160 level rows / 390 chance
+// rows) — refine UI + @refine GM cmd consume rates/materials.
+builder.Services.AddSingleton<Map.Server.Inventory.IRefineService, Map.Server.Inventory.RefineService>();
 builder.Services.AddSingleton<Map.Server.Status.StatusOps.IStatusOpsService, Map.Server.Status.StatusOps.StatusOpsService>();
 builder.Services.AddSingleton<Map.Server.Handlers.ClifWire.IClifWireService, Map.Server.Handlers.ClifWire.ClifWireService>();
 builder.Services.AddSingleton<Map.Server.Scripting.ScriptApi.IScriptApiService, Map.Server.Scripting.ScriptApi.ScriptApiService>();

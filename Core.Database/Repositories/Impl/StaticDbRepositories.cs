@@ -297,3 +297,91 @@ internal sealed class ElementalCatalogDbRepository(GameDbContext ctx) : IElement
     public async Task<IReadOnlyList<ElementalModeDbEntity>> GetModesAsync(int elementalId, CancellationToken ct = default)
         => await ctx.ElementalModeDb.AsNoTracking().Where(m => m.ElementalId == elementalId).ToListAsync(ct);
 }
+
+// DB-8g — enchant pipeline repos
+
+internal sealed class ItemEnchantDbRepository(GameDbContext ctx) : IItemEnchantDbRepository
+{
+    public async Task<IReadOnlyList<ItemEnchantDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.ItemEnchantDb.AsNoTracking().ToListAsync(ct);
+    public async Task<ItemEnchantDbEntity?> GetByIdAsync(int enchantId, CancellationToken ct = default)
+        => await ctx.ItemEnchantDb.AsNoTracking().FirstOrDefaultAsync(e => e.EnchantId == enchantId, ct);
+    public async Task<IReadOnlyList<ItemEnchantTargetDbEntity>> GetAllTargetsAsync(CancellationToken ct = default)
+        => await ctx.ItemEnchantTargetDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemEnchantTargetDbEntity>> GetTargetsAsync(int enchantId, CancellationToken ct = default)
+        => await ctx.ItemEnchantTargetDb.AsNoTracking().Where(t => t.EnchantId == enchantId).ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemEnchantMaterialDbEntity>> GetMaterialsAsync(int enchantId, CancellationToken ct = default)
+        => await ctx.ItemEnchantMaterialDb.AsNoTracking().Where(m => m.EnchantId == enchantId).ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemEnchantSlotDbEntity>> GetSlotsAsync(int enchantId, CancellationToken ct = default)
+        => await ctx.ItemEnchantSlotDb.AsNoTracking().Where(s => s.EnchantId == enchantId).OrderBy(s => s.Slot).ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemEnchantOptionDbEntity>> GetOptionsAsync(int enchantId, CancellationToken ct = default)
+        => await ctx.ItemEnchantOptionDb.AsNoTracking().Where(o => o.EnchantId == enchantId).ToListAsync(ct);
+}
+
+internal sealed class ItemReformDbRepository(GameDbContext ctx) : IItemReformDbRepository
+{
+    public async Task<IReadOnlyList<ItemReformDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.ItemReformDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemReformBaseDbEntity>> GetAllBasesAsync(CancellationToken ct = default)
+        => await ctx.ItemReformBaseDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemReformBaseDbEntity>> GetBasesAsync(string resultItemAegis, CancellationToken ct = default)
+        => await ctx.ItemReformBaseDb.AsNoTracking().Where(b => b.ResultItemAegis == resultItemAegis).ToListAsync(ct);
+}
+
+internal sealed class LaphineSynthesisDbRepository(GameDbContext ctx) : ILaphineSynthesisDbRepository
+{
+    public async Task<IReadOnlyList<LaphineSynthesisDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.LaphineSynthesisDb.AsNoTracking().ToListAsync(ct);
+    public async Task<LaphineSynthesisDbEntity?> GetByRecipeAsync(string recipeItem, CancellationToken ct = default)
+        => await ctx.LaphineSynthesisDb.AsNoTracking().FirstOrDefaultAsync(r => r.RecipeItem == recipeItem, ct);
+    public async Task<IReadOnlyList<LaphineSynthesisRequirementDbEntity>> GetRequirementsAsync(string recipeItem, CancellationToken ct = default)
+        => await ctx.LaphineSynthesisRequirementDb.AsNoTracking().Where(r => r.RecipeItem == recipeItem).ToListAsync(ct);
+}
+
+internal sealed class LaphineUpgradeDbRepository(GameDbContext ctx) : ILaphineUpgradeDbRepository
+{
+    public async Task<IReadOnlyList<LaphineUpgradeDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.LaphineUpgradeDb.AsNoTracking().ToListAsync(ct);
+    public async Task<LaphineUpgradeDbEntity?> GetByUpgradeAsync(string upgradeItem, CancellationToken ct = default)
+        => await ctx.LaphineUpgradeDb.AsNoTracking().FirstOrDefaultAsync(u => u.UpgradeItem == upgradeItem, ct);
+    public async Task<IReadOnlyList<LaphineUpgradeTargetDbEntity>> GetTargetsAsync(string upgradeItem, CancellationToken ct = default)
+        => await ctx.LaphineUpgradeTargetDb.AsNoTracking().Where(t => t.UpgradeItem == upgradeItem).ToListAsync(ct);
+}
+
+internal sealed class ItemRandomOptGroupDbRepository(GameDbContext ctx) : IItemRandomOptGroupDbRepository
+{
+    public async Task<IReadOnlyList<ItemRandomOptGroupDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.ItemRandomOptGroupDb.AsNoTracking().ToListAsync(ct);
+    public async Task<ItemRandomOptGroupDbEntity?> GetByIdAsync(int id, CancellationToken ct = default)
+        => await ctx.ItemRandomOptGroupDb.AsNoTracking().FirstOrDefaultAsync(g => g.Id == id, ct);
+    public async Task<ItemRandomOptGroupDbEntity?> GetByNameAsync(string groupName, CancellationToken ct = default)
+        => await ctx.ItemRandomOptGroupDb.AsNoTracking().FirstOrDefaultAsync(g => g.GroupName == groupName, ct);
+    public async Task<IReadOnlyList<ItemRandomOptGroupOptionDbEntity>> GetOptionsAsync(int groupId, CancellationToken ct = default)
+        => await ctx.ItemRandomOptGroupOptionDb.AsNoTracking().Where(o => o.GroupId == groupId).ToListAsync(ct);
+}
+
+// DB-8h — refine + enchantgrade repos
+
+internal sealed class RefineDbRepository(GameDbContext ctx) : IRefineDbRepository
+{
+    public async Task<IReadOnlyList<RefineGroupDbEntity>> GetAllGroupsAsync(CancellationToken ct = default)
+        => await ctx.RefineGroupDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<RefineLevelDbEntity>> GetAllLevelsAsync(CancellationToken ct = default)
+        => await ctx.RefineLevelDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<RefineChanceDbEntity>> GetAllChancesAsync(CancellationToken ct = default)
+        => await ctx.RefineChanceDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<RefineLevelDbEntity>> GetLevelsForGroupAsync(string groupName, CancellationToken ct = default)
+        => await ctx.RefineLevelDb.AsNoTracking().Where(l => l.GroupName == groupName).ToListAsync(ct);
+    public async Task<IReadOnlyList<RefineChanceDbEntity>> GetChancesForGroupAsync(string groupName, CancellationToken ct = default)
+        => await ctx.RefineChanceDb.AsNoTracking().Where(c => c.GroupName == groupName).ToListAsync(ct);
+}
+
+internal sealed class EnchantGradeDbRepository(GameDbContext ctx) : IEnchantGradeDbRepository
+{
+    public async Task<IReadOnlyList<EnchantGradeDbEntity>> GetAllGroupsAsync(CancellationToken ct = default)
+        => await ctx.EnchantGradeDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<EnchantGradeLevelDbEntity>> GetAllLevelsAsync(CancellationToken ct = default)
+        => await ctx.EnchantGradeLevelDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<EnchantGradeChanceDbEntity>> GetAllChancesAsync(CancellationToken ct = default)
+        => await ctx.EnchantGradeChanceDb.AsNoTracking().ToListAsync(ct);
+}
