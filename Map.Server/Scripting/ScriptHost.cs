@@ -119,10 +119,11 @@ public sealed class ScriptHost : IDisposable
     /// </list>
     ///
     /// <para>
-    /// The Proxy approach is identical to what runs in the dedicated
-    /// <c>mmo-bonus-scripts</c> engine today (ScriptedBonusService). CONV-3
-    /// brings combo dispatch under the shared <c>mmo-scripts</c> engine
-    /// using the same trick.
+    /// The Proxy approach was first introduced by DSL-4's runtime DSL bridge.
+    /// CONV-3 brought combo dispatch under this shared engine, CONV-4
+    /// brought item dispatch (onUse / onEquip / onUnequip) under it as
+    /// well, and CONV-5 retired the dedicated runtime engine entirely.
+    /// All three TS-hook kinds invoke through this helper.
     /// </para>
     /// </summary>
     private static void InstallHookInvoker(V8ScriptEngine engine)

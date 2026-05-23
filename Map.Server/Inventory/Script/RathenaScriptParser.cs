@@ -7,9 +7,17 @@ namespace Map.Server.Inventory.Script;
 /// Lexer + recursive-descent parser for the rAthena item-script DSL.
 /// Targets only the surface used by item_db / item_combos /
 /// item_packages / item_enchant — NOT general-purpose rAthena script.
-/// Throws <see cref="ScriptParseException"/> on unsupported input;
-/// callers (IScriptedBonusService) catch and log so a single bad
-/// script can't take down a PC's equip recalc.
+/// Throws <see cref="ScriptParseException"/> on unsupported input.
+///
+/// <para>
+/// Build-time tool only as of CONV-5. <c>Tools.ItemScriptConvert</c>
+/// invokes <see cref="Parse"/> + <see cref="RathenaToJsTranslator.Translate"/>
+/// once per script column in the SQL seeds; the resulting JS is emitted
+/// as TypeScript hooks under <c>scripts/items/generated/</c> and
+/// <c>scripts/combos/generated/</c>. The runtime no longer parses
+/// rAthena scripts — it invokes the TS hooks directly through
+/// <c>IItemHookDispatcher</c> / <c>IComboDispatcher</c>.
+/// </para>
 ///
 /// <para>
 /// Surface supported:

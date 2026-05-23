@@ -11,10 +11,14 @@ namespace Map.Server.Inventory;
 /// (DSL-bridge / C# handler) fallback so we don't double-apply.
 ///
 /// <para>
-/// The dispatcher only fires when a registration exists for the item id;
-/// callers that want a no-hook item to still do something fall back to
-/// their pre-CONV path (BonusScriptExtractor / ScriptedBonusService for
-/// equip bonuses; ItemEffectRegistry for on-use effects).
+/// The dispatcher only fires when a registration exists for the item id.
+/// For onUse, the fallback is <see cref="ItemEffects.ItemEffectRegistry"/>
+/// (hand-written C# handlers keyed by aegis name — used for items the
+/// converter intentionally left without a TS hook). For onEquip and
+/// onUnequip there is no fallback: bonus accumulation lives entirely in
+/// TS-registered hooks (CONV-4), and items without a hook contribute
+/// only the static fields surfaced by <c>EquipBonusAggregator.Aggregate</c>
+/// (ATK / DEF / range / element).
 /// </para>
 /// </summary>
 public interface IItemHookDispatcher
