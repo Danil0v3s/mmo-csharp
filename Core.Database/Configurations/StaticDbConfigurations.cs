@@ -173,3 +173,47 @@ public class InstanceDbEntityConfiguration : IEntityTypeConfiguration<InstanceDb
         b.Property(e => e.AdditionalMaps).HasColumnName("additional_maps").HasColumnType("text");
     }
 }
+
+/// <summary>
+/// AT-F: per-merc skill grant child table. Composite key (merc_id,
+/// skill_id). Empty SQL row set falls back to a baked default seed
+/// in <c>MercenaryService</c>.
+/// </summary>
+public class MercenarySkillDbEntityConfiguration : IEntityTypeConfiguration<MercenarySkillDbEntity>
+{
+    public void Configure(EntityTypeBuilder<MercenarySkillDbEntity> b)
+    {
+        b.ToTable("mercenary_skill_db");
+        b.HasKey(e => new { e.MercId, e.SkillId });
+        b.Property(e => e.MercId).HasColumnName("merc_id");
+        b.Property(e => e.SkillId).HasColumnName("skill_id");
+        b.Property(e => e.SkillAegis).HasColumnName("skill_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.MaxLevel).HasColumnName("max_level");
+    }
+}
+
+/// <summary>
+/// AT-F: per-homunculus-class skill tree child table. Composite key
+/// (class_aegis, skill_id). Empty row set falls back to baked seed in
+/// <c>HomunculusService</c>.
+/// </summary>
+public class HomunculusSkillTreeDbEntityConfiguration : IEntityTypeConfiguration<HomunculusSkillTreeDbEntity>
+{
+    public void Configure(EntityTypeBuilder<HomunculusSkillTreeDbEntity> b)
+    {
+        b.ToTable("homunculus_skill_tree_db");
+        b.HasKey(e => new { e.ClassAegis, e.SkillId });
+        b.Property(e => e.ClassAegis).HasColumnName("class_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.SkillId).HasColumnName("skill_id");
+        b.Property(e => e.SkillAegis).HasColumnName("skill_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.MaxLevel).HasColumnName("max_level");
+        b.Property(e => e.RequiredLevel).HasColumnName("required_level");
+        b.Property(e => e.RequiredIntimacy).HasColumnName("required_intimacy");
+        b.Property(e => e.RequireEvolution).HasColumnName("require_evolution");
+    }
+}
+
+// Battleground catalog: already in DB as `battleground_db` JSON
+// payload (DB-5; see CatalogEntities.BattlegroundDbEntity). The
+// service consumes that JSON via a typed deserializer instead of a
+// duplicate child table. Wiring that consumer is task #145 DB-8.

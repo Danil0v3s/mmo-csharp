@@ -140,6 +140,12 @@ public class GameDbContext : DbContext
     public DbSet<MercenaryDbEntity> MercenaryDb => Set<MercenaryDbEntity>();
     public DbSet<InstanceDbEntity> InstanceDb => Set<InstanceDbEntity>();
 
+    // ---- AT-F: nested-array child tables previously baked inline ----
+    // (battleground_db is already in the JSON-payload catalog table —
+    //  see CatalogEntities.BattlegroundDbEntity; consume via DB-8.)
+    public DbSet<MercenarySkillDbEntity> MercenarySkillDb => Set<MercenarySkillDbEntity>();
+    public DbSet<HomunculusSkillTreeDbEntity> HomunculusSkillTreeDb => Set<HomunculusSkillTreeDbEntity>();
+
     // ---- Second wave of static catalogs (flat-shape) ----
     public DbSet<CastleDbEntity> CastleDb => Set<CastleDbEntity>();
     public DbSet<StatPointEntity> StatPointDb => Set<StatPointEntity>();

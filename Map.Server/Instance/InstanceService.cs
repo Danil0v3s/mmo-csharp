@@ -56,7 +56,25 @@ public sealed class InstanceService : IInstanceService
     public int Create(int dbId, int ownerId, byte mode)
     {
         var id = _nextId++;
-        _instances[id] = new InstanceRecord { Id = id, DbId = dbId, OwnerId = ownerId, Mode = mode };
+        var record = new InstanceRecord { Id = id, DbId = dbId, OwnerId = ownerId, Mode = mode };
+        // Seed Maps[] from the instance_db.additional_maps column
+        // (rAthena instance_db.yml AdditionalMaps). Format: comma-
+        // separated base map names.
+        if (_catalog.TryGetValue((uint)dbId, out var tmpl))
+        {
+            if (!string.IsNullOrEmpty(tmpl.EnterMap))
+                record.Maps.Add(GenerateMapName(tmpl.EnterMap, id));
+            if (!string.IsNullOrEmpty(tmpl.AdditionalMaps))
+            {
+                foreach (var raw in tmpl.AdditionalMaps.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var name = raw.Trim();
+                    if (name.Length > 0)
+                        record.Maps.Add(GenerateMapName(name, id));
+                }
+            }
+        }
+        _instances[id] = record;
         return id;
     }
 
@@ -85,24 +103,33 @@ public sealed class InstanceService : IInstanceService
 
     /// <summary>
     /// rAthena <c>instance_enter</c> — warp the caller into the
-    /// instance's first registered map slot. Uses <see cref="IPcSetposService"/>
-    /// for the actual coord transition + AOI redo + ZC_NPCACK_MAPMOVE.
+    /// instance's entry map. Reads EnterMap / EnterX / EnterY from
+    /// the <c>instance_db</c> SQL row (no more hardcoded coords);
+    /// falls back to (100,100) if those columns are null for the
+    /// template (rAthena default behavior).
     /// </summary>
     public bool Enter(PlayerEntity pc, int instanceId)
     {
         if (_setpos == null) return false;
         if (!_instances.TryGetValue(instanceId, out var r)) return false;
-        if (r.Maps.Count == 0)
+        if (!_catalog.TryGetValue((uint)r.DbId, out var tmpl))
         {
-            _logger.LogWarning("instance_enter: inst#{Inst} has no maps registered", instanceId);
+            _logger.LogWarning("instance_enter: db#{Db} missing catalog row", r.DbId);
             return false;
         }
-        // rAthena reads instance_db.yml EnterMap + EnterX/EnterY. Until
-        // that loader exposes the per-template entry coords we land at
-        // the canonical (100, 100); good enough for the warp pipe.
-        var target = r.Maps[0];
-        var result = _setpos.Setpos(pc, target, x: 100, y: 100);
-        _logger.LogInformation("instance_enter: {Pc} → {Map} = {Result}", pc.Name, target, result);
+        var enterMap = !string.IsNullOrEmpty(tmpl.EnterMap)
+            ? GenerateMapName(tmpl.EnterMap, instanceId)
+            : (r.Maps.Count > 0 ? r.Maps[0] : null);
+        if (enterMap == null)
+        {
+            _logger.LogWarning("instance_enter: inst#{Inst} has no entry map", instanceId);
+            return false;
+        }
+        var x = (short)(tmpl.EnterX ?? 100);
+        var y = (short)(tmpl.EnterY ?? 100);
+        var result = _setpos.Setpos(pc, enterMap, x, y);
+        _logger.LogInformation("instance_enter: {Pc} → {Map} ({X},{Y}) = {Result}",
+            pc.Name, enterMap, x, y, result);
         return result == SetposResult.Ok;
     }
 

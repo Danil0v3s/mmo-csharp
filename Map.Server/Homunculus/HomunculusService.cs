@@ -28,6 +28,8 @@ public sealed class HomunculusService : IHomunculusService
 
     private readonly Dictionary<string, HomunculusDbEntity> _catalog = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<EntityId, LiveHomun> _alive = new();
+    /// <summary>AT-F: SkillTree[] rows from homunculus_skill_tree_db, keyed by (class_aegis, skill_id) → (max, req_lv, req_int, req_evo).</summary>
+    private readonly Dictionary<(string cls, ushort skill), (ushort MaxLevel, ushort RequiredLevel, ushort RequiredIntimacy, bool RequireEvolution)> _skillTreeFromDb = new(EqualityComparer<(string, ushort)>.Default);
     private readonly IServiceScopeFactory? _scopes;
     private readonly ILogger<HomunculusService> _logger;
 
@@ -252,7 +254,35 @@ public sealed class HomunculusService : IHomunculusService
     // ----- Skill tree -----
 
     public int SkillTreeGetMax(int classId, ushort skillId)
-        => HomunSkillTree.TryGetValue(((uint)classId, skillId), out var v) ? v.MaxLevel : 0;
+    {
+        // AT-F: DB-first lookup. Resolve Aegis from the numeric class id
+        // (via the catalog), then read the typed child table; fall back
+        // to the baked numeric HomunSkillTree if the DB is empty.
+        var aegis = AegisByClassId(classId);
+        if (aegis is not null && _skillTreeFromDb.TryGetValue((aegis, skillId), out var db))
+            return db.MaxLevel;
+        return HomunSkillTree.TryGetValue(((uint)classId, skillId), out var baked) ? baked.MaxLevel : 0;
+    }
+
+    /// <summary>Reverse lookup numeric class id → Aegis name for catalog rows.</summary>
+    private string? AegisByClassId(int classId)
+    {
+        // Walk the catalog (~14 entries); cheap.
+        foreach (var (a, _) in _catalog)
+            if (ResolveClassIdByAegis(a) == (uint)classId) return a;
+        // Baked fallback for class ids not in the SQL catalog yet.
+        return classId switch
+        {
+            6001 => "HOMUNCULUS_LIF", 6005 => "HOMUNCULUS_LIF_H",
+            6002 => "HOMUNCULUS_AMISTR", 6006 => "HOMUNCULUS_AMISTR_H",
+            6003 => "HOMUNCULUS_FILIR", 6007 => "HOMUNCULUS_FILIR_H",
+            6004 => "HOMUNCULUS_VANILMIRTH", 6008 => "HOMUNCULUS_VANILMIRTH_H",
+            6048 => "HOMUNCULUS_EIRA", 6049 => "HOMUNCULUS_BAYERI",
+            6050 => "HOMUNCULUS_SERA", 6051 => "HOMUNCULUS_DIETER",
+            6052 => "HOMUNCULUS_ELEANOR",
+            _ => null,
+        };
+    }
 
     public ushort SkillGetMinLevel(ushort skillId)
     {
@@ -390,6 +420,7 @@ public sealed class HomunculusService : IHomunculusService
     public void Reload()
     {
         _catalog.Clear();
+        _skillTreeFromDb.Clear();
         if (_scopes == null) return;
         try
         {
@@ -398,12 +429,51 @@ public sealed class HomunculusService : IHomunculusService
             foreach (var h in repo.GetAllAsync().GetAwaiter().GetResult())
                 _catalog[h.ClassAegis] = h;
             _logger.LogInformation("homunculus_db loaded: {N} classes", _catalog.Count);
+
+            // AT-F: SkillTree[] now reads from homunculus_skill_tree_db.
+            // Empty rows → fall back to baked HomunSkillTree.
+            var tree = scope.ServiceProvider.GetRequiredService<IHomunculusSkillTreeDbRepository>();
+            foreach (var row in tree.GetAllAsync().GetAwaiter().GetResult())
+                _skillTreeFromDb[(row.ClassAegis, row.SkillId)] =
+                    (row.MaxLevel, row.RequiredLevel, row.RequiredIntimacy, row.RequireEvolution);
+            if (_skillTreeFromDb.Count > 0)
+                _logger.LogInformation("homunculus_skill_tree_db loaded: {N} rows (DB-sourced)", _skillTreeFromDb.Count);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "homunculus_db load failed");
         }
     }
+
+    /// <summary>
+    /// AT-F: per-skill lookup with DB → baked fallback. Used by
+    /// SkillTreeGetMax / CalcSkillTree / SkillUp.
+    /// </summary>
+    private (ushort MaxLevel, ushort RequiredLevel, ushort RequiredIntimacy, bool RequireEvolution) GetSkillEntry(string classAegis, ushort skillId)
+    {
+        if (_skillTreeFromDb.TryGetValue((classAegis, skillId), out var db)) return db;
+        // Baked table is keyed by numeric class id; map via the catalog.
+        if (!_catalog.TryGetValue(classAegis, out var _)) return default;
+        var classId = ResolveClassIdByAegis(classAegis);
+        return HomunSkillTree.TryGetValue((classId, skillId), out var baked) ? baked : default;
+    }
+
+    /// <summary>
+    /// Hardcoded Aegis → numeric class id map for the baked fallback
+    /// table. Tiny set (14 stock classes); the SQL Catalog gives the
+    /// real mapping but Aegis names aren't stored numerically there.
+    /// </summary>
+    private static uint ResolveClassIdByAegis(string aegis) => aegis switch
+    {
+        "HOMUNCULUS_LIF" => 6001u, "HOMUNCULUS_LIF_H" => 6005u,
+        "HOMUNCULUS_AMISTR" => 6002u, "HOMUNCULUS_AMISTR_H" => 6006u,
+        "HOMUNCULUS_FILIR" => 6003u, "HOMUNCULUS_FILIR_H" => 6007u,
+        "HOMUNCULUS_VANILMIRTH" => 6004u, "HOMUNCULUS_VANILMIRTH_H" => 6008u,
+        "HOMUNCULUS_EIRA" => 6048u, "HOMUNCULUS_BAYERI" => 6049u,
+        "HOMUNCULUS_SERA" => 6050u, "HOMUNCULUS_DIETER" => 6051u,
+        "HOMUNCULUS_ELEANOR" => 6052u,
+        _ => 0u,
+    };
 
     public void InitTimers(PlayerEntity master)
     {

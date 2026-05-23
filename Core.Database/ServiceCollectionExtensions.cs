@@ -68,6 +68,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IHomunculusDbRepository, HomunculusDbRepository>();
         services.AddScoped<IMercenaryDbRepository, MercenaryDbRepository>();
         services.AddScoped<IInstanceDbRepository, InstanceDbRepository>();
+        // AT-F: nested-array child tables previously baked inline (the
+        // top-level catalog rows were ported in DB-1..6; these are the
+        // per-row Skills[] / SkillTree[] sub-arrays the loader skipped).
+        services.AddScoped<IMercenarySkillDbRepository, MercenarySkillDbRepository>();
+        services.AddScoped<IHomunculusSkillTreeDbRepository, HomunculusSkillTreeDbRepository>();
 
         return services;
     }

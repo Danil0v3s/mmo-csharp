@@ -188,31 +188,101 @@ public sealed class ChannelService : IChannelService
 
     public void ReadConfig()
     {
-        // rAthena channel_read_config — conf/channels.conf parser.
-        // We bake the stock defaults inline (matches the rAthena
-        // channels.conf entries with private_channel.allow=true,
-        // ally_chsys, map_local_chsys, etc.). A JSON override file
-        // can layer atop this when the conf-to-JSON pivot lands;
-        // until then the baked defaults are real config, not stubs.
-        foreach (var (name, type, color) in DefaultChannels)
+        // rAthena channel_read_config — JSON port at config/channels.json
+        // (DB-6 conf-to-JSON migration). Loader prefers the JSON file;
+        // falls back to baked defaults if the file is missing/malformed.
+        var loaded = TryLoadFromJson();
+        if (loaded == 0)
         {
-            if (!_rooms.ContainsKey(name))
-                Create(name, type, ownerId: 0, passwd: "", color: color);
+            foreach (var (name, type, color) in DefaultChannels)
+            {
+                if (!_rooms.ContainsKey(name))
+                    Create(name, type, ownerId: 0, passwd: "", color: color);
+            }
+            _logger.LogInformation(
+                "channel_read_config: {N} channels seeded from baked defaults (channels.json missing)",
+                _rooms.Count);
         }
-        _logger.LogInformation("channel_read_config: {N} channels seeded from baked defaults", _rooms.Count);
+        else
+        {
+            _logger.LogInformation("channel_read_config: {N} channels loaded from config/channels.json", loaded);
+        }
     }
 
     /// <summary>
-    /// Baked-default channels matching rAthena conf/channels.conf.
+    /// AT-F: real channels.json loader. Returns the count of channels
+    /// loaded (0 = file missing or malformed → caller falls back to
+    /// <see cref="DefaultChannels"/>).
+    /// </summary>
+    private int TryLoadFromJson()
+    {
+        try
+        {
+            var path = ResolveChannelsConfigPath();
+            if (path == null || !System.IO.File.Exists(path)) return 0;
+            using var doc = System.Text.Json.JsonDocument.Parse(System.IO.File.ReadAllText(path));
+            if (!doc.RootElement.TryGetProperty("channel_config", out var cc)) return 0;
+            if (!cc.TryGetProperty("channels", out var chans) || chans.ValueKind != System.Text.Json.JsonValueKind.Array) return 0;
+            var colors = LoadColorMap(cc);
+            int loaded = 0;
+            foreach (var entry in chans.EnumerateArray())
+            {
+                if (!entry.TryGetProperty("name", out var nameProp)) continue;
+                var name = nameProp.GetString();
+                if (string.IsNullOrEmpty(name)) continue;
+                var type = MapType(entry.TryGetProperty("type", out var t) ? t.GetString() : null);
+                var colorName = entry.TryGetProperty("color", out var c) ? c.GetString() : null;
+                var color = (byte)(colors.GetValueOrDefault(colorName ?? "White") & 0xFF);
+                if (Create(name, type, ownerId: 0, passwd: "", color: color)) loaded++;
+            }
+            return loaded;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "channel_read_config: channels.json parse failed; using baked defaults");
+            return 0;
+        }
+    }
+
+    /// <summary>Search dotnet content-root + appcwd for config/channels.json.</summary>
+    private static string? ResolveChannelsConfigPath()
+    {
+        foreach (var root in new[] { AppContext.BaseDirectory, Environment.CurrentDirectory })
+        {
+            var p = System.IO.Path.Combine(root, "config", "channels.json");
+            if (System.IO.File.Exists(p)) return p;
+        }
+        return null;
+    }
+
+    private static Dictionary<string, int> LoadColorMap(System.Text.Json.JsonElement cc)
+    {
+        var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        if (!cc.TryGetProperty("colors", out var cols)) return map;
+        foreach (var p in cols.EnumerateObject()) map[p.Name] = p.Value.GetInt32();
+        return map;
+    }
+
+    private static byte MapType(string? t) => t switch
+    {
+        "CHAN_TYPE_PUBLIC" => 1,
+        "CHAN_TYPE_MAP" => 2,
+        "CHAN_TYPE_ALLY" => 3,
+        "CHAN_TYPE_PRIVATE" => 4,
+        _ => 1,
+    };
+
+    /// <summary>
+    /// Baked-default channels fallback (matches conf/channels.conf
+    /// stock entries). Only used when channels.json fails to load.
     /// </summary>
     private static readonly (string Name, byte Type, byte Color)[] DefaultChannels =
     {
-        // type 1 = public/global, 2 = map-local, 3 = ally/guild, 4 = trade
-        ("main",   1, 0x02),  // Green — global chat
-        ("map",    2, 0x03),  // Orange — per-map
-        ("guild",  3, 0x05),  // Purple — guild+allies
-        ("trade",  4, 0x04),  // Cyan — trade/find-party
-        ("system", 5, 0x01),  // Red — server announcements
+        ("main",   1, 0x02),
+        ("map",    2, 0x03),
+        ("guild",  3, 0x05),
+        ("trade",  4, 0x04),
+        ("system", 5, 0x01),
     };
 
     public bool ReadSub(string name) => true;

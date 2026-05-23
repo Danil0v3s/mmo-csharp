@@ -72,3 +72,22 @@ internal sealed class InstanceDbRepository(GameDbContext ctx) : IInstanceDbRepos
     public async Task<InstanceDbEntity?> GetByIdAsync(uint instanceId, CancellationToken ct = default)
         => await ctx.InstanceDb.AsNoTracking().FirstOrDefaultAsync(i => i.InstanceId == instanceId, ct);
 }
+
+internal sealed class MercenarySkillDbRepository(GameDbContext ctx) : IMercenarySkillDbRepository
+{
+    public async Task<IReadOnlyList<MercenarySkillDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.MercenarySkillDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<MercenarySkillDbEntity>> GetByMercAsync(uint mercId, CancellationToken ct = default)
+        => await ctx.MercenarySkillDb.AsNoTracking().Where(s => s.MercId == mercId).ToListAsync(ct);
+}
+
+internal sealed class HomunculusSkillTreeDbRepository(GameDbContext ctx) : IHomunculusSkillTreeDbRepository
+{
+    public async Task<IReadOnlyList<HomunculusSkillTreeDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.HomunculusSkillTreeDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<HomunculusSkillTreeDbEntity>> GetByClassAsync(string classAegis, CancellationToken ct = default)
+        => await ctx.HomunculusSkillTreeDb.AsNoTracking().Where(s => s.ClassAegis == classAegis).ToListAsync(ct);
+}
+
+// Battleground catalog: read via existing JSON-payload table; DB-8 wires
+// the deserializer. No new typed repo here.

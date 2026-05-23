@@ -19,6 +19,7 @@ namespace Map.Server.Mercenary;
 public sealed class MercenaryService : IMercenaryService
 {
     private readonly Dictionary<uint, MercenaryDbEntity> _catalog = new();
+    private readonly Dictionary<(uint cls, ushort skill), ushort> _skillsFromDb = new();
     private readonly Dictionary<EntityId, LiveMerc> _alive = new();
     private readonly Dictionary<(int accountId, int classId), int> _calls = new();
     private readonly IServiceScopeFactory? _scopes;
@@ -41,6 +42,7 @@ public sealed class MercenaryService : IMercenaryService
     public void Reload()
     {
         _catalog.Clear();
+        _skillsFromDb.Clear();
         if (_scopes == null) return;
         try
         {
@@ -49,6 +51,15 @@ public sealed class MercenaryService : IMercenaryService
             foreach (var m in repo.GetAllAsync().GetAwaiter().GetResult())
                 _catalog[m.MercId] = m;
             _logger.LogInformation("mercenary_db loaded: {N} classes", _catalog.Count);
+
+            // AT-F: load Skills[] from the child table (mercenary_skill_db).
+            // If empty (fresh DB without seed), the baked MercSkillTable
+            // fallback inside CheckSkill keeps a viable default.
+            var sk = scope.ServiceProvider.GetRequiredService<IMercenarySkillDbRepository>();
+            foreach (var row in sk.GetAllAsync().GetAwaiter().GetResult())
+                _skillsFromDb[(row.MercId, row.SkillId)] = row.MaxLevel;
+            if (_skillsFromDb.Count > 0)
+                _logger.LogInformation("mercenary_skill_db loaded: {N} rows (DB-sourced)", _skillsFromDb.Count);
         }
         catch (Exception ex)
         {
@@ -198,8 +209,17 @@ public sealed class MercenaryService : IMercenaryService
         { (6028, 8212), 5 }, { (6028, 2276), 5 }, { (6028, 2275), 10 }, { (6028, 2280), 10 },
     };
 
-    private static ushort GetMercSkillLevel(uint cls, ushort skill)
-        => MercSkillTable.TryGetValue((cls, skill), out var v) ? v : (ushort)0;
+    /// <summary>
+    /// AT-F: lookup-order is DB → baked seed. The baked
+    /// <see cref="MercSkillTable"/> stays as a safety net for fresh
+    /// installs (mercenary_skill_db empty) so the runtime never falls
+    /// back to "skill not granted" when rAthena reference data exists.
+    /// </summary>
+    private ushort GetMercSkillLevel(uint cls, ushort skill)
+    {
+        if (_skillsFromDb.TryGetValue((cls, skill), out var fromDb)) return fromDb;
+        return MercSkillTable.TryGetValue((cls, skill), out var baked) ? baked : (ushort)0;
+    }
 
     public void ContractInit(PlayerEntity master)
     {

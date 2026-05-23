@@ -57,3 +57,20 @@ public interface IInstanceDbRepository
     Task<IReadOnlyList<InstanceDbEntity>> GetAllAsync(CancellationToken ct = default);
     Task<InstanceDbEntity?> GetByIdAsync(uint instanceId, CancellationToken ct = default);
 }
+
+/// <summary>AT-F: per-merc-class skill grants.</summary>
+public interface IMercenarySkillDbRepository
+{
+    Task<IReadOnlyList<MercenarySkillDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<MercenarySkillDbEntity>> GetByMercAsync(uint mercId, CancellationToken ct = default);
+}
+
+/// <summary>AT-F: per-homunculus-class skill tree.</summary>
+public interface IHomunculusSkillTreeDbRepository
+{
+    Task<IReadOnlyList<HomunculusSkillTreeDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<HomunculusSkillTreeDbEntity>> GetByClassAsync(string classAegis, CancellationToken ct = default);
+}
+
+// Battleground catalog: read via the existing CatalogEntities.BattlegroundDbEntity
+// JSON-payload table (DB-5). The typed consumer is DB-8 territory.
