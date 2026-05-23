@@ -46,4 +46,7 @@ public interface IInstanceService
 
     /// <summary>rAthena <c>do_reload_instance</c>.</summary>
     void Reload();
+
+    /// <summary>rAthena <c>instance_mapid</c> — resolve a base map id within an instance.</summary>
+    int MapId(int baseMapId, int instanceId);
 }

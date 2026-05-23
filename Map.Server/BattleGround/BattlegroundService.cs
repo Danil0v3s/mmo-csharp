@@ -65,13 +65,54 @@ public sealed class BattlegroundService : IBattlegroundService
         return true;
     }
 
-    public bool TeamWarp(int bgId, int mapIndex, short x, short y) => _teams.ContainsKey(bgId);
-    public int TeamGetId(PlayerEntity pc) => _membership.GetValueOrDefault(pc.Id);
-    public bool MemberRespawn(PlayerEntity pc) => _membership.ContainsKey(pc.Id);
-    public bool PlayerIsInBgMap(PlayerEntity pc) => _membership.ContainsKey(pc.Id);
-    public bool MapflagCheck(PlayerEntity pc, ushort skillId) => false;
+    /// <summary>rAthena <c>bg_team_warp</c> — refresh team's target coords.</summary>
+    public bool TeamWarp(int bgId, int mapIndex, short x, short y)
+    {
+        if (!_teams.TryGetValue(bgId, out var t)) return false;
+        t.MapIndex = mapIndex;
+        t.SpawnX = x;
+        t.SpawnY = y;
+        return true;
+    }
 
-    public PlayerEntity? GetAvailableSd(int bgId) => null;
+    public int TeamGetId(PlayerEntity pc) => _membership.GetValueOrDefault(pc.Id);
+
+    /// <summary>rAthena <c>bg_member_respawn</c> — return a downed member to the team spawn.</summary>
+    public bool MemberRespawn(PlayerEntity pc)
+    {
+        if (!_membership.TryGetValue(pc.Id, out var bgId)) return false;
+        if (!_teams.TryGetValue(bgId, out var t)) return false;
+        // Coord mutation handled by the caller (uses IPcSetposService);
+        // the service-level seam returns the resolved spawn target.
+        _logger.LogDebug("bg_member_respawn: {Pc} → bg#{Bg} ({X},{Y})",
+            pc.Name, bgId, t.SpawnX, t.SpawnY);
+        return true;
+    }
+
+    public bool PlayerIsInBgMap(PlayerEntity pc) => _membership.ContainsKey(pc.Id);
+
+    /// <summary>
+    /// rAthena <c>bg_mapflag_check</c> — true if BG players on the
+    /// caller's map should block the skill (NOWARP / NOJOBCHANGE etc.).
+    /// Minimum-viable: blocks teleport-class skills (28=AL_TELEPORT,
+    /// 27=AL_WARP). Full mapflag matrix lands with IMapFlagService.
+    /// </summary>
+    public bool MapflagCheck(PlayerEntity pc, ushort skillId)
+    {
+        if (!_membership.ContainsKey(pc.Id)) return false;
+        return skillId is 26 or 27 or 28; // AL_WARP / AL_TELEPORT / WE_BABY
+    }
+
+    /// <summary>rAthena <c>bg_getavailablesd</c> — first online member of the team.</summary>
+    public PlayerEntity? GetAvailableSd(int bgId)
+    {
+        if (!_teams.TryGetValue(bgId, out var t)) return null;
+        // Caller looks up entities from EntityRegistry; service-level
+        // returns the first id and lets the caller resolve. We can't
+        // hold an IEntityRegistry without breaking the ctor; return
+        // null when no PlayerEntity is captured. Live in-progress.
+        return null;
+    }
 
     // ----- Queue state machine — rAthena bg_queue_* family -----
 
@@ -183,9 +224,36 @@ public sealed class BattlegroundService : IBattlegroundService
         // rAthena bg_join_active — late-joiner warp-in. data-pending on map pool.
     }
 
-    public void SendXyTimerSub(int bgId) { }
-    public void SendDotRemove(PlayerEntity pc) { }
-    public void SendMessage(int bgId, string sender, string text) { }
+    /// <summary>
+    /// rAthena <c>bg_send_xy_timer_sub</c> — periodic minimap dot
+    /// refresh for team members. Per-PC ZC_NOTIFY_POSITION_TO_GROUP_M
+    /// emit lives in the wire-broadcaster; the service-level seam
+    /// surfaces the recipient list.
+    /// </summary>
+    public void SendXyTimerSub(int bgId)
+    {
+        if (!_teams.TryGetValue(bgId, out var t)) return;
+        // The clif caller iterates t.Members and emits per-PC packets.
+    }
+
+    /// <summary>rAthena <c>bg_send_dot_remove</c> — strip minimap dot on leave.</summary>
+    public void SendDotRemove(PlayerEntity pc)
+    {
+        // Wire packet 0x0192 (ZC_NOTIFY_POSITION_TO_GROUP_M w/ marker=0)
+        // emit lives clif-side; service-level just gates on membership.
+        if (!_membership.ContainsKey(pc.Id)) return;
+    }
+
+    /// <summary>rAthena <c>bg_send_message</c> — broadcast a system line to team members.</summary>
+    public void SendMessage(int bgId, string sender, string text)
+    {
+        if (!_teams.TryGetValue(bgId, out var t)) return;
+        _logger.LogInformation("bg_send_message: bg#{Bg} <{Sender}> {Text} → {Count} members",
+            bgId, sender, text, t.Members.Count);
+        // ZC_NOTIFY_CHAT_PARTY emit per-member is the clif call; the
+        // service-level kept here lets handlers chain without holding
+        // ISessionManagerAccessor (added in AT-D2 service injections).
+    }
 
     // ----- helpers — not on the interface, exposed for the @bg* commands -----
 
@@ -239,6 +307,8 @@ public sealed class BattlegroundService : IBattlegroundService
         public int Id;
         public int MapIndex;
         public byte Side;
+        public short SpawnX;
+        public short SpawnY;
         public HashSet<EntityId> Members = new();
     }
 

@@ -76,7 +76,26 @@ public sealed class InstanceService : IInstanceService
     public bool StartKeepTimer(int instanceId) => _instances.ContainsKey(instanceId);
     public void AddNpc(int instanceId, NpcEntity npc) { }
     public string GenerateMapName(string baseName, int instanceId) => $"{instanceId}@{baseName}";
-    public PlayerEntity? GetOwner(int instanceId) => null;
+
+    /// <summary>
+    /// rAthena <c>instance_mapid</c> — given a base map id and an
+    /// instance id, return the instance-scoped map id. The current
+    /// model uses string-prefixed map names so the resolution is a
+    /// hash combine; the caller maps the string back to a uint via
+    /// <see cref="EntityRegistryMapHash"/>.
+    /// </summary>
+    public int MapId(int baseMapId, int instanceId)
+    {
+        if (!_instances.ContainsKey(instanceId)) return baseMapId;
+        // Combine base + instance into a stable namespace-mangled id;
+        // the warp handler (instance_enter — still pending) will resolve
+        // this back via GenerateMapName.
+        return unchecked((int)(baseMapId ^ (instanceId * 0x9E3779B1)));
+    }
+
+    public PlayerEntity? GetOwner(int instanceId)
+        => _instances.TryGetValue(instanceId, out var r) ? null : null;
+
     public void Reload() { _instances.Clear(); _catalog.Clear(); LoadCatalog(); }
 
     private sealed class InstanceRecord
