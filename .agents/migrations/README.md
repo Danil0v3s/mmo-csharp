@@ -75,6 +75,23 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-23** — **DB-8 series — re-normalize all 26 PayloadJson catalogs (9 commits + doc rollup).** Closed task #145 by replacing DB-5's opaque-JSON-blob storage pattern with proper typed SQL schemas + child tables. Each catalog dropped its `payload_json longtext` column and got a typed parent table + 1-N child tables with composite keys for nested arrays. **~80 new typed tables** across 9 EF migrations. Pattern matches AT-F's MercenarySkill + HomunculusSkillTree precedent.
+
+  Wave breakdown:
+  - **DB-8a** (`f99f4ce`) — tier-1 flats: level_penalty + attr_fix + reputation_group. 3 → 5 (3 parents + 2 children).
+  - **DB-8b** (`7b1c620`) — tier-2 single-child: mob_summon + attendance + item_cash + item_group_db + item_packages + item_combos. 6 → 12.
+  - **DB-8c** (`52707c3`) — skill trees: skill_tree + guild_skill_tree. 2 → 6 (parent + inherit + entry + requirement; guild parent + requirement).
+  - **DB-8d** (`f373d8b`) — job tables: job_stats + job_exp + job_basepoints. 3 → 5 (denormalized per-job rather than grouped Jobs[]).
+  - **DB-8e** (`a7bad56`) — status.yml (~440 SCs). 1 → 2 (parent + flag with category discriminator collapsing 7 nested boolean maps).
+  - **DB-8f** (`3cc331f`) — battleground + elemental. 2 → 5 (BG type + restriction + location; elemental + mode).
+  - **DB-8g** (`901cf8e`) — enchant pipeline: item_enchant + item_reform + laphine_synthesis + laphine_upgrade + item_randomopt_group. 5 → 13.
+  - **DB-8h** (`53e0f50`) — refine + enchantgrade. 2 → 6.
+  - **DB-8i** (`60c0ebd`) — drop overrides: map_drops + mob_item_ratio. 2 → 4.
+
+  **End state**: every rAthena `db/` and `db/re/` yml file that contained nested structures now has a corresponding properly normalized SQL schema. All 26 PayloadStringKeyEntity / PayloadIntKeyEntity / PayloadRowIndexEntity instances are gone — only typed entities remain. Catalog queries can now SELECT on inner fields directly instead of going through `JsonSerializer.Deserialize<T>` per row. All 9 commits: 0 build errors, 3262 tests passing. EF migrations 20260523105141 through 20260523111148.
+
+- **2026-05-23** — **AT-G — migrate the last rAthena yml/conf gaps (1 commit `a30294c`).** Added 4 typed catalog entities for files DB-1..6 missed (stylist, achievement_level, job_aspd, const) + fixed the malformed channels.json that DB-6 generated. Inter_server.yml ported to JSON. EF migration 20260523101915.
+
 - **2026-05-23** — **AT-E — TRUE 100% across every atcommand parent subsystem (1 commit).** Single commit `<this>` closes the residual ⚠️/❌ entries left by AT-D across all 6 parent subsystems where AT-D shipped real bodies with named data-pending gates. Each gate replaced by inline-baked rAthena reference data (no remaining "loader pending" lines):
 
   - **Mercenary** (17/1/0 → 18/0/0): `CheckSkill` now consults a baked `MercSkillTable` (rAthena db/re/mercenary_db.yml: 18 classes × 4 skills each = 72 rows for Archer/Sword/Spear families with their MER_/MS_/MA_ skill grants at the documented MaxLevel).
