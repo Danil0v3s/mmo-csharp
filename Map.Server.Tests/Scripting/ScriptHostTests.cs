@@ -302,15 +302,25 @@ public class ScriptHostTests
         Assert.NotNull(registry.GetNpcByName("Kafra Test"));
         Assert.NotNull(registry.GetFloatingByName("EventManager"));
 
-        // CONV-1 acceptance: scripts/items/_dev_test + scripts/combos/_dev_test
-        // contribute two items and one combo. This is the floor the bulk
-        // converter (CONV-2) will sit on top of.
-        Assert.True(registry.ItemCount >= 2,
-            $"Expected at least 2 items from scripts/dist/main.js, got {registry.ItemCount}");
-        Assert.True(registry.ComboCount >= 1,
-            $"Expected at least 1 combo from scripts/dist/main.js, got {registry.ComboCount}");
+        // CONV-2 acceptance: Tools.ItemScriptConvert emits ~19,886 items
+        // (99.86% of rAthena's item_db_*) + 7,767 combos (100%) under
+        // scripts/items/generated and scripts/combos/generated. The
+        // _dev_test fixtures from CONV-1 sit alongside.
+        //
+        // Floors (not exact counts) so the test stays stable across
+        // rAthena seed refreshes — a converter regression that drops
+        // most of the corpus still trips.
+        Assert.True(registry.ItemCount >= 19_000,
+            $"Expected at least 19,000 items from scripts/dist/main.js, got {registry.ItemCount}");
+        Assert.True(registry.ComboCount >= 7_000,
+            $"Expected at least 7,000 combos from scripts/dist/main.js, got {registry.ComboCount}");
+        // Dev-test fixtures still round-trip.
         Assert.NotNull(registry.GetItemById(999001));
         Assert.NotNull(registry.GetItemById(999002));
+        // Spot-check a generated item (Red Potion 501 — onUse) and a
+        // generated combo (combo_id 1).
+        Assert.NotNull(registry.GetItemById(501));
+        Assert.NotNull(registry.AllCombos().FirstOrDefault(c => c.ComboId == 1));
     }
 
     // ===== registerItem / registerCombo (CONV-1) =====

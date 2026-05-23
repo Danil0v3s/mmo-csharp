@@ -48,7 +48,15 @@ public static class RathenaToJsTranslator
         "BaseClass", "BaseJob", "Upper", "RebirthCount",
     };
 
-    public static string Translate(IReadOnlyList<Stmt> stmts)
+    /// <summary>
+    /// Translate AST → JS body. The <paramref name="receiverName"/> is the
+    /// identifier prepended to every host-routed call (default <c>"h"</c>
+    /// matches the runtime ScriptedBonusService Proxy; the build-time
+    /// converter passes <c>"ctx"</c> so generated TypeScript items emit
+    /// <c>ctx.bonus(...)</c> against the ItemEquipContext / ItemUseContext
+    /// surface declared in api.d.ts).
+    /// </summary>
+    public static string Translate(IReadOnlyList<Stmt> stmts, string receiverName = "h")
     {
         var sb = new StringBuilder();
         // Pre-declare every .@var seen anywhere in the body at function
@@ -70,7 +78,7 @@ public static class RathenaToJsTranslator
             }
             sb.AppendLine(";");
         }
-        foreach (var s in stmts) EmitStmt(sb, s, indent: 0);
+        foreach (var s in stmts) EmitStmt(sb, s, indent: 0, receiverName);
         return sb.ToString();
     }
 
@@ -130,13 +138,13 @@ public static class RathenaToJsTranslator
         }
     }
 
-    private static void EmitStmt(StringBuilder sb, Stmt stmt, int indent)
+    private static void EmitStmt(StringBuilder sb, Stmt stmt, int indent, string receiverName)
     {
         Indent(sb, indent);
         switch (stmt)
         {
             case CallStmt c:
-                EmitCall(sb, c.Name, c.Args);
+                EmitCall(sb, c.Name, c.Args, receiverName);
                 sb.AppendLine(";");
                 break;
             case AssignStmt a:
@@ -144,14 +152,14 @@ public static class RathenaToJsTranslator
                 // scope by Translate(), so subsequent assignments inside
                 // branches stay visible after the branch closes.
                 sb.Append(SafeVarName(a.VarName)).Append(" = ");
-                EmitExpr(sb, a.Value);
+                EmitExpr(sb, a.Value, receiverName);
                 sb.AppendLine(";");
                 break;
             case IfStmt i:
                 sb.Append("if (");
-                EmitExpr(sb, i.Condition);
+                EmitExpr(sb, i.Condition, receiverName);
                 sb.AppendLine(") {");
-                foreach (var s in i.Then) EmitStmt(sb, s, indent + 1);
+                foreach (var s in i.Then) EmitStmt(sb, s, indent + 1, receiverName);
                 Indent(sb, indent);
                 sb.Append("}");
                 if (i.Else != null)
@@ -161,12 +169,12 @@ public static class RathenaToJsTranslator
                     {
                         sb.Append(" else ");
                         sb.AppendLine();
-                        EmitStmt(sb, nested, indent);
+                        EmitStmt(sb, nested, indent, receiverName);
                     }
                     else
                     {
                         sb.AppendLine(" else {");
-                        foreach (var s in i.Else) EmitStmt(sb, s, indent + 1);
+                        foreach (var s in i.Else) EmitStmt(sb, s, indent + 1, receiverName);
                         Indent(sb, indent);
                         sb.AppendLine("}");
                     }
@@ -177,26 +185,26 @@ public static class RathenaToJsTranslator
                 }
                 break;
             case ExprStmt e:
-                EmitExpr(sb, e.Expr);
+                EmitExpr(sb, e.Expr, receiverName);
                 sb.AppendLine(";");
                 break;
         }
     }
 
-    private static void EmitCall(StringBuilder sb, string name, IReadOnlyList<Expr> args)
+    private static void EmitCall(StringBuilder sb, string name, IReadOnlyList<Expr> args, string receiverName)
     {
         // Top-level call statements all route through the host object
         // by name. The host decides what to do per name.
-        sb.Append("h.").Append(name).Append('(');
+        sb.Append(receiverName).Append('.').Append(name).Append('(');
         for (var i = 0; i < args.Count; i++)
         {
             if (i > 0) sb.Append(", ");
-            EmitExpr(sb, args[i]);
+            EmitExpr(sb, args[i], receiverName);
         }
         sb.Append(')');
     }
 
-    private static void EmitExpr(StringBuilder sb, Expr expr)
+    private static void EmitExpr(StringBuilder sb, Expr expr, string receiverName)
     {
         switch (expr)
         {
@@ -215,7 +223,7 @@ public static class RathenaToJsTranslator
                 // JS string literal; the host accepts the string form.
                 if (PcParams.Contains(id.Name))
                 {
-                    sb.Append("h.getParam(\"").Append(id.Name).Append("\")");
+                    sb.Append(receiverName).Append(".getParam(\"").Append(id.Name).Append("\")");
                 }
                 else
                 {
@@ -224,37 +232,37 @@ public static class RathenaToJsTranslator
                 break;
             case CallExpr c:
                 // Function calls in expression position — same routing
-                // as call statements: h.<name>(...).
-                sb.Append("h.").Append(c.Name).Append('(');
+                // as call statements.
+                sb.Append(receiverName).Append('.').Append(c.Name).Append('(');
                 for (var i = 0; i < c.Args.Count; i++)
                 {
                     if (i > 0) sb.Append(", ");
-                    EmitExpr(sb, c.Args[i]);
+                    EmitExpr(sb, c.Args[i], receiverName);
                 }
                 sb.Append(')');
                 break;
             case ParenExpr p:
                 sb.Append('(');
-                EmitExpr(sb, p.Inner);
+                EmitExpr(sb, p.Inner, receiverName);
                 sb.Append(')');
                 break;
             case UnaryOp u:
                 sb.Append(u.Op);
-                EmitExpr(sb, u.Operand);
+                EmitExpr(sb, u.Operand, receiverName);
                 break;
             case BinaryOp b:
                 // Ternary special-case — parser packs cond ? a : b as
                 // BinaryOp("?:", cond, BinaryOp(":", a, b)).
                 if (b.Op == "?:" && b.Right is BinaryOp inner && inner.Op == ":")
                 {
-                    EmitExpr(sb, b.Left);
+                    EmitExpr(sb, b.Left, receiverName);
                     sb.Append(" ? ");
-                    EmitExpr(sb, inner.Left);
+                    EmitExpr(sb, inner.Left, receiverName);
                     sb.Append(" : ");
-                    EmitExpr(sb, inner.Right);
+                    EmitExpr(sb, inner.Right, receiverName);
                     break;
                 }
-                EmitExpr(sb, b.Left);
+                EmitExpr(sb, b.Left, receiverName);
                 // rAthena's == / != map to JS === / !== so the JS
                 // engine doesn't surprise us with type coercion (the
                 // host returns int vs string consistently, but
@@ -266,7 +274,7 @@ public static class RathenaToJsTranslator
                     _ => b.Op,
                 };
                 sb.Append(' ').Append(op).Append(' ');
-                EmitExpr(sb, b.Right);
+                EmitExpr(sb, b.Right, receiverName);
                 break;
         }
     }

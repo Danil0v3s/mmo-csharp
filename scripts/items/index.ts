@@ -1,6 +1,7 @@
-// Item subtree entry. Phase 1 includes only the dev-test fixtures used
-// to validate the registerItem() pathway. Real items land via
-// Tools.ItemScriptConvert (CONV-2), which writes id-range-bucketed
-// generated/*.ts files and imports them from here.
+// Item subtree entry. Phase 1 included only dev-test fixtures; CONV-2
+// adds the generated subtree (rAthena's item_db_* SQL translated to
+// .ts via Tools.ItemScriptConvert). Generated files re-run on each
+// converter pass; hand-edits go under _dev_test/ or sibling subfolders.
 
+import "./generated";
 import "./_dev_test";

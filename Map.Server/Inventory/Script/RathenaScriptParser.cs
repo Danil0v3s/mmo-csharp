@@ -411,8 +411,23 @@ public static class RathenaScriptParser
         {
             var name = Expect(TokKind.Ident, "call name").Text;
             var args = new List<Expr>();
-            // Comma-separated args until ';'. Empty arg list for `name;` allowed.
-            if (Peek().Kind != TokKind.Semi)
+            // Two call-statement shapes coexist in rAthena's grammar:
+            //   1. Bare:    bonus bAtk,10;             — comma-separated args, no parens
+            //   2. Parens:  laphine_upgrade();         — C-style empty parens
+            //               getgroupitem(IG_X);        — C-style with args
+            // We disambiguate by peeking: an immediate '(' picks shape 2,
+            // anything else picks shape 1. ExpectSemi closes either.
+            if (Peek().Kind == TokKind.LParen)
+            {
+                Take();
+                if (Peek().Kind != TokKind.RParen)
+                {
+                    args.Add(ParseExpr());
+                    while (Peek().Kind == TokKind.Comma) { Take(); args.Add(ParseExpr()); }
+                }
+                Expect(TokKind.RParen, "')'");
+            }
+            else if (Peek().Kind != TokKind.Semi)
             {
                 args.Add(ParseExpr());
                 while (Peek().Kind == TokKind.Comma)

@@ -6,7 +6,8 @@
   "scripts": {
     "build": "esbuild main.ts --bundle --platform=neutral --target=es2022 --format=iife --outfile=dist/main.js --sourcemap",
     "watch": "esbuild main.ts --bundle --platform=neutral --target=es2022 --format=iife --outfile=dist/main.js --sourcemap --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gen-items": "cd .. && dotnet run --project Tools.ItemScriptConvert"
   },
   "devDependencies": {
     "esbuild": "^0.20.0",
