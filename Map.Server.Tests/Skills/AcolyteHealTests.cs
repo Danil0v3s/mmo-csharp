@@ -85,9 +85,16 @@ public class AcolyteHealTests
         target.MaxHp = 5000; target.Hp = 1000;
         ctx.Sc.Start(target, StatusType.Berserk, 1, 0, 0, 0, 60_000);
 
+        // NS-3 wave 1: Berserk's OnStart now applies its rAthena
+        // stat-mod combo (3× MaxHp + fill HP to full + buffs). Snapshot
+        // the post-attach HP so we assert the heal was *suppressed*
+        // (Hp didn't change), independent of the Berserk fill-to-full
+        // side effect.
+        var hpAfterAttach = target.Hp;
+
         ctx.MakeHeal().CastendNoDamageId(caster, target, 10, ctx.Behavior);
 
-        Assert.Equal(1000, target.Hp); // suppressed
+        Assert.Equal(hpAfterAttach, target.Hp); // suppressed
     }
 
     [Fact]

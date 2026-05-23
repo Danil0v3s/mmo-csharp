@@ -551,6 +551,249 @@ public sealed class StatusEffectRegistry
         Register(StatusType.PuttiTailsNoodles, new StatusEffectHandler(_NoOp, _NoOpEnd,
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
+        // ====================================================================
+        // NS-3 wave 1 — real OnStart/OnEnd bodies for 10 SCs that mutate
+        // visible PC stat fields, plus explicit-flag promotions for 8
+        // combat-marker SCs whose semantics are "Val1/Val2 storage +
+        // presence flag the damage/regen pipeline reads."
+        //
+        // Source-of-truth for each formula: rAthena status.cpp
+        // (status.cpp line cited inline per SC). Where the rAthena value
+        // is %-based and we don't have a direct percentile mod field
+        // (e.g. MoveSpeed%), we use AspdRate as the proxy following the
+        // existing T2.4b Quagmire pattern (line 469-474).
+        //
+        // Pattern: when the mod scales a base stat (Assumptio-style
+        // % mods), store the absolute delta in sc.Val2/Val3 at OnStart
+        // and revert it at OnEnd — that survives recalc races where
+        // the underlying stat moved between Start and End.
+        // ====================================================================
+
+        // SC_BLIND — −25 % Hit + −25 % Flee. rAthena status_calc applies
+        // a multiplicative penalty during status_calc_pc; we materialize
+        // the absolute delta at OnStart.
+        // Overrides the earlier "presence-only" Register(StatusType.Blind, NoOpHandler())
+        // because the explicit Register here lands last and wins.
+        Register(StatusType.Blind, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var hitDrop = (short)(target.Stats.Hit / 4);
+                var fleeDrop = (short)(target.Stats.Flee / 4);
+                sc.Val2 = hitDrop;
+                sc.Val3 = fleeDrop;
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - hitDrop);
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - fleeDrop);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val2);
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val3);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_CURSE — Luk set to 0. rAthena status.cpp:9472 has a special
+        // "immunity when luk is zero" guard, so we store the original
+        // Luk on attach (sc.Val2) and restore it on end. Also drops Batk
+        // by 25 % per rAthena's status_calc_pc.
+        Register(StatusType.Curse, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (target.Stats.Luk == 0) return; // rAthena immunity gate
+                sc.Val2 = target.Stats.Luk;
+                sc.Val3 = (int)(target.Stats.Batk / 4);
+                target.Stats.Luk = 0;
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val3);
+            },
+            OnEnd: (target, sc) =>
+            {
+                if (sc.Val2 > 0)
+                    target.Stats.Luk = (short)Math.Min(short.MaxValue, sc.Val2);
+                if (sc.Val3 > 0)
+                    target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val3);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_WINDWALK — +Flee + MoveSpeed boost. rAthena status.cpp:10985
+        // sets val2 = (val1+1)/2 (Flee bonus 1/1/2/2/3/3/4/4/5/5).
+        // MoveSpeed bonus is the same scaling, applied via AspdRate
+        // proxy (we don't expose MoveSpeed% directly yet).
+        // Overrides the earlier ST.3 Register(StatusType.Windwalk, NoOpHandler()).
+        Register(StatusType.Windwalk, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var bonus = (short)((sc.Val1 + 1) / 2);
+                sc.Val2 = bonus;
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + bonus);
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + bonus);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2);
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_BERSERK — major attack stance buff. rAthena status.cpp:10994
+        // also forces SC_ENDURE for 10s, sets val4 = damage-interval, and
+        // status_calc_pc applies +200 Batk, +100 Flee, +30 AspdRate, ×3
+        // MaxHp/MaxSp. We capture the deltas in val2..val4 so OnEnd
+        // round-trips even if MaxHp moved.
+        Register(StatusType.Berserk, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                sc.Val2 = target.Stats.MaxHp * 2; // delta to add for ×3
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + 200);
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + 100);
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + 30);
+                target.Stats.MaxHp += sc.Val2;
+                target.Stats.Hp = target.Stats.MaxHp; // Berserk fills to full
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - 200);
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - 100);
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - 30);
+                target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val2);
+                if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_LAUDAAGNUS (AB_LAUDAAGNUS) — +4 × val1 Vit per rAthena
+        // status.cpp Lauda Agnus side-effect when not curing.
+        Register(StatusType.Laudaagnus, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var vit = (short)(sc.Val1 * 4);
+                sc.Val2 = vit;
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + vit);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_LAUDARAMUS (AB_LAUDARAMUS) — +3 × val1 critical chance.
+        // Cri is stored at 10× display (rAthena convention), so the
+        // delta is 30 × val1.
+        Register(StatusType.Laudaramus, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var cri = (short)(sc.Val1 * 30);
+                sc.Val2 = cri;
+                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + cri);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_IMPOSITIO (PR_MAGNIFICAT branch — Impositio Manus). rAthena
+        // status.cpp:10368 sets val2 = atk bonus (5*level), consumed by
+        // status_calc_pc as Batk += val2. We materialize that here.
+        // Overrides the earlier presence-only Register(Impositio, NoOpHandler()).
+        Register(StatusType.Impositio, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var atk = (ushort)(sc.Val1 * 5);
+                sc.Val2 = atk;
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + atk);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_ADORAMUS (AB_ADORAMUS) — Blind-like debuff plus Agi drop.
+        // rAthena: applies SC_BLIND alongside; we mirror the Agi drop
+        // here (val1 = drop magnitude).
+        Register(StatusType.Adoramus, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var agi = (short)sc.Val1;
+                sc.Val2 = agi;
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - agi);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val2);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_DRAGONIC_AURA (DK_DRAGONIC_AURA) — Dragon Knight ATK +
+        // accuracy buff. rAthena 4th-class formula: +Patk +(val1×10),
+        // +Hit (val1×5). Our Patk field stores absolute Patk; we add
+        // the delta.
+        Register(StatusType.DragonicAura, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var patk = (short)(sc.Val1 * 10);
+                var hit = (short)(sc.Val1 * 5);
+                sc.Val2 = patk;
+                sc.Val3 = hit;
+                target.Stats.Patk = (short)Math.Min(short.MaxValue, target.Stats.Patk + patk);
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + hit);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Patk = (short)Math.Max(0, target.Stats.Patk - sc.Val2);
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_CARTBOOST (WS_CARTBOOST) — +20 MoveSpeed%; AspdRate proxy
+        // since we don't have a dedicated MoveSpeed% field yet.
+        // Overrides earlier ST.3 Register(StatusType.Cartboost, NoOpHandler()).
+        Register(StatusType.Cartboost, new StatusEffectHandler(
+            OnStart: (target, _, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + 20);
+            },
+            OnEnd: (target, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - 20);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // ====================================================================
+        // NS-3 wave 1 — combat-marker reclassification.
+        //
+        // These SCs are intentionally presence-only at this layer (the
+        // damage / regen / cast pipeline reads sc.Val1/Val2/Val3
+        // directly), but the earlier NoOpHandler() registrations didn't
+        // carry their ScfFlag classification — so ClearBuffs /
+        // RemoveOnRefresh / RemoveOnLogout sweep behavior fell through
+        // to StatusFlagDefaults' fallback. Re-register with explicit
+        // flags so the SC engine's lifecycle sweeps classify them
+        // correctly.
+        // ====================================================================
+
+        var combatMarker = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+        // SC_OVERTHRUST (BS_OVERTHRUST) — combat-side +ATK% read.
+        Register(StatusType.Overthrust, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: combatMarker));
+        // SC_MAXIMIZEPOWER (BS_MAXIMIZE) — combat-side max-roll marker.
+        Register(StatusType.Maximizepower, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: combatMarker));
+        // SC_MAGICPOWER (HW_MAGICPOWER) — combat-side MAtk% buff. Val3 = 5*val1 renewal.
+        Register(StatusType.Magicpower, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: combatMarker));
+        // SC_TENSIONRELAX (LK_TENSIONRELAX) — HP regen overlay marker.
+        Register(StatusType.Tensionrelax, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: combatMarker));
+        // SC_HIDING (TF_HIDING) — visibility marker.
+        Register(StatusType.Hiding, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: combatMarker));
+        // SC_CLOAKING (AS_CLOAKING) — visibility marker.
+        Register(StatusType.Cloaking, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: combatMarker));
+        // SC_AETERNA (PR_LEXAETERNA) — next-hit-doubled debuff marker.
+        Register(StatusType.Aeterna, new StatusEffectHandler(_NoOp, _NoOpEnd,
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+        // SC_KAITE (KG_KAITE) — heal-bounce marker (Val2 = remaining charges).
+        Register(StatusType.Kaite, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: combatMarker));
+        // SC_SIGNUMCRUCIS (AL_CRUCIS) — anti-undead/demon DEF drop debuff.
+        Register(StatusType.Signumcrucis, new StatusEffectHandler(_NoOp, _NoOpEnd,
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+        // SC_PROVIDENCE (CR_PROVIDENCE) — combat-side resist marker.
+        Register(StatusType.Providence, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: combatMarker));
+
         // ===== ST.9-ST.12 bulk backfill =====
         // Every remaining StatusType enum value gets a NoOpHandler with
         // explicit flags so the SC engine's classification methods

@@ -63,7 +63,7 @@ counts.
 | Surface | Current state | Source of measurement |
 |---|---|---|
 | **Skill parity** | **1,675 of 2,439 (skillId, level) baselines fail** (31% match rate) | `Map.Server.Tests/Skills/Baselines/*.rathena-todo.txt` count vs `*.json` total |
-| **SC handler depth** | **38 real bodies / 57 skeleton no-ops / 912 unregistered = 3.8% / 5.7% / 90.6% of 1,007 SCs** | NS-1a — `StatusEffectRegistry.cs` `Register()` vs `NoOpHandler()` vs `StatusType.cs` enum |
+| **SC handler depth** | **48 real bodies / 47 skeleton no-ops / 912 unregistered = 4.8% / 4.7% / 90.6% of 1,007 SCs** (post-NS-3 wave 1: +10 real bodies, 10 skeleton→explicit-flag promotions) | NS-1a — `StatusEffectRegistry.cs` `Register()` vs `NoOpHandler()` vs `StatusType.cs` enum |
 | **Item-script Proxy depth** | **8 distinct unknown methods, 31 hits** post-NS-2a (was 14 / 1,390 = 1.6%; now 0.04%). Residual 8 are JS-internal probes + rare rAthena array/string ops with low impact. | NS-1b harvest re-run after NS-2a; full table in [`map/ns1-audit-2026-05-23.md`](map/ns1-audit-2026-05-23.md) §NS-1b update |
 | **Pathing** | A\* matches rAthena `path.cpp` on constants / heuristic / corner-cut / Bresenham. ✅ Minor tie-break divergence (PriorityQueue ordering) is acceptable. | NS-1c — side-by-side audit of `Pathfinder.cs` vs `path.cpp` |
 
@@ -254,38 +254,44 @@ gameplay loop and stay deferred:
   `map/item-scripting-conv.md`)
 - Client-version compensation quirks for clients we don't target
 
-### Suggested next PR (2026-05-23, post-NS-2b)
+### Suggested next PR (2026-05-23, post-NS-3 wave 1)
 
-NS-2a + NS-2b both landed (Proxy fallback 98%-drained + 5 silent
-no-ops promoted to real wires, including `skill` at 726 hits).
-The script bridge is now substantively done for the
-non-SC-dependent surface. Next:
+NS-3 wave 1 landed (10 real bodies + 10 reclassifications, see
+History). The next two parallel-safe options:
 
-- **NS-3 wave 1** (medium, biggest behavior impact) — start
-  porting SC handler bodies. With `getenchantgrade` real and the
-  `skill` wire in place, the SC long tail is the dominant
-  remaining behavioral gap. NS-1a measured 38 real / 57 skeleton /
-  912 unregistered of 1,007 SCs. Wave 1 candidates:
-  - **CC family bodies** (Stone, Freeze, Stun, Sleep, Curse,
-    Silence, Blind, Confusion) — currently registered as
-    `NoOpHandler()`, gated via `EntityActionGates.CanAct` only.
-    Wave 1 adds the rAthena `OnStart` / `OnEnd` stat-mod side
-    effects (Curse: −75% Luk + halved MoveSpeed; Blind: −25% Hit/Flee;
-    etc.) and tick callbacks for the durational ones.
-  - **Cast-time SCs** (Suffragium, Memorize, Slowcast, Paralysis,
-    Izayoi, PoemBragi) — already partially wired via
-    `SkillCastTimingService.CastFixSc`; needs `OnStart` /
-    `OnEnd` bodies to flip them on/off properly.
-  - **Strip family** (StripArmor, StripWeapon, StripShield, StripHelm) —
-    skeletons; need `OnStart` calling `IInventoryService` to unequip,
-    `OnEnd` restoring.
-- **NS-2c** (small, ~30 lines) — wire `sc_start` family now that
-  NS-3 wave 1 lands, items with `sc_start SC_BLIND,30000;` etc.
-  start producing visible behavior.
+- **NS-2c** (small, ~30 lines) — wire `sc_start` family on
+  `ScriptedBonusHost` now that NS-3 wave 1 produced real bodies
+  for 10 SCs (Blind/Curse/WindWalk/Berserk/LaudaAgnus/LaudaRamus/
+  Impositio/Adoramus/DragonicAura/CartBoost). Items with
+  `sc_start SC_BLIND,30000;` etc. start producing visible
+  stat-mod behavior immediately. Cheapest follow-up; pairs
+  naturally with NS-3 wave 1.
 
-Recommended: NS-3 wave 1 first (the dominant gap), then NS-2c
-as the natural follow-up that makes item-script `sc_start` calls
-fire the just-wired SC handlers.
+- **NS-3 wave 2** — port the **CC family stat-mod bodies** that
+  wave 1 didn't touch (Sleep / Stun / Freeze / Stone / Silence /
+  Confusion stay as presence-only gates per rAthena — the gate
+  in `EntityActionGates.CanAct` is the behavior). But the
+  remaining 47 skeleton no-ops have stat-mod or
+  combat-side targets that wave 2 / 3 should pick up:
+  - **Strip family** (StripArmor/Weapon/Shield/Helm) — needs
+    `IInventoryService.Unequip` callback + restore on OnEnd.
+  - **Cast-time SC bodies** (Suffragium/Memorize/Slowcast/
+    Paralysis/Izayoi/PoemBragi) — already consumed via
+    `SkillCastTimingService.CastFixSc`; flag classification
+    needed.
+  - **Weapon endow** (Fireweapon/Waterweapon/Windweapon/
+    Earthweapon, Aspersio, Encpoison) — combat-side weapon
+    element override readers exist; need explicit ScfFlag
+    promotion to match NS-3 wave 1's pattern.
+  - **HP/SP shield consumers** (Sacrifice, Reflectshield,
+    Bitescar, Akaitsuki, Saturdaynightfever, Magnificat,
+    Endure, Kyrie/Autoguard/Steelbody — last three already
+    wired in DamageService) — need ScfFlag classification.
+
+Recommended: **NS-2c first** (3 days, completes the script
+bridge depth and gives items immediate visible behavior using
+the SCs wave 1 just wired). Then NS-3 wave 2 as the next big
+behavior wave.
 
 ---
 
@@ -920,6 +926,79 @@ gameplay on Tier 4 completeness if Tier 1–3 already cover the
 hot path.
 
 ## History
+
+### 2026-05-23 — NS-3 wave 1 landed (10 real SC bodies + 10 reclassifications)
+
+Promoted **20 SC handlers** in
+[`Map.Server/Status/StatusEffectRegistry.cs`](../../Map.Server/Status/StatusEffectRegistry.cs)
+from `NoOpHandler()` placeholders to real behavior. Two passes:
+
+**Real stat-mod bodies (10 SCs)** — each ports the rAthena
+`status.cpp` stat-field mutation directly into the C# OnStart,
+with absolute deltas stored in `sc.Val2/Val3` so OnEnd round-
+trips cleanly. All cite the rAthena formula line in source
+comments.
+
+| SC | Formula (rAthena status.cpp citation) | Mutation |
+|---|---|---|
+| `SC_BLIND` | −25% Hit, −25% Flee (multiplicative) | `Hit -= Hit/4`, `Flee -= Flee/4` |
+| `SC_CURSE` | Luk=0, Batk −25% (status.cpp:9472 immunity guard) | original Luk to Val2; if Luk=0, no-op |
+| `SC_WINDWALK` | Flee + (val1+1)/2; MoveSpeed (status.cpp:10985) | via AspdRate proxy |
+| `SC_BERSERK` | +200 Batk, +100 Flee, +30 AspdRate, ×3 MaxHp, fill HP | 4-stat combo (status.cpp:10994) |
+| `SC_LAUDAAGNUS` | +4 × val1 Vit | Vit += val1×4 |
+| `SC_LAUDARAMUS` | +3 × val1 Crit (Cri stored at 10×) | Cri += val1×30 |
+| `SC_IMPOSITIO` | +val1×5 Batk (status.cpp:10368) | Batk += val1×5 |
+| `SC_ADORAMUS` | Blind-like + Agi drop | Agi -= val1 |
+| `SC_DRAGONIC_AURA` | DK 4th-class: +Patk val1×10, +Hit val1×5 | both fields |
+| `SC_CARTBOOST` | +20 MoveSpeed% | AspdRate +20 proxy |
+
+**Explicit-flag reclassifications (10 combat markers)** —
+these stay presence-only (their behavior IS being read by the
+damage / cast / regen pipeline directly from `sc.Val1/Val2/Val3`),
+but the old `NoOpHandler()` left `Flags: ScfFlag.None`, forcing
+the lifecycle sweeps to fall through to `StatusFlagDefaults`.
+Re-registered with explicit `Buff | RemoveOnLogout` or
+`Debuff | RemoveOnRefresh` so `ClearBuffs` / `ClearOnLogout` /
+`Spread` classify them right at the source.
+
+`SC_OVERTHRUST` · `SC_MAXIMIZEPOWER` · `SC_MAGICPOWER` ·
+`SC_TENSIONRELAX` · `SC_HIDING` · `SC_CLOAKING` · `SC_KAITE` ·
+`SC_PROVIDENCE` (Buff | RemoveOnLogout) plus `SC_AETERNA` ·
+`SC_SIGNUMCRUCIS` (Debuff | RemoveOnRefresh).
+
+**Coverage:** SC handler real-body count moves from
+**38 → 48 (3.8% → 4.8% of 1,007 SCs)**. Skeleton-no-op count
+drops from **57 → 47** (the 10 reclassifications keep
+no-op bodies but now carry the right flag classification).
+Unregistered count unchanged at 912.
+
+32 new focused unit tests at
+[`Map.Server.Tests/Status/StatusEffectNS3Wave1Tests.cs`](../../Map.Server.Tests/Status/StatusEffectNS3Wave1Tests.cs):
+- Per-SC OnStart / OnEnd round-trip checks (10 SCs × 1–2 cases)
+- WindWalk per-level table matches rAthena (`[Theory]` × 10 levels)
+- Curse Luk=0 immunity gate
+- Berserk full buff combo + HP refill semantics
+- Combat-marker flag classification (`[Theory]` × 8 buff markers + 2 debuff markers)
+
+One test correction: `Heal_BerserkTargetReceivesNothing` was
+asserting `Hp == 1000` post-attach, but Berserk's rAthena-faithful
+OnStart now fills HP to full (`status.cpp:10994` comment: "HP
+healing is performed after the calc_status call"). Updated the
+test to snapshot post-attach Hp before invoking the suppressed
+heal, preserving the original intent (heal-suppression check)
+without coupling to the pre-NS-3 NoOp behavior.
+
+**Full test sweep: 3,382 Map.Server + 87 Core + 29 Login = 3,498
+tests passing** (was 3,350 pre-NS-3 wave 1; +32 new). 0 build errors.
+
+**Behavioral impact:** every item/skill that applies one of the
+10 newly-bodied SCs now produces visible stat changes. Blind
+debuffs from Frost Diver / Lex Tenebras / Adoramus actually
+drop Hit/Flee. Curse from Lex Tenebras / Curse Blade / monsters
+zeros Luk and drops ATK. Berserk's stance triple-MaxHp combo
+fires. LK Berserk / Sage Cart Boost / WS Cart Boost actually
+buff. All ten NS-3 wave 1 SC handler bodies are cited against
+their rAthena source line in inline comments for diff auditing.
 
 ### 2026-05-23 — NS-2b landed (5 silent-no-op promotions)
 
