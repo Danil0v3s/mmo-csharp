@@ -169,15 +169,12 @@ public class GameDbContext : DbContext
     // DB-8f: BattlegroundDb moved to typed entities below.
     // DB-8c: SkillTreeDb / GuildSkillTreeDb moved to typed entities below.
     // DB-8b: MobSummonDb moved to typed entity below.
-    public DbSet<ItemRandomOptGroupEntity> ItemRandomOptGroupDb => Set<ItemRandomOptGroupEntity>();
+    // DB-8g: ItemRandomOptGroupDb moved to typed entities below.
     // DB-8a: AttrFixDb / LevelPenaltyDb moved to typed entities below.
     // DB-8d: JobStatsDb / JobExpDb / JobBasePointsDb moved to typed entities below.
     // DB-8e: StatusYmlDb moved to typed entities below.
     // DB-8b: ItemCombosDb / ItemPackagesDb / ItemGroupDb moved to typed entities below.
-    public DbSet<ItemEnchantEntity> ItemEnchantDb => Set<ItemEnchantEntity>();
-    public DbSet<ItemReformEntity> ItemReformDb => Set<ItemReformEntity>();
-    public DbSet<LaphineSynthesisEntity> LaphineSynthesisDb => Set<LaphineSynthesisEntity>();
-    public DbSet<LaphineUpgradeEntity> LaphineUpgradeDb => Set<LaphineUpgradeEntity>();
+    // DB-8g: ItemEnchant/Reform/Laphine moved to typed entities below.
     public DbSet<RefineEntity> RefineDb => Set<RefineEntity>();
     public DbSet<EnchantGradeEntity> EnchantGradeDb => Set<EnchantGradeEntity>();
     public DbSet<MapDropsEntity> MapDropsDb => Set<MapDropsEntity>();
@@ -231,6 +228,21 @@ public class GameDbContext : DbContext
     public DbSet<BattlegroundLocationDbEntity> BattlegroundLocationDb => Set<BattlegroundLocationDbEntity>();
     public DbSet<ElementalCatalogDbEntity> ElementalCatalogDb => Set<ElementalCatalogDbEntity>();
     public DbSet<ElementalModeDbEntity> ElementalModeDb => Set<ElementalModeDbEntity>();
+
+    // ---- DB-8g: enchant pipeline re-normalized ----
+    public DbSet<ItemEnchantDbEntity> ItemEnchantDb => Set<ItemEnchantDbEntity>();
+    public DbSet<ItemEnchantTargetDbEntity> ItemEnchantTargetDb => Set<ItemEnchantTargetDbEntity>();
+    public DbSet<ItemEnchantMaterialDbEntity> ItemEnchantMaterialDb => Set<ItemEnchantMaterialDbEntity>();
+    public DbSet<ItemEnchantSlotDbEntity> ItemEnchantSlotDb => Set<ItemEnchantSlotDbEntity>();
+    public DbSet<ItemEnchantOptionDbEntity> ItemEnchantOptionDb => Set<ItemEnchantOptionDbEntity>();
+    public DbSet<ItemReformDbEntity> ItemReformDb => Set<ItemReformDbEntity>();
+    public DbSet<ItemReformBaseDbEntity> ItemReformBaseDb => Set<ItemReformBaseDbEntity>();
+    public DbSet<LaphineSynthesisDbEntity> LaphineSynthesisDb => Set<LaphineSynthesisDbEntity>();
+    public DbSet<LaphineSynthesisRequirementDbEntity> LaphineSynthesisRequirementDb => Set<LaphineSynthesisRequirementDbEntity>();
+    public DbSet<LaphineUpgradeDbEntity> LaphineUpgradeDb => Set<LaphineUpgradeDbEntity>();
+    public DbSet<LaphineUpgradeTargetDbEntity> LaphineUpgradeTargetDb => Set<LaphineUpgradeTargetDbEntity>();
+    public DbSet<ItemRandomOptGroupDbEntity> ItemRandomOptGroupDb => Set<ItemRandomOptGroupDbEntity>();
+    public DbSet<ItemRandomOptGroupOptionDbEntity> ItemRandomOptGroupOptionDb => Set<ItemRandomOptGroupOptionDbEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

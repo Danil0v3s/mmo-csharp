@@ -165,7 +165,7 @@ internal static class PayloadConfig
 // BattlegroundDbEntityConfiguration removed in DB-8f.
 // SkillTreeEntityConfiguration / GuildSkillTreeEntityConfiguration removed in DB-8c.
 // MobSummonEntityConfiguration removed in DB-8b.
-public class ItemRandomOptGroupEntityConfiguration : IEntityTypeConfiguration<ItemRandomOptGroupEntity> { public void Configure(EntityTypeBuilder<ItemRandomOptGroupEntity> b) => PayloadConfig.IntKey(b, "item_randomopt_group", "group_id"); }
+// ItemRandomOptGroupEntityConfiguration removed in DB-8g.
 // AttrFixEntityConfiguration / LevelPenaltyEntityConfiguration removed
 // in DB-8a — see StaticDbConfigurations.cs for the typed replacements.
 // JobStatsEntityConfiguration / JobExpEntityConfiguration / JobBasePointsEntityConfiguration
@@ -173,10 +173,7 @@ public class ItemRandomOptGroupEntityConfiguration : IEntityTypeConfiguration<It
 // StatusYmlEntityConfiguration removed in DB-8e.
 // ItemCombosEntityConfiguration / ItemPackagesEntityConfiguration / ItemGroupDbEntityConfiguration
 // removed in DB-8b.
-public class ItemEnchantEntityConfiguration : IEntityTypeConfiguration<ItemEnchantEntity> { public void Configure(EntityTypeBuilder<ItemEnchantEntity> b) => PayloadConfig.IntKey(b, "item_enchant", "enchant_id"); }
-public class ItemReformEntityConfiguration : IEntityTypeConfiguration<ItemReformEntity> { public void Configure(EntityTypeBuilder<ItemReformEntity> b) => PayloadConfig.StringKey(b, "item_reform", "item_aegis"); }
-public class LaphineSynthesisEntityConfiguration : IEntityTypeConfiguration<LaphineSynthesisEntity> { public void Configure(EntityTypeBuilder<LaphineSynthesisEntity> b) => PayloadConfig.StringKey(b, "laphine_synthesis", "recipe_item"); }
-public class LaphineUpgradeEntityConfiguration : IEntityTypeConfiguration<LaphineUpgradeEntity> { public void Configure(EntityTypeBuilder<LaphineUpgradeEntity> b) => PayloadConfig.StringKey(b, "laphine_upgrade", "upgrade_item"); }
+// Item enchant pipeline configurations removed in DB-8g.
 public class RefineEntityConfiguration : IEntityTypeConfiguration<RefineEntity> { public void Configure(EntityTypeBuilder<RefineEntity> b) => PayloadConfig.StringKey(b, "refine", "refine_group"); }
 public class EnchantGradeEntityConfiguration : IEntityTypeConfiguration<EnchantGradeEntity> { public void Configure(EntityTypeBuilder<EnchantGradeEntity> b) => PayloadConfig.StringKey(b, "enchantgrade", "equip_type"); }
 public class MapDropsEntityConfiguration : IEntityTypeConfiguration<MapDropsEntity> { public void Configure(EntityTypeBuilder<MapDropsEntity> b) => PayloadConfig.StringKey(b, "map_drops", "map_name"); }

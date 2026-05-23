@@ -88,7 +88,7 @@ public abstract class PayloadRowIndexEntity { public int RowId { get; set; } pub
 // SkillTreeEntity / GuildSkillTreeEntity removed in DB-8c — see
 // SkillTreeDbEntities.cs (typed parent + Inherit + entry + requirement).
 // MobSummonEntity removed in DB-8b — see MobSummonDbEntity + MobSummonEntryDbEntity.
-public class ItemRandomOptGroupEntity : PayloadIntKeyEntity { } // group_id
+// ItemRandomOptGroupEntity removed in DB-8g — see EnchantPipelineDbEntities.cs.
 // AttrFixEntity / LevelPenaltyEntity removed in DB-8a — replaced by
 // typed AttrFixDbEntity + LevelPenaltyDbEntity / LevelPenaltyDifferenceDbEntity.
 // JobStatsEntity / JobExpEntity / JobBasePointsEntity removed in DB-8d —
@@ -98,10 +98,8 @@ public class ItemRandomOptGroupEntity : PayloadIntKeyEntity { } // group_id
 // ItemCombosEntity removed in DB-8b — see ItemComboDbEntity + ItemComboMemberDbEntity.
 // ItemPackagesEntity removed in DB-8b — see ItemPackageDbEntity + ItemPackageEntryDbEntity.
 // ItemGroupDbEntity removed in DB-8b — see ItemGroupCatalogDbEntity + ItemGroupCatalogEntryDbEntity.
-public class ItemEnchantEntity : PayloadIntKeyEntity { } // enchant_id
-public class ItemReformEntity : PayloadStringKeyEntity { } // item_aegis
-public class LaphineSynthesisEntity : PayloadStringKeyEntity { } // recipe_item
-public class LaphineUpgradeEntity : PayloadStringKeyEntity { } // upgrade_item
+// ItemEnchantEntity / ItemReformEntity / LaphineSynthesisEntity /
+// LaphineUpgradeEntity removed in DB-8g — see EnchantPipelineDbEntities.cs.
 public class RefineEntity : PayloadStringKeyEntity { } // refine_group
 public class EnchantGradeEntity : PayloadStringKeyEntity { } // equip_type
 public class MapDropsEntity : PayloadStringKeyEntity { } // map_name

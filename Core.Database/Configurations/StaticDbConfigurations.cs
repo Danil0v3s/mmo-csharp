@@ -783,3 +783,173 @@ public class ElementalModeDbEntityConfiguration : IEntityTypeConfiguration<Eleme
         b.Property(e => e.SkillAegis).HasColumnName("skill_aegis").HasMaxLength(64).IsRequired();
     }
 }
+
+// ============================================================================
+// DB-8g: enchant pipeline configurations
+// ============================================================================
+
+public class ItemEnchantDbEntityConfiguration : IEntityTypeConfiguration<ItemEnchantDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemEnchantDbEntity> b)
+    {
+        b.ToTable("item_enchant_db");
+        b.HasKey(e => e.EnchantId);
+        b.Property(e => e.EnchantId).HasColumnName("enchant_id");
+        b.Property(e => e.MinimumRefine).HasColumnName("minimum_refine");
+        b.Property(e => e.ResetChance).HasColumnName("reset_chance");
+        b.Property(e => e.ResetPrice).HasColumnName("reset_price");
+    }
+}
+
+public class ItemEnchantTargetDbEntityConfiguration : IEntityTypeConfiguration<ItemEnchantTargetDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemEnchantTargetDbEntity> b)
+    {
+        b.ToTable("item_enchant_target_db");
+        b.HasKey(e => new { e.EnchantId, e.ItemAegis });
+        b.Property(e => e.EnchantId).HasColumnName("enchant_id");
+        b.Property(e => e.ItemAegis).HasColumnName("item_aegis").HasMaxLength(64).IsRequired();
+    }
+}
+
+public class ItemEnchantMaterialDbEntityConfiguration : IEntityTypeConfiguration<ItemEnchantMaterialDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemEnchantMaterialDbEntity> b)
+    {
+        b.ToTable("item_enchant_material_db");
+        b.HasKey(e => new { e.EnchantId, e.Slot, e.MaterialAegis });
+        b.Property(e => e.EnchantId).HasColumnName("enchant_id");
+        b.Property(e => e.Slot).HasColumnName("slot");
+        b.Property(e => e.MaterialAegis).HasColumnName("material_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Amount).HasColumnName("amount");
+    }
+}
+
+public class ItemEnchantSlotDbEntityConfiguration : IEntityTypeConfiguration<ItemEnchantSlotDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemEnchantSlotDbEntity> b)
+    {
+        b.ToTable("item_enchant_slot_db");
+        b.HasKey(e => new { e.EnchantId, e.Slot });
+        b.Property(e => e.EnchantId).HasColumnName("enchant_id");
+        b.Property(e => e.Slot).HasColumnName("slot");
+        b.Property(e => e.Price).HasColumnName("price");
+        b.Property(e => e.OrderIndex).HasColumnName("order_index");
+    }
+}
+
+public class ItemEnchantOptionDbEntityConfiguration : IEntityTypeConfiguration<ItemEnchantOptionDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemEnchantOptionDbEntity> b)
+    {
+        b.ToTable("item_enchant_option_db");
+        b.HasKey(e => new { e.EnchantId, e.Slot, e.EnchantGrade, e.OptionItemAegis });
+        b.Property(e => e.EnchantId).HasColumnName("enchant_id");
+        b.Property(e => e.Slot).HasColumnName("slot");
+        b.Property(e => e.EnchantGrade).HasColumnName("enchant_grade");
+        b.Property(e => e.OptionItemAegis).HasColumnName("option_item_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Chance).HasColumnName("chance");
+    }
+}
+
+public class ItemReformDbEntityConfiguration : IEntityTypeConfiguration<ItemReformDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemReformDbEntity> b)
+    {
+        b.ToTable("item_reform_db");
+        b.HasKey(e => e.ResultItemAegis);
+        b.Property(e => e.ResultItemAegis).HasColumnName("result_item_aegis").HasMaxLength(64).IsRequired();
+    }
+}
+
+public class ItemReformBaseDbEntityConfiguration : IEntityTypeConfiguration<ItemReformBaseDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemReformBaseDbEntity> b)
+    {
+        b.ToTable("item_reform_base_db");
+        b.HasKey(e => new { e.ResultItemAegis, e.BaseItemAegis });
+        b.Property(e => e.ResultItemAegis).HasColumnName("result_item_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.BaseItemAegis).HasColumnName("base_item_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.MaximumRefine).HasColumnName("maximum_refine");
+        b.Property(e => e.ChangeRefine).HasColumnName("change_refine");
+        b.Property(e => e.ResultItemOverride).HasColumnName("result_item_override").HasMaxLength(64);
+        b.Property(e => e.RandomOptionGroup).HasColumnName("random_option_group").HasMaxLength(64);
+        b.Property(e => e.ClearSlots).HasColumnName("clear_slots");
+        b.Property(e => e.RemoveEnchantgrade).HasColumnName("remove_enchantgrade");
+        b.Property(e => e.CardsAllowed).HasColumnName("cards_allowed");
+    }
+}
+
+public class LaphineSynthesisDbEntityConfiguration : IEntityTypeConfiguration<LaphineSynthesisDbEntity>
+{
+    public void Configure(EntityTypeBuilder<LaphineSynthesisDbEntity> b)
+    {
+        b.ToTable("laphine_synthesis_db");
+        b.HasKey(e => e.RecipeItem);
+        b.Property(e => e.RecipeItem).HasColumnName("recipe_item").HasMaxLength(64).IsRequired();
+        b.Property(e => e.RewardGroup).HasColumnName("reward_group").HasMaxLength(64);
+        b.Property(e => e.RequiredRequirementsCount).HasColumnName("required_requirements_count");
+    }
+}
+
+public class LaphineSynthesisRequirementDbEntityConfiguration : IEntityTypeConfiguration<LaphineSynthesisRequirementDbEntity>
+{
+    public void Configure(EntityTypeBuilder<LaphineSynthesisRequirementDbEntity> b)
+    {
+        b.ToTable("laphine_synthesis_requirement_db");
+        b.HasKey(e => new { e.RecipeItem, e.RequirementItem });
+        b.Property(e => e.RecipeItem).HasColumnName("recipe_item").HasMaxLength(64).IsRequired();
+        b.Property(e => e.RequirementItem).HasColumnName("requirement_item").HasMaxLength(64).IsRequired();
+        b.Property(e => e.RefineMin).HasColumnName("refine_min");
+        b.Property(e => e.RefineMax).HasColumnName("refine_max");
+    }
+}
+
+public class LaphineUpgradeDbEntityConfiguration : IEntityTypeConfiguration<LaphineUpgradeDbEntity>
+{
+    public void Configure(EntityTypeBuilder<LaphineUpgradeDbEntity> b)
+    {
+        b.ToTable("laphine_upgrade_db");
+        b.HasKey(e => e.UpgradeItem);
+        b.Property(e => e.UpgradeItem).HasColumnName("upgrade_item").HasMaxLength(64).IsRequired();
+        b.Property(e => e.RandomOptionGroup).HasColumnName("random_option_group");
+        b.Property(e => e.MinimumRefine).HasColumnName("minimum_refine");
+    }
+}
+
+public class LaphineUpgradeTargetDbEntityConfiguration : IEntityTypeConfiguration<LaphineUpgradeTargetDbEntity>
+{
+    public void Configure(EntityTypeBuilder<LaphineUpgradeTargetDbEntity> b)
+    {
+        b.ToTable("laphine_upgrade_target_db");
+        b.HasKey(e => new { e.UpgradeItem, e.TargetItem });
+        b.Property(e => e.UpgradeItem).HasColumnName("upgrade_item").HasMaxLength(64).IsRequired();
+        b.Property(e => e.TargetItem).HasColumnName("target_item").HasMaxLength(64).IsRequired();
+    }
+}
+
+public class ItemRandomOptGroupDbEntityConfiguration : IEntityTypeConfiguration<ItemRandomOptGroupDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemRandomOptGroupDbEntity> b)
+    {
+        b.ToTable("item_randomopt_group_db");
+        b.HasKey(e => e.Id);
+        b.Property(e => e.Id).HasColumnName("id");
+        b.Property(e => e.GroupName).HasColumnName("group_name").HasMaxLength(64).IsRequired();
+    }
+}
+
+public class ItemRandomOptGroupOptionDbEntityConfiguration : IEntityTypeConfiguration<ItemRandomOptGroupOptionDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ItemRandomOptGroupOptionDbEntity> b)
+    {
+        b.ToTable("item_randomopt_group_option_db");
+        b.HasKey(e => new { e.GroupId, e.Slot, e.OptionName });
+        b.Property(e => e.GroupId).HasColumnName("group_id");
+        b.Property(e => e.Slot).HasColumnName("slot");
+        b.Property(e => e.OptionName).HasColumnName("option_name").HasMaxLength(64).IsRequired();
+        b.Property(e => e.MinValue).HasColumnName("min_value");
+        b.Property(e => e.MaxValue).HasColumnName("max_value");
+        b.Property(e => e.Chance).HasColumnName("chance");
+    }
+}
