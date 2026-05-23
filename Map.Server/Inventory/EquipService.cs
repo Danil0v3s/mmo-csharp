@@ -22,6 +22,7 @@ public sealed class EquipService : IEquipService
     private readonly IItemCombosService? _combos;
     private readonly IScriptedBonusService? _scriptedBonuses;
     private readonly IComboDispatcher? _comboDispatcher;
+    private readonly IItemHookDispatcher? _hookDispatcher;
     private readonly ILogger<EquipService> _logger;
 
     public EquipService(
@@ -31,7 +32,8 @@ public sealed class EquipService : IEquipService
         ILogger<EquipService> logger,
         IItemCombosService? combos = null,
         IScriptedBonusService? scriptedBonuses = null,
-        IComboDispatcher? comboDispatcher = null)
+        IComboDispatcher? comboDispatcher = null,
+        IItemHookDispatcher? hookDispatcher = null)
     {
         _catalog = catalog;
         _entities = entities;
@@ -39,6 +41,7 @@ public sealed class EquipService : IEquipService
         _combos = combos;
         _scriptedBonuses = scriptedBonuses;
         _comboDispatcher = comboDispatcher;
+        _hookDispatcher = hookDispatcher;
         _logger = logger;
     }
 
@@ -87,6 +90,23 @@ public sealed class EquipService : IEquipService
         if (item.Equip == 0) return EquipOpResult.InvalidSlot;
 
         clearedPos = item.Equip;
+
+        // CONV-4: fire onUnequip BEFORE clearing the equip bit so the
+        // hook still sees the item in its "equipped" state (relevant for
+        // any ctx.getrefine() / ctx.getequiprefinerycnt() reads). Bundle
+        // mutations from onUnequip are largely cosmetic (recalc rebuilds
+        // from scratch immediately after), but ctx.player.* state
+        // mutations persist — that's the intended use case (e.g. cards
+        // that drain HP on unequip).
+        if (_hookDispatcher != null && session.EntityId is { } uid
+            && _entities.Get(uid) is PlayerEntity unequipPlayer)
+        {
+            var equipped = new List<InventoryItem>();
+            for (var i = 0; i < inv.Count; i++)
+                if (inv[i].Equip != 0) equipped.Add(inv[i]);
+            _hookDispatcher.TryInvokeOnUnequip(item, unequipPlayer.EquipBonuses, unequipPlayer, equipped);
+        }
+
         item.Equip = 0;
 
         TryRecalcStats(session);
@@ -211,7 +231,7 @@ public sealed class EquipService : IEquipService
         // move per-item dispatch onto the shared engine too).
         EquipBonusAggregator.BuildBundle(
             session.Inventory, _catalog, player.EquipBonuses, activeCombos,
-            _scriptedBonuses, player);
+            _scriptedBonuses, player, _hookDispatcher);
 
         // CONV-3: layer combo onActive bonuses on top of per-item bonuses
         // via the registry-driven dispatcher. Each combo's hook writes

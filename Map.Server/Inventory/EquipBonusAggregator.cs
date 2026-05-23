@@ -117,7 +117,8 @@ public static class EquipBonusAggregator
         EquipBonusBundle bundle,
         IReadOnlyList<ActiveCombo>? activeCombos = null,
         IScriptedBonusService? scriptedBonuses = null,
-        PlayerEntity? pc = null)
+        PlayerEntity? pc = null,
+        IItemHookDispatcher? hookDispatcher = null)
     {
         bundle.Reset();
         if (inventory == null) return;
@@ -126,7 +127,7 @@ public static class EquipBonusAggregator
         // getrefine() / getequiprefinerycnt() lookups. Cheap walk
         // through the inventory — equipped slots are a small subset.
         List<InventoryItem>? equippedSnapshot = null;
-        if (scriptedBonuses != null && pc != null)
+        if ((scriptedBonuses != null && pc != null) || (hookDispatcher != null && pc != null))
         {
             equippedSnapshot = new List<InventoryItem>();
             foreach (var item in inventory)
@@ -138,6 +139,16 @@ public static class EquipBonusAggregator
             if (item.Equip == 0) continue;
             var row = catalog.Get(item.NameId);
             if (row == null) continue;
+
+            // CONV-4: when a TS onEquip hook exists, it owns the per-item
+            // bonus accumulation and we skip the DSL Script / EquipScript
+            // paths to avoid double-applying. Items without a TS hook
+            // (rare — converter emits hooks for every script column we
+            // could translate) continue to flow through the DSL bridge.
+            var dispatched = hookDispatcher != null && pc != null && equippedSnapshot != null
+                && hookDispatcher.TryInvokeOnEquip(item, bundle, pc, equippedSnapshot);
+            if (dispatched) continue;
+
             ApplyOne(row.Script, bundle, scriptedBonuses, pc, equippedSnapshot);
             // EquipScript runs on equip (unfolded into the bundle);
             // UnequipScript would reverse on unequip but in this model

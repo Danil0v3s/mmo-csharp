@@ -20,17 +20,20 @@ public sealed class ItemUseService : IItemUseService
     private readonly IItemCatalog _catalog;
     private readonly ItemEffectRegistry _effects;
     private readonly Status.ISessionManagerAccessor _sessions;
+    private readonly IItemHookDispatcher? _hookDispatcher;
     private readonly ILogger<ItemUseService> _logger;
 
     public ItemUseService(
         IItemCatalog catalog,
         ItemEffectRegistry effects,
         Status.ISessionManagerAccessor sessions,
-        ILogger<ItemUseService> logger)
+        ILogger<ItemUseService> logger,
+        IItemHookDispatcher? hookDispatcher = null)
     {
         _catalog = catalog;
         _effects = effects;
         _sessions = sessions;
+        _hookDispatcher = hookDispatcher;
         _logger = logger;
     }
 
@@ -45,13 +48,25 @@ public sealed class ItemUseService : IItemUseService
         var row = _catalog.Get(item.NameId);
         if (row == null) return false;
 
-        var handler = _effects.Get(row.NameAegis);
-        if (handler == null)
+        // CONV-4: try the TS-registered onUse hook first. When a registration
+        // exists, the dispatcher owns the invocation (sync stack decrement
+        // still runs below since rAthena's item-use semantics consume one
+        // stack on success regardless of whether the script does anything
+        // visible). When no hook is registered, fall back to the legacy
+        // C# ItemEffectRegistry handler — the converter only emits TS
+        // hooks for items with a SQL `script` column, so non-scripted
+        // items (rare) still need the C# fallback.
+        var dispatched = _hookDispatcher?.TryInvokeOnUse(session, user, item) ?? false;
+        if (!dispatched)
         {
-            _logger.LogDebug("ItemUseService: no handler for aegis '{Aegis}'", row.NameAegis);
-            return false;
+            var handler = _effects.Get(row.NameAegis);
+            if (handler == null)
+            {
+                _logger.LogDebug("ItemUseService: no handler or onUse hook for aegis '{Aegis}'", row.NameAegis);
+                return false;
+            }
+            if (!handler.Apply(user)) return false;
         }
-        if (!handler.Apply(user)) return false;
 
         // Decrement stack; remove slot if empty (rAthena pc_delitem).
         item.Amount -= 1;
@@ -61,8 +76,9 @@ public sealed class ItemUseService : IItemUseService
             inv.RemoveAt(slotIndex);
         }
         _logger.LogDebug(
-            "Char {Char} used item {Aegis} (slot {Slot}); {Remaining} left",
-            user.CharacterId, row.NameAegis, slotIndex, item.Amount);
+            "Char {Char} used item {Aegis} (slot {Slot}, path={Path}); {Remaining} left",
+            user.CharacterId, row.NameAegis, slotIndex,
+            dispatched ? "ts-onUse" : "c#-handler", item.Amount);
         return true;
     }
 }

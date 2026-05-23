@@ -2134,6 +2134,12 @@ builder.Services.AddSingleton<Map.Server.Inventory.Script.IScriptedBonusService,
 // installed and invokes those whose member items are all equipped.
 builder.Services.AddSingleton<Map.Server.Inventory.IComboDispatcher,
     Map.Server.Inventory.ComboDispatcher>();
+// CONV-4: item onUse / onEquip / onUnequip hooks fire through the same
+// shared engine. Bridges the CZ_USE_ITEM packet handler + the per-item
+// equip-recalc + unequip packet handler over to TypeScript hooks
+// registered by `registerItem({...})` calls.
+builder.Services.AddSingleton<Map.Server.Inventory.IItemHookDispatcher,
+    Map.Server.Inventory.ItemHookDispatcher>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerTimerService, Map.Server.Status.PlayerTimerService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerBgQueueTimerService, Map.Server.Status.PlayerBgQueueTimerService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerHateService, Map.Server.Status.PlayerHateService>();
