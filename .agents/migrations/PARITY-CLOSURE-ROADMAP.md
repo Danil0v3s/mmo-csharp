@@ -37,6 +37,258 @@ T2.2 + T2.4a + T2.4b + four combat-side SC consumer closures
 - The remaining ~30 % is **per-skill / per-item behavior code** — not
   data, not infrastructure. Mostly Tier 2.3 / 2.4 / 3 / 4 work.
 
+## Next steps (2026-05-23 — behavioral-parity focus)
+
+The "Next concrete tasks" section further down was written
+2026-05-20 and is now stale (items 1-3 done, 4-7 done or
+superseded). This section replaces it.
+
+**Goal:** behavioral parity for the gameplay-critical subsystems —
+**status / skills / battle / mob AI / movement**. Player-facing
+behavior must match rAthena: same damage numbers, same skill
+effects, same mob target selection, same status-change cascades.
+
+The architectural divergences (4-process IPC, RNG sequence
+reproducibility, byte-level packet replay) are out of scope for
+this target — they affect cross-server races, replay tests, and
+packet captures, not the in-map gameplay loop.
+
+### Measured baseline (2026-05-23, **post-NS-1 audit**)
+
+Numbers below have been **verified by NS-1** (see
+[`map/ns1-audit-2026-05-23.md`](map/ns1-audit-2026-05-23.md)),
+which converted the doc-vs-task-list contradictions into hard
+counts.
+
+| Surface | Current state | Source of measurement |
+|---|---|---|
+| **Skill parity** | **1,675 of 2,439 (skillId, level) baselines fail** (31% match rate) | `Map.Server.Tests/Skills/Baselines/*.rathena-todo.txt` count vs `*.json` total |
+| **SC handler depth** | **38 real bodies / 57 skeleton no-ops / 912 unregistered = 3.8% / 5.7% / 90.6% of 1,007 SCs** | NS-1a — `StatusEffectRegistry.cs` `Register()` vs `NoOpHandler()` vs `StatusType.cs` enum |
+| **Item-script Proxy depth** | **8 distinct unknown methods, 31 hits** post-NS-2a (was 14 / 1,390 = 1.6%; now 0.04%). Residual 8 are JS-internal probes + rare rAthena array/string ops with low impact. | NS-1b harvest re-run after NS-2a; full table in [`map/ns1-audit-2026-05-23.md`](map/ns1-audit-2026-05-23.md) §NS-1b update |
+| **Pathing** | A\* matches rAthena `path.cpp` on constants / heuristic / corner-cut / Bresenham. ✅ Minor tie-break divergence (PriorityQueue ordering) is acceptable. | NS-1c — side-by-side audit of `Pathfinder.cs` vs `path.cpp` |
+
+**ST.9-13 reconciliation:** the task list's "100% SC parity rollup"
+referred to **enum + SQL-flag table wiring** (DBR-1e: 4935 typed flags
+from `status.yml`), not behavior bodies. The T2.4 ⚠️ row was right;
+the wave names were misleading.
+
+### Per-family skill-parity backlog
+
+The 1,675 failing baselines by family — pick families in this
+order for the biggest visible-behavior wins:
+
+| Family | Failing baselines | Notes |
+|---|---:|---|
+| Npc       | 238 | Special / event / boss-only skills. Many cosmetic; some MVP cast paths matter. |
+| Mage      | 181 | Wizard / Sage / High Wizard / Warlock — touches a lot of PvP / WoE. |
+| Taekwon   | 170 | TK + Star Gladiator + Soul Linker. Niche but specific timing. |
+| Acolyte   | 154 | Priest / Monk / High Priest / Arch Bishop / Sura. Heal/MVP paths. |
+| Thief     | 140 | Assassin / Rogue / Stalker / Guillotine Cross / Shadow Chaser. |
+| Merchant  | 139 | Blacksmith / Alchemist / Genetic / Mechanic. |
+| Archer    | 139 | Hunter / Bard / Dancer / Ranger / Maestro / Wanderer. |
+| Swordman  | 124 | Knight / Crusader / Lord Knight / Paladin / Rune Knight / Royal Guard. |
+| ElementalNpc | 98 | Elemental summon skills. |
+| Ninja     | 92 | |
+| Gunslinger | 74 | |
+| Summoner  | 52 | Doram. |
+| Other     | 52 | Cross-family / hybrid. |
+| Novice    | 22 | |
+
+Recommended pickup order: **Acolyte → Mage → Swordman → Thief →
+Merchant → Archer** (covers the canonical PvP/PvM rotation), then
+Taekwon / Ninja / Gunslinger / Summoner (niche jobs), then NPC /
+boss skills last (visible only inside specific encounters).
+
+### Ordered backlog
+
+In dependency / impact order — each is a separate workstream and
+can run in parallel after step 1 / 2 unblock the others.
+
+#### NS-1 · One-shot audit pass ✅ DONE 2026-05-23
+
+Full output: [`map/ns1-audit-2026-05-23.md`](map/ns1-audit-2026-05-23.md).
+Test harness: [`Map.Server.Tests/Audit/ScriptProxyHitCountAudit.cs`](../../Map.Server.Tests/Audit/ScriptProxyHitCountAudit.cs).
+
+- **NS-1a** — SC depth: 38 real / 57 skeleton / 912 unregistered out
+  of 1,007. The doc was right; the task list ("100% rollup") was
+  misleading.
+- **NS-1b** — Proxy fallback: 14 unknown method names, 1,390 hits
+  out of 85,068 total method calls. `getenchantgrade` alone is
+  1,239 (89% of all fallbacks).
+- **NS-1c** — Pathing: ✅ A\* matches rAthena `path.cpp` on
+  every parity-critical axis. PriorityQueue tie-break divergence
+  acceptable. `IPathService.PathSearch` stub flagged as a small
+  10-line follow-up (skill-cast pre-check accuracy, not gameplay
+  loop).
+
+#### NS-2 · Item-script bridge depth (~3 days, unlocks ~28k items)
+
+Audit-revised priority — NS-1b told us exactly which host methods
+get hit most by the Proxy fallback. Wire in priority order:
+
+| Priority | Method | NS-1b hits | Status |
+|---:|---|---:|---|
+| 1 | `getenchantgrade(slot)` | 1,239 | ✅ wired 2026-05-23 (NS-2a) — reads `InventoryItem.EnchantGrade` |
+| 2 | `getequipweaponlv(slot)` | 13 | ✅ wired 2026-05-23 (NS-2a) — reads `ItemEntity.WeaponLevel` via catalog |
+| 3 | `getequiparmorlv(slot)` | 9 | ✅ wired 2026-05-23 (NS-2a) — reads `ItemEntity.ArmorLevel` via catalog |
+| 4 | `vip_status(type)` | 84 | ✅ documented stub 2026-05-23 (NS-2a) — returns 0; real wire when VIP timer surfaces on PC |
+| 5 | `getitempos(itemId)` | 11 | ✅ wired 2026-05-23 (NS-2a) — scans `_equipped` for item id |
+| 6 | `gettime(DT_*)` | 3 | ✅ wired 2026-05-23 (NS-2a) — `DateTime.UtcNow` dispatch |
+| — | `__index` / `__indexAssign` | 13 | ignore (JS internal probes) |
+
+**Post-NS-2a measurement:** Proxy fallback dropped from
+**1,390 → 31 hits (98% drop)** across the same 21,601-hook bundle
+run. Residual 8 unknown methods are JS-internal probes (`__index`,
+`__indexAssign`) plus rare rAthena script-var ops (`set`,
+`setarray`, `getarraysize`, `strcharinfo`, `itemskill`,
+`showscript`) with low behavioral impact. NS-2a goal met.
+
+**NS-2b** (silent-no-op promotions, separate from Proxy fallback)
+landed 2026-05-23. Promoted five host methods from "host accepts
+the call but does nothing" to real behavior wires:
+
+| Method | NS-1b hits | Wired to |
+|---|---:|---|
+| `skill(aegis, lv, [kind])` | 726 | `IPlayerSkillService.Grant` (defaults to `GrantKind.Temporary`) with aegis-name → id via reflection over `Skills.SkillIds` |
+| `heal(hp, sp)` | small but high-impact | direct `PlayerEntity.Hp`/`Sp` clamp to `[0, Max]` |
+| `percentheal(hpPct, spPct)` | shared with heal | `MaxHp * pct / 100` then clamp |
+| `itemheal(hp, sp)` | 3 | same as `heal` first slice; `battle_config.item_heal_rate` data-pending |
+| `setoption(opt, [enable])` | small | `IPlayerOptionService.SetOption` / `AddOption` / `RemoveOption` |
+
+Cosmetic methods (`specialeffect`, `specialeffect2`, `hateffect`,
+`message`, `dispbottom`, `petloot`) stay as **documented** no-ops —
+each needs an AOI/self packet emitter or pet AI extension. Flagged
+inline in `ScriptedBonusHost.cs` so the gap is visible.
+
+Separate from Proxy fallback, the **silent no-op** problem inside
+`ScriptedBonusHost` itself. NS-1b shows these are *called* (the
+host answers) but the body is `/* data-pending */` so nothing
+happens:
+
+- `sc_start` (37 calls) / `sc_end` (10) / `sc_start2` (1) → wire
+  to `IStatusChangeService.Start/End`. **But:** the SCs that fire
+  then need bodies (NS-3) to actually do anything. Wiring
+  `sc_start` without NS-3 just promotes the silent no-op from
+  "host" to "registry"; visible behavior is the same. Order
+  NS-3 work first or interleave.
+- `skill` (726 calls) → wire to `IPlayerSkillService.Grant` for
+  temporary skill grant while equipped. High impact (combo +
+  item skill-grant items light up).
+- `heal` / `itemheal` (3) / `specialeffect2` (3) / `hateffect`
+  (158) / `setoption` / `message` / `dispbottom` / `petloot` —
+  smaller volume but each is a 5-10 line wire.
+
+**Recommended NS-2 split:**
+- **NS-2a** (small, big win): wire `getenchantgrade` + the 5
+  declared-but-missing equip queries. ~60 lines. Drops Proxy
+  fallback by 89%.
+- **NS-2b** (medium): wire `skill` + the effect family (`heal`,
+  `itemheal`, `specialeffect2`, `hateffect`, `setoption`). ~150
+  lines. Items that grant skills / heal / display effects light up.
+- **NS-2c** (gated by NS-3): wire `sc_start` family. Defer until
+  NS-3 wave 1 lands so the wired call actually does something.
+
+#### NS-3 · SC handler bodies (sized by NS-1a output, ~weeks)
+
+Per the audit in NS-1a, walk every ⚠️/❌ SC and port the rAthena
+body. Group by SC family:
+
+- DoT/recurring (Bleeding, Burning, Poison, Curse, Lex Aeterna)
+- CC (Stun, Sleep, Freeze, Stone, Silence, Blind, Confusion)
+- Stat buffs/debuffs (Blessing, IncAGI, DecAGI, Quagmire, Decrease AGI)
+- Combat modifiers (Endure, Provoke, Magnificat, Kyrie Eleison, AutoGuard, Defender, ReflectShield)
+- Cast-time SCs (Suffragium, Memorize, Slowcast, Bragi)
+- Niche / 4th-class (long tail per ST.11)
+
+#### NS-4 · Per-skill behavior backfill (sized by 1,675 failing baselines, ~months)
+
+Per the family ordering above, diff each failing `(skillId, level)`
+baseline against rAthena's `case SK_FOO:` in `skill.cpp` and port
+the matching logic into the `SkillImpl` for that skill. The harness
+under `Map.Server.Tests/Skills/Baselines/` is the per-skill
+acceptance gate — a baseline goes from ⚠️ `*.rathena-todo.txt` to
+✅ matching `*.json` when the port lands.
+
+This is the largest workstream (1,675 × ~30 min average = ~800
+hours of focused work) and the most parallelizable across
+families. Each family's PR is independent.
+
+#### NS-5 · Combat-formula edge cases (parallel with NS-4)
+
+Once skill bodies port correctly, the residual diffs cluster
+around shared combat plumbing:
+
+- Renewal vs pre-renewal ATK/MATK formula branches
+  (`battle_calc_*_attack` in rAthena `battle.cpp`)
+- Integer-truncation order on cardfix × element × refine ×
+  size × race chains (one off-by-one mid-chain = different
+  damage)
+- 4th-class trait stat curves (POW/STA/WIS/SPL/CON/CRT)
+- ASPD / cast / cooldown timing — verify `unit_attack_timer`
+  resolves to rAthena's exact ms grain at the same character
+  state
+
+Each is a small fix once a skill-parity baseline lights up the
+specific divergence.
+
+#### NS-6 · Mob AI behavioral edge cases (parallel with NS-4)
+
+`Map.Server.Tests/MobAi` harness already exists (T4.4); confirm
+it's running and identify any failing scenarios. Likely gaps:
+
+- Target switching priority on simultaneous aggro
+- Skill-pick order from `mob_skill_db` when multiple rows match
+- Slave-mob follow latency vs rAthena's exact tick cadence
+- Looter mob item-pickup priority
+
+### Out of scope for this target
+
+These do **not** block behavioral parity for the player-visible
+gameplay loop and stay deferred:
+
+- Multi-process IPC race windows (auth / account / cross-server)
+- RNG sequence reproducibility (rates match; sequences don't)
+- Byte-level packet replay (`PacketReplayTests` filtered out)
+- TS converter output bugs (5,407 typecheck errors, bug-for-bug
+  with rAthena; runtime behavior unaffected — see
+  `map/item-scripting-conv.md`)
+- Client-version compensation quirks for clients we don't target
+
+### Suggested next PR (2026-05-23, post-NS-2b)
+
+NS-2a + NS-2b both landed (Proxy fallback 98%-drained + 5 silent
+no-ops promoted to real wires, including `skill` at 726 hits).
+The script bridge is now substantively done for the
+non-SC-dependent surface. Next:
+
+- **NS-3 wave 1** (medium, biggest behavior impact) — start
+  porting SC handler bodies. With `getenchantgrade` real and the
+  `skill` wire in place, the SC long tail is the dominant
+  remaining behavioral gap. NS-1a measured 38 real / 57 skeleton /
+  912 unregistered of 1,007 SCs. Wave 1 candidates:
+  - **CC family bodies** (Stone, Freeze, Stun, Sleep, Curse,
+    Silence, Blind, Confusion) — currently registered as
+    `NoOpHandler()`, gated via `EntityActionGates.CanAct` only.
+    Wave 1 adds the rAthena `OnStart` / `OnEnd` stat-mod side
+    effects (Curse: −75% Luk + halved MoveSpeed; Blind: −25% Hit/Flee;
+    etc.) and tick callbacks for the durational ones.
+  - **Cast-time SCs** (Suffragium, Memorize, Slowcast, Paralysis,
+    Izayoi, PoemBragi) — already partially wired via
+    `SkillCastTimingService.CastFixSc`; needs `OnStart` /
+    `OnEnd` bodies to flip them on/off properly.
+  - **Strip family** (StripArmor, StripWeapon, StripShield, StripHelm) —
+    skeletons; need `OnStart` calling `IInventoryService` to unequip,
+    `OnEnd` restoring.
+- **NS-2c** (small, ~30 lines) — wire `sc_start` family now that
+  NS-3 wave 1 lands, items with `sc_start SC_BLIND,30000;` etc.
+  start producing visible behavior.
+
+Recommended: NS-3 wave 1 first (the dominant gap), then NS-2c
+as the natural follow-up that makes item-script `sc_start` calls
+fire the just-wired SC handlers.
+
+---
+
 ## Principle
 
 Port **shared foundations first**, then per-file behavior. The reason:
@@ -593,7 +845,15 @@ parity bar.
 
 ---
 
-## Next concrete tasks (2026-05-20, post-Tier-1)
+## Next concrete tasks (2026-05-20, post-Tier-1) — SUPERSEDED
+
+> **⚠️ Superseded 2026-05-23** by the [Next steps](#next-steps-2026-05-23--behavioral-parity-focus)
+> section above. Items 1-3 of this list landed (T2.2 / T2.4a /
+> T2.4b ✅); items 4-6 either landed or were absorbed into the
+> T5 / T6 / DB-8 sweeps; item 7 (T2.5 per-skill plugins) was the
+> seed of what's now the much larger 1,675-baseline backlog
+> tracked under NS-4. Pick up work from the Next steps section,
+> not from this list.
 
 In recommended pickup order — each is one PR-sized chunk:
 
@@ -660,6 +920,177 @@ gameplay on Tier 4 completeness if Tier 1–3 already cover the
 hot path.
 
 ## History
+
+### 2026-05-23 — NS-2b landed (5 silent-no-op promotions)
+
+Promoted five host methods from "host answers the call but the
+body is `/* data-pending */`" to real behavior wires on
+[`Map.Server/Inventory/Script/ScriptedBonusHost.cs`](../../Map.Server/Inventory/Script/ScriptedBonusHost.cs).
+Threaded `Skills.IPlayerSkillService` and `Status.IPlayerOptionService`
+through `ScriptedBonusHost`'s constructor + both
+`ComboDispatcher` and `ItemHookDispatcher`.
+
+| Method | NS-1b hits | Wire |
+|---|---:|---|
+| `skill(aegis, lv, [kind])` | 726 | `IPlayerSkillService.Grant`, defaults to `Temporary`. Aegis-name → numeric id via reflection-cached lookup over `Skills.SkillIds` static fields. Falls through to numeric-id passthrough when caller passes an int (`ctx.skill(5, 1)`). |
+| `heal(hp, sp)` | — | Direct `PlayerEntity.Hp`/`Sp` mutation, clamped `[0, Max]`. Negative values damage; matches rAthena semantics. |
+| `percentheal(hpPct, spPct)` | — | `MaxHp * pct / 100` then clamp, per-side. |
+| `itemheal(hp, sp)` | 3 | First slice: identical to `heal`. The rAthena variant scales by `battle_config.item_heal_rate` + per-PC `HPrecovRate`/`SPrecovRate` bonuses — flagged data-pending against the PlayerBonusService path. |
+| `setoption(opt, [enable])` | — | `IPlayerOptionService.SetOption` (1-arg) / `AddOption` (enable!=0) / `RemoveOption` (enable==0). |
+
+Cosmetic methods kept as documented no-ops with inline comments
+naming the missing dependency (AOI packet emitter / self-packet
+emitter / pet AI extension): `specialeffect`, `specialeffect2`,
+`hateffect`, `petloot`, `message`, `dispbottom`. The Proxy
+fallback hit-count stays at **8 distinct unknowns / 31 hits**
+post-NS-2b — none of the NS-2b promotions were previously hitting
+the Proxy fallback; they were "host answered, body empty," so
+fixing them doesn't change the audit numbers.
+
+17 new focused unit tests at
+[`Map.Server.Tests/Inventory/ScriptedBonusHostNS2bTests.cs`](../../Map.Server.Tests/Inventory/ScriptedBonusHostNS2bTests.cs)
+cover heal clamping (both directions), percentheal math, itemheal
+parity-with-heal slice, skill aegis resolution + numeric passthrough
++ unknown-name no-throw + no-service no-throw, setoption all three
+service paths, and cosmetic-method no-throw.
+
+**Behavioral impact:** equip-granted skills (a large class of
+3rd-class accessories like Magic Wand of Bardia's `skill
+"WL_FROSTMISTY", 1`), healing item-equip combos, equip-granted
+options (cart/falcon/riding gating bonuses) all start firing.
+DI auto-injects the two new services since both
+`IPlayerSkillService` and `IPlayerOptionService` are already
+registered in `Program.cs`.
+
+Full test sweep: **3,350 Map.Server + 87 Core + 29 Login = 3,466
+tests passing** (was 3,333 pre-NS-2b; +17 new). 0 build errors.
+
+### 2026-05-23 — NS-2a landed (6 script-bridge wires)
+
+Wired the six host methods NS-1b flagged as the highest-value
+Proxy-fallback drains, all on
+[`Map.Server/Inventory/Script/ScriptedBonusHost.cs`](../../Map.Server/Inventory/Script/ScriptedBonusHost.cs):
+
+- `getenchantgrade([slot])` — reads `InventoryItem.EnchantGrade`
+  from the equipped item in the resolved EQI_* slot. **#1 priority
+  fix from NS-1b: 1,239 prior fallbacks.**
+- `getequipweaponlv([slot])` — reads `ItemEntity.WeaponLevel` via
+  the catalog. Defaults slot to `EQI_HAND_R` matching rAthena.
+- `getequiparmorlv([slot])` — reads `ItemEntity.ArmorLevel` via
+  the catalog. Defaults slot to `EQI_ARMOR`.
+- `getitempos(itemId)` — scans `_equipped` and returns the
+  matching item's equip bits, or 0 if not equipped.
+- `vip_status(type)` — documented placeholder stub returning 0
+  (no live VIP state on `PlayerEntity` yet); replaces the silent
+  Proxy fallback with a host-documented no-op.
+- `gettime(type)` — dispatches `DT_*` enum values 1..8 to
+  `DateTime.UtcNow` fields (second/minute/hour/day-of-week/
+  day-of-month/month/year/day-of-year).
+
+Refactored `GetRefineForSlot` to use a new shared
+`EquipBitsForSlot` + `FindEquippedInSlot` helper. The new helpers
+back four host methods (`getequipid`, `getequipweaponlv`,
+`getequiparmorlv`, `getenchantgrade`) so slot resolution is
+single-sourced.
+
+**Measurement (re-ran the NS-1b harvest):** Proxy fallback dropped
+from **1,390 → 31 hits across 21,601 hooks fired** (98% reduction).
+All 6 wired methods now appear in the "real host" list at their
+expected call counts (getenchantgrade=1,239 / vip_status=84 /
+getequipweaponlv=13 / getitempos=11 / getequiparmorlv=9 / gettime=3).
+Residual 8 unknown methods are JS-internal Proxy probes (`__index`,
+`__indexAssign`) plus rare rAthena script-var ops (`set`,
+`setarray`, `getarraysize`, `strcharinfo`, `itemskill`,
+`showscript`) — all flagged as low-value in NS-1b.
+
+Added 10-test suite at
+[`Map.Server.Tests/Inventory/ScriptedBonusHostNS2aTests.cs`](../../Map.Server.Tests/Inventory/ScriptedBonusHostNS2aTests.cs)
+covering per-method dispatch, empty-slot fallbacks, missing-catalog
+back-compat, default-slot args, and the gettime DT_* table.
+
+Full test sweep: **3,333 Map.Server + 87 Core + 29 Login = 3,449
+tests passing.** (Was 3,323 Map.Server pre-NS-2a; +10 new.)
+0 build errors.
+
+**Behavioral impact:** combos and items that gate bonuses on
+enchant grade (a large class of late-game endgame combos —
+Illusion 100% sets, Time Holder weapons, etc.) now read the
+real value instead of silently 0. Weapon-level / armor-level
+gated bonuses also activate.
+
+### 2026-05-23 — NS-1 audit landed (3 sub-audits in one session)
+
+Executed all three NS-1 sub-audits and produced the consolidated
+audit doc at [`map/ns1-audit-2026-05-23.md`](map/ns1-audit-2026-05-23.md).
+Updated the Measured-baseline table above to swap vague estimates
+for hard counts; flipped NS-1 to ✅ DONE in the backlog; sharpened
+NS-2 with the audit-derived priority order; split NS-2 into NS-2a
+(small + immediate wins) and NS-2b/c (medium / SC-gated).
+
+**Concrete findings:**
+- **NS-1a (SC depth):** 38 real-body handlers, 57 skeleton
+  no-ops, 912 unregistered out of 1,007 enum values. Only **3.8%
+  have a real `OnStart`/`OnTick`/`OnEnd`.** ST.9-13's "100% rollup"
+  was the **enum + SQL-flag wiring** (DBR-1e), not behavior bodies.
+- **NS-1b (Script Proxy):** 21,601 hooks fired (all combo
+  `onActive` + item `onEquip`); 85,068 total method calls; only
+  **1,390 (1.6%) routed through the unknown-method Proxy
+  fallback**. `getenchantgrade` dominates at 1,239 (89% of all
+  fallbacks). Six small wires would drop fallback to ~10 hits.
+  Test: [`Map.Server.Tests/Audit/ScriptProxyHitCountAudit.cs`](../../Map.Server.Tests/Audit/ScriptProxyHitCountAudit.cs)
+  with `[Trait("audit", "proxy-hits")]`.
+- **NS-1c (Pathing):** `Map.Server/Movement/Pathfinder.cs` is a
+  real A\* and matches rAthena `path.cpp` on every parity-critical
+  axis — cardinal/diagonal cost (10/14), MAX_WALKPATH (32),
+  Manhattan ×10 heuristic, anti-corner-cut diagonal gate,
+  Bresenham line for `path_search_long`. Minor divergence: .NET
+  `PriorityQueue` tie-break order is implementation-defined
+  vs rAthena's insertion-order heap; impact is "which equally-long
+  path is returned" in tied corridors — not damage / range / cast.
+  Acceptable for behavioral parity. `IPathService.PathSearch` /
+  `PathSearchLong` are `return true;` stubs in `PathService.cs`
+  (used only by `UnitOpsService` for skill-cast pre-checks, not
+  the real movement loop) — flagged as a 10-line follow-up.
+
+**Suggested next:** NS-2a (the 6 small wires) lands in ~60 lines
+on `ScriptedBonusHost.cs`. No downstream dependencies; cheapest
+high-impact follow-up.
+
+### 2026-05-23 — Behavioral-parity Next-steps section added
+
+Inserted a new "Next steps (2026-05-23 — behavioral-parity focus)"
+section just below the tier scoreboard, replacing the stale
+"Next concrete tasks (2026-05-20)" list (marked superseded with
+a redirect). The new section reframes the remaining work around
+the user-stated goal: **behavioral parity for status / skills /
+battle / mob AI / movement**, explicitly out-of-scope'ing the
+architectural divergences (IPC, RNG sequence, byte-replay)
+that don't affect the in-map gameplay loop.
+
+Measured the actual gap with three concrete numbers:
+- Skill parity: **1,675 of 2,439 `(skillId, level)` baselines
+  fail** (31% match rate) — counted from
+  `Map.Server.Tests/Skills/Baselines/*.rathena-todo.txt`. Per-
+  family breakdown table included (Npc 238, Mage 181, Taekwon
+  170, …).
+- SC handler depth: **~30 of ~250 modules non-skeletal** per
+  the T2.4 ⚠️ row — but this contradicts the ST.9-13 task list's
+  "100% rollup" claim, so the first Next-step item is an audit
+  to resolve which is true.
+- Item-script Proxy depth: **9 `data-pending` methods** on
+  `ScriptedBonusHost` silently no-op the ~28k item scripts'
+  `sc_start` / `skill` / `heal` / `specialeffect` / etc. calls.
+
+Confirmed pathing is **not** a blocker — `Map.Server/Pathing/`
+and `Map.Server/Movement/Pathfinder.cs` exist; only the
+heuristic tie-break needs side-by-side verification (NS-1c).
+
+Backlog ordered as NS-1 (audit) → NS-2 (script bridge depth) →
+NS-3 (SC handler bodies) → NS-4 (per-skill backfill, the long
+tail) → NS-5/6 (combat-formula + mob-AI edge cases, parallel
+with NS-4). Suggested first PR: NS-1, all three sub-audits, to
+convert vague estimates into a real backlog before committing
+to a long workstream.
 
 ### 2026-05-22 — T6 audit-doc rollup refresh + T4/T5/T6 tier-row flip
 

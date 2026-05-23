@@ -31,6 +31,8 @@ public sealed class ScriptedBonusHost
     private readonly IItemCatalog? _catalog;
     private readonly IPlayerBonusService? _bonusSvc;
     private readonly IEntityRegistry? _entities;
+    private readonly Skills.IPlayerSkillService? _skillSvc;
+    private readonly IPlayerOptionService? _optionSvc;
 
     /// <summary>
     /// Exposed as <c>ctx.player</c> on the TypeScript surface (lowercase
@@ -47,7 +49,9 @@ public sealed class ScriptedBonusHost
         IReadOnlyList<InventoryItem>? equipped = null,
         IItemCatalog? catalog = null,
         IPlayerBonusService? bonusSvc = null,
-        IEntityRegistry? entities = null)
+        IEntityRegistry? entities = null,
+        Skills.IPlayerSkillService? skillSvc = null,
+        IPlayerOptionService? optionSvc = null)
     {
         _pc = pc;
         _bundle = bundle;
@@ -55,6 +59,8 @@ public sealed class ScriptedBonusHost
         _catalog = catalog;
         _bonusSvc = bonusSvc;
         _entities = entities;
+        _skillSvc = skillSvc;
+        _optionSvc = optionSvc;
     }
 
     // ----- bonus / bonus2 / bonus3 / bonus4 / bonus5 -----
@@ -208,29 +214,104 @@ public sealed class ScriptedBonusHost
     /// <summary>rAthena <c>sc_end SC;</c>.</summary>
     public void sc_end(params object[] args) { /* same as sc_start */ }
 
-    /// <summary>rAthena <c>skill SkillName, level, [type];</c>.</summary>
-    public void skill(params object[] args) { /* IPlayerSkillService.Grant wire-up data-pending */ }
+    /// <summary>
+    /// rAthena <c>skill "SkillName", level, [type];</c> — grants a skill
+    /// while the item is equipped. NS-2b wire (726 calls in NS-1b
+    /// harvest, most-called of the silently-no-op host methods).
+    /// Resolves the aegis name (e.g. <c>"AB_RENOVATIO"</c>) to a numeric
+    /// skill id via reflection over <see cref="Skills.SkillIds"/>,
+    /// then calls <see cref="Skills.IPlayerSkillService.Grant"/>. Defaults
+    /// to <see cref="Skills.GrantKind.Temporary"/> — matches rAthena's
+    /// ADDSKILL_TEMP semantics for equip-granted skills (revoked when
+    /// the item un-equips).
+    /// </summary>
+    public void skill(params object[] args)
+    {
+        if (args.Length < 2 || _skillSvc == null) return;
+        var skillId = ResolveSkillId(args[0]);
+        if (skillId == 0) return;
+        var level = ToInt(args[1]);
+        var kind = args.Length > 2 ? (Skills.GrantKind)ToInt(args[2]) : Skills.GrantKind.Temporary;
+        _skillSvc.Grant(_pc, skillId, level, kind);
+    }
 
-    /// <summary>rAthena <c>heal hp, sp;</c>.</summary>
-    public void heal(params object[] args) { /* data-pending */ }
-    /// <summary>rAthena <c>percentheal hp%, sp%;</c>.</summary>
-    public void percentheal(params object[] args) { /* data-pending */ }
-    /// <summary>rAthena <c>itemheal hp, sp;</c>.</summary>
-    public void itemheal(params object[] args) { /* data-pending */ }
-    /// <summary>rAthena <c>specialeffect effectId;</c>.</summary>
-    public void specialeffect(params object[] args) { /* visual-only */ }
-    /// <summary>rAthena <c>specialeffect2 effectId;</c>.</summary>
-    public void specialeffect2(params object[] args) { /* visual-only */ }
-    /// <summary>rAthena <c>hateffect effectId, state;</c>.</summary>
-    public void hateffect(params object[] args) { /* cosmetic */ }
-    /// <summary>rAthena <c>petloot count;</c>.</summary>
-    public void petloot(params object[] args) { /* pet AI data-pending */ }
-    /// <summary>rAthena <c>setoption flag, [value];</c>.</summary>
-    public void setoption(params object[] args) { /* state mod */ }
-    /// <summary>rAthena <c>message "..."</c>.</summary>
-    public void message(params object[] args) { /* UI message */ }
-    /// <summary>rAthena <c>dispbottom "..."</c>.</summary>
-    public void dispbottom(params object[] args) { /* UI message */ }
+    /// <summary>
+    /// rAthena <c>heal hp, sp;</c> — clamps +hp into [0, MaxHp] and +sp
+    /// into [0, MaxSp]. Negative values damage. NS-2b wire.
+    /// </summary>
+    public void heal(params object[] args)
+    {
+        if (args.Length == 0) return;
+        var hp = ToInt(args[0]);
+        var sp = args.Length > 1 ? ToInt(args[1]) : 0;
+        if (hp != 0) _pc.Hp = Math.Clamp(_pc.Hp + hp, 0, _pc.MaxHp);
+        if (sp != 0) _pc.Sp = Math.Clamp(_pc.Sp + sp, 0, _pc.MaxSp);
+    }
+
+    /// <summary>
+    /// rAthena <c>percentheal hpPct, spPct;</c> — restores
+    /// MaxHp * hpPct / 100 and MaxSp * spPct / 100, clamped. NS-2b wire.
+    /// </summary>
+    public void percentheal(params object[] args)
+    {
+        if (args.Length == 0) return;
+        var hpPct = ToInt(args[0]);
+        var spPct = args.Length > 1 ? ToInt(args[1]) : 0;
+        if (hpPct != 0)
+        {
+            var delta = _pc.MaxHp * hpPct / 100;
+            _pc.Hp = Math.Clamp(_pc.Hp + delta, 0, _pc.MaxHp);
+        }
+        if (spPct != 0)
+        {
+            var delta = _pc.MaxSp * spPct / 100;
+            _pc.Sp = Math.Clamp(_pc.Sp + delta, 0, _pc.MaxSp);
+        }
+    }
+
+    /// <summary>
+    /// rAthena <c>itemheal hp, sp;</c> — heal scaled by item heal rates.
+    /// First slice: identical to <see cref="heal"/>. The rAthena variant
+    /// applies <c>battle_config.item_heal_rate</c> and per-PC <c>HPrecovRate</c>
+    /// / <c>SPrecovRate</c> bonuses, which would need to be wired through
+    /// <c>PlayerBonusService</c>. Data-pending against that bonus path;
+    /// behavior parity for the common 100% case is exact.
+    /// </summary>
+    public void itemheal(params object[] args) => heal(args);
+
+    /// <summary>rAthena <c>specialeffect effectId;</c> — cosmetic; needs the AOI packet emitter (data-pending).</summary>
+    public void specialeffect(params object[] _) { /* visual-only no-op */ }
+    /// <summary>rAthena <c>specialeffect2 effectId;</c> — cosmetic; needs the self packet emitter (data-pending).</summary>
+    public void specialeffect2(params object[] _) { /* visual-only no-op */ }
+    /// <summary>rAthena <c>hateffect effectId, state;</c> — cosmetic hat effect; needs ZC_HAT_EFFECT emitter (data-pending).</summary>
+    public void hateffect(params object[] _) { /* cosmetic */ }
+    /// <summary>rAthena <c>petloot count;</c> — pet auto-loot capacity; needs IPetService extension (data-pending).</summary>
+    public void petloot(params object[] _) { /* pet AI data-pending */ }
+
+    /// <summary>
+    /// rAthena <c>setoption flag, [enable];</c> — toggle bits on
+    /// <see cref="PlayerEntity.Option"/>. With 1 arg, sets the option
+    /// to that value; with 2 args and enable!=0, adds bits, enable==0
+    /// removes. NS-2b wire — was silently no-op pre-NS-2b.
+    /// </summary>
+    public void setoption(params object[] args)
+    {
+        if (args.Length == 0 || _optionSvc == null) return;
+        var flag = (PlayerOption)(uint)ToInt(args[0]);
+        if (args.Length == 1)
+        {
+            _optionSvc.SetOption(_pc, flag);
+            return;
+        }
+        var enable = ToInt(args[1]) != 0;
+        if (enable) _optionSvc.AddOption(_pc, flag);
+        else        _optionSvc.RemoveOption(_pc, flag);
+    }
+
+    /// <summary>rAthena <c>message "..."</c> — UI chat line; needs ZC_NPC_CHAT emitter (data-pending).</summary>
+    public void message(params object[] _) { /* UI message */ }
+    /// <summary>rAthena <c>dispbottom "..."</c> — bottom-of-screen msg; needs ZC_DISPLAY_MSG emitter (data-pending).</summary>
+    public void dispbottom(params object[] _) { /* UI message */ }
 
     // ----- expression helpers -----
     // All variadic; the few cases that need a fixed-arity invariant
@@ -244,8 +325,141 @@ public sealed class ScriptedBonusHost
         => args.Length == 0 ? 0 : GetRefineForSlot(args[0]?.ToString() ?? "");
     /// <summary>rAthena <c>getskilllv("SkillName")</c>. Returns 0 until skill service wires in.</summary>
     public int getskilllv(params object[] _) => 0;
-    /// <summary>rAthena <c>getequipid(EQI_SLOT)</c>.</summary>
-    public int getequipid(params object[] _) => 0;
+    /// <summary>
+    /// rAthena <c>getequipid(EQI_SLOT)</c> — id of the item equipped in
+    /// the given slot, or 0 if nothing is equipped there.
+    /// </summary>
+    public int getequipid(params object[] args)
+    {
+        if (args.Length == 0 || _equipped == null) return 0;
+        var item = FindEquippedInSlot(args[0]?.ToString() ?? "");
+        return item == null ? 0 : (int)item.NameId;
+    }
+
+    /// <summary>
+    /// rAthena <c>getequipweaponlv([EQI_SLOT])</c> — weapon level of the
+    /// equipped item in the given slot (default <c>EQI_HAND_R</c>).
+    /// Reads from <see cref="Core.Database.Entities.ItemEntity.WeaponLevel"/>
+    /// via <see cref="_catalog"/>. NS-2a wire — previously hit the Proxy
+    /// fallback (13 calls in NS-1b harvest).
+    /// </summary>
+    public int getequipweaponlv(params object[] args)
+    {
+        if (_equipped == null || _catalog == null) return 0;
+        var slot = args.Length == 0 ? "EQI_HAND_R" : args[0]?.ToString() ?? "EQI_HAND_R";
+        var item = FindEquippedInSlot(slot);
+        if (item == null) return 0;
+        var row = _catalog.Get(item.NameId);
+        return row?.WeaponLevel ?? 0;
+    }
+
+    /// <summary>
+    /// rAthena <c>getequiparmorlv([EQI_SLOT])</c> — armor level of the
+    /// equipped item in the given slot (default <c>EQI_ARMOR</c>).
+    /// NS-2a wire — previously hit the Proxy fallback (9 calls in NS-1b).
+    /// </summary>
+    public int getequiparmorlv(params object[] args)
+    {
+        if (_equipped == null || _catalog == null) return 0;
+        var slot = args.Length == 0 ? "EQI_ARMOR" : args[0]?.ToString() ?? "EQI_ARMOR";
+        var item = FindEquippedInSlot(slot);
+        if (item == null) return 0;
+        var row = _catalog.Get(item.NameId);
+        return row?.ArmorLevel ?? 0;
+    }
+
+    /// <summary>
+    /// rAthena <c>getenchantgrade([EQI_SLOT])</c> — enchant grade (0..4
+    /// = grade D..A in rAthena enchantgrade system) of the equipped
+    /// item in the given slot. Reads from
+    /// <see cref="InventoryItem.EnchantGrade"/>. NS-2a wire — this was
+    /// the #1 Proxy fallback hit (1,239 calls, 89% of all fallbacks in
+    /// NS-1b harvest). Combos like Illusion 100% sets gate per-grade
+    /// bonuses on this value.
+    /// </summary>
+    public int getenchantgrade(params object[] args)
+    {
+        if (_equipped == null) return 0;
+        var slot = args.Length == 0 ? "EQI_HAND_R" : args[0]?.ToString() ?? "EQI_HAND_R";
+        var item = FindEquippedInSlot(slot);
+        return item?.EnchantGrade ?? 0;
+    }
+
+    /// <summary>
+    /// rAthena <c>getitempos(itemId)</c> — equip-mask bits the item is
+    /// currently bound to, or 0 if not equipped. NS-2a wire (11 calls
+    /// in NS-1b). Used by multi-slot items to branch on which slot
+    /// they're currently filling.
+    /// </summary>
+    public int getitempos(params object[] args)
+    {
+        if (args.Length == 0 || _equipped == null) return 0;
+        var itemId = (uint)ToInt(args[0]);
+        for (var i = 0; i < _equipped.Count; i++)
+        {
+            var it = _equipped[i];
+            if (it.NameId == itemId && it.Equip != 0) return (int)it.Equip;
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// rAthena <c>vip_status(type, [charName])</c> — VIP info query.
+    /// rAthena types: 1 = is VIP, 2 = expiration unix time, 3 = remaining
+    /// seconds. No live VIP state on <see cref="PlayerEntity"/> today;
+    /// returns 0 for all types. NS-2a placeholder wire (84 calls in
+    /// NS-1b); replaces the silent Proxy fallback with a documented
+    /// stub. Real wiring lands when VIP timer state surfaces on PC.
+    /// </summary>
+    public int vip_status(params object[] _) => 0;
+
+    /// <summary>
+    /// rAthena <c>gettime(type)</c> — see script.cpp BUILDIN_FUNC(gettime).
+    /// Types (script_constants.hpp <c>DT_*</c>):
+    /// 1=second, 2=minute, 3=hour, 4=day-of-week (Sun=0..Sat=6),
+    /// 5=day-of-month, 6=month, 7=year, 8=day-of-year.
+    /// NS-2a wire (3 calls in NS-1b). UTC-based; matches rAthena's
+    /// reliance on the server-local clock for daily-reset gates like
+    /// item 12133 (McDonald's Ice Cone).
+    /// </summary>
+    public int gettime(params object[] args)
+    {
+        if (args.Length == 0) return 0;
+        var type = ToInt(args[0]);
+        var now = DateTime.UtcNow;
+        return type switch
+        {
+            1 => now.Second,
+            2 => now.Minute,
+            3 => now.Hour,
+            4 => (int)now.DayOfWeek,
+            5 => now.Day,
+            6 => now.Month,
+            7 => now.Year,
+            8 => now.DayOfYear,
+            _ => 0,
+        };
+    }
+
+    /// <summary>
+    /// Resolve an EQI_* slot token to the equipped item filling it.
+    /// Shared by <see cref="getequipid"/>, <see cref="getequipweaponlv"/>,
+    /// <see cref="getequiparmorlv"/>, <see cref="getenchantgrade"/>.
+    /// Returns null if the slot is empty or the token isn't recognized.
+    /// </summary>
+    private InventoryItem? FindEquippedInSlot(string slotToken)
+    {
+        if (_equipped == null) return null;
+        var bits = EquipBitsForSlot(slotToken);
+        if (bits == 0) return null;
+        for (var i = 0; i < _equipped.Count; i++)
+        {
+            var item = _equipped[i];
+            if ((item.Equip & bits) != 0) return item;
+        }
+        return null;
+    }
+
     /// <summary>
     /// rAthena <c>eaclass()</c> — returns a bitmask describing the PC's
     /// expanded job class (EAJL_THIRD, EAJL_BABY, etc.). Returns 0 until
@@ -451,29 +665,73 @@ public sealed class ScriptedBonusHost
     /// </summary>
     private int GetRefineForSlot(string slotToken)
     {
-        if (_equipped == null) return 0;
-        var bits = slotToken switch
-        {
-            "EQI_HEAD_TOP"      => EquipBonusAggregator.EquipHelm,
-            "EQI_HAND_R"        => EquipBonusAggregator.EquipRightHand,
-            "EQI_HAND_L"        => EquipBonusAggregator.EquipLeftHand,
-            "EQI_ARMOR"         => EquipBonusAggregator.EquipArmor,
-            "EQI_GARMENT"       => EquipBonusAggregator.EquipGarment,
-            "EQI_SHOES"         => EquipBonusAggregator.EquipShoes,
-            "EQI_ACC_R"         => EquipBonusAggregator.EquipAccessoryR,
-            "EQI_ACC_L"         => EquipBonusAggregator.EquipAccessoryL,
-            // Costume / shadow / head-mid / head-low fall through to 0
-            // until the EquipBonusAggregator surface adds them.
-            _ => 0u,
-        };
-        if (bits == 0) return 0;
-        for (var i = 0; i < _equipped.Count; i++)
-        {
-            var item = _equipped[i];
-            if ((item.Equip & bits) != 0) return item.Refine;
-        }
-        return 0;
+        var item = FindEquippedInSlot(slotToken);
+        return item?.Refine ?? 0;
     }
+
+    /// <summary>
+    /// Cached aegis-name → skill-id lookup, built once via reflection
+    /// over <see cref="Skills.SkillIds"/>. The constants there (e.g.
+    /// <c>SM_BASH = 5</c>) are the runtime source of truth for the
+    /// aegis-name → numeric-id mapping; reflecting them here lets
+    /// <see cref="skill"/> accept TS calls like
+    /// <c>ctx.skill("AB_RENOVATIO", 4)</c> without a hand-maintained
+    /// dictionary. Lookup is O(1) after first build; the cache lives
+    /// for the process lifetime.
+    /// </summary>
+    private static readonly Dictionary<string, ushort> _skillIdByName =
+        BuildSkillIdLookup();
+
+    private static Dictionary<string, ushort> BuildSkillIdLookup()
+    {
+        var map = new Dictionary<string, ushort>(StringComparer.Ordinal);
+        var fields = typeof(Skills.SkillIds).GetFields(
+            System.Reflection.BindingFlags.Public |
+            System.Reflection.BindingFlags.Static);
+        foreach (var f in fields)
+        {
+            if (!f.IsLiteral || f.FieldType != typeof(ushort)) continue;
+            var value = (ushort)(f.GetRawConstantValue() ?? (ushort)0);
+            if (value != 0) map[f.Name] = value;
+        }
+        return map;
+    }
+
+    /// <summary>
+    /// Resolve a skill identifier from a script call argument. Accepts
+    /// the aegis name string (looked up against <see cref="_skillIdByName"/>)
+    /// or a numeric id passthrough. Returns 0 for unknown names — the
+    /// caller treats 0 as "no-op", matching rAthena's
+    /// <c>script_get_skillid</c> behavior.
+    /// </summary>
+    private static ushort ResolveSkillId(object? arg)
+    {
+        if (arg == null) return 0;
+        if (arg is int i) return (ushort)i;
+        if (arg is double d) return (ushort)(int)d;
+        var name = arg.ToString();
+        if (string.IsNullOrEmpty(name)) return 0;
+        return _skillIdByName.GetValueOrDefault(name);
+    }
+
+    /// <summary>
+    /// Translate an rAthena EQI_* slot constant string to its
+    /// <see cref="EquipBonusAggregator"/> bit. Costume / shadow / head-mid
+    /// / head-low fall through to 0 until the aggregator surface adds
+    /// them. Returns 0 for unknown tokens.
+    /// </summary>
+    private static uint EquipBitsForSlot(string slotToken) => slotToken switch
+    {
+        "EQI_HEAD_TOP"      => EquipBonusAggregator.EquipHelm,
+        "EQI_HAND_R"        => EquipBonusAggregator.EquipRightHand,
+        "EQI_HAND_L"        => EquipBonusAggregator.EquipLeftHand,
+        "EQI_ARMOR"         => EquipBonusAggregator.EquipArmor,
+        "EQI_GARMENT"       => EquipBonusAggregator.EquipGarment,
+        "EQI_SHOES"         => EquipBonusAggregator.EquipShoes,
+        "EQI_ACC_R"         => EquipBonusAggregator.EquipAccessoryR,
+        "EQI_ACC_L"         => EquipBonusAggregator.EquipAccessoryL,
+        _                   => 0u,
+    };
 
     /// <summary>
     /// Coerce a JS arg to the integer atk-type flag used by
