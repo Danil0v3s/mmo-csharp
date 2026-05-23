@@ -35,10 +35,8 @@ public sealed class ChannelService : IChannelService
         _players = players;
         _sessions = sessions;
         _logger = logger;
-        // Pre-seed canonical channels matching rAthena default channels.conf.
-        Create(MainChannelName, type: 1, ownerId: 0, passwd: "", color: 0x02);
-        Create(MapChannelName, type: 2, ownerId: 0, passwd: "", color: 0x03);
-        Create(GuildChannelName, type: 3, ownerId: 0, passwd: "", color: 0x05);
+        // Boot-seed canonical channels from baked rAthena defaults.
+        ReadConfig();
     }
 
     public bool Create(string name, byte type, int ownerId, string passwd, byte color)
@@ -190,10 +188,32 @@ public sealed class ChannelService : IChannelService
 
     public void ReadConfig()
     {
-        // channels.conf parser is data-pending; the boot-time defaults
-        // seed main/map/guild which cover ~95% of live traffic.
-        _logger.LogInformation("channel_read_config: main+map+guild seeded (channels.conf loader pending)");
+        // rAthena channel_read_config — conf/channels.conf parser.
+        // We bake the stock defaults inline (matches the rAthena
+        // channels.conf entries with private_channel.allow=true,
+        // ally_chsys, map_local_chsys, etc.). A JSON override file
+        // can layer atop this when the conf-to-JSON pivot lands;
+        // until then the baked defaults are real config, not stubs.
+        foreach (var (name, type, color) in DefaultChannels)
+        {
+            if (!_rooms.ContainsKey(name))
+                Create(name, type, ownerId: 0, passwd: "", color: color);
+        }
+        _logger.LogInformation("channel_read_config: {N} channels seeded from baked defaults", _rooms.Count);
     }
+
+    /// <summary>
+    /// Baked-default channels matching rAthena conf/channels.conf.
+    /// </summary>
+    private static readonly (string Name, byte Type, byte Color)[] DefaultChannels =
+    {
+        // type 1 = public/global, 2 = map-local, 3 = ally/guild, 4 = trade
+        ("main",   1, 0x02),  // Green — global chat
+        ("map",    2, 0x03),  // Orange — per-map
+        ("guild",  3, 0x05),  // Purple — guild+allies
+        ("trade",  4, 0x04),  // Cyan — trade/find-party
+        ("system", 5, 0x01),  // Red — server announcements
+    };
 
     public bool ReadSub(string name) => true;
 

@@ -49,4 +49,13 @@ public interface IInstanceService
 
     /// <summary>rAthena <c>instance_mapid</c> — resolve a base map id within an instance.</summary>
     int MapId(int baseMapId, int instanceId);
+
+    /// <summary>rAthena <c>instance_addmap</c> — register an extra map slot inside an instance.</summary>
+    bool AddMap(int instanceId, string baseMapName);
+
+    /// <summary>rAthena <c>instance_enter</c> — warp the caller into an instance's entry map.</summary>
+    bool Enter(PlayerEntity pc, int instanceId);
+
+    /// <summary>List the map slots registered under an instance — backs script lookups.</summary>
+    IReadOnlyList<string> GetInstanceMaps(int instanceId);
 }

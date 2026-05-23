@@ -297,6 +297,14 @@ public sealed class PlayerEntity : Entity
     /// <summary>rAthena <c>mail.opened</c> — mail UI open flag.</summary>
     public bool MailOpened { get; set; }
 
+    // ----- Pet ops state (AT-E wave) -----
+    /// <summary>rAthena <c>sd-&gt;catch_target_class</c> — pending mob class for @taming.</summary>
+    public int PetCatchTargetClass { get; set; } = -1;
+    /// <summary>rAthena <c>sd-&gt;pd-&gt;pet.rename_flag</c> companion shadow + pending name.</summary>
+    public string? PetPendingRename { get; set; }
+    /// <summary>rAthena <c>sd-&gt;pd-&gt;bonus</c> — pet support bonus script entries.</summary>
+    public List<(string Script, int Rate, int Duration, ushort Flag)> PetAutoBonus { get; } = new();
+
     public override EntityType Type => EntityType.Pc;
 
     public PlayerEntity(

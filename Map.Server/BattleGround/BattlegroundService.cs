@@ -20,10 +20,23 @@ public sealed class BattlegroundService : IBattlegroundService
     private readonly Dictionary<int, BgQueue> _queues = new();
     private readonly Dictionary<string, int> _queueByName = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<EntityId, int> _playerQueue = new();
+    private readonly IEntityRegistry? _entities;
     private readonly ILogger<BattlegroundService> _logger;
 
-    public BattlegroundService(ILogger<BattlegroundService> logger)
+    /// <summary>
+    /// Baked BG map pool (rAthena db/re/battleground_db.yml). Reserved
+    /// per-queue at SETUP_DELAY; freed at ENDED. Until the YAML loader
+    /// ports, this seeded list covers Tierra Gorge / Flavius / KvM.
+    /// </summary>
+    private static readonly string[] BgMapPool =
     {
+        "bat_a01", "bat_a02", "bat_b01", "bat_b02", "bat_c01", "bat_c02",
+    };
+    private readonly HashSet<string> _reservedMaps = new();
+
+    public BattlegroundService(IEntityRegistry entities, ILogger<BattlegroundService> logger)
+    {
+        _entities = entities;
         _logger = logger;
         // rAthena bg_queue_create — preallocate one queue per named BG type.
         // Sizes mirror s_battleground_type.required_players defaults; the
@@ -107,10 +120,9 @@ public sealed class BattlegroundService : IBattlegroundService
     public PlayerEntity? GetAvailableSd(int bgId)
     {
         if (!_teams.TryGetValue(bgId, out var t)) return null;
-        // Caller looks up entities from EntityRegistry; service-level
-        // returns the first id and lets the caller resolve. We can't
-        // hold an IEntityRegistry without breaking the ctor; return
-        // null when no PlayerEntity is captured. Live in-progress.
+        if (_entities == null) return null;
+        foreach (var memberId in t.Members)
+            if (_entities.Get(memberId) is PlayerEntity p) return p;
         return null;
     }
 
@@ -149,19 +161,36 @@ public sealed class BattlegroundService : IBattlegroundService
 
     public bool QueueReservation(int queueId)
     {
-        // rAthena bg_queue_reservation — reserves a BG map. Minimum-viable
-        // ack since map-pool isn't ported yet.
-        return _queues.ContainsKey(queueId);
+        // rAthena bg_queue_reservation — reserves an open BG map from
+        // the pool for this queue. Returns false if every map is
+        // already reserved (caller falls back to tid_requeue).
+        if (!_queues.TryGetValue(queueId, out var q)) return false;
+        foreach (var m in BgMapPool)
+        {
+            if (_reservedMaps.Add(m))
+            {
+                q.ReservedMap = m;
+                _logger.LogInformation("bg_queue_reservation: queue {Qid} → map {Map}", queueId, m);
+                return true;
+            }
+        }
+        return false; // pool exhausted
     }
 
     public void QueueClear(int queueId)
     {
-        // rAthena bg_queue_clear — resets to SETUP, drops rosters.
+        // rAthena bg_queue_clear — resets to SETUP, drops rosters,
+        // releases the reserved map back to the pool.
         if (!_queues.TryGetValue(queueId, out var q)) return;
         foreach (var m in q.Members) _playerQueue.Remove(m);
         q.Members.Clear();
         q.AcceptedCount = 0;
         q.State = BgQueueState.Setup;
+        if (q.ReservedMap != null)
+        {
+            _reservedMaps.Remove(q.ReservedMap);
+            q.ReservedMap = null;
+        }
     }
 
     public void QueueJoinSolo(PlayerEntity pc, string queueName)
@@ -321,6 +350,7 @@ public sealed class BattlegroundService : IBattlegroundService
         public HashSet<EntityId> Members = new();
         public int AcceptedCount;
         public EntityId LeaderId;
+        public string? ReservedMap;
     }
 }
 

@@ -1,6 +1,7 @@
 using Core.Database.Entities;
 using Core.Database.Repositories.Api;
 using Map.Server.Entities;
+using Map.Server.Movement;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -19,9 +20,12 @@ public sealed class InstanceService : IInstanceService
     private readonly IServiceScopeFactory? _scopes;
     private readonly ILogger<InstanceService> _logger;
 
-    public InstanceService(IServiceScopeFactory scopes, ILogger<InstanceService> logger)
+    private readonly IPcSetposService? _setpos;
+
+    public InstanceService(IServiceScopeFactory scopes, IPcSetposService setpos, ILogger<InstanceService> logger)
     {
         _scopes = scopes;
+        _setpos = setpos;
         _logger = logger;
         LoadCatalog();
     }
@@ -68,6 +72,44 @@ public sealed class InstanceService : IInstanceService
         r.Users = Math.Max(0, r.Users - count); return true;
     }
 
+    /// <summary>rAthena <c>instance_addmap</c> — track an extra map slot under this instance.</summary>
+    public bool AddMap(int instanceId, string baseMapName)
+    {
+        if (!_instances.TryGetValue(instanceId, out var r)) return false;
+        var scopedName = GenerateMapName(baseMapName, instanceId);
+        if (r.Maps.Contains(scopedName)) return false;
+        r.Maps.Add(scopedName);
+        _logger.LogInformation("instance_addmap: inst#{Inst} += {Map}", instanceId, scopedName);
+        return true;
+    }
+
+    /// <summary>
+    /// rAthena <c>instance_enter</c> — warp the caller into the
+    /// instance's first registered map slot. Uses <see cref="IPcSetposService"/>
+    /// for the actual coord transition + AOI redo + ZC_NPCACK_MAPMOVE.
+    /// </summary>
+    public bool Enter(PlayerEntity pc, int instanceId)
+    {
+        if (_setpos == null) return false;
+        if (!_instances.TryGetValue(instanceId, out var r)) return false;
+        if (r.Maps.Count == 0)
+        {
+            _logger.LogWarning("instance_enter: inst#{Inst} has no maps registered", instanceId);
+            return false;
+        }
+        // rAthena reads instance_db.yml EnterMap + EnterX/EnterY. Until
+        // that loader exposes the per-template entry coords we land at
+        // the canonical (100, 100); good enough for the warp pipe.
+        var target = r.Maps[0];
+        var result = _setpos.Setpos(pc, target, x: 100, y: 100);
+        _logger.LogInformation("instance_enter: {Pc} → {Map} = {Result}", pc.Name, target, result);
+        return result == SetposResult.Ok;
+    }
+
+    /// <summary>List the map slots registered under an instance.</summary>
+    public IReadOnlyList<string> GetInstanceMaps(int instanceId)
+        => _instances.TryGetValue(instanceId, out var r) ? r.Maps : Array.Empty<string>();
+
     public bool Destroy(int instanceId) => _instances.Remove(instanceId);
     public void DestroyCommand(PlayerEntity pc, int instanceId) => Destroy(instanceId);
     public bool ReqInfo(PlayerEntity pc, int instanceId) => _instances.ContainsKey(instanceId);
@@ -105,5 +147,6 @@ public sealed class InstanceService : IInstanceService
         public int OwnerId;
         public byte Mode;
         public int Users;
+        public List<string> Maps = new();
     }
 }

@@ -128,12 +128,16 @@ public sealed class HomunculusService : IHomunculusService
     public int Evolution(PlayerEntity master)
     {
         if (!_alive.TryGetValue(master.Id, out var live)) return 0;
-        // rAthena hom_evolution: requires intimacy ≥ loyal (910). Catalog
-        // row carries the evolution target class; here we approximate by
-        // toggling a flag the consumer can read.
+        // rAthena hom_evolution: requires intimacy ≥ loyal (910) AND a
+        // valid EvolutionClass target. Baked target table replaces the
+        // catalog row lookup until the YAML loader exposes it.
         if (live.Intimacy < 910) return 0;
+        if (!EvolutionTargets.TryGetValue(live.ClassId, out var target)) return 0;
+        live.ClassId = target;
         live.Evolved = true;
-        _logger.LogInformation("hom_evolution: master={Master} promoted", master.Name);
+        live.Hp = GetMaxHp(live);
+        live.Sp = GetMaxSp(live);
+        _logger.LogInformation("hom_evolution: master={Master} promoted to class={Target}", master.Name, target);
         return 1;
     }
 
@@ -247,26 +251,99 @@ public sealed class HomunculusService : IHomunculusService
 
     // ----- Skill tree -----
 
-    public int SkillTreeGetMax(int classId, ushort skillId) => 5; // safe default
+    public int SkillTreeGetMax(int classId, ushort skillId)
+        => HomunSkillTree.TryGetValue(((uint)classId, skillId), out var v) ? v.MaxLevel : 0;
 
-    public ushort SkillGetMinLevel(ushort skillId) => 1;
+    public ushort SkillGetMinLevel(ushort skillId)
+    {
+        // Per rAthena db/re/homunculus_db.yml RequiredLevel column.
+        // Fall back to 1 if the skill isn't in the baked tree.
+        foreach (var kv in HomunSkillTree)
+            if (kv.Key.skill == skillId) return kv.Value.RequiredLevel;
+        return 1;
+    }
 
     public void SkillUp(PlayerEntity master, ushort skillId)
     {
         if (!_alive.TryGetValue(master.Id, out var live)) return;
         if (live.SkillPoints <= 0) return;
+        // Honor the baked max from the skill tree.
+        var cap = SkillTreeGetMax(live.ClassId, skillId);
+        if (cap == 0) return;
+        var cur = live.Skills.GetValueOrDefault(skillId);
+        if (cur >= cap) return;
         live.SkillPoints--;
-        live.Skills[skillId] = (ushort)(live.Skills.GetValueOrDefault(skillId) + 1);
+        live.Skills[skillId] = (ushort)(cur + 1);
     }
 
+    /// <summary>
+    /// rAthena hom_calc_skilltree — walk the baked tree, mark every
+    /// skill the homunculus is *eligible* to learn (level + intimacy
+    /// + prereqs satisfied) so the client gets the right unlock list.
+    /// We approximate by storing 0-level entries for unmet skills.
+    /// </summary>
     public void CalcSkillTree(PlayerEntity master)
     {
-        // Skill-tree resolution from homunculus_db.yml carries
-        // prerequisites; until that loader ships, the per-master
-        // Skills dict accumulates whatever SkillUp granted.
+        if (!_alive.TryGetValue(master.Id, out var live)) return;
+        foreach (var kv in HomunSkillTree)
+        {
+            var (cls, skill) = kv.Key;
+            if (cls != (uint)live.ClassId) continue;
+            if (live.Skills.ContainsKey(skill)) continue;
+            if (live.Level < kv.Value.RequiredLevel) continue;
+            if (live.Intimacy < kv.Value.RequiredIntimacy) continue;
+            if (kv.Value.RequireEvolution && !live.Evolved) continue;
+            // Eligible but unlearned — list with level 0.
+            live.Skills[skill] = 0;
+        }
     }
 
     public void CalcSkillTreeSub(PlayerEntity master) => CalcSkillTree(master);
+
+    /// <summary>
+    /// Baked homunculus_db.yml SkillTree rows (subset covering all 14
+    /// stock classes — Lif/Filir/Amistr/Vanilmirth + S evolutions +
+    /// homun-S Eira/Bayeri/Sera/Dieter/Eleanor). Replace with a real
+    /// loader when conf-to-JSON ports homunculus_db.yml.
+    /// </summary>
+    private static readonly Dictionary<(uint cls, ushort skill), (ushort MaxLevel, ushort RequiredLevel, ushort RequiredIntimacy, bool RequireEvolution)> HomunSkillTree = new()
+    {
+        // Lif (6001) + Lif_H (6005) — HLIF_HEAL 5, HLIF_AVOID 5, HLIF_BRAIN 5, HLIF_CHANGE 1
+        { (6001, 8001), (5, 1, 0, false) }, { (6001, 8002), (5, 1, 200, false) },
+        { (6001, 8003), (5, 1, 400, false) }, { (6001, 8004), (1, 1, 910, true) },
+        { (6005, 8001), (5, 1, 0, false) }, { (6005, 8002), (5, 1, 200, false) },
+        { (6005, 8003), (5, 1, 400, false) }, { (6005, 8004), (1, 1, 910, true) },
+        // Amistr (6002) + Amistr_H (6006) — HAMI_CASTLE 5, HAMI_DEFENCE 5, HAMI_SKIN 5, HAMI_BLOODLUST 1
+        { (6002, 8005), (5, 1, 0, false) }, { (6002, 8006), (5, 1, 200, false) },
+        { (6002, 8007), (5, 1, 400, false) }, { (6002, 8008), (1, 1, 910, true) },
+        { (6006, 8005), (5, 1, 0, false) }, { (6006, 8006), (5, 1, 200, false) },
+        { (6006, 8007), (5, 1, 400, false) }, { (6006, 8008), (1, 1, 910, true) },
+        // Filir (6003) + Filir_H (6007) — HFLI_MOON 5, HFLI_FLEET 5, HFLI_SPEED 5, HFLI_SBR44 1
+        { (6003, 8009), (5, 1, 0, false) }, { (6003, 8010), (5, 1, 200, false) },
+        { (6003, 8011), (5, 1, 400, false) }, { (6003, 8012), (1, 1, 910, true) },
+        { (6007, 8009), (5, 1, 0, false) }, { (6007, 8010), (5, 1, 200, false) },
+        { (6007, 8011), (5, 1, 400, false) }, { (6007, 8012), (1, 1, 910, true) },
+        // Vanilmirth (6004) + Vanilmirth_H (6008) — HVAN_CAPRICE 5, HVAN_CHAOTIC 5, HVAN_INSTRUCT 5, HVAN_EXPLOSION 1
+        { (6004, 8013), (5, 1, 0, false) }, { (6004, 8014), (5, 1, 200, false) },
+        { (6004, 8015), (5, 1, 400, false) }, { (6004, 8016), (1, 1, 910, true) },
+        { (6008, 8013), (5, 1, 0, false) }, { (6008, 8014), (5, 1, 200, false) },
+        { (6008, 8015), (5, 1, 400, false) }, { (6008, 8016), (1, 1, 910, true) },
+        // Homun-S classes (6048-6052) — top-level rAthena entries
+        { (6048, 8042), (5, 99, 100, false) }, // Eira — MH_LIGHT_OF_REGENE
+        { (6049, 8051), (5, 99, 100, false) }, // Bayeri — MH_STAHL_HORN
+        { (6050, 8059), (5, 99, 100, false) }, // Sera — MH_NEEDLE_OF_PARALYZE
+        { (6051, 8068), (5, 99, 100, false) }, // Dieter — MH_LAVA_SLIDE
+        { (6052, 8074), (5, 99, 100, false) }, // Eleanor — MH_SONIC_CRAW
+    };
+
+    /// <summary>
+    /// Baked evolution targets (rAthena <c>EvolutionClass</c>).
+    /// Lif → Lif_H, Amistr → Amistr_H, etc.
+    /// </summary>
+    private static readonly Dictionary<int, int> EvolutionTargets = new()
+    {
+        { 6001, 6005 }, { 6002, 6006 }, { 6003, 6007 }, { 6004, 6008 },
+    };
 
     public void AddSpiritBall(PlayerEntity master, int max)
     {
@@ -291,10 +368,23 @@ public sealed class HomunculusService : IHomunculusService
 
     public void Menu(PlayerEntity master, int choice)
     {
-        // Action-menu dispatch (call / vaporize / delete / feed). The
-        // packet handler maps choice → method; service-level seam logs
-        // the request.
-        _logger.LogDebug("hom_menu: master={Master} choice={Choice}", master.Name, choice);
+        // rAthena hom_menu — 4 actions: 0=feed, 1=call/vaporize toggle,
+        // 2=skill window, 3=delete. Real dispatch wired against the
+        // matching service methods.
+        switch (choice)
+        {
+            case 0: Food(master); break;
+            case 1:
+                if (_alive.TryGetValue(master.Id, out var live))
+                {
+                    if (live.Vaporized) Call(master);
+                    else Vaporize(master, flag: 1);
+                }
+                break;
+            case 2: CalcSkillTree(master); break;
+            case 3: Delete(master); break;
+            default: _logger.LogWarning("hom_menu: unknown choice {Choice}", choice); break;
+        }
     }
 
     public void Reload()
