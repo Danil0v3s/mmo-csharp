@@ -13,6 +13,28 @@ namespace Map.Server.Status;
 /// </summary>
 public sealed class StatusCalcService : IStatusCalcService
 {
+    /// <summary>
+    /// DBR-1c: optional ASPD cache. When wired (singleton DI), CalcPc
+    /// reads per-job per-weapon base delay from job_aspd_db; when null
+    /// (test fixtures that construct StatusCalcService directly with
+    /// the default ctor) the legacy hardcoded 590ms Novice baseline
+    /// stays in place.
+    /// </summary>
+    private readonly IJobAspdCacheService? _jobAspd;
+
+    /// <summary>
+    /// DBR-1d: optional job-stats catalog (HP/SP/MaxLevel/bonus stats).
+    /// When null, MaxHp/MaxSp fall back to the captured Novice formula
+    /// (preserving the old behaviour for tests that don't wire DI).
+    /// </summary>
+    private readonly IJobStatsCacheService? _jobStats;
+
+    public StatusCalcService(IJobAspdCacheService? jobAspd = null, IJobStatsCacheService? jobStats = null)
+    {
+        _jobAspd = jobAspd;
+        _jobStats = jobStats;
+    }
+
     public void CalcPc(PlayerEntity player, PcBaseInputs inputs)
     {
         var s = player.Stats;
@@ -57,24 +79,47 @@ public sealed class StatusCalcService : IStatusCalcService
 
         CalcMisc(s, inputs.BaseLevel, isPc: true);
 
-        // MaxHp / MaxSp — renewal job_db formula. Until job_db lands we
-        // approximate with the Novice baseline scaled by Vit/Int + level.
-        // status.cpp status_calc_maxhpsp_pc uses a job multiplier table; we
-        // keep the Lv1 capture-verified output (40/11) intact at Lv1
-        // and scale linearly per level until job_db wires in.
-        var maxHp = NoviceMaxHp(inputs.BaseLevel, inputs.Vit);
-        var maxSp = NoviceMaxSp(inputs.BaseLevel, inputs.Int);
+        // MaxHp / MaxSp — DBR-1d: when IJobStatsCacheService is wired,
+        // read the per-job per-level base from job_base_points_db (the
+        // rAthena HP_SP_TABLES path) and scale by Vit/Int; otherwise
+        // fall back to the captured Novice formula so tests stay green.
+        int maxHp, maxSp;
+        var jobAegis = JobAegisMapper.AegisByJobId(inputs.JobId);
+        if (_jobStats != null && jobAegis != null)
+        {
+            // rAthena status.cpp:status_calc_maxhpsp_pc:
+            //   hp = base * (100 + vit) / 100
+            //   sp = base * (100 + int) / 100
+            var baseHp = _jobStats.GetBaseHp(jobAegis, inputs.BaseLevel);
+            var baseSp = _jobStats.GetBaseSp(jobAegis, inputs.BaseLevel);
+            maxHp = baseHp > 0 ? baseHp * (100 + inputs.Vit) / 100 : NoviceMaxHp(inputs.BaseLevel, inputs.Vit);
+            maxSp = baseSp > 0 ? baseSp * (100 + inputs.Int) / 100 : NoviceMaxSp(inputs.BaseLevel, inputs.Int);
+        }
+        else
+        {
+            maxHp = NoviceMaxHp(inputs.BaseLevel, inputs.Vit);
+            maxSp = NoviceMaxSp(inputs.BaseLevel, inputs.Int);
+        }
         s.MaxHp = maxHp;
         s.MaxSp = maxSp;
         if (s.Hp <= 0 || s.Hp > maxHp) s.Hp = maxHp;
         if (s.Sp <= 0 || s.Sp > maxSp) s.Sp = maxSp;
 
-        // Speed / amotion / adelay defaults — status.cpp:5990 status_calc_pc_
-        // sets these from job_db. Placeholder uses captured Novice values.
+        // Speed / amotion / adelay — status.cpp:5990 status_calc_pc_ pulls
+        // amotion from the job_aspd table for the (job, weapon-type) pair.
+        // DBR-1c: when IJobAspdCacheService is wired (production DI), use
+        // the catalog row; the captured 590ms Novice / unarmed value
+        // remains the fallback for tests + missing rows.
         s.Speed = 150;
-        s.Amotion = 590;
-        s.ClientAmotion = 590;
-        s.Adelay = 540;
+        var baseAmotion = _jobAspd?.GetBaseAspdByJobId(inputs.JobId, inputs.WeaponType) ?? 590;
+        s.Amotion = (ushort)Math.Clamp(baseAmotion, 1, ushort.MaxValue);
+        s.ClientAmotion = s.Amotion;
+        // rAthena status.cpp adelay = amotion * 2 - dmotion (renewal default
+        // 2 * amotion - 480 for melee). The captured Novice value 540 with
+        // amotion 590 = ~0.91× factor; close enough for the early game until
+        // the full status_calc_pc aspd path lands. Keeping the 2×-ish form
+        // preserves the ratio when amotion comes from a job_aspd row.
+        s.Adelay = (ushort)Math.Clamp(baseAmotion * 540 / 590, 1, ushort.MaxValue);
         s.Dmotion = 480;
 
         s.Race = BattleRace.PlayerHuman;

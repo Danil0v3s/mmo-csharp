@@ -15,7 +15,11 @@ public interface IPartyShareService
     /// among eligible members of <paramref name="killer"/>'s party.
     /// Returns true if the share path ran; false if the killer is solo
     /// or has no eligible partymates (the caller should then fall back
-    /// to the single-player IExpService.GainExp path).
+    /// to the single-player IExpService.GainExp path). <paramref name="mobLevel"/>
+    /// is forwarded to each member's <c>IExpService.GainExp</c> so the
+    /// per-member level-gap penalty (DBR-1b) is applied during
+    /// distribution, matching rAthena <c>party_exp_share</c> →
+    /// <c>pc_gainexp</c> chain semantics.
     /// </summary>
-    bool ShareKill(PlayerEntity killer, long baseExp, long jobExp);
+    bool ShareKill(PlayerEntity killer, long baseExp, long jobExp, int? mobLevel = null);
 }

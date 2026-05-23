@@ -203,6 +203,31 @@ builder.Services.AddSingleton<Map.Server.Status.StatusBroadcaster>();
 // change / SC apply) and mobs (at spawn). Consumed by combat, skill, AI.
 builder.Services.AddSingleton<Map.Server.Status.IStatusCalcService, Map.Server.Status.StatusCalcService>();
 
+// DBR-1a: hydrate the static ElementTable matrix from attr_fix_db at
+// boot. Constructor runs once during DI resolution and seeds the 400
+// (level, atk, def) → multiplier slots. Combat code keeps calling
+// ElementTable.GetRate directly — no per-tick repo hit.
+builder.Services.AddSingleton<Map.Server.Status.AttrFixCacheService>();
+
+// DBR-1b: level-gap EXP/drop penalty evaluator backed by
+// level_penalty_db (DB-8a). ExpService consumes it via the optional
+// constructor parameter so test fixtures that wire ExpService
+// directly stay green without DI.
+builder.Services.AddSingleton<Map.Server.Status.ILevelPenaltyService, Map.Server.Status.LevelPenaltyService>();
+
+// DBR-1c: per-job per-weapon ASPD base-delay cache (job_aspd_db,
+// 1427 rows). StatusCalcService.CalcPc reads from this in the
+// status_calc_pc amotion slot when wired (singleton DI). Tests that
+// new StatusCalcService() directly keep the 590ms Novice fallback.
+builder.Services.AddSingleton<Map.Server.Status.IJobAspdCacheService, Map.Server.Status.JobAspdCacheService>();
+
+// DBR-1d: unified job-stats cache over the 4 DB-8d catalogs (job_info,
+// job_base_points, job_bonus_stats, job_max_level). StatusCalcService
+// reads HP/SP base from this in CalcPc; PlayerLifecycleHelpers reads
+// MaxBaseLevel/MaxJobLevel from it. Fallback when null preserves the
+// captured Novice baseline so unit tests stay green without DI.
+builder.Services.AddSingleton<Map.Server.Status.IJobStatsCacheService, Map.Server.Status.JobStatsCacheService>();
+
 // Floor-item drop / pickup (see .agents/migrations/map/adjacent/items.md).
 // MS3 first slice: the entity-on-the-floor lifecycle (drop, pickup, TTL
 // despawn). Inventory persistence + item_db catalog land later.
@@ -2192,6 +2217,11 @@ builder.WebHost.ConfigureKestrel(options =>
 
 var app = builder.Build();
 app.MapGrpcService<MapGrpcService>();
+
+// DBR-1a: force-construct the AttrFix cache before the game loop ticks
+// so combat code sees the hydrated elemental matrix on the first
+// damage event. Singleton — first GetRequiredService runs the ctor.
+_ = app.Services.GetRequiredService<Map.Server.Status.AttrFixCacheService>();
 
 // Get server instance from DI
 var server = app.Services.GetRequiredService<MapServerImpl>();

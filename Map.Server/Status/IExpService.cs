@@ -13,9 +13,14 @@ public interface IExpService
 {
     /// <summary>
     /// Grant <paramref name="baseExp"/> + <paramref name="jobExp"/> to the
-    /// player. Returns true if a base- or job-level-up occurred.
+    /// player. Returns true if a base- or job-level-up occurred. When
+    /// <paramref name="mobLevel"/> is provided the level-gap penalty
+    /// (rAthena <c>pc_level_penalty_mod(diff, PENALTY_EXP)</c>) is
+    /// applied to both EXP buckets before they're added; a null
+    /// <paramref name="mobLevel"/> (e.g. quest reward, GM grant) skips
+    /// the penalty entirely.
     /// </summary>
-    bool GainExp(PlayerEntity player, long baseExp, long jobExp);
+    bool GainExp(PlayerEntity player, long baseExp, long jobExp, int? mobLevel = null);
 
     /// <summary>
     /// rAthena <c>pc_lostexp</c> (pc.cpp:8425) — subtract base+job exp

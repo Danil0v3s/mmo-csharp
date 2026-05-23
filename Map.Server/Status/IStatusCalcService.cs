@@ -85,4 +85,10 @@ public readonly record struct PcBaseInputs(
     int EquipDef,
     int EquipMdef,
     int AttackRange,
-    BattleElement WeaponElement = BattleElement.Neutral);
+    BattleElement WeaponElement = BattleElement.Neutral,
+    // DBR-1c: JobId + WeaponType drive the job_aspd_db lookup. JobId 0 =
+    // Novice (rAthena default for char-create); WeaponType 0 = Fist /
+    // bare-hand (rAthena enum weapon_type W_FIST). Both fall through to
+    // the JobAspdCacheService.DefaultBaseAspdMs fallback when missing.
+    int JobId = 0,
+    int WeaponType = 0);
