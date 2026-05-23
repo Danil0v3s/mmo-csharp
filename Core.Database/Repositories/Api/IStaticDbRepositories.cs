@@ -176,6 +176,11 @@ public interface IItemComboDbRepository
     Task<IReadOnlyList<ItemComboMemberDbEntity>> GetMembersAsync(int comboId, CancellationToken ct = default);
     /// <summary>All combos that include the given item — used by the EquipBonus calc.</summary>
     Task<IReadOnlyList<ItemComboMemberDbEntity>> GetCombosForItemAsync(string itemAegis, CancellationToken ct = default);
+    /// <summary>
+    /// All member rows across every combo — single query, used at boot
+    /// to fill the in-memory inverted index keyed by item aegis.
+    /// </summary>
+    Task<IReadOnlyList<ItemComboMemberDbEntity>> GetAllMembersAsync(CancellationToken ct = default);
 }
 
 // ============================================================================

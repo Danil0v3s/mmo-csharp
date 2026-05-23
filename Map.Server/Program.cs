@@ -178,6 +178,10 @@ builder.Services.AddSingleton<Map.Server.Chat.IChatService, Map.Server.Chat.Chat
 // the wear-state bits on inventory rows and triggers a status recalc
 // through EquipBonusAggregator + IStatusCalcService.
 builder.Services.AddSingleton<Map.Server.Inventory.IEquipService, Map.Server.Inventory.EquipService>();
+// DBR-2a: equipment-combo detection — 7767 combos × 17720 members
+// loaded once at boot from item_combo_db. EquipService consults this
+// after every equip/unequip; firing combos surfaced via RecomputeCombos.
+builder.Services.AddSingleton<Map.Server.Inventory.IItemCombosService, Map.Server.Inventory.ItemCombosService>();
 
 // Account storage (storage.cpp). Mediates inventory ↔ storage
 // transfers; load/save via the existing P5 AccountStorageLoad/Save IPC.

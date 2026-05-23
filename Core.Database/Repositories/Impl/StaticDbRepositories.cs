@@ -208,6 +208,8 @@ internal sealed class ItemComboDbRepository(GameDbContext ctx) : IItemComboDbRep
         => await ctx.ItemComboMemberDb.AsNoTracking().Where(m => m.ComboId == comboId).ToListAsync(ct);
     public async Task<IReadOnlyList<ItemComboMemberDbEntity>> GetCombosForItemAsync(string itemAegis, CancellationToken ct = default)
         => await ctx.ItemComboMemberDb.AsNoTracking().Where(m => m.MemberItemAegis == itemAegis).ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemComboMemberDbEntity>> GetAllMembersAsync(CancellationToken ct = default)
+        => await ctx.ItemComboMemberDb.AsNoTracking().ToListAsync(ct);
 }
 
 // DB-8c — skill tree repos

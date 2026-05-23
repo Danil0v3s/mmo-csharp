@@ -18,17 +18,20 @@ public sealed class EquipService : IEquipService
     private readonly IItemCatalog _catalog;
     private readonly IEntityRegistry _entities;
     private readonly IStatusCalcService _statusCalc;
+    private readonly IItemCombosService? _combos;
     private readonly ILogger<EquipService> _logger;
 
     public EquipService(
         IItemCatalog catalog,
         IEntityRegistry entities,
         IStatusCalcService statusCalc,
-        ILogger<EquipService> logger)
+        ILogger<EquipService> logger,
+        IItemCombosService? combos = null)
     {
         _catalog = catalog;
         _entities = entities;
         _statusCalc = statusCalc;
+        _combos = combos;
         _logger = logger;
     }
 
@@ -176,6 +179,21 @@ public sealed class EquipService : IEquipService
         // bonus script (regex pass over the item_db `script` column).
         // Read by IBattleCardService.CalcCardFix + cast / drain hooks.
         EquipBonusAggregator.BuildBundle(session.Inventory, _catalog, player.EquipBonuses);
+
+        // DBR-2a: recompute firing combos for the new equipped set.
+        // Today: log-only (script body application waits on the Jint
+        // bonus pipeline). The detection itself is the unblocked
+        // primitive — set-bonus UIs + future stat consumers can read
+        // back which combos fire without re-walking the catalog.
+        if (_combos != null)
+        {
+            var active = _combos.RecomputeCombos(session);
+            if (active.Count > 0)
+            {
+                _logger.LogDebug("item_combo: {N} combo(s) firing for {Player} (ids: {Ids})",
+                    active.Count, player.Name, string.Join(",", active.Select(c => c.ComboId)));
+            }
+        }
         var stats = player.Stats;
         _statusCalc.CalcPc(player, new PcBaseInputs(
             BaseLevel: player.Level,
