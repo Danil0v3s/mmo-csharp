@@ -3,5 +3,35 @@
 -- Rows: 2
 -- Do not edit by hand — re-run `dotnet run --project Tools.RathenaImporter`.
 
-REPLACE INTO `level_penalty` (`penalty_type`,`payload_json`) VALUES ('Exp','{"Type":"Exp","LevelDifferences":[{"Difference":16,"Rate":40},{"Difference":15,"Rate":115},{"Difference":14,"Rate":120},{"Difference":13,"Rate":125},{"Difference":12,"Rate":130},{"Difference":11,"Rate":135},{"Difference":10,"Rate":140},{"Difference":9,"Rate":135},{"Difference":8,"Rate":130},{"Difference":7,"Rate":125},{"Difference":6,"Rate":120},{"Difference":5,"Rate":115},{"Difference":4,"Rate":110},{"Difference":3,"Rate":105},{"Difference":-6,"Rate":95},{"Difference":-11,"Rate":90},{"Difference":-16,"Rate":85},{"Difference":-21,"Rate":60},{"Difference":-26,"Rate":35},{"Difference":-31,"Rate":10}]}');
-REPLACE INTO `level_penalty` (`penalty_type`,`payload_json`) VALUES ('Drop','{"Type":"Drop","LevelDifferences":[{"Difference":16,"Rate":50},{"Difference":13,"Rate":60},{"Difference":10,"Rate":70},{"Difference":7,"Rate":80},{"Difference":4,"Rate":90},{"Difference":-4,"Rate":90},{"Difference":-7,"Rate":80},{"Difference":-10,"Rate":70},{"Difference":-13,"Rate":60},{"Difference":-16,"Rate":50}]}');
+REPLACE INTO `level_penalty_db` (`penalty_type`) VALUES ('Exp');
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',16,40);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',15,115);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',14,120);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',13,125);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',12,130);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',11,135);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',10,140);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',9,135);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',8,130);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',7,125);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',6,120);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',5,115);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',4,110);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',3,105);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',-6,95);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',-11,90);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',-16,85);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',-21,60);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',-26,35);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Exp',-31,10);
+REPLACE INTO `level_penalty_db` (`penalty_type`) VALUES ('Drop');
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Drop',16,50);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Drop',13,60);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Drop',10,70);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Drop',7,80);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Drop',4,90);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Drop',-4,90);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Drop',-7,80);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Drop',-10,70);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Drop',-13,60);
+REPLACE INTO `level_penalty_difference_db` (`penalty_type`,`difference`,`rate`) VALUES ('Drop',-16,50);

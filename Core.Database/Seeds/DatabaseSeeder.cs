@@ -90,6 +90,21 @@ public class DatabaseSeeder
             await ExecuteSqlScriptAsync("Seeds/Scripts/seed_enchantgrade.sql", ct);
             await ExecuteSqlScriptAsync("Seeds/Scripts/seed_map_drops.sql", ct);
 
+            // DB-8z-SG: typed catalogs that DB-5's payload-blob seeds
+            // never wired up. Now backed by real schemas (DB-8a..i +
+            // AT-F + AT-G). Loaded after their parent _db scripts since
+            // FK-like references resolve at row-insert order.
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_reputation_group.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_attendance_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_cash.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_mob_item_ratio.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_mercenary_skill_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_homunculus_skill_tree_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_stylist_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_achievement_level_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_job_aspd_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_const_db.sql", ct);
+
             await _context.Database.ExecuteSqlRawAsync("COMMIT", ct);
 
             _logger.LogInformation("Database seeding completed successfully");

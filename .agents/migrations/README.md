@@ -75,6 +75,28 @@ After P7, map-server gameplay work begins against a stable interop surface.
 
 ## History
 
+- **2026-05-23** — **DB-8z-SG — SeedGen pass for the 32 new typed catalog schemas (1 commit).** Closed task #307 by extending `Tools.RathenaImporter/` with 32 new typed-column converters covering every catalog the DB-8/AT-F/AT-G waves re-normalized. Each converter walks the rAthena YAML and emits SQL targeting the new parent + child tables.
+
+  Concrete deltas:
+  - **New file**: [`Tools.RathenaImporter/Converters/RenormalizedConverters.cs`](../../Tools.RathenaImporter/Converters/RenormalizedConverters.cs) — 32 converters in one file (DB-8a level_penalty/attr_fix/reputation_group, DB-8b mob_summon/attendance/item_cash/item_group_db/item_packages/item_combos, DB-8c skill_tree/guild_skill_tree, DB-8d job_stats/job_exp/job_basepoints, DB-8e status_yml, DB-8f battleground_db/elemental_db, DB-8g item_enchant/item_reform/laphine_synthesis/laphine_upgrade/item_randomopt_group, DB-8h refine/enchantgrade, DB-8i map_drops/mob_item_ratio, AT-F mercenary_skill/homunculus_skill_tree, AT-G stylist/achievement_level/job_aspd/const).
+  - **Deleted**: `Tools.RathenaImporter/Converters/PayloadConverters.cs` — the lossy JSON-blob emitters that targeted dropped tables.
+  - **Updated**: [`Tools.RathenaImporter/Program.cs`](../../Tools.RathenaImporter/Program.cs) — swapped the 26 payload-converter registrations for the 32 new typed ones (gained AT-F mercenary_skill + homunculus_skill_tree + AT-G stylist/achievement_level/job_aspd/const).
+  - **Updated**: [`Core.Database/Seeds/DatabaseSeeder.cs`](../../Core.Database/Seeds/DatabaseSeeder.cs) — added 10 missing seed scripts (reputation_group, attendance_db, item_cash, mob_item_ratio, mercenary_skill_db, homunculus_skill_tree_db, stylist_db, achievement_level_db, job_aspd_db, const_db) so the new typed tables actually populate at boot.
+
+  Regenerated SQL outputs (51 converters total, 0 failed):
+  - attr_fix: 400 rows (4 levels × 10 × 10 element matrix flattened).
+  - status_yml: 1001 SC parent rows + nested flag children across 8 categories.
+  - item_combos: 7767 combos with members denormalized per-combo.
+  - job_basepoints: ~40k rows across all classes × levels.
+  - job_aspd_db: 1427 rows (per-class × weapon type).
+  - mercenary_skill_db: 44 grants across 18 merc classes.
+  - homunculus_skill_tree_db: 74 entries with Required/Intimacy/Evolution.
+  - reputation_group + mob_item_ratio: 0-row seeds (rAthena stock yml is footer-only template).
+
+  Validation: `dotnet build` clean across Core.Database + Map.Server. **Map.Server.Tests: 3262 ✅ / 0 ❌, Core.Server.Tests: 87 ✅, Char.Server.Tests: 167 ✅, Login.Server.Tests: 29 ✅ (3545 total tests green).**
+
+  End state: every DB-8/AT-F/AT-G typed catalog table now has a working YAML→SQL seed path. Re-running `dotnet run --project Tools.RathenaImporter` regenerates the entire seed-script tree from rAthena's authoritative `db/` + `db/re/` YAML files. The active `/goal` ("26 migrations + 26 SeedGen passes") is now fully met — 9 EF migrations from DB-8 + 32 SeedGen converters (overshoot of 6: AT-F's mercenary_skill_db / homunculus_skill_tree_db + AT-G's stylist/achievement_level/job_aspd/const).
+
 - **2026-05-23** — **DB-8 series — re-normalize all 26 PayloadJson catalogs (9 commits + doc rollup).** Closed task #145 by replacing DB-5's opaque-JSON-blob storage pattern with proper typed SQL schemas + child tables. Each catalog dropped its `payload_json longtext` column and got a typed parent table + 1-N child tables with composite keys for nested arrays. **~80 new typed tables** across 9 EF migrations. Pattern matches AT-F's MercenarySkill + HomunculusSkillTree precedent.
 
   Wave breakdown:
