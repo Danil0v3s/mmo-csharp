@@ -101,6 +101,9 @@ public static class ServiceCollectionExtensions
         // DB-8f: battleground + elemental.
         services.AddScoped<IBattlegroundCatalogDbRepository, BattlegroundCatalogDbRepository>();
         services.AddScoped<IElementalCatalogDbRepository, ElementalCatalogDbRepository>();
+        // DB-8i: drop overrides.
+        services.AddScoped<IMapDropDbRepository, MapDropDbRepository>();
+        services.AddScoped<IMobItemRatioDbRepository, MobItemRatioDbRepository>();
 
         return services;
     }

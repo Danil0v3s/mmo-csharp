@@ -233,6 +233,11 @@ builder.Services.AddSingleton<Map.Server.Status.IJobStatsCacheService, Map.Serve
 // despawn). Inventory persistence + item_db catalog land later.
 builder.Services.AddSingleton<IItemDropService, ItemDropService>();
 
+// DBR-1g: per-map drop overrides (rAthena db/map_drops.yml). Snapshots
+// map_drop_db (17 maps) + map_drop_entry_db (654 entries) at boot;
+// consumed by MobSpawnService after each mob's own drop pass.
+builder.Services.AddSingleton<Map.Server.Items.IMapDropService, Map.Server.Items.MapDropService>();
+
 // Combat (see .agents/migrations/map/adjacent/combat.md). BattleCalculator
 // owns the renewal damage formula (battle.cpp:7635 battle_calc_weapon_attack
 // trimmed first slice); DamageService is the calc-then-apply façade that
@@ -483,6 +488,9 @@ builder.Services.AddSingleton<Map.Server.Spawn.NpcOps.INpcOpsService, Map.Server
 builder.Services.AddSingleton<Map.Server.Movement.UnitOps.IUnitOpsService, Map.Server.Movement.UnitOps.UnitOpsService>();
 builder.Services.AddSingleton<Map.Server.World.MapOps.IMapOpsService, Map.Server.World.MapOps.MapOpsService>();
 builder.Services.AddSingleton<Map.Server.Agit.IAgitService, Map.Server.Agit.AgitService>();
+// DBR-1f: guild_skill_tree_db (10 entries) + requirement_db (37 prereqs)
+// cache. Replaces the stale hardcoded SkillMaxLevels dict in GuildService.
+builder.Services.AddSingleton<Map.Server.Guild.IGuildSkillTreeService, Map.Server.Guild.GuildSkillTreeService>();
 builder.Services.AddSingleton<Map.Server.Guild.IGuildService, Map.Server.Guild.GuildService>();
 builder.Services.AddSingleton<Map.Server.Guild.IGuildExpService, Map.Server.Guild.GuildExpService>();
 builder.Services.AddSingleton<Map.Server.Pet.PetOps.IPetOpsService, Map.Server.Pet.PetOps.PetOpsService>();
@@ -2071,6 +2079,10 @@ builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BgInviteCommand
 builder.Services.AddSingleton<Map.Server.Status.IPlayerOptionService, Map.Server.Status.PlayerOptionService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerLookService, Map.Server.Status.PlayerLookService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerOrbService, Map.Server.Status.PlayerOrbService>();
+// DBR-1f: ISkillTreeService caches skill_tree_db + inherit + entry +
+// requirement (175 jobs / 1403 entries / 1548 prereqs) at boot.
+// Consumed by PlayerSkillService for per-job MaxLevel + prereq walks.
+builder.Services.AddSingleton<Map.Server.Skills.ISkillTreeService, Map.Server.Skills.SkillTreeService>();
 builder.Services.AddSingleton<Map.Server.Skills.IPlayerSkillService, Map.Server.Skills.PlayerSkillService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerFameService, Map.Server.Status.PlayerFameService>();
 builder.Services.AddSingleton<Map.Server.Scripting.Vars.IPlayerVarService, Map.Server.Scripting.Vars.PlayerVarService>();

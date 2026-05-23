@@ -13,12 +13,14 @@ namespace Map.Server.Skills;
 public sealed class PlayerSkillService : IPlayerSkillService
 {
     private readonly ISkillDb _db;
+    private readonly ISkillTreeService? _skillTree;
     private readonly ILogger<PlayerSkillService> _logger;
 
-    public PlayerSkillService(ISkillDb db, ILogger<PlayerSkillService> logger)
+    public PlayerSkillService(ISkillDb db, ILogger<PlayerSkillService> logger, ISkillTreeService? skillTree = null)
     {
         _db = db;
         _logger = logger;
+        _skillTree = skillTree;
     }
 
     public bool Grant(PlayerEntity pc, ushort skillId, int level, GrantKind kind = GrantKind.Permanent)
@@ -68,11 +70,13 @@ public sealed class PlayerSkillService : IPlayerSkillService
         // LearnedSkills entry against the skill_db MaxLevel and
         // backfills any missing SkillFlag rows with Permanent.
         //
-        // The full tree-walk (auto-grant free skills via skill_tree.yml)
-        // is data-driven and ports as a separate service when the
-        // yml loader joins the repo. The validation path below is the
-        // must-have: a session that loaded a higher-than-cap entry
-        // gets clamped here.
+        // DBR-1f: ISkillTreeService is now wired; the per-job
+        // override + inheritance walk + Exclude flag are queryable
+        // via _skillTree.GetMaxLevel(jobAegis, skillAegis). Per-job
+        // clamping isn't applied in this loop because PlayerEntity
+        // doesn't carry a Class/JobAegis field yet (the rAthena
+        // sd->status.class_ ↔ JobName table hasn't ported). When that
+        // field lands, swap def.MaxLevel below for the per-job cap.
         foreach (var (id, lv) in pc.LearnedSkills.ToArray())
         {
             var def = _db.Get(id);
@@ -91,6 +95,45 @@ public sealed class PlayerSkillService : IPlayerSkillService
                 pc.SkillFlags[id] = SkillFlag.Permanent;
             }
         }
+    }
+
+    /// <summary>
+    /// DBR-1f: per-job-aware max-level resolver. When the caller knows
+    /// the PC's job aegis (e.g. from a future <c>pc.JobAegis</c> field
+    /// or a join service), this returns the effective cap walking the
+    /// Inherit chain + honoring Exclude. Falls back to the global
+    /// skill_db cap when the job tree doesn't list the skill.
+    /// </summary>
+    public int GetEffectiveMaxLevel(string jobAegis, ushort skillId)
+    {
+        var def = _db.Get(skillId);
+        if (def == null) return 0;
+        if (_skillTree == null || !_skillTree.HasData) return def.MaxLevel;
+        var perJob = _skillTree.GetMaxLevel(jobAegis, def.Name);
+        return perJob > 0 ? perJob : def.MaxLevel;
+    }
+
+    /// <summary>
+    /// DBR-1f: per-job-aware prereq check. Walks the
+    /// skill_tree_requirement_db chain via the inheritance graph.
+    /// Returns true when no requirements exist (vacuous) or the
+    /// service is offline.
+    /// </summary>
+    public bool CheckSkillRequirements(string jobAegis, ushort skillId, PlayerEntity pc)
+    {
+        if (_skillTree == null || !_skillTree.HasData) return true;
+        var def = _db.Get(skillId);
+        if (def == null) return false;
+        // Project the PC's learned table from ushort-id to aegis-keyed
+        // for the requirement walk (the catalog stores prereqs as
+        // aegis strings to keep the join with skill_db cheap).
+        var learnedByAegis = new Dictionary<string, int>(pc.LearnedSkills.Count, System.StringComparer.OrdinalIgnoreCase);
+        foreach (var (id, lv) in pc.LearnedSkills)
+        {
+            var d = _db.Get(id);
+            if (d != null && !string.IsNullOrEmpty(d.Name)) learnedByAegis[d.Name] = lv;
+        }
+        return _skillTree.CheckRequirements(jobAegis, def.Name, learnedByAegis);
     }
 
     public void CleanSkillTree(PlayerEntity pc)

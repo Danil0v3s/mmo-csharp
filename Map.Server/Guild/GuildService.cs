@@ -24,12 +24,15 @@ public sealed class GuildService : IGuildService
     private readonly ILogger<GuildService> _logger;
     private readonly ConcurrentDictionary<int, GuildEntity> _byId = new();
     private readonly Map.Server.Agit.IAgitService? _agit;
+    private readonly IGuildSkillTreeService? _skillTree;
 
     public GuildService(ILogger<GuildService> logger,
-        Map.Server.Agit.IAgitService? agit = null)
+        Map.Server.Agit.IAgitService? agit = null,
+        IGuildSkillTreeService? skillTree = null)
     {
         _logger = logger;
         _agit = agit;
+        _skillTree = skillTree;
     }
 
     // ---------- GD-H1: in-memory replica ----------
@@ -783,15 +786,35 @@ public sealed class GuildService : IGuildService
     }
 
     public ushort SkillGetMax(ushort skillId)
-        => SkillMaxLevels.TryGetValue(skillId, out var max) ? max : (ushort)0;
+    {
+        // DBR-1f: consult guild_skill_tree_db (typed catalog) first;
+        // fall back to the in-process SkillMaxLevels table when the
+        // service is missing or the DB row is absent. This corrects
+        // several stale caps the hardcoded table carried (e.g. the
+        // table had GD_REGENERATION at 1, the yml caps at 3; the table
+        // omitted GD_ITEMEMERGENCYCALL / GD_CHARGESHOUT_* / GD_EMERGENCY_MOVE
+        // entirely).
+        if (_skillTree != null && _skillTree.HasData)
+        {
+            var dbMax = _skillTree.GetMaxLevel(skillId);
+            if (dbMax > 0) return dbMax;
+        }
+        return SkillMaxLevels.TryGetValue(skillId, out var max) ? max : (ushort)0;
+    }
 
     public bool CheckSkillRequire(int guildId, ushort skillId)
     {
-        // The full prereq table (guild_skill_tree_db.yml `need:`) isn't
-        // loaded; rAthena defaults to allow when the skill isn't in
-        // the tree. We mirror that for now — flips to a real lookup
-        // once the loader ports.
-        return Find(guildId) != null;
+        // DBR-1f: walk the typed guild_skill_tree_requirement_db chain
+        // against the guild's currently-learned table. Falls back to
+        // the prior vacuous "guild exists ⇒ true" when the catalog is
+        // unloaded so legacy behavior is preserved offline.
+        var g = Find(guildId);
+        if (g == null) return false;
+        if (_skillTree != null && _skillTree.HasData)
+        {
+            return _skillTree.CheckRequirements(skillId, g.Skills);
+        }
+        return true;
     }
 
     /// <summary>Per-PC cooldown map keyed by (charId, skillId) -> expiry tick.</summary>
