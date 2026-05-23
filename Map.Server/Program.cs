@@ -182,6 +182,11 @@ builder.Services.AddSingleton<Map.Server.Inventory.IEquipService, Map.Server.Inv
 // loaded once at boot from item_combo_db. EquipService consults this
 // after every equip/unequip; firing combos surfaced via RecomputeCombos.
 builder.Services.AddSingleton<Map.Server.Inventory.IItemCombosService, Map.Server.Inventory.ItemCombosService>();
+// DBR-2f: reform + laphine synthesis/upgrade pipelines from the
+// typed DB-8g catalogs. Per-opener lookups consumed by the reform /
+// Lapine UI handlers when they port.
+builder.Services.AddSingleton<Map.Server.Inventory.IItemReformService, Map.Server.Inventory.ItemReformService>();
+builder.Services.AddSingleton<Map.Server.Inventory.ILaphineService, Map.Server.Inventory.LaphineService>();
 
 // Account storage (storage.cpp). Mediates inventory ↔ storage
 // transfers; load/save via the existing P5 AccountStorageLoad/Save IPC.
