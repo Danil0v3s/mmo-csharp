@@ -458,6 +458,9 @@ builder.Services.AddSingleton<Map.Server.Spawn.NpcOps.INpcOpsService, Map.Server
 builder.Services.AddSingleton<Map.Server.Movement.UnitOps.IUnitOpsService, Map.Server.Movement.UnitOps.UnitOpsService>();
 builder.Services.AddSingleton<Map.Server.World.MapOps.IMapOpsService, Map.Server.World.MapOps.MapOpsService>();
 builder.Services.AddSingleton<Map.Server.Agit.IAgitService, Map.Server.Agit.AgitService>();
+// DBR-1f: guild_skill_tree_db (10 entries) + requirement_db (37 prereqs)
+// cache. Replaces the stale hardcoded SkillMaxLevels dict in GuildService.
+builder.Services.AddSingleton<Map.Server.Guild.IGuildSkillTreeService, Map.Server.Guild.GuildSkillTreeService>();
 builder.Services.AddSingleton<Map.Server.Guild.IGuildService, Map.Server.Guild.GuildService>();
 builder.Services.AddSingleton<Map.Server.Guild.IGuildExpService, Map.Server.Guild.GuildExpService>();
 builder.Services.AddSingleton<Map.Server.Pet.PetOps.IPetOpsService, Map.Server.Pet.PetOps.PetOpsService>();
@@ -2046,6 +2049,10 @@ builder.Services.AddSingleton<IGmCommand, Map.Server.Gm.Commands.BgInviteCommand
 builder.Services.AddSingleton<Map.Server.Status.IPlayerOptionService, Map.Server.Status.PlayerOptionService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerLookService, Map.Server.Status.PlayerLookService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerOrbService, Map.Server.Status.PlayerOrbService>();
+// DBR-1f: ISkillTreeService caches skill_tree_db + inherit + entry +
+// requirement (175 jobs / 1403 entries / 1548 prereqs) at boot.
+// Consumed by PlayerSkillService for per-job MaxLevel + prereq walks.
+builder.Services.AddSingleton<Map.Server.Skills.ISkillTreeService, Map.Server.Skills.SkillTreeService>();
 builder.Services.AddSingleton<Map.Server.Skills.IPlayerSkillService, Map.Server.Skills.PlayerSkillService>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerFameService, Map.Server.Status.PlayerFameService>();
 builder.Services.AddSingleton<Map.Server.Scripting.Vars.IPlayerVarService, Map.Server.Scripting.Vars.PlayerVarService>();

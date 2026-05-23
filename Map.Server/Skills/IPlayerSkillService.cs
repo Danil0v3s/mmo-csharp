@@ -51,6 +51,20 @@ public interface IPlayerSkillService
 
     /// <summary>rAthena <c>pc_checkskill_summoner</c>.</summary>
     int CheckSummoner(PlayerEntity pc, ushort skillType);
+
+    /// <summary>
+    /// DBR-1f: per-job effective MaxLevel walking
+    /// skill_tree_entry_db + skill_tree_inherit_db. Falls back to the
+    /// global skill_db cap when the per-job tree is empty / unloaded.
+    /// </summary>
+    int GetEffectiveMaxLevel(string jobAegis, ushort skillId);
+
+    /// <summary>
+    /// DBR-1f: rAthena <c>pc_skill_check_requirement</c>. Walks the
+    /// per-job prereq chain (skill_tree_requirement_db) via the
+    /// Inherit graph. Returns true when no requirements exist.
+    /// </summary>
+    bool CheckSkillRequirements(string jobAegis, ushort skillId, PlayerEntity pc);
 }
 
 /// <summary>
