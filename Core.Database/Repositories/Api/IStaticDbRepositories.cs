@@ -249,6 +249,11 @@ public interface IBattlegroundCatalogDbRepository
     Task<BattlegroundTypeDbEntity?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<IReadOnlyList<BattlegroundJobRestrictionDbEntity>> GetJobRestrictionsAsync(int bgId, CancellationToken ct = default);
     Task<IReadOnlyList<BattlegroundLocationDbEntity>> GetLocationsAsync(int bgId, CancellationToken ct = default);
+    /// <summary>
+    /// All BG locations across every type — single query, no bg_id filter.
+    /// Used by the BG queue to build a global map-reservation pool.
+    /// </summary>
+    Task<IReadOnlyList<BattlegroundLocationDbEntity>> GetAllLocationsAsync(CancellationToken ct = default);
 }
 
 /// <summary>DB-8f: elemental servant catalog (rAthena elemental_db.yml).</summary>

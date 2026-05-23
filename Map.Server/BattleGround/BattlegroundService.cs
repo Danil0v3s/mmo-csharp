@@ -1,4 +1,6 @@
+using Core.Database.Repositories.Api;
 using Map.Server.Entities;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.BattleGround;
@@ -7,9 +9,10 @@ namespace Map.Server.BattleGround;
 /// Default <see cref="IBattlegroundService"/> — port of rAthena
 /// <c>battleground.cpp</c>. Includes a minimal queue state machine
 /// (SETUP → SETUP_DELAY → ACTIVE → ENDED) keyed by named-queue
-/// (bgsmall/bgmedium/bglarge/bg). Per-BG mode rules (map list, prize
-/// distribution NPC events) remain data-pending on <c>bg_db.yml</c>;
-/// see [battleground-parity.md](../../../.agents/migrations/map/battleground-parity.md).
+/// (bgsmall/bgmedium/bglarge/bg). DBR-0: BG map pool now sourced from
+/// battleground_location_db (DB-8f typed catalog, seeded from
+/// db/battleground_db.yml). See
+/// [battleground-parity.md](../../../.agents/migrations/map/battleground-parity.md).
 /// </summary>
 public sealed class BattlegroundService : IBattlegroundService
 {
@@ -21,30 +24,52 @@ public sealed class BattlegroundService : IBattlegroundService
     private readonly Dictionary<string, int> _queueByName = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<EntityId, int> _playerQueue = new();
     private readonly IEntityRegistry? _entities;
+    private readonly IServiceScopeFactory? _scopes;
     private readonly ILogger<BattlegroundService> _logger;
 
     /// <summary>
-    /// Baked BG map pool (rAthena db/re/battleground_db.yml). Reserved
-    /// per-queue at SETUP_DELAY; freed at ENDED. Until the YAML loader
-    /// ports, this seeded list covers Tierra Gorge / Flavius / KvM.
+    /// BG map pool (rAthena db/battleground_db.yml Locations:[]). DBR-0:
+    /// loaded from battleground_location_db at boot. Reserved per-queue
+    /// at SETUP_DELAY; freed at ENDED. Empty list = no maps configured
+    /// (QueueReservation returns false → caller falls back to requeue).
     /// </summary>
-    private static readonly string[] BgMapPool =
-    {
-        "bat_a01", "bat_a02", "bat_b01", "bat_b02", "bat_c01", "bat_c02",
-    };
+    private readonly List<string> _bgMapPool = new();
     private readonly HashSet<string> _reservedMaps = new();
 
-    public BattlegroundService(IEntityRegistry entities, ILogger<BattlegroundService> logger)
+    public BattlegroundService(IEntityRegistry entities, IServiceScopeFactory scopes, ILogger<BattlegroundService> logger)
     {
         _entities = entities;
+        _scopes = scopes;
         _logger = logger;
+        LoadMapPool();
         // rAthena bg_queue_create — preallocate one queue per named BG type.
-        // Sizes mirror s_battleground_type.required_players defaults; the
-        // bg_db.yml loader will overwrite these when it ports.
+        // Sizes mirror s_battleground_type.required_players defaults.
         EnsureQueue("bgsmall", required: 5);
         EnsureQueue("bgmedium", required: 10);
         EnsureQueue("bglarge", required: 20);
         EnsureQueue("bg", required: 5);
+    }
+
+    /// <summary>
+    /// Hydrate the BG map pool from the DB. Reserved-map state is
+    /// untouched; reload is idempotent for the queue state machine.
+    /// </summary>
+    public void LoadMapPool()
+    {
+        _bgMapPool.Clear();
+        if (_scopes == null) return;
+        try
+        {
+            using var scope = _scopes.CreateScope();
+            var repo = scope.ServiceProvider.GetRequiredService<IBattlegroundCatalogDbRepository>();
+            foreach (var loc in repo.GetAllLocationsAsync().GetAwaiter().GetResult())
+                if (!_bgMapPool.Contains(loc.MapName)) _bgMapPool.Add(loc.MapName);
+            _logger.LogInformation("battleground_location_db loaded: {N} map(s) in pool", _bgMapPool.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "battleground_location_db load failed; pool empty");
+        }
     }
 
     public int Create(int mapIndex, byte side)
@@ -165,7 +190,7 @@ public sealed class BattlegroundService : IBattlegroundService
         // the pool for this queue. Returns false if every map is
         // already reserved (caller falls back to tid_requeue).
         if (!_queues.TryGetValue(queueId, out var q)) return false;
-        foreach (var m in BgMapPool)
+        foreach (var m in _bgMapPool)
         {
             if (_reservedMaps.Add(m))
             {

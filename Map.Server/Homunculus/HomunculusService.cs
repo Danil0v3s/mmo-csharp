@@ -131,10 +131,15 @@ public sealed class HomunculusService : IHomunculusService
     {
         if (!_alive.TryGetValue(master.Id, out var live)) return 0;
         // rAthena hom_evolution: requires intimacy ≥ loyal (910) AND a
-        // valid EvolutionClass target. Baked target table replaces the
-        // catalog row lookup until the YAML loader exposes it.
+        // valid EvolutionClass target. DBR-0: consult the catalog row's
+        // EvolutionClass column (e.g. "Lif" → "Lif_H") and resolve back
+        // to the numeric target via ClassIdByAegis.
         if (live.Intimacy < 910) return 0;
-        if (!EvolutionTargets.TryGetValue(live.ClassId, out var target)) return 0;
+        var aegis = AegisByClassId(live.ClassId);
+        if (aegis is null || !_catalog.TryGetValue(aegis, out var row)) return 0;
+        if (string.IsNullOrEmpty(row.EvolutionClass)) return 0;
+        var target = ClassIdByAegis(row.EvolutionClass);
+        if (target == 0) return 0;
         live.ClassId = target;
         live.Evolved = true;
         live.Hp = GetMaxHp(live);
@@ -142,6 +147,19 @@ public sealed class HomunculusService : IHomunculusService
         _logger.LogInformation("hom_evolution: master={Master} promoted to class={Target}", master.Name, target);
         return 1;
     }
+
+    /// <summary>Aegis → numeric class id (inverse of <see cref="AegisByClassId"/>).</summary>
+    private static int ClassIdByAegis(string aegis) => aegis switch
+    {
+        "Lif"        => 6001, "Lif_H"        => 6005,
+        "Amistr"     => 6002, "Amistr_H"     => 6006,
+        "Filir"      => 6003, "Filir_H"      => 6007,
+        "Vanilmirth" => 6004, "Vanilmirth_H" => 6008,
+        "Eira"       => 6048, "Bayeri"       => 6049,
+        "Sera"       => 6050, "Dieter"       => 6051,
+        "Eleanor"    => 6052,
+        _            => 0,
+    };
 
     public int Mutate(PlayerEntity master, int newClass)
     {
@@ -255,49 +273,53 @@ public sealed class HomunculusService : IHomunculusService
 
     public int SkillTreeGetMax(int classId, ushort skillId)
     {
-        // AT-F: DB-first lookup. Resolve Aegis from the numeric class id
-        // (via the catalog), then read the typed child table; fall back
-        // to the baked numeric HomunSkillTree if the DB is empty.
+        // DBR-0: pure DB lookup against homunculus_skill_tree_db (74
+        // rows seeded from db/re/homunculus_db.yml SkillTree:[]). The
+        // prior AT-F baked HomunSkillTree was a fallback; replaced now
+        // that DatabaseSeeder + manual seed both populate the table.
         var aegis = AegisByClassId(classId);
-        if (aegis is not null && _skillTreeFromDb.TryGetValue((aegis, skillId), out var db))
-            return db.MaxLevel;
-        return HomunSkillTree.TryGetValue(((uint)classId, skillId), out var baked) ? baked.MaxLevel : 0;
+        if (aegis is null) return 0;
+        return _skillTreeFromDb.TryGetValue((aegis, skillId), out var db) ? db.MaxLevel : 0;
     }
 
-    /// <summary>Reverse lookup numeric class id → Aegis name for catalog rows.</summary>
-    private string? AegisByClassId(int classId)
+    /// <summary>
+    /// Reverse lookup numeric class id → Aegis name. Both maps match the
+    /// rAthena yml "Class:" field directly (Lif, not HOMUNCULUS_LIF) so
+    /// the lookup hits the catalog/skill-tree rows seeded from yml.
+    /// </summary>
+    private string? AegisByClassId(int classId) => classId switch
     {
-        // Walk the catalog (~14 entries); cheap.
-        foreach (var (a, _) in _catalog)
-            if (ResolveClassIdByAegis(a) == (uint)classId) return a;
-        // Baked fallback for class ids not in the SQL catalog yet.
-        return classId switch
-        {
-            6001 => "HOMUNCULUS_LIF", 6005 => "HOMUNCULUS_LIF_H",
-            6002 => "HOMUNCULUS_AMISTR", 6006 => "HOMUNCULUS_AMISTR_H",
-            6003 => "HOMUNCULUS_FILIR", 6007 => "HOMUNCULUS_FILIR_H",
-            6004 => "HOMUNCULUS_VANILMIRTH", 6008 => "HOMUNCULUS_VANILMIRTH_H",
-            6048 => "HOMUNCULUS_EIRA", 6049 => "HOMUNCULUS_BAYERI",
-            6050 => "HOMUNCULUS_SERA", 6051 => "HOMUNCULUS_DIETER",
-            6052 => "HOMUNCULUS_ELEANOR",
-            _ => null,
-        };
-    }
+        6001 => "Lif", 6005 => "Lif_H",
+        6002 => "Amistr", 6006 => "Amistr_H",
+        6003 => "Filir", 6007 => "Filir_H",
+        6004 => "Vanilmirth", 6008 => "Vanilmirth_H",
+        6048 => "Eira", 6049 => "Bayeri",
+        6050 => "Sera", 6051 => "Dieter",
+        6052 => "Eleanor",
+        _ => null,
+    };
 
     public ushort SkillGetMinLevel(ushort skillId)
     {
-        // Per rAthena db/re/homunculus_db.yml RequiredLevel column.
-        // Fall back to 1 if the skill isn't in the baked tree.
-        foreach (var kv in HomunSkillTree)
-            if (kv.Key.skill == skillId) return kv.Value.RequiredLevel;
-        return 1;
+        // DBR-0: scan the DB rows for the first matching skill; the
+        // homunculus_skill_tree_db.required_level column gives the
+        // rAthena-yml-authoritative answer per (class, skill). When the
+        // same skill belongs to multiple classes the min across classes
+        // is the canonical "earliest learnable" level.
+        ushort min = 0;
+        foreach (var ((_, skill), entry) in _skillTreeFromDb)
+        {
+            if (skill != skillId) continue;
+            if (min == 0 || entry.RequiredLevel < min) min = entry.RequiredLevel;
+        }
+        return min == 0 ? (ushort)1 : min;
     }
 
     public void SkillUp(PlayerEntity master, ushort skillId)
     {
         if (!_alive.TryGetValue(master.Id, out var live)) return;
         if (live.SkillPoints <= 0) return;
-        // Honor the baked max from the skill tree.
+        // Honor the per-class cap from the DB-loaded skill tree.
         var cap = SkillTreeGetMax(live.ClassId, skillId);
         if (cap == 0) return;
         var cur = live.Skills.GetValueOrDefault(skillId);
@@ -307,73 +329,30 @@ public sealed class HomunculusService : IHomunculusService
     }
 
     /// <summary>
-    /// rAthena hom_calc_skilltree — walk the baked tree, mark every
-    /// skill the homunculus is *eligible* to learn (level + intimacy
-    /// + prereqs satisfied) so the client gets the right unlock list.
-    /// We approximate by storing 0-level entries for unmet skills.
+    /// rAthena hom_calc_skilltree — walk the per-class DB rows, mark
+    /// every skill the homunculus is *eligible* to learn (level +
+    /// intimacy + evolution + prereqs satisfied) so the client gets the
+    /// right unlock list. We approximate by storing 0-level entries
+    /// for unmet skills.
     /// </summary>
     public void CalcSkillTree(PlayerEntity master)
     {
         if (!_alive.TryGetValue(master.Id, out var live)) return;
-        foreach (var kv in HomunSkillTree)
+        var aegis = AegisByClassId(live.ClassId);
+        if (aegis is null) return;
+        foreach (var ((cls, skill), entry) in _skillTreeFromDb)
         {
-            var (cls, skill) = kv.Key;
-            if (cls != (uint)live.ClassId) continue;
+            if (cls != aegis) continue;
             if (live.Skills.ContainsKey(skill)) continue;
-            if (live.Level < kv.Value.RequiredLevel) continue;
-            if (live.Intimacy < kv.Value.RequiredIntimacy) continue;
-            if (kv.Value.RequireEvolution && !live.Evolved) continue;
+            if (live.Level < entry.RequiredLevel) continue;
+            if (live.Intimacy < entry.RequiredIntimacy) continue;
+            if (entry.RequireEvolution && !live.Evolved) continue;
             // Eligible but unlearned — list with level 0.
             live.Skills[skill] = 0;
         }
     }
 
     public void CalcSkillTreeSub(PlayerEntity master) => CalcSkillTree(master);
-
-    /// <summary>
-    /// Baked homunculus_db.yml SkillTree rows (subset covering all 14
-    /// stock classes — Lif/Filir/Amistr/Vanilmirth + S evolutions +
-    /// homun-S Eira/Bayeri/Sera/Dieter/Eleanor). Replace with a real
-    /// loader when conf-to-JSON ports homunculus_db.yml.
-    /// </summary>
-    private static readonly Dictionary<(uint cls, ushort skill), (ushort MaxLevel, ushort RequiredLevel, ushort RequiredIntimacy, bool RequireEvolution)> HomunSkillTree = new()
-    {
-        // Lif (6001) + Lif_H (6005) — HLIF_HEAL 5, HLIF_AVOID 5, HLIF_BRAIN 5, HLIF_CHANGE 1
-        { (6001, 8001), (5, 1, 0, false) }, { (6001, 8002), (5, 1, 200, false) },
-        { (6001, 8003), (5, 1, 400, false) }, { (6001, 8004), (1, 1, 910, true) },
-        { (6005, 8001), (5, 1, 0, false) }, { (6005, 8002), (5, 1, 200, false) },
-        { (6005, 8003), (5, 1, 400, false) }, { (6005, 8004), (1, 1, 910, true) },
-        // Amistr (6002) + Amistr_H (6006) — HAMI_CASTLE 5, HAMI_DEFENCE 5, HAMI_SKIN 5, HAMI_BLOODLUST 1
-        { (6002, 8005), (5, 1, 0, false) }, { (6002, 8006), (5, 1, 200, false) },
-        { (6002, 8007), (5, 1, 400, false) }, { (6002, 8008), (1, 1, 910, true) },
-        { (6006, 8005), (5, 1, 0, false) }, { (6006, 8006), (5, 1, 200, false) },
-        { (6006, 8007), (5, 1, 400, false) }, { (6006, 8008), (1, 1, 910, true) },
-        // Filir (6003) + Filir_H (6007) — HFLI_MOON 5, HFLI_FLEET 5, HFLI_SPEED 5, HFLI_SBR44 1
-        { (6003, 8009), (5, 1, 0, false) }, { (6003, 8010), (5, 1, 200, false) },
-        { (6003, 8011), (5, 1, 400, false) }, { (6003, 8012), (1, 1, 910, true) },
-        { (6007, 8009), (5, 1, 0, false) }, { (6007, 8010), (5, 1, 200, false) },
-        { (6007, 8011), (5, 1, 400, false) }, { (6007, 8012), (1, 1, 910, true) },
-        // Vanilmirth (6004) + Vanilmirth_H (6008) — HVAN_CAPRICE 5, HVAN_CHAOTIC 5, HVAN_INSTRUCT 5, HVAN_EXPLOSION 1
-        { (6004, 8013), (5, 1, 0, false) }, { (6004, 8014), (5, 1, 200, false) },
-        { (6004, 8015), (5, 1, 400, false) }, { (6004, 8016), (1, 1, 910, true) },
-        { (6008, 8013), (5, 1, 0, false) }, { (6008, 8014), (5, 1, 200, false) },
-        { (6008, 8015), (5, 1, 400, false) }, { (6008, 8016), (1, 1, 910, true) },
-        // Homun-S classes (6048-6052) — top-level rAthena entries
-        { (6048, 8042), (5, 99, 100, false) }, // Eira — MH_LIGHT_OF_REGENE
-        { (6049, 8051), (5, 99, 100, false) }, // Bayeri — MH_STAHL_HORN
-        { (6050, 8059), (5, 99, 100, false) }, // Sera — MH_NEEDLE_OF_PARALYZE
-        { (6051, 8068), (5, 99, 100, false) }, // Dieter — MH_LAVA_SLIDE
-        { (6052, 8074), (5, 99, 100, false) }, // Eleanor — MH_SONIC_CRAW
-    };
-
-    /// <summary>
-    /// Baked evolution targets (rAthena <c>EvolutionClass</c>).
-    /// Lif → Lif_H, Amistr → Amistr_H, etc.
-    /// </summary>
-    private static readonly Dictionary<int, int> EvolutionTargets = new()
-    {
-        { 6001, 6005 }, { 6002, 6006 }, { 6003, 6007 }, { 6004, 6008 },
-    };
 
     public void AddSpiritBall(PlayerEntity master, int max)
     {
@@ -445,35 +424,6 @@ public sealed class HomunculusService : IHomunculusService
         }
     }
 
-    /// <summary>
-    /// AT-F: per-skill lookup with DB → baked fallback. Used by
-    /// SkillTreeGetMax / CalcSkillTree / SkillUp.
-    /// </summary>
-    private (ushort MaxLevel, ushort RequiredLevel, ushort RequiredIntimacy, bool RequireEvolution) GetSkillEntry(string classAegis, ushort skillId)
-    {
-        if (_skillTreeFromDb.TryGetValue((classAegis, skillId), out var db)) return db;
-        // Baked table is keyed by numeric class id; map via the catalog.
-        if (!_catalog.TryGetValue(classAegis, out var _)) return default;
-        var classId = ResolveClassIdByAegis(classAegis);
-        return HomunSkillTree.TryGetValue((classId, skillId), out var baked) ? baked : default;
-    }
-
-    /// <summary>
-    /// Hardcoded Aegis → numeric class id map for the baked fallback
-    /// table. Tiny set (14 stock classes); the SQL Catalog gives the
-    /// real mapping but Aegis names aren't stored numerically there.
-    /// </summary>
-    private static uint ResolveClassIdByAegis(string aegis) => aegis switch
-    {
-        "HOMUNCULUS_LIF" => 6001u, "HOMUNCULUS_LIF_H" => 6005u,
-        "HOMUNCULUS_AMISTR" => 6002u, "HOMUNCULUS_AMISTR_H" => 6006u,
-        "HOMUNCULUS_FILIR" => 6003u, "HOMUNCULUS_FILIR_H" => 6007u,
-        "HOMUNCULUS_VANILMIRTH" => 6004u, "HOMUNCULUS_VANILMIRTH_H" => 6008u,
-        "HOMUNCULUS_EIRA" => 6048u, "HOMUNCULUS_BAYERI" => 6049u,
-        "HOMUNCULUS_SERA" => 6050u, "HOMUNCULUS_DIETER" => 6051u,
-        "HOMUNCULUS_ELEANOR" => 6052u,
-        _ => 0u,
-    };
 
     public void InitTimers(PlayerEntity master)
     {

@@ -284,6 +284,8 @@ internal sealed class BattlegroundCatalogDbRepository(GameDbContext ctx) : IBatt
         => await ctx.BattlegroundJobRestrictionDb.AsNoTracking().Where(r => r.BgId == bgId).ToListAsync(ct);
     public async Task<IReadOnlyList<BattlegroundLocationDbEntity>> GetLocationsAsync(int bgId, CancellationToken ct = default)
         => await ctx.BattlegroundLocationDb.AsNoTracking().Where(l => l.BgId == bgId).ToListAsync(ct);
+    public async Task<IReadOnlyList<BattlegroundLocationDbEntity>> GetAllLocationsAsync(CancellationToken ct = default)
+        => await ctx.BattlegroundLocationDb.AsNoTracking().ToListAsync(ct);
 }
 
 internal sealed class ElementalCatalogDbRepository(GameDbContext ctx) : IElementalCatalogDbRepository

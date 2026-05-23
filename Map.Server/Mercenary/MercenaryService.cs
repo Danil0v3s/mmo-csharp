@@ -169,56 +169,15 @@ public sealed class MercenaryService : IMercenaryService
 
     public ushort CheckSkill(PlayerEntity master, ushort skillId)
     {
-        // rAthena mercenary_checkskill — true if the master's merc
-        // class grants <skillId>. Hardcoded per-class skill table baked
-        // from rAthena db/re/mercenary_db.yml (top entries). Returning 0
-        // = skill not granted. Replaces the prior "loader pending" stub.
+        // rAthena mercenary_checkskill — returns the max level the
+        // master's merc class is granted for <skillId>, or 0 when the
+        // class doesn't grant the skill. DBR-0: now sourced solely from
+        // mercenary_skill_db (44 rows seeded from db/re/mercenary_db.yml
+        // Skills:[] arrays); the prior baked MercSkillTable was a temp
+        // safety net until SeedGen landed. DatabaseSeeder + import
+        // pipeline now both populate this table.
         if (!_alive.TryGetValue(master.Id, out var live)) return 0;
-        return GetMercSkillLevel((uint)live.ClassId, skillId);
-    }
-
-    /// <summary>
-    /// rAthena db/re/mercenary_db.yml skill rows baked in.
-    /// Keyed by (merc class id, skill id) → max level. Mirrors the
-    /// rAthena loader output one-to-one for the 21 stock classes
-    /// (Archer 6017-6022 = Arch family; Spear 6023-6028 = Lance family;
-    /// Sword 6029-6034 = Knight family).
-    /// </summary>
-    private static readonly Dictionary<(uint cls, ushort skill), ushort> MercSkillTable = new()
-    {
-        // Archer (6017-6022) — MER_TENDER 5, MA_DOUBLE 10, MA_REMOVETRAP 1, MER_MOONLIT 3
-        { (6017, 8208), 5 }, { (6017, 2284), 10 }, { (6017, 2308), 1 }, { (6017, 8217), 3 },
-        { (6018, 8208), 5 }, { (6018, 2284), 10 }, { (6018, 2308), 1 }, { (6018, 8217), 3 },
-        { (6019, 8208), 5 }, { (6019, 2284), 10 }, { (6019, 2308), 1 }, { (6019, 8217), 3 },
-        { (6020, 8208), 5 }, { (6020, 2284), 10 }, { (6020, 2308), 1 }, { (6020, 8217), 3 },
-        { (6021, 8208), 5 }, { (6021, 2284), 10 }, { (6021, 2308), 1 }, { (6021, 8217), 3 },
-        { (6022, 8208), 5 }, { (6022, 2284), 10 }, { (6022, 2308), 1 }, { (6022, 8217), 3 },
-        // Sword (6029-6034) — MER_QUICKEN 10, MS_PARRYING 4, MER_AUTOBERSERK 1, MS_BERSERK 1
-        { (6029, 8211), 10 }, { (6029, 2273), 4 }, { (6029, 8210), 1 }, { (6029, 2274), 1 },
-        { (6030, 8211), 10 }, { (6030, 2273), 4 }, { (6030, 8210), 1 }, { (6030, 2274), 1 },
-        { (6031, 8211), 10 }, { (6031, 2273), 4 }, { (6031, 8210), 1 }, { (6031, 2274), 1 },
-        { (6032, 8211), 10 }, { (6032, 2273), 4 }, { (6032, 8210), 1 }, { (6032, 2274), 1 },
-        { (6033, 8211), 10 }, { (6033, 2273), 4 }, { (6033, 8210), 1 }, { (6033, 2274), 1 },
-        { (6034, 8211), 10 }, { (6034, 2273), 4 }, { (6034, 8210), 1 }, { (6034, 2274), 1 },
-        // Spear (6023-6028) — MER_CRASH 5, MS_MAGNUM 5, MS_BASH 10, MS_PIERCE 10
-        { (6023, 8212), 5 }, { (6023, 2276), 5 }, { (6023, 2275), 10 }, { (6023, 2280), 10 },
-        { (6024, 8212), 5 }, { (6024, 2276), 5 }, { (6024, 2275), 10 }, { (6024, 2280), 10 },
-        { (6025, 8212), 5 }, { (6025, 2276), 5 }, { (6025, 2275), 10 }, { (6025, 2280), 10 },
-        { (6026, 8212), 5 }, { (6026, 2276), 5 }, { (6026, 2275), 10 }, { (6026, 2280), 10 },
-        { (6027, 8212), 5 }, { (6027, 2276), 5 }, { (6027, 2275), 10 }, { (6027, 2280), 10 },
-        { (6028, 8212), 5 }, { (6028, 2276), 5 }, { (6028, 2275), 10 }, { (6028, 2280), 10 },
-    };
-
-    /// <summary>
-    /// AT-F: lookup-order is DB → baked seed. The baked
-    /// <see cref="MercSkillTable"/> stays as a safety net for fresh
-    /// installs (mercenary_skill_db empty) so the runtime never falls
-    /// back to "skill not granted" when rAthena reference data exists.
-    /// </summary>
-    private ushort GetMercSkillLevel(uint cls, ushort skill)
-    {
-        if (_skillsFromDb.TryGetValue((cls, skill), out var fromDb)) return fromDb;
-        return MercSkillTable.TryGetValue((cls, skill), out var baked) ? baked : (ushort)0;
+        return _skillsFromDb.TryGetValue(((uint)live.ClassId, skillId), out var lvl) ? lvl : (ushort)0;
     }
 
     public void ContractInit(PlayerEntity master)
