@@ -56,10 +56,13 @@ public sealed class PlayerLifecycleHelpers : IPlayerLifecycleHelpers
 public sealed class PlayerStatHelpers : IPlayerStatHelpers
 {
     private readonly ISessionManagerAccessor _sessions;
+    private readonly IJobStatsCacheService? _jobStats;
     private readonly ILogger<PlayerStatHelpers> _logger;
-    public PlayerStatHelpers(ISessionManagerAccessor sessions, ILogger<PlayerStatHelpers> logger)
+
+    public PlayerStatHelpers(ISessionManagerAccessor sessions, ILogger<PlayerStatHelpers> logger, IJobStatsCacheService? jobStats = null)
     {
         _sessions = sessions;
+        _jobStats = jobStats;
         _logger = logger;
     }
 
@@ -155,13 +158,21 @@ public sealed class PlayerStatHelpers : IPlayerStatHelpers
     public int MaxBaseLevel(PlayerEntity pc)
     {
         // rAthena pc_maxbaselv looks up maxbase[class] in job_stats.yml.
-        // Renewal defaults:
-        //   Novice / 1st / 2nd / trans-2nd → 99
-        //   3rd jobs → 175
-        //   4th jobs → 250 (cap)
+        // DBR-1d: when IJobStatsCacheService is wired, prefer the seeded
+        // job_max_level_db row; fall back to the legacy class-id bucket
+        // ranges (3rd → 175, 4th → 250, else 99) when the row is missing.
         var session = _sessions.GetByEntityId(pc.Id);
         if (session?.CharacterData == null) return 99;
         var classId = (int)session.CharacterData.ClassId;
+        if (_jobStats != null)
+        {
+            var aegis = JobAegisMapper.AegisByJobId(classId);
+            if (aegis != null)
+            {
+                var capped = _jobStats.GetMaxBaseLevel(aegis);
+                if (capped > 0) return capped;
+            }
+        }
         if (classId >= 4077) return 250;
         if (classId >= 4030) return 175;
         return Math.Min(99, ExpTable.MaxBaseLevel);
@@ -169,15 +180,21 @@ public sealed class PlayerStatHelpers : IPlayerStatHelpers
 
     public int MaxJobLevel(PlayerEntity pc)
     {
-        // Renewal defaults:
-        //   Novice → 10
-        //   1st class → 50
-        //   2nd / trans-2nd → 70
-        //   3rd job → 60
-        //   4th job → 50
+        // Renewal defaults (when no DB row is present):
+        //   Novice → 10, 1st → 50, 2nd / trans-2nd → 70, 3rd → 60, 4th → 50.
+        // DBR-1d: prefer the job_max_level_db row when seeded.
         var session = _sessions.GetByEntityId(pc.Id);
         if (session?.CharacterData == null) return 50;
         var classId = (int)session.CharacterData.ClassId;
+        if (_jobStats != null)
+        {
+            var aegis = JobAegisMapper.AegisByJobId(classId);
+            if (aegis != null)
+            {
+                var capped = _jobStats.GetMaxJobLevel(aegis);
+                if (capped > 0) return capped;
+            }
+        }
         if (classId == 0) return 10;                  // Novice
         if (classId >= 4077) return 50;               // 4th
         if (classId >= 4030 && classId <= 4076) return 60; // 3rd

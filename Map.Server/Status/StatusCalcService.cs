@@ -22,9 +22,17 @@ public sealed class StatusCalcService : IStatusCalcService
     /// </summary>
     private readonly IJobAspdCacheService? _jobAspd;
 
-    public StatusCalcService(IJobAspdCacheService? jobAspd = null)
+    /// <summary>
+    /// DBR-1d: optional job-stats catalog (HP/SP/MaxLevel/bonus stats).
+    /// When null, MaxHp/MaxSp fall back to the captured Novice formula
+    /// (preserving the old behaviour for tests that don't wire DI).
+    /// </summary>
+    private readonly IJobStatsCacheService? _jobStats;
+
+    public StatusCalcService(IJobAspdCacheService? jobAspd = null, IJobStatsCacheService? jobStats = null)
     {
         _jobAspd = jobAspd;
+        _jobStats = jobStats;
     }
 
     public void CalcPc(PlayerEntity player, PcBaseInputs inputs)
@@ -71,13 +79,27 @@ public sealed class StatusCalcService : IStatusCalcService
 
         CalcMisc(s, inputs.BaseLevel, isPc: true);
 
-        // MaxHp / MaxSp — renewal job_db formula. Until job_db lands we
-        // approximate with the Novice baseline scaled by Vit/Int + level.
-        // status.cpp status_calc_maxhpsp_pc uses a job multiplier table; we
-        // keep the Lv1 capture-verified output (40/11) intact at Lv1
-        // and scale linearly per level until job_db wires in.
-        var maxHp = NoviceMaxHp(inputs.BaseLevel, inputs.Vit);
-        var maxSp = NoviceMaxSp(inputs.BaseLevel, inputs.Int);
+        // MaxHp / MaxSp — DBR-1d: when IJobStatsCacheService is wired,
+        // read the per-job per-level base from job_base_points_db (the
+        // rAthena HP_SP_TABLES path) and scale by Vit/Int; otherwise
+        // fall back to the captured Novice formula so tests stay green.
+        int maxHp, maxSp;
+        var jobAegis = JobAegisMapper.AegisByJobId(inputs.JobId);
+        if (_jobStats != null && jobAegis != null)
+        {
+            // rAthena status.cpp:status_calc_maxhpsp_pc:
+            //   hp = base * (100 + vit) / 100
+            //   sp = base * (100 + int) / 100
+            var baseHp = _jobStats.GetBaseHp(jobAegis, inputs.BaseLevel);
+            var baseSp = _jobStats.GetBaseSp(jobAegis, inputs.BaseLevel);
+            maxHp = baseHp > 0 ? baseHp * (100 + inputs.Vit) / 100 : NoviceMaxHp(inputs.BaseLevel, inputs.Vit);
+            maxSp = baseSp > 0 ? baseSp * (100 + inputs.Int) / 100 : NoviceMaxSp(inputs.BaseLevel, inputs.Int);
+        }
+        else
+        {
+            maxHp = NoviceMaxHp(inputs.BaseLevel, inputs.Vit);
+            maxSp = NoviceMaxSp(inputs.BaseLevel, inputs.Int);
+        }
         s.MaxHp = maxHp;
         s.MaxSp = maxSp;
         if (s.Hp <= 0 || s.Hp > maxHp) s.Hp = maxHp;

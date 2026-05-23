@@ -221,6 +221,13 @@ builder.Services.AddSingleton<Map.Server.Status.ILevelPenaltyService, Map.Server
 // new StatusCalcService() directly keep the 590ms Novice fallback.
 builder.Services.AddSingleton<Map.Server.Status.IJobAspdCacheService, Map.Server.Status.JobAspdCacheService>();
 
+// DBR-1d: unified job-stats cache over the 4 DB-8d catalogs (job_info,
+// job_base_points, job_bonus_stats, job_max_level). StatusCalcService
+// reads HP/SP base from this in CalcPc; PlayerLifecycleHelpers reads
+// MaxBaseLevel/MaxJobLevel from it. Fallback when null preserves the
+// captured Novice baseline so unit tests stay green without DI.
+builder.Services.AddSingleton<Map.Server.Status.IJobStatsCacheService, Map.Server.Status.JobStatsCacheService>();
+
 // Floor-item drop / pickup (see .agents/migrations/map/adjacent/items.md).
 // MS3 first slice: the entity-on-the-floor lifecycle (drop, pickup, TTL
 // despawn). Inventory persistence + item_db catalog land later.
