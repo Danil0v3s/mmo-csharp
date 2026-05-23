@@ -16,6 +16,12 @@ public sealed class NpcRegistry : INpcRegistry
     private readonly List<WarpRegistration> _warps = new();
     private readonly List<SpawnRegistration> _spawns = new();
     private readonly List<MapFlagRegistration> _mapFlags = new();
+    // Items indexed by both numeric id (item_db.id) and aegis name
+    // (item_db.name_aegis) — combos cite members by aegis, packet
+    // handlers cite by id. Two indexes, same record.
+    private readonly Dictionary<int, ItemRegistration> _itemsById = new();
+    private readonly Dictionary<string, ItemRegistration> _itemsByAegis = new(StringComparer.Ordinal);
+    private readonly List<ComboRegistration> _combos = new();
 
     public int NpcCount => _npcsByName.Count;
     public int FloatingCount => _floatingByName.Count;
@@ -23,6 +29,8 @@ public sealed class NpcRegistry : INpcRegistry
     public int WarpCount => _warps.Count;
     public int SpawnCount => _spawns.Count;
     public int MapFlagCount => _mapFlags.Count;
+    public int ItemCount => _itemsById.Count;
+    public int ComboCount => _combos.Count;
 
     public void AddNpc(NpcRegistration registration)
     {
@@ -70,11 +78,37 @@ public sealed class NpcRegistry : INpcRegistry
     public void AddSpawn(SpawnRegistration registration) => _spawns.Add(registration);
     public void AddMapFlag(MapFlagRegistration registration) => _mapFlags.Add(registration);
 
+    public void AddItem(ItemRegistration registration)
+    {
+        if (_itemsById.ContainsKey(registration.Id))
+        {
+            throw new ScriptRegistrationException(
+                $"Duplicate registerItem() for id {registration.Id} ('{registration.NameAegis}'). " +
+                "Each item id may only be registered once across the whole scripts bundle.");
+        }
+        if (_itemsByAegis.ContainsKey(registration.NameAegis))
+        {
+            throw new ScriptRegistrationException(
+                $"Duplicate registerItem() for aegis name '{registration.NameAegis}' (id {registration.Id}). " +
+                "Aegis names must be globally unique — combos resolve members by aegis name.");
+        }
+        _itemsById.Add(registration.Id, registration);
+        _itemsByAegis.Add(registration.NameAegis, registration);
+    }
+
+    public void AddCombo(ComboRegistration registration) => _combos.Add(registration);
+
     public NpcRegistration? GetNpcByName(string name) =>
         _npcsByName.GetValueOrDefault(name);
 
     public FloatingNpcRegistration? GetFloatingByName(string name) =>
         _floatingByName.GetValueOrDefault(name);
+
+    public ItemRegistration? GetItemById(int id) =>
+        _itemsById.GetValueOrDefault(id);
+
+    public ItemRegistration? GetItemByAegis(string aegisName) =>
+        _itemsByAegis.GetValueOrDefault(aegisName);
 
     public IReadOnlyCollection<NpcRegistration> AllNpcs() => _npcsByName.Values;
     public IReadOnlyCollection<FloatingNpcRegistration> AllFloatingNpcs() => _floatingByName.Values;
@@ -82,6 +116,8 @@ public sealed class NpcRegistry : INpcRegistry
     public IReadOnlyCollection<WarpRegistration> AllWarps() => _warps;
     public IReadOnlyCollection<SpawnRegistration> AllSpawns() => _spawns;
     public IReadOnlyCollection<MapFlagRegistration> AllMapFlags() => _mapFlags;
+    public IReadOnlyCollection<ItemRegistration> AllItems() => _itemsById.Values;
+    public IReadOnlyCollection<ComboRegistration> AllCombos() => _combos;
 
     public void Clear()
     {
@@ -92,6 +128,9 @@ public sealed class NpcRegistry : INpcRegistry
         _warps.Clear();
         _spawns.Clear();
         _mapFlags.Clear();
+        _itemsById.Clear();
+        _itemsByAegis.Clear();
+        _combos.Clear();
     }
 }
 

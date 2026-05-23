@@ -55,6 +55,17 @@ declare global {
 
     /** Declarative map flags. Mirrors rAthena's `npc/re/mapflag/*.txt`. */
     function registerMapFlag(...flags: MapFlagRegistration[]): void;
+
+    /** Item scripts — onUse for consumables, onEquip/onUnequip for gear.
+     *  Most entries are generated from rAthena's item_db by
+     *  Tools.ItemScriptConvert; hand-written items override generated ones
+     *  via the duplicate-id check in the registry. */
+    function registerItem(...items: ItemRegistration[]): void;
+
+    /** Combos — fire onActive when every listed aegis-named member item
+     *  is equipped simultaneously. Generated from rAthena's
+     *  item_combo_db + item_combo_member_db by Tools.ItemScriptConvert. */
+    function registerCombo(...combos: ComboRegistration[]): void;
 }
 
 // ===== Registration shapes =================================================
@@ -140,6 +151,108 @@ export interface MapFlagRegistration {
     flag: string;
     /** Optional value when the flag carries one (e.g. `"100"` for `restricted`). */
     value?: string;
+}
+
+export interface ItemRegistration {
+    /** Numeric item id (rAthena item_db.id). Globally unique across the bundle. */
+    id: number;
+    /** Aegis name — script-side identifier (e.g. "Red_Potion"). Globally unique;
+     *  combos cite this string in their `members` array. */
+    nameAegis: string;
+    /** Display name (rAthena item_db.name_english). Optional — for logging only. */
+    nameEnglish?: string;
+
+    /** Fires when a player uses the item via CZ_USE_ITEM (potions, scrolls,
+     *  boxes). Async — the closure may await player ops. */
+    onUse?: ItemUseHandler;
+    /** Fires on equip success. Sync — the closure typically calls
+     *  `ctx.bonus(...)` / `ctx.bonus2(...)` to populate the active
+     *  EquipBonusBundle. Equip recalc runs on the game loop and must not suspend. */
+    onEquip?: ItemEquipHandler;
+    /** Fires on unequip. Sync, same contract as onEquip. */
+    onUnequip?: ItemEquipHandler;
+}
+
+export interface ComboRegistration {
+    /** Original combo_id from rAthena item_combo_db. Preserved for traceability. */
+    comboId: number;
+    /** Aegis names of every item that must be simultaneously equipped to fire. */
+    members: string[];
+    /** Fires during equip recalc when every member is equipped. Sync. */
+    onActive?: ItemEquipHandler;
+}
+
+/** Async hook for item-use (potions, scrolls, boxes). */
+export type ItemUseHandler = (ctx: ItemUseContext) => Promise<void> | void;
+
+/** Sync hook for equip/unequip and combo activation. Must not return a Promise. */
+export type ItemEquipHandler = (ctx: ItemEquipContext) => void;
+
+// ===== Item runtime context ===============================================
+
+export interface ItemUseContext {
+    /** The acting player. Same surface as NpcContext.player. */
+    player: PlayerContext;
+    /** World ops (announce, spawn, etc.). Same surface as NpcContext.world. */
+    world: WorldOps;
+    /** The item triggering this hook (id, refine, slot, etc.). */
+    item: ItemInfo;
+
+    rand(max: number): number;
+    randRange(min: number, max: number): number;
+}
+
+export interface ItemEquipContext {
+    /** The acting player. Read-only during recalc; helpers like getrefine
+     *  delegate through `ctx.*` instead of mutating PlayerContext. */
+    player: PlayerContext;
+    /** The item triggering this hook. For combo onActive, this is the
+     *  first member item in the equipped set. */
+    item: ItemInfo;
+
+    // ===== Bonus mutation (writes to the active EquipBonusBundle) =====
+
+    /** rAthena `bonus bKey,val;` — flat numeric bonus. */
+    bonus(key: string, value: number): void;
+    /** rAthena `bonus2 bKey,idx,val;` — indexed bonus (race, ele, class…). */
+    bonus2(key: string, index: string | number, value: number): void;
+    /** rAthena `bonus3`. */
+    bonus3(key: string, a: string | number, b: string | number, value: number): void;
+    /** rAthena `bonus4`. */
+    bonus4(key: string, a: string | number, b: string | number, c: string | number, value: number): void;
+    /** rAthena `bonus5`. */
+    bonus5(key: string, a: string | number, b: string | number, c: string | number, d: string | number, value: number): void;
+
+    /** rAthena `autobonus "{ body }", rate, duration, [atkType];` */
+    autobonus(body: string, rate: number, durationMs: number, atkType?: string | number): void;
+    /** rAthena `autobonus2` — fires when hit. */
+    autobonus2(body: string, rate: number, durationMs: number, atkType?: string | number): void;
+    /** rAthena `autobonus3` — fires on a specific skill. */
+    autobonus3(body: string, rate: number, durationMs: number, skillName: string): void;
+
+    // ===== Equip queries =====
+
+    getrefine(): number;
+    getequiprefinerycnt(slot: string | number): number;
+    getequipid(slot: string | number): number;
+    getequipweaponlv(slot?: string | number): number;
+    getenchantgrade(slot?: string | number): number;
+
+    // ===== PC queries (subset useful in bonus context) =====
+
+    readparam(name: string | number): number;
+    /** rAthena getskilllv("AL_HEAL") — 0 until skill engine wires in. */
+    getskilllv(skillName: string): number;
+
+    rand(max: number): number;
+}
+
+export interface ItemInfo {
+    readonly id: number;
+    readonly nameAegis: string;
+    readonly refine: number;
+    readonly slot: number;
+    readonly amount: number;
 }
 
 export interface SpawnRegistration {

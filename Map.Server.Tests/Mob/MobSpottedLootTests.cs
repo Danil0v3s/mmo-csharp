@@ -137,14 +137,20 @@ public class MobSpottedLootTests
         public void AddWarp(WarpRegistration r) => _warps.Add(r);
         public void AddSpawn(SpawnRegistration r) { }
         public void AddMapFlag(MapFlagRegistration r) { }
+        public void AddItem(ItemRegistration r) { }
+        public void AddCombo(ComboRegistration r) { }
         public IReadOnlyCollection<NpcRegistration> AllNpcs() => Array.Empty<NpcRegistration>();
         public IReadOnlyCollection<FloatingNpcRegistration> AllFloatingNpcs()
             => Array.Empty<FloatingNpcRegistration>();
         public IReadOnlyCollection<ShopRegistration> AllShops() => Array.Empty<ShopRegistration>();
         public IReadOnlyCollection<SpawnRegistration> AllSpawns() => Array.Empty<SpawnRegistration>();
         public IReadOnlyCollection<MapFlagRegistration> AllMapFlags() => Array.Empty<MapFlagRegistration>();
+        public IReadOnlyCollection<ItemRegistration> AllItems() => Array.Empty<ItemRegistration>();
+        public IReadOnlyCollection<ComboRegistration> AllCombos() => Array.Empty<ComboRegistration>();
         public NpcRegistration? GetNpcByName(string n) => null;
         public FloatingNpcRegistration? GetFloatingByName(string n) => null;
+        public ItemRegistration? GetItemById(int id) => null;
+        public ItemRegistration? GetItemByAegis(string aegisName) => null;
         public void Clear() => _warps.Clear();
         public int NpcCount => 0;
         public int FloatingCount => 0;
@@ -152,6 +158,8 @@ public class MobSpottedLootTests
         public int WarpCount => _warps.Count;
         public int SpawnCount => 0;
         public int MapFlagCount => 0;
+        public int ItemCount => 0;
+        public int ComboCount => 0;
     }
 
     private sealed class RecordingMovement2 : Map.Server.Movement.IMovementService

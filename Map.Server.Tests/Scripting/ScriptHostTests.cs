@@ -301,6 +301,194 @@ public class ScriptHostTests
         Assert.NotNull(registry.GetNpcByName("Persistence Probe"));
         Assert.NotNull(registry.GetNpcByName("Kafra Test"));
         Assert.NotNull(registry.GetFloatingByName("EventManager"));
+
+        // CONV-1 acceptance: scripts/items/_dev_test + scripts/combos/_dev_test
+        // contribute two items and one combo. This is the floor the bulk
+        // converter (CONV-2) will sit on top of.
+        Assert.True(registry.ItemCount >= 2,
+            $"Expected at least 2 items from scripts/dist/main.js, got {registry.ItemCount}");
+        Assert.True(registry.ComboCount >= 1,
+            $"Expected at least 1 combo from scripts/dist/main.js, got {registry.ComboCount}");
+        Assert.NotNull(registry.GetItemByAegis("_DevTest_Potion"));
+        Assert.NotNull(registry.GetItemByAegis("_DevTest_Knife"));
+        Assert.NotNull(registry.GetItemById(999001));
+    }
+
+    // ===== registerItem / registerCombo (CONV-1) =====
+
+    [Fact]
+    public void RegisterItem_with_onUse_only_records_the_async_hook()
+    {
+        var (host, registry, dir) = Build(@"
+            ""use strict"";
+            (() => {
+                registerItem({
+                    id: 501,
+                    nameAegis: ""Red_Potion"",
+                    nameEnglish: ""Red Potion"",
+                    onUse: async (ctx) => { await ctx.player.itemHeal(50, 0); }
+                });
+            })();
+        ");
+        try
+        {
+            host.LoadEntryPoint();
+            Assert.Equal(1, registry.ItemCount);
+            var item = registry.GetItemById(501);
+            Assert.NotNull(item);
+            Assert.Equal("Red_Potion", item!.NameAegis);
+            Assert.Equal("Red Potion", item.NameEnglish);
+            Assert.NotNull(item.Hooks.OnUse);
+            Assert.Null(item.Hooks.OnEquip);
+            Assert.Null(item.Hooks.OnUnequip);
+            // Index agreement: by-aegis returns the same record as by-id.
+            Assert.Same(item, registry.GetItemByAegis("Red_Potion"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void RegisterItem_with_onEquip_and_onUnequip_records_sync_hooks()
+    {
+        var (host, registry, dir) = Build(@"
+            ""use strict"";
+            (() => {
+                registerItem({
+                    id: 1201,
+                    nameAegis: ""Knife"",
+                    onEquip: (ctx) => { ctx.bonus(""bAtk"", 10); },
+                    onUnequip: (ctx) => { /* no-op */ }
+                });
+            })();
+        ");
+        try
+        {
+            host.LoadEntryPoint();
+            var item = registry.GetItemById(1201);
+            Assert.NotNull(item);
+            Assert.Null(item!.Hooks.OnUse);
+            Assert.NotNull(item.Hooks.OnEquip);
+            Assert.NotNull(item.Hooks.OnUnequip);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void RegisterItem_duplicate_id_throws()
+    {
+        var (host, _, dir) = Build(@"
+            ""use strict"";
+            (() => {
+                registerItem({ id: 501, nameAegis: ""Red_Potion"" });
+                registerItem({ id: 501, nameAegis: ""Red_Potion_Override"" });
+            })();
+        ");
+        try
+        {
+            var ex = Assert.ThrowsAny<Exception>(() => host.LoadEntryPoint());
+            Assert.Contains("Duplicate registerItem() for id 501",
+                ex.Message + (ex.InnerException?.Message ?? ""));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void RegisterItem_duplicate_aegis_throws()
+    {
+        var (host, _, dir) = Build(@"
+            ""use strict"";
+            (() => {
+                registerItem({ id: 501, nameAegis: ""Red_Potion"" });
+                registerItem({ id: 502, nameAegis: ""Red_Potion"" });
+            })();
+        ");
+        try
+        {
+            var ex = Assert.ThrowsAny<Exception>(() => host.LoadEntryPoint());
+            Assert.Contains("Red_Potion", ex.Message + (ex.InnerException?.Message ?? ""));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void RegisterItem_varargs_registers_each()
+    {
+        var (host, registry, dir) = Build(@"
+            ""use strict"";
+            (() => {
+                registerItem(
+                    { id: 501, nameAegis: ""A"" },
+                    { id: 502, nameAegis: ""B"" },
+                    { id: 503, nameAegis: ""C"" });
+            })();
+        ");
+        try
+        {
+            host.LoadEntryPoint();
+            Assert.Equal(3, registry.ItemCount);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void RegisterCombo_with_members_and_onActive_records()
+    {
+        var (host, registry, dir) = Build(@"
+            ""use strict"";
+            (() => {
+                registerCombo({
+                    comboId: 27,
+                    members: [""Knife"", ""Boots""],
+                    onActive: (ctx) => { ctx.bonus(""bAtk"", 10); }
+                });
+            })();
+        ");
+        try
+        {
+            host.LoadEntryPoint();
+            Assert.Equal(1, registry.ComboCount);
+            var combo = registry.AllCombos().First();
+            Assert.Equal(27, combo.ComboId);
+            Assert.Equal(2, combo.Members.Count);
+            Assert.Equal("Knife", combo.Members[0]);
+            Assert.Equal("Boots", combo.Members[1]);
+            Assert.NotNull(combo.Hooks.OnActive);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void RegisterCombo_with_empty_members_throws()
+    {
+        var (host, _, dir) = Build(@"
+            ""use strict"";
+            (() => {
+                registerCombo({ comboId: 1, members: [] });
+            })();
+        ");
+        try
+        {
+            var ex = Assert.ThrowsAny<Exception>(() => host.LoadEntryPoint());
+            Assert.Contains("non-empty array", ex.Message + (ex.InnerException?.Message ?? ""));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void RegisterCombo_with_non_string_member_throws()
+    {
+        var (host, _, dir) = Build(@"
+            ""use strict"";
+            (() => {
+                registerCombo({ comboId: 1, members: [""ok"", 42] });
+            })();
+        ");
+        try
+        {
+            var ex = Assert.ThrowsAny<Exception>(() => host.LoadEntryPoint());
+            Assert.Contains("[1]", ex.Message + (ex.InnerException?.Message ?? ""));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
     }
 
     [Fact]

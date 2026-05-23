@@ -11,3 +11,5 @@ import "./shops";
 import "./warps";
 import "./spawns";
 import "./mapflags";
+import "./items";
+import "./combos";

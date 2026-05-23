@@ -38,6 +38,8 @@ public sealed class RegistrarBindings
             globalThis.registerWarp        = (...args) => __registrarBinder.registerWarp(...args);
             globalThis.registerSpawn       = (...args) => __registrarBinder.registerSpawn(...args);
             globalThis.registerMapFlag     = (...args) => __registrarBinder.registerMapFlag(...args);
+            globalThis.registerItem        = (...args) => __registrarBinder.registerItem(...args);
+            globalThis.registerCombo       = (...args) => __registrarBinder.registerCombo(...args);
         ");
     }
 
@@ -73,6 +75,16 @@ public sealed class RegistrarBindings
     public void registerMapFlag(params object[] args)
     {
         foreach (var arg in args) RegisterMapFlag(arg, _registry);
+    }
+
+    public void registerItem(params object[] args)
+    {
+        foreach (var arg in args) RegisterItem(arg, _registry);
+    }
+
+    public void registerCombo(params object[] args)
+    {
+        foreach (var arg in args) RegisterCombo(arg, _registry);
     }
     // ReSharper restore InconsistentNaming
 
@@ -235,6 +247,82 @@ public sealed class RegistrarBindings
             Flag = JsObjectReader.RequireString(obj, "flag", ctx),
             Value = JsObjectReader.OptionalString(obj, "value"),
         });
+    }
+
+    private static void RegisterItem(object raw, INpcRegistry registry)
+    {
+        var obj = JsObjectReader.RequireObject(raw, "registerItem");
+        var id = JsObjectReader.RequireInt(obj, "id", "registerItem");
+        var nameAegis = JsObjectReader.RequireString(obj, "nameAegis", $"registerItem(id={id})");
+        var ctx = $"registerItem(id={id}, '{nameAegis}')";
+
+        registry.AddItem(new ItemRegistration
+        {
+            Id = id,
+            NameAegis = nameAegis,
+            NameEnglish = JsObjectReader.OptionalString(obj, "nameEnglish"),
+            Hooks = new ItemHooks(
+                OnUse:     JsObjectReader.OptionalHandle(obj, "onUse",     ctx),
+                OnEquip:   JsObjectReader.OptionalHandle(obj, "onEquip",   ctx),
+                OnUnequip: JsObjectReader.OptionalHandle(obj, "onUnequip", ctx)),
+        });
+    }
+
+    private static void RegisterCombo(object raw, INpcRegistry registry)
+    {
+        var obj = JsObjectReader.RequireObject(raw, "registerCombo");
+        var comboId = JsObjectReader.RequireInt(obj, "comboId", "registerCombo");
+        var ctx = $"registerCombo(comboId={comboId})";
+
+        var members = ReadStringArray(obj, "members", ctx);
+        if (members.Count == 0)
+        {
+            throw new ScriptRegistrationException(
+                $"{ctx}: 'members' must be a non-empty array of aegis names. " +
+                "A combo with zero members can never trigger.");
+        }
+
+        registry.AddCombo(new ComboRegistration
+        {
+            ComboId = comboId,
+            Members = members,
+            Hooks = new ComboHooks(
+                OnActive: JsObjectReader.OptionalHandle(obj, "onActive", ctx)),
+        });
+    }
+
+    /// <summary>
+    /// Pull a JS string-array off a field. Used for combo members (an
+    /// array of aegis names). Rejects non-array inputs, non-string entries,
+    /// and reports the bad index for fast author debugging.
+    /// </summary>
+    private static IReadOnlyList<string> ReadStringArray(ScriptObject obj, string field, string ctx)
+    {
+        var arr = obj.GetProperty(field);
+        if (arr is not ScriptObject items)
+        {
+            throw new ScriptRegistrationException(
+                $"{ctx}: '{field}' must be an array of strings.");
+        }
+        var lenProp = items.GetProperty("length");
+        if (lenProp is not int and not double)
+        {
+            throw new ScriptRegistrationException(
+                $"{ctx}: '{field}' must be an array (no 'length' property found).");
+        }
+        var len = Convert.ToInt32(lenProp);
+        var result = new List<string>(len);
+        for (var i = 0; i < len; i++)
+        {
+            var entry = items.GetProperty(i);
+            if (entry is not string s)
+            {
+                throw new ScriptRegistrationException(
+                    $"{ctx}.{field}[{i}] must be a string; got {entry?.GetType().Name ?? "null"}.");
+            }
+            result.Add(s);
+        }
+        return result;
     }
 
     // ---- helpers ----

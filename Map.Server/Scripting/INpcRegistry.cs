@@ -20,6 +20,8 @@ public interface INpcRegistry
     int WarpCount { get; }
     int SpawnCount { get; }
     int MapFlagCount { get; }
+    int ItemCount { get; }
+    int ComboCount { get; }
 
     void AddNpc(NpcRegistration registration);
     void AddFloatingNpc(FloatingNpcRegistration registration);
@@ -27,9 +29,15 @@ public interface INpcRegistry
     void AddWarp(WarpRegistration registration);
     void AddSpawn(SpawnRegistration registration);
     void AddMapFlag(MapFlagRegistration registration);
+    void AddItem(ItemRegistration registration);
+    void AddCombo(ComboRegistration registration);
 
     NpcRegistration? GetNpcByName(string name);
     FloatingNpcRegistration? GetFloatingByName(string name);
+    /// <summary>Lookup by numeric item id (rAthena item_db.id).</summary>
+    ItemRegistration? GetItemById(int id);
+    /// <summary>Lookup by aegis name (rAthena item_db.name_aegis).</summary>
+    ItemRegistration? GetItemByAegis(string aegisName);
 
     IReadOnlyCollection<NpcRegistration> AllNpcs();
     IReadOnlyCollection<FloatingNpcRegistration> AllFloatingNpcs();
@@ -37,6 +45,8 @@ public interface INpcRegistry
     IReadOnlyCollection<WarpRegistration> AllWarps();
     IReadOnlyCollection<SpawnRegistration> AllSpawns();
     IReadOnlyCollection<MapFlagRegistration> AllMapFlags();
+    IReadOnlyCollection<ItemRegistration> AllItems();
+    IReadOnlyCollection<ComboRegistration> AllCombos();
 
     /// <summary>Drop everything. Used by hot-reload (Phase 2+).</summary>
     void Clear();
