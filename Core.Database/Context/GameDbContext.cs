@@ -172,7 +172,7 @@ public class GameDbContext : DbContext
     public DbSet<ItemRandomOptGroupEntity> ItemRandomOptGroupDb => Set<ItemRandomOptGroupEntity>();
     // DB-8a: AttrFixDb / LevelPenaltyDb moved to typed entities below.
     // DB-8d: JobStatsDb / JobExpDb / JobBasePointsDb moved to typed entities below.
-    public DbSet<StatusYmlEntity> StatusYmlDb => Set<StatusYmlEntity>();
+    // DB-8e: StatusYmlDb moved to typed entities below.
     // DB-8b: ItemCombosDb / ItemPackagesDb / ItemGroupDb moved to typed entities below.
     public DbSet<ItemEnchantEntity> ItemEnchantDb => Set<ItemEnchantEntity>();
     public DbSet<ItemReformEntity> ItemReformDb => Set<ItemReformEntity>();
@@ -220,6 +220,10 @@ public class GameDbContext : DbContext
     public DbSet<JobExpDbEntity> JobExpDb => Set<JobExpDbEntity>();
     public DbSet<JobMaxLevelDbEntity> JobMaxLevelDb => Set<JobMaxLevelDbEntity>();
     public DbSet<JobBasePointsDbEntity> JobBasePointsDb => Set<JobBasePointsDbEntity>();
+
+    // ---- DB-8e: status.yml re-normalized ----
+    public DbSet<StatusDbEntity> StatusDb => Set<StatusDbEntity>();
+    public DbSet<StatusDbFlagEntity> StatusDbFlag => Set<StatusDbFlagEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -96,6 +96,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJobInfoDbRepository, JobInfoDbRepository>();
         services.AddScoped<IJobExpDbRepository, JobExpDbRepository>();
         services.AddScoped<IJobBasePointsDbRepository, JobBasePointsDbRepository>();
+        // DB-8e: status.yml catalog.
+        services.AddScoped<IStatusDbRepository, StatusDbRepository>();
 
         return services;
     }

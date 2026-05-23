@@ -94,7 +94,7 @@ public class ItemRandomOptGroupEntity : PayloadIntKeyEntity { } // group_id
 // JobStatsEntity / JobExpEntity / JobBasePointsEntity removed in DB-8d —
 // see JobCatalogDbEntities.cs (JobInfoDbEntity + JobBonusStatsDbEntity +
 // JobExpDbEntity + JobMaxLevelDbEntity + JobBasePointsDbEntity).
-public class StatusYmlEntity : PayloadStringKeyEntity { } // status_name
+// StatusYmlEntity removed in DB-8e — see StatusYmlDbEntities.cs (StatusDbEntity + StatusDbFlagEntity).
 // ItemCombosEntity removed in DB-8b — see ItemComboDbEntity + ItemComboMemberDbEntity.
 // ItemPackagesEntity removed in DB-8b — see ItemPackageDbEntity + ItemPackageEntryDbEntity.
 // ItemGroupDbEntity removed in DB-8b — see ItemGroupCatalogDbEntity + ItemGroupCatalogEntryDbEntity.

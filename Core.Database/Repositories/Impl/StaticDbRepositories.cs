@@ -257,3 +257,17 @@ internal sealed class JobBasePointsDbRepository(GameDbContext ctx) : IJobBasePoi
     public async Task<IReadOnlyList<JobBasePointsDbEntity>> GetByJobAsync(string jobAegis, CancellationToken ct = default)
         => await ctx.JobBasePointsDb.AsNoTracking().Where(p => p.JobAegis == jobAegis).OrderBy(p => p.Level).ToListAsync(ct);
 }
+
+// DB-8e — status.yml repo
+
+internal sealed class StatusDbRepository(GameDbContext ctx) : IStatusDbRepository
+{
+    public async Task<IReadOnlyList<StatusDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.StatusDb.AsNoTracking().ToListAsync(ct);
+    public async Task<StatusDbEntity?> GetByNameAsync(string statusName, CancellationToken ct = default)
+        => await ctx.StatusDb.AsNoTracking().FirstOrDefaultAsync(s => s.StatusName == statusName, ct);
+    public async Task<IReadOnlyList<StatusDbFlagEntity>> GetAllFlagsAsync(string statusName, CancellationToken ct = default)
+        => await ctx.StatusDbFlag.AsNoTracking().Where(f => f.StatusName == statusName).ToListAsync(ct);
+    public async Task<IReadOnlyList<StatusDbFlagEntity>> GetFlagsByCategoryAsync(string statusName, string category, CancellationToken ct = default)
+        => await ctx.StatusDbFlag.AsNoTracking().Where(f => f.StatusName == statusName && f.Category == category).ToListAsync(ct);
+}

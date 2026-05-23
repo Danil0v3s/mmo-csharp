@@ -675,3 +675,33 @@ public class JobBasePointsDbEntityConfiguration : IEntityTypeConfiguration<JobBa
         b.Property(e => e.Ap).HasColumnName("ap");
     }
 }
+
+// ============================================================================
+// DB-8e: status.yml re-normalized
+// ============================================================================
+
+public class StatusDbEntityConfiguration : IEntityTypeConfiguration<StatusDbEntity>
+{
+    public void Configure(EntityTypeBuilder<StatusDbEntity> b)
+    {
+        b.ToTable("status_db");
+        b.HasKey(e => e.StatusName);
+        b.Property(e => e.StatusName).HasColumnName("status_name").HasMaxLength(64).IsRequired();
+        b.Property(e => e.DurationLookup).HasColumnName("duration_lookup").HasMaxLength(64);
+        b.Property(e => e.Opt1).HasColumnName("opt1").HasMaxLength(32);
+        b.Property(e => e.Opt2).HasColumnName("opt2").HasMaxLength(32);
+        b.Property(e => e.Opt3).HasColumnName("opt3").HasMaxLength(32);
+    }
+}
+
+public class StatusDbFlagEntityConfiguration : IEntityTypeConfiguration<StatusDbFlagEntity>
+{
+    public void Configure(EntityTypeBuilder<StatusDbFlagEntity> b)
+    {
+        b.ToTable("status_db_flag");
+        b.HasKey(e => new { e.StatusName, e.Category, e.FlagName });
+        b.Property(e => e.StatusName).HasColumnName("status_name").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Category).HasColumnName("category").HasMaxLength(16).IsRequired();
+        b.Property(e => e.FlagName).HasColumnName("flag_name").HasMaxLength(64).IsRequired();
+    }
+}

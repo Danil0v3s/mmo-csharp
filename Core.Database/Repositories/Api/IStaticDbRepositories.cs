@@ -222,3 +222,18 @@ public interface IJobBasePointsDbRepository
 {
     Task<IReadOnlyList<JobBasePointsDbEntity>> GetByJobAsync(string jobAegis, CancellationToken ct = default);
 }
+
+// ============================================================================
+// DB-8e: status.yml repo
+// ============================================================================
+
+/// <summary>DB-8e: per-SC catalog + nested flag maps (rAthena status.yml, ~440 SCs).</summary>
+public interface IStatusDbRepository
+{
+    Task<IReadOnlyList<StatusDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<StatusDbEntity?> GetByNameAsync(string statusName, CancellationToken ct = default);
+    /// <summary>All flag rows for an SC, regardless of category.</summary>
+    Task<IReadOnlyList<StatusDbFlagEntity>> GetAllFlagsAsync(string statusName, CancellationToken ct = default);
+    /// <summary>Flag rows for an SC in one category (State / CalcFlag / Flag / Fail / EndOnStart / EndOnEnd / EndOnRestart).</summary>
+    Task<IReadOnlyList<StatusDbFlagEntity>> GetFlagsByCategoryAsync(string statusName, string category, CancellationToken ct = default);
+}

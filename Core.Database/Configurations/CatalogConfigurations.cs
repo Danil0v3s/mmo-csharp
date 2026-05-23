@@ -170,7 +170,7 @@ public class ItemRandomOptGroupEntityConfiguration : IEntityTypeConfiguration<It
 // in DB-8a — see StaticDbConfigurations.cs for the typed replacements.
 // JobStatsEntityConfiguration / JobExpEntityConfiguration / JobBasePointsEntityConfiguration
 // removed in DB-8d.
-public class StatusYmlEntityConfiguration : IEntityTypeConfiguration<StatusYmlEntity> { public void Configure(EntityTypeBuilder<StatusYmlEntity> b) => PayloadConfig.StringKey(b, "status_yml", "status_name"); }
+// StatusYmlEntityConfiguration removed in DB-8e.
 // ItemCombosEntityConfiguration / ItemPackagesEntityConfiguration / ItemGroupDbEntityConfiguration
 // removed in DB-8b.
 public class ItemEnchantEntityConfiguration : IEntityTypeConfiguration<ItemEnchantEntity> { public void Configure(EntityTypeBuilder<ItemEnchantEntity> b) => PayloadConfig.IntKey(b, "item_enchant", "enchant_id"); }
