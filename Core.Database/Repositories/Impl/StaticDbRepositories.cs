@@ -271,3 +271,27 @@ internal sealed class StatusDbRepository(GameDbContext ctx) : IStatusDbRepositor
     public async Task<IReadOnlyList<StatusDbFlagEntity>> GetFlagsByCategoryAsync(string statusName, string category, CancellationToken ct = default)
         => await ctx.StatusDbFlag.AsNoTracking().Where(f => f.StatusName == statusName && f.Category == category).ToListAsync(ct);
 }
+
+// DB-8f — battleground + elemental repos
+
+internal sealed class BattlegroundCatalogDbRepository(GameDbContext ctx) : IBattlegroundCatalogDbRepository
+{
+    public async Task<IReadOnlyList<BattlegroundTypeDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.BattlegroundTypeDb.AsNoTracking().ToListAsync(ct);
+    public async Task<BattlegroundTypeDbEntity?> GetByIdAsync(int id, CancellationToken ct = default)
+        => await ctx.BattlegroundTypeDb.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id, ct);
+    public async Task<IReadOnlyList<BattlegroundJobRestrictionDbEntity>> GetJobRestrictionsAsync(int bgId, CancellationToken ct = default)
+        => await ctx.BattlegroundJobRestrictionDb.AsNoTracking().Where(r => r.BgId == bgId).ToListAsync(ct);
+    public async Task<IReadOnlyList<BattlegroundLocationDbEntity>> GetLocationsAsync(int bgId, CancellationToken ct = default)
+        => await ctx.BattlegroundLocationDb.AsNoTracking().Where(l => l.BgId == bgId).ToListAsync(ct);
+}
+
+internal sealed class ElementalCatalogDbRepository(GameDbContext ctx) : IElementalCatalogDbRepository
+{
+    public async Task<IReadOnlyList<ElementalCatalogDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.ElementalCatalogDb.AsNoTracking().ToListAsync(ct);
+    public async Task<ElementalCatalogDbEntity?> GetByIdAsync(int id, CancellationToken ct = default)
+        => await ctx.ElementalCatalogDb.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, ct);
+    public async Task<IReadOnlyList<ElementalModeDbEntity>> GetModesAsync(int elementalId, CancellationToken ct = default)
+        => await ctx.ElementalModeDb.AsNoTracking().Where(m => m.ElementalId == elementalId).ToListAsync(ct);
+}

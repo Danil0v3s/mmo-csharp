@@ -705,3 +705,81 @@ public class StatusDbFlagEntityConfiguration : IEntityTypeConfiguration<StatusDb
         b.Property(e => e.FlagName).HasColumnName("flag_name").HasMaxLength(64).IsRequired();
     }
 }
+
+// ============================================================================
+// DB-8f: battleground + elemental re-normalized
+// ============================================================================
+
+public class BattlegroundTypeDbEntityConfiguration : IEntityTypeConfiguration<BattlegroundTypeDbEntity>
+{
+    public void Configure(EntityTypeBuilder<BattlegroundTypeDbEntity> b)
+    {
+        b.ToTable("battleground_type_db");
+        b.HasKey(e => e.Id);
+        b.Property(e => e.Id).HasColumnName("id");
+        b.Property(e => e.Name).HasColumnName("name").HasMaxLength(64).IsRequired();
+        b.Property(e => e.MinPlayers).HasColumnName("min_players");
+        b.Property(e => e.MinLevel).HasColumnName("min_level");
+    }
+}
+
+public class BattlegroundJobRestrictionDbEntityConfiguration : IEntityTypeConfiguration<BattlegroundJobRestrictionDbEntity>
+{
+    public void Configure(EntityTypeBuilder<BattlegroundJobRestrictionDbEntity> b)
+    {
+        b.ToTable("battleground_job_restriction_db");
+        b.HasKey(e => new { e.BgId, e.JobAegis });
+        b.Property(e => e.BgId).HasColumnName("bg_id");
+        b.Property(e => e.JobAegis).HasColumnName("job_aegis").HasMaxLength(64).IsRequired();
+    }
+}
+
+public class BattlegroundLocationDbEntityConfiguration : IEntityTypeConfiguration<BattlegroundLocationDbEntity>
+{
+    public void Configure(EntityTypeBuilder<BattlegroundLocationDbEntity> b)
+    {
+        b.ToTable("battleground_location_db");
+        b.HasKey(e => new { e.BgId, e.MapName });
+        b.Property(e => e.BgId).HasColumnName("bg_id");
+        b.Property(e => e.MapName).HasColumnName("map_name").HasMaxLength(64).IsRequired();
+        b.Property(e => e.StartEvent).HasColumnName("start_event").HasMaxLength(128);
+        b.Property(e => e.TeamARespawnX).HasColumnName("team_a_respawn_x");
+        b.Property(e => e.TeamARespawnY).HasColumnName("team_a_respawn_y");
+        b.Property(e => e.TeamAQuitEvent).HasColumnName("team_a_quit_event").HasMaxLength(128);
+        b.Property(e => e.TeamAActiveEvent).HasColumnName("team_a_active_event").HasMaxLength(128);
+        b.Property(e => e.TeamAVariable).HasColumnName("team_a_variable").HasMaxLength(64);
+        b.Property(e => e.TeamBRespawnX).HasColumnName("team_b_respawn_x");
+        b.Property(e => e.TeamBRespawnY).HasColumnName("team_b_respawn_y");
+        b.Property(e => e.TeamBQuitEvent).HasColumnName("team_b_quit_event").HasMaxLength(128);
+        b.Property(e => e.TeamBActiveEvent).HasColumnName("team_b_active_event").HasMaxLength(128);
+        b.Property(e => e.TeamBVariable).HasColumnName("team_b_variable").HasMaxLength(64);
+    }
+}
+
+public class ElementalCatalogDbEntityConfiguration : IEntityTypeConfiguration<ElementalCatalogDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ElementalCatalogDbEntity> b)
+    {
+        b.ToTable("elemental_catalog_db");
+        b.HasKey(e => e.Id);
+        b.Property(e => e.Id).HasColumnName("id");
+        b.Property(e => e.AegisName).HasColumnName("aegis_name").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Name).HasColumnName("name").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Level).HasColumnName("level");
+        b.Property(e => e.Size).HasColumnName("size").HasMaxLength(24);
+        b.Property(e => e.Element).HasColumnName("element").HasMaxLength(24);
+        b.Property(e => e.ElementLevel).HasColumnName("element_level");
+    }
+}
+
+public class ElementalModeDbEntityConfiguration : IEntityTypeConfiguration<ElementalModeDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ElementalModeDbEntity> b)
+    {
+        b.ToTable("elemental_mode_db");
+        b.HasKey(e => new { e.ElementalId, e.Mode });
+        b.Property(e => e.ElementalId).HasColumnName("elemental_id");
+        b.Property(e => e.Mode).HasColumnName("mode").HasMaxLength(16).IsRequired();
+        b.Property(e => e.SkillAegis).HasColumnName("skill_aegis").HasMaxLength(64).IsRequired();
+    }
+}

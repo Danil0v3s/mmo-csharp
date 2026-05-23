@@ -161,8 +161,8 @@ internal static class PayloadConfig
     }
 }
 
-public class ElementalDbEntityConfiguration : IEntityTypeConfiguration<ElementalDbEntity> { public void Configure(EntityTypeBuilder<ElementalDbEntity> b) => PayloadConfig.IntKey(b, "elemental_db", "ele_id"); }
-public class BattlegroundDbEntityConfiguration : IEntityTypeConfiguration<BattlegroundDbEntity> { public void Configure(EntityTypeBuilder<BattlegroundDbEntity> b) => PayloadConfig.IntKey(b, "battleground_db", "bg_id"); }
+// ElementalDbEntityConfiguration removed in DB-8f.
+// BattlegroundDbEntityConfiguration removed in DB-8f.
 // SkillTreeEntityConfiguration / GuildSkillTreeEntityConfiguration removed in DB-8c.
 // MobSummonEntityConfiguration removed in DB-8b.
 public class ItemRandomOptGroupEntityConfiguration : IEntityTypeConfiguration<ItemRandomOptGroupEntity> { public void Configure(EntityTypeBuilder<ItemRandomOptGroupEntity> b) => PayloadConfig.IntKey(b, "item_randomopt_group", "group_id"); }

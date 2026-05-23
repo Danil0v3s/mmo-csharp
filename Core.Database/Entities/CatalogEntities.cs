@@ -83,8 +83,8 @@ public abstract class PayloadStringKeyEntity { public string Key { get; set; } =
 public abstract class PayloadIntKeyEntity { public int Key { get; set; } public string PayloadJson { get; set; } = "{}"; }
 public abstract class PayloadRowIndexEntity { public int RowId { get; set; } public string PayloadJson { get; set; } = "{}"; }
 
-public class ElementalDbEntity : PayloadIntKeyEntity { } // ele_id
-public class BattlegroundDbEntity : PayloadIntKeyEntity { } // bg_id
+// ElementalDbEntity removed in DB-8f — see ElementalCatalogDbEntity + ElementalModeDbEntity.
+// BattlegroundDbEntity removed in DB-8f — see BattlegroundTypeDbEntity + BattlegroundJobRestrictionDbEntity + BattlegroundLocationDbEntity.
 // SkillTreeEntity / GuildSkillTreeEntity removed in DB-8c — see
 // SkillTreeDbEntities.cs (typed parent + Inherit + entry + requirement).
 // MobSummonEntity removed in DB-8b — see MobSummonDbEntity + MobSummonEntryDbEntity.

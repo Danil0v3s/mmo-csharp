@@ -165,8 +165,8 @@ public class GameDbContext : DbContext
     public DbSet<CaptchaDbEntity> CaptchaDb => Set<CaptchaDbEntity>();
 
     // ---- Payload-shape catalogs (key + JSON payload) ----
-    public DbSet<ElementalDbEntity> ElementalDb => Set<ElementalDbEntity>();
-    public DbSet<BattlegroundDbEntity> BattlegroundDb => Set<BattlegroundDbEntity>();
+    // DB-8f: ElementalDb moved to typed entities below.
+    // DB-8f: BattlegroundDb moved to typed entities below.
     // DB-8c: SkillTreeDb / GuildSkillTreeDb moved to typed entities below.
     // DB-8b: MobSummonDb moved to typed entity below.
     public DbSet<ItemRandomOptGroupEntity> ItemRandomOptGroupDb => Set<ItemRandomOptGroupEntity>();
@@ -224,6 +224,13 @@ public class GameDbContext : DbContext
     // ---- DB-8e: status.yml re-normalized ----
     public DbSet<StatusDbEntity> StatusDb => Set<StatusDbEntity>();
     public DbSet<StatusDbFlagEntity> StatusDbFlag => Set<StatusDbFlagEntity>();
+
+    // ---- DB-8f: battleground + elemental re-normalized ----
+    public DbSet<BattlegroundTypeDbEntity> BattlegroundTypeDb => Set<BattlegroundTypeDbEntity>();
+    public DbSet<BattlegroundJobRestrictionDbEntity> BattlegroundJobRestrictionDb => Set<BattlegroundJobRestrictionDbEntity>();
+    public DbSet<BattlegroundLocationDbEntity> BattlegroundLocationDb => Set<BattlegroundLocationDbEntity>();
+    public DbSet<ElementalCatalogDbEntity> ElementalCatalogDb => Set<ElementalCatalogDbEntity>();
+    public DbSet<ElementalModeDbEntity> ElementalModeDb => Set<ElementalModeDbEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

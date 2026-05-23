@@ -237,3 +237,24 @@ public interface IStatusDbRepository
     /// <summary>Flag rows for an SC in one category (State / CalcFlag / Flag / Fail / EndOnStart / EndOnEnd / EndOnRestart).</summary>
     Task<IReadOnlyList<StatusDbFlagEntity>> GetFlagsByCategoryAsync(string statusName, string category, CancellationToken ct = default);
 }
+
+// ============================================================================
+// DB-8f: battleground + elemental repos
+// ============================================================================
+
+/// <summary>DB-8f: battleground type catalog (rAthena battleground_db.yml).</summary>
+public interface IBattlegroundCatalogDbRepository
+{
+    Task<IReadOnlyList<BattlegroundTypeDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<BattlegroundTypeDbEntity?> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<IReadOnlyList<BattlegroundJobRestrictionDbEntity>> GetJobRestrictionsAsync(int bgId, CancellationToken ct = default);
+    Task<IReadOnlyList<BattlegroundLocationDbEntity>> GetLocationsAsync(int bgId, CancellationToken ct = default);
+}
+
+/// <summary>DB-8f: elemental servant catalog (rAthena elemental_db.yml).</summary>
+public interface IElementalCatalogDbRepository
+{
+    Task<IReadOnlyList<ElementalCatalogDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<ElementalCatalogDbEntity?> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<IReadOnlyList<ElementalModeDbEntity>> GetModesAsync(int elementalId, CancellationToken ct = default);
+}
