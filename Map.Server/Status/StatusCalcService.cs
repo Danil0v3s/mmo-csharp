@@ -13,6 +13,20 @@ namespace Map.Server.Status;
 /// </summary>
 public sealed class StatusCalcService : IStatusCalcService
 {
+    /// <summary>
+    /// DBR-1c: optional ASPD cache. When wired (singleton DI), CalcPc
+    /// reads per-job per-weapon base delay from job_aspd_db; when null
+    /// (test fixtures that construct StatusCalcService directly with
+    /// the default ctor) the legacy hardcoded 590ms Novice baseline
+    /// stays in place.
+    /// </summary>
+    private readonly IJobAspdCacheService? _jobAspd;
+
+    public StatusCalcService(IJobAspdCacheService? jobAspd = null)
+    {
+        _jobAspd = jobAspd;
+    }
+
     public void CalcPc(PlayerEntity player, PcBaseInputs inputs)
     {
         var s = player.Stats;
@@ -69,12 +83,21 @@ public sealed class StatusCalcService : IStatusCalcService
         if (s.Hp <= 0 || s.Hp > maxHp) s.Hp = maxHp;
         if (s.Sp <= 0 || s.Sp > maxSp) s.Sp = maxSp;
 
-        // Speed / amotion / adelay defaults — status.cpp:5990 status_calc_pc_
-        // sets these from job_db. Placeholder uses captured Novice values.
+        // Speed / amotion / adelay — status.cpp:5990 status_calc_pc_ pulls
+        // amotion from the job_aspd table for the (job, weapon-type) pair.
+        // DBR-1c: when IJobAspdCacheService is wired (production DI), use
+        // the catalog row; the captured 590ms Novice / unarmed value
+        // remains the fallback for tests + missing rows.
         s.Speed = 150;
-        s.Amotion = 590;
-        s.ClientAmotion = 590;
-        s.Adelay = 540;
+        var baseAmotion = _jobAspd?.GetBaseAspdByJobId(inputs.JobId, inputs.WeaponType) ?? 590;
+        s.Amotion = (ushort)Math.Clamp(baseAmotion, 1, ushort.MaxValue);
+        s.ClientAmotion = s.Amotion;
+        // rAthena status.cpp adelay = amotion * 2 - dmotion (renewal default
+        // 2 * amotion - 480 for melee). The captured Novice value 540 with
+        // amotion 590 = ~0.91× factor; close enough for the early game until
+        // the full status_calc_pc aspd path lands. Keeping the 2×-ish form
+        // preserves the ratio when amotion comes from a job_aspd row.
+        s.Adelay = (ushort)Math.Clamp(baseAmotion * 540 / 590, 1, ushort.MaxValue);
         s.Dmotion = 480;
 
         s.Race = BattleRace.PlayerHuman;

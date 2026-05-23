@@ -215,6 +215,12 @@ builder.Services.AddSingleton<Map.Server.Status.AttrFixCacheService>();
 // directly stay green without DI.
 builder.Services.AddSingleton<Map.Server.Status.ILevelPenaltyService, Map.Server.Status.LevelPenaltyService>();
 
+// DBR-1c: per-job per-weapon ASPD base-delay cache (job_aspd_db,
+// 1427 rows). StatusCalcService.CalcPc reads from this in the
+// status_calc_pc amotion slot when wired (singleton DI). Tests that
+// new StatusCalcService() directly keep the 590ms Novice fallback.
+builder.Services.AddSingleton<Map.Server.Status.IJobAspdCacheService, Map.Server.Status.JobAspdCacheService>();
+
 // Floor-item drop / pickup (see .agents/migrations/map/adjacent/items.md).
 // MS3 first slice: the entity-on-the-floor lifecycle (drop, pickup, TTL
 // despawn). Inventory persistence + item_db catalog land later.

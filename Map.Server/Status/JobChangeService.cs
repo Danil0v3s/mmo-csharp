@@ -50,7 +50,9 @@ public sealed class JobChangeService : IJobChangeService
         _look.ChangeLook(pc, LookType.Base, (ushort)classId);
 
         // Recalc stats from the new class baseline + full heal.
-        _statusCalc.CalcPc(pc, BuildInputs(pc));
+        // DBR-1c: include the new ClassId so JobAspdCache picks the right
+        // (job, weapon) ASPD row.
+        _statusCalc.CalcPc(pc, BuildInputs(pc, classId));
         pc.Hp = pc.MaxHp;
         pc.Sp = pc.MaxSp;
         session.EnqueuePacket(new ZC_PAR_CHANGE { VarId = SpId.SP_HP, Value = pc.Hp });
@@ -64,7 +66,7 @@ public sealed class JobChangeService : IJobChangeService
         return true;
     }
 
-    private static PcBaseInputs BuildInputs(PlayerEntity p) => new(
+    private static PcBaseInputs BuildInputs(PlayerEntity p, int jobId = 0) => new(
         BaseLevel: p.Level, JobLevel: p.JobLevel,
         Str: p.Stats.Str, Agi: p.Stats.Agi, Vit: p.Stats.Vit,
         Int: p.Stats.IntStat, Dex: p.Stats.Dex, Luk: p.Stats.Luk,
@@ -72,5 +74,6 @@ public sealed class JobChangeService : IJobChangeService
         Spl: p.Stats.Spl, Con: p.Stats.Con, Crt: p.Stats.Crt,
         WeaponAtkMin: p.Stats.WatkMin, WeaponAtkMax: p.Stats.WatkMax,
         EquipDef: p.Stats.Def, EquipMdef: p.Stats.Mdef,
-        AttackRange: p.Stats.AttackRange);
+        AttackRange: p.Stats.AttackRange,
+        JobId: jobId);
 }
