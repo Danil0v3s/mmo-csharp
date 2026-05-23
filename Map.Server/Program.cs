@@ -480,6 +480,18 @@ builder.Services.AddSingleton<Map.Server.BattleGround.IBattlegroundService, Map.
 // name entry points; most ops forward to dedicated services or
 // document data-pending.
 builder.Services.AddSingleton<Map.Server.Items.Db.IItemDbService, Map.Server.Items.Db.ItemDbService>();
+// DBR-2b: typed item-group catalog (2722 groups / 30809 entries) — random
+// bag rolls for Bloody/Dead/RWC Branches, Old Card Album, gift boxes, etc.
+builder.Services.AddSingleton<Map.Server.Items.IItemGroupService, Map.Server.Items.ItemGroupService>();
+// DBR-2c: typed refine catalog (4 groups / 160 level rows / 390 chance
+// rows) — refine UI + @refine GM cmd consume rates/materials.
+builder.Services.AddSingleton<Map.Server.Inventory.IRefineService, Map.Server.Inventory.RefineService>();
+// DBR-2d: typed enchantgrade catalog (per EquipType × ItemLevel × Grade ×
+// Refine → Chance/10000) — equipment grade-upgrade UI + @grade GM cmd.
+builder.Services.AddSingleton<Map.Server.Inventory.IEnchantGradeService, Map.Server.Inventory.EnchantGradeService>();
+// DBR-2e: typed item-enchant pipeline (140 pipelines / 4657 options across
+// 5 catalogs) — item-enchant UI (slot rolls, reset, materials).
+builder.Services.AddSingleton<Map.Server.Inventory.IItemEnchantService, Map.Server.Inventory.ItemEnchantService>();
 builder.Services.AddSingleton<Map.Server.Status.StatusOps.IStatusOpsService, Map.Server.Status.StatusOps.StatusOpsService>();
 builder.Services.AddSingleton<Map.Server.Handlers.ClifWire.IClifWireService, Map.Server.Handlers.ClifWire.ClifWireService>();
 builder.Services.AddSingleton<Map.Server.Scripting.ScriptApi.IScriptApiService, Map.Server.Scripting.ScriptApi.ScriptApiService>();

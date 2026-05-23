@@ -101,6 +101,15 @@ public static class ServiceCollectionExtensions
         // DB-8f: battleground + elemental.
         services.AddScoped<IBattlegroundCatalogDbRepository, BattlegroundCatalogDbRepository>();
         services.AddScoped<IElementalCatalogDbRepository, ElementalCatalogDbRepository>();
+        // DB-8g: enchant pipeline catalogs.
+        services.AddScoped<IItemEnchantDbRepository, ItemEnchantDbRepository>();
+        services.AddScoped<IItemReformDbRepository, ItemReformDbRepository>();
+        services.AddScoped<ILaphineSynthesisDbRepository, LaphineSynthesisDbRepository>();
+        services.AddScoped<ILaphineUpgradeDbRepository, LaphineUpgradeDbRepository>();
+        services.AddScoped<IItemRandomOptGroupDbRepository, ItemRandomOptGroupDbRepository>();
+        // DB-8h: refine + enchantgrade.
+        services.AddScoped<IRefineDbRepository, RefineDbRepository>();
+        services.AddScoped<IEnchantGradeDbRepository, EnchantGradeDbRepository>();
         // DB-8i: drop overrides.
         services.AddScoped<IMapDropDbRepository, MapDropDbRepository>();
         services.AddScoped<IMobItemRatioDbRepository, MobItemRatioDbRepository>();

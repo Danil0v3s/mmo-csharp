@@ -265,6 +265,77 @@ public interface IElementalCatalogDbRepository
 }
 
 // ============================================================================
+// DB-8g: enchant pipeline repos (item_enchant, item_reform, laphine, randomopt)
+// ============================================================================
+
+/// <summary>DB-8g: item enchant pipeline (rAthena item_enchant.yml, 140 pipelines).</summary>
+public interface IItemEnchantDbRepository
+{
+    Task<IReadOnlyList<ItemEnchantDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<ItemEnchantDbEntity?> GetByIdAsync(int enchantId, CancellationToken ct = default);
+    Task<IReadOnlyList<ItemEnchantTargetDbEntity>> GetAllTargetsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ItemEnchantTargetDbEntity>> GetTargetsAsync(int enchantId, CancellationToken ct = default);
+    Task<IReadOnlyList<ItemEnchantMaterialDbEntity>> GetMaterialsAsync(int enchantId, CancellationToken ct = default);
+    Task<IReadOnlyList<ItemEnchantSlotDbEntity>> GetSlotsAsync(int enchantId, CancellationToken ct = default);
+    Task<IReadOnlyList<ItemEnchantOptionDbEntity>> GetOptionsAsync(int enchantId, CancellationToken ct = default);
+}
+
+/// <summary>DB-8g: item reform recipes (rAthena item_reform.yml).</summary>
+public interface IItemReformDbRepository
+{
+    Task<IReadOnlyList<ItemReformDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ItemReformBaseDbEntity>> GetAllBasesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ItemReformBaseDbEntity>> GetBasesAsync(string resultItemAegis, CancellationToken ct = default);
+}
+
+/// <summary>DB-8g: laphine synthesis recipes (rAthena laphine_synthesis.yml).</summary>
+public interface ILaphineSynthesisDbRepository
+{
+    Task<IReadOnlyList<LaphineSynthesisDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<LaphineSynthesisDbEntity?> GetByRecipeAsync(string recipeItem, CancellationToken ct = default);
+    Task<IReadOnlyList<LaphineSynthesisRequirementDbEntity>> GetRequirementsAsync(string recipeItem, CancellationToken ct = default);
+}
+
+/// <summary>DB-8g: laphine upgrade recipes (rAthena laphine_upgrade.yml).</summary>
+public interface ILaphineUpgradeDbRepository
+{
+    Task<IReadOnlyList<LaphineUpgradeDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<LaphineUpgradeDbEntity?> GetByUpgradeAsync(string upgradeItem, CancellationToken ct = default);
+    Task<IReadOnlyList<LaphineUpgradeTargetDbEntity>> GetTargetsAsync(string upgradeItem, CancellationToken ct = default);
+}
+
+/// <summary>DB-8g: item random-opt groups (rAthena item_randomopt_group.yml).</summary>
+public interface IItemRandomOptGroupDbRepository
+{
+    Task<IReadOnlyList<ItemRandomOptGroupDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<ItemRandomOptGroupDbEntity?> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<ItemRandomOptGroupDbEntity?> GetByNameAsync(string groupName, CancellationToken ct = default);
+    Task<IReadOnlyList<ItemRandomOptGroupOptionDbEntity>> GetOptionsAsync(int groupId, CancellationToken ct = default);
+}
+
+// ============================================================================
+// DB-8h: refine + enchantgrade repos
+// ============================================================================
+
+/// <summary>DB-8h: refine catalog (rAthena refine.yml — groups + levels + chances).</summary>
+public interface IRefineDbRepository
+{
+    Task<IReadOnlyList<RefineGroupDbEntity>> GetAllGroupsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<RefineLevelDbEntity>> GetAllLevelsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<RefineChanceDbEntity>> GetAllChancesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<RefineLevelDbEntity>> GetLevelsForGroupAsync(string groupName, CancellationToken ct = default);
+    Task<IReadOnlyList<RefineChanceDbEntity>> GetChancesForGroupAsync(string groupName, CancellationToken ct = default);
+}
+
+/// <summary>DB-8h: enchantgrade catalog (rAthena enchantgrade.yml — groups + levels + chances).</summary>
+public interface IEnchantGradeDbRepository
+{
+    Task<IReadOnlyList<EnchantGradeDbEntity>> GetAllGroupsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<EnchantGradeLevelDbEntity>> GetAllLevelsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<EnchantGradeChanceDbEntity>> GetAllChancesAsync(CancellationToken ct = default);
+}
+
+// ============================================================================
 // DB-8i: drop override repos
 // ============================================================================
 
