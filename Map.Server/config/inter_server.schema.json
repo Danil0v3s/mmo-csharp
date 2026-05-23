@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "./inter_server.schema.json",
+  "title": "rAthena inter_server.yml — premium storage definitions",
+  "description": "JSON port of rAthena conf/inter_server.yml. Each storage entry is a separate SQL-backed bag of items the player can access via the openstorage2 script command. Storage id 0 is the default account storage and is always present; additional entries are VIP / event / premium storages.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["inter_server_db"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "inter_server_db": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["storages"],
+      "properties": {
+        "_doc": { "type": "string", "description": "Free-form documentation comment." },
+        "storages": {
+          "type": "array",
+          "description": "Premium storage definitions. Order does not matter; lookup is by id.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "table"],
+            "properties": {
+              "id":    { "type": "integer", "description": "Storage id. 0 = default account storage. 1+ = premium / event storages referenced by openstorage2 <id>.", "minimum": 0 },
+              "name":  { "type": "string",  "description": "Display name shown on the storage window title bar.", "minLength": 1, "maxLength": 64 },
+              "table": { "type": "string",  "description": "Name of the SQL table backing this storage. Must follow the column shape of the default `storage` table.", "minLength": 1, "maxLength": 64 },
+              "max":   { "type": "integer", "description": "Maximum item count for this storage. Premium storage max is NOT modified by vip_storage_increase or MIN_STORAGE.", "minimum": 1, "default": 600 }
+            }
+          }
+        }
+      }
+    }
+  }
+}

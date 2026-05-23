@@ -73,6 +73,11 @@ public static class ServiceCollectionExtensions
         // per-row Skills[] / SkillTree[] sub-arrays the loader skipped).
         services.AddScoped<IMercenarySkillDbRepository, MercenarySkillDbRepository>();
         services.AddScoped<IHomunculusSkillTreeDbRepository, HomunculusSkillTreeDbRepository>();
+        // AT-G: typed catalogs that DB-1..6 skipped entirely.
+        services.AddScoped<IStylistDbRepository, StylistDbRepository>();
+        services.AddScoped<IAchievementLevelDbRepository, AchievementLevelDbRepository>();
+        services.AddScoped<IJobAspdDbRepository, JobAspdDbRepository>();
+        services.AddScoped<IConstDbRepository, ConstDbRepository>();
 
         return services;
     }

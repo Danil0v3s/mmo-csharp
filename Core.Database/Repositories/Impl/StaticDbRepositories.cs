@@ -91,3 +91,33 @@ internal sealed class HomunculusSkillTreeDbRepository(GameDbContext ctx) : IHomu
 
 // Battleground catalog: read via existing JSON-payload table; DB-8 wires
 // the deserializer. No new typed repo here.
+
+internal sealed class StylistDbRepository(GameDbContext ctx) : IStylistDbRepository
+{
+    public async Task<IReadOnlyList<StylistDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.StylistDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<StylistDbEntity>> GetByLookAsync(int look, CancellationToken ct = default)
+        => await ctx.StylistDb.AsNoTracking().Where(s => s.Look == look).ToListAsync(ct);
+}
+
+internal sealed class AchievementLevelDbRepository(GameDbContext ctx) : IAchievementLevelDbRepository
+{
+    public async Task<IReadOnlyList<AchievementLevelDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.AchievementLevelDb.AsNoTracking().OrderBy(l => l.Level).ToListAsync(ct);
+}
+
+internal sealed class JobAspdDbRepository(GameDbContext ctx) : IJobAspdDbRepository
+{
+    public async Task<IReadOnlyList<JobAspdDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.JobAspdDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<JobAspdDbEntity>> GetByJobAsync(string jobAegis, CancellationToken ct = default)
+        => await ctx.JobAspdDb.AsNoTracking().Where(j => j.JobAegis == jobAegis).ToListAsync(ct);
+}
+
+internal sealed class ConstDbRepository(GameDbContext ctx) : IConstDbRepository
+{
+    public async Task<IReadOnlyList<ConstDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.ConstDb.AsNoTracking().ToListAsync(ct);
+    public async Task<ConstDbEntity?> GetByNameAsync(string name, CancellationToken ct = default)
+        => await ctx.ConstDb.AsNoTracking().FirstOrDefaultAsync(c => c.Name == name, ct);
+}

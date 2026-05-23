@@ -1,0 +1,14 @@
+{
+  "$schema": "./inter_server.schema.json",
+  "inter_server_db": {
+    "_doc": "JSON port of rAthena conf/inter_server.yml. Defines per-server premium storage rooms — the script command 'openstorage2 <id>' looks up by ID here. Account storage (id=0) is always present; add more entries for VIP / event premium storages with their dedicated SQL tables.",
+    "storages": [
+      {
+        "id": 0,
+        "name": "Storage",
+        "table": "storage",
+        "max": 600
+      }
+    ]
+  }
+}

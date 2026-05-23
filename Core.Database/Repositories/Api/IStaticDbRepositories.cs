@@ -74,3 +74,30 @@ public interface IHomunculusSkillTreeDbRepository
 
 // Battleground catalog: read via the existing CatalogEntities.BattlegroundDbEntity
 // JSON-payload table (DB-5). The typed consumer is DB-8 territory.
+
+/// <summary>AT-G: stylist option catalog (rAthena stylist.yml).</summary>
+public interface IStylistDbRepository
+{
+    Task<IReadOnlyList<StylistDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<StylistDbEntity>> GetByLookAsync(int look, CancellationToken ct = default);
+}
+
+/// <summary>AT-G: achievement-level XP curve (rAthena achievement_level_db.yml).</summary>
+public interface IAchievementLevelDbRepository
+{
+    Task<IReadOnlyList<AchievementLevelDbEntity>> GetAllAsync(CancellationToken ct = default);
+}
+
+/// <summary>AT-G: per-job per-weapon ASPD base delay (rAthena job_aspd.yml).</summary>
+public interface IJobAspdDbRepository
+{
+    Task<IReadOnlyList<JobAspdDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<JobAspdDbEntity>> GetByJobAsync(string jobAegis, CancellationToken ct = default);
+}
+
+/// <summary>AT-G: script constants catalog (rAthena const.yml).</summary>
+public interface IConstDbRepository
+{
+    Task<IReadOnlyList<ConstDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<ConstDbEntity?> GetByNameAsync(string name, CancellationToken ct = default);
+}

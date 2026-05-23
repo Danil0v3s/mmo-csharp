@@ -146,6 +146,12 @@ public class GameDbContext : DbContext
     public DbSet<MercenarySkillDbEntity> MercenarySkillDb => Set<MercenarySkillDbEntity>();
     public DbSet<HomunculusSkillTreeDbEntity> HomunculusSkillTreeDb => Set<HomunculusSkillTreeDbEntity>();
 
+    // ---- AT-G: typed catalogs that DB-1..6 skipped entirely ----
+    public DbSet<StylistDbEntity> StylistDb => Set<StylistDbEntity>();
+    public DbSet<AchievementLevelDbEntity> AchievementLevelDb => Set<AchievementLevelDbEntity>();
+    public DbSet<JobAspdDbEntity> JobAspdDb => Set<JobAspdDbEntity>();
+    public DbSet<ConstDbEntity> ConstDb => Set<ConstDbEntity>();
+
     // ---- Second wave of static catalogs (flat-shape) ----
     public DbSet<CastleDbEntity> CastleDb => Set<CastleDbEntity>();
     public DbSet<StatPointEntity> StatPointDb => Set<StatPointEntity>();

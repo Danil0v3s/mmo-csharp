@@ -217,3 +217,69 @@ public class HomunculusSkillTreeDbEntityConfiguration : IEntityTypeConfiguration
 // payload (DB-5; see CatalogEntities.BattlegroundDbEntity). The
 // service consumes that JSON via a typed deserializer instead of a
 // duplicate child table. Wiring that consumer is task #145 DB-8.
+
+/// <summary>
+/// AT-G: stylist option catalog. Composite key (look, client_index)
+/// — same row applies to Human + Doram unless <c>doram_only</c>.
+/// </summary>
+public class StylistDbEntityConfiguration : IEntityTypeConfiguration<StylistDbEntity>
+{
+    public void Configure(EntityTypeBuilder<StylistDbEntity> b)
+    {
+        b.ToTable("stylist_db");
+        b.HasKey(e => new { e.Look, e.ClientIndex, e.DoramOnly });
+        b.Property(e => e.Look).HasColumnName("look");
+        b.Property(e => e.ClientIndex).HasColumnName("client_index");
+        b.Property(e => e.Value).HasColumnName("value");
+        b.Property(e => e.DoramOnly).HasColumnName("doram_only");
+        b.Property(e => e.CostZeny).HasColumnName("cost_zeny");
+        b.Property(e => e.RequiredItemAegis).HasColumnName("required_item_aegis").HasMaxLength(64);
+        b.Property(e => e.RequiredItemBoxAegis).HasColumnName("required_item_box_aegis").HasMaxLength(64);
+    }
+}
+
+/// <summary>
+/// AT-G: achievement-level XP curve (stock yml caps at 20 levels).
+/// </summary>
+public class AchievementLevelDbEntityConfiguration : IEntityTypeConfiguration<AchievementLevelDbEntity>
+{
+    public void Configure(EntityTypeBuilder<AchievementLevelDbEntity> b)
+    {
+        b.ToTable("achievement_level_db");
+        b.HasKey(e => e.Level);
+        b.Property(e => e.Level).HasColumnName("level");
+        b.Property(e => e.RequiredPoints).HasColumnName("required_points");
+    }
+}
+
+/// <summary>
+/// AT-G: per-job per-weapon ASPD base delay. Composite key
+/// (job_aegis, weapon_type).
+/// </summary>
+public class JobAspdDbEntityConfiguration : IEntityTypeConfiguration<JobAspdDbEntity>
+{
+    public void Configure(EntityTypeBuilder<JobAspdDbEntity> b)
+    {
+        b.ToTable("job_aspd_db");
+        b.HasKey(e => new { e.JobAegis, e.WeaponType });
+        b.Property(e => e.JobAegis).HasColumnName("job_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.WeaponType).HasColumnName("weapon_type");
+        b.Property(e => e.BaseDelayMs).HasColumnName("base_delay_ms");
+    }
+}
+
+/// <summary>
+/// AT-G: script constant catalog. <c>Name</c> is the unique key the
+/// script engine resolves at parse-time.
+/// </summary>
+public class ConstDbEntityConfiguration : IEntityTypeConfiguration<ConstDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ConstDbEntity> b)
+    {
+        b.ToTable("const_db");
+        b.HasKey(e => e.Name);
+        b.Property(e => e.Name).HasColumnName("name").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Value).HasColumnName("value");
+        b.Property(e => e.IsParameter).HasColumnName("is_parameter");
+    }
+}
