@@ -33,7 +33,7 @@ public sealed class PartyShareService : IPartyShareService
         _logger = logger;
     }
 
-    public bool ShareKill(PlayerEntity killer, long baseExp, long jobExp)
+    public bool ShareKill(PlayerEntity killer, long baseExp, long jobExp, int? mobLevel = null)
     {
         if (killer.PartyId <= 0) return false;
 
@@ -68,7 +68,9 @@ public sealed class PartyShareService : IPartyShareService
 
         foreach (var member in eligible)
         {
-            _exp.GainExp(member, perMemberBase, perMemberJob);
+            // DBR-1b: forward mobLevel so each member's GainExp applies
+            // the per-recipient level-gap penalty (rAthena pc.cpp:8186).
+            _exp.GainExp(member, perMemberBase, perMemberJob, mobLevel);
         }
         _logger.LogDebug(
             "Party {Party} EXP share: {N} members, {Base} base + {Job} job each (×{Bonus}%)",

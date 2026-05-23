@@ -27,25 +27,43 @@ public sealed class ExpService : IExpService
 {
     private readonly IStatusCalcService _statusCalc;
     private readonly ISessionManagerAccessor _sessions;
+    private readonly ILevelPenaltyService? _levelPenalty;
     private readonly ILogger<ExpService> _logger;
 
     public ExpService(
         IStatusCalcService statusCalc,
         ISessionManagerAccessor sessions,
-        ILogger<ExpService> logger)
+        ILogger<ExpService> logger,
+        ILevelPenaltyService? levelPenalty = null)
     {
         _statusCalc = statusCalc;
         _sessions = sessions;
+        _levelPenalty = levelPenalty;
         _logger = logger;
     }
 
     // Public so the test harness can assert on the raw mutation without
     // the session-broadcast plumbing. Production callers use GainExp.
-    public bool GainExp(PlayerEntity player, long baseExp, long jobExp)
+    public bool GainExp(PlayerEntity player, long baseExp, long jobExp, int? mobLevel = null)
     {
         if (player.Hp <= 0) return false;
         var session = _sessions.GetByEntityId(player.Id);
         var leveled = false;
+
+        // DBR-1b: apply rAthena pc_level_penalty_mod (pc.cpp:8186) to
+        // both EXP buckets before they accumulate. Skipped when the
+        // caller doesn't know the source mob level (quest reward, GM
+        // grant, item exp scroll, etc.) — matches rAthena's `src_lv == 0`
+        // early-return path.
+        if (mobLevel is int srcLv && _levelPenalty != null)
+        {
+            var rate = _levelPenalty.GetExpModifier(player.Level, srcLv);
+            if (rate != 100)
+            {
+                baseExp = baseExp * rate / 100;
+                jobExp = jobExp * rate / 100;
+            }
+        }
 
         if (baseExp > 0)
         {

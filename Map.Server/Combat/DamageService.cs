@@ -290,14 +290,18 @@ public sealed class DamageService : IDamageService
                 if (source is PlayerEntity killer && mob.DbEntry != null)
                 {
                     var awarded = false;
+                    // DBR-1b: mob.Level threads to the per-recipient
+                    // level-gap penalty (ILevelPenaltyService) inside
+                    // GainExp — parity with rAthena pc.cpp:8186.
+                    var srcLv = mob.Level;
                     // Try party share first (mob.cpp:mob_dead → party_exp_share).
-                    if (_partyShare != null && _partyShare.ShareKill(killer, mob.DbEntry.BaseExp, mob.DbEntry.JobExp))
+                    if (_partyShare != null && _partyShare.ShareKill(killer, mob.DbEntry.BaseExp, mob.DbEntry.JobExp, srcLv))
                     {
                         awarded = true;
                     }
                     if (!awarded && _exp != null)
                     {
-                        _exp.GainExp(killer, mob.DbEntry.BaseExp, mob.DbEntry.JobExp);
+                        _exp.GainExp(killer, mob.DbEntry.BaseExp, mob.DbEntry.JobExp, srcLv);
                     }
                 }
                 // Re-uses MobSpawnService's death pipeline so respawn timer

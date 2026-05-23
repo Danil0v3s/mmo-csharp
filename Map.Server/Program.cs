@@ -209,6 +209,12 @@ builder.Services.AddSingleton<Map.Server.Status.IStatusCalcService, Map.Server.S
 // ElementTable.GetRate directly — no per-tick repo hit.
 builder.Services.AddSingleton<Map.Server.Status.AttrFixCacheService>();
 
+// DBR-1b: level-gap EXP/drop penalty evaluator backed by
+// level_penalty_db (DB-8a). ExpService consumes it via the optional
+// constructor parameter so test fixtures that wire ExpService
+// directly stay green without DI.
+builder.Services.AddSingleton<Map.Server.Status.ILevelPenaltyService, Map.Server.Status.LevelPenaltyService>();
+
 // Floor-item drop / pickup (see .agents/migrations/map/adjacent/items.md).
 // MS3 first slice: the entity-on-the-floor lifecycle (drop, pickup, TTL
 // despawn). Inventory persistence + item_db catalog land later.
