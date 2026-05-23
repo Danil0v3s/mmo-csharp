@@ -85,8 +85,8 @@ public abstract class PayloadRowIndexEntity { public int RowId { get; set; } pub
 
 public class ElementalDbEntity : PayloadIntKeyEntity { } // ele_id
 public class BattlegroundDbEntity : PayloadIntKeyEntity { } // bg_id
-public class SkillTreeEntity : PayloadStringKeyEntity { } // job_name
-public class GuildSkillTreeEntity : PayloadStringKeyEntity { } // skill_name
+// SkillTreeEntity / GuildSkillTreeEntity removed in DB-8c — see
+// SkillTreeDbEntities.cs (typed parent + Inherit + entry + requirement).
 // MobSummonEntity removed in DB-8b — see MobSummonDbEntity + MobSummonEntryDbEntity.
 public class ItemRandomOptGroupEntity : PayloadIntKeyEntity { } // group_id
 // AttrFixEntity / LevelPenaltyEntity removed in DB-8a — replaced by

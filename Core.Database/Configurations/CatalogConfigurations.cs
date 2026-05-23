@@ -163,8 +163,7 @@ internal static class PayloadConfig
 
 public class ElementalDbEntityConfiguration : IEntityTypeConfiguration<ElementalDbEntity> { public void Configure(EntityTypeBuilder<ElementalDbEntity> b) => PayloadConfig.IntKey(b, "elemental_db", "ele_id"); }
 public class BattlegroundDbEntityConfiguration : IEntityTypeConfiguration<BattlegroundDbEntity> { public void Configure(EntityTypeBuilder<BattlegroundDbEntity> b) => PayloadConfig.IntKey(b, "battleground_db", "bg_id"); }
-public class SkillTreeEntityConfiguration : IEntityTypeConfiguration<SkillTreeEntity> { public void Configure(EntityTypeBuilder<SkillTreeEntity> b) => PayloadConfig.StringKey(b, "skill_tree", "job_name"); }
-public class GuildSkillTreeEntityConfiguration : IEntityTypeConfiguration<GuildSkillTreeEntity> { public void Configure(EntityTypeBuilder<GuildSkillTreeEntity> b) => PayloadConfig.StringKey(b, "guild_skill_tree", "skill_name"); }
+// SkillTreeEntityConfiguration / GuildSkillTreeEntityConfiguration removed in DB-8c.
 // MobSummonEntityConfiguration removed in DB-8b.
 public class ItemRandomOptGroupEntityConfiguration : IEntityTypeConfiguration<ItemRandomOptGroupEntity> { public void Configure(EntityTypeBuilder<ItemRandomOptGroupEntity> b) => PayloadConfig.IntKey(b, "item_randomopt_group", "group_id"); }
 // AttrFixEntityConfiguration / LevelPenaltyEntityConfiguration removed

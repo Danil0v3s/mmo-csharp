@@ -520,3 +520,77 @@ public class ItemComboMemberDbEntityConfiguration : IEntityTypeConfiguration<Ite
         b.Property(e => e.MemberItemAegis).HasColumnName("member_item_aegis").HasMaxLength(64).IsRequired();
     }
 }
+
+// ============================================================================
+// DB-8c: skill tree re-normalized catalogs
+// ============================================================================
+
+public class SkillTreeDbEntityConfiguration : IEntityTypeConfiguration<SkillTreeDbEntity>
+{
+    public void Configure(EntityTypeBuilder<SkillTreeDbEntity> b)
+    {
+        b.ToTable("skill_tree_db");
+        b.HasKey(e => e.JobAegis);
+        b.Property(e => e.JobAegis).HasColumnName("job_aegis").HasMaxLength(64).IsRequired();
+    }
+}
+
+public class SkillTreeInheritDbEntityConfiguration : IEntityTypeConfiguration<SkillTreeInheritDbEntity>
+{
+    public void Configure(EntityTypeBuilder<SkillTreeInheritDbEntity> b)
+    {
+        b.ToTable("skill_tree_inherit_db");
+        b.HasKey(e => new { e.ChildJobAegis, e.ParentJobAegis });
+        b.Property(e => e.ChildJobAegis).HasColumnName("child_job_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.ParentJobAegis).HasColumnName("parent_job_aegis").HasMaxLength(64).IsRequired();
+    }
+}
+
+public class SkillTreeEntryDbEntityConfiguration : IEntityTypeConfiguration<SkillTreeEntryDbEntity>
+{
+    public void Configure(EntityTypeBuilder<SkillTreeEntryDbEntity> b)
+    {
+        b.ToTable("skill_tree_entry_db");
+        b.HasKey(e => new { e.JobAegis, e.SkillAegis });
+        b.Property(e => e.JobAegis).HasColumnName("job_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.SkillAegis).HasColumnName("skill_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.MaxLevel).HasColumnName("max_level");
+        b.Property(e => e.Exclude).HasColumnName("exclude");
+    }
+}
+
+public class SkillTreeRequirementDbEntityConfiguration : IEntityTypeConfiguration<SkillTreeRequirementDbEntity>
+{
+    public void Configure(EntityTypeBuilder<SkillTreeRequirementDbEntity> b)
+    {
+        b.ToTable("skill_tree_requirement_db");
+        b.HasKey(e => new { e.JobAegis, e.SkillAegis, e.RequiredSkillAegis });
+        b.Property(e => e.JobAegis).HasColumnName("job_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.SkillAegis).HasColumnName("skill_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.RequiredSkillAegis).HasColumnName("required_skill_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.RequiredLevel).HasColumnName("required_level");
+    }
+}
+
+public class GuildSkillTreeDbEntityConfiguration : IEntityTypeConfiguration<GuildSkillTreeDbEntity>
+{
+    public void Configure(EntityTypeBuilder<GuildSkillTreeDbEntity> b)
+    {
+        b.ToTable("guild_skill_tree_db");
+        b.HasKey(e => e.SkillAegis);
+        b.Property(e => e.SkillAegis).HasColumnName("skill_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.MaxLevel).HasColumnName("max_level");
+    }
+}
+
+public class GuildSkillTreeRequirementDbEntityConfiguration : IEntityTypeConfiguration<GuildSkillTreeRequirementDbEntity>
+{
+    public void Configure(EntityTypeBuilder<GuildSkillTreeRequirementDbEntity> b)
+    {
+        b.ToTable("guild_skill_tree_requirement_db");
+        b.HasKey(e => new { e.SkillAegis, e.RequiredSkillAegis });
+        b.Property(e => e.SkillAegis).HasColumnName("skill_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.RequiredSkillAegis).HasColumnName("required_skill_aegis").HasMaxLength(64).IsRequired();
+        b.Property(e => e.RequiredLevel).HasColumnName("required_level");
+    }
+}

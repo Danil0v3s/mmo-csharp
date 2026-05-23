@@ -209,3 +209,25 @@ internal sealed class ItemComboDbRepository(GameDbContext ctx) : IItemComboDbRep
     public async Task<IReadOnlyList<ItemComboMemberDbEntity>> GetCombosForItemAsync(string itemAegis, CancellationToken ct = default)
         => await ctx.ItemComboMemberDb.AsNoTracking().Where(m => m.MemberItemAegis == itemAegis).ToListAsync(ct);
 }
+
+// DB-8c — skill tree repos
+
+internal sealed class SkillTreeDbRepository(GameDbContext ctx) : ISkillTreeDbRepository
+{
+    public async Task<IReadOnlyList<SkillTreeDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.SkillTreeDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<SkillTreeInheritDbEntity>> GetInheritsAsync(string childJobAegis, CancellationToken ct = default)
+        => await ctx.SkillTreeInheritDb.AsNoTracking().Where(i => i.ChildJobAegis == childJobAegis).ToListAsync(ct);
+    public async Task<IReadOnlyList<SkillTreeEntryDbEntity>> GetEntriesAsync(string jobAegis, CancellationToken ct = default)
+        => await ctx.SkillTreeEntryDb.AsNoTracking().Where(e => e.JobAegis == jobAegis).ToListAsync(ct);
+    public async Task<IReadOnlyList<SkillTreeRequirementDbEntity>> GetRequirementsAsync(string jobAegis, string skillAegis, CancellationToken ct = default)
+        => await ctx.SkillTreeRequirementDb.AsNoTracking().Where(r => r.JobAegis == jobAegis && r.SkillAegis == skillAegis).ToListAsync(ct);
+}
+
+internal sealed class GuildSkillTreeDbRepository(GameDbContext ctx) : IGuildSkillTreeDbRepository
+{
+    public async Task<IReadOnlyList<GuildSkillTreeDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.GuildSkillTreeDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<GuildSkillTreeRequirementDbEntity>> GetRequirementsAsync(string skillAegis, CancellationToken ct = default)
+        => await ctx.GuildSkillTreeRequirementDb.AsNoTracking().Where(r => r.SkillAegis == skillAegis).ToListAsync(ct);
+}

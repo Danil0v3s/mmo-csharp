@@ -89,6 +89,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IItemGroupCatalogDbRepository, ItemGroupCatalogDbRepository>();
         services.AddScoped<IItemPackageDbRepository, ItemPackageDbRepository>();
         services.AddScoped<IItemComboDbRepository, ItemComboDbRepository>();
+        // DB-8c: skill tree catalogs.
+        services.AddScoped<ISkillTreeDbRepository, SkillTreeDbRepository>();
+        services.AddScoped<IGuildSkillTreeDbRepository, GuildSkillTreeDbRepository>();
 
         return services;
     }

@@ -167,8 +167,7 @@ public class GameDbContext : DbContext
     // ---- Payload-shape catalogs (key + JSON payload) ----
     public DbSet<ElementalDbEntity> ElementalDb => Set<ElementalDbEntity>();
     public DbSet<BattlegroundDbEntity> BattlegroundDb => Set<BattlegroundDbEntity>();
-    public DbSet<SkillTreeEntity> SkillTreeDb => Set<SkillTreeEntity>();
-    public DbSet<GuildSkillTreeEntity> GuildSkillTreeDb => Set<GuildSkillTreeEntity>();
+    // DB-8c: SkillTreeDb / GuildSkillTreeDb moved to typed entities below.
     // DB-8b: MobSummonDb moved to typed entity below.
     public DbSet<ItemRandomOptGroupEntity> ItemRandomOptGroupDb => Set<ItemRandomOptGroupEntity>();
     // DB-8a: AttrFixDb / LevelPenaltyDb moved to typed entities below.
@@ -208,6 +207,14 @@ public class GameDbContext : DbContext
     public DbSet<ItemPackageEntryDbEntity> ItemPackageEntryDb => Set<ItemPackageEntryDbEntity>();
     public DbSet<ItemComboDbEntity> ItemComboDb => Set<ItemComboDbEntity>();
     public DbSet<ItemComboMemberDbEntity> ItemComboMemberDb => Set<ItemComboMemberDbEntity>();
+
+    // ---- DB-8c: skill tree re-normalized typed catalogs ----
+    public DbSet<SkillTreeDbEntity> SkillTreeDb => Set<SkillTreeDbEntity>();
+    public DbSet<SkillTreeInheritDbEntity> SkillTreeInheritDb => Set<SkillTreeInheritDbEntity>();
+    public DbSet<SkillTreeEntryDbEntity> SkillTreeEntryDb => Set<SkillTreeEntryDbEntity>();
+    public DbSet<SkillTreeRequirementDbEntity> SkillTreeRequirementDb => Set<SkillTreeRequirementDbEntity>();
+    public DbSet<GuildSkillTreeDbEntity> GuildSkillTreeDb => Set<GuildSkillTreeDbEntity>();
+    public DbSet<GuildSkillTreeRequirementDbEntity> GuildSkillTreeRequirementDb => Set<GuildSkillTreeRequirementDbEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

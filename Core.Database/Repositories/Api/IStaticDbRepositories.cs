@@ -177,3 +177,23 @@ public interface IItemComboDbRepository
     /// <summary>All combos that include the given item — used by the EquipBonus calc.</summary>
     Task<IReadOnlyList<ItemComboMemberDbEntity>> GetCombosForItemAsync(string itemAegis, CancellationToken ct = default);
 }
+
+// ============================================================================
+// DB-8c: skill tree repos
+// ============================================================================
+
+/// <summary>DB-8c: per-job skill tree (rAthena skill_tree.yml).</summary>
+public interface ISkillTreeDbRepository
+{
+    Task<IReadOnlyList<SkillTreeDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<SkillTreeInheritDbEntity>> GetInheritsAsync(string childJobAegis, CancellationToken ct = default);
+    Task<IReadOnlyList<SkillTreeEntryDbEntity>> GetEntriesAsync(string jobAegis, CancellationToken ct = default);
+    Task<IReadOnlyList<SkillTreeRequirementDbEntity>> GetRequirementsAsync(string jobAegis, string skillAegis, CancellationToken ct = default);
+}
+
+/// <summary>DB-8c: guild skill tree (rAthena guild_skill_tree.yml).</summary>
+public interface IGuildSkillTreeDbRepository
+{
+    Task<IReadOnlyList<GuildSkillTreeDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<GuildSkillTreeRequirementDbEntity>> GetRequirementsAsync(string skillAegis, CancellationToken ct = default);
+}
