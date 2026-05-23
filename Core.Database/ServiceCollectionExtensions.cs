@@ -78,6 +78,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAchievementLevelDbRepository, AchievementLevelDbRepository>();
         services.AddScoped<IJobAspdDbRepository, JobAspdDbRepository>();
         services.AddScoped<IConstDbRepository, ConstDbRepository>();
+        // DB-8a: re-normalized from PayloadJson blobs.
+        services.AddScoped<ILevelPenaltyDbRepository, LevelPenaltyDbRepository>();
+        services.AddScoped<IAttrFixDbRepository, AttrFixDbRepository>();
+        services.AddScoped<IReputationGroupDbRepository, ReputationGroupDbRepository>();
 
         return services;
     }

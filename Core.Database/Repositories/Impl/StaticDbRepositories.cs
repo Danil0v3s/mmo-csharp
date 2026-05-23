@@ -121,3 +121,37 @@ internal sealed class ConstDbRepository(GameDbContext ctx) : IConstDbRepository
     public async Task<ConstDbEntity?> GetByNameAsync(string name, CancellationToken ct = default)
         => await ctx.ConstDb.AsNoTracking().FirstOrDefaultAsync(c => c.Name == name, ct);
 }
+
+// DB-8a — re-normalized catalogs
+
+internal sealed class LevelPenaltyDbRepository(GameDbContext ctx) : ILevelPenaltyDbRepository
+{
+    public async Task<IReadOnlyList<LevelPenaltyDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.LevelPenaltyDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<LevelPenaltyDifferenceDbEntity>> GetDifferencesAsync(string penaltyType, CancellationToken ct = default)
+        => await ctx.LevelPenaltyDifferenceDb.AsNoTracking().Where(d => d.PenaltyType == penaltyType).OrderBy(d => d.Difference).ToListAsync(ct);
+    public async Task<IReadOnlyList<LevelPenaltyDifferenceDbEntity>> GetAllDifferencesAsync(CancellationToken ct = default)
+        => await ctx.LevelPenaltyDifferenceDb.AsNoTracking().OrderBy(d => d.PenaltyType).ThenBy(d => d.Difference).ToListAsync(ct);
+}
+
+internal sealed class AttrFixDbRepository(GameDbContext ctx) : IAttrFixDbRepository
+{
+    public async Task<IReadOnlyList<AttrFixDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.AttrFixDb.AsNoTracking().ToListAsync(ct);
+    public async Task<int> GetMultiplierAsync(int level, string attackerElement, string defenderElement, CancellationToken ct = default)
+    {
+        var row = await ctx.AttrFixDb.AsNoTracking().FirstOrDefaultAsync(
+            r => r.Level == level && r.AttackerElement == attackerElement && r.DefenderElement == defenderElement, ct);
+        return row?.Multiplier ?? 100; // default neutral
+    }
+}
+
+internal sealed class ReputationGroupDbRepository(GameDbContext ctx) : IReputationGroupDbRepository
+{
+    public async Task<IReadOnlyList<ReputationGroupDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.ReputationGroupDb.AsNoTracking().ToListAsync(ct);
+    public async Task<ReputationGroupDbEntity?> GetByIdAsync(int id, CancellationToken ct = default)
+        => await ctx.ReputationGroupDb.AsNoTracking().FirstOrDefaultAsync(g => g.Id == id, ct);
+    public async Task<IReadOnlyList<ReputationGroupMemberDbEntity>> GetMembersAsync(int groupId, CancellationToken ct = default)
+        => await ctx.ReputationGroupMemberDb.AsNoTracking().Where(m => m.GroupId == groupId).ToListAsync(ct);
+}

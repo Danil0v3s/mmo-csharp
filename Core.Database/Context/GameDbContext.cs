@@ -171,8 +171,7 @@ public class GameDbContext : DbContext
     public DbSet<GuildSkillTreeEntity> GuildSkillTreeDb => Set<GuildSkillTreeEntity>();
     public DbSet<MobSummonEntity> MobSummonDb => Set<MobSummonEntity>();
     public DbSet<ItemRandomOptGroupEntity> ItemRandomOptGroupDb => Set<ItemRandomOptGroupEntity>();
-    public DbSet<AttrFixEntity> AttrFixDb => Set<AttrFixEntity>();
-    public DbSet<LevelPenaltyEntity> LevelPenaltyDb => Set<LevelPenaltyEntity>();
+    // DB-8a: AttrFixDb / LevelPenaltyDb moved to typed entities below.
     public DbSet<JobStatsEntity> JobStatsDb => Set<JobStatsEntity>();
     public DbSet<JobExpEntity> JobExpDb => Set<JobExpEntity>();
     public DbSet<JobBasePointsEntity> JobBasePointsDb => Set<JobBasePointsEntity>();
@@ -190,7 +189,14 @@ public class GameDbContext : DbContext
     public DbSet<MobItemRatioEntity> MobItemRatioDb => Set<MobItemRatioEntity>();
     public DbSet<ItemCashEntity> ItemCashDb => Set<ItemCashEntity>();
     public DbSet<AttendanceDbEntity> AttendanceDb => Set<AttendanceDbEntity>();
-    public DbSet<ReputationGroupEntity> ReputationGroupDb => Set<ReputationGroupEntity>();
+    // DB-8a: ReputationGroupDb moved to typed entity below.
+
+    // ---- DB-8a: re-normalized typed catalogs (was PayloadJson blobs) ----
+    public DbSet<AttrFixDbEntity> AttrFixDb => Set<AttrFixDbEntity>();
+    public DbSet<LevelPenaltyDbEntity> LevelPenaltyDb => Set<LevelPenaltyDbEntity>();
+    public DbSet<LevelPenaltyDifferenceDbEntity> LevelPenaltyDifferenceDb => Set<LevelPenaltyDifferenceDbEntity>();
+    public DbSet<ReputationGroupDbEntity> ReputationGroupDb => Set<ReputationGroupDbEntity>();
+    public DbSet<ReputationGroupMemberDbEntity> ReputationGroupMemberDb => Set<ReputationGroupMemberDbEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

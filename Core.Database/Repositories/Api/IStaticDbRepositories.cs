@@ -101,3 +101,30 @@ public interface IConstDbRepository
     Task<IReadOnlyList<ConstDbEntity>> GetAllAsync(CancellationToken ct = default);
     Task<ConstDbEntity?> GetByNameAsync(string name, CancellationToken ct = default);
 }
+
+// ============================================================================
+// DB-8a: tier-1 re-normalized catalog repos
+// ============================================================================
+
+/// <summary>DB-8a: level-gap penalty curves (rAthena level_penalty.yml).</summary>
+public interface ILevelPenaltyDbRepository
+{
+    Task<IReadOnlyList<LevelPenaltyDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<LevelPenaltyDifferenceDbEntity>> GetDifferencesAsync(string penaltyType, CancellationToken ct = default);
+    Task<IReadOnlyList<LevelPenaltyDifferenceDbEntity>> GetAllDifferencesAsync(CancellationToken ct = default);
+}
+
+/// <summary>DB-8a: elemental damage matrix (rAthena attr_fix.yml).</summary>
+public interface IAttrFixDbRepository
+{
+    Task<IReadOnlyList<AttrFixDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<int> GetMultiplierAsync(int level, string attackerElement, string defenderElement, CancellationToken ct = default);
+}
+
+/// <summary>DB-8a: reputation faction bundles (rAthena reputation_group.yml).</summary>
+public interface IReputationGroupDbRepository
+{
+    Task<IReadOnlyList<ReputationGroupDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<ReputationGroupDbEntity?> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<IReadOnlyList<ReputationGroupMemberDbEntity>> GetMembersAsync(int groupId, CancellationToken ct = default);
+}

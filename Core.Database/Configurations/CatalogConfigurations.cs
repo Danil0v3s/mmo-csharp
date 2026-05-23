@@ -167,8 +167,8 @@ public class SkillTreeEntityConfiguration : IEntityTypeConfiguration<SkillTreeEn
 public class GuildSkillTreeEntityConfiguration : IEntityTypeConfiguration<GuildSkillTreeEntity> { public void Configure(EntityTypeBuilder<GuildSkillTreeEntity> b) => PayloadConfig.StringKey(b, "guild_skill_tree", "skill_name"); }
 public class MobSummonEntityConfiguration : IEntityTypeConfiguration<MobSummonEntity> { public void Configure(EntityTypeBuilder<MobSummonEntity> b) => PayloadConfig.StringKey(b, "mob_summon", "group_name"); }
 public class ItemRandomOptGroupEntityConfiguration : IEntityTypeConfiguration<ItemRandomOptGroupEntity> { public void Configure(EntityTypeBuilder<ItemRandomOptGroupEntity> b) => PayloadConfig.IntKey(b, "item_randomopt_group", "group_id"); }
-public class AttrFixEntityConfiguration : IEntityTypeConfiguration<AttrFixEntity> { public void Configure(EntityTypeBuilder<AttrFixEntity> b) => PayloadConfig.IntKey(b, "attr_fix", "ele_level"); }
-public class LevelPenaltyEntityConfiguration : IEntityTypeConfiguration<LevelPenaltyEntity> { public void Configure(EntityTypeBuilder<LevelPenaltyEntity> b) => PayloadConfig.StringKey(b, "level_penalty", "penalty_type"); }
+// AttrFixEntityConfiguration / LevelPenaltyEntityConfiguration removed
+// in DB-8a — see StaticDbConfigurations.cs for the typed replacements.
 public class JobStatsEntityConfiguration : IEntityTypeConfiguration<JobStatsEntity> { public void Configure(EntityTypeBuilder<JobStatsEntity> b) => PayloadConfig.RowIndex(b, "job_stats"); }
 public class JobExpEntityConfiguration : IEntityTypeConfiguration<JobExpEntity> { public void Configure(EntityTypeBuilder<JobExpEntity> b) => PayloadConfig.RowIndex(b, "job_exp"); }
 public class JobBasePointsEntityConfiguration : IEntityTypeConfiguration<JobBasePointsEntity> { public void Configure(EntityTypeBuilder<JobBasePointsEntity> b) => PayloadConfig.RowIndex(b, "job_basepoints"); }
@@ -186,4 +186,4 @@ public class MapDropsEntityConfiguration : IEntityTypeConfiguration<MapDropsEnti
 public class MobItemRatioEntityConfiguration : IEntityTypeConfiguration<MobItemRatioEntity> { public void Configure(EntityTypeBuilder<MobItemRatioEntity> b) => PayloadConfig.StringKey(b, "mob_item_ratio", "item_aegis"); }
 public class ItemCashEntityConfiguration : IEntityTypeConfiguration<ItemCashEntity> { public void Configure(EntityTypeBuilder<ItemCashEntity> b) => PayloadConfig.RowIndex(b, "item_cash"); }
 public class AttendanceDbEntityConfiguration : IEntityTypeConfiguration<AttendanceDbEntity> { public void Configure(EntityTypeBuilder<AttendanceDbEntity> b) => PayloadConfig.IntKey(b, "attendance_db", "attendance_id"); }
-public class ReputationGroupEntityConfiguration : IEntityTypeConfiguration<ReputationGroupEntity> { public void Configure(EntityTypeBuilder<ReputationGroupEntity> b) => PayloadConfig.IntKey(b, "reputation_group", "group_id"); }
+// ReputationGroupEntityConfiguration removed in DB-8a.

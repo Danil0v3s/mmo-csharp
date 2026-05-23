@@ -283,3 +283,89 @@ public class ConstDbEntityConfiguration : IEntityTypeConfiguration<ConstDbEntity
         b.Property(e => e.IsParameter).HasColumnName("is_parameter");
     }
 }
+
+// ============================================================================
+// DB-8a: tier-1 re-normalized catalogs (replaces PayloadJson blobs)
+// ============================================================================
+
+/// <summary>
+/// DB-8a: level-gap penalty parent row. Replaces the prior
+/// LevelPenaltyEntity (PayloadStringKeyEntity) JSON blob with a typed
+/// parent + <c>level_penalty_difference_db</c> child table.
+/// </summary>
+public class LevelPenaltyDbEntityConfiguration : IEntityTypeConfiguration<LevelPenaltyDbEntity>
+{
+    public void Configure(EntityTypeBuilder<LevelPenaltyDbEntity> b)
+    {
+        b.ToTable("level_penalty_db");
+        b.HasKey(e => e.PenaltyType);
+        b.Property(e => e.PenaltyType).HasColumnName("penalty_type").HasMaxLength(32).IsRequired();
+    }
+}
+
+/// <summary>
+/// DB-8a: per-level-difference rate row in the
+/// <see cref="LevelPenaltyDbEntity"/> curve. Composite key
+/// (penalty_type, difference).
+/// </summary>
+public class LevelPenaltyDifferenceDbEntityConfiguration : IEntityTypeConfiguration<LevelPenaltyDifferenceDbEntity>
+{
+    public void Configure(EntityTypeBuilder<LevelPenaltyDifferenceDbEntity> b)
+    {
+        b.ToTable("level_penalty_difference_db");
+        b.HasKey(e => new { e.PenaltyType, e.Difference });
+        b.Property(e => e.PenaltyType).HasColumnName("penalty_type").HasMaxLength(32).IsRequired();
+        b.Property(e => e.Difference).HasColumnName("difference");
+        b.Property(e => e.Rate).HasColumnName("rate");
+    }
+}
+
+/// <summary>
+/// DB-8a: element vs element damage matrix. Replaces AttrFixEntity
+/// (PayloadIntKeyEntity) blob. Composite key (level, attacker_element,
+/// defender_element); each row is a single percentage multiplier.
+/// </summary>
+public class AttrFixDbEntityConfiguration : IEntityTypeConfiguration<AttrFixDbEntity>
+{
+    public void Configure(EntityTypeBuilder<AttrFixDbEntity> b)
+    {
+        b.ToTable("attr_fix_db");
+        b.HasKey(e => new { e.Level, e.AttackerElement, e.DefenderElement });
+        b.Property(e => e.Level).HasColumnName("level");
+        b.Property(e => e.AttackerElement).HasColumnName("attacker_element").HasMaxLength(24).IsRequired();
+        b.Property(e => e.DefenderElement).HasColumnName("defender_element").HasMaxLength(24).IsRequired();
+        b.Property(e => e.Multiplier).HasColumnName("multiplier");
+    }
+}
+
+/// <summary>
+/// DB-8a: reputation faction bundle parent row. Replaces
+/// ReputationGroupEntity (PayloadIntKeyEntity). Members hang off
+/// <see cref="ReputationGroupMemberDbEntity"/>.
+/// </summary>
+public class ReputationGroupDbEntityConfiguration : IEntityTypeConfiguration<ReputationGroupDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ReputationGroupDbEntity> b)
+    {
+        b.ToTable("reputation_group_db");
+        b.HasKey(e => e.Id);
+        b.Property(e => e.Id).HasColumnName("id");
+        b.Property(e => e.ScriptName).HasColumnName("script_name").HasMaxLength(64).IsRequired();
+        b.Property(e => e.Name).HasColumnName("name").HasMaxLength(128).IsRequired();
+    }
+}
+
+/// <summary>
+/// DB-8a: child rows of <see cref="ReputationGroupDbEntity"/>.
+/// Composite key (group_id, reputation_id).
+/// </summary>
+public class ReputationGroupMemberDbEntityConfiguration : IEntityTypeConfiguration<ReputationGroupMemberDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ReputationGroupMemberDbEntity> b)
+    {
+        b.ToTable("reputation_group_member_db");
+        b.HasKey(e => new { e.GroupId, e.ReputationId });
+        b.Property(e => e.GroupId).HasColumnName("group_id");
+        b.Property(e => e.ReputationId).HasColumnName("reputation_id");
+    }
+}

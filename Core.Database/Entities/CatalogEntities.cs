@@ -89,8 +89,8 @@ public class SkillTreeEntity : PayloadStringKeyEntity { } // job_name
 public class GuildSkillTreeEntity : PayloadStringKeyEntity { } // skill_name
 public class MobSummonEntity : PayloadStringKeyEntity { } // group_name
 public class ItemRandomOptGroupEntity : PayloadIntKeyEntity { } // group_id
-public class AttrFixEntity : PayloadIntKeyEntity { } // ele_level
-public class LevelPenaltyEntity : PayloadStringKeyEntity { } // penalty_type
+// AttrFixEntity / LevelPenaltyEntity removed in DB-8a — replaced by
+// typed AttrFixDbEntity + LevelPenaltyDbEntity / LevelPenaltyDifferenceDbEntity.
 public class JobStatsEntity : PayloadRowIndexEntity { }
 public class JobExpEntity : PayloadRowIndexEntity { }
 public class JobBasePointsEntity : PayloadRowIndexEntity { }
@@ -108,4 +108,5 @@ public class MapDropsEntity : PayloadStringKeyEntity { } // map_name
 public class MobItemRatioEntity : PayloadStringKeyEntity { } // item_aegis
 public class ItemCashEntity : PayloadRowIndexEntity { }
 public class AttendanceDbEntity : PayloadIntKeyEntity { } // attendance_id
-public class ReputationGroupEntity : PayloadIntKeyEntity { } // group_id
+// ReputationGroupEntity removed in DB-8a — replaced by typed
+// ReputationGroupDbEntity + ReputationGroupMemberDbEntity.
