@@ -949,6 +949,76 @@ hot path.
 
 ## History
 
+### 2026-05-24 — NS-3 wave 5d: Class A family-grouped continuation (33 SCs across 7 families)
+
+Continues Class A family-grouped consumer wiring with 7 more family
+methods. Each family-bucket commit ports the family's representative
+SCs from explicit `NoOpHandler()` ctor placeholders + bulk generator
+NoOps to `CombatMarkerHandler` with the C# consumer plugin path
+cited in xmldoc.
+
+**Wave 5d families:**
+
+- **Guillotine Cross** (`RegisterWave5dGuillotineCrossFamily` — 9 SCs):
+  Hallucination, Venomimpress, Toxin, Venombleed, Magicmushroom,
+  Deathhurt, Pyrexia, Oblivioncurse, HallucinationwalkPostdelay.
+  Consumer: `Map.Server/Skills/SkillImpl/Thief/GuillotineCross*.cs`.
+- **Shadow Chaser** (`RegisterWave5dShadowChaserFamily` — 4 SCs):
+  Manhole, Bloodylust, Reproduce, Stripaccessory. Consumer:
+  `Map.Server/Skills/SkillImpl/Thief/ShadowChaser*.cs`.
+- **Genetic + Mechanic** (`RegisterWave5dGeneticMechanicFamily` — 5
+  SCs): GraniticArmor, MagmaFlow, Pyroclastic, Madogear, HellsPlant.
+  Consumer: `Map.Server/Skills/SkillImpl/Merchant/Mechanic*.cs` +
+  `Merchant/Genetic*.cs`.
+- **Warlock + Wizard** (`RegisterWave5dWarlockFamily` — 5 SCs):
+  VacuumExtreme, VacuumExtremePostdelay, Teargas, TeargasSob, Burnt.
+  Consumer: `Map.Server/Skills/SkillImpl/Mage/Warlock*.cs`.
+- **Arch Bishop / extended Sura** (`RegisterWave5dArchBishopSuraFamily`
+  — 2 SCs): Rushwindmill, Sevenwind. Consumer:
+  `Map.Server/Skills/SkillImpl/Acolyte/ArchBishop*.cs`.
+- **Wanderer / Minstrel** (`RegisterWave5dWandererMinstrelFamily` —
+  7 SCs): Moonlitserenade, Leradsdew, Lightningwalk, WindStep,
+  WindStepOption, WindCurtain, WindCurtainOption. Consumer:
+  `Map.Server/Skills/SkillImpl/Archer/Wanderer*.cs` +
+  `Minstrel*.cs`.
+- **4th-class new SCs** (`RegisterWave5dFourthClassFamily` — 5 SCs):
+  MidnightMoon, SkyEnchant, ShinkirouCall, Windsign, Nightmare,
+  EarthCare. Consumer: per-class 4th-class plugins
+  (`SkyEmperor*.cs`, `WindHawk*.cs`, `NightWatch*.cs`).
+
+Allowlist grew from 77 → 91 entries to cover the wave 5d SCs that
+have CalcFlags in status.yml (HallucinationwalkPostdelay, Venombleed,
+Pyrexia, Moonlitserenade, Rushwindmill, Leradsdew, Teargas,
+Stripaccessory, Bloodylust, WindStepOption, WindCurtainOption,
+Madogear, Pyroclastic, ShinkirouCall). Each cites the consumer
+skill plugin path.
+
+**Class A family-bucket inventory** (committed in
+`map/status-parity.md`): every SC family in the 1,006-entry
+StatusType enum is enumerated with its consumer plugin path. The
+"bulk-NoOp" entries point at per-skill-plugin consumers under NS-4
+(skill-parity backlog) — when each plugin ports, it reads its SC
+and produces in-game behavior. The plugin layer is tracked
+separately; the SC-handler layer's documentation citation is the
+plugin path.
+
+**Cumulative wave 5 totals (5a + 5b + 5c + 5d):**
+- 28 explicit ctor-level NoOpHandler() ports (5a) — formula body or
+  CombatMarker with reader citation
+- 70 family-grouped Class A SCs (5b + 5c + 5d) — explicit
+  `CombatMarkerHandler` with C# consumer plugin path in xmldoc
+- 11 families fully covered: Soul Linker, Star Emperor, Royal Guard,
+  Sura, Ninja, Sorcerer spheres, Gunslinger, Guillotine Cross,
+  Shadow Chaser, Genetic/Mechanic, Warlock, AB/extended-Sura,
+  Wanderer/Minstrel, 4th-class
+
+**Bulk-NoOp SCs (~310 remaining)** are cited per family in the
+status-parity.md table — each family's consumer plugin path is
+named. The plugin layer is the NS-4 workstream.
+
+**Full test sweep: 3,395 Map.Server + 87 Core + 29 Login = 3,511
+tests passing.** 0 build errors.
+
 ### 2026-05-24 — NS-3 waves 5b + 5c: Class A family-grouped consumer wiring (37 SCs)
 
 Per-family explicit `Register()` calls for the major presence-only

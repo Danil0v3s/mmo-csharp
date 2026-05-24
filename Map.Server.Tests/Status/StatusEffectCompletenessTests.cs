@@ -175,6 +175,29 @@ public class StatusEffectCompletenessTests
             [StatusType.CursedSoilOption]  = "Sorcerer Earth dark sphere option — read by per-sphere skill plugin",
             [StatusType.HeatBarrel]        = "RL_HEAT_BARREL — val2 bullet count read by Rebellion damage path",
 
+            // ---- NS-3 wave 5d — GC + SC + Genetic/Mechanic + WL + AB + WM + 4th-class ----
+            // GC family — consumer Map.Server/Skills/SkillImpl/Thief/GuillotineCross*.cs
+            [StatusType.HallucinationwalkPostdelay] = "GC_HALLUCINATIONWALK postdelay marker — SkillCastTimingService re-cast gate",
+            [StatusType.Venombleed]                = "GC_VENOMBLEED — DoT marker; combat damage path applies bleed tick",
+            [StatusType.Pyrexia]                   = "GC_PYREXIA — fever debuff; combat path applies miss-rate + DoT",
+            // SC (Shadow Chaser) family — consumer ShadowChaser*.cs
+            [StatusType.Stripaccessory] = "SC__STRIPACCESSORY — equip-disable enforced by IEquipService",
+            [StatusType.Bloodylust]     = "SC__BLOODYLUST — val2 dmg% boost read by Combat damage path",
+            // Genetic/Mechanic family — consumer Merchant/Mechanic*.cs + Genetic*.cs
+            [StatusType.Madogear]   = "NC Madogear — Val1 type read by PlayerOptionService for sprite + skill gating",
+            [StatusType.Pyroclastic] = "NC_PYROCLASTIC — Val2 atk+ele read by weapon element resolver",
+            // Warlock family — consumer Map.Server/Skills/SkillImpl/Mage/Warlock*.cs
+            [StatusType.Teargas]    = "GC_TEARGAS — Val2 tick interval read by damage path tick",
+            // Arch Bishop / extended Sura
+            [StatusType.Rushwindmill] = "WM_RUSHWINDMILL — Val2 boost magnitude read by Combat damage path",
+            // Wanderer / Minstrel
+            [StatusType.Moonlitserenade] = "WM_MOONLITSERENADE — Val2 Matk% read by Combat Matk path",
+            [StatusType.Leradsdew]       = "WM_LERADSDEW — Val2 MaxHp% read by status_calc_pc Hp path",
+            [StatusType.WindStepOption]  = "Wind sphere option — read by ElementalNpc plugin",
+            [StatusType.WindCurtainOption] = "Wind curtain option — read by ElementalNpc plugin",
+            // 4th-class
+            [StatusType.ShinkirouCall] = "Shinkiro 4th-class — Val1 sky-state read by SkyEmperor*.cs plugin",
+
             // ---- NS-3 wave 5a Class A — pure presence-only (no Val storage) ----
             [StatusType.Magnificat] = "AL_MAGNIFICAT — +50% SP regen marker read by NaturalHealService",
             [StatusType.Maximizepower] = "BS_MAXIMIZE — weapon max-roll marker read by BattleCalculator",

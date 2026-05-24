@@ -1397,6 +1397,13 @@ public sealed class StatusEffectRegistry
         RegisterWave5cNinjaFamily();
         RegisterWave5cSorcererSpheresFamily();
         RegisterWave5cGunslingerFamily();
+        RegisterWave5dGuillotineCrossFamily();
+        RegisterWave5dShadowChaserFamily();
+        RegisterWave5dGeneticMechanicFamily();
+        RegisterWave5dWarlockFamily();
+        RegisterWave5dArchBishopSuraFamily();
+        RegisterWave5dWandererMinstrelFamily();
+        RegisterWave5dFourthClassFamily();
 
         // ====================================================================
         // NS-3 wave 4b — bards / dancers / Bragi-family + ASPD potions
@@ -2312,6 +2319,240 @@ public sealed class StatusEffectRegistry
         // Val2 = stacked bullet count consumed per attack. Consumer:
         // Rebellion damage path reads val2 + decrements.
         Register(StatusType.HeatBarrel, CombatMarkerHandler(gsBuff));
+    }
+
+    /// <summary>
+    /// NS-3 wave 5d — Guillotine Cross venom + hallucination family.
+    /// All val2-marker debuffs read by Combat damage path /
+    /// IPcRegenService overlay (Toxin/Bleed apply DoT, Pyrexia
+    /// applies miss-rate, etc.).
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/Thief/GuillotineCross*.cs</c>
+    /// reads SCs on cast; Combat damage path reads SCs on hit.</para>
+    /// </summary>
+    private void RegisterWave5dGuillotineCrossFamily()
+    {
+        var gcDebuff = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh;
+
+        // GC_HALLUCINATION — already overridden in wave 4b; explicit
+        // re-register here for family grouping.
+        Register(StatusType.Hallucination, CombatMarkerHandler(gcDebuff));
+
+        // SC_VENOMIMPRESS (GC_VENOMIMPRESS) — venom-element vuln.
+        // Val2 = elemental damage % boost. Consumer: damage element
+        // resolver reads val2 to amplify poison-element hits.
+        Register(StatusType.Venomimpress, CombatMarkerHandler(gcDebuff));
+
+        // GC New Poison family — each is a DoT/proc with rAthena-spec
+        // val2 = damage interval, val3 = damage amount. Consumer:
+        // IPcRegenService DoT overlay + Combat damage path.
+        Register(StatusType.Toxin, CombatMarkerHandler(gcDebuff));
+        Register(StatusType.Venombleed, CombatMarkerHandler(gcDebuff));
+        Register(StatusType.Magicmushroom, CombatMarkerHandler(gcDebuff));
+        Register(StatusType.Deathhurt, CombatMarkerHandler(gcDebuff));
+        Register(StatusType.Pyrexia, CombatMarkerHandler(gcDebuff));
+        Register(StatusType.Oblivioncurse, CombatMarkerHandler(gcDebuff));
+
+        // SC_HALLUCINATIONWALK_POSTDELAY — post-cast cooldown marker
+        // for GC_HALLUCINATIONWALK. Consumer: SkillCastTimingService
+        // checks SC presence before allowing re-cast.
+        Register(StatusType.HallucinationwalkPostdelay, CombatMarkerHandler(gcDebuff));
+    }
+
+    /// <summary>
+    /// NS-3 wave 5d — Shadow Chaser family (SC__* in rAthena, prefixed
+    /// underscore to mark Shadow Chaser). Manhole/Bloodylust/Reproduce/
+    /// Stripaccessory + various 4th-class extensions.
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/Thief/ShadowChaser*.cs</c>
+    /// reads SCs on cast / damage path.</para>
+    /// </summary>
+    private void RegisterWave5dShadowChaserFamily()
+    {
+        var scBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+        var scDebuff = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh;
+
+        // SC__MANHOLE — Shadow Chaser cell-trap. Target stuck in place.
+        // Val2 = remaining ticks. Consumer: Movement service reads SC
+        // to block move + Combat reads to allow incoming attacks.
+        Register(StatusType.Manhole, CombatMarkerHandler(scDebuff));
+
+        // SC__BLOODYLUST — Shadow Chaser caster's damage % boost.
+        // Val2 = damage %. Consumer: Combat damage path reads val2.
+        Register(StatusType.Bloodylust, CombatMarkerHandler(scBuff));
+
+        // SC__REPRODUCE — Shadow Chaser skill copy. Val2 = copied skill
+        // id, val3 = level. Consumer: SkillCastService reads on cast.
+        Register(StatusType.Reproduce, CombatMarkerHandler(scBuff));
+
+        // SC__STRIPACCESSORY — Shadow Chaser strip accessory slot.
+        // Equip-disable enforced by IEquipService while SC active.
+        Register(StatusType.Stripaccessory, CombatMarkerHandler(scDebuff));
+    }
+
+    /// <summary>
+    /// NS-3 wave 5d — Genetic + Mechanic family. Cart/Madogear/
+    /// Pyroclastic/Magma Flow + crafting buffs.
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/Merchant/Genetic*.cs</c>
+    /// and <c>Map.Server/Skills/SkillImpl/Merchant/Mechanic*.cs</c>
+    /// read SCs on cast / damage.</para>
+    /// </summary>
+    private void RegisterWave5dGeneticMechanicFamily()
+    {
+        var mgBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+
+        // SC_GRANITIC_ARMOR (GN_GRANITIC_ARMOR) — Genetic def buff.
+        // Val2 = def boost. Consumer: damage defense math reads val2.
+        Register(StatusType.GraniticArmor, CombatMarkerHandler(mgBuff));
+
+        // SC_MAGMA_FLOW (NC_MAGMA_FLOW) — Mechanic ground unit cell
+        // damage proc. Val2 = damage interval. Consumer:
+        // SkillUnitTickRegistry tick + Combat damage path.
+        Register(StatusType.MagmaFlow, CombatMarkerHandler(mgBuff));
+
+        // SC_PYROCLASTIC (NC_PYROCLASTIC) — Mechanic fire weapon
+        // endow + Atk boost. Val2 = atk + element. Consumer: weapon
+        // element resolver + damage path.
+        Register(StatusType.Pyroclastic, CombatMarkerHandler(mgBuff));
+
+        // SC_MADOGEAR (NC_MADO mode) — Mechanic Madogear mode marker.
+        // Val1 = Madogear type. Consumer: PlayerOptionService reads
+        // SC for sprite + skill gating.
+        Register(StatusType.Madogear, CombatMarkerHandler(mgBuff));
+
+        // SC_HELLS_PLANT — Genetic ground unit. Val2 = plant id.
+        // Consumer: SkillUnitTickRegistry tick + damage path.
+        Register(StatusType.HellsPlant, CombatMarkerHandler(mgBuff));
+    }
+
+    /// <summary>
+    /// NS-3 wave 5d — Warlock + Wizard family. Vacuum Extreme, Comet,
+    /// Crimson Rock, Tetra Vortex markers. Each is a debuff that
+    /// either roots target (VacuumExtreme) or amplifies damage
+    /// (Crimson/Tetra).
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/Mage/Warlock*.cs</c>
+    /// reads SCs on cast; Combat damage path reads SCs on hit.</para>
+    /// </summary>
+    private void RegisterWave5dWarlockFamily()
+    {
+        var wlBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+        var wlDebuff = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh;
+
+        // SC_VACUUM_EXTREME (WL_VACUUM_EXTREME) — root debuff.
+        // Val1 = level, val2 = stored x, val3 = stored y. Consumer:
+        // Movement service checks SC to block walk away from cell.
+        Register(StatusType.VacuumExtreme, CombatMarkerHandler(wlDebuff));
+
+        // SC_VACUUM_EXTREME_POSTDELAY — post-cast cooldown marker.
+        // Consumer: SkillCastTimingService checks for re-cast gate.
+        Register(StatusType.VacuumExtremePostdelay, CombatMarkerHandler(wlDebuff));
+
+        // SC_TEARGAS (HT_BLITZBEAT? Actually GC_TEARGAS) — DoT marker.
+        // Val2 = tick damage interval. Consumer: damage path tick.
+        Register(StatusType.Teargas, CombatMarkerHandler(wlDebuff));
+
+        // SC_TEARGAS_SOB — TearGas-triggered "sob" anim follow-up.
+        // Consumer: visual broadcast on tick.
+        Register(StatusType.TeargasSob, CombatMarkerHandler(wlDebuff));
+
+        // SC_BURNT — Mage burnt debuff marker (post-Fire DoT).
+        // Consumer: damage path applies fire weakness.
+        Register(StatusType.Burnt, CombatMarkerHandler(wlDebuff));
+    }
+
+    /// <summary>
+    /// NS-3 wave 5d — Arch Bishop + extended Sura family.
+    /// Saturdaynightfever/Rushwindmill/etc. additional Sura combos
+    /// not in wave 5b.
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/Acolyte/ArchBishop*.cs</c>
+    /// and Sura plugins read SCs.</para>
+    /// </summary>
+    private void RegisterWave5dArchBishopSuraFamily()
+    {
+        var abBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+
+        // SC_RUSHWINDMILL (WM_RUSHWINDMILL) — Wanderer/Minstrel
+        // Atk boost song; also overlaps with extended Acolyte buffs.
+        // Val2 = boost magnitude. Consumer: Combat damage path.
+        Register(StatusType.Rushwindmill, CombatMarkerHandler(abBuff));
+
+        // SC_SEVENWIND (BS_SEVENWIND? actually weapon-element endow).
+        // Val2 = element id. Consumer: weapon element resolver.
+        Register(StatusType.Sevenwind, CombatMarkerHandler(abBuff));
+    }
+
+    /// <summary>
+    /// NS-3 wave 5d — Wanderer / Minstrel (4th-class song updates).
+    /// Moonlitserenade + LeradsDew + Lightningwalk are 3rd-class song
+    /// markers. WindStep/WindCurtain + ArmorElement* are paired
+    /// elemental option buffs.
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/Archer/Wanderer*.cs</c>
+    /// or <c>Minstrel*.cs</c> reads SC for song boost dispatch.</para>
+    /// </summary>
+    private void RegisterWave5dWandererMinstrelFamily()
+    {
+        var wmBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+
+        // SC_MOONLITSERENADE (WM_MOONLITSERENADE) — Wanderer Matk song.
+        // Val2 = Matk % boost. Consumer: Combat damage Matk path.
+        Register(StatusType.Moonlitserenade, CombatMarkerHandler(wmBuff));
+
+        // SC_LERADSDEW (WM_LERADSDEW) — Wanderer MaxHp boost song.
+        // Val2 = MaxHp % boost. Consumer: status_calc_pc Hp path.
+        Register(StatusType.Leradsdew, CombatMarkerHandler(wmBuff));
+
+        // SC_LIGHTNINGWALK (WM_LIGHTNINGWALK) — Wanderer self-buff
+        // teleport-on-attack. Val2 = trigger %. Consumer: Combat
+        // damage path on incoming hit.
+        Register(StatusType.Lightningwalk, CombatMarkerHandler(wmBuff));
+
+        // Elemental option / curtain buffs — paired with elemental
+        // spheres. Consumer: ElementalNpc skill plugins.
+        Register(StatusType.WindStep, CombatMarkerHandler(wmBuff));
+        Register(StatusType.WindStepOption, CombatMarkerHandler(wmBuff));
+        Register(StatusType.WindCurtain, CombatMarkerHandler(wmBuff));
+        Register(StatusType.WindCurtainOption, CombatMarkerHandler(wmBuff));
+    }
+
+    /// <summary>
+    /// NS-3 wave 5d — 4th-class new SCs (Dragon Knight already covered
+    /// in wave 1; this method covers MidnightMoon, SkyEnchant,
+    /// ShinkirouCall, DragonicAura overlays, Windsign markers).
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/&lt;Class4th&gt;/*.cs</c>
+    /// per-job 4th-class plugins read SCs.</para>
+    /// </summary>
+    private void RegisterWave5dFourthClassFamily()
+    {
+        var f4Buff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+
+        // SC_DRAGONIC_AURA (DK_DRAGONIC_AURA) — already overridden in
+        // wave 1 (line 729-744). Explicit re-register here for family
+        // grouping (the override wins due to dictionary overwrite).
+        // — already has a real OnStart; no re-register needed.
+
+        // SC_MIDNIGHT_MOON / SKY_ENCHANT / SHINKIROU_CALL — Sky Emperor
+        // / Shinkiro 4th-class skill markers. Val1 = sky-state level.
+        // Consumer: SkyEmperor*.cs plugins read SC for stance dispatch.
+        Register(StatusType.MidnightMoon, CombatMarkerHandler(f4Buff));
+        Register(StatusType.SkyEnchant, CombatMarkerHandler(f4Buff));
+        Register(StatusType.ShinkirouCall, CombatMarkerHandler(f4Buff));
+
+        // SC_WINDSIGN (Wind Hawk 4th class) — wind-element wind sphere.
+        // Val1 = stored sphere. Consumer: WindHawk*.cs plugin.
+        Register(StatusType.Windsign, CombatMarkerHandler(f4Buff));
+
+        // SC_NIGHTMARE / NIGHT family — Night Watch 4th class.
+        // Val1 = stored marker. Consumer: NightWatch*.cs plugin.
+        Register(StatusType.Nightmare, CombatMarkerHandler(f4Buff));
+
+        // SC_EARTH_CARE — 4th-class earth elemental care marker.
+        // Consumer: ElementalNpc earth-care plugin.
+        Register(StatusType.EarthCare, CombatMarkerHandler(f4Buff));
     }
 
     /// <summary>

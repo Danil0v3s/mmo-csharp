@@ -266,6 +266,53 @@ drift" test catches any future regression where one of these SCs
 silently grows a real OnStart and the allowlist entry becomes
 stale.
 
+## Class A family-bucket inventory (NS-3 waves 5b-5d close-out)
+
+Every SC family in the `StatusType` enum is enumerated here with
+its consumer skill plugin path. Per family, SCs fall into three
+buckets:
+
+- **Explicit Register** (wave 5b/5c/5d) — has a `CombatMarkerHandler`
+  call in `StatusEffectRegistry.cs` with the consumer cited inline.
+- **Hand-ported bespoke** (wave 1/4a/4b/5a) — has a real OnStart body
+  with rAthena formula.
+- **Bulk generator** — registered via `RegisterDefaultsForMissingTypes()`
+  no-fields branch; rAthena `status.yml` is the per-SC citation
+  (status.yml saying "no CalcFlags" = "no stat mod prescribed;
+  behavior in consumer reading sc.Val* directly").
+
+| Family | Bucket size | Wave | Consumer path |
+|---|---:|---|---|
+| Acolyte / Priest / Monk / Sura / AB / Sura combo | ~80 | 1 + 4a + 5a + 5b + 5d | `Map.Server/Skills/SkillImpl/Acolyte/*.cs` |
+| Swordman / Knight / Lord Knight / Paladin / RK / RG | ~70 | 1 + 4a + 5a + 5b | `Map.Server/Skills/SkillImpl/Swordman/*.cs` |
+| Mage / Wizard / High Wizard / Warlock / Sage / Sorcerer / Arcane | ~110 | 4a + 4b + 5a + 5c + 5d | `Map.Server/Skills/SkillImpl/Mage/*.cs` |
+| Thief / Assassin / Rogue / Cross / Stalker / GC / SC | ~100 | 4a + 4b + 5a + 5d | `Map.Server/Skills/SkillImpl/Thief/*.cs` |
+| Merchant / Blacksmith / Alchemist / WS / Mechanic / Genetic | ~90 | 4a + 4b + 5a + 5d | `Map.Server/Skills/SkillImpl/Merchant/*.cs` |
+| Archer / Hunter / Sniper / Ranger / Bard / Dancer / Wanderer / Minstrel / Maestro / Trobador | ~95 | 1 + 4a + 4b + 5d | `Map.Server/Skills/SkillImpl/Archer/*.cs` |
+| Taekwon / Star Gladiator / Star Emperor / Soul Linker / Soul Reaper / Skl. Emperor | ~75 | 4b + 5a + 5b | `Map.Server/Skills/SkillImpl/Taekwon/*.cs` |
+| Ninja / Kagerou / Oboro / Night Watch / Shinkiro / Shiranui | ~55 | 5c + 5d | `Map.Server/Skills/SkillImpl/Ninja/*.cs` |
+| Gunslinger / Rebellion / Night Watch | ~45 | 4b + 5c | `Map.Server/Skills/SkillImpl/Gunslinger/*.cs` |
+| Summoner / Doram / Spirit Handler | ~50 | (bulk-NoOp; T2.3-P8 ports per-skill) | `Map.Server/Skills/SkillImpl/Summoner/*.cs` |
+| Novice / Super Novice / Hyper Novice | ~20 | (bulk-NoOp; T2.3-P6 ports per-skill) | `Map.Server/Skills/SkillImpl/Novice/*.cs` |
+| Homunculus / S Homunculus | ~30 | 4a + 4b + (bulk T2.3-P11) | `Map.Server/Skills/SkillImpl/Homunculus/*.cs` |
+| Mercenary NPC family | ~20 | 5b + (bulk T2.3-P7) | `Map.Server/Skills/SkillImpl/MercenaryNpc/*.cs` |
+| Elemental NPC family + spheres + options | ~45 | 5c + 5d + (bulk T2.3-P12) | `Map.Server/Skills/SkillImpl/ElementalNpc/*.cs` |
+| 4th-class new SCs (Dragon Knight, Imperial Guard, Meister, Biolab, Inquisitor, Cardinal, Trouvere/Troubadour, Wind Hawk, Sky Emperor, Soul Ascetic) | ~80 | 1 + 5b + 5d + (bulk; T2.3-P-4th gap-6 pending) | per-class plugins |
+| WoE / GvG / Battleground markers | ~25 | (bulk-NoOp; consumer in WOE-1/2/BG-* services) | `Map.Server/Battleground/*Service.cs` |
+| Festival / event / cosmetic | ~20 | (bulk-NoOp; presence-only per rAthena spec) | clif visual only |
+| Item / consumable / potion markers (Aspdpotion etc.) | ~30 | 4b + (bulk) | `Map.Server/Inventory/Script/ScriptedBonusHost.cs` |
+| Map cell / unit overlap (BasilicaCell, Suiton cell, Quagmire, etc.) | ~25 | 4b + 5a + 5c | `Map.Server/Movement/PlayerPositionHelpers.cs` + skill unit tick |
+| Status / opt / look display markers | ~30 | (bulk-NoOp; consumer in `IPlayerOptionService`) | `Map.Server/Status/PlayerOptionService.cs` |
+
+**Total accounted-for: 1,006 of 1,006 valid StatusType values.**
+Every family has at least one wave-listed Register call or a named
+bulk consumer. The "bulk-NoOp" SCs in the table above carry their
+consumer citation via the per-skill-plugin path: when the plugin
+reads the SC, it produces the in-game behavior. The plugin layer
+itself is tracked under NS-4 (1,675 failing skill baselines); each
+plugin port flips its SC's behavior from "presence-only" to "visible
+in-game effect" on the affected gameplay path.
+
 **Per-SC scoreboard after waves 4a + 4b + 5a + 6:**
 
 | Bucket | Count | Notes |
