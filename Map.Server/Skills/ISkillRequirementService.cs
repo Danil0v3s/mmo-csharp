@@ -43,4 +43,16 @@ public interface ISkillRequirementService
     /// party-condition helper used by Royal Guard, Sura, Mechanic.
     /// </summary>
     int CheckConditionCharSub(Entity owner, Entity candidate, ushort skillId);
+
+    /// <summary>
+    /// rAthena <c>SKILL_NOCONSUME_REQ</c> flag (skill.cpp:18347-ish) —
+    /// when a cast that already paid the requirement decides mid-resolve
+    /// to refund (PA_GOSPEL recast self-dispel, MG_SAFETYWALL on Land
+    /// Protector overlap), this method walks the same requirement table
+    /// in reverse and credits HP/SP/AP/zeny/items back to
+    /// <paramref name="caster"/>. Default-interface implementation is a
+    /// no-op so legacy impls don't have to override; the real flow
+    /// re-uses <see cref="ConsumeRequirement"/> with negative deltas.
+    /// </summary>
+    void RefundRequirement(PlayerEntity caster, ushort skillId, ushort skillLevel) { }
 }

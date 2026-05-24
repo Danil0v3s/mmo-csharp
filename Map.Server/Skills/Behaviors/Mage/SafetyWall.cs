@@ -38,10 +38,11 @@ public sealed class SafetyWall : SkillImpl
             var overlap = unitSvc.GetUnitsInArea(src.MapId, x, y, radius: 0, SkillIds.SA_LANDPROTECTOR);
             if (overlap.Count > 0)
             {
-                // Wall placement refused; rAthena also sets SKILL_NOCONSUME_REQ
-                // so the Yellow Gemstone is refunded. The refund routes
-                // through the skill-requirement consume hook (separate
-                // service); the placement-side gate lands here.
+                // rAthena SKILL_NOCONSUME_REQ — wall placement refused
+                // by Land Protector; refund the Yellow Gemstone +
+                // SP pool consumed during cast.
+                if (src is PlayerEntity pc)
+                    ctx.Requirements?.RefundRequirement(pc, SkillId, skillLevel);
                 return;
             }
         }

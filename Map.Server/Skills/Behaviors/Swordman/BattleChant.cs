@@ -28,11 +28,15 @@ public sealed class BattleChant : SkillImpl
         if (existing != null && existing.Val4 == BctSelf)
         {
             ctx.Sc?.End(src, StatusType.Gospel);
-            // Deferred: SKILL_NOCONSUME_REQ requirement refund — needs the
-            // skill-cost / requirement pipeline to expose a refund hook.
+            // rAthena SKILL_NOCONSUME_REQ branch — re-casting the caster's
+            // own Gospel dispels the unit and refunds the requirement.
+            // RefundRequirement credits the HP/SP/AP pools that
+            // ConsumeRequirement just spent.
+            if (src is PlayerEntity pc)
+                ctx.Requirements?.RefundRequirement(pc, SkillId, skillLevel);
             return;
         }
-        _units?.Place(src, SkillId, skillLevel, src.X, src.Y);
+        (ctx.Units ?? _units)?.Place(src, SkillId, skillLevel, src.X, src.Y);
         if (existing != null)
             ctx.Sc?.End(src, StatusType.Gospel);
         ctx.Sc?.Start(src, StatusType.Gospel, val1: skillLevel, 0, 0, BctSelf, durationMs: 60_000, src);

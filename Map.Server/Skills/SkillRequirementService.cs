@@ -108,4 +108,18 @@ public sealed class SkillRequirementService : ISkillRequirementService
         if (owner is not PlayerEntity || candidate is not PlayerEntity) return 0;
         return owner.MapId == candidate.MapId ? 1 : 0;
     }
+
+    public void RefundRequirement(PlayerEntity caster, ushort skillId, ushort skillLevel)
+    {
+        // rAthena's reverse of consume — credit pools back to the
+        // caster. Items / ammo refund waits on the skill_db Required*
+        // column reader (PARITY-REMAINING §P2.2.b); HP / SP / AP are
+        // the pools we can return today.
+        var hp = _db.GetHp(skillId, skillLevel);
+        var sp = _db.GetSp(skillId, skillLevel);
+        var ap = _db.GetAp(skillId, skillLevel);
+        if (hp > 0) caster.Hp = Math.Min(caster.MaxHp, caster.Hp + hp);
+        if (sp > 0) caster.Sp = Math.Min(caster.MaxSp, caster.Sp + sp);
+        if (ap > 0) caster.Ap = Math.Min(caster.MaxAp, caster.Ap + ap);
+    }
 }

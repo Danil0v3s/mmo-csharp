@@ -146,4 +146,10 @@ public sealed record SkillBehaviorContext(
     /// <summary>Homunculus service — <c>hom_call</c> / <c>hom_vaporize</c>
     /// / <c>hom_ressurect</c> + the wider lifecycle. Used by AM_CALLHOMUN,
     /// AM_RESURRECTHOMUN, AM_REST.</summary>
-    IHomunculusService? Homunculus = null);
+    IHomunculusService? Homunculus = null,
+    /// <summary>Skill-requirement service — pre/post-cast condition
+    /// gates plus the <c>SKILL_NOCONSUME_REQ</c> refund path. Plugins
+    /// that self-dispel mid-resolve (PA_GOSPEL recast, MG_SAFETYWALL on
+    /// Land Protector overlap) call <see cref="ISkillRequirementService.RefundRequirement"/>
+    /// to credit the spent pools back.</summary>
+    ISkillRequirementService? Requirements = null);
