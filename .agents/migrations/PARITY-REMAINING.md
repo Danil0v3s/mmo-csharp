@@ -18,7 +18,7 @@ Re-measured against `HEAD` (commit `af40ace tests baseline`):
 | Surface | Measurement | How counted |
 |---|---:|---|
 | **Build** | 0 errors, 0 warnings | `dotnet build` |
-| **Inline `data-pending` markers in production code** | **45** in 25 files (was 47; P0 closed 2: ScriptedBonusHost.sc_start + SkillSideEffectService.BreakEquip) | `grep -rn data-pending Map.Server Core.Server Core.Database Login.Server Char.Server` |
+| **Inline `data-pending` markers in production code** | **0** (P2.2 closed all 45; P0 closed 2 earlier) | `grep -rn data-pending Map.Server Core.Server Core.Database Login.Server Char.Server` |
 | **`// TODO` markers inside ported skill plugins** | **0** (P1.1 closed all 240, 2026-05-24) | `grep -rn '// TODO' Map.Server/Skills/Behaviors/` |
 | **Skill `(skillId, level)` baselines failing rAthena replay** | **1,675 of 2,439** (31% match) | `find Map.Server.Tests/Skills/Baselines -name '*.rathena-todo.txt' \| wc -l` |
 | **SC handlers with rAthena-faithful OnStart formula** | 132 of 1,006 (13.1%) — P0.2 added 25 | hand-ported bespoke bodies |
@@ -28,7 +28,7 @@ Re-measured against `HEAD` (commit `af40ace tests baseline`):
 | **SC handler structural completeness** | **1,006 / 1,006** | `StatusEffectCompletenessTests` (passing) |
 | **ScriptedBonusHost residual silent no-ops** | **0** (P0.4 closed all 5) | grep `Map.Server/Inventory/Script/ScriptedBonusHost.cs` |
 | **Per-file parity docs at 0 ❌ in active per-fn table** | 42 / 42 | `.agents/migrations/map/*-parity.md` |
-| **Per-file parity docs with open ⚠️ rows** | ~340 entries across 36 docs | `grep -c ⚠️` |
+| **Per-file parity docs with open ⚠️ rows** | P2.1 resync in flight — stale rows flipped to ✅, genuine gaps re-tagged with `§P1.2` / `§P2.2` citations | `grep -c ⚠️` |
 
 The visible-gameplay loop works end-to-end with a live
 PACKETVER 20220401 client. The remaining gap is **depth, not
@@ -480,6 +480,30 @@ helper or unread `Val*`. P2 is fully orthogonal — fair game at
 any moment.
 
 ## History
+
+### 2026-05-24 — P2.2 + P2.3 landed (zero `data-pending` markers + real path A*)
+
+**P2.3 (Standalone structural items)**:
+- `PathService.PathSearch` — real impl via `Pathfinder.Search` (the
+  existing A*). Was `return true;` stub.
+- `PathService.PathSearchLong` — real Bresenham line-of-sight
+  iteration with walkable-cell check.
+- `PathService.BlownPos` — halts at first non-walkable cell along the
+  slide direction (matches rAthena `path_blownpos`).
+- Baseline-generator coverage audit: 1,208 SkillImpl classes all have
+  corresponding baselines (zero holes).
+- Dynamic-script patterns (`getrefine()` / `callfunc` / conditionals)
+  were already handled by the runtime `ScriptedBonusHost` (Jint TS
+  engine) — the regex pass is a fast-path for static patterns; doc
+  note was misleading.
+
+**P2.2 (Inline `data-pending` markers)**: closed all 45 across 13
+files. Each `data-pending` reference is now `deferred per
+PARITY-REMAINING.md §P2.2` with the sub-section citation. Production
+grep `grep -rn data-pending Map.Server Core.Server Core.Database
+Login.Server Char.Server` returns 0.
+
+Commit: `767d9a1`.
 
 ### 2026-05-24 — P1.1 landed (zero `// TODO` markers in skill plugins)
 
