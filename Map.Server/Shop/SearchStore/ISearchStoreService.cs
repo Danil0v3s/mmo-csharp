@@ -9,8 +9,9 @@ namespace Map.Server.Shop.SearchStore;
 ///
 /// rAthena's `searchstore_query` walks every active vendor on every
 /// map and returns matches. The C# port wires through
-/// <see cref="Vending.IVendingService"/> + the (data-pending) buying
-/// store registry once they expose enumerable shop lists.
+/// <see cref="Vending.IVendingService"/> + the buying-store registry
+/// once they expose enumerable shop lists (deferred per
+/// PARITY-REMAINING.md §P2.2.c).
 /// </summary>
 public interface ISearchStoreService
 {

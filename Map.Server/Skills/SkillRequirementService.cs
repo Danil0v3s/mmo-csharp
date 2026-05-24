@@ -7,8 +7,9 @@ namespace Map.Server.Skills;
 /// Default <see cref="ISkillRequirementService"/>. Mirrors rAthena
 /// <c>skill_check_condition_castbegin/end</c> + <c>skill_consume_*</c>
 /// (skill.cpp:18347, 19417, 4397, 19685). The HP/SP/AP/Zeny path is
-/// real; the item-list and per-skill exception branches are flagged
-/// "data-pending" on the item-cost loader (skill_db requires column).
+/// real; the item-list and per-skill exception branches are deferred
+/// per PARITY-REMAINING.md §P2.2.b on the skill_db `Required*` column
+/// reader.
 /// </summary>
 public sealed class SkillRequirementService : ISkillRequirementService
 {
@@ -85,9 +86,10 @@ public sealed class SkillRequirementService : ISkillRequirementService
             if (hp > 0 || sp > 0 || ap > 0)
                 ConsumeHpSpAp(caster, skillId, hp, sp, ap);
 
-            // Zeny consume — same data-pending note as in CheckCondition.
-            // The canonical zeny deduction lives in pc.cpp pc_payzeny; once
-            // PlayerEntity exposes Zeny we plug it in here.
+            // Zeny consume — deferred per PARITY-REMAINING.md §P2.2.b
+            // (skill_db Required* column reader). Canonical deduction
+            // lives in `pc_payzeny`; plugs in here when the column
+            // surfaces.
         }
 
         // type & 2 — consume items + ammo. Data-pending on skill_db

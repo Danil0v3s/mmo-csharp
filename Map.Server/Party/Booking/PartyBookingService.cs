@@ -25,7 +25,7 @@ public sealed class PartyBookingService : IPartyBookingService
 
     public int Search(PlayerEntity searcher, short level, short mapId, short job) => _listings.Count;
     public bool Delete(PlayerEntity owner) => _listings.Remove(owner.Id);
-    public void Load() { /* DB load data-pending */ }
+    public void Load() { /* DB load deferred per PARITY-REMAINING.md §P2.2.e — listings are session-scoped today */ }
 
     private sealed class Listing
     {

@@ -5,9 +5,10 @@ namespace Map.Server.Shop.SearchStore;
 
 /// <summary>
 /// Default <see cref="ISearchStoreService"/>. Tracks per-PC catalog
-/// state; the actual shop enumeration is data-pending on the vending
-/// + buying-store registries. Entry points are present so the
-/// search-store handler stack doesn't drift.
+/// state; shop enumeration is deferred per PARITY-REMAINING.md §P2.2.c
+/// — requires <c>IVendingService.GetAllShops</c> +
+/// <c>IBuyingStoreService.GetAllShops</c> live readers. Entry points
+/// are present so the search-store handler stack doesn't drift.
 /// </summary>
 public sealed class SearchStoreService : ISearchStoreService
 {

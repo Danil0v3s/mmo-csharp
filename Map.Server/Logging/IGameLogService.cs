@@ -9,7 +9,7 @@ namespace Map.Server.Logging;
 /// `picklog`, `zenylog`, `mvplog`, `chatlog`, `cashlog`,
 /// `branchlog`, `feedinglog`, `npclog`). The C# port already has an
 /// <see cref="Gm.AtCommandLogger"/> for the atcommand table; the
-/// other tables data-pending on their EF Core entities.
+/// other tables deferred per PARITY-REMAINING.md §P2.2 — their EF Core entities.
 /// </summary>
 public interface IGameLogService
 {

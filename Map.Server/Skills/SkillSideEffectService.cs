@@ -8,7 +8,7 @@ namespace Map.Server.Skills;
 
 /// <summary>
 /// Default <see cref="ISkillSideEffectService"/>. The heal formula is
-/// real; autospell / break flag flips are data-pending on the equip
+/// real; autospell / break flag flips are deferred per PARITY-REMAINING.md §P2.2 — equip still pending
 /// catalog (we don't track break / strip status on inventory rows
 /// yet). T2.4b+ wires <see cref="StripEquip"/> to the SC table so
 /// the strip duration is at least recorded; equip-side enforcement
@@ -53,8 +53,8 @@ public sealed class SkillSideEffectService : ISkillSideEffectService
     {
         // rAthena: Sage AutoSpell sets SC_AUTOSPELL; the trigger that
         // procs it lives in the on-hit chain. We surface the entry
-        // point; SC_AUTOSPELL handling is data-pending on the SC table.
-        _logger.LogDebug("skill_autospell: granted {Skill} to {Caster} (data-pending)", grantedSkillId, caster.Id);
+        // point; SC_AUTOSPELL handling is deferred per PARITY-REMAINING.md §P2.2 — SC table still pending.
+        _logger.LogDebug("skill_autospell: granted {Skill} to {Caster} (deferred per PARITY-REMAINING.md §P2.2)", grantedSkillId, caster.Id);
         return true;
     }
 

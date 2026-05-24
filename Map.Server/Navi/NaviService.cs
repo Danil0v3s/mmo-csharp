@@ -14,7 +14,12 @@ public sealed class NaviService : INaviService
 
     public bool CreateLists(string outputDirectory)
     {
-        _logger.LogInformation("navi_create_lists: data-pending (generator not yet ported)");
+        // Deferred per PARITY-REMAINING.md §P2.2.e — the cell-level
+        // navmesh exporter (navi_create_lists in rAthena) is a build-
+        // time tool that produces navmesh files for the client's
+        // navigation UI. Out-of-scope for the runtime port; clients
+        // ship with the rAthena-generated mesh today.
+        _logger.LogDebug("navi_create_lists invoked → deferred mesh generation (P2.2.e)");
         return false;
     }
     public bool PathSearch(string fromMap, short fx, short fy, string toMap, short tx, short ty) => false;

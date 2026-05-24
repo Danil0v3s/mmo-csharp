@@ -377,7 +377,7 @@ builder.Services.AddSingleton<Map.Server.Mob.IMobSkillCastService, Map.Server.Mo
 
 // T4.9c — mob_warpchase (mob.cpp:1776) + MD_LOOTER pickup
 // (mob.cpp:2008-2129). Canonical entry points; the warpchase scan is
-// a data-pending no-op until NpcEntity gains the warp subtype.
+// a deferred per PARITY-REMAINING.md §P2.2 no-op until NpcEntity gains the warp subtype.
 builder.Services.AddSingleton<Map.Server.Mob.IMobWarpChaseService, Map.Server.Mob.MobWarpChaseService>();
 builder.Services.AddSingleton<Map.Server.Mob.IMobLooterService, Map.Server.Mob.MobLooterService>();
 
@@ -437,7 +437,7 @@ builder.Services.AddSingleton<Map.Server.Skills.ISkillDb, Map.Server.Skills.Skil
 builder.Services.AddSingleton<Map.Server.Skills.ISkillCastTimingService, Map.Server.Skills.SkillCastTimingService>();
 // Skill cast pre/post-check + resource consume (skill.cpp:18347, 19417,
 // 4397, 19685). HP/SP/AP path real; item / ammo / weapon-mask paths
-// data-pending on the equip aggregator + skill_db require column.
+// deferred per PARITY-REMAINING.md §P2.2 — equip aggregator + skill_db require column still pending.
 builder.Services.AddSingleton<Map.Server.Skills.ISkillRequirementService, Map.Server.Skills.SkillRequirementService>();
 // Castend dispatchers (skill.cpp castend_damage_id / nodamage_id /
 // pos2 / map). Wraps the existing resolver registry + ground-unit
@@ -509,7 +509,7 @@ builder.Services.AddSingleton<Map.Server.BattleGround.IBattlegroundService, Map.
 // Big-file services (status / clif / script / mob / npc / unit /
 // map / guild / pet / itemdb / chrif / intif). Canonical rAthena-
 // name entry points; most ops forward to dedicated services or
-// document data-pending.
+// document deferred per PARITY-REMAINING.md §P2.2.
 builder.Services.AddSingleton<Map.Server.Items.Db.IItemDbService, Map.Server.Items.Db.ItemDbService>();
 // DBR-2b: typed item-group catalog (2722 groups / 30809 entries) — random
 // bag rolls for Bloody/Dead/RWC Branches, Old Card Album, gift boxes, etc.

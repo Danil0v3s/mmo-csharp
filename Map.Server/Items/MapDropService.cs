@@ -13,7 +13,7 @@ namespace Map.Server.Items;
 ///
 /// DBR-1g: the prior code path didn't consult map_drops.yml at all —
 /// per-map global drops + per-mob filtered drops were entirely
-/// data-pending. Wiring this closes the gap.
+/// deferred per PARITY-REMAINING.md §P2.2. Wiring this closes the gap.
 /// </summary>
 public sealed class MapDropService : IMapDropService
 {

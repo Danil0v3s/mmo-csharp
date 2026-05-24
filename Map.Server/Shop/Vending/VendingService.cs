@@ -5,8 +5,10 @@ namespace Map.Server.Shop.Vending;
 
 /// <summary>
 /// Default <see cref="IVendingService"/>. Tracks per-vendor stall
-/// state in-memory; persistence (`autotrade_db`) data-pending. Wire
-/// packets land alongside their consumers.
+/// state in-memory; persistence to <c>autotrade_db</c> is deferred per
+/// PARITY-REMAINING.md §P2.2.c — stalls survive the map-server
+/// process lifetime today, autotrade reconnect across restart waits
+/// on the EF entity port. Wire packets land alongside their consumers.
 ///
 /// AT-D2 wave: stall lookup + coord refresh on Update; SearchAll
 /// walks every active stall (was no-op).

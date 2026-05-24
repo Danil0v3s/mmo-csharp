@@ -231,7 +231,7 @@ public sealed class BattlegroundService : IBattlegroundService
     public void QueueJoinParty(PlayerEntity leader, string queueName)
     {
         // rAthena bg_queue_join_party — needs IPartyService.GetMembers to fan
-        // out. Minimum-viable: enroll leader; parties data-pending.
+        // out. Minimum-viable: enroll leader; parties deferred per PARITY-REMAINING.md §P2.2.
         QueueJoinSolo(leader, queueName);
     }
 
@@ -275,7 +275,7 @@ public sealed class BattlegroundService : IBattlegroundService
 
     public void JoinActive(PlayerEntity pc)
     {
-        // rAthena bg_join_active — late-joiner warp-in. data-pending on map pool.
+        // rAthena bg_join_active — late-joiner warp-in. deferred per PARITY-REMAINING.md §P2.2 — map pool.
     }
 
     /// <summary>

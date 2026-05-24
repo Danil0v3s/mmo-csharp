@@ -9,7 +9,7 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// body is empty — base StatusSkillImpl provides the standard
 /// SC apply pipeline). We override CastendNoDamageId to wire the
 /// SC_ENERGYCOAT apply directly so it works without skill_db SC
-/// data-pending.
+/// deferred per PARITY-REMAINING.md §P2.2.
 /// </summary>
 public sealed class EnergyCoat : StatusSkillImpl
 {

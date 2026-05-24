@@ -12,7 +12,7 @@ namespace Map.Server.Mob;
 /// map matches the target's, then walks the mob toward the closest
 /// such warp.
 ///
-/// <para>T5.1c — replaces the T4.9c data-pending stub now that
+/// <para>T5.1c — replaces the T4.9c deferred per PARITY-REMAINING.md §P2.2 stub now that
 /// `registerWarp` data is the canonical source of truth for warp
 /// destinations. We don't yet have a separate NpcEntity warp
 /// subtype; the WarpRegistration records that

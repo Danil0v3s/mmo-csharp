@@ -11,7 +11,7 @@ namespace Map.Server.Skills;
 ///
 /// Item / card bonus inputs (<c>sd-&gt;bonus.add_varcast</c>,
 /// <c>sd-&gt;bonus.varcastrate</c>, <c>sd-&gt;skillcastrate</c>, …)
-/// are documented as data-pending — they flow through when the
+/// are documented as deferred per PARITY-REMAINING.md §P2.2 — they flow through when the
 /// equip-bonus aggregator surfaces them on
 /// <see cref="PlayerEntity"/>. The DEX/AGI / config-rate paths are
 /// real today; T2.4b wires SC overlays (Suffragium / Memorize /
@@ -48,7 +48,7 @@ public sealed class SkillCastTimingService : ISkillCastTimingService
                 return 0; // instant cast (DEX >= scale).
         }
 
-        // Item / card bonuses are data-pending on PlayerEntity.
+        // Item / card bonuses are deferred per PARITY-REMAINING.md §P2.2 — PlayerEntity.
         // When the equip aggregator surfaces VariableCastrate / add_varcast
         // / skillcastrate they layer here.
 
@@ -145,7 +145,7 @@ public sealed class SkillCastTimingService : ISkillCastTimingService
 
         // sd-&gt;bonus.add_varcast / add_fixcast / varcastrate / fixcastrate
         // and the per-skill skillvarcast/skillfixcast/skillcastrate tables
-        // are data-pending on the equip-bonus aggregator.
+        // are deferred per PARITY-REMAINING.md §P2.2 — equip-bonus aggregator still pending.
 
         return Math.Max(0, variableTime + fixedTime);
     }
@@ -153,7 +153,7 @@ public sealed class SkillCastTimingService : ISkillCastTimingService
     // ----- skill_delayfix (after-cast delay) -------------------------
     public int DelayFix(Entity caster, ushort skillId, ushort skillLevel)
     {
-        // SA_ABRACADABRA explicitly returns 0 — handled by data-pending
+        // SA_ABRACADABRA explicitly returns 0 — handled by deferred per PARITY-REMAINING.md §P2.2
         // gate once the dummy-skill id table imports.
 
         // BL-type no-skill-delay bypass — rAthena returns the floor immediately.

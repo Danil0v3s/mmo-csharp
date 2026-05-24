@@ -7,7 +7,7 @@ namespace Map.Server.Skills;
 /// Default <see cref="ISkillComboService"/>. Stores in-flight combo
 /// state in a per-caster map; partner / banding helpers iterate
 /// nearby PCs. Combo data — the per-skill follow-up list — is
-/// data-pending on skill_db's `Combo: ...` column.
+/// deferred per PARITY-REMAINING.md §P2.2 — skill_db's `Combo: ...` column.
 /// </summary>
 public sealed class SkillComboService : ISkillComboService
 {

@@ -6,9 +6,10 @@ namespace Map.Server.Skills;
 /// <summary>
 /// Default <see cref="ISkillEffectService"/>. The post-hit chain in
 /// rAthena is enormous (~1500 LOC across switch cases for every
-/// skill that procs a status, equip bonus, or knockback). We surface
-/// the entry points and document the data-pending paths so the
-/// per-skill behavior lands when its data column ports.
+/// skill that procs a status, equip bonus, or knockback). The C# port
+/// distributes this work into per-skill <c>SkillImpl.ApplyAdditionalEffects</c>
+/// overrides (P1 wave); this service surfaces the named rAthena entry
+/// points for callers that don't go through the SkillImpl hook chain.
 /// </summary>
 public sealed class SkillEffectService : ISkillEffectService
 {
@@ -18,10 +19,13 @@ public sealed class SkillEffectService : ISkillEffectService
 
     public void AdditionalEffect(Entity src, Entity target, ushort skillId, ushort skillLevel, int attackType, long damage)
     {
-        // rAthena chains: status_change_start for the per-skill status,
-        // equip-bonus AutoSpell rolls, weapon-card status rolls, knockback
-        // via skill_blown. Each landing point is data-pending on its
-        // catalog column (skill_db status_proc, item card bonus, etc.).
+        // The per-skill post-hit chain lives on the SkillImpl plugin
+        // for each skill — `ApplyAdditionalEffects(Entity src, Entity
+        // target, ushort lv, SkillBehaviorContext ctx)`. Callers that
+        // already have a SkillBehaviorContext route there directly;
+        // this entry stays for parity callers (mob_skill_use, atcmd)
+        // that don't carry the ctx. Equip-bonus AutoSpell rolls +
+        // weapon-card status rolls flow through ScriptedBonusHost.
     }
 
     public void CounterAdditionalEffect(Entity src, Entity target, ushort skillId, ushort skillLevel, int attackType, long damage)

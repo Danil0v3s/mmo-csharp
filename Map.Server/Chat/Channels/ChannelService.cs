@@ -12,8 +12,10 @@ namespace Map.Server.Chat.Channels;
 ///
 /// AT-D2 wave: real ZC_NOTIFY_CHAT_PARTY broadcast on Send + name→entity
 /// lookup for PcKick/PcBan, autojoin via predefined channel names
-/// (main / map / guild). Channels.conf loader still data-pending; the
-/// in-memory defaults seed at boot.
+/// (main / map / guild). channels.conf JSON loader is wired via the
+/// generated `Map.Server/config/channels.json` schema (DB-6 / conf→JSON
+/// pass); the AT-E baked default set + the JSON consumer wire is the
+/// production path. In-memory defaults seed at boot for tests.
 /// </summary>
 public sealed class ChannelService : IChannelService
 {

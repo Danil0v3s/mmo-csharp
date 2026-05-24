@@ -29,7 +29,7 @@ public sealed class ItemDbService : IItemDbService
     public bool IsHatchedEgg(int itemId) => false;
     public bool IsIdentified(int itemId) => true;
     public int SearchNameArray(string namePattern, IList<int> output, int max) => 0;
-    public void Reload() { /* item_db.yml + auxiliary YAML loaders data-pending */ }
+    public void Reload() { /* item_db.yml + auxiliary YAML loaders deferred per PARITY-REMAINING.md §P2.2 */ }
     public void GenItemMoveInfo() { }
     public bool ParseRouletteDb() => false;
     public byte GetItemGroup(int groupId, PlayerEntity pc) => 0;

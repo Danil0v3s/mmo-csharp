@@ -10,7 +10,7 @@ namespace Map.Server.Skills;
 /// `map`) to either the existing
 /// <see cref="SkillResolverRegistry"/> (for offensive / support
 /// skills) or <see cref="ISkillUnitService"/> (for ground-target
-/// skills). The map-warp branch is data-pending on a
+/// skills). The map-warp branch is deferred per PARITY-REMAINING.md §P2.2 — a
 /// `pc_setpos`-style warp helper that takes a coordinate from the
 /// menu selection.
 /// </summary>
@@ -61,7 +61,7 @@ public sealed class SkillCastEndService : ISkillCastEndService
         if (group == null)
         {
             _logger.LogDebug(
-                "skill_castend_pos2: no ground-unit spec for {Skill} (data-pending)",
+                "skill_castend_pos2: no ground-unit spec for {Skill} (deferred per PARITY-REMAINING.md §P2.2)",
                 skillId);
             return false;
         }
@@ -73,9 +73,9 @@ public sealed class SkillCastEndService : ISkillCastEndService
         // rAthena routes Teleport / Greed / SaveOption here. The
         // PlayerEntity warp helper lives in `IPlayerWarpService` once
         // it ports; until then the entry point is documented as
-        // data-pending so callers know where to plug in.
+        // deferred per PARITY-REMAINING.md §P2.2 so callers know where to plug in.
         _logger.LogDebug(
-            "skill_castend_map: {Skill} → {Map} (warp data-pending)",
+            "skill_castend_map: {Skill} → {Map} (warp deferred per PARITY-REMAINING.md §P2.2)",
             skillId, targetMap);
         return false;
     }

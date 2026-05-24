@@ -3,7 +3,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Storage.Guild;
 
-/// <summary>Default <see cref="IGuildStorageService"/>. Persistence + guild storage table data-pending.</summary>
+/// <summary>
+/// Default <see cref="IGuildStorageService"/>. Persistence + guild
+/// storage table deferred per PARITY-REMAINING.md §P2.2.d — the
+/// char-side <c>IInterGuildStorageService.SaveAsync</c> is already
+/// implemented; the map-side IPC wire is the residual hook.
+/// </summary>
 public sealed class GuildStorageService : IGuildStorageService
 {
     private readonly ILogger<GuildStorageService> _logger;

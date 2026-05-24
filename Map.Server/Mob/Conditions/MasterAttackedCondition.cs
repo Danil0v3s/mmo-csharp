@@ -15,7 +15,7 @@ namespace Map.Server.Mob.Conditions;
 /// <para>Implementation: we look up <see cref="MobEntity.MasterId"/>
 /// in the registry and consult the master's distinct-attacker count.
 /// For mob masters we read <see cref="MobEntity.DmgList"/>.
-/// PC masters (homunculus / mercenary owners) are a data-pending
+/// PC masters (homunculus / mercenary owners) are a deferred per PARITY-REMAINING.md §P2.2
 /// branch — there's no <c>unit_counttargeted</c> on
 /// <see cref="PlayerEntity"/> yet — so we return false in that case
 /// rather than spuriously firing.</para>

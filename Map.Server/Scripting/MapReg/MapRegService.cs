@@ -5,9 +5,10 @@ namespace Map.Server.Scripting.MapReg;
 
 /// <summary>
 /// Default <see cref="IMapRegService"/>. In-memory map of int → long
-/// and int → string. The SQL persistence pass (load / flush) is
-/// data-pending on a `mapreg` repository — the entry points are
-/// here so script-engine writes don't drift into PlayerEntity.
+/// and int → string. SQL persistence (load / flush) is deferred per
+/// PARITY-REMAINING.md §P2.2.e — the `mapreg` repository is a
+/// separate EF entity port; entry points stay here so script-engine
+/// writes don't drift into <see cref="Entities.PlayerEntity"/>.
 /// </summary>
 public sealed class MapRegService : IMapRegService
 {
@@ -41,8 +42,8 @@ public sealed class MapRegService : IMapRegService
         return i + s;
     }
 
-    public void Init() { /* SQL load data-pending */ }
-    public void Final() { /* SQL flush data-pending */ }
+    public void Init() { /* SQL load deferred — `mapreg` EF entity not yet ported */ }
+    public void Final() { /* SQL flush deferred — same dependency */ }
     public void Reload() { _ints.Clear(); _strs.Clear(); Init(); }
     public bool ConfigRead(string configPath) => true;
 }

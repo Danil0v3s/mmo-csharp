@@ -17,19 +17,19 @@ public sealed class SkillProductionService : ISkillProductionService
 
     public bool ProduceMix(PlayerEntity caster, int recipeId, int qty)
     {
-        _logger.LogDebug("skill_produce_mix: recipe={Recipe} qty={Qty} (produce_db.yml data-pending)", recipeId, qty);
+        _logger.LogDebug("skill_produce_mix: recipe={Recipe} qty={Qty} (produce_db.yml deferred per PARITY-REMAINING.md §P2.2)", recipeId, qty);
         return false;
     }
 
     public bool ArrowCreate(PlayerEntity caster, int sourceItemId)
     {
-        _logger.LogDebug("skill_arrow_create: from item {Item} (arrow_db.yml data-pending)", sourceItemId);
+        _logger.LogDebug("skill_arrow_create: from item {Item} (arrow_db.yml deferred per PARITY-REMAINING.md §P2.2)", sourceItemId);
         return false;
     }
 
     public bool ChangeMaterial(PlayerEntity caster, int sourceItemId)
     {
-        _logger.LogDebug("skill_changematerial: from item {Item} (data-pending)", sourceItemId);
+        _logger.LogDebug("skill_changematerial: from item {Item} (deferred per PARITY-REMAINING.md §P2.2)", sourceItemId);
         return false;
     }
 
@@ -38,13 +38,13 @@ public sealed class SkillProductionService : ISkillProductionService
         // Real path: scan caster.Inventory for broken weapon at slot
         // <inventoryIndex>, consume repair material, clear broken flag.
         // Broken-flag column not on InventoryEntity yet — gate the call.
-        _logger.LogDebug("skill_repairweapon: slot {Slot} (broken-flag data-pending)", inventoryIndex);
+        _logger.LogDebug("skill_repairweapon: slot {Slot} (broken-flag deferred per PARITY-REMAINING.md §P2.2)", inventoryIndex);
         return false;
     }
 
     public bool WeaponRefine(PlayerEntity caster, int inventoryIndex)
     {
-        _logger.LogDebug("skill_weaponrefine: slot {Slot} (refine catalog data-pending)", inventoryIndex);
+        _logger.LogDebug("skill_weaponrefine: slot {Slot} (refine catalog deferred per PARITY-REMAINING.md §P2.2)", inventoryIndex);
         return false;
     }
 
@@ -55,13 +55,13 @@ public sealed class SkillProductionService : ISkillProductionService
         // in pc.cpp port (PC-15); MC_IDENTIFY can route to the same
         // helper. Until the helper accepts a single index, keep the
         // entry point flagged.
-        _logger.LogDebug("skill_identify: slot {Slot} (single-index helper data-pending)", inventoryIndex);
+        _logger.LogDebug("skill_identify: slot {Slot} (single-index helper deferred per PARITY-REMAINING.md §P2.2)", inventoryIndex);
         return false;
     }
 
     public bool ElementalAnalysis(PlayerEntity caster, int sourceItemId)
     {
-        _logger.LogDebug("skill_elementalanalysis: from item {Item} (data-pending)", sourceItemId);
+        _logger.LogDebug("skill_elementalanalysis: from item {Item} (deferred per PARITY-REMAINING.md §P2.2)", sourceItemId);
         return false;
     }
 }

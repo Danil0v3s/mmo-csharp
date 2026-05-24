@@ -14,10 +14,11 @@ namespace Map.Server.Skills;
 /// that became invalid mid-cast, e.g. weapon swap, equip break).
 ///
 /// Resource columns we can model today (HP / SP / AP / Zeny) flow
-/// through real `Consume*` calls. The data-pending bits — ammo
+/// through real `Consume*` calls. The remaining gates — ammo
 /// quantity, item-id requirements, weapon-mask checks, state checks
-/// (mounted / sit / cart) — return success but log so the wiring is
-/// visible.
+/// (mounted / sit / cart) — are deferred per PARITY-REMAINING.md
+/// §P2.2.b on the skill_db `Required*` column reader; they return
+/// success and log so the wiring is visible.
 /// </summary>
 public interface ISkillRequirementService
 {
