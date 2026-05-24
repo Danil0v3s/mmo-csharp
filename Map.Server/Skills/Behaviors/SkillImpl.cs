@@ -82,6 +82,26 @@ public abstract class SkillImpl
         => CalculateSkillRatio(baseRatio, src, target, skillLevel);
 
     /// <summary>
+    /// Full rAthena <c>calculateSkillRatio</c> shape — <paramref name="miscflag"/>
+    /// is the per-hit flag set by the caller (path-AoE secondary hit,
+    /// ground-unit dispatch, etc.). Plugins that branch on
+    /// <c>SKILL_ALTDMG_FLAG</c> (SS_FUUMAKOUCHIKU alt-dmg) or the
+    /// SkillCallType bit (NPC_LEX_AETERNA passthrough) override this
+    /// overload. Default delegates to the ctx-aware overload so plugins
+    /// that don't care about miscflag keep working.
+    /// </summary>
+    public virtual int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx, int miscflag)
+        => CalculateSkillRatio(baseRatio, src, target, skillLevel, ctx);
+
+    /// <summary>
+    /// rAthena <c>SKILL_ALTDMG_FLAG</c> — set on the secondary path-AoE
+    /// hit pass when a skill re-fires through <c>skill_attack_area</c>.
+    /// Plugins consult this on the miscflag-aware ratio overload to
+    /// add the per-skill alt-dmg ratio bump.
+    /// </summary>
+    public const int SKILL_ALTDMG_FLAG = 0x1;
+
+    /// <summary>
     /// rAthena per-skill hit-rate modifier. Bash adds +5 % hit per lv,
     /// Frost Diver +5 %, etc.
     /// </summary>
@@ -122,14 +142,22 @@ public abstract class WeaponSkillImpl : SkillImpl
     protected WeaponSkillImpl(ushort skillId) : base(skillId) { }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+        => CastendDamageId(src, target, skillLevel, ctx, miscflag: 0);
+
+    /// <summary>
+    /// Miscflag-aware overload — used by splash / path-AoE dispatchers
+    /// that need to fold the per-hit alt-dmg flag into the ratio calc
+    /// (rAthena <c>SKILL_ALTDMG_FLAG</c>: SS_FUUMAKOUCHIKU secondary hit).
+    /// </summary>
+    public virtual void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx, int miscflag)
     {
         var swing = ctx.Battle.CalcWeaponAttack(src, target);
-        // Route through the ctx-aware overload so plugins that need
+        // Route through the miscflag-aware overload so plugins that need
         // SC reads (DK_DRAGONIC_BREATH, LG_CANNONSPEAR's SC_SPEAR_SCAR,
-        // SS_REIKETSUHOU's SC_WATER_CHARM_POWER) can hook them. The
-        // default impl falls back to the simpler signature so legacy
-        // plugins keep their existing behavior.
-        var ratio = CalculateSkillRatio(100, src, target, skillLevel, ctx);
+        // SS_REIKETSUHOU's SC_WATER_CHARM_POWER) or alt-dmg branches
+        // (SS_FUUMAKOUCHIKU) can hook them. The default chains down to
+        // the simpler signatures so legacy plugins keep their behavior.
+        var ratio = CalculateSkillRatio(100, src, target, skillLevel, ctx, miscflag);
         var dmg = (int)Math.Clamp(swing.Total * ratio / 100, 0, int.MaxValue);
         ctx.Damage.ApplyDamage(target, dmg, src);
         ApplyAdditionalEffects(src, target, skillLevel, ctx);

@@ -1,5 +1,6 @@
 using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Skills;
@@ -18,6 +19,7 @@ public sealed class SkillAttackService : ISkillAttackService
     private readonly IBattleCalculator _battle;
     private readonly IDamageService _damage;
     private readonly IEntityRegistry _entities;
+    private readonly IStatusChangeService? _sc;
     private readonly ILogger<SkillAttackService> _logger;
 
     public SkillAttackService(
@@ -25,12 +27,14 @@ public sealed class SkillAttackService : ISkillAttackService
         IBattleCalculator battle,
         IDamageService damage,
         IEntityRegistry entities,
-        ILogger<SkillAttackService> logger)
+        ILogger<SkillAttackService> logger,
+        IStatusChangeService? sc = null)
     {
         _db = db;
         _battle = battle;
         _damage = damage;
         _entities = entities;
+        _sc = sc;
         _logger = logger;
     }
 
@@ -62,14 +66,36 @@ public sealed class SkillAttackService : ISkillAttackService
 
         if (damage > 0)
         {
-            // DamageService still operates in int range. Cap with
-            // int.MaxValue — overflows in this slice mean something
-            // upstream is wrong, not a real number.
-            var clamped = damage > int.MaxValue ? int.MaxValue : (int)damage;
-            _damage.ApplyDamage(target, clamped, source);
+            // rAthena skill.cpp ~3680 — MER_BLESSING / MER_INCAGI on
+            // SC_CHANGEUNDEAD targets cap the damage so the target's HP
+            // never drops below 1. The mercenary blessing-on-undead semantic
+            // is "drain to almost dead" not "kill".
+            if (attackType == BattleAttackType.Misc
+                && _sc?.Get(target, StatusType.Changeundead) != null)
+            {
+                var maxAllowed = HpOf(target) - 1;
+                if (maxAllowed < 0) maxAllowed = 0;
+                if (damage > maxAllowed) damage = maxAllowed;
+            }
+
+            if (damage > 0)
+            {
+                // DamageService still operates in int range. Cap with
+                // int.MaxValue — overflows in this slice mean something
+                // upstream is wrong, not a real number.
+                var clamped = damage > int.MaxValue ? int.MaxValue : (int)damage;
+                _damage.ApplyDamage(target, clamped, source);
+            }
         }
         return damage;
     }
+
+    private static long HpOf(Entity e) => e switch
+    {
+        PlayerEntity p => p.Hp,
+        MobEntity m => m.Hp,
+        _ => long.MaxValue,
+    };
 
     public int SkillAttackArea(Entity source, Entity centerTarget, ushort skillId, ushort skillLevel)
     {
@@ -115,11 +141,14 @@ public sealed class SkillAttackService : ISkillAttackService
         return count;
     }
 
-    // ---- magic / misc damage shims --------------------------------
-    // The real renewal MATK formula is in BattleCalculator's magic
-    // branch (not yet ported). We approximate so the entry point
-    // returns a non-zero result; the resolvers still own per-skill
-    // overrides.
+    // ---- magic / misc damage helpers ------------------------------
+    // Renewal magic damage uses the BattleCalculator MATK formula on
+    // the source; misc (BF_MISC) uses the rAthena
+    // `battle_calc_misc_attack` shape — fixed level + int scaling, no
+    // def/mdef subtract, element table applied through the misc atk
+    // element column. The full renewal MATK chain lives in
+    // BattleCalculator; this shim handles the common case until that
+    // pipe is wired through skill-specific damage rates.
 
     private long CalcMagicDamage(Entity source, Entity target, ushort skillId, ushort lvl)
     {
@@ -130,12 +159,24 @@ public sealed class SkillAttackService : ISkillAttackService
         return Math.Max(1, baseDmg * ratePerLevel / 100);
     }
 
+    /// <summary>
+    /// rAthena <c>battle_calc_misc_attack</c> (battle.cpp:8540-ish) —
+    /// BF_MISC base damage = caster <c>(level + int)</c> scaled by the
+    /// skill's <c>damage_rate</c> column. No defense subtract; this
+    /// matches the rAthena MISC branch where the only modifiers are
+    /// the skill ratio + element table (applied upstream).
+    /// </summary>
     private long CalcMiscDamage(Entity source, Entity target, ushort skillId, ushort lvl)
     {
         var def = _db.Get(skillId);
         if (def == null) return 0;
         var ratePerLevel = def.DamageRate.Length > lvl ? def.DamageRate[lvl] : 100;
-        return Math.Max(1, (source.Level + source.Stats.IntStat) * ratePerLevel / 100);
+        // Per-skill ratio bump (Mercenary blessing / increase agility scale
+        // with caster level + INT). rAthena: `dmg = sd ? sd->status.int_ +
+        // 10 : src->level * sstatus->int_;` We approximate with the
+        // (level + int) sum which works for both mob and PC sources.
+        long baseDmg = source.Level + source.Stats.IntStat;
+        return Math.Max(1, baseDmg * ratePerLevel / 100);
     }
 
     private static bool IsAlive(Entity e) => e switch

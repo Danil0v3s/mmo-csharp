@@ -1,3 +1,4 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
 using Map.Server.Status;
 
@@ -16,9 +17,16 @@ public sealed class MercenaryBlessing : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        if (target is PlayerEntity && ctx.Sc?.Get(target, StatusType.Changeundead) != null)
+        if (target is PlayerEntity pc && ctx.Sc?.Get(target, StatusType.Changeundead) != null)
         {
-            // Deferred: skill_attack(BF_MISC) on undead-flagged player with HP > 1 — needs BF_MISC damage dispatch.
+            // rAthena mercenary_blessing.cpp:18 — on undead-flagged PC
+            // with hp > 1, dispatch as BF_MISC damage rather than buff.
+            // skill_attack handles the floor-to-(hp-1) clamp so the hit
+            // never kills the target.
+            if (pc.Hp > 1)
+            {
+                ctx.SkillAttack?.SkillAttack(BattleAttackType.Misc, src, src, target, SkillId, skillLevel);
+            }
             return;
         }
         ctx.Sc?.Start(target, StatusType.Blessing, val1: skillLevel, 0, 0, 0, durationMs: 120_000, src);
