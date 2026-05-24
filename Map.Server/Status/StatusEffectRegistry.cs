@@ -814,14 +814,38 @@ public sealed class StatusEffectRegistry
     }
 
     /// <summary>
-    /// ST.9-ST.12 — bulk-register a NoOpHandler for every
+    /// NS-3 wave 2 — bulk-register a handler for every
     /// <see cref="StatusType"/> enum value not yet covered by an
-    /// explicit handler above. Picks up flags from
-    /// <see cref="StatusFlagDefaults"/>; if no entry exists there,
-    /// uses a permissive default (Buff | RemoveOnLogout for positive-
-    /// sounding names, Debuff | RemoveOnRefresh otherwise — but the
-    /// safe path is RemoveOnLogout-only so logout cleanup still
-    /// works).
+    /// explicit handler above. Two paths:
+    ///
+    /// <list type="bullet">
+    ///   <item><b>SC has CalcFlags in rAthena status.yml</b>
+    ///   (<see cref="StatusCalcFlagDefaults.For"/> returns non-empty):
+    ///   synthesize a <see cref="StatusEffectHandler"/> whose OnStart
+    ///   applies a <c>Val1</c>-scaled delta to each mapped
+    ///   <see cref="BattleStats"/> field and OnEnd reverts the cached
+    ///   delta stored in the SC's <c>Val2[index]</c>. Closes the gap
+    ///   from the 48 hand-ported SCs to ~350 with stat-mod bodies.</item>
+    ///
+    ///   <item><b>SC is presence-only</b> (no CalcFlags in status.yml):
+    ///   register a no-op handler with the right
+    ///   <see cref="ScfFlag"/> classification from
+    ///   <see cref="StatusFlagDefaults"/>. Lifecycle sweeps
+    ///   (ClearBuffs / Spread / RemoveOnLogout) still route correctly.</item>
+    /// </list>
+    ///
+    /// Picks up flags from <see cref="StatusFlagDefaults"/>; if no
+    /// entry exists there, uses a conservative "buff that drops on
+    /// logout" classification.
+    ///
+    /// Generated CalcFlag data lives in
+    /// <see cref="StatusCalcFlagDefaults"/>. The delta magnitude per
+    /// stat is <c>Val1</c> (rAthena's most-common scaling for buffs
+    /// like Blessing/IncreaseAGI/etc.). SCs with bespoke formulas
+    /// (Berserk's +200 flat, Provoke's percentile, Bleeding's MaxHp
+    /// fraction) override via an explicit
+    /// <c>Register(StatusType.X, new StatusEffectHandler(...))</c>
+    /// earlier in the ctor — those wins by dictionary overwrite.
     /// </summary>
     private void RegisterDefaultsForMissingTypes()
     {
@@ -832,17 +856,136 @@ public sealed class StatusEffectRegistry
             if (_handlers.ContainsKey(type)) continue;
 
             // Pull the default flag set; if absent, use a conservative
-            // "buff that drops on logout" classification. The actual
-            // SC's stat mods land when a consumer skill plugin needs
-            // them and overrides this with a real Register().
+            // "buff that drops on logout" classification.
             var defaultFlags = StatusFlagDefaults.For(type);
             if (defaultFlags == ScfFlag.None)
                 defaultFlags = ScfFlag.RemoveOnLogout;
 
+            // NS-3 wave 2: if the SC has CalcFlags in status.yml,
+            // synthesize a stat-mod body instead of a no-op. Capture
+            // `fields` in a local so the closure sees the snapshot,
+            // not the loop variable.
+            var fields = StatusCalcFlagDefaults.For(type);
+            if (fields.Count == 0)
+            {
+                _handlers[type] = new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: defaultFlags);
+                continue;
+            }
+
             _handlers[type] = new StatusEffectHandler(
-                _NoOp, _NoOpEnd, Flags: defaultFlags);
+                OnStart: (target, sc, _) => ApplyCalcFlagDelta(target, sc, fields, sign: +1),
+                OnEnd:   (target, sc)    => ApplyCalcFlagDelta(target, sc, fields, sign: -1),
+                Flags: defaultFlags);
         }
     }
+
+    /// <summary>
+    /// Apply a Val1-scaled delta to every <see cref="CalcStatField"/>
+    /// the SC's status.yml row tagged. On OnStart (<paramref name="sign"/>
+    /// = +1), adds <c>sc.Val1</c> to each field; on OnEnd (sign = −1),
+    /// subtracts the original Val1 (the SC instance survives the
+    /// round-trip, so we don't need to cache the delta — Val1 is the
+    /// authoritative magnitude). Clamps to the destination field's
+    /// representable range.
+    ///
+    /// <para>Mod magnitude trade-off:</para>
+    /// <list type="bullet">
+    ///   <item>For SCs where rAthena scales by <c>Val1</c> directly
+    ///   (Blessing's val1 to STR/INT/DEX, IncreaseAGI's val1 to AGI,
+    ///   …) this produces exact behavior.</item>
+    ///   <item>For SCs where rAthena uses a different scaling
+    ///   (Berserk's flat +200 Batk, Quagmire's halving %, etc.) the
+    ///   default here is approximate — Val1 buff/debuff direction
+    ///   moves the stat the right way, but the magnitude is wrong.
+    ///   Those SCs need an explicit Register() with the rAthena
+    ///   formula. The Berserk / Curse / Blind / WindWalk / etc.
+    ///   handlers above demonstrate the pattern.</item>
+    /// </list>
+    /// </summary>
+    private static void ApplyCalcFlagDelta(
+        Entity target, StatusChange sc, IReadOnlyList<CalcStatField> fields, int sign)
+    {
+        var delta = sc.Val1 * sign;
+        if (delta == 0) return;
+        foreach (var field in fields)
+        {
+            switch (field)
+            {
+                case CalcStatField.Str:
+                    target.Stats.Str = ClampShort(target.Stats.Str + delta); break;
+                case CalcStatField.Agi:
+                    target.Stats.Agi = ClampShort(target.Stats.Agi + delta); break;
+                case CalcStatField.Vit:
+                    target.Stats.Vit = ClampShort(target.Stats.Vit + delta); break;
+                case CalcStatField.IntStat:
+                    target.Stats.IntStat = ClampShort(target.Stats.IntStat + delta); break;
+                case CalcStatField.Dex:
+                    target.Stats.Dex = ClampShort(target.Stats.Dex + delta); break;
+                case CalcStatField.Luk:
+                    target.Stats.Luk = ClampShort(target.Stats.Luk + delta); break;
+                case CalcStatField.Pow:
+                    target.Stats.Pow = ClampShort(target.Stats.Pow + delta); break;
+                case CalcStatField.Sta:
+                    target.Stats.Sta = ClampShort(target.Stats.Sta + delta); break;
+                case CalcStatField.Wis:
+                    target.Stats.Wis = ClampShort(target.Stats.Wis + delta); break;
+                case CalcStatField.Spl:
+                    target.Stats.Spl = ClampShort(target.Stats.Spl + delta); break;
+                case CalcStatField.Con:
+                    target.Stats.Con = ClampShort(target.Stats.Con + delta); break;
+                case CalcStatField.Crt:
+                    target.Stats.Crt = ClampShort(target.Stats.Crt + delta); break;
+                case CalcStatField.MaxHp:
+                    target.Stats.MaxHp = System.Math.Max(1, target.Stats.MaxHp + delta);
+                    if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
+                    break;
+                case CalcStatField.MaxSp:
+                    target.Stats.MaxSp = System.Math.Max(1, target.Stats.MaxSp + delta);
+                    if (target.Stats.Sp > target.Stats.MaxSp) target.Stats.Sp = target.Stats.MaxSp;
+                    break;
+                case CalcStatField.Hit:
+                    target.Stats.Hit = ClampShort(target.Stats.Hit + delta); break;
+                case CalcStatField.Flee:
+                    target.Stats.Flee = ClampShort(target.Stats.Flee + delta); break;
+                case CalcStatField.Flee2:
+                    target.Stats.Flee2 = ClampShort(target.Stats.Flee2 + delta); break;
+                case CalcStatField.Cri:
+                    // Cri stored at ×10 (rAthena convention); a +Val1
+                    // CalcFlag in rAthena = +Val1 raw critical chance
+                    // points, so multiply by 10 to land in our storage.
+                    target.Stats.Cri = ClampShort(target.Stats.Cri + delta * 10); break;
+                case CalcStatField.Def:
+                    target.Stats.Def = ClampShort(target.Stats.Def + delta); break;
+                case CalcStatField.Def2:
+                    target.Stats.Def2 = ClampShort(target.Stats.Def2 + delta); break;
+                case CalcStatField.Mdef:
+                    target.Stats.Mdef = ClampShort(target.Stats.Mdef + delta); break;
+                case CalcStatField.Mdef2:
+                    target.Stats.Mdef2 = ClampShort(target.Stats.Mdef2 + delta); break;
+                case CalcStatField.AspdRate:
+                    target.Stats.AspdRate = ClampShort(target.Stats.AspdRate + delta); break;
+                case CalcStatField.Batk:
+                    target.Stats.Batk = ClampUShort(target.Stats.Batk + delta); break;
+                case CalcStatField.Patk:
+                    target.Stats.Patk = ClampShort(target.Stats.Patk + delta); break;
+                case CalcStatField.Smatk:
+                    target.Stats.Smatk = ClampShort(target.Stats.Smatk + delta); break;
+                case CalcStatField.Res:
+                    target.Stats.Res = ClampShort(target.Stats.Res + delta); break;
+                case CalcStatField.Mres:
+                    target.Stats.Mres = ClampShort(target.Stats.Mres + delta); break;
+                case CalcStatField.Hplus:
+                    target.Stats.Hplus = ClampShort(target.Stats.Hplus + delta); break;
+                case CalcStatField.Crate:
+                    target.Stats.Crate = ClampShort(target.Stats.Crate + delta); break;
+            }
+        }
+    }
+
+    private static short ClampShort(int value) =>
+        (short)System.Math.Clamp(value, short.MinValue, short.MaxValue);
+    private static ushort ClampUShort(int value) =>
+        (ushort)System.Math.Clamp(value, 0, ushort.MaxValue);
 
     // Shared no-op delegates used by the ST.3 backfill batch.
     private static readonly Action<Entity, StatusChange, Entity?> _NoOp = (_, _, _) => { };

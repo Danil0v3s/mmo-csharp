@@ -63,7 +63,7 @@ counts.
 | Surface | Current state | Source of measurement |
 |---|---|---|
 | **Skill parity** | **1,675 of 2,439 (skillId, level) baselines fail** (31% match rate) | `Map.Server.Tests/Skills/Baselines/*.rathena-todo.txt` count vs `*.json` total |
-| **SC handler depth** | **48 real bodies / 47 skeleton no-ops / 912 unregistered = 4.8% / 4.7% / 90.6% of 1,007 SCs** (post-NS-3 wave 1: +10 real bodies, 10 skeleton→explicit-flag promotions) | NS-1a — `StatusEffectRegistry.cs` `Register()` vs `NoOpHandler()` vs `StatusType.cs` enum |
+| **SC handler depth** | **48 hand-ported bespoke bodies + 356 generator-synthesized CalcFlag bodies + 597 presence-only with correct ScfFlag = 404 real-body / 597 presence-only / 6 sentinels of 1,007 SCs** (post-NS-3 wave 2: +356 from the Tools/gen-sc-flags codegen reading rAthena status.yml) | NS-1a count + `StatusCalcFlagDefaults.Count` |
 | **Item-script Proxy depth** | **8 distinct unknown methods, 31 hits** post-NS-2a (was 14 / 1,390 = 1.6%; now 0.04%). Residual 8 are JS-internal probes + rare rAthena array/string ops with low impact. | NS-1b harvest re-run after NS-2a; full table in [`map/ns1-audit-2026-05-23.md`](map/ns1-audit-2026-05-23.md) §NS-1b update |
 | **Pathing** | A\* matches rAthena `path.cpp` on constants / heuristic / corner-cut / Bresenham. ✅ Minor tie-break divergence (PriorityQueue ordering) is acceptable. | NS-1c — side-by-side audit of `Pathfinder.cs` vs `path.cpp` |
 
@@ -254,7 +254,28 @@ gameplay loop and stay deferred:
   `map/item-scripting-conv.md`)
 - Client-version compensation quirks for clients we don't target
 
-### Suggested next PR (2026-05-23, post-NS-3 wave 1)
+### Suggested next PR (2026-05-24, post-NS-3 wave 2)
+
+NS-3 wave 2 landed (404 / 1,007 SCs now have stat-mod bodies via
+the codegen). The next priorities:
+
+- **NS-3 wave 3** — bespoke-formula port-overs for the SCs whose
+  rAthena formula isn't a simple Val1 delta. Generator currently
+  applies +Val1 to each CalcFlag; many SCs use different scalings
+  (Val1×5%, MaxHp×%, flat +200, etc.). Each override hand-port
+  upgrades a generator-default to formula-accurate. ~80 candidate
+  SCs from rAthena `status.cpp`'s big `switch(type)` per-SC start
+  block. High-impact targets: Provoke (already done) /
+  Concentration (already done) / Magnificat (HP regen %) / Endure
+  (hit-counter buff) / Sacrifice (devotion link) / Steelbody
+  (90% dmg reduction marker) / Strip family (equip lock) /
+  Magicpower (next-cast Matk% — Val3 needs storage).
+
+- **NS-2c** — wire `sc_start` family on ScriptedBonusHost now
+  that 350+ SCs produce visible behavior. Items that grant SCs
+  immediately get real stat changes.
+
+- **Older Suggested-next options from post-NS-3 wave 1**:
 
 NS-3 wave 1 landed (10 real bodies + 10 reclassifications, see
 History). The next two parallel-safe options:
@@ -926,6 +947,78 @@ gameplay on Tier 4 completeness if Tier 1–3 already cover the
 hot path.
 
 ## History
+
+### 2026-05-24 — NS-3 wave 2 landed (356 SCs via codegen, total ~400 with bodies)
+
+Closed the 48 → 1,007 SC handler depth gap from
+**4.8% → 40.1% coverage by stat-mod body** in one mechanical wave.
+
+**Approach: codegen instead of hand-port.** Hand-porting 950+ SCs
+at ~30 min each isn't feasible in a session. Instead, wrote a
+one-shot Python generator
+([`Tools/gen-sc-flags/gen-sc-flags.py`](../../Tools/gen-sc-flags/gen-sc-flags.py))
+that reads rAthena's `db/re/status.yml` `CalcFlags` table — the
+source-of-truth list of which `BattleStats` fields each SC
+modifies — and emits a checked-in lookup table at
+[`Map.Server/Status/StatusCalcFlagDefaults.cs`](../../Map.Server/Status/StatusCalcFlagDefaults.cs).
+
+The registry's `RegisterDefaultsForMissingTypes()` now consumes
+that table: for every SC that doesn't have an explicit
+`Register(StatusType.X, ...)` earlier in the ctor, it synthesizes
+a `StatusEffectHandler` whose `OnStart` adds `sc.Val1` to each
+listed stat field and `OnEnd` subtracts it. Explicit registrations
+(the 48 hand-ported + the 10 NS-3 wave 1 ports) still win by
+dictionary overwrite, so bespoke formulas (Berserk's flat +200,
+Provoke's percentile, Blessing's STR+INT+DEX only-not-Hit, etc.)
+keep their formula-accurate bodies.
+
+**Numbers**:
+
+| Bucket | Count | % of 1,007 |
+|---|---:|---:|
+| Bespoke hand-ported bodies | 48 | 4.8% |
+| Generator-synthesized CalcFlag bodies (NS-3 wave 2) | **+356** | **+35.4%** |
+| **Total with real stat-mod bodies** | **404** | **40.1%** |
+| Presence-only with correct ScfFlag (no stat mod) | 597 | 59.3% |
+| Sentinels (None / HealOverTime / etc.) | 6 | 0.6% |
+
+**Per-stat coverage:** the generator handles all 30 distinct
+`CalcStatField` enum values mapped from status.yml CalcFlags —
+Str/Agi/Vit/IntStat/Dex/Luk, the 6 4th-class trait stats
+(Pow/Sta/Wis/Spl/Con/Crt), MaxHp/MaxSp, Hit/Flee/Flee2/Cri,
+Def/Def2/Mdef/Mdef2, AspdRate (covers Aspd + Speed proxy), Batk
+(covers Watk/Matk collapsed), Patk/Smatk/Res/Mres/Hplus/Crate.
+The 6 CalcFlags that don't map to a stat field (Regen, Atk_Ele,
+Def_Ele, Mode, Dspd, Dye) are correctly skipped.
+
+**Accuracy trade-off:** the generator uses `Val1` as the
+universal scalar. This is **formula-exact** for the most common
+buff family (Blessing-style: +Val1 to each tagged stat) but
+**directionally-correct, magnitude-approximate** for SCs with
+bespoke scalings (Berserk's flat +200, Provoke's %-based,
+Quagmire's halving, etc.). Wave 3 of NS-3 will pick those off
+one by one — each upgrade replaces the generator default with
+a hand-ported formula. The Val1-default still puts the player
+visibly into the right buff/debuff direction for those SCs
+that previously did nothing at all.
+
+**Files**:
+- `Map.Server/Status/StatusCalcFlagDefaults.cs` — generated
+  (438 lines, 356-row dictionary + CalcStatField enum).
+- `Map.Server/Status/StatusEffectRegistry.cs` — extended
+  `RegisterDefaultsForMissingTypes()` + new
+  `ApplyCalcFlagDelta()` switch over `CalcStatField`.
+- `Tools/gen-sc-flags/gen-sc-flags.py` + `README.md` —
+  source-of-truth generator + usage docs.
+- `Map.Server.Tests/Status/StatusEffectGeneratorTests.cs` —
+  8 new tests covering: generator emitted ≥350 SCs, per-SC
+  round-trip via Val1 (Theory × 3 distinct families),
+  idempotent replay, explicit-handler-wins (Blessing + Berserk
+  asserts).
+
+**Full test sweep:** **3,390 Map.Server + 87 Core + 29 Login =
+3,506 tests passing** (was 3,382 pre-wave; +8 new). 0 build
+errors.
 
 ### 2026-05-23 — NS-3 wave 1 landed (10 real SC bodies + 10 reclassifications)
 
