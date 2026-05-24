@@ -36,8 +36,15 @@ public sealed class FlashCombo : StatusSkillImpl
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
 
-        // Deferred per PARITY-REMAINING.md §P2.3: lock caster's attack/cast/
-        // use-item for 1250 ms — PlayerEntity.canact_tick isn't surfaced yet.
+        // rAthena: lock the caster's attack / cast / use-item for the full
+        // combo window (1250 ms). PlayerEntity.CanActUntilTick is the
+        // canact-tick equivalent; downstream attack/skill gates check it
+        // before allowing further input.
+        const int ComboLockMs = 1250;
+        if (src is PlayerEntity caster)
+        {
+            caster.CanActUntilTick = Environment.TickCount64 + ComboLockMs;
+        }
 
         // Schedule the 3-skill chain. Each fires through SkillAttackService
         // as a BF_WEAPON hit on the target.

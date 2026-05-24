@@ -260,6 +260,14 @@ public sealed class PlayerEntity : Entity
     public long InvincibleUntilTick { get; set; }
 
     /// <summary>
+    /// rAthena <c>sd-&gt;canact_tick</c> (unit.cpp / pc.cpp) — absolute
+    /// tick until which the PC may not act (attack / cast / use item).
+    /// Walking is still allowed; SR_FLASHCOMBO and similar "skill chain"
+    /// arms lock this for the chain duration. 0 = unlocked.
+    /// </summary>
+    public long CanActUntilTick { get; set; }
+
+    /// <summary>
     /// rAthena <c>fame</c> on mmo_charstatus — drives smith / alchemist
     /// / taekwon rankings. Mutated by <c>IPlayerFameService.AddFame</c>;
     /// persisted alongside the rest of the character row on autosave.

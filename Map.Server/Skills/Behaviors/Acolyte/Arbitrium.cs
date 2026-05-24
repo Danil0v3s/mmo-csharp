@@ -53,8 +53,10 @@ public sealed class Arbitrium : SkillImpl
                 val1: skillLevel, 0, 0, 0, durationMs: 5000, src);
         }
 
-        // Deferred per PARITY-REMAINING.md §P2.3: follow-up CD_ARBITRIUM_ATK splash
-        // hit needs SkillBehaviorRegistry lookup mid-cast (not surfaced through
-        // SkillBehaviorContext yet); rAthena calls skill_castend_damage_id(CD_ARBITRIUM_ATK, ...).
+        // rAthena: skill_castend_damage_id(src, target, CD_ARBITRIUM_ATK, lv, tick, SD_LEVEL).
+        // CD_ARBITRIUM_ATK is the recursive splash companion (ratio -100 +
+        // 1750*lv). Dispatch through ISkillCastService.ResolveSkill so the
+        // plugin registry runs the companion's CastendDamageId hook.
+        ctx.Cast?.ResolveSkill(src, target, SkillIds.CD_ARBITRIUM_ATK, skillLevel);
     }
 }

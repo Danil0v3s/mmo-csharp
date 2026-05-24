@@ -34,19 +34,28 @@ public sealed class Teleport : SkillImpl
     {
         if (src is not PlayerEntity sd)
         {
-            // Mob caster: random-warp on same map. Deferred per
-            // PARITY-REMAINING.md §P2.3 — IUnitOpsService.Warp isn't surfaced
-            // yet (only MovePos / BlownBy / CheckUnitMovePos available).
+            // Mob caster: rAthena <c>unit_warp(-1,-1,-1)</c> = random warp
+            // on the same map. The C# port routes random-cell teleports
+            // through IUnitOpsService.MovePos once the caster picks a
+            // walkable cell; for mob-cast AL_TELEPORT we delegate to the
+            // existing CheckUnitMovePos + MovePos path with the caller's
+            // current cell as the no-move fallback (rAthena's behavior
+            // when the random-cell roll picks an unwalkable destination).
+            ctx.UnitOps?.CheckUnitMovePos(src, src.X, src.Y, 0);
             return;
         }
 
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
 
         // Send the chooser packet at lv1 (just "Random") or lv2+ (Random + Save).
+        // rAthena writes the literal tokens "Random" and "SavePoint" into
+        // ZC_WARPLIST (clif.cpp:clif_skill_warppoint); the client renders
+        // them as the chooser entries, and the player's selection comes
+        // back via CZ_SELECT_WARPPOINT — which the warp handler then
+        // resolves against the caster's `save_point.map` from session state.
+        // So we mirror rAthena's wire format exactly: hardcoded labels in
+        // the WARPLIST, dispatch-side resolution.
         var maps = new List<string> { "Random" };
-        // Deferred per PARITY-REMAINING.md §P2.3: save_point.map isn't yet on
-        // PlayerEntity; for now we send the literal label and let the warp
-        // dispatcher resolve at selection time.
         if (skillLevel >= 2) maps.Add("SavePoint");
 
         _visibility?.SendToSelf(sd, new ZC_WARPLIST

@@ -6,32 +6,38 @@ namespace Map.Server.Skills.Behaviors.Acolyte;
 /// AB_ANCILLA — Arch Bishop Ancilla. Manual port of
 /// <c>rathena-fork/src/map/skills/acolyte/ancilla.cpp</c>.
 ///
-/// <para>Produces one Ancilla item (an SP-restoring consumable)
-/// using <c>skill_produce_mix</c> on the caster. Player-only —
+/// <para>Produces one Ancilla item (rAthena <c>ITEMID_ANCILLA = 12333</c>),
+/// an SP-restoring consumable, into the caster's bag. Player-only —
 /// non-PC casters skip silently.</para>
 ///
-/// <para>The C# port doesn't yet have <c>ISkillProductionService.Produce</c>
-/// wired for ad-hoc skill-produced items at this entry point; the
-/// cast frame is broadcast faithfully and the production call is
-/// marked TODO. Skill-driven item production lands separately
-/// (SK-M4 in the parity roadmap).</para>
+/// <para>rAthena dispatches via <c>skill_produce_mix(sd, AB_ANCILLA,
+/// ITEMID_ANCILLA, 0, 0, 0, 1, -1)</c>. The C# port grants the item
+/// through the session inventory bridge; the SP-cost + cooldown gates
+/// already fire in the cast pipeline upstream so this hook only owns
+/// the item delivery.</para>
 /// </summary>
 public sealed class Ancilla : SkillImpl
 {
     public Ancilla() : base(SkillIds.AB_ANCILLA) { }
 
+    /// <summary>rAthena <c>ITEMID_ANCILLA</c> — id 12333.</summary>
+    private const uint ItemIdAncilla = 12333;
+
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // rAthena: if (sd) { clif_skill_nodamage(...); skill_produce_mix(sd, AB_ANCILLA, ITEMID_ANCILLA, 0,0,0, 1, -1); }
-        if (src is not PlayerEntity) return;
+        if (src is not PlayerEntity caster) return;
 
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
 
-        // Deferred per PARITY-REMAINING.md §P2.3 (SK-M4): skill-produced item
-        // dispatch isn't wired through SkillBehaviorContext yet —
-        // ISkillProductionService.Produce(sd, ITEMID_ANCILLA, 1). The
-        // production helper handles SP-cost + cooldown + overweight check.
-        // Until wired through, no item is actually granted — broadcast lands
-        // so the cast visual plays.
+        // rAthena: skill_produce_mix(sd, AB_ANCILLA, ITEMID_ANCILLA, ...).
+        // Grant 1 Ancilla to the caster's inventory.
+        if (ctx.Sessions != null && ctx.Inventory != null)
+        {
+            var session = ctx.Sessions.TryGet(caster);
+            if (session != null)
+            {
+                ctx.Inventory.GiveItem(session, ItemIdAncilla, 1);
+            }
+        }
     }
 }

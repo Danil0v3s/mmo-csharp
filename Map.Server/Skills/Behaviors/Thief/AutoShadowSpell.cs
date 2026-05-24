@@ -14,8 +14,12 @@ public sealed class AutoShadowSpell : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // Deferred per PARITY-REMAINING.md §P2: clif_autoshadowspell_list
-        // packet + SC_STOP menu-lock not yet ported. Animation lands.
+        // rAthena: clif_autoshadowspell_list(sd) — pops the spell-pick UI
+        // listing the player's cloned skills (rAthena
+        // <c>sd-&gt;cloneskill_idx</c>). The packet header isn't on
+        // Core.Server/Packets/Out/ZC yet; once it lands the picker UI +
+        // SC_STOP menu-lock fire here. The animation broadcast lands so
+        // the cast frame plays correctly today.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

@@ -307,6 +307,7 @@ public static class SkillIds
     public const ushort CASH_BLESSING = 689;
     public const ushort CASH_INCAGI = 690;
     public const ushort CD_ARBITRIUM = 5273;
+    public const ushort CD_ARBITRIUM_ATK = 5274;
     public const ushort CD_COMPETENTIA = 5278;
     public const ushort CD_DILECTIO_HEAL = 5280;
     public const ushort CD_EFFLIGO = 5277;

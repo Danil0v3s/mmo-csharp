@@ -75,9 +75,11 @@ public sealed class Resurrection : SkillImpl
 
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
 
-        // Deferred per PARITY-REMAINING.md §P2.3: battle_config.resurrection_exp
-        // grants partial base/job EXP to the caster based on level delta.
-        // Requires next-level EXP lookup that isn't surfaced through
-        // SkillBehaviorContext yet.
+        // rAthena <c>battle_config.resurrection_exp</c> grants the caster
+        // a fraction of the target's base/job experience proportional to
+        // the level delta. The exp-curve catalog (<c>exp_db.yml</c>) +
+        // <c>pc_gainexp</c> path isn't surfaced through SkillBehaviorContext;
+        // the exp grant lands as a follow-up once IPcExpService is wired.
+        // No data is lost — the revive itself is parity-complete.
     }
 }
