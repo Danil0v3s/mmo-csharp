@@ -41,6 +41,19 @@ public sealed class SkillCastService : ISkillCastService
     private readonly IBattleCalculator? _battleCalc;
     private readonly IDamageService? _damage;
     private readonly ISkillClientService? _client;
+    // P0 plumbing — every cross-cutting helper a per-skill plugin
+    // may need, threaded into SkillBehaviorContext.
+    private readonly Map.Server.Party.IPartyMapService? _partyMap;
+    private readonly IPlayerSkillService? _playerSkill;
+    private readonly Map.Server.Status.IPlayerOrbService? _orbs;
+    private readonly Map.Server.Inventory.IEquipService? _equip;
+    private readonly Map.Server.Movement.UnitOps.IUnitOpsService? _unitOps;
+    private readonly Map.Server.Movement.IPcSetposService? _setpos;
+    private readonly Map.Server.Spawn.IMobSpawnService? _mobSpawn;
+    private readonly Map.Server.Spawn.MobOps.IMobOpsService? _mobOps;
+    private readonly ISkillAttackService? _skillAttack;
+    private readonly ISkillSideEffectService? _sideEffect;
+    private readonly Map.Server.Session.IMapSessionRegistry? _sessions;
     private readonly ILogger<SkillCastService> _logger;
 
     private readonly List<PendingCast> _pending = new();
@@ -59,7 +72,18 @@ public sealed class SkillCastService : ISkillCastService
         SkillBehaviorRegistry? behaviors = null,
         IBattleCalculator? battleCalc = null,
         IDamageService? damage = null,
-        ISkillClientService? client = null)
+        ISkillClientService? client = null,
+        Map.Server.Party.IPartyMapService? partyMap = null,
+        IPlayerSkillService? playerSkill = null,
+        Map.Server.Status.IPlayerOrbService? orbs = null,
+        Map.Server.Inventory.IEquipService? equip = null,
+        Map.Server.Movement.UnitOps.IUnitOpsService? unitOps = null,
+        Map.Server.Movement.IPcSetposService? setpos = null,
+        Map.Server.Spawn.IMobSpawnService? mobSpawn = null,
+        Map.Server.Spawn.MobOps.IMobOpsService? mobOps = null,
+        ISkillAttackService? skillAttack = null,
+        ISkillSideEffectService? sideEffect = null,
+        Map.Server.Session.IMapSessionRegistry? sessions = null)
     {
         _db = db;
         _entities = entities;
@@ -72,6 +96,17 @@ public sealed class SkillCastService : ISkillCastService
         _battleCalc = battleCalc;
         _damage = damage;
         _client = client;
+        _partyMap = partyMap;
+        _playerSkill = playerSkill;
+        _orbs = orbs;
+        _equip = equip;
+        _unitOps = unitOps;
+        _setpos = setpos;
+        _mobSpawn = mobSpawn;
+        _mobOps = mobOps;
+        _skillAttack = skillAttack;
+        _sideEffect = sideEffect;
+        _sessions = sessions;
         _logger = logger;
     }
 
@@ -296,7 +331,7 @@ public sealed class SkillCastService : ISkillCastService
             var plugin = _behaviors.Get(skillId);
             if (plugin != null)
             {
-                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client);
+                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions);
                 plugin.CastendPos2(source, x, y, skillLevel, ctx);
                 return true;
             }
@@ -328,7 +363,7 @@ public sealed class SkillCastService : ISkillCastService
             var plugin = _behaviors.Get(skillId);
             if (plugin != null)
             {
-                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client);
+                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions);
                 if (def.DamageKind == SkillDamageKind.None)
                     plugin.CastendNoDamageId(source, target, skillLevel, ctx);
                 else

@@ -1,5 +1,12 @@
 using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Inventory;
+using Map.Server.Movement;
+using Map.Server.Movement.UnitOps;
+using Map.Server.Party;
+using Map.Server.Session;
+using Map.Server.Spawn;
+using Map.Server.Spawn.MobOps;
 using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors;
@@ -14,6 +21,12 @@ namespace Map.Server.Skills.Behaviors;
 /// access used inside rAthena's switch arms (caster's <c>sd</c>,
 /// <c>battle_calc_attack</c>, <c>status_damage</c>, <c>status_change_*</c>,
 /// <c>map_foreachinrange</c>, the three <c>clif_skill_*</c> helpers).
+///
+/// <para>P0 extension: every cross-cutting helper from
+/// <c>PARITY-REMAINING.md §P0.1</c> is plumbed here so P1 per-skill
+/// bodies can consume them without per-plugin DI. All P0.1-shaped
+/// services are optional (null in unit tests that don't exercise the
+/// pipe); the per-skill plugin null-checks before calling.</para>
 /// </summary>
 /// <param name="Entities">Spatial registry — lookup by id, splash iteration.</param>
 /// <param name="Damage">HP-mutation pipeline (mirrors <c>status_damage</c>).</param>
@@ -23,9 +36,47 @@ namespace Map.Server.Skills.Behaviors;
 /// <param name="Client">Skill-result broadcaster — wraps the three
 ///     <c>clif_skill_*</c> packets. Null in unit tests that don't
 ///     exercise the visibility layer.</param>
+/// <param name="PartyMap">P0.1 — <c>party_foreachsamemap</c> enumerator
+///     used by every party-broadcast skill (Angelus, Magnificat,
+///     Suffragium, Impositio, Renovatio, …).</param>
+/// <param name="PlayerSkill">P0.1 — <c>pc_checkskill</c> reader; lets
+///     a skill body branch on the caster's other learned skills.</param>
+/// <param name="Orbs">P0.1 — <c>pc_addspiritcharm</c> / sphere /
+///     servant / abyss orb counters.</param>
+/// <param name="Equip">P0.1 — <c>pc_checkequip</c> reader. Needed by
+///     any skill that branches on equipped slot (Sage Endow gates,
+///     Hunter ammo type, etc.).</param>
+/// <param name="UnitOps">P0.1 — <c>unit_movepos</c> +
+///     <c>skill_check_unit_movepos</c> + <c>unit_blown</c>. Skills
+///     that teleport-near (Charge Attack, Shadow Leap) or knockback
+///     route here.</param>
+/// <param name="Setpos">P0.1 — <c>pc_setpos</c> warp helper.</param>
+/// <param name="MobSpawn">P0.1 — <c>mob_once_spawn</c>; skills that
+///     summon ad-hoc mobs (NPC_SUMMONSLAVE variants).</param>
+/// <param name="MobOps">P0.1 — <c>mob_class_change</c> + the rest of
+///     the mob lifecycle surface.</param>
+/// <param name="SkillAttack">P0.1 — <c>skill_attack</c> /
+///     <c>skill_area_sub</c>. Standard offensive skill dispatch.</param>
+/// <param name="SideEffect">P0.1 — <c>skill_break_equip</c> /
+///     <c>skill_autospell</c> / <c>skill_strip_equip</c>.</param>
+/// <param name="Sessions">P0.1 — <c>PlayerEntity</c> →
+///     <c>MapSessionData</c> bridge. Needed when a skill body must
+///     read the caster's session-side inventory (e.g. for
+///     <c>pc_checkequip</c> follow-ups).</param>
 public sealed record SkillBehaviorContext(
     IEntityRegistry Entities,
     IDamageService Damage,
     IBattleCalculator Battle,
     IStatusChangeService? Sc,
-    ISkillClientService? Client = null);
+    ISkillClientService? Client = null,
+    IPartyMapService? PartyMap = null,
+    IPlayerSkillService? PlayerSkill = null,
+    Map.Server.Status.IPlayerOrbService? Orbs = null,
+    IEquipService? Equip = null,
+    IUnitOpsService? UnitOps = null,
+    IPcSetposService? Setpos = null,
+    IMobSpawnService? MobSpawn = null,
+    IMobOpsService? MobOps = null,
+    ISkillAttackService? SkillAttack = null,
+    ISkillSideEffectService? SideEffect = null,
+    IMapSessionRegistry? Sessions = null);
