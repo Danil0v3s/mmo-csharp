@@ -11,13 +11,16 @@ namespace Map.Server.Skills.Behaviors.ElementalNpc;
 /// </summary>
 public sealed class WaterScrew : SkillImpl
 {
+    private const short SplashRadius = 2;
+    private readonly Random _rng;
     private readonly ISkillAttackService? _skillAttack;
 
-    public WaterScrew() : base(SkillIds.EL_WATER_SCREW) { }
+    public WaterScrew() : base(SkillIds.EL_WATER_SCREW) => _rng = Random.Shared;
 
-    public WaterScrew(ISkillAttackService? skillAttack = null) : base(SkillIds.EL_WATER_SCREW)
+    public WaterScrew(ISkillAttackService? skillAttack = null, Random? rng = null) : base(SkillIds.EL_WATER_SCREW)
     {
         _skillAttack = skillAttack;
+        _rng = rng ?? Random.Shared;
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
@@ -26,7 +29,14 @@ public sealed class WaterScrew : SkillImpl
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
-        // Deferred: 30% splash via EL_WATER_SCREW_ATK awaits skill-id registration.
         _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
+        if (_rng.Next(100) >= 30) return;
+        var victims = ctx.Entities.ForEachInRange(target.MapId, target.X, target.Y, SplashRadius,
+            EntityType.Mob | EntityType.Pc);
+        foreach (var v in victims)
+        {
+            if (v.Id == src.Id || v.Id == target.Id) continue;
+            _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, v, SkillIds.EL_WATER_SCREW_ATK, skillLevel);
+        }
     }
 }
