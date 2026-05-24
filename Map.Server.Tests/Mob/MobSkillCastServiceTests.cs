@@ -340,6 +340,10 @@ public class MobSkillCastServiceTests
             => true;
 
         public void Tick(long nowTick) { }
+
+        public bool CancelCast(EntityId entityId) => false;
+        public bool IsCasting(EntityId entityId) => false;
+        public (ushort skillId, ushort skillLevel) GetCurrentCast(EntityId entityId) => ((ushort)0, (ushort)0);
     }
 
     private sealed record TestContext(

@@ -248,6 +248,9 @@ public class RathenaMobSkillSweepTests
         }
         public bool ResolveSkill(Entity source, Entity target, ushort skillId, ushort skillLevel) => true;
         public void Tick(long nowTick) { }
+        public bool CancelCast(EntityId entityId) => false;
+        public bool IsCasting(EntityId entityId) => false;
+        public (ushort skillId, ushort skillLevel) GetCurrentCast(EntityId entityId) => ((ushort)0, (ushort)0);
     }
 
     private sealed class StubWorldRegistry : IMapWorldRegistry

@@ -126,4 +126,9 @@ public sealed record SkillBehaviorContext(
     /// summons (SO_SUMMON_AGNI / AQUA / VENTUS / TERA) and the EM-tier
     /// promotions (Diluvio / Ardor / Procella / Terremotus / Serpens)
     /// dispatch through this.</summary>
-    IElementalService? Elemental = null);
+    IElementalService? Elemental = null,
+    /// <summary>Skill-cast service — used by cancel-cast plugins
+    /// (SA_SPELLBREAKER, MindBreaker, NPC_CASTCANCEL) and any skill
+    /// that recursively dispatches another skill. Self-reference to
+    /// the running <see cref="ISkillCastService"/>.</summary>
+    ISkillCastService? Cast = null);

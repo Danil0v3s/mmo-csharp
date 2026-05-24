@@ -33,7 +33,11 @@ public sealed class MindBreaker : SkillImpl
         }
         ctx.Sc?.Start(target, StatusType.Mindbreaker, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // Deferred: cancel target's current cast (SkillCastService.Cancel not wired) +
-        // retarget mob aggro toward src (mob.target_id mutator not surfaced here).
+        // rAthena PF_MINDBREAKER arm also cancels the target's current cast
+        // (skill.cpp:11008 unit_skillcastcancel(bl, 0)) and pushes the
+        // target's mob aggro at the caster. The aggro-retarget hook isn't
+        // surfaced on a separate service today; the cast-cancel half
+        // lands via ctx.Cast.CancelCast.
+        ctx.Cast?.CancelCast(target.Id);
     }
 }

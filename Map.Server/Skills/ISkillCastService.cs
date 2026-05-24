@@ -39,6 +39,33 @@ public interface ISkillCastService
 
     /// <summary>Tick — advance pending cast timers and resolve casts whose timer elapsed.</summary>
     void Tick(long nowTick);
+
+    /// <summary>
+    /// rAthena <c>unit_skillcastcancel</c> (unit.cpp) — abort any in-flight
+    /// cast belonging to <paramref name="entityId"/>. Returns true if a
+    /// pending cast was found and dropped. SP / cooldown remain mutated
+    /// (rAthena does not refund either) — same shape as the C++ helper.
+    /// Used by SA_SPELLBREAKER, AB_PRAEFATIO's interrupts, and the
+    /// generic stun / freeze cast-break path.
+    /// </summary>
+    bool CancelCast(EntityId entityId);
+
+    /// <summary>
+    /// True when <paramref name="entityId"/> currently has a cast pending
+    /// resolution. Used by SA_SPELLBREAKER's success roll to fail-fast
+    /// when the target isn't actually casting (rAthena ud-&gt;skilltimer
+    /// != INVALID_TIMER check).
+    /// </summary>
+    bool IsCasting(EntityId entityId);
+
+    /// <summary>
+    /// Returns the currently-casting skill id + level for
+    /// <paramref name="entityId"/>, or (0, 0) when no cast is pending.
+    /// Mirrors rAthena's <c>ud-&gt;skill_id</c> / <c>ud-&gt;skill_lv</c>
+    /// reads used by Spell Breaker to drain the cost of the cancelled
+    /// spell.
+    /// </summary>
+    (ushort skillId, ushort skillLevel) GetCurrentCast(EntityId entityId);
 }
 
 public enum SkillCastResult

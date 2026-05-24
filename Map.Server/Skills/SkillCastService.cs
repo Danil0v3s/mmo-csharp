@@ -352,7 +352,7 @@ public sealed class SkillCastService : ISkillCastService
             var plugin = _behaviors.Get(skillId);
             if (plugin != null)
             {
-                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions, _maps, _mapFlags, _options, _paths, _steal, _death, _statusOps, _skillUnits, _elemental);
+                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions, _maps, _mapFlags, _options, _paths, _steal, _death, _statusOps, _skillUnits, _elemental, this);
                 plugin.CastendPos2(source, x, y, skillLevel, ctx);
                 return true;
             }
@@ -384,7 +384,7 @@ public sealed class SkillCastService : ISkillCastService
             var plugin = _behaviors.Get(skillId);
             if (plugin != null)
             {
-                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions, _maps, _mapFlags, _options, _paths, _steal, _death, _statusOps, _skillUnits, _elemental);
+                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions, _maps, _mapFlags, _options, _paths, _steal, _death, _statusOps, _skillUnits, _elemental, this);
                 if (def.DamageKind == SkillDamageKind.None)
                     plugin.CastendNoDamageId(source, target, skillLevel, ctx);
                 else
@@ -447,6 +447,33 @@ public sealed class SkillCastService : ISkillCastService
         MobEntity m => m.Hp > 0,
         _ => true,
     };
+
+    /// <inheritdoc />
+    public bool CancelCast(EntityId entityId)
+    {
+        var dropped = _pending.RemoveAll(p => p.Source == entityId)
+                    + _pendingPos.RemoveAll(p => p.Source == entityId);
+        if (dropped == 0) return false;
+        // rAthena clif_skillcastcancel(src) broadcasts the bar abort —
+        // _client.BroadcastSkillCasting with castTime=0 is the equivalent.
+        // The cancelling caller usually emits the same packet itself, so
+        // we don't double-broadcast here.
+        return true;
+    }
+
+    /// <inheritdoc />
+    public bool IsCasting(EntityId entityId)
+        => _pending.Any(p => p.Source == entityId) || _pendingPos.Any(p => p.Source == entityId);
+
+    /// <inheritdoc />
+    public (ushort skillId, ushort skillLevel) GetCurrentCast(EntityId entityId)
+    {
+        var p = _pending.Find(x => x.Source == entityId);
+        if (p != null) return (p.SkillId, p.Level);
+        var pp = _pendingPos.Find(x => x.Source == entityId);
+        if (pp != null) return (pp.SkillId, pp.Level);
+        return ((ushort)0, (ushort)0);
+    }
 
     private sealed class PendingCast
     {

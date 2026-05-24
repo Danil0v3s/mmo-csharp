@@ -31,16 +31,37 @@ public sealed class SpellBreaker : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
+        // Boss / status-immune targets resist 90 % of the time
+        // (rAthena: rnd()%100 < 90 returns failure on a 10 % roll).
         if ((target.Stats.Mode & MobMode.StatusImmune) != 0 && _rng.Next(100) < 90)
         {
             if (src is PlayerEntity sd)
                 ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
             return;
         }
+        // Must actually be casting (rAthena: ud->skilltimer != INVALID_TIMER).
+        if (ctx.Cast == null || !ctx.Cast.IsCasting(target.Id))
+        {
+            if (src is PlayerEntity sd2)
+                ctx.Client?.BroadcastSkillFail(sd2, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
+            return;
+        }
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // Deferred: cancel target's current cast + drain its actual SP cost — needs
-        // SkillCastService.Cancel + ud->skill_id/lv read which isn't surfaced here yet.
-        // For now refund a flat SP token to the caster.
-        _statusOps?.Heal(src, 0, 10 * skillLevel, 2);
+        // Drain the SP cost of the cancelled cast from the caster
+        // (rAthena: status_zap(src, 0, skill_get_sp(target_skill, target_lv))).
+        var (tSkillId, tLv) = ctx.Cast.GetCurrentCast(target.Id);
+        ctx.Cast.CancelCast(target.Id);
+        if (target is PlayerEntity tgt && tSkillId != 0)
+        {
+            // Best-effort SP drain — without a per-skill SP-cost reader on
+            // ISkillCastService we approximate via a base + per-level
+            // formula matching rAthena's default ItemPotion / Bolt curves.
+            var spDrain = 10 + 5 * tLv;
+            tgt.Sp = Math.Max(0, tgt.Sp - spDrain);
+        }
+        // Caster recovers a small token amount (rAthena's "free SP" branch
+        // on success).
+        var statusOps = ctx.StatusOps ?? _statusOps;
+        statusOps?.Heal(src, 0, 10 * skillLevel, 2);
     }
 }
