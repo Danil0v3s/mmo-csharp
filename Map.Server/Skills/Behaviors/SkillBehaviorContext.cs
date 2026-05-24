@@ -7,6 +7,7 @@ using Map.Server.Movement.UnitOps;
 using Map.Server.Party;
 using Map.Server.Pathing;
 using Map.Server.Session;
+using Map.Server.Shop.Buying;
 using Map.Server.Spawn;
 using Map.Server.Spawn.MobOps;
 using Map.Server.Status;
@@ -131,4 +132,8 @@ public sealed record SkillBehaviorContext(
     /// (SA_SPELLBREAKER, MindBreaker, NPC_CASTCANCEL) and any skill
     /// that recursively dispatches another skill. Self-reference to
     /// the running <see cref="ISkillCastService"/>.</summary>
-    ISkillCastService? Cast = null);
+    ISkillCastService? Cast = null,
+    /// <summary>Buying-store service — <c>buyingstore_open</c> +
+    /// trade / search / autotrade lifecycle. Used by
+    /// ALL_BUYING_STORE / ALL_GUARDIAN_RECALL / vending plugins.</summary>
+    IBuyingStoreService? BuyingStore = null);
