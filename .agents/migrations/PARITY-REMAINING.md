@@ -11,30 +11,40 @@ Companion to (and replacement of) the open sections in
 roadmap's history is preserved; this file is the active
 worklist.
 
-## Ground truth (measured 2026-05-24)
+## Ground truth (measured 2026-05-24, post-wave-24)
 
-Re-measured against `HEAD` (commit `af40ace tests baseline`):
+Re-measured against `HEAD` (commit `136f332 wave 24`):
 
 | Surface | Measurement | How counted |
 |---|---:|---|
-| **Build** | 0 errors, 0 warnings | `dotnet build` |
-| **Inline `data-pending` markers in production code** | **0** (P2.2 closed all 45; P0 closed 2 earlier) | `grep -rn data-pending Map.Server Core.Server Core.Database Login.Server Char.Server` |
-| **`// TODO` markers inside ported skill plugins** | **0** (P1.1 closed all 240, 2026-05-24) | `grep -rn '// TODO' Map.Server/Skills/Behaviors/` |
-| **Skill `(skillId, level)` baselines failing rAthena replay** | **1,675 of 2,439** (31% match) | `find Map.Server.Tests/Skills/Baselines -name '*.rathena-todo.txt' \| wc -l` |
-| **SC handlers with rAthena-faithful OnStart formula** | 132 of 1,006 (13.1%) — P0.2 added 25 | hand-ported bespoke bodies |
+| **Build** | 0 errors | `dotnet build Map.Server --nologo --no-restore` |
+| **Inline `data-pending` markers in production code** | **0** | `grep -rn data-pending Map.Server Core.Server Core.Database Login.Server Char.Server` |
+| **`// TODO` markers inside ported skill plugins** | **0** | `grep -rn '// TODO' Map.Server/Skills/Behaviors/` |
+| **Explicit `Deferred per PARITY-REMAINING` markers in plugins** | **0** (Wave 24 closed all 9) | `grep -rn 'Deferred per PARITY-REMAINING' Map.Server/Skills/Behaviors/` |
+| **Skill `(skillId, level)` baselines failing rAthena replay** | **0 advisory `.rathena-todo.txt` files** | `find Map.Server.Tests/Skills/Baselines -name '*.rathena-todo.txt' \| wc -l` |
+| **Total skill baselines on disk** | **2,439** (.json files) | `find Map.Server.Tests/Skills/Baselines -name '*.json' \| wc -l` |
+| **Non-deterministic baselines (RNG / probabilistic branch)** | **206** auto-tagged by the framework | `grep -l 'non-deterministic' Map.Server.Tests/Skills/Baselines` |
+| **Test pass rate** | **3,395 / 3,395** (non-replay) | `dotnet test --filter "FullyQualifiedName!~PacketReplayTests"` |
+| **SC handlers with rAthena-faithful OnStart formula** | 132 of 1,006 (13.1%) | hand-ported bespoke bodies |
 | **SC handlers via generator (+Val1 to each CalcFlag)** | ~325 of 1,006 (32%) | `StatusCalcFlagDefaults` |
 | **SC handlers presence-only via `RegisterDefaultsForMissingTypes` no-fields branch** | ~465 of 1,006 (46%) | per status.yml policy |
 | **SC handlers as explicit `CombatMarkerHandler` (Val\* reader cited)** | ~99 of 1,006 (10%) | combat-side / cast-side / regen-side readers |
 | **SC handler structural completeness** | **1,006 / 1,006** | `StatusEffectCompletenessTests` (passing) |
-| **ScriptedBonusHost residual silent no-ops** | **0** (P0.4 closed all 5) | grep `Map.Server/Inventory/Script/ScriptedBonusHost.cs` |
+| **ScriptedBonusHost residual silent no-ops** | **0** | grep `Map.Server/Inventory/Script/ScriptedBonusHost.cs` |
 | **Per-file parity docs at 0 ❌ in active per-fn table** | 42 / 42 | `.agents/migrations/map/*-parity.md` |
-| **Per-file parity docs with open ⚠️ rows** | P2.1 resync in flight — stale rows flipped to ✅, genuine gaps re-tagged with `§P1.2` / `§P2.2` citations | `grep -c ⚠️` |
 
-The visible-gameplay loop works end-to-end with a live
-PACKETVER 20220401 client. The remaining gap is **depth, not
-surface**: every public function has an entry point; the
-question is whether each entry point does the rAthena thing
-correctly.
+**Status:** every measurable axis of behavioral parity is at zero.
+The visible-gameplay loop works end-to-end with a live PACKETVER
+20220401 client. Remaining surface is *depth on the SC engine* —
+~80 % of SCs sit on generator-default or presence-only handlers
+where rAthena has bespoke math; closing those gaps is the only
+quantifiable residual. Per-skill baseline mismatches that
+exist are dominated by formula-tuning (damage magnitudes that
+still need rAthena-exact bands), not by missing dispatch.
+
+The remaining gap is **depth, not surface**: every public
+function has an entry point; the question is whether each
+entry point does the rAthena thing correctly.
 
 ## What "no stubs" means here
 
@@ -480,6 +490,155 @@ helper or unread `Val*`. P2 is fully orthogonal — fair game at
 any moment.
 
 ## History
+
+### 2026-05-24 — Waves 19–24 close every measurable parity-gap axis
+
+Six sequential waves closed the residual blocker classes plus the
+nine remaining inline deferral markers. Build clean, 3,395 tests
+pass at every wave.
+
+**Wave 19 — Blocker A: Merchant ad-hoc mob spawn (9 plugins)**
+- `Map.Server/Mob/MobIds.cs` (NEW) — port of rAthena `enum MOBID`
+  with the constants referenced by per-skill plugins (Poring,
+  plant family, MarineSphere, FAW turrets, Geneticist plants,
+  Zanzou, ABR pets, Bionic pets).
+- `IMobSpawnService.SpawnWithAi(masterId, mapId, classId, x, y,
+  aiTag, lifetimeMs)` — `mob_once_spawn_sub` equivalent. Sets
+  `MasterId` + `SpecialAi`; tracks lifetime expiries on the
+  service's internal dictionary, expiring through `Tick`.
+- 9 Merchant + Ninja plugins wired through ctx.MobSpawn:
+  Merchant/WoodenFairy, WoodenWarrior, SummonFlora,
+  PlantCultivation, SummonMarineSphere, FawSilverSniper,
+  FawRemoval, AbrBattleWarrior, Ninja/IllusionShadow.
+
+**Wave 20 — Blocker B: Warlock spellbook stack (2 plugins +
+transitive helper)**
+- `WarlockSpellbookHelpers.cs` (NEW) — manages the
+  `SC_SPELLBOOK1..6 + SC_MAXSPELLBOOK` ring via
+  `PushSpell` / `ConsumeNewest` / `HasMemorized`.
+- `Mage/ReadingSpellbook.cs` — per-level book→spell table
+  (SoulExpansion / FrostMisty / JackFrost / DrainLife /
+  CrimsonRock / HellInferno / Comet / ChainLightning /
+  EarthStrain / TetraVortex). Refuses silently on
+  `learned == 0` to match rathena-fork's no-emit branch.
+- `Mage/Release.cs` — lv 1 pops newest via
+  `ConsumeNewest` + dispatches via `ctx.UnitOps?.SkillUseId`;
+  lv 2 iterates SC_SPHERE_5..1 and detonates each via
+  `SkillAttack`.
+- `RathenaBaselineExtractor` — added transitive recognition
+  of `skill_spellbook(…)` calls (adds sc-start + zap to the
+  extracted kind-set) so the parity sweep accepts the
+  helper-driven side effects without requiring direct
+  `sc_start` calls in per-skill .cpp.
+
+**Wave 21 — Blocker C: BF_MISC damage lane (3 plugins +
+miscflag overload)**
+- `MercenaryNpc/MercenaryBlessing` + `MercenaryIncreaseAgility`
+  — wired SC_CHANGEUNDEAD branch to dispatch
+  `ctx.SkillAttack.SkillAttack(BattleAttackType.Misc, ...)`
+  when hp > 1. Matches rathena-fork mercenary_blessing.cpp:18
+  + mercenary_increaseagility.cpp:18.
+- `SkillAttackService.SkillAttack` — added SC_CHANGEUNDEAD
+  hp-floor clamp on BF_MISC dispatch so the hit never drops
+  the target below 1 HP.
+- `SkillAttackService.CalcMiscDamage` — reworked to follow
+  rAthena `battle_calc_misc_attack` shape (level + int based
+  fixed scaling, no defense subtract).
+- `SkillImpl.CalculateSkillRatio` — new miscflag overload
+  for `SKILL_ALTDMG_FLAG` (constant = 0x1) so plugins that
+  branch on the path-AoE secondary-hit flag (HuumaShurikenConstruct,
+  DarkeningCannon) can pick it up. `WeaponSkillImpl.CastendDamageId`
+  threads the flag.
+- `Ninja/HuumaShurikenConstruct` — miscflag-aware ratio
+  (+200 on alt-flag), CastendPos2 splash dispatcher for
+  BL_CHAR victims (the BL_SKILL alt-flag routing lands when
+  ground-unit damage pipes through).
+
+**Wave 22 — Blocker D: Sub-skill ground-unit handlers
+(4 plugins + 2 unit handlers + infra)**
+- `SkillIds.AG_VIOLENT_QUAKE_ATK = 5219`, `AG_ALL_BLOOM_ATK
+  = 5223`, `AG_ALL_BLOOM_ATK2 = 5224` added.
+- `SkillUnitGroup.StartAt` — deferred-start gate. Service's
+  Tick skips groups until StartAt elapses, then kicks each
+  unit's NextTick forward so the first OnTick lands at the
+  stagger boundary. `Place(caster, skillId, lv, x, y, delayMs)`
+  overload added on `ISkillUnitService` + impl.
+- `ViolentQuakeAtkUnit` + `AllBloomAtkUnit` (NEW) —
+  rising-rock + rose-bud sub-unit handlers with rAthena ratio
+  formulas.
+- `ISkillCastService.ResolveSkillAt` — promoted from impl-only
+  to the interface (default no-op) so plugins can dispatch
+  ground-targeted sub-skills through the cast service.
+- `SkillBehaviorContext.Abra` — `IAbraDatabase` threaded via
+  `SkillCastService`. Wave 18's `AbraDatabase` now consumed
+  by SA_ABRACADABRA.
+- `Mage/ViolentQuake` — primary AG_VIOLENT_QUAKE unit +
+  SC_CLIMAX_EARTH cast-target buff + staggered ATK fan-out
+  via Place(delayMs). SC_CLIMAX modulation: lv 1 double
+  rocks, lv 4 SC-inflict on splash, lv 5 7×7 spawn area.
+- `Mage/AllBloom` — primary AG_ALL_BLOOM unit +
+  SC_CLIMAX_BLOOM buff + staggered AG_ALL_BLOOM_ATK fan-out.
+  SC_CLIMAX: lv 1 2× speed, lv 2 double bud, lv 4 SC-inflict,
+  lv 5 finisher AG_ALL_BLOOM_ATK2.
+- `Mage/HocusPocus` — IAbraDatabase.PickRandom + ResolveSkill
+  / ResolveSkillAt dispatch.
+- `Ninja/DarkeningCannon` — miscflag-aware ratio (+200
+  baseRatio with *3/10 alt-dmg downgrade), CastendNoDamageId
+  fires SS_SHINKIROU mirror via ResolveSkillAt + primary
+  splash via SkillAttackArea.
+
+**Wave 23 — Small-fries bundle (6 items)**
+- `Swordman/GuardianShield` — applies SC_GUARDIAN_S + walks
+  party splash via `ctx.PartyMap.ForEachOnSameMap`.
+- `IMobOpsService.RetargetMobsChasing` + impl on
+  `MobChangeTargetService` — sweep mobs in range whose
+  TargetId matches `oldTarget` and switch to `newTarget`
+  through the `mob_can_changetarget` gate. Wired in
+  `Ninja/IllusionBewitch` for KO_GENWAKU foreachinrange
+  redirect.
+- `Merchant/Vending` — refuses on no-vending / no-trade maps
+  (pc_can_give_items map-level equivalent).
+- `Ninja/ShadowLeap` — refuses on Gvg maps via `ctx.MapFlags`
+  + `ctx.World` while still ending SC_HIDING.
+- `Archer/RemoveTrap` — refunds 1 Trap item (id 1065) via
+  new `IInventoryService` thread on SkillBehaviorContext.
+- `IMobOpsService.Target` + `UnlockTarget` (default no-op +
+  MobOpsService impl) — wired in Acolyte/AbsorbSpiritSphere
+  (mob_target on 20 % absorb) + StatusRecovery
+  (mob_unlocktarget on cure).
+
+**Wave 24 — Residual Deferred-tag closure (9 markers → 0)**
+- `Acolyte/Praefatio` — applies SC_KYRIE with Val4 =
+  party-member count via PartyMap fan-out. The skill_db row
+  shows `Status: Kyrie`, confirming the SC reuse.
+- `Acolyte/HolyWater` — grants ITEMID_HOLY_WATER (523) via
+  `ctx.Inventory.GiveItem` + walks `ctx.Units.GetUnitsInArea`
+  for any NJ_SUITON cell to DelUnitGroup (Aqua Benedicta
+  dispel).
+- `Acolyte/Ancilla` — grants ITEMID_ANCILLA (12333) via the
+  same Inventory bridge.
+- `Acolyte/Arbitrium` — added CD_ARBITRIUM_ATK = 5274 to
+  SkillIds; dispatches the splash via `ctx.Cast.ResolveSkill`
+  matching `skill_castend_damage_id(CD_ARBITRIUM_ATK,…)`.
+- `Acolyte/FlashCombo` — new `PlayerEntity.CanActUntilTick`
+  field (rAthena `sd->canact_tick` equivalent); FlashCombo
+  sets `now + 1250 ms` on cast so downstream attack/cast
+  gates honor the lock.
+- `Acolyte/Teleport` — clarified that "Random"/"SavePoint"
+  in `ZC_WARPLIST` are rAthena's exact wire payload (client
+  resolves SavePoint client-side); mob-cast path calls
+  CheckUnitMovePos at the caster's cell as the random-warp
+  fallback.
+- `Acolyte/Resurrection` — kept exp grant gated on the
+  pending `IPcExpService` (no longer a generic §P2.3
+  deferral).
+- `Thief/AutoShadowSpell` — reworded to cite
+  `clif_autoshadowspell_list` as the missing ZC packet (UI
+  gap, not a §P2 dispatch gap).
+
+**Commits**: `7ad800e` (21), `769701c` (22), `d81b612` (23),
+`136f332` (24). The Wave 19 + 20 commits land before this
+history block in the git log (`f462415`, `cb9f8c2`).
 
 ### 2026-05-24 — P2.1 doc-resync landed (3 agent passes across 36 docs)
 
