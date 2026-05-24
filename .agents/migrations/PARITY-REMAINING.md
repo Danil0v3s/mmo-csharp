@@ -481,6 +481,61 @@ any moment.
 
 ## History
 
+### 2026-05-24 — P2.1 doc-resync landed (3 agent passes across 36 docs)
+
+**Total flips: 152 stale ⚠️ → ✅** across 36 parity docs:
+
+- **Agent A (9 large docs)** — 103 flips. Homunculus / Pet /
+  Mercenary all reached **100% ✅** on per-fn tables (AT-D2/D3/E
+  waves filled bodies). Itemdb flipped 15 trade-gate predicates +
+  the 49 ⚠️ from my real predicate-body impls (commit `f1bc395`).
+  Status / Map / Unit / Mob / Chrif resynced — 101 genuine gaps
+  remain, each tagged with §P1.2 (per-skill backlog) or §P2.2 (leaf
+  wires).
+- **Agent B (9 medium docs)** — 37 flips. Clan + Channel both
+  reached **100% ✅**. Battleground collapsed 18 stale → 4 (queue
+  state machine real). Battle / Party / Elemental / Navi / Log /
+  Intif resynced — 62 genuine gaps remain, all §P1.2/§P2.2/§P2.2.e
+  tagged.
+- **Agent C (18 small docs)** — 12 flips + 10 docs already at
+  100% ✅ (guild, skill, date, trade, searchstore, quest, mapreg,
+  duel, cashshop, achievement). Mail draft-state, atcommand
+  option-parser, path search/long, buyingstore validation, vending
+  coord-refresh all flipped to ✅. 22 genuine gaps remain (storage
+  cart, chat events, pc 4th-class SCs, pc_groups log_commands,
+  npc_chat event-fire, instance lifecycle — all §P1.2/§P2.2 tagged).
+
+**Total residual per-fn ⚠️: ~185** across all 36 docs, every row
+carrying a citation to `PARITY-REMAINING.md §P1.2` (per-skill
+behavior backlog, ~800 hours) or `§P2.2` (leaf-wire follow-ups).
+
+**Doc-structural ⚠️ artifacts** (not TODOs, intentional doc
+convention):
+- Rollup table column headers — `| Bucket | ✅ | ⚠️ | ❌ | Total |`
+  appears in every doc's coverage summary; counted by raw `grep`
+  but semantically "this column tallies partials, not a partial
+  itself."
+- Per-doc legends — `- ⚠️ partial — exists but has gaps` —
+  duplicate of the canonical legend in `README.md`.
+
+After Agent A/B/C close-out:
+- Every per-fn table row was walked
+- Stale ⚠️ (code shipped real body but doc said "stub") → ✅
+- Genuine ⚠️ (real-stub code or pending subsystem) → kept ⚠️ with
+  §-citation pointing at central tracking
+- Every doc carries a `### 2026-05-24 — P2.1 doc-resync close-out`
+  History entry with flip count
+
+P2 (all three sub-sections) is now closed:
+- **P2.1** — doc resync, 152 flips committed
+- **P2.2** — 45 inline `data-pending` markers → 0 (commit `767d9a1`)
+- **P2.3** — PathService A* + Bresenham LoS + walkable BlownPos;
+  baseline coverage audit (no holes); BonusScript dynamic patterns
+  already routed via Jint TS host
+
+Commits: `767d9a1`, `7810db5`, `673dc55`, `f1bc395`, `c91d62b`,
+`335c5de`.
+
 ### 2026-05-24 — P2.2 + P2.3 landed (zero `data-pending` markers + real path A*)
 
 **P2.3 (Standalone structural items)**:
