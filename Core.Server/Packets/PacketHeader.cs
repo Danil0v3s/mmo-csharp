@@ -101,6 +101,7 @@ public enum PacketHeader : short
     ZC_NOTIFY_SKILL = 0x01de,              // skill cast result, with damage (PACKETVER>=3; legacy 0x0114)
     ZC_ACK_TOUSESKILL = 0x0110,            // skill cast denied — clif_skill_fail (caster-only)
     ZC_HIGHJUMP = 0x01ff,                  // entity slide animation — clif_slide (knockback visual)
+    ZC_NOTIFY_EFFECT2 = 0x01f3,            // clif_specialeffect — AOI cosmetic effect. <id>.L <effect>.L (10B).
     ZC_WARPLIST = 0x011c,                  // AL_WARP destination chooser — variable length
 
     // Client -> Zone (CZ)

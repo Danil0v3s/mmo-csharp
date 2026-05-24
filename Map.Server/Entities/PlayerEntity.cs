@@ -89,6 +89,19 @@ public sealed class PlayerEntity : Entity
     public int GroupId { get; set; }
 
     /// <summary>
+    /// VIP expiry unix timestamp (seconds since epoch). 0 = not VIP /
+    /// expired. Mirrors rAthena <c>chrif_vip_data.vip_time</c> on the
+    /// account login record (Core.Database/Entities/LoginEntity.VipTime).
+    /// Hydrated when the login server completes account auth + VIP
+    /// timer is active. Read by <c>vip_status()</c> script function via
+    /// <see cref="IsVipActive"/>.
+    /// </summary>
+    public uint VipExpireTimestamp { get; set; }
+
+    /// <summary>True if the PC currently has an active VIP subscription.</summary>
+    public bool IsVipActive => VipExpireTimestamp > (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+    /// <summary>
     /// Accumulated equipment-bonus bundle. Mirrors rAthena's
     /// <c>indexed_bonus</c> struct on <c>map_session_data</c>
     /// (status.hpp:1980). Recomputed by

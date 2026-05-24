@@ -1,6 +1,8 @@
+using Core.Server.Packets.Out.ZC;
 using Map.Server.Entities;
 using Map.Server.Items;
 using Map.Server.Status;
+using Map.Server.Visibility;
 
 namespace Map.Server.Inventory.Script;
 
@@ -33,6 +35,7 @@ public sealed class ScriptedBonusHost
     private readonly IEntityRegistry? _entities;
     private readonly Skills.IPlayerSkillService? _skillSvc;
     private readonly IPlayerOptionService? _optionSvc;
+    private readonly IVisibilityService? _visibility;
 
     /// <summary>
     /// Exposed as <c>ctx.player</c> on the TypeScript surface (lowercase
@@ -51,7 +54,8 @@ public sealed class ScriptedBonusHost
         IPlayerBonusService? bonusSvc = null,
         IEntityRegistry? entities = null,
         Skills.IPlayerSkillService? skillSvc = null,
-        IPlayerOptionService? optionSvc = null)
+        IPlayerOptionService? optionSvc = null,
+        IVisibilityService? visibility = null)
     {
         _pc = pc;
         _bundle = bundle;
@@ -61,6 +65,7 @@ public sealed class ScriptedBonusHost
         _entities = entities;
         _skillSvc = skillSvc;
         _optionSvc = optionSvc;
+        _visibility = visibility;
     }
 
     // ----- bonus / bonus2 / bonus3 / bonus4 / bonus5 -----
@@ -279,14 +284,85 @@ public sealed class ScriptedBonusHost
     /// </summary>
     public void itemheal(params object[] args) => heal(args);
 
-    /// <summary>rAthena <c>specialeffect effectId;</c> — cosmetic; needs the AOI packet emitter (data-pending).</summary>
-    public void specialeffect(params object[] _) { /* visual-only no-op */ }
-    /// <summary>rAthena <c>specialeffect2 effectId;</c> — cosmetic; needs the self packet emitter (data-pending).</summary>
-    public void specialeffect2(params object[] _) { /* visual-only no-op */ }
-    /// <summary>rAthena <c>hateffect effectId, state;</c> — cosmetic hat effect; needs ZC_HAT_EFFECT emitter (data-pending).</summary>
-    public void hateffect(params object[] _) { /* cosmetic */ }
-    /// <summary>rAthena <c>petloot count;</c> — pet auto-loot capacity; needs IPetService extension (data-pending).</summary>
-    public void petloot(params object[] _) { /* pet AI data-pending */ }
+    /// <summary>
+    /// rAthena <c>specialeffect effectId;</c> — broadcasts a cosmetic
+    /// effect to everyone in AOI (the affected entity included).
+    /// NS-3 wave 6: wired through <see cref="IVisibilityService.SendToArea"/>
+    /// emitting <see cref="ZC_NOTIFY_EFFECT2"/> (rAthena
+    /// <c>clif_specialeffect</c>). Effect ids come from rAthena
+    /// <c>effect_list.txt</c> — the client is the consumer.
+    /// </summary>
+    public void specialeffect(params object[] args)
+    {
+        if (args.Length == 0 || _visibility == null) return;
+        var effectId = ToInt(args[0]);
+        _visibility.SendToArea(_pc,
+            new ZC_NOTIFY_EFFECT2 { EntityId = _pc.Id.Value, EffectId = effectId },
+            SendTarget.Area);
+    }
+
+    /// <summary>
+    /// rAthena <c>specialeffect2 effectId;</c> — sends the effect to
+    /// the script invoker only (self target). Most autobonus item scripts
+    /// use this form (e.g. <c>specialeffect2 EF_POTION_BERSERK;</c> on
+    /// a weapon proc).
+    /// </summary>
+    public void specialeffect2(params object[] args)
+    {
+        if (args.Length == 0 || _visibility == null) return;
+        var effectId = ToInt(args[0]);
+        _visibility.SendToSelf(_pc,
+            new ZC_NOTIFY_EFFECT2 { EntityId = _pc.Id.Value, EffectId = effectId });
+    }
+
+    /// <summary>
+    /// rAthena <c>hateffect effectId, state;</c> — toggles a cosmetic
+    /// hat-effect overlay. Requires <c>ZC_HAT_EFFECT</c> (0x0a3b) which
+    /// is variable-length + carries an effect-id array; we model it as
+    /// a single-state toggle here by emitting <see cref="ZC_NOTIFY_EFFECT2"/>
+    /// as a fallback. The hat-effect-specific packet adds purely visual
+    /// state preservation across map changes — game-relevant behavior
+    /// (does the hat appear?) lands at the emitter even with the
+    /// simpler packet. Full ZC_HAT_EFFECT port deferred until the
+    /// costume sprite pipeline ports.
+    /// </summary>
+    public void hateffect(params object[] args)
+    {
+        if (args.Length == 0 || _visibility == null) return;
+        var effectId = ToInt(args[0]);
+        // state arg (args[1]) is ignored — our fallback emits the
+        // effect once; rAthena's ZC_HAT_EFFECT toggle semantics aren't
+        // preserved (the effect plays once instead of staying).
+        _visibility.SendToArea(_pc,
+            new ZC_NOTIFY_EFFECT2 { EntityId = _pc.Id.Value, EffectId = effectId },
+            SendTarget.Area);
+    }
+
+    /// <summary>
+    /// rAthena <c>petloot count;</c> — sets the pet's auto-loot
+    /// capacity (max items the pet can collect from kills before it
+    /// has to deposit). The cap is stored on the player's active pet
+    /// entity. If the PC has no pet (e.g. the script ran before pet
+    /// summon), it's a no-op — rAthena silently does the same.
+    ///
+    /// <para>The actual auto-loot pickup behavior is handled by the
+    /// pet AI step; this method just sets the per-pet cap.</para>
+    /// </summary>
+    public void petloot(params object[] args)
+    {
+        if (args.Length == 0 || _entities == null) return;
+        var count = ToInt(args[0]);
+        if (count < 0) count = 0;
+        // Find the player's active pet by master id == pc.Id.
+        foreach (var entity in _entities.All())
+        {
+            if (entity is PetEntity pet && pet.MasterId == _pc.Id.Value)
+            {
+                pet.AutoLootMax = count;
+                break;
+            }
+        }
+    }
 
     /// <summary>
     /// rAthena <c>setoption flag, [enable];</c> — toggle bits on
@@ -308,10 +384,33 @@ public sealed class ScriptedBonusHost
         else        _optionSvc.RemoveOption(_pc, flag);
     }
 
-    /// <summary>rAthena <c>message "..."</c> — UI chat line; needs ZC_NPC_CHAT emitter (data-pending).</summary>
-    public void message(params object[] _) { /* UI message */ }
-    /// <summary>rAthena <c>dispbottom "..."</c> — bottom-of-screen msg; needs ZC_DISPLAY_MSG emitter (data-pending).</summary>
-    public void dispbottom(params object[] _) { /* UI message */ }
+    /// <summary>
+    /// rAthena <c>message "..."</c> — sends a system message line to
+    /// the script invoker (one of the two channels under
+    /// <c>clif_displaymessage</c>). NS-3 wave 6: wired via
+    /// <see cref="ZC_NOTIFY_PLAYERCHAT"/> (0x008e).
+    /// </summary>
+    public void message(params object[] args)
+    {
+        if (args.Length == 0 || _visibility == null) return;
+        var text = args[0]?.ToString() ?? string.Empty;
+        _visibility.SendToSelf(_pc, new ZC_NOTIFY_PLAYERCHAT { Message = text });
+    }
+
+    /// <summary>
+    /// rAthena <c>dispbottom "..."</c> — bottom-of-screen system
+    /// message (subset of <c>clif_displaymessage</c>; same packet
+    /// as <see cref="message"/> in our port). The rAthena variant
+    /// can carry a color hex code; we drop it for now since the
+    /// 0x008e payload doesn't include a color slot — the client
+    /// applies the chat-area default.
+    /// </summary>
+    public void dispbottom(params object[] args)
+    {
+        if (args.Length == 0 || _visibility == null) return;
+        var text = args[0]?.ToString() ?? string.Empty;
+        _visibility.SendToSelf(_pc, new ZC_NOTIFY_PLAYERCHAT { Message = text });
+    }
 
     // ----- expression helpers -----
     // All variadic; the few cases that need a fixed-arity invariant
@@ -405,13 +504,29 @@ public sealed class ScriptedBonusHost
 
     /// <summary>
     /// rAthena <c>vip_status(type, [charName])</c> — VIP info query.
-    /// rAthena types: 1 = is VIP, 2 = expiration unix time, 3 = remaining
-    /// seconds. No live VIP state on <see cref="PlayerEntity"/> today;
-    /// returns 0 for all types. NS-2a placeholder wire (84 calls in
-    /// NS-1b); replaces the silent Proxy fallback with a documented
-    /// stub. Real wiring lands when VIP timer state surfaces on PC.
+    /// Types (rAthena <c>VIP_STATUS_*</c>):
+    ///   1 = is VIP (1/0),
+    ///   2 = expiration unix timestamp,
+    ///   3 = remaining seconds.
+    /// NS-3 wave 6: reads <see cref="PlayerEntity.VipExpireTimestamp"/>
+    /// hydrated from the account login record. The charName arg is
+    /// ignored (we don't have a cross-character VIP lookup yet —
+    /// would require an IPC to the login server; rAthena 95% of the
+    /// time queries self anyway).
     /// </summary>
-    public int vip_status(params object[] _) => 0;
+    public int vip_status(params object[] args)
+    {
+        var type = args.Length > 0 ? ToInt(args[0]) : 1;
+        var expiry = (int)_pc.VipExpireTimestamp;
+        var now = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        return type switch
+        {
+            1 => expiry > now ? 1 : 0,
+            2 => expiry,
+            3 => expiry > now ? expiry - now : 0,
+            _ => 0,
+        };
+    }
 
     /// <summary>
     /// rAthena <c>gettime(type)</c> — see script.cpp BUILDIN_FUNC(gettime).

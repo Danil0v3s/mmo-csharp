@@ -35,6 +35,16 @@ public sealed class PetEntity : MobEntity
     /// <summary>Equipped item id (pet accessory). 0 = none.</summary>
     public uint EquipItemId { get; set; }
 
+    /// <summary>
+    /// Pet auto-loot capacity — max items the pet collects from kills
+    /// before depositing back to the owner. Mirrors rAthena
+    /// <c>pet_db.AutoFeed</c> + <c>petloot N</c> script function.
+    /// Set by item scripts via <c>petloot N</c> on equip; the pet AI
+    /// step reads this when deciding whether to pick up a floor item.
+    /// 0 = no auto-loot (default).
+    /// </summary>
+    public int AutoLootMax { get; set; }
+
     /// <summary>Display name override; falls back to mob_db Name + a "'s pet" suffix in clients.</summary>
     public string PetName { get; init; } = string.Empty;
 

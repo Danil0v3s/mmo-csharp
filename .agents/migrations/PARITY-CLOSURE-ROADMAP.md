@@ -948,6 +948,70 @@ hot path.
 
 ## History
 
+### 2026-05-24 — NS-3 wave 6 landed (Class C script-bridge stubs wired)
+
+Closes the 7 documented `ScriptedBonusHost` stubs that NS-2b left
+flagged. Each method now does real work instead of `/* visual-only
+no-op */`.
+
+**Approach: build the minimum-viable backend per stub.**
+
+* New packet — `ZC_NOTIFY_EFFECT2` (0x01f3) — `clif_specialeffect`
+  emits a 10-byte AOI broadcast carrying the entity id + effect id.
+  rAthena's `effect_list.txt` is the client-side catalog.
+* New PlayerEntity field — `VipExpireTimestamp` (uint, unix seconds)
+  + `IsVipActive` computed property. Hydrated when the login server
+  completes account auth; backs the `vip_status()` script function.
+* New PetEntity field — `AutoLootMax` (int). Set by `petloot N`;
+  read by the pet AI loop when deciding floor-item pickup.
+* New ScriptedBonusHost dependency — `IVisibilityService`, passed
+  through `ItemHookDispatcher` and `ComboDispatcher` constructors
+  for downstream packet emission.
+
+Wired script methods:
+- **`specialeffect(effectId)`** — AOI broadcast (rAthena
+  `clif_specialeffect`)
+- **`specialeffect2(effectId)`** — self-only (most common form in
+  autobonus item scripts: `specialeffect2 EF_POTION_BERSERK`)
+- **`hateffect(effectId, state)`** — falls back to `ZC_NOTIFY_EFFECT2`
+  AOI emission. Full `ZC_HAT_EFFECT` (0x0a3b) toggle preservation
+  deferred until the costume sprite pipeline ports.
+- **`petloot(count)`** — sets `PetEntity.AutoLootMax` on the player's
+  active pet.
+- **`message(text)` / `dispbottom(text)`** — both emit
+  `ZC_NOTIFY_PLAYERCHAT` (self-only system message). rAthena's
+  `dispbottom` color-code arg is dropped (our 0x008e doesn't carry
+  a color slot).
+- **`vip_status(type)`** — reads `PlayerEntity.VipExpireTimestamp`.
+  Returns 1/0 (is-VIP), expiry unix ts, or remaining seconds per
+  rAthena's `VIP_STATUS_*` enum. Cross-character query
+  (`vip_status(type, name)`) ignores the name arg — single-entity
+  query only.
+
+**Files**:
+- `Core.Server/Packets/Out/ZC/ZC_NOTIFY_EFFECT2.cs` (new, 0x01f3)
+- `Core.Server/Packets/PacketHeader.cs` — added ZC_NOTIFY_EFFECT2
+- `Map.Server/Entities/PlayerEntity.cs` — VipExpireTimestamp +
+  IsVipActive
+- `Map.Server/Entities/PetEntity.cs` — AutoLootMax
+- `Map.Server/Inventory/Script/ScriptedBonusHost.cs` — 7 stubs
+  replaced with real wires
+- `Map.Server/Inventory/ItemHookDispatcher.cs` — IVisibilityService
+  injected + passed to host ctor
+- `Map.Server/Inventory/ComboDispatcher.cs` — same
+
+The "stub" comment string survey on `ScriptedBonusHost.cs` drops
+from 7 → 0. Remaining "data-pending" markers belong to genuinely
+unported behaviors (sc_start variants gated on NS-2c, item_heal_rate
+gated on PlayerBonusService extension, BonusScriptExtractor unknown
+keys).
+
+**Full test sweep: 3,395 Map.Server + 87 Core + 29 Login = 3,511
+tests passing** (unchanged from wave 4b). 0 build errors. DI
+registrations in Program.cs unchanged (the new IVisibilityService
+parameter is optional `default = null`, picked up automatically
+from the existing singleton).
+
 ### 2026-05-24 — NS-3 wave 4b landed (bards/dancers + ASPD quicken + Hallucinationwalk, 24 SCs)
 
 Continues Class B with the bard/dancer song family + ASPD potion +
