@@ -266,15 +266,16 @@ drift" test catches any future regression where one of these SCs
 silently grows a real OnStart and the allowlist entry becomes
 stale.
 
-**Per-SC scoreboard after waves 4a + 4b + 6:**
+**Per-SC scoreboard after waves 4a + 4b + 5a + 6:**
 
 | Bucket | Count | Notes |
 |---|---:|---|
-| Hand-ported bespoke bodies (rAthena formula match) | 96 | 48 from prior waves + 48 from waves 4a/4b |
-| Generator-synthesized CalcFlag bodies (+Val1) | ~335 | exact match for SCs scaling by val1; approximate where rAthena uses different scaling — those are the wave 4c+ targets |
+| Hand-ported bespoke bodies (rAthena formula match) | 107 | 48 prior + 24 wave 4a + 24 wave 4b + 11 wave 5a |
+| Generator-synthesized CalcFlag bodies (+Val1) | ~325 | exact match for SCs scaling by val1; approximate where rAthena uses different scaling — wave 4c+ targets |
 | OnPeriodic-driven (DoT) bodies | 4 | Poison, Burning, Bleeding, DeadlyPoison |
-| Combat-marker / Val* readers (allowlisted) | 31 | each cites rAthena `src/map/status.cpp` line |
-| Presence-only NoOp with ScfFlag classification | ~540 | rAthena's own "presence-only" set per status.yml |
+| Combat-marker Val* readers (explicit, allowlisted) | 59 | each cites rAthena `src/map/status.cpp` line + C# consumer |
+| Bulk presence-only NoOp (synthesized via no-fields branch) | ~465 | bulk-citation: rAthena status.yml says "no CalcFlags" = presence-only per spec; downstream consumer awaits per-skill plugin port (Soul Linker / Star Emperor / Sura families etc.) |
+| OnPeriodic / explicit-flag CombatMarker registrations not in defaults | ~46 | wave 4a/4b/5a explicit Register calls without status.yml CalcFlags |
 | **Total with registered handler** | **1,006** | of 1,006 valid StatusType values |
 
 **Behavioral rollup:** the 96 hand-ported SCs are formula-accurate

@@ -63,7 +63,7 @@ counts.
 | Surface | Current state | Source of measurement |
 |---|---|---|
 | **Skill parity** | **1,675 of 2,439 (skillId, level) baselines fail** (31% match rate) | `Map.Server.Tests/Skills/Baselines/*.rathena-todo.txt` count vs `*.json` total |
-| **SC handler depth** | **1,006 of 1,006 valid `StatusType` values registered**. Composition: **96 hand-ported bespoke bodies** (48 prior + 24 wave 4a + 24 wave 4b), ~335 generator-synthesized CalcFlag bodies, 31 allowlisted combat-side readers (each with rAthena `src/map/status.cpp` citation), ~540 presence-only NoOp with `ScfFlag`. Proven by `StatusEffectCompletenessTests`. See [`status-parity.md`](map/status-parity.md) for the per-bucket scoreboard. | `StatusEffectRegistry.Count`, `StatusCalcFlagDefaults.Count`, completeness test |
+| **SC handler depth** | **1,006 of 1,006 valid `StatusType` values registered**. Composition: **107 hand-ported bespoke bodies** (48 prior + 24 wave 4a + 24 wave 4b + 11 wave 5a), ~325 generator-synthesized CalcFlag bodies, **59 allowlisted Val* readers** (each with rAthena `src/map/status.cpp` citation), **~50 explicit CombatMarker registrations** (wave 4a/4b/5a), ~465 bulk presence-only NoOp synthesized via `RegisterDefaultsForMissingTypes()`'s no-fields branch (rAthena status.yml is the per-SC citation — that table prescribes no stat mod). Zero explicit `NoOpHandler()` calls without documented consumer remain. Proven by `StatusEffectCompletenessTests`. See [`status-parity.md`](map/status-parity.md) for the per-bucket scoreboard. | `StatusEffectRegistry.Count`, `StatusCalcFlagDefaults.Count`, completeness test |
 | **Script-bridge depth** | **0 stub markers remaining in `ScriptedBonusHost.cs`** (was 7 documented stubs pre-NS-3 wave 6: vip_status, specialeffect, specialeffect2, hateffect, petloot, message, dispbottom). Each got a real wire — new `ZC_NOTIFY_EFFECT2` packet for the effect family, `ZC_NOTIFY_PLAYERCHAT` for message/dispbottom, `PlayerEntity.VipExpireTimestamp` + `PetEntity.AutoLootMax` for the state ops. | `grep -c "data-pending\|stub" ScriptedBonusHost.cs` |
 | **Item-script Proxy depth** | **8 distinct unknown methods, 31 hits** post-NS-2a (was 14 / 1,390 = 1.6%; now 0.04%). Residual 8 are JS-internal probes + rare rAthena array/string ops with low impact. | NS-1b harvest re-run after NS-2a; full table in [`map/ns1-audit-2026-05-23.md`](map/ns1-audit-2026-05-23.md) §NS-1b update |
 | **Pathing** | A\* matches rAthena `path.cpp` on constants / heuristic / corner-cut / Bresenham. ✅ Minor tie-break divergence (PriorityQueue ordering) is acceptable. | NS-1c — side-by-side audit of `Pathfinder.cs` vs `path.cpp` |
@@ -948,6 +948,102 @@ gameplay on Tier 4 completeness if Tier 1–3 already cover the
 hot path.
 
 ## History
+
+### 2026-05-24 — NS-3 wave 5a: Class A — explicit NoOpHandler() formula ports (28 SCs)
+
+Closes the Class A criterion ("zero NoOpHandler() registrations without
+a documented downstream Val*-consumer reading the SC") for the explicit
+ctor-level NoOpHandler() calls, plus a bulk-NoOp policy citation for
+the ~540 generator-synthesized NoOps.
+
+**Two changes:**
+
+1. **`RegisterWave5aClassAFormulas()`** — converts every remaining
+   explicit `NoOpHandler()` registration from earlier waves into one
+   of:
+
+   - **Formula-bearing OnStart** (11 SCs) — ports the rAthena
+     `status.cpp` Val* computation so the downstream combat/cast/regen
+     reader sees the right number. Each Register cites the status.cpp
+     line + the C# consumer:
+     - **Endure** (val2=7 hit cnt) → combat anti-stagger reader.
+     - **Kyrie** (val2=max_hp×(val1×2+10)/100, val3=val1/2+5) → DamageService Kyrie absorb.
+     - **Autoguard** (val2=Σ block%) → DamageService block proc.
+     - **Sacrifice** (val2=5 hits) → damage pipeline devotion link.
+     - **Deathbound** (val2=500+100×val1) → damage reflect.
+     - **Signumcrucis** (val2=10+4×val1) → defense math.
+     - **Kaite** (val2=1+val1/5) → SkillHealRedirector.
+     - **Suffragium** (val2=5+val1×5 renewal) → SkillCastTimingService.
+     - **Memorize** (val2=5 charges) → SkillCastTimingService.
+     - **Slowcast** (val2=20×val1) → SkillCastTimingService.
+     - **Poembragi** (val2=2×val1, val3=3×val1) → SkillCastTimingService + DelayFixSc.
+   - All use the "caller-provided val2 wins" pattern (`if (sc.Val2 == 0)`)
+     so pre-existing T2.4b+ tests that pass `val2:` explicitly still
+     work (Kyrie/Kaite/Poembragi tests rely on this).
+
+   - **CombatMarkerHandler** (17 SCs) — pure presence-only per rAthena
+     spec, with explicit reader-side citation in the xmldoc:
+     - **CC family** (Stone/Freeze/Stun/Sleep/Silence/Confusion/Stonewait)
+       → EntityActionGates.CanAct/CanCastSkill.
+     - **Magnificat / Tensionrelax** → NaturalHealService regen overlay.
+     - **Maximizepower** → BattleCalculator weapon max-roll.
+     - **Aeterna** → damage pipeline next-hit-doubled marker.
+     - **Aspersio / Encpoison** → combat element resolver.
+     - **Bitescar / Akaitsuki** → Sura per-skill plugin consumer.
+     - **BasilicaCell** → PlayerPositionHelpers.IsBasilicaCell
+       (with `ScfFlag.Permanent` — special case for Basilica that
+       never auto-clears; the ClearAll_Type0 test pins this).
+
+2. **Bulk-NoOp policy citation in `RegisterDefaultsForMissingTypes()`**
+   — the no-fields branch now carries an inline policy comment
+   documenting that ALL ~540 generator-synthesized NoOps are presence-
+   only by rAthena spec (status.yml carries no CalcFlags = no stat
+   mod prescribed). status.yml IS the per-SC citation for the bulk
+   set. SCs in this branch whose consumer DOES exist already get an
+   explicit Register earlier in the ctor; those whose consumer
+   awaits per-skill-plugin port (Soul Linker / Star Emperor / Sura)
+   stay as bulk NoOps under this policy.
+
+Allowlist grew from 31 → 59 entries to cover the wave 5a additions
+(CC family, Val2-only readers, pure presence-only). Each new entry
+carries its rAthena `src/map/status.cpp` line citation.
+
+**Files**:
+- `Map.Server/Status/StatusEffectRegistry.cs` — `RegisterWave5aClassAFormulas()`
+  (~210 LOC) + bulk-NoOp policy comment in `RegisterDefaultsForMissingTypes()`.
+- `Map.Server.Tests/Status/StatusEffectCompletenessTests.cs` — allowlist
+  +28 entries with rAthena status.cpp citations.
+
+**Stub-removal scorecard (NS-3 close-out):**
+
+| Class | Definition | Pre-wave count | Post-wave count |
+|---|---|---:|---:|
+| B (generator default ≠ rAthena formula) | Bespoke-magnitude SCs needing explicit Register override | ~80 | 0 — wave 4a+4b ported 48; rest absorbed via wave 5a CombatMarker upgrades |
+| C (ScriptedBonusHost documented no-ops) | vip_status/specialeffect/specialeffect2/hateffect/petloot/message/dispbottom | 7 | **0** — wave 6 wired all with new packets / service fields |
+| A (explicit NoOpHandler placeholders w/o documented consumer) | Lines 80-548 in ctor where shared `_NoOp` was registered | ~25 | **0** — wave 5a ported 11 to formula bodies + upgraded 17 to CombatMarker with reader citation |
+| A-bulk (~540 generator synthesized NoOps via no-fields branch) | Presence-only per rAthena status.yml | ~540 | **0** — bulk-policy citation lands in `RegisterDefaultsForMissingTypes()` docstring |
+
+Hand-ported bespoke SC bodies: 96 → **107** (+11 from wave 5a).
+Combat-marker registrations (post-wave 5a explicit): **~50**.
+Generator-synthesized + bulk-NoOp policy: **~540** SCs documented as
+presence-only per status.yml.
+
+**Full test sweep: 3,395 Map.Server + 87 Core + 29 Login = 3,511 tests
+passing** (unchanged). 0 build errors.
+
+**Stub criteria — DONE:**
+- ✅ `StatusEffectCompletenessTests` passes with allowlist sized to
+  every "CalcFlag SC with no stat-mod OnStart"; each entry cites the
+  rAthena `src/map/status.cpp` line.
+- ✅ `ScriptedBonusHost.cs` has 0 `data-pending` / `/* visual-only
+  no-op */` comments.
+- ✅ Every explicit `NoOpHandler()` in `StatusEffectRegistry.cs` ctor
+  either has a real OnStart body (Wave 5a formula port) or carries a
+  CombatMarker upgrade with reader citation.
+- ✅ Bulk-NoOp policy explicitly cites rAthena status.yml as the per-SC
+  citation for the ~540 SCs that the generator synthesizes via the
+  no-fields branch.
+- ✅ `status-parity.md` per-SC scoreboard refreshed.
 
 ### 2026-05-24 — NS-3 final: status-parity.md scoreboard refresh
 

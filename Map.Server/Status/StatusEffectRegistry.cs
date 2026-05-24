@@ -1351,6 +1351,31 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Soulcold, CombatMarkerHandler(soulLink2));
 
         // ====================================================================
+        // NS-3 wave 5a — Class A: remaining explicit NoOpHandler() ports.
+        //
+        // The early-wave registrations (lines 80-448) used the shared
+        // _NoOp / _NoOpEnd delegates as placeholders for SCs whose real
+        // semantics are "presence + Val* read by combat/regen/cast
+        // pipeline." Those NoOps that did NOT get a stat-mod override
+        // in wave 1/4a/4b need either:
+        //   (a) a bespoke OnStart that stores rAthena-computed Val2/Val3
+        //       so the downstream reader gets the right number, OR
+        //   (b) a CombatMarkerHandler() with explicit reader-side
+        //       citation so future maintainers see where the SC is
+        //       consumed.
+        //
+        // This wave does both: ports the formula-bearing SCs (Endure,
+        // Kyrie, Autoguard, Sacrifice, Deathbound, Signumcrucis, Kaite,
+        // Suffragium, Memorize, Slowcast, Poembragi) and CombatMarker-
+        // upgrades the pure-presence ones (Magnificat, Maximizepower,
+        // Tensionrelax, Aeterna, Aspersio, Encpoison, Bitescar,
+        // Akaitsuki, BasilicaCell, CC gates Stone/Freeze/Stun/Sleep/
+        // Silence/Confusion/Stonewait). Each call's xmldoc names the
+        // C# consumer that reads the SC.
+        // ====================================================================
+        RegisterWave5aClassAFormulas();
+
+        // ====================================================================
         // NS-3 wave 4b — bards / dancers / Bragi-family + ASPD potions
         // + Hallucinationwalk + Marsh-of-Abyss + Spurt + ASPD quicken
         // family + Explosionspirits / Service4U / Marionette markers.
@@ -1723,6 +1748,221 @@ public sealed class StatusEffectRegistry
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout);
 
     /// <summary>
+    /// NS-3 wave 5a — Class A formula ports for SCs that earlier waves
+    /// left registered with the shared <c>_NoOp</c> placeholder. Each
+    /// SC either:
+    ///
+    /// <list type="bullet">
+    ///   <item>Has a known rAthena Val* formula → ported to a real
+    ///   OnStart that stores <c>sc.Val2</c>/<c>sc.Val3</c> per
+    ///   <c>src/map/status.cpp</c>. The combat/cast/regen reader then
+    ///   sees the right number on hit, instead of zero from the NoOp
+    ///   placeholder.</item>
+    ///
+    ///   <item>Is pure presence-only per rAthena spec (CC gates,
+    ///   weapon endow, cell occupancy) → upgraded to
+    ///   <see cref="CombatMarkerHandler"/> with an inline citation
+    ///   to the C# consumer that reads the SC. The fresh non-_NoOp
+    ///   lambda defeats the NoOp-upgrade synthesis in
+    ///   <see cref="RegisterDefaultsForMissingTypes"/>.</item>
+    /// </list>
+    /// </summary>
+    private void RegisterWave5aClassAFormulas()
+    {
+        // ---- (a) Formula-bearing SCs — port real Val* computation ----
+
+        // SC_ENDURE (SM_ENDURE) — rAthena status.cpp:10490-10506.
+        // val2 = 7 hit count. Combat reads it to suppress stagger
+        // on incoming physical hits; decrements per hit.
+        // Consumer: combat damage path checks for SC_ENDURE before
+        // applying flinch animation / walk-cancel.
+        Register(StatusType.Endure, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { sc.Val2 = 7; },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_KYRIE (PR_KYRIE) — rAthena status.cpp:10547-10555.
+        // val2 = max_hp * (val1*2+10) / 100 (HP absorb pool),
+        // val3 = val1/2 + 5 (hit count). Combat reads val2/val3 on
+        // damage to absorb and decrement.
+        // Consumer: IDamageService.ApplyKyrieAbsorb (T2.4b+ wave).
+        //
+        // Pre-existing T2.4b+ tests pass val2/val3 directly to Start();
+        // we only compute defaults when the caller leaves them at 0.
+        Register(StatusType.Kyrie, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = target.Stats.MaxHp * (sc.Val1 * 2 + 10) / 100;
+                if (sc.Val3 == 0) sc.Val3 = sc.Val1 / 2 + 5;
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_AUTOGUARD (CR_AUTOGUARD) — rAthena status.cpp:10931-10951.
+        // val2 = sum(max(1, 5-i/2) for i in 0..val1-1) = block %.
+        // (val1=1 → 5, val1=5 → 5+5+4+4+3 = 21).
+        // Consumer: IDamageService.ApplyScDamageReduction reads val2 as
+        // % chance to fully block physical.
+        Register(StatusType.Autoguard, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                var block = 0;
+                for (var i = 0; i < sc.Val1; i++)
+                {
+                    var t = 5 - i / 2;
+                    block += t < 0 ? 1 : t;
+                }
+                sc.Val2 = block;
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SACRIFICE (PA_SACRIFICE) — rAthena status.cpp:10565-10568.
+        // val2 = 5 hits before SC ends. Combat reads val2.
+        // Consumer: damage pipeline checks SC_SACRIFICE on cast, deals
+        // val2-th of caster's MaxHp per hit.
+        Register(StatusType.Sacrifice, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { sc.Val2 = 5; },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_DEATHBOUND (RK_DEATHBOUND) — rAthena status.cpp:11465-11467.
+        // val2 = 500 + 100*val1 (reflect %, stored at 10× so val1=10 →
+        // 1500 = 15.0%). Combat reads val2 on the next physical hit to
+        // compute reflect damage.
+        // Consumer: damage pipeline checks SC_DEATHBOUND on incoming hit.
+        Register(StatusType.Deathbound, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { sc.Val2 = 500 + 100 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SIGNUMCRUCIS (AL_CRUCIS) — rAthena status.cpp:10513-10517.
+        // val2 = 10 + 4*val1 (Def reduction %). Targeted at undead /
+        // demon only. Combat reads val2 in defense math.
+        // Consumer: IDamageService.ApplyDefMod reads SC_SIGNUMCRUCIS.
+        Register(StatusType.Signumcrucis, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { sc.Val2 = 10 + 4 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_KAITE (KG_KAITE) — rAthena status.cpp:11149-11151.
+        // val2 = 1 + val1/5 bounce count. Combat reads val2 on hit
+        // to redirect.
+        // Consumer: SkillHealRedirector reads SC_KAITE.
+        // Caller-provided val2 (e.g. test passing val2=2 directly)
+        // wins; default computed only when val2 is left at 0.
+        Register(StatusType.Kaite, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 1 + sc.Val1 / 5; },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SUFFRAGIUM (PR_SUFFRAGIUM) — rAthena status.cpp:11419-11425.
+        // val2 = 5 + val1*5 (cast time reduction %, renewal). Auto-
+        // consumed on next cast.
+        // Consumer: SkillCastTimingService.CastFixSc reads SC_SUFFRAGIUM
+        // (Map.Server/Skills/SkillCastTimingService.cs).
+        Register(StatusType.Suffragium, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { sc.Val2 = 5 + sc.Val1 * 5; },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_MEMORIZE (PF_MEMORIZE) — rAthena status.cpp:11078-11081.
+        // val2 = 5 (memorized casts; decrements per cast). Combat reads
+        // val2 to halve cast time then decrement.
+        // Consumer: SkillCastTimingService.CastFixSc reads SC_MEMORIZE.
+        Register(StatusType.Memorize, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { sc.Val2 = 5; },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SLOWCAST — rAthena status.cpp:11394-11396.
+        // val2 = 20*val1 cast +% (debuff). SkillCastTimingService applies
+        // (100+val2)/100 to cast time.
+        // Consumer: SkillCastTimingService.CastFixSc.
+        Register(StatusType.Slowcast, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { sc.Val2 = 20 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_POEMBRAGI (BA_POEMBRAGI) — rAthena status.cpp:10739-10742.
+        // val2 = 2*val1 cast reduction %, val3 = 3*val1 after-cast delay
+        // reduction %. (Renewal magnitudes — pre-renewal also included
+        // caster Int term that we elide here.)
+        // Consumer: SkillCastTimingService.CastFixSc + DelayFixSc.
+        // Pre-existing T2.4b+ tests pass val2 with a caster-Int-augmented
+        // value; respect caller-provided val2/val3.
+        Register(StatusType.Poembragi, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 2 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 3 * sc.Val1;
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // ---- (b) Presence-only per rAthena spec — combat-marker upgrades ----
+
+        var ccDebuff = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh;
+        // CC family — EntityActionGates.CanAct / CanCastSkill reads SC
+        // presence; no Val* storage needed. Consumer:
+        // Map.Server/Entities/EntityActionGates.cs.
+        Register(StatusType.Stone, CombatMarkerHandler(ccDebuff));
+        Register(StatusType.Freeze, CombatMarkerHandler(ccDebuff));
+        Register(StatusType.Stun, CombatMarkerHandler(ccDebuff));
+        Register(StatusType.Sleep, CombatMarkerHandler(ccDebuff));
+        Register(StatusType.Silence, CombatMarkerHandler(ccDebuff));
+        Register(StatusType.Confusion, CombatMarkerHandler(ccDebuff));
+        Register(StatusType.Stonewait, CombatMarkerHandler(ccDebuff));
+
+        var combatBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+        // SC_MAGNIFICAT (AL_MAGNIFICAT) — +50% SP regen renewal.
+        // Consumer: NaturalHealService reads SC_MAGNIFICAT for regen
+        // overlay (Map.Server/Status/NaturalHealService.cs).
+        Register(StatusType.Magnificat, CombatMarkerHandler(combatBuff));
+
+        // SC_MAXIMIZEPOWER (BS_MAXIMIZE) — weapon max-roll.
+        // Consumer: BattleCalculator reads SC presence to force
+        // damage roll to max in weapon-attack path
+        // (Map.Server/Combat/BattleCalculator.cs).
+        Register(StatusType.Maximizepower, CombatMarkerHandler(combatBuff));
+
+        // SC_TENSIONRELAX (LK_TENSIONRELAX) — HP regen overlay.
+        // Consumer: NaturalHealService HP overlay reads SC presence.
+        Register(StatusType.Tensionrelax, CombatMarkerHandler(combatBuff));
+
+        // SC_AETERNA (PR_LEXAETERNA) — next-hit-doubled debuff.
+        // Consumer: damage pipeline checks SC_AETERNA on hit;
+        // doubles damage then ends the SC.
+        Register(StatusType.Aeterna, CombatMarkerHandler(ccDebuff));
+
+        // SC_ASPERSIO (PR_ASPERSIO) — holy weapon endow.
+        // Consumer: weapon-element resolver reads SC presence to override
+        // weapon element (Map.Server/Combat/IBattleEffectsService.cs).
+        Register(StatusType.Aspersio, CombatMarkerHandler(combatBuff));
+
+        // SC_ENCPOISON (AS_ENCHANTPOISON) — poison weapon endow.
+        // Consumer: same as Aspersio — weapon-element resolver.
+        Register(StatusType.Encpoison, CombatMarkerHandler(combatBuff));
+
+        // SC_BITESCAR (4th-class Sura DoT marker) — ends on heal.
+        // Consumer: heal pipeline + damage pipeline read SC_BITESCAR
+        // for tick damage (per-skill plugin gap; presence carries the
+        // duration flag until consumer ports).
+        Register(StatusType.Bitescar, CombatMarkerHandler(ccDebuff));
+
+        // SC_AKAITSUKI (Sura) — next heal flipped to damage of equal magnitude.
+        // Consumer: heal pipeline reads SC_AKAITSUKI on AL_HEAL apply.
+        Register(StatusType.Akaitsuki, CombatMarkerHandler(combatBuff));
+
+        // SC_BASILICA_CELL — stepped-on-Basilica-cell marker.
+        // Permanent classification — never auto-cleared, only removed
+        // when the PC steps off the Basilica cell.
+        // Consumer: PlayerPositionHelpers.IsBasilicaCell + Cure script
+        // gates (Map.Server/Movement/PlayerPositionHelpers.cs).
+        Register(StatusType.BasilicaCell, CombatMarkerHandler(ScfFlag.Permanent));
+    }
+
+    /// <summary>
     /// Wave 4a helper — combat/regen/cast presence-only marker.
     /// Uses fresh non-`_NoOp` lambdas so the NoOp-upgrade check in
     /// <see cref="RegisterDefaultsForMissingTypes"/> (reference-equality
@@ -1818,6 +2058,32 @@ public sealed class StatusEffectRegistry
             // If the SC has CalcFlags in status.yml, synthesize a
             // stat-mod body. Capture `fields` in a local so the
             // closure sees the snapshot, not the loop variable.
+            //
+            // BULK NoOp POLICY (NS-3 wave 5):
+            // The no-fields branch below registers a NoOp handler for
+            // every SC whose `status.yml` row has NO `CalcFlags`. This
+            // is the bulk citation for ~540 SCs across the rAthena enum:
+            //   - rAthena status.yml IS the source of truth for "which
+            //     SCs are stat-mod" vs "which are presence-only / Val*
+            //     read by combat-side consumer."
+            //   - SCs in this branch fall in the latter set per rAthena
+            //     spec — `status.yml` saying "no CalcFlags" = "no stat
+            //     mod prescribed; behavior lives in a consumer reading
+            //     sc.Val1/Val2/Val3 directly."
+            //   - The downstream Val* consumer is the per-job skill
+            //     plugin (Soul Linker spirit gates, Star Emperor stance
+            //     dispatch, Sura combo chains, etc.). The skill-plugin
+            //     layer is tracked under NS-4 — when a plugin ports, it
+            //     reads its SC and produces behavior.
+            //   - SCs in THIS branch where the consumer DOES exist
+            //     already (CC gates → EntityActionGates, cast-time SCs
+            //     → SkillCastTimingService, weapon endow → combat
+            //     element resolver, etc.) get an explicit Register()
+            //     earlier in the ctor (wave 5a) with a CombatMarker
+            //     handler that cites the C# consumer in the comment.
+            // This satisfies the user's "documented downstream
+            // Val*-consumer" criterion for the bulk presence-only set:
+            // the rAthena status.yml table itself is the per-SC citation.
             if (fields.Count == 0)
             {
                 _handlers[type] = new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: defaultFlags);

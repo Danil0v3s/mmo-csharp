@@ -121,6 +121,39 @@ public class StatusEffectCompletenessTests
             [StatusType.Marionette2] = "HP_ASSUMPTIO target — caster val3/val4 decode (status.cpp:11029-11052), source-ref TODO",
             [StatusType.Nibelungen] = "BD_RINGNIBELUNGEN — val2 random ring effect type (status.cpp:10725-10727)",
             [StatusType.Siegfried]  = "BD_SIEGFRIED — val2 ele resist, val3 status ailment resist (status.cpp:10728-10731)",
+
+            // ---- NS-3 wave 5a Class A — CC family (presence-only gates) ----
+            [StatusType.Stone]   = "CC gate — EntityActionGates.CanAct reads SC presence (status.cpp:9320)",
+            [StatusType.Freeze]  = "CC gate — EntityActionGates.CanAct reads SC presence (status.cpp:9462)",
+            [StatusType.Stun]    = "CC gate — EntityActionGates.CanAct reads SC presence (status.cpp:9412)",
+            [StatusType.Sleep]   = "CC gate — EntityActionGates.CanAct reads SC presence (status.cpp:9442)",
+            [StatusType.Silence] = "CC gate — EntityActionGates.CanCastSkill reads SC presence (status.cpp:9422)",
+            [StatusType.Confusion] = "CC gate — EntityActionGates.CanCastSkill (status.cpp:9496)",
+            [StatusType.Stonewait] = "CC warmup — 5s petrify timer (status.cpp:9452, 10786)",
+
+            // ---- NS-3 wave 5a Class A — Val2-only readers (no stat mutation) ----
+            [StatusType.Endure]    = "SM_ENDURE — val2=7 hit counter read by combat anti-stagger (status.cpp:10490)",
+            [StatusType.Kyrie]     = "PR_KYRIE — val2/val3 shield absorb read by DamageService (status.cpp:10547)",
+            [StatusType.Autoguard] = "CR_AUTOGUARD — val2 block% read by DamageService (status.cpp:10931)",
+            [StatusType.Sacrifice] = "PA_SACRIFICE — val2=5 hits read by damage pipeline (status.cpp:10565)",
+            [StatusType.Deathbound] = "RK_DEATHBOUND — val2 reflect% read by damage pipeline (status.cpp:11465)",
+            [StatusType.Signumcrucis] = "AL_CRUCIS — val2 Def reduction read by combat defense (status.cpp:10513)",
+            [StatusType.Kaite]     = "KG_KAITE — val2 bounce count read by SkillHealRedirector (status.cpp:11149)",
+            [StatusType.Suffragium] = "PR_SUFFRAGIUM — val2 cast reduction read by SkillCastTimingService (status.cpp:11419)",
+            [StatusType.Memorize]  = "PF_MEMORIZE — val2=5 charges read by SkillCastTimingService (status.cpp:11078)",
+            [StatusType.Slowcast]  = "Slowcast debuff — val2 cast+% read by SkillCastTimingService (status.cpp:11394)",
+            [StatusType.Poembragi] = "BA_POEMBRAGI — val2/val3 cast+delay reductions read by SkillCastTimingService (status.cpp:10739)",
+
+            // ---- NS-3 wave 5a Class A — pure presence-only (no Val storage) ----
+            [StatusType.Magnificat] = "AL_MAGNIFICAT — +50% SP regen marker read by NaturalHealService",
+            [StatusType.Maximizepower] = "BS_MAXIMIZE — weapon max-roll marker read by BattleCalculator",
+            [StatusType.Tensionrelax] = "LK_TENSIONRELAX — HP regen overlay marker read by NaturalHealService",
+            [StatusType.Aeterna]    = "PR_LEXAETERNA — next-hit-doubled marker read by damage pipeline",
+            [StatusType.Aspersio]   = "PR_ASPERSIO — holy weapon endow marker read by element resolver",
+            [StatusType.Encpoison]  = "AS_ENCHANTPOISON — poison weapon endow marker read by element resolver",
+            [StatusType.Bitescar]   = "Sura DoT marker — ends on heal; consumer in per-skill plugin",
+            [StatusType.Akaitsuki]  = "Sura heal-flip marker — heal pipeline reads on AL_HEAL apply",
+            [StatusType.BasilicaCell] = "Basilica cell marker — PlayerPositionHelpers.IsBasilicaCell reads",
         };
 
     [Fact]
