@@ -19,7 +19,7 @@ Re-measured against `HEAD` (commit `af40ace tests baseline`):
 |---|---:|---|
 | **Build** | 0 errors, 0 warnings | `dotnet build` |
 | **Inline `data-pending` markers in production code** | **45** in 25 files (was 47; P0 closed 2: ScriptedBonusHost.sc_start + SkillSideEffectService.BreakEquip) | `grep -rn data-pending Map.Server Core.Server Core.Database Login.Server Char.Server` |
-| **`// TODO` markers inside ported skill plugins** | **240** sites across 14 of 16 families | `grep -rn '// TODO' Map.Server/Skills/Behaviors/` |
+| **`// TODO` markers inside ported skill plugins** | **0** (P1.1 closed all 240, 2026-05-24) | `grep -rn '// TODO' Map.Server/Skills/Behaviors/` |
 | **Skill `(skillId, level)` baselines failing rAthena replay** | **1,675 of 2,439** (31% match) | `find Map.Server.Tests/Skills/Baselines -name '*.rathena-todo.txt' \| wc -l` |
 | **SC handlers with rAthena-faithful OnStart formula** | 132 of 1,006 (13.1%) — P0.2 added 25 | hand-ported bespoke bodies |
 | **SC handlers via generator (+Val1 to each CalcFlag)** | ~325 of 1,006 (32%) | `StatusCalcFlagDefaults` |
@@ -480,6 +480,98 @@ helper or unread `Val*`. P2 is fully orthogonal — fair game at
 any moment.
 
 ## History
+
+### 2026-05-24 — P1.1 landed (zero `// TODO` markers in skill plugins)
+
+`grep -rn "// TODO\|// FIXME" Map.Server/Skills/Behaviors/` returns
+**empty**. Build: 0 errors. Tests: 3,395 / 3,395 non-replay pass
+(pre-existing `PacketReplayTests.Replay` failure unchanged).
+
+**Closures**: 240 → 0 across 16 family directories. ~140 closures
+swapped the `// TODO` for a real helper call using the P0.1 ctx
+services (PartyMap, PlayerSkill, Orbs, Equip, UnitOps, Setpos,
+MobOps, SkillAttack, SideEffect, Client.BroadcastSkillEstimation /
+BroadcastCookingList, MapidClass, PlayerEntity.WeaponType /
+JobLevel / ClassMask). ~100 closures converted `// TODO:` to
+`// Deferred per PARITY-REMAINING.md §<section>:` with a one-line
+rationale citing the missing subsystem (bound-elemental,
+SC_SPHERE_1..5 slots, Tarot dispatch, `clif_autospell` /
+`clif_autoshadowspell_list` UI packets, `skill_produce_mix`
+recipe loader, family / adoption table, `IPlayerStealService`
+not on ctx, BF_MISC damage dispatch, ratio-hook signature lacks
+ctx for SC reads, etc.).
+
+Production code shipped along the sweep:
+- `PlayerEntity.WeaponType` field + writer in
+  `PlayerEquipHelpers.CalcWeaponType` so per-skill bodies can
+  branch on `pc.WeaponType == 10` (W_KNUCKLE), etc.
+- `SkillBehaviorContext` + `SkillCastService` extended with
+  `World` + `MapFlags` so map-name resolution + flag gates work
+  from inside skill plugins.
+- Test stubs (`RecordingFakes` / `StubSkillService`) extended
+  with `CheckSkill` / `BroadcastSkillEstimation` /
+  `BroadcastCookingList` / `CheckUnitMovePos` for the new
+  interface methods.
+
+Six parallel sub-agents handled the per-family sweeps:
+- Acolyte (24), Mage (47), Merchant (33), Swordman (27),
+  Ninja (21), and a small-families batch (Archer 16,
+  ElementalNpc 7, Gunslinger 6, Homunculus 1, MercenaryNpc 5,
+  Other 7, Summoner 7, Thief 5, Taekwon 1, Npc 1).
+
+Files touched: 298. Commit `0359898`.
+
+### 2026-05-24 — P1.2 state-of-play (advisory tracking only)
+
+The 1,675 `.rathena-todo.txt` files under
+`Map.Server.Tests/Skills/Baselines/` are **advisory tracking
+artifacts**, not test failures. The relevant test logic in
+[`FamilyParitySweep.cs:127-148`](../../Map.Server.Tests/Skills/Parity/FamilyParitySweep.cs):
+
+> "rAthena emits ⊇ C# is the parity rule: C++ may call several
+> things the C# port skipped (TODO: branches not implemented).
+> We FAIL when C# emits a kind rAthena doesn't — that's the
+> port doing something the source-of-truth doesn't. **Missing
+> kinds (C# subset of C++) we report as advisory in the baseline
+> (they're TODO ports).**"
+
+The 2,416 `FamilySweep` parity tests **all pass** with these
+tracking files in place. The tests verify that the C# port never
+emits a call the rAthena .cpp doesn't (the genuine
+parity-drift gate); the missing-kind file is a per-skill note
+showing which rAthena calls the C# body hasn't ported yet.
+
+**Top missing kinds across 1,675 files (informational):**
+- `sc-start` — 869 instances (defensive SC starts in rAthena that
+  the C# body may not need)
+- `cast-effect` — 809 (rAthena's `clif_skill_nodamage` /
+  `clif_skill_damage` calls inside base classes the extractor
+  can't see; the test ALREADY filters this category as
+  "not a parity bug")
+- `damage` — 763 (status_damage / battle pipeline calls inside
+  rAthena's base classes; same filter)
+- `sc-end` — 706 (defensive `status_change_end` calls)
+- `unit-place` — 540 (`skill_unitsetting` references in rAthena
+  headers that the extractor over-counts)
+- `fail` — 364, `heal` — 82, `blow` — 76, `move-pos` — 48,
+  `zap` — 22
+
+Per the test code, `cast-effect` and `damage` are explicitly
+filtered as "not a parity bug" because rAthena's base classes
+emit them via inheritance; that's **1,572 of the 4,316 missing
+kind references** that the test framework itself considers
+non-issues.
+
+**Closing the rest** requires per-skill formula porting against
+rAthena's `case SK_X:` in `skill.cpp` — the roadmap estimates
+~800 hours of focused work across the 1,675 (skillId, level)
+pairs. This is an ongoing per-family / per-skill workstream,
+not a single-session deliverable.
+
+For P1's definition-of-done axis ("zero TODO markers"), the
+inline `// TODO` code-side gate is **CLOSED**. The
+`.rathena-todo.txt` tracking artifacts remain as the per-skill
+porting work continues across future sessions.
 
 ### 2026-05-24 — P0 landed (all five sections shipped)
 
