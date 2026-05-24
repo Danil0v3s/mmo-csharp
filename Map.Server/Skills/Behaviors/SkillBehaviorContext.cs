@@ -9,6 +9,7 @@ using Map.Server.Session;
 using Map.Server.Spawn;
 using Map.Server.Spawn.MobOps;
 using Map.Server.Status;
+using Map.Server.Status.StatusOps;
 using Map.Server.World;
 
 namespace Map.Server.Skills.Behaviors;
@@ -106,4 +107,9 @@ public sealed record SkillBehaviorContext(
     /// <summary>PC death + savepoint service. <c>pc_setpos(SavePoint)</c>
     /// and the dead-respawn flow live here; ALL_ODINS_RECALL lv 2/3,
     /// AL_TELEPORT lv 2, NV_BREAKTHROUGH dispatch through it.</summary>
-    IPcDeathService? Death = null);
+    IPcDeathService? Death = null,
+    /// <summary>Status-ops service — <c>status_heal</c>, <c>status_zap</c>,
+    /// <c>status_percent_damage</c>, <c>status_revive</c>. Skills that
+    /// need percent-based HP/SP mutation (KO_JYUSATSU, NPC_PERCENT_DRAIN)
+    /// route here instead of inline Hp arithmetic.</summary>
+    IStatusOpsService? StatusOps = null);

@@ -19,16 +19,14 @@ public sealed class IllusionDeath : SkillImpl
         if (System.Random.Shared.Next(100) < chance)
         {
             ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-            // rAthena skill_db.yml `Status: Curse` (SC_CURSE) for KO_JYUSATSU;
-            // Duration1 scales 6000..14000 ms per level.
+            // rAthena KO_JYUSATSU arm (skill.cpp): SC_CURSE + percent-HP cut
+            // (5 + 5*lv % current HP); if target level ≤ caster, SC_COMA on top.
             var sc1Duration = 6_000 + (skillLevel - 1) * 2_000;
             ctx.Sc?.Start(src, StatusType.Curse, val1: skillLevel, 0, 0, 0, durationMs: sc1Duration, src);
             if (target.Level <= src.Level)
                 ctx.Sc?.Start(target, StatusType.Coma, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
-            // Deferred: status_percent_damage(target, hp_rate, …, kill=false).
-            // IStatusOpsService.PercentDamage exists but isn't currently exposed
-            // through SkillBehaviorContext, so the HP-cut step waits for that
-            // wiring; without it, the curse + optional coma still land.
+            var hpCutPct = (sbyte)(5 + 5 * skillLevel);
+            ctx.StatusOps?.PercentDamage(src, target, hpCutPct, 0, can_kill: false);
         }
         else if (src is PlayerEntity sd)
         {
