@@ -167,4 +167,14 @@ public sealed record SkillBehaviorContext(
     /// <see cref="IEntityRegistry.ForEachInRange"/> filtered to
     /// <see cref="EntityType.Item"/>; this service handles the actual
     /// pickup mutation. Used by BS_GREED.</summary>
-    Map.Server.Items.IItemDropService? Drops = null);
+    Map.Server.Items.IItemDropService? Drops = null,
+    /// <summary>Skill-production service — <c>skill_produce_mix</c> +
+    /// <c>skill_arrow_create</c> + identify / repair / refine. Plugins
+    /// that produce items (ASC_CDP, GC_CREATENEWPOISON, AM_PHARMACY,
+    /// Twilight Alchemy 1/2/3) call <c>ProduceMix</c> here.</summary>
+    ISkillProductionService? Production = null,
+    /// <summary>Produce-recipe catalog (<c>produce_db.txt</c>) —
+    /// look up recipes by id or by require-skill. Used by skills
+    /// that need to enumerate the recipes a caster qualifies for
+    /// (open the produce-mix picker UI).</summary>
+    IProduceRecipeService? Recipes = null);

@@ -27,52 +27,19 @@
       "color_override": false,
       "change_delay": false
     },
-    "channels": [
-      {
-        "name": "main",
-        "alias": "[Global]",
-        "color": "Green",
-        "type": "CHAN_TYPE_PUBLIC",
-        "delay": 1000,
-        "autojoin": true,
-        "leave": true
-      },
-      {
-        "name": "map",
-        "alias": "[Map]",
-        "color": "Orange",
-        "type": "CHAN_TYPE_MAP",
-        "delay": 1000,
-        "autojoin": true,
-        "leave": true
-      },
-      {
-        "name": "guild",
-        "alias": "[Guild]",
-        "color": "Purple",
-        "type": "CHAN_TYPE_ALLY",
-        "delay": 1000,
-        "autojoin": true,
-        "leave": false
-      },
-      {
-        "name": "trade",
-        "alias": "[Trade]",
-        "color": "Cyan",
-        "type": "CHAN_TYPE_PUBLIC",
-        "delay": 1000,
-        "autojoin": false,
-        "leave": true
-      },
-      {
-        "name": "system",
-        "alias": "[System]",
-        "color": "Red",
-        "type": "CHAN_TYPE_PUBLIC",
-        "delay": 0,
-        "autojoin": false,
-        "leave": false
-      }
-    ]
-  }
+    "channels": "(",
+    "name": "#global",
+    "alias": "[Global]",
+    "color": "White",
+    "type": "CHAN_TYPE_PUBLIC",
+    "delay": 1000,
+    "autojoin": false,
+    "leave": false
+  },
+  "name": "#support",
+  "alias": "[Support]",
+  "color": "Blue",
+  "type": "CHAN_TYPE_PUBLIC",
+  "delay": 1000,
+  "autojoin": false
 }

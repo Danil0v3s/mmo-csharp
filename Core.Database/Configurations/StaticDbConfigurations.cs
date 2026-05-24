@@ -1082,3 +1082,43 @@ public class MobItemRatioMobDbEntityConfiguration : IEntityTypeConfiguration<Mob
         b.Property(e => e.MobAegis).HasColumnName("mob_aegis").HasMaxLength(64).IsRequired();
     }
 }
+
+// ============================================================================
+// DB-8j: produce_db (Pharmacy / Forge / Geneticist recipes)
+// ============================================================================
+
+/// <summary>
+/// rAthena <c>db/produce_db.txt</c> parent row. <see cref="ProduceRecipeMaterialDbEntity"/>
+/// children hang off by RecipeId.
+/// </summary>
+public class ProduceRecipeDbEntityConfiguration : IEntityTypeConfiguration<ProduceRecipeDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ProduceRecipeDbEntity> b)
+    {
+        b.ToTable("produce_recipe_db");
+        b.HasKey(e => e.Id);
+        b.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+        b.Property(e => e.ProduceItemId).HasColumnName("produce_item_id");
+        b.Property(e => e.ItemLv).HasColumnName("item_lv");
+        b.Property(e => e.RequireSkillId).HasColumnName("require_skill_id");
+        b.Property(e => e.RequireSkillLv).HasColumnName("require_skill_lv");
+    }
+}
+
+/// <summary>
+/// Material slot of a <see cref="ProduceRecipeDbEntity"/>. Composite
+/// key (recipe_id, slot_index). <c>Amount = 0</c> denotes the rAthena
+/// "must own — does not consume" guide-item pattern.
+/// </summary>
+public class ProduceRecipeMaterialDbEntityConfiguration : IEntityTypeConfiguration<ProduceRecipeMaterialDbEntity>
+{
+    public void Configure(EntityTypeBuilder<ProduceRecipeMaterialDbEntity> b)
+    {
+        b.ToTable("produce_recipe_material_db");
+        b.HasKey(e => new { e.RecipeId, e.SlotIndex });
+        b.Property(e => e.RecipeId).HasColumnName("recipe_id");
+        b.Property(e => e.SlotIndex).HasColumnName("slot_index");
+        b.Property(e => e.MaterialItemId).HasColumnName("material_item_id");
+        b.Property(e => e.MaterialAmount).HasColumnName("material_amount");
+    }
+}

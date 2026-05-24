@@ -471,6 +471,7 @@ builder.Services.AddSingleton<Map.Server.Skills.IAbraDatabase, Map.Server.Skills
 builder.Services.AddSingleton<Map.Server.Skills.IMagicMushroomDatabase, Map.Server.Skills.MagicMushroomDatabase>();
 builder.Services.AddSingleton<Map.Server.Skills.IReadingSpellbookDatabase, Map.Server.Skills.ReadingSpellbookDatabase>();
 builder.Services.AddSingleton<Map.Server.Skills.ISkillArrowDatabase, Map.Server.Skills.SkillArrowDatabase>();
+builder.Services.AddSingleton<Map.Server.Skills.IProduceRecipeService, Map.Server.Skills.ProduceRecipeService>();
 
 // Small-file services (date / duel / clan / mapreg / searchstore /
 // pc_groups / npc_chat) — canonical entry points for the rAthena

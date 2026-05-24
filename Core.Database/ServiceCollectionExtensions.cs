@@ -61,6 +61,7 @@ public static class ServiceCollectionExtensions
         // Static catalogs seeded by Tools.RathenaImporter from rAthena YAML.
         services.AddScoped<IAbraDbRepository, AbraDbRepository>();
         services.AddScoped<ICreateArrowDbRepository, CreateArrowDbRepository>();
+        services.AddScoped<IProduceRecipeDbRepository, ProduceRecipeDbRepository>();
         services.AddScoped<IMagicMushroomDbRepository, MagicMushroomDbRepository>();
         services.AddScoped<ISpellbookDbRepository, SpellbookDbRepository>();
         services.AddScoped<IQuestDbRepository, QuestDbRepository>();

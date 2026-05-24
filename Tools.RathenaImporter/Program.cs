@@ -39,6 +39,7 @@ var converters = new IYamlToSqlConverter[]
 {
     new SkillDbConverter(),
     new AbraDbConverter(),
+    new ProduceDbConverter(),
     new MagicMushroomDbConverter(),
     new SpellbookDbConverter(),
     new QuestDbConverter(),

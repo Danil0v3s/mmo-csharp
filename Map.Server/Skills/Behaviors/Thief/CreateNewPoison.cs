@@ -18,8 +18,16 @@ public sealed class CreateNewPoison : SkillImpl
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         // rAthena lists the poisons GC_CREATENEWPOISON can produce
         // (Paralyse / Leech End / Oblivion Curse / Death Hurt / Toxin /
-        // Pyrexia / Magic Mushroom / Venom Bleed); we forward an empty
-        // list until the produce_db.yml catalog populates them.
-        ctx.Client?.BroadcastProduceMixList(pc, produceType: 25, craftableItemIds: Array.Empty<ushort>());
+        // Pyrexia / Magic Mushroom / Venom Bleed). The recipe rows
+        // gate on GC_RESEARCHNEWPOISON; we feed the picker with the
+        // produce ids from the live produce_recipe_db catalog.
+        var ids = new List<ushort>();
+        if (ctx.Recipes != null)
+        {
+            var researchRecipes = ctx.Recipes.GetByRequireSkill(SkillIds.GC_RESEARCHNEWPOISON, byte.MaxValue);
+            foreach (var r in researchRecipes)
+                if (r.ProduceItemId is > 0 and <= ushort.MaxValue) ids.Add((ushort)r.ProduceItemId);
+        }
+        ctx.Client?.BroadcastProduceMixList(pc, produceType: 25, craftableItemIds: ids);
     }
 }

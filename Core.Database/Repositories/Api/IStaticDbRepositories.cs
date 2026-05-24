@@ -24,6 +24,18 @@ public interface ICreateArrowDbRepository
     Task<IReadOnlyList<CreateArrowDbEntity>> GetAllAsync(CancellationToken ct = default);
 }
 
+/// <summary>
+/// Read-only accessor for <c>produce_recipe_db</c> + materials child.
+/// Pharmacy / Forge / Geneticist recipes (rAthena
+/// <c>db/produce_db.txt</c>). Consumer caches in-memory and dispatches
+/// from <c>skill_produce_mix</c>.
+/// </summary>
+public interface IProduceRecipeDbRepository
+{
+    Task<IReadOnlyList<ProduceRecipeDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ProduceRecipeMaterialDbEntity>> GetAllMaterialsAsync(CancellationToken ct = default);
+}
+
 public interface IMagicMushroomDbRepository
 {
     Task<IReadOnlyList<MagicMushroomDbEntity>> GetAllAsync(CancellationToken ct = default);

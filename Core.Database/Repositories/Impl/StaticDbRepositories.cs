@@ -17,6 +17,14 @@ internal sealed class CreateArrowDbRepository(GameDbContext ctx) : ICreateArrowD
         => await ctx.CreateArrowDb.AsNoTracking().ToListAsync(ct);
 }
 
+internal sealed class ProduceRecipeDbRepository(GameDbContext ctx) : IProduceRecipeDbRepository
+{
+    public async Task<IReadOnlyList<ProduceRecipeDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.ProduceRecipeDb.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<ProduceRecipeMaterialDbEntity>> GetAllMaterialsAsync(CancellationToken ct = default)
+        => await ctx.ProduceRecipeMaterialDb.AsNoTracking().ToListAsync(ct);
+}
+
 internal sealed class MagicMushroomDbRepository(GameDbContext ctx) : IMagicMushroomDbRepository
 {
     public async Task<IReadOnlyList<MagicMushroomDbEntity>> GetAllAsync(CancellationToken ct = default)

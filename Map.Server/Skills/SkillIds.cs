@@ -429,6 +429,7 @@ public static class SkillIds
     public const ushort GC_DARKCROW = 5001;
     public const ushort GC_HALLUCINATIONWALK = 2035;
     public const ushort GC_PHANTOMMENACE = 2034;
+    public const ushort GC_RESEARCHNEWPOISON = 2024;
     public const ushort GC_POISONINGWEAPON = 2027;
     public const ushort GC_POISONSMOKE = 2032;
     public const ushort GC_ROLLINGCUTTER = 2036;

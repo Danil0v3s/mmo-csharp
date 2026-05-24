@@ -66,6 +66,7 @@ public class DatabaseSeeder
             await ExecuteSqlScriptAsync("Seeds/Scripts/seed_size_fix.sql", ct);
             await ExecuteSqlScriptAsync("Seeds/Scripts/seed_reputation.sql", ct);
             await ExecuteSqlScriptAsync("Seeds/Scripts/seed_create_arrow_db.sql", ct);
+            await ExecuteSqlScriptAsync("Seeds/Scripts/seed_produce_recipe_db.sql", ct);
             await ExecuteSqlScriptAsync("Seeds/Scripts/seed_item_randomopt_db.sql", ct);
             await ExecuteSqlScriptAsync("Seeds/Scripts/seed_elemental_db.sql", ct);
             await ExecuteSqlScriptAsync("Seeds/Scripts/seed_battleground_db.sql", ct);

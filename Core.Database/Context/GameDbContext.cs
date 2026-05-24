@@ -256,6 +256,10 @@ public class GameDbContext : DbContext
     public DbSet<MobItemRatioDbEntity> MobItemRatioDb => Set<MobItemRatioDbEntity>();
     public DbSet<MobItemRatioMobDbEntity> MobItemRatioMobDb => Set<MobItemRatioMobDbEntity>();
 
+    // ---- DB-8j: produce_db (Pharmacy / Forge / Geneticist recipes) ----
+    public DbSet<ProduceRecipeDbEntity> ProduceRecipeDb => Set<ProduceRecipeDbEntity>();
+    public DbSet<ProduceRecipeMaterialDbEntity> ProduceRecipeMaterialDb => Set<ProduceRecipeMaterialDbEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

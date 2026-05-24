@@ -29,6 +29,7 @@ public sealed class SkillProductionService : ISkillProductionService
     private readonly ISessionManagerAccessor _sessions;
     private readonly IItemCatalog _catalog;
     private readonly ISkillArrowDatabase _arrowDb;
+    private readonly IProduceRecipeService _produceDb;
     private readonly ILogger<SkillProductionService> _logger;
 
     /// <summary>rAthena <c>itemdb.hpp</c> <c>ITEMATTR_BROKEN</c> — bit 0 of
@@ -43,25 +44,102 @@ public sealed class SkillProductionService : ISkillProductionService
         ISessionManagerAccessor sessions,
         IItemCatalog catalog,
         ISkillArrowDatabase arrowDb,
+        IProduceRecipeService produceDb,
         ILogger<SkillProductionService> logger)
     {
         _sessions = sessions;
         _catalog = catalog;
         _arrowDb = arrowDb;
+        _produceDb = produceDb;
         _logger = logger;
     }
 
     public bool ProduceMix(PlayerEntity caster, int recipeId, int qty)
     {
-        // rAthena skill_produce_mix iterates produce_db entries keyed by
-        // recipeId. The Skill-side recipe catalog (produce_db.yml +
-        // produce_skill_db) isn't loaded yet — until ItemCatalog gains
-        // recipe entries, fall back to the simple "consume the listed
-        // ingredients, produce the result" pattern. With no recipe data,
-        // refuse cleanly (matches rAthena's `if (i == MAX_SKILL_PRODUCE_DB)
-        // return false`).
-        _logger.LogDebug("skill_produce_mix: recipe={Recipe} qty={Qty} (no recipe loaded)", recipeId, qty);
-        return false;
+        // rAthena skill_produce_mix (skill.cpp:21010-ish) — look up the
+        // recipe by produce_db row id, walk the materials list, refuse
+        // when anything is missing, then consume the materials and add
+        // the produced item to the bag.
+        var recipe = _produceDb.Get(recipeId);
+        if (recipe == null)
+        {
+            _logger.LogDebug("skill_produce_mix: recipe {Recipe} not in produce_db", recipeId);
+            return false;
+        }
+        var session = _sessions.GetByEntityId(caster.Id);
+        var inv = session?.Inventory;
+        if (inv == null) return false;
+        var pendingQty = Math.Max(1, qty);
+
+        // First pass: verify every material is available in sufficient
+        // quantity (matches rAthena's pre-flight; otherwise a partial
+        // consume could leave the bag inconsistent).
+        foreach (var mat in recipe.Materials)
+        {
+            if (mat.Amount == 0) continue; // guide item — only checked for presence below.
+            var need = mat.Amount * pendingQty;
+            var have = 0u;
+            foreach (var row in inv)
+                if (row.NameId == mat.ItemId) have += row.Amount;
+            if (have < need)
+            {
+                _logger.LogDebug("skill_produce_mix: char {Char} missing material {Item} (have {Have} need {Need})",
+                    caster.CharacterId, mat.ItemId, have, need);
+                return false;
+            }
+        }
+        foreach (var mat in recipe.Materials)
+        {
+            if (mat.Amount != 0) continue;
+            if (!inv.Exists(r => r.NameId == mat.ItemId && r.Amount > 0))
+            {
+                _logger.LogDebug("skill_produce_mix: char {Char} missing guide item {Item}",
+                    caster.CharacterId, mat.ItemId);
+                return false;
+            }
+        }
+
+        // Second pass: consume + emit.
+        foreach (var mat in recipe.Materials)
+        {
+            if (mat.Amount == 0) continue;
+            var remaining = mat.Amount * pendingQty;
+            for (var i = inv.Count - 1; i >= 0 && remaining > 0; i--)
+            {
+                var row = inv[i];
+                if (row.NameId != mat.ItemId) continue;
+                var take = (uint)Math.Min((long)remaining, row.Amount);
+                row.Amount -= take;
+                remaining -= take;
+                if (row.Amount == 0)
+                {
+                    if (row.Id > 0) session!.RemovedInventoryIds.Add(row.Id);
+                    inv.RemoveAt(i);
+                }
+            }
+        }
+        // Add the produced item.
+        var existing = inv.Find(r => r.NameId == recipe.ProduceItemId
+            && r.Identified && r.Refine == 0 && r.Attribute == 0
+            && r.Card0 == 0 && r.Card1 == 0 && r.Card2 == 0 && r.Card3 == 0);
+        if (existing != null)
+        {
+            existing.Amount += (uint)pendingQty;
+        }
+        else
+        {
+            inv.Add(new Map.Server.Inventory.InventoryItem
+            {
+                ServerIndex = inv.Count,
+                NameId = recipe.ProduceItemId,
+                Amount = (uint)pendingQty,
+                Identified = true,
+            });
+        }
+        _logger.LogInformation(
+            "skill_produce_mix: char {Char} produced {Qty}x item {Item} (recipe {Recipe})",
+            caster.CharacterId, pendingQty, recipe.ProduceItemId, recipeId);
+        return true;
     }
 
     public bool ArrowCreate(PlayerEntity caster, int sourceItemId)
