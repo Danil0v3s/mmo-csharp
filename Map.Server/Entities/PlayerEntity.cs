@@ -208,6 +208,24 @@ public sealed class PlayerEntity : Entity
     public byte PlagiarizedSkillLevel { get; set; }
 
     /// <summary>
+    /// rAthena <c>sd.skill_id_dance</c> / <c>sd.skill_lv_dance</c> —
+    /// the dance skill the Dancer last performed. Set by each Dancer
+    /// dance plugin (BD_LULLABY etc.) at cast time; read by BD_ENCORE
+    /// to re-trigger it without consuming SP.
+    /// </summary>
+    public ushort LastDanceSkillId { get; set; }
+    public byte LastDanceSkillLevel { get; set; }
+
+    /// <summary>
+    /// rAthena <c>sd.skill_id_song</c> / <c>sd.skill_lv_song</c> — the
+    /// chorus song the Trouvere/Troubadour last performed. Set by each
+    /// chorus plugin (TR_RETROSPECTION's targets); read by Retrospection
+    /// to re-trigger it.
+    /// </summary>
+    public ushort LastSongSkillId { get; set; }
+    public byte LastSongSkillLevel { get; set; }
+
+    /// <summary>
     /// rAthena <c>invincible_timer</c> (pc.cpp:417) — absolute tick
     /// (<see cref="Environment.TickCount64"/>) until which the PC is
     /// invulnerable. 0 = not invincible. Applied automatically on warp

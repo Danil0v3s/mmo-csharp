@@ -11,6 +11,19 @@ public interface IAbraDbRepository
     Task<IReadOnlyList<AbraDbEntity>> GetAllAsync(CancellationToken ct = default);
 }
 
+/// <summary>
+/// Read-only accessor for <c>create_arrow_db</c> — the source-item
+/// → produced-arrow recipe table used by <c>skill_arrow_create</c>
+/// (AC_MAKINGARROW, GC_POISONINGWEAPON, etc.). The <c>MakeJson</c>
+/// column is a JSON array of <c>{"Item":"Aegis_Name","Amount":N}</c>
+/// rows; the consumer (<c>SkillArrowDatabase</c>) deserializes once
+/// at boot and caches by source-item aegis.
+/// </summary>
+public interface ICreateArrowDbRepository
+{
+    Task<IReadOnlyList<CreateArrowDbEntity>> GetAllAsync(CancellationToken ct = default);
+}
+
 public interface IMagicMushroomDbRepository
 {
     Task<IReadOnlyList<MagicMushroomDbEntity>> GetAllAsync(CancellationToken ct = default);

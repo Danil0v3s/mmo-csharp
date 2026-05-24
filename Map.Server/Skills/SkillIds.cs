@@ -56,6 +56,7 @@ public static class SkillIds
     // ----- Knight (1-1 advance from Swordsman) -----
     public const ushort KN_PIERCE = 56;
     public const ushort KN_BRANDISHSPEAR = 57;
+    public const ushort KN_SPEARMASTERY = 55;
     public const ushort KN_SPEARSTAB = 58;
     public const ushort KN_SPEARBOOMERANG = 59;
     public const ushort KN_TWOHANDQUICKEN = 60;
@@ -926,6 +927,7 @@ public static class SkillIds
     public const ushort RK_MILLENNIUMSHIELD = 2011;
     public const ushort RK_PHANTOMTHRUST = 2020;
     public const ushort RK_REFRESH = 2013;
+    public const ushort RK_RUNEMASTERY = 2010;
     public const ushort RK_SONICWAVE = 2002;
     public const ushort RK_STONEHARDSKIN = 2015;
     public const ushort RK_STORMBLAST = 2017;

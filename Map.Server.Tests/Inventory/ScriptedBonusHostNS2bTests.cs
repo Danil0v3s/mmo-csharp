@@ -206,6 +206,8 @@ public class ScriptedBonusHostNS2bTests
         public void SetCart(PlayerEntity pc, int type) { }
         public void SetRiding(PlayerEntity pc, bool on) { }
         public void SetFalcon(PlayerEntity pc, bool on) { }
+        public void SetWug(PlayerEntity pc, bool on) { }
+        public void SetWugRider(PlayerEntity pc, bool on) { }
         public void SetMadogear(PlayerEntity pc, bool on) { }
         public void NotifyOption(PlayerEntity pc) { }
     }

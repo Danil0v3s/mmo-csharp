@@ -3,10 +3,10 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Archer;
 
 /// <summary>
-/// BD_ENCORE — Bard/Dancer Encore. Manual port of
-/// <c>rathena-fork/src/map/skills/archer/encore.cpp</c>. Re-casts the
-/// caster's last song. sd.skill_id_dance / skill_lv_dance bookkeeping
-/// not wired here — broadcast only.
+/// BD_ENCORE — Bard/Dancer Encore (skill.cpp:11160). Re-triggers the
+/// caster's last dance at no SP cost. Reads
+/// <see cref="PlayerEntity.LastDanceSkillId"/> / Level (set when each
+/// dance plugin runs). Refuses if no dance is on record.
 /// </summary>
 public sealed class Encore : SkillImpl
 {
@@ -14,7 +14,9 @@ public sealed class Encore : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
+        if (src is not PlayerEntity pc) return;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // Deferred: re-trigger sd.skill_id_dance at sd.skill_lv_dance — needs dance bookkeeping on PlayerEntity.
+        if (pc.LastDanceSkillId == 0) return;
+        ctx.UnitOps?.SkillUseId(pc, target.Id, pc.LastDanceSkillId, pc.LastDanceSkillLevel);
     }
 }

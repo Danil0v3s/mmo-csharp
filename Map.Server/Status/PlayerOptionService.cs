@@ -63,6 +63,30 @@ public sealed class PlayerOptionService : IPlayerOptionService
         else RemoveOption(pc, PlayerOption.Falcon);
     }
 
+    public void SetWug(PlayerEntity pc, bool on)
+    {
+        if (on) AddOption(pc, PlayerOption.Wug);
+        else RemoveOption(pc, PlayerOption.Wug);
+    }
+
+    public void SetWugRider(PlayerEntity pc, bool on)
+    {
+        // rAthena pc_setoption: turning on the rider sprite clears the
+        // pet-warg sprite (the two are mutually exclusive). Turning it
+        // off restores OPTION_WUG so the mastery-trained warg is still
+        // visible as a pet.
+        if (on)
+        {
+            var next = (pc.Option & ~PlayerOption.Wug) | PlayerOption.Wugrider;
+            SetOption(pc, next);
+        }
+        else
+        {
+            var next = (pc.Option & ~PlayerOption.Wugrider) | PlayerOption.Wug;
+            SetOption(pc, next);
+        }
+    }
+
     public void SetMadogear(PlayerEntity pc, bool on)
     {
         if (on) AddOption(pc, PlayerOption.Madogear);

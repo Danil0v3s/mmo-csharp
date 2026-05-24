@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Core.Database.Repositories.Api;
+using Map.Server.Items;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -152,12 +154,85 @@ public sealed class ReadingSpellbookDatabase : IReadingSpellbookDatabase
     }
 }
 
+/// <summary>
+/// rAthena <c>db/create_arrow_db.yml</c> — source-item → produced-arrow
+/// recipe map, consulted by <c>skill_arrow_create</c> (AC_MAKINGARROW,
+/// GC_POISONINGWEAPON) when the player picks a source item from the
+/// MakingArrowList dialog. Hydrated from the SQL <c>create_arrow_db</c>
+/// table (seeded by Tools.RathenaImporter — 136 source-item rows).
+/// Aegis names resolve through <see cref="IItemCatalog.GetByAegisName"/>;
+/// unknown ids drop silently on load.
+/// </summary>
 public sealed class SkillArrowDatabase : ISkillArrowDatabase
 {
     private readonly Dictionary<int, IReadOnlyList<(int, int)>> _recipes = new();
+    private readonly IServiceScopeFactory? _scopes;
+    private readonly IItemCatalog? _catalog;
     private readonly ILogger<SkillArrowDatabase> _logger;
-    public SkillArrowDatabase(ILogger<SkillArrowDatabase> logger) => _logger = logger;
+
+    public SkillArrowDatabase(IServiceScopeFactory scopes, IItemCatalog catalog, ILogger<SkillArrowDatabase> logger)
+    {
+        _scopes = scopes;
+        _catalog = catalog;
+        _logger = logger;
+        Reload();
+    }
+
+    /// <summary>Test ctor — empty recipe map.</summary>
+    public SkillArrowDatabase(ILogger<SkillArrowDatabase> logger) { _logger = logger; }
+
     public IReadOnlyList<(int itemId, int qty)> Get(int sourceItemId)
         => _recipes.TryGetValue(sourceItemId, out var v) ? v : Array.Empty<(int, int)>();
-    public void Reload() { /* arrow_db YAML loader landing in Tools.RathenaImporter Wave 3 */ }
+
+    /// <summary>Total source-item entries currently loaded.</summary>
+    public int Count => _recipes.Count;
+
+    public void Reload()
+    {
+        _recipes.Clear();
+        if (_scopes == null || _catalog == null) return;
+        try
+        {
+            using var scope = _scopes.CreateScope();
+            var repo = scope.ServiceProvider.GetRequiredService<ICreateArrowDbRepository>();
+            var rows = repo.GetAllAsync().GetAwaiter().GetResult();
+            var unknown = 0;
+            foreach (var r in rows)
+            {
+                var srcItem = _catalog.GetByAegisName(r.SourceItem);
+                if (srcItem == null) { unknown++; continue; }
+                var recipeList = new List<(int, int)>();
+                try
+                {
+                    var entries = JsonSerializer.Deserialize<List<MakeEntry>>(r.MakeJson) ?? new();
+                    foreach (var e in entries)
+                    {
+                        if (string.IsNullOrEmpty(e.Item)) continue;
+                        var arrow = _catalog.GetByAegisName(e.Item);
+                        if (arrow == null) { unknown++; continue; }
+                        recipeList.Add(((int)arrow.Id, e.Amount > 0 ? e.Amount : 1));
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "create_arrow_db row {Source} has malformed Make json", r.SourceItem);
+                    continue;
+                }
+                if (recipeList.Count > 0)
+                    _recipes[(int)srcItem.Id] = recipeList;
+            }
+            _logger.LogInformation("create_arrow_db loaded: {N} source items, {U} aegis names skipped",
+                _recipes.Count, unknown);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "create_arrow_db load failed — recipe map empty");
+        }
+    }
+
+    private sealed class MakeEntry
+    {
+        public string? Item { get; set; }
+        public int Amount { get; set; }
+    }
 }

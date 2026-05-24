@@ -72,6 +72,16 @@ public abstract class SkillImpl
         => baseRatio;
 
     /// <summary>
+    /// SC-aware variant of <see cref="CalculateSkillRatio"/>. Plugins
+    /// that need to consult the caster's status changes (e.g.
+    /// <c>SC_SPEAR_SCAR</c>, <c>SC_DRAGONIC_AURA</c>) override this
+    /// instead. The default delegates to the simpler overload so legacy
+    /// plugins keep working.
+    /// </summary>
+    public virtual int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+        => CalculateSkillRatio(baseRatio, src, target, skillLevel);
+
+    /// <summary>
     /// rAthena per-skill hit-rate modifier. Bash adds +5 % hit per lv,
     /// Frost Diver +5 %, etc.
     /// </summary>
@@ -114,11 +124,12 @@ public abstract class WeaponSkillImpl : SkillImpl
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         var swing = ctx.Battle.CalcWeaponAttack(src, target);
-        // skill_db's DamageRate column carries the base scaling for
-        // the level (rAthena: skill_get_atk(skill_id, skill_lv)).
-        // CalculateSkillRatio lets the plugin add its per-skill bump
-        // on top.
-        var ratio = CalculateSkillRatio(100, src, target, skillLevel);
+        // Route through the ctx-aware overload so plugins that need
+        // SC reads (DK_DRAGONIC_BREATH, LG_CANNONSPEAR's SC_SPEAR_SCAR,
+        // SS_REIKETSUHOU's SC_WATER_CHARM_POWER) can hook them. The
+        // default impl falls back to the simpler signature so legacy
+        // plugins keep their existing behavior.
+        var ratio = CalculateSkillRatio(100, src, target, skillLevel, ctx);
         var dmg = (int)Math.Clamp(swing.Total * ratio / 100, 0, int.MaxValue);
         ctx.Damage.ApplyDamage(target, dmg, src);
         ApplyAdditionalEffects(src, target, skillLevel, ctx);

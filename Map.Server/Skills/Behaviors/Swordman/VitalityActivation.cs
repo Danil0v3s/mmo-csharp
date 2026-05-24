@@ -14,10 +14,8 @@ public sealed class VitalityActivation : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        if (src is not PlayerEntity) return;
-        // Deferred: rAthena gates this on pc_checkskill(sd, RK_RUNEMASTERY) >= 2;
-        // RK_RUNEMASTERY is not yet in SkillIds. Gate via
-        // ctx.PlayerSkill?.CheckSkill(sd, SkillIds.RK_RUNEMASTERY) >= 2 once added.
+        if (src is not PlayerEntity pc) return;
+        if ((ctx.PlayerSkill?.CheckSkill(pc, SkillIds.RK_RUNEMASTERY) ?? 0) < 2) return;
         ctx.Sc?.Start(target, StatusType.Vitalityactivation, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }

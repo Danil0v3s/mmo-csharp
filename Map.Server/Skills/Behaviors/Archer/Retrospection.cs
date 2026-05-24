@@ -3,10 +3,10 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Archer;
 
 /// <summary>
-/// TR_RETROSPECTION — Trouvere Retrospection (Encore variant for
-/// Trouvere chorus songs). Manual port of
-/// <c>rathena-fork/src/map/skills/archer/retrospection.cpp</c>.
-/// Re-casts the last chorus song. sd.skill_id_song bookkeeping deferred.
+/// TR_RETROSPECTION — Trouvere Retrospection (Encore variant for the
+/// chorus-song family). Re-triggers the caster's last chorus song via
+/// <see cref="PlayerEntity.LastSongSkillId"/> / Level. Refuses if no
+/// chorus is on record.
 /// </summary>
 public sealed class Retrospection : SkillImpl
 {
@@ -14,7 +14,9 @@ public sealed class Retrospection : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
+        if (src is not PlayerEntity pc) return;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // Deferred: re-trigger sd.skill_id_song at sd.skill_lv_song — needs song bookkeeping on PlayerEntity.
+        if (pc.LastSongSkillId == 0) return;
+        ctx.UnitOps?.SkillUseId(pc, target.Id, pc.LastSongSkillId, pc.LastSongSkillLevel);
     }
 }

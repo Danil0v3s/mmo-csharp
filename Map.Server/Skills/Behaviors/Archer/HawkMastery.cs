@@ -1,11 +1,13 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Archer;
 
 /// <summary>
-/// WH_HAWK_M — Wind Hawk Mastery (toggle Falcon look). Manual port of
-/// <c>rathena-fork/src/map/skills/archer/hawkmastery.cpp</c>. Player-
-/// option toggle deferred; broadcast only.
+/// WH_HAWK_M — Wind Hawk Mastery. rAthena's hunter-falcon toggle
+/// (<c>pc_setfalcon</c>) — flips <c>OPTION_FALCON</c> on / off so the
+/// client renders the falcon sprite next to the caster. Cast on self,
+/// no damage, no SC.
 /// </summary>
 public sealed class HawkMastery : SkillImpl
 {
@@ -13,8 +15,9 @@ public sealed class HawkMastery : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        if (src is not PlayerEntity) return;
-        // Deferred: toggle OPTION_FALCON via IPlayerOptionService — needs player-option service plumbed into ctx.
+        if (src is not PlayerEntity pc) return;
+        var hasFalcon = (pc.Option & PlayerOption.Falcon) != 0;
+        ctx.Options?.SetFalcon(pc, !hasFalcon);
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

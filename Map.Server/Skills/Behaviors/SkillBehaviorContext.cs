@@ -4,6 +4,7 @@ using Map.Server.Inventory;
 using Map.Server.Movement;
 using Map.Server.Movement.UnitOps;
 using Map.Server.Party;
+using Map.Server.Pathing;
 using Map.Server.Session;
 using Map.Server.Spawn;
 using Map.Server.Spawn.MobOps;
@@ -87,4 +88,15 @@ public sealed record SkillBehaviorContext(
     IMapWorldRegistry? World = null,
     /// <summary>Map-flag service (no-teleport / no-skill / no-pvp / etc.).
     /// Plugins gate fail-early when a forbidden flag is set.</summary>
-    IMapFlagService? MapFlags = null);
+    IMapFlagService? MapFlags = null,
+    /// <summary>Player option mask service (<c>pc_setoption</c>) — toggles
+    /// Falcon / Warg / WargRider / Cart / Riding / Madogear flags and
+    /// broadcasts <c>ZC_STATE_CHANGE3</c>. Wired so the Archer falcon /
+    /// Ranger warg skills mutate the option mask through a single
+    /// canonical path instead of inline <c>pc.Option</c> writes.</summary>
+    IPlayerOptionService? Options = null,
+    /// <summary>Path service — <c>path_search</c> (A* walkable),
+    /// <c>path_search_long</c> (Bresenham LoS), distance / direction
+    /// primitives. Skills that gate on line-of-sight or wall-clear
+    /// (Charge Attack, Sight, Storm Gust spawn) consult this.</summary>
+    IPathService? Paths = null);

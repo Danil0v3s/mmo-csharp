@@ -42,6 +42,20 @@ public interface IPlayerOptionService
     void SetFalcon(PlayerEntity pc, bool on);
 
     /// <summary>
+    /// rAthena <c>pc_setoption(sd, OPTION_WUG)</c> — Ranger warg pet
+    /// toggle, granted by RA_WUGMASTERY. Mutually exclusive with the
+    /// rider bit (see <see cref="SetWugRider"/>).
+    /// </summary>
+    void SetWug(PlayerEntity pc, bool on);
+
+    /// <summary>
+    /// rAthena <c>pc_setoption(sd, OPTION_WUGRIDER)</c> — Ranger warg
+    /// rider toggle, granted by RA_WUGRIDER. Clears OPTION_WUG when
+    /// turned on (the warg sprite swaps to the rider sprite).
+    /// </summary>
+    void SetWugRider(PlayerEntity pc, bool on);
+
+    /// <summary>
     /// rAthena <c>pc_setmadogear</c> — Mechanic madogear toggle. Type
     /// encodes Robot vs Suit visual variant.
     /// </summary>

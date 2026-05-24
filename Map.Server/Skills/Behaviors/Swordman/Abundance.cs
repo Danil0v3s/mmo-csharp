@@ -16,9 +16,7 @@ public sealed class Abundance : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity sd) return;
-        // Deferred: rAthena gates this on pc_checkskill(sd, RK_RUNEMASTERY) >= 6;
-        // RK_RUNEMASTERY is not yet in SkillIds. Gate via
-        // ctx.PlayerSkill?.CheckSkill(sd, SkillIds.RK_RUNEMASTERY) >= 6 once added.
+        if ((ctx.PlayerSkill?.CheckSkill(sd, SkillIds.RK_RUNEMASTERY) ?? 0) < 6) return;
         ctx.Sc?.Start(target, StatusType.Abundance, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }

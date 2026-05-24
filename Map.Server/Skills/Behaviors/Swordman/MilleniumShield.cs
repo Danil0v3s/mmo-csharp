@@ -14,10 +14,8 @@ public sealed class MilleniumShield : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        if (src is not PlayerEntity) return;
-        // Deferred: rAthena gates this on pc_checkskill(sd, RK_RUNEMASTERY) >= 9;
-        // RK_RUNEMASTERY is not yet in SkillIds. Once added, gate via
-        // ctx.PlayerSkill?.CheckSkill(sd, SkillIds.RK_RUNEMASTERY) >= 9.
+        if (src is not PlayerEntity pc) return;
+        if ((ctx.PlayerSkill?.CheckSkill(pc, SkillIds.RK_RUNEMASTERY) ?? 0) < 9) return;
         ctx.Sc?.Start(target, StatusType.Millenniumshield, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }

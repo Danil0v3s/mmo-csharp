@@ -11,6 +11,12 @@ internal sealed class AbraDbRepository(GameDbContext ctx) : IAbraDbRepository
         => await ctx.AbraDb.AsNoTracking().ToListAsync(ct);
 }
 
+internal sealed class CreateArrowDbRepository(GameDbContext ctx) : ICreateArrowDbRepository
+{
+    public async Task<IReadOnlyList<CreateArrowDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.CreateArrowDb.AsNoTracking().ToListAsync(ct);
+}
+
 internal sealed class MagicMushroomDbRepository(GameDbContext ctx) : IMagicMushroomDbRepository
 {
     public async Task<IReadOnlyList<MagicMushroomDbEntity>> GetAllAsync(CancellationToken ct = default)
