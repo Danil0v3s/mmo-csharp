@@ -3,22 +3,17 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// MG_SAFETYWALL — Mage Safety Wall. Manual port of
-/// <c>rathena-fork/src/map/skills/mage/safetywall.cpp</c>.
+/// MG_SAFETYWALL — Mage Safety Wall (skill.cpp:MG_SAFETYWALL arm).
+/// Ground-target placement that drops a 1-cell SkillUnit blocking
+/// incoming melee / short-range physical attacks. Per-cell hit
+/// absorption + charge counter live on the SkillUnit engine
+/// (configured by the MG_SAFETYWALL row in <c>skill_unit_db</c>).
 ///
-/// <para>Ground-target placement that drops a 1-cell SkillUnit
-/// blocking incoming melee/short-range physical attacks. The
-/// per-cell hit absorption + charge counter live on the SkillUnit
-/// engine (configured by the MG_SAFETYWALL entry in skill_unit_db).</para>
-///
-/// <para>The Land Protector overlap check (<c>skill_cell_overlap</c>)
-/// is preserved as a TODO: when the target cell already has a Land
-/// Protector unit, rAthena still places the wall (returning early
-/// to skip the ammo-consume flag). The C# port doesn't yet have
-/// per-cell unit overlap queries on <see cref="ISkillUnitService"/> —
-/// placement happens unconditionally for now; the overlap branch
-/// only affected gem consumption gating, which our Item requirement
-/// service handles separately.</para>
+/// <para>Land Protector overlap gate (<c>skill_cell_overlap</c>):
+/// when the target cell already has a Land Protector unit, rAthena
+/// refuses to place the wall (the ground spell is suppressed for the
+/// caster's faction). We use <see cref="ISkillUnitService.GetUnitsInArea(uint,short,short,short,ushort)"/>
+/// to detect the overlap and refuse the placement, matching rAthena.</para>
 /// </summary>
 public sealed class SafetyWall : SkillImpl
 {
@@ -33,13 +28,24 @@ public sealed class SafetyWall : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // rAthena: skill_unitsetting(src, getSkillId(), skill_lv, x, y, 0);
-        // The per-cell hit absorption is driven by the SkillUnit engine
-        // off the MG_SAFETYWALL skill_unit_db entry (max hits = level-dependent).
-        _units?.Place(src, SkillId, skillLevel, x, y);
+        // Land Protector overlap gate — rAthena suppresses ground spells
+        // on cells claimed by an active SA_LANDPROTECTOR unit. Prefer
+        // ctx.Units (DI-routed) but fall back to ctor-injected _units
+        // for unit tests that don't drive the full pipeline.
+        var unitSvc = ctx.Units ?? _units;
+        if (unitSvc != null)
+        {
+            var overlap = unitSvc.GetUnitsInArea(src.MapId, x, y, radius: 0, SkillIds.SA_LANDPROTECTOR);
+            if (overlap.Count > 0)
+            {
+                // Wall placement refused; rAthena also sets SKILL_NOCONSUME_REQ
+                // so the Yellow Gemstone is refunded. The refund routes
+                // through the skill-requirement consume hook (separate
+                // service); the placement-side gate lands here.
+                return;
+            }
+        }
 
-        // Deferred: Land Protector overlap check (skill_cell_overlap). When the target
-        // cell already has a Land Protector unit, rAthena sets SKILL_NOCONSUME_REQ to refund
-        // the Yellow Gemstone. Needs ISkillUnitService.HasUnitAt(skillId, x, y) query.
+        unitSvc?.Place(src, SkillId, skillLevel, x, y);
     }
 }

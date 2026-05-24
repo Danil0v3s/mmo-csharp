@@ -241,4 +241,39 @@ public sealed class SkillUnitService : ISkillUnitService
         EvictGroupPresence(group);
         _groups.Remove(group);
     }
+
+    public IReadOnlyList<SkillUnit> GetUnitsInArea(uint mapId, short cx, short cy, short radius)
+    {
+        var result = new List<SkillUnit>();
+        foreach (var g in _groups)
+        {
+            if (g.MapId != mapId) continue;
+            foreach (var u in g.Units)
+            {
+                if (u.Removed) continue;
+                if (Math.Abs(u.X - cx) > radius) continue;
+                if (Math.Abs(u.Y - cy) > radius) continue;
+                result.Add(u);
+            }
+        }
+        return result;
+    }
+
+    public IReadOnlyList<SkillUnit> GetUnitsInArea(uint mapId, short cx, short cy, short radius, ushort skillId)
+    {
+        var result = new List<SkillUnit>();
+        foreach (var g in _groups)
+        {
+            if (g.MapId != mapId) continue;
+            if (g.SkillId != skillId) continue;
+            foreach (var u in g.Units)
+            {
+                if (u.Removed) continue;
+                if (Math.Abs(u.X - cx) > radius) continue;
+                if (Math.Abs(u.Y - cy) > radius) continue;
+                result.Add(u);
+            }
+        }
+        return result;
+    }
 }

@@ -112,4 +112,11 @@ public sealed record SkillBehaviorContext(
     /// <c>status_percent_damage</c>, <c>status_revive</c>. Skills that
     /// need percent-based HP/SP mutation (KO_JYUSATSU, NPC_PERCENT_DRAIN)
     /// route here instead of inline Hp arithmetic.</summary>
-    IStatusOpsService? StatusOps = null);
+    IStatusOpsService? StatusOps = null,
+    /// <summary>Ground-unit service — <c>skill_unitsetting</c> +
+    /// <c>map_foreachincell(BL_SKILL)</c> enumerator + lifecycle helpers
+    /// (<c>skill_delunit</c>, <c>skill_delunitgroup_</c>). Skills that
+    /// trip / dispel / chain off existing traps (SpringTrap, RemoveTrap,
+    /// Detonator, Trample) and Land Protector overlap checks (SafetyWall)
+    /// route here.</summary>
+    ISkillUnitService? Units = null);

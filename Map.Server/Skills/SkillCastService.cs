@@ -59,6 +59,7 @@ public sealed class SkillCastService : ISkillCastService
     private readonly Map.Server.Status.IPlayerStealService? _steal;
     private readonly Map.Server.Combat.IPcDeathService? _death;
     private readonly Map.Server.Status.StatusOps.IStatusOpsService? _statusOps;
+    private readonly ISkillUnitService? _skillUnits;
     private readonly ILogger<SkillCastService> _logger;
 
     private readonly List<PendingCast> _pending = new();
@@ -93,7 +94,8 @@ public sealed class SkillCastService : ISkillCastService
         Map.Server.Pathing.IPathService? paths = null,
         Map.Server.Status.IPlayerStealService? steal = null,
         Map.Server.Combat.IPcDeathService? death = null,
-        Map.Server.Status.StatusOps.IStatusOpsService? statusOps = null)
+        Map.Server.Status.StatusOps.IStatusOpsService? statusOps = null,
+        ISkillUnitService? skillUnits = null)
     {
         _db = db;
         _entities = entities;
@@ -122,6 +124,7 @@ public sealed class SkillCastService : ISkillCastService
         _steal = steal;
         _death = death;
         _statusOps = statusOps;
+        _skillUnits = skillUnits;
         _logger = logger;
     }
 
@@ -346,7 +349,7 @@ public sealed class SkillCastService : ISkillCastService
             var plugin = _behaviors.Get(skillId);
             if (plugin != null)
             {
-                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions, _maps, _mapFlags, _options, _paths, _steal, _death, _statusOps);
+                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions, _maps, _mapFlags, _options, _paths, _steal, _death, _statusOps, _skillUnits);
                 plugin.CastendPos2(source, x, y, skillLevel, ctx);
                 return true;
             }
@@ -378,7 +381,7 @@ public sealed class SkillCastService : ISkillCastService
             var plugin = _behaviors.Get(skillId);
             if (plugin != null)
             {
-                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions, _maps, _mapFlags, _options, _paths, _steal, _death, _statusOps);
+                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions, _maps, _mapFlags, _options, _paths, _steal, _death, _statusOps, _skillUnits);
                 if (def.DamageKind == SkillDamageKind.None)
                     plugin.CastendNoDamageId(source, target, skillLevel, ctx);
                 else

@@ -276,8 +276,14 @@ public sealed class RecordingSkillUnitService : ISkillUnitService
     public void UnitOnOut(Map.Server.Skills.SkillUnit unit, Entity who, long tick) { }
     public void UnitOnDamaged(Map.Server.Skills.SkillUnit unit, long damage) { }
     public void ClearUnitGroup(EntityId casterId) { }
-    public void DelUnit(Map.Server.Skills.SkillUnit unit) { }
-    public void DelUnitGroup(Map.Server.Skills.SkillUnitGroup group) { }
+    public void DelUnit(Map.Server.Skills.SkillUnit unit)
+        => _rec.Record("unit-del", new() { ["x"] = unit.X, ["y"] = unit.Y });
+    public void DelUnitGroup(Map.Server.Skills.SkillUnitGroup group)
+        => _rec.Record("unit-delgroup", new() { ["skillId"] = group.SkillId });
+    public IReadOnlyList<Map.Server.Skills.SkillUnit> GetUnitsInArea(uint mapId, short cx, short cy, short radius)
+        => Array.Empty<Map.Server.Skills.SkillUnit>();
+    public IReadOnlyList<Map.Server.Skills.SkillUnit> GetUnitsInArea(uint mapId, short cx, short cy, short radius, ushort skillId)
+        => Array.Empty<Map.Server.Skills.SkillUnit>();
 }
 
 public sealed class RecordingUnitOpsService : Map.Server.Movement.UnitOps.IUnitOpsService

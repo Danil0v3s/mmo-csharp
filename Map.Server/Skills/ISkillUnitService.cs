@@ -59,4 +59,27 @@ public interface ISkillUnitService
 
     /// <summary>rAthena <c>skill_delunitgroup_</c> — delete an entire group.</summary>
     void DelUnitGroup(SkillUnitGroup group);
+
+    /// <summary>
+    /// rAthena <c>map_foreachincell</c> over BL_SKILL — enumerate every
+    /// active ground unit within Chebyshev distance
+    /// <paramref name="radius"/> of (<paramref name="cx"/>, <paramref name="cy"/>)
+    /// on the given map. Used by SpringTrap (trip one cell), RemoveTrap
+    /// / Trample (dispel any traps in splash), Detonator / DominionImpulse
+    /// (chain effect across a splash), SafetyWall (Land Protector
+    /// overlap check), etc. Returns the live <see cref="SkillUnit"/>
+    /// references; callers must not mutate them directly — use
+    /// <see cref="DelUnit"/> / <see cref="DelUnitGroup"/> for removal.
+    /// </summary>
+    IReadOnlyList<SkillUnit> GetUnitsInArea(uint mapId, short cx, short cy, short radius);
+
+    /// <summary>
+    /// rAthena <c>map_find_skill_unit_oncell</c> — same as
+    /// <see cref="GetUnitsInArea(uint,short,short,short)"/> but filtered to
+    /// units whose parent group's <see cref="SkillUnitGroup.SkillId"/>
+    /// matches <paramref name="skillId"/>. Used by the Land Protector
+    /// overlap gate and the per-trap targeting (SpringTrap fires only
+    /// trap-class units).
+    /// </summary>
+    IReadOnlyList<SkillUnit> GetUnitsInArea(uint mapId, short cx, short cy, short radius, ushort skillId);
 }
