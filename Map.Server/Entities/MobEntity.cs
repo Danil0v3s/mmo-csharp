@@ -14,9 +14,22 @@ namespace Map.Server.Entities;
 /// </summary>
 public class MobEntity : Entity
 {
-    public int ClassId { get; }
-    public string Name { get; }
-    public MobDbEntry? DbEntry { get; }
+    public int ClassId { get; private set; }
+    public string Name { get; private set; }
+    public MobDbEntry? DbEntry { get; private set; }
+
+    /// <summary>
+    /// rAthena <c>mob_class_change</c> (mob.cpp ~4180) — swap this
+    /// mob's identity in place. Class id / name / DbEntry change but
+    /// the EntityId, position, and Hp ratio stay; the caller is
+    /// responsible for re-broadcasting the appearance change.
+    /// </summary>
+    internal void SetClass(int newClassId, string newName, MobDbEntry? newDbEntry)
+    {
+        ClassId = newClassId;
+        Name = newName;
+        DbEntry = newDbEntry;
+    }
 
     /// <summary>Spawn declaration that birthed this mob; used by respawn.</summary>
     public MobSpawnEntry? Origin { get; }

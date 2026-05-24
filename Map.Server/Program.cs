@@ -289,6 +289,14 @@ builder.Services.AddSingleton<IPcSetposService, PcSetposService>();
 // DamageService checks the killer's PartyId and routes through this
 // service when set; falls back to single-player pc_gainexp otherwise.
 builder.Services.AddSingleton<Map.Server.Party.IPartyShareService, Map.Server.Party.PartyShareService>();
+// P0.1 — party_foreachsamemap canonical helper. Walks IEntityRegistry
+// filtered by PartyId + MapId + Hp>0; consumed by every party-broadcast
+// skill (Angelus, Magnificat, Suffragium, Impositio, Renovatio, …).
+builder.Services.AddSingleton<Map.Server.Party.IPartyMapService, Map.Server.Party.PartyMapService>();
+// P0.1 — session lookup from PlayerEntity → MapSessionData. Wraps
+// SessionManager; lets gameplay services resolve the per-PC session
+// without pulling in the network API.
+builder.Services.AddSingleton<Map.Server.Session.IMapSessionRegistry, Map.Server.Session.MapSessionRegistry>();
 // Auto-attack loop (rAthena unit.cpp:2615 unit_attack +
 // unit.cpp:3056 unit_attack_timer). Driven from the map game loop;
 // validates range/death/map every tick and chases via IMovementService.

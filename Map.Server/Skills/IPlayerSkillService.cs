@@ -46,6 +46,16 @@ public interface IPlayerSkillService
     /// <summary>rAthena <c>pc_validate_skill</c> — id + level bounds check.</summary>
     bool Validate(PlayerEntity pc, ushort skillId, int level);
 
+    /// <summary>
+    /// rAthena <c>pc_checkskill</c> (pc.cpp:498) — return the learned
+    /// level of <paramref name="skillId"/> on <paramref name="pc"/>, or
+    /// 0 if not learned. Used by every "this skill costs less SP if the
+    /// player has mastered X" formula in skill.cpp + battle.cpp.
+    /// Returns 0 when <paramref name="pc"/> is null so call sites can
+    /// pass the optional caster directly without a null guard.
+    /// </summary>
+    int CheckSkill(PlayerEntity? pc, ushort skillId);
+
     /// <summary>rAthena <c>pc_checkskill_imperial_guard</c>.</summary>
     int CheckImperialGuard(PlayerEntity pc, ushort skillId);
 

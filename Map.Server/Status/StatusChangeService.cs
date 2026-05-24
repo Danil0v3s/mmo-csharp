@@ -20,6 +20,8 @@ public sealed class StatusChangeService : IStatusChangeService
     private readonly StatusEffectRegistry _effects;
     private readonly IStatusDbFlagCache? _flagCache;
     private readonly Map.Server.Handlers.ClifWire.IClifWireService? _clif;
+    private readonly Map.Server.World.IMapFlagService? _mapFlags;
+    private readonly Map.Server.World.IMapWorldRegistry? _world;
     private readonly ILogger<StatusChangeService> _logger;
 
     /// <summary>
@@ -34,13 +36,17 @@ public sealed class StatusChangeService : IStatusChangeService
         StatusEffectRegistry effects,
         ILogger<StatusChangeService> logger,
         IStatusDbFlagCache? flagCache = null,
-        Map.Server.Handlers.ClifWire.IClifWireService? clif = null)
+        Map.Server.Handlers.ClifWire.IClifWireService? clif = null,
+        Map.Server.World.IMapFlagService? mapFlags = null,
+        Map.Server.World.IMapWorldRegistry? world = null)
     {
         _damage = damage;
         _entities = entities;
         _effects = effects;
         _flagCache = flagCache;
         _clif = clif;
+        _mapFlags = mapFlags;
+        _world = world;
         _logger = logger;
     }
 
@@ -56,6 +62,16 @@ public sealed class StatusChangeService : IStatusChangeService
         if (handler == null)
         {
             _logger.LogDebug("StatusChange.Start: no handler registered for {Type}", type);
+            return null;
+        }
+
+        // P0.5 — rAthena status_change_isDisabledOnMap gate. The map's
+        // `nostatus` flag refuses every non-permanent SC. Run before
+        // any Val storage / lifecycle hook so the SC simply doesn't
+        // attach. Permanent SCs (god-items / BasilicaCell) bypass.
+        if (IsDisabledOnMap(target.MapId, type))
+        {
+            _logger.LogDebug("StatusChange.Start: {Type} refused on map {MapId} (nostatus flag)", type, target.MapId);
             return null;
         }
 
@@ -326,9 +342,19 @@ public sealed class StatusChangeService : IStatusChangeService
     /// <inheritdoc />
     public bool IsDisabledOnMap(uint mapId, StatusType type)
     {
-        // Map-flag service (IMapFlagService.IsStatusDisabled) wires in
-        // when the `nostatus` mapflag SQL table lands. Until then we
-        // mirror rAthena's default: no restriction.
+        // P0.5 — rAthena status_change_isDisabledOnMap. The map carries
+        // a `nostatus` flag set; if active, every non-permanent SC is
+        // refused. SCs flagged ScfFlag.Permanent bypass the gate
+        // (WoE-only / god-item buffs that survive everything).
+        if (_mapFlags == null || _world == null) return false;
+        var flags = _effects.Get(type)?.Flags ?? ScfFlag.None;
+        if ((flags & ScfFlag.Permanent) != 0) return false;
+        // Hashed-name → MapData same as MovementService.
+        foreach (var map in _world.All)
+        {
+            if ((uint)map.Name.GetHashCode() != mapId) continue;
+            return _mapFlags.IsSet(map.Name, Map.Server.World.MapFlag.NoStatus);
+        }
         return false;
     }
 

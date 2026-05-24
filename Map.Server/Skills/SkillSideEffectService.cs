@@ -1,5 +1,6 @@
 using Map.Server.Entities;
 using Map.Server.Inventory;
+using Map.Server.Session;
 using Map.Server.Status;
 using Microsoft.Extensions.Logging;
 
@@ -18,17 +19,20 @@ public sealed class SkillSideEffectService : ISkillSideEffectService
     private readonly ISkillDb _db;
     private readonly ILogger<SkillSideEffectService> _logger;
     private readonly IStatusChangeService? _sc;
+    private readonly IMapSessionRegistry? _sessions;
     private readonly Random _rng;
 
     public SkillSideEffectService(
         ISkillDb db,
         ILogger<SkillSideEffectService> logger,
         IStatusChangeService? sc = null,
+        IMapSessionRegistry? sessions = null,
         Random? rng = null)
     {
         _db = db;
         _logger = logger;
         _sc = sc;
+        _sessions = sessions;
         _rng = rng ?? Random.Shared;
     }
 
@@ -56,10 +60,32 @@ public sealed class SkillSideEffectService : ISkillSideEffectService
 
     public bool BreakEquip(Entity src, Entity target, int equipMask, int rate)
     {
-        // rAthena rolls a chance against `rate` and flips the
-        // equip's `attribute` flag to broken. Requires the inventory
-        // BrokenFlag column to be plumbed onto the equip table.
-        _logger.LogDebug("skill_break_equip: mask=0x{Mask:X} rate={Rate} (data-pending)", equipMask, rate);
+        // rAthena: skill_break_equip (skill.cpp ~5856) rolls a single
+        // chance against `rate` (units = 0.01% i.e. 10000 = 100%). On
+        // success, picks the first equipped item whose slot intersects
+        // `equipMask`, sets `attribute |= 1` (the "broken" flag), and
+        // unequips it. PvE break chains expect this exact behavior so
+        // the on-hit pipeline can stack break + dispel cleanly.
+        if (target is not PlayerEntity pc) return false;
+        if (rate <= 0) return false;
+        if (_rng.Next(10000) >= rate) return false;
+
+        var session = _sessions?.TryGet(pc);
+        if (session?.Inventory is not { } inv) return false;
+        foreach (var item in inv)
+        {
+            if (item.Amount == 0) continue;
+            if ((item.Equip & (uint)equipMask) == 0) continue;
+            // rAthena Attribute bit 0 = broken. Also clear the Equip
+            // bits so EquipBonusAggregator's next recalc drops this
+            // item from the live stat block.
+            item.Attribute |= 1;
+            item.Equip = 0;
+            _logger.LogInformation(
+                "skill_break_equip: pc={Char} broke item {ItemId} (slot mask 0x{Mask:X})",
+                pc.CharacterId, item.NameId, equipMask);
+            return true;
+        }
         return false;
     }
 

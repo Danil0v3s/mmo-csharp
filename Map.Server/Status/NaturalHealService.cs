@@ -79,10 +79,20 @@ public sealed class NaturalHealService : INaturalHealService
                     // status_check_natural_heal). Walk-not-allowed +
                     // standing still still yields zero regen.
                     var bleeding = _sc?.Get(entity, StatusType.Bleeding) != null;
-                    if (!bleeding)
+                    // P0.3 — SC_SATURDAYNIGHTFEVER also suppresses HP regen
+                    // (rAthena WL_SATURDAY_NIGHT_FEVER: all heals blocked).
+                    var snf = _sc?.Get(entity, StatusType.Saturdaynightfever) != null;
+                    if (!bleeding && !snf)
                     {
                         var amount = 1 + s.MaxHp / 200 + s.Vit / 5;
                         if (sitting) amount *= 2;
+                        // P0.3 — SC_INSPIRATION (Royal Guard) accelerates HP regen
+                        // by val1 % (status.cpp:11366 area). Read Val1 directly.
+                        var inspiration = _sc?.Get(entity, StatusType.Inspiration);
+                        if (inspiration != null && inspiration.Val1 > 0)
+                        {
+                            amount = amount * (100 + inspiration.Val1) / 100;
+                        }
                         s.Hp = Math.Min(s.MaxHp, s.Hp + amount);
                     }
                 }

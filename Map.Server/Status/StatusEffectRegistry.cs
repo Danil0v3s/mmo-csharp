@@ -678,6 +678,19 @@ public sealed class StatusEffectRegistry
         // ====================================================================
         RegisterWave4aBespokeFormulas();
 
+        // ====================================================================
+        // P0.2 — Class B extension. Continues the wave 4a/4b pattern for
+        // SCs whose rAthena `status.cpp` switch sets val2 / val3 to a
+        // bespoke formula that the +Val1 generator default would mis-
+        // approximate. Each Register call inlines the rAthena formula
+        // and stores the absolute delta in `sc.Val2`/`Val3` so OnEnd
+        // round-trips cleanly even when the underlying base stat moves
+        // (relog, equip change, level up).
+        //
+        // Per-row citation is the line number in `rathena/src/map/status.cpp`.
+        // ====================================================================
+        RegisterP0Wave2BespokeFormulas();
+
         // ===== ST.9-ST.12 bulk backfill =====
         // Every remaining StatusType enum value gets a NoOpHandler with
         // explicit flags so the SC engine's classification methods
@@ -2998,6 +3011,23 @@ public sealed class StatusEffectRegistry
             Flags: flags);
 
     /// <summary>
+    /// P0.2 helper — apply <paramref name="delta"/> to every base stat
+    /// (Str/Agi/Vit/Int/Dex/Luk). Used by all-stats buffs / debuffs
+    /// like <c>SC_HEAVEN_AND_EARTH</c> and
+    /// <c>SC_TALISMAN_OF_FIVE_ELEMENTS</c>; cheaper than enumerating
+    /// the stat fields at each call site.
+    /// </summary>
+    private static void ApplyBaseStatDelta(Entity target, short delta)
+    {
+        target.Stats.Str = (short)Math.Max(0, Math.Min(short.MaxValue, target.Stats.Str + delta));
+        target.Stats.Agi = (short)Math.Max(0, Math.Min(short.MaxValue, target.Stats.Agi + delta));
+        target.Stats.Vit = (short)Math.Max(0, Math.Min(short.MaxValue, target.Stats.Vit + delta));
+        target.Stats.IntStat = (short)Math.Max(0, Math.Min(short.MaxValue, target.Stats.IntStat + delta));
+        target.Stats.Dex = (short)Math.Max(0, Math.Min(short.MaxValue, target.Stats.Dex + delta));
+        target.Stats.Luk = (short)Math.Max(0, Math.Min(short.MaxValue, target.Stats.Luk + delta));
+    }
+
+    /// <summary>
     /// NS-3 wave 2 — bulk-register a handler for every
     /// <see cref="StatusType"/> enum value not yet covered by an
     /// explicit handler above. Two paths:
@@ -3031,6 +3061,406 @@ public sealed class StatusEffectRegistry
     /// <c>Register(StatusType.X, new StatusEffectHandler(...))</c>
     /// earlier in the ctor — those wins by dictionary overwrite.
     /// </summary>
+    /// <summary>
+    /// P0.2 — bespoke-formula port-overs for ~25 4th-class / Cardinal /
+    /// Mechanic / Trobador / Sky Emperor SCs whose rAthena
+    /// <c>status.cpp</c> assigns val2/val3 to a specific non-+Val1
+    /// expression. Generator's default would still apply +val1 to each
+    /// CalcFlag field (directionally OK) but the magnitudes wouldn't
+    /// match rAthena's authoritative numbers — these handlers fix that.
+    /// </summary>
+    private void RegisterP0Wave2BespokeFormulas()
+    {
+        // SC_EXEEDBREAK (NC_EXEEDBREAK) — status.cpp:11772
+        // val2 = 150 * val1 → damage % bonus (combat-side reader on
+        // BattleCalculator picks this up via sc.Val2).
+        Register(StatusType.Exeedbreak, new StatusEffectHandler(
+            OnStart: (target, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 150 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_DANCEWITHWUG (RA_DANCEWITHWUG) — status.cpp:11743-11744
+        // val3 = 5 * val1 ASPD, val4 = 20 + 10*val1 fixed-cast reduction.
+        // Apply AspdRate; the fixed-cast read happens in SkillCastTimingService.
+        Register(StatusType.Dancewithwug, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var aspd = 5 * sc.Val1;
+                sc.Val3 = aspd;
+                sc.Val4 = 20 + 10 * sc.Val1;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + aspd);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(short.MinValue, target.Stats.AspdRate - sc.Val3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_LERADSDEW (WM_LERADS_DEW) — status.cpp:11747
+        // val3 = 2 + 3*val1 + min(3*val2, 25) — MaxHP% boost.
+        // MaxHpRate is on EquipBonusBundle; on the BattleStats directly
+        // we don't have a percent-bonus field, but the value gets read
+        // on next CalcPc via the SC. Store the delta so OnEnd reverts.
+        Register(StatusType.Leradsdew, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var pct = 2 + 3 * sc.Val1 + Math.Min(3 * sc.Val2, 25);
+                sc.Val3 = pct;
+                var bonus = target.Stats.MaxHp * pct / 100;
+                target.Stats.MaxHp = Math.Min(int.MaxValue / 2, target.Stats.MaxHp + bonus);
+            },
+            OnEnd: (target, sc) =>
+            {
+                var bonus = target.Stats.MaxHp * sc.Val3 / (100 + sc.Val3);
+                target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - bonus);
+                if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_MELODYOFSINK (WM_MELODYOFSINK) — status.cpp:11750-11751
+        // val2 = 10*val1 INT reduction, val3 = 2+2*val1 MaxSP% reduction.
+        Register(StatusType.Melodyofsink, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var intDrop = (short)(10 * sc.Val1);
+                var spPct = 2 + 2 * sc.Val1;
+                sc.Val2 = intDrop;
+                sc.Val3 = spPct;
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - intDrop);
+                var spDelta = target.Stats.MaxSp * spPct / 100;
+                target.Stats.MaxSp = Math.Max(1, target.Stats.MaxSp - spDelta);
+                if (target.Stats.Sp > target.Stats.MaxSp) target.Stats.Sp = target.Stats.MaxSp;
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val2);
+                var spDelta = target.Stats.MaxSp * sc.Val3 / (100 - sc.Val3);
+                target.Stats.MaxSp = Math.Min(int.MaxValue / 2, target.Stats.MaxSp + spDelta);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_COMPETENTIA (CD_COMPETENTIA) — status.cpp:12479
+        // val2 = 10*val1 → PAtk + SMatk
+        Register(StatusType.Competentia, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var b = 10 * sc.Val1;
+                sc.Val2 = b;
+                target.Stats.Patk += (short)(b);
+                target.Stats.Smatk += (short)(b);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Patk -= (short)sc.Val2;
+                target.Stats.Smatk -= (short)sc.Val2;
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_RELIGIO + SC_BENEDICTUM (CD_RELIGIO / CD_BENEDICTUM) — status.cpp:12483
+        // val2 = 2 * val1 → trait stats boost. The 6 trait stats
+        // (POW/STA/WIS/SPL/CON/CRT) each get +val2.
+        var traitBuff = new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var b = 2 * sc.Val1;
+                sc.Val2 = b;
+                target.Stats.Pow = (short)Math.Min(short.MaxValue, target.Stats.Pow + b);
+                target.Stats.Sta = (short)Math.Min(short.MaxValue, target.Stats.Sta + b);
+                target.Stats.Wis = (short)Math.Min(short.MaxValue, target.Stats.Wis + b);
+                target.Stats.Spl = (short)Math.Min(short.MaxValue, target.Stats.Spl + b);
+                target.Stats.Con = (short)Math.Min(short.MaxValue, target.Stats.Con + b);
+                target.Stats.Crt = (short)Math.Min(short.MaxValue, target.Stats.Crt + b);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Pow = (short)Math.Max(0, target.Stats.Pow - sc.Val2);
+                target.Stats.Sta = (short)Math.Max(0, target.Stats.Sta - sc.Val2);
+                target.Stats.Wis = (short)Math.Max(0, target.Stats.Wis - sc.Val2);
+                target.Stats.Spl = (short)Math.Max(0, target.Stats.Spl - sc.Val2);
+                target.Stats.Con = (short)Math.Max(0, target.Stats.Con - sc.Val2);
+                target.Stats.Crt = (short)Math.Max(0, target.Stats.Crt - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout);
+        Register(StatusType.Religio, traitBuff);
+        Register(StatusType.Benedictum, traitBuff);
+
+        // SC_POTENT_VENOM (Abyss Chaser POTENT_VENOM) — status.cpp:12490
+        // val2 = 2*val1 Res-pierce percent (combat-side reader).
+        Register(StatusType.PotentVenom, new StatusEffectHandler(
+            OnStart: (target, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 2 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_D_MACHINE (NW_AUTO_DEFENSE_MACHINE) — status.cpp:12497-12498
+        // val2 = 200 + 50*val1 Def, val3 = 20*val1 Res
+        Register(StatusType.DMachine, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var def = (short)(200 + 50 * sc.Val1);
+                var res = 20 * sc.Val1;
+                sc.Val2 = def;
+                sc.Val3 = res;
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + def);
+                target.Stats.Res += (short)(res);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val2);
+                target.Stats.Res -= (short)sc.Val3;
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_ABYSS_SLAYER (ABC_FROM_THE_ABYSS) — status.cpp:12515-12516
+        // val2 = 10 + 2*val1 → PAtk + SMatk
+        // val3 = 100 + 20*val1 → Hit flat
+        Register(StatusType.AbyssSlayer, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var psm = 10 + 2 * sc.Val1;
+                var hit = 100 + 20 * sc.Val1;
+                sc.Val2 = psm;
+                sc.Val3 = hit;
+                target.Stats.Patk += (short)(psm);
+                target.Stats.Smatk += (short)(psm);
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + hit);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Patk -= (short)sc.Val2;
+                target.Stats.Smatk -= (short)sc.Val2;
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_WINDSIGN (NW_THE_VIGILANTE) — status.cpp:12519-12521
+        // val2 = 8 + 6*val1, then +2 at val1==5 (= 40% at lv5).
+        // AP-on-attack chance — combat-side reader.
+        Register(StatusType.Windsign, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0)
+                {
+                    var v = 8 + 6 * sc.Val1;
+                    if (sc.Val1 == 5) v += 2;
+                    sc.Val2 = v;
+                }
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_GEF_NOCTURN + SC_AIN_RHAPSODY — status.cpp:12528
+        // val2 = 10*val1 Res/MRes decrease (doubled if partner — val3&2).
+        // Generator emits +val1 to Res / MRes which is wrong direction
+        // AND wrong scale. Override with the proper -val2 reduction.
+        Register(StatusType.GefNocturn, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var v = 10 * sc.Val1;
+                if ((sc.Val3 & 2) != 0) v *= 2;
+                sc.Val2 = v;
+                target.Stats.Mres -= (short)(v);
+            },
+            OnEnd: (target, sc) => { target.Stats.Mres += (short)sc.Val2; },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        Register(StatusType.AinRhapsody, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var v = 10 * sc.Val1;
+                if ((sc.Val3 & 2) != 0) v *= 2;
+                sc.Val2 = v;
+                target.Stats.Res -= (short)(v);
+            },
+            OnEnd: (target, sc) => { target.Stats.Res += (short)sc.Val2; },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_MUSICAL_INTERLUDE — status.cpp:12533
+        // val2 = 5 + 5*val1 → Res+ (doubled if partner).
+        Register(StatusType.MusicalInterlude, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var v = 5 + 5 * sc.Val1;
+                if ((sc.Val3 & 2) != 0) v *= 2;
+                sc.Val2 = v;
+                target.Stats.Res += (short)(v);
+            },
+            OnEnd: (target, sc) => { target.Stats.Res -= (short)sc.Val2; },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_JAWAII_SERENADE — status.cpp:12538
+        // val2 = 3*val1 → SMatk (doubled if partner).
+        Register(StatusType.JawaiiSerenade, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var v = 3 * sc.Val1;
+                if ((sc.Val3 & 2) != 0) v *= 2;
+                sc.Val2 = v;
+                target.Stats.Smatk += (short)(v);
+            },
+            OnEnd: (target, sc) => { target.Stats.Smatk -= (short)sc.Val2; },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_PRON_MARCH — status.cpp:12543
+        // val2 = 3*val1 → PAtk (doubled if partner).
+        Register(StatusType.PronMarch, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var v = 3 * sc.Val1;
+                if ((sc.Val3 & 2) != 0) v *= 2;
+                sc.Val2 = v;
+                target.Stats.Patk += (short)(v);
+            },
+            OnEnd: (target, sc) => { target.Stats.Patk -= (short)sc.Val2; },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SPELL_ENCHANTING — status.cpp:12548
+        // val2 = 4*val1 → SMatk
+        Register(StatusType.SpellEnchanting, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var v = 4 * sc.Val1;
+                sc.Val2 = v;
+                target.Stats.Smatk += (short)(v);
+            },
+            OnEnd: (target, sc) => { target.Stats.Smatk -= (short)sc.Val2; },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_WEAPONBREAKER (ASC_BREAKER chance setter) — status.cpp:12590
+        // val2 = val1 * 2 * 100 → break chance %. Combat-side roller.
+        Register(StatusType.Weaponbreaker, new StatusEffectHandler(
+            OnStart: (target, sc, _) => { if (sc.Val2 == 0) sc.Val2 = sc.Val1 * 200; },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_HIDDEN_CARD (ABC_HIDDEN_CARD) — status.cpp:12596-12597
+        // val2 = 3*val1 → SMatk+, val3 = 10*val1 → bonus damage % vs all races
+        Register(StatusType.HiddenCard, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var smatk = 3 * sc.Val1;
+                var bonus = 10 * sc.Val1;
+                sc.Val2 = smatk;
+                sc.Val3 = bonus;
+                target.Stats.Smatk += (short)(smatk);
+            },
+            OnEnd: (target, sc) => { target.Stats.Smatk -= (short)sc.Val2; },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_TALISMAN_OF_WARRIOR + SC_TALISMAN_OF_MAGICIAN — status.cpp:12608
+        // val2 = 2*val1 → PAtk (warrior) / SMatk (magician)
+        Register(StatusType.TalismanOfWarrior, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var v = 2 * sc.Val1;
+                sc.Val2 = v;
+                target.Stats.Patk += (short)(v);
+            },
+            OnEnd: (target, sc) => { target.Stats.Patk -= (short)sc.Val2; },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        Register(StatusType.TalismanOfMagician, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var v = 2 * sc.Val1;
+                sc.Val2 = v;
+                target.Stats.Smatk += (short)(v);
+            },
+            OnEnd: (target, sc) => { target.Stats.Smatk -= (short)sc.Val2; },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_T_FIFTH_GOD — status.cpp:12611
+        // val2 = 5*val1 → SMatk (CalcFlags: Smatk).
+        Register(StatusType.TFifthGod, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var v = 5 * sc.Val1;
+                sc.Val2 = v;
+                target.Stats.Smatk += (short)v;
+            },
+            OnEnd: (target, sc) => { target.Stats.Smatk -= (short)sc.Val2; },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_TALISMAN_OF_FIVE_ELEMENTS — status.cpp:12614
+        // val2 = 4*val1 → all six base stats (CalcFlags: Str/Agi/Vit/Int/Dex/Luk).
+        Register(StatusType.TalismanOfFiveElements, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var v = 4 * sc.Val1;
+                sc.Val2 = v;
+                ApplyBaseStatDelta(target, (short)v);
+            },
+            OnEnd: (target, sc) => { ApplyBaseStatDelta(target, (short)(-sc.Val2)); },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_HEAVEN_AND_EARTH — status.cpp:12617
+        // val2 = 5 + 2*val1 → all six base stats (CalcFlags: same as above).
+        Register(StatusType.HeavenAndEarth, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var v = 5 + 2 * sc.Val1;
+                sc.Val2 = v;
+                ApplyBaseStatDelta(target, (short)v);
+            },
+            OnEnd: (target, sc) => { ApplyBaseStatDelta(target, (short)(-sc.Val2)); },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_TEMPORARY_COMMUNION — status.cpp:12620
+        // val2 = 3*val1 → Patk + Smatk + Hplus (CalcFlags: Patk/Smatk/Hplus).
+        Register(StatusType.TemporaryCommunion, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var v = 3 * sc.Val1;
+                sc.Val2 = v;
+                target.Stats.Patk += (short)v;
+                target.Stats.Smatk += (short)v;
+                target.Stats.Hplus = (short)Math.Min(short.MaxValue, target.Stats.Hplus + v);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Patk -= (short)sc.Val2;
+                target.Stats.Smatk -= (short)sc.Val2;
+                target.Stats.Hplus = (short)Math.Max(0, target.Stats.Hplus - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_BLESSING_OF_M_CREATURES — status.cpp:12631
+        // val2 = 10*val1 → PAtk + SMatk (CalcFlags: Patk/Smatk).
+        Register(StatusType.BlessingOfMCreatures, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var v = 10 * sc.Val1;
+                sc.Val2 = v;
+                target.Stats.Patk += (short)v;
+                target.Stats.Smatk += (short)v;
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Patk -= (short)sc.Val2;
+                target.Stats.Smatk -= (short)sc.Val2;
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_WILD_WALK (SH_WILD_WALK) — status.cpp:12641-12642
+        // val2 = (1 + val1/2) * 25 → Hit
+        // val3 = 50 + 50*val1 → AspdRate%
+        Register(StatusType.WildWalk, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var hit = (1 + sc.Val1 / 2) * 25;
+                var aspd = 50 + 50 * sc.Val1;
+                sc.Val2 = hit;
+                sc.Val3 = aspd;
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + hit);
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + aspd);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val2);
+                target.Stats.AspdRate = (short)Math.Max(short.MinValue, target.Stats.AspdRate - sc.Val3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+    }
+
     private void RegisterDefaultsForMissingTypes()
     {
         foreach (StatusType type in System.Enum.GetValues<StatusType>())

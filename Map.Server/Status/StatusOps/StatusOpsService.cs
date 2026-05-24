@@ -46,6 +46,21 @@ public sealed class StatusOpsService : IStatusOpsService
 
     public int Heal(Entity bl, long hp, long sp, byte flag)
     {
+        // P0.3 — SC consumer reads on the heal pipeline.
+        // SC_SATURDAYNIGHTFEVER suppresses ALL healing while active
+        // (rAthena status.cpp: SaturdayNightFever sets heal-rate to 0).
+        if (_sc.Get(bl, StatusType.Saturdaynightfever) != null) return 0;
+
+        // SC_AKAITSUKI flips heal sign on the target — the heal amount
+        // becomes damage instead. rAthena AB_AKAITSUKI: "all heals on
+        // the target are converted to damage." Implementation: zap
+        // the HP delta and short-circuit.
+        if (hp > 0 && _sc.Get(bl, StatusType.Akaitsuki) != null)
+        {
+            Zap(bl, hp, 0);
+            return 0;
+        }
+
         if (bl is PlayerEntity pc)
         {
             if (hp > 0) pc.Hp = Math.Min(pc.MaxHp, pc.Hp + (int)hp);

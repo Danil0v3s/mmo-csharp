@@ -52,4 +52,6 @@ public enum MapFlag
     NoMemo,
     /// <summary>GvG-zone damage rules apply.</summary>
     Gvg,
+    /// <summary>SC application refused (rAthena <c>nostatus</c> mapflag).</summary>
+    NoStatus,
 }

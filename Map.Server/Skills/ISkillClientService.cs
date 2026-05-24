@@ -99,4 +99,22 @@ public interface ISkillClientService
     /// Freeze / Sleep starting mid-cast).
     /// </summary>
     void BroadcastSkillCastCancel(Entity caster);
+
+    /// <summary>
+    /// rAthena <c>clif_skill_estimation</c> (clif.cpp ~5980) — emits
+    /// the Sense / Estimation result frame to the caster (self-only).
+    /// Carries the target mob's class / level / HP / def / element /
+    /// per-element damage modifiers. Used by Mage's MG_SENSE and
+    /// the Hunter / Sniper Estimation skill chain.
+    /// </summary>
+    void BroadcastSkillEstimation(PlayerEntity caster, Entity targetMob);
+
+    /// <summary>
+    /// rAthena <c>clif_cooking_list</c> (clif.cpp:14076) — opens the
+    /// Pharmacy / Cooking / Mado-mechanic produce dialog with the
+    /// list of recipes the caster can attempt at the current
+    /// produce-type. <paramref name="produceType"/> mirrors
+    /// rAthena's <c>e_skill_produce_type</c>.
+    /// </summary>
+    void BroadcastCookingList(PlayerEntity caster, int produceType, IReadOnlyList<ushort> craftableItemIds);
 }

@@ -167,6 +167,12 @@ public sealed class DamageService : IDamageService
 
         BroadcastAct(target, source, actual, action);
 
+        // P0.3 — SC post-resolve reflect / sacrifice consumers. Read the
+        // target's reflect SCs and feed back a slice of the dealt damage
+        // to the attacker. Runs AFTER BroadcastAct so the original hit
+        // animates first, then the reflect (matches rAthena ordering).
+        ApplyScPostResolve(target, source, actual);
+
         var remaining = currentHp - actual;
         if (remaining <= 0)
         {
@@ -234,7 +240,93 @@ public sealed class DamageService : IDamageService
             damage = Math.Max(1, damage / 10);
         }
 
+        // ---- Defender ---------------------------------------------------
+        // P0.3 — rAthena Crusader Defender. Val1 stores the per-level
+        // ranged-attack reduction (5+5*Val1 %). The SC's CalcFlag
+        // already mutates Def via the generator default; here we apply
+        // an additional incoming-damage reduction for ranged hits.
+        // First slice: treat every hit as ranged for the read (combat
+        // pipeline doesn't pass attack-range info to this method yet).
+        // When the range param threads through, gate on RANGED only.
+        var defender = _sc.Get(target, StatusType.Defender);
+        if (defender != null && defender.Val1 > 0)
+        {
+            var defPct = 5 + 5 * defender.Val1;
+            damage = Math.Max(1, damage - (damage * defPct / 100));
+        }
+
+        // ---- Aeterna ---------------------------------------------------
+        // P0.3 — rAthena Priest Lex Aeterna (status.cpp:11297). Next
+        // hit on the target deals doubled damage; SC ends on consume.
+        // The doubling applies on the FIRST hit after attach, then SC
+        // ends regardless of which path delivered the damage.
+        if (_sc.Get(target, StatusType.Aeterna) != null)
+        {
+            damage *= 2;
+            _sc.End(target, StatusType.Aeterna);
+        }
+
         return damage;
+    }
+
+    /// <summary>
+    /// P0.3 — post-resolve reflect / sacrifice / reflectdamage. Runs
+    /// AFTER damage commits to the target so the attacker takes back
+    /// a slice of the damage they dealt.
+    ///
+    /// rAthena reference: <c>battle_check_dmg_reflect</c> (battle.cpp)
+    /// + Sacrifice devotion link (status.cpp). For now applies the
+    /// reflect deltas directly; future iteration threads the reflect
+    /// chain through <c>IBattleReflectService</c>.
+    /// </summary>
+    private void ApplyScPostResolve(Entity target, Entity? source, int damageDealt)
+    {
+        if (_sc == null || damageDealt <= 0 || source == null) return;
+
+        // SC_REFLECTSHIELD — feed back Val2 % of damage to the attacker.
+        // rAthena defaults Val2 to 10+3*val1 (Paladin), 15+5*val1 (Cardinal).
+        // We read whatever the caster stored; combat-side consumer here.
+        var reflect = _sc.Get(target, StatusType.Reflectshield);
+        if (reflect != null && reflect.Val2 > 0 && source != target)
+        {
+            var back = damageDealt * reflect.Val2 / 100;
+            if (back > 0) ApplyDamage(source, back, target);
+        }
+
+        // SC_REFLECTDAMAGE — Royal Guard reflect with cell-range scope.
+        // First slice: same as Reflectshield (combat-side scope refinement
+        // when the area-iterator threads through).
+        var rdmg = _sc.Get(target, StatusType.Reflectdamage);
+        if (rdmg != null && rdmg.Val2 > 0 && source != target)
+        {
+            var back = damageDealt * rdmg.Val2 / 100;
+            if (back > 0) ApplyDamage(source, back, target);
+        }
+
+        // SC_DEATHBOUND — rAthena Death Bound. Val2 stores the
+        // bounce-back % (500 + 100*val1). Triggers on melee hit.
+        var dbnd = _sc.Get(target, StatusType.Deathbound);
+        if (dbnd != null && dbnd.Val2 > 0 && source != target)
+        {
+            var back = damageDealt * dbnd.Val2 / 1000; // ‰ scale (500 = 50 %)
+            if (back > 0) ApplyDamage(source, back, target);
+            _sc.End(target, StatusType.Deathbound);
+        }
+
+        // SC_SACRIFICE — devotion-link sibling takes damage instead.
+        // First slice: the devotion target itself loses HP per hit
+        // (val2 counter decrements). Real devotion link plumbing lands
+        // when the link service ports.
+        var sacrifice = _sc.Get(target, StatusType.Sacrifice);
+        if (sacrifice != null && sacrifice.Val2 > 0)
+        {
+            // val2 is the hit counter; subtract until exhausted.
+            sacrifice.Val2 -= 1;
+            if (sacrifice.Val2 <= 0)
+            {
+                _sc.End(target, StatusType.Sacrifice);
+            }
+        }
     }
 
     private static (int Hp, int MaxHp) GetHp(Entity entity) => entity switch

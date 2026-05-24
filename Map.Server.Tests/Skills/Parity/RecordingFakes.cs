@@ -165,6 +165,21 @@ public sealed class RecordingSkillClientService : ISkillClientService
         {
             ["caster"] = (int)caster.Id,
         });
+
+    public void BroadcastSkillEstimation(PlayerEntity caster, Entity targetMob)
+        => _rec.Record("estimation", new()
+        {
+            ["caster"] = caster.CharacterId,
+            ["target"] = (int)targetMob.Id,
+        });
+
+    public void BroadcastCookingList(PlayerEntity caster, int produceType, IReadOnlyList<ushort> craftableItemIds)
+        => _rec.Record("cooking-list", new()
+        {
+            ["caster"] = caster.CharacterId,
+            ["produceType"] = produceType,
+            ["count"] = craftableItemIds.Count,
+        });
 }
 
 public sealed class RecordingStatusChangeService : IStatusChangeService
@@ -293,6 +308,11 @@ public sealed class RecordingUnitOpsService : Map.Server.Movement.UnitOps.IUnitO
     public bool MovePos(Entity bl, short x, short y, byte easy, bool checkColl)
     {
         _rec.Record("move-pos", new() { ["bl"] = (int)bl.Id, ["x"] = x, ["y"] = y });
+        return true;
+    }
+    public bool CheckUnitMovePos(Entity bl, short x, short y, byte easy)
+    {
+        _rec.Record("check-unit-movepos", new() { ["bl"] = (int)bl.Id, ["x"] = x, ["y"] = y });
         return true;
     }
 

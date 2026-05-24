@@ -70,6 +70,44 @@ public sealed class PlayerOrbService : IPlayerOrbService
         });
     }
 
+    private const int CharmCap = 10; // rAthena MAX_SPIRITCHARM
+
+    public void AddCharm(PlayerEntity pc, int elementType, int count, int durationMs)
+    {
+        if (count <= 0) return;
+        // rAthena: different element wipes existing charms.
+        if (pc.SpiritCharmType != elementType)
+        {
+            pc.SpiritCharm = 0;
+            pc.SpiritCharmType = elementType;
+        }
+        pc.SpiritCharm = Math.Min(CharmCap, pc.SpiritCharm + count);
+        if (durationMs > 0)
+        {
+            pc.SpiritCharmExpireTick = Environment.TickCount64 + durationMs;
+        }
+        // Charms broadcast via ZC_SPIRITS (rAthena clif_spiritcharm
+        // is one ZC_SPIRITS variant; reusing here is the same wire shape).
+        _visibility.SendToArea(pc, new ZC_SPIRITS
+        {
+            AccountId = (uint)pc.AccountId,
+            Amount = (short)pc.SpiritCharm,
+        });
+    }
+
+    public void RemoveCharms(PlayerEntity pc)
+    {
+        if (pc.SpiritCharm == 0) return;
+        pc.SpiritCharm = 0;
+        pc.SpiritCharmType = 0;
+        pc.SpiritCharmExpireTick = 0;
+        _visibility.SendToArea(pc, new ZC_SPIRITS
+        {
+            AccountId = (uint)pc.AccountId,
+            Amount = 0,
+        });
+    }
+
     private static (int cur, int cap) Read(PlayerEntity pc, OrbKind kind) => kind switch
     {
         OrbKind.Spirit => (pc.SpiritBall, SpiritCap),

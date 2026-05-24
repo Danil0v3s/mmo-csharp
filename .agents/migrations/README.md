@@ -27,12 +27,18 @@ Living status of the port from rAthena C++ (`/Volumes/1TB/Projetos/rathena`) to 
 
 ## Roadmap
 
-**Start here for closing the parity gap:**
+**Start here for the active worklist (2026-05-24):**
+[PARITY-REMAINING.md](PARITY-REMAINING.md) — every remaining
+gap as a single named row with rAthena citation and acceptance
+test. No "waves", no "tiers", no "stubs" framing. Re-measured
+ground truth at top.
+
+**Historical context** (tier scoreboard + landing history):
 [PARITY-CLOSURE-ROADMAP.md](PARITY-CLOSURE-ROADMAP.md) — the
-6-tier dependency-ordered plan to flip every `data-pending` entry
-point into a real rAthena-parity port. Foundation-first
-(YAML loaders → combat math → wire packets → IPC → per-file
-deep audit → endgame content).
+original 6-tier dependency-ordered plan plus the full History
+of every wave-style push (T1..T6, NS-1..NS-3, AT-A..AT-G,
+DB-1..DB-8, etc.). Active sections of this doc are now flagged
+as superseded; History is preserved.
 
 **Companion: code-completeness roadmap** —
 [CODE-COMPLETENESS-ROADMAP.md](CODE-COMPLETENESS-ROADMAP.md). This
@@ -74,6 +80,8 @@ After P7, map-server gameplay work begins against a stable interop surface.
 - DB entities: [Core.Database/Entities/](../../Core.Database/Entities/)
 
 ## History
+
+- **2026-05-24** — **Parity-closure re-baseline + new worklist doc.** Re-measured every parity-claim against HEAD (`af40ace tests baseline`) and produced [PARITY-REMAINING.md](PARITY-REMAINING.md), the single live worklist document. Replaces the "waves" / "tiers" framing for in-progress work; the old `PARITY-CLOSURE-ROADMAP.md` is now historical (tier scoreboard + landing log) with a redirect banner. Ground truth at the top of `PARITY-REMAINING.md`: 0 build errors; 47 inline `data-pending` markers across 26 files; 240 `// TODO` markers across 14 of 16 skill-family directories; 1,675 of 2,439 skill `(skillId, level)` replay baselines failing (31% match rate); 107 hand-ported SC bodies + ~325 generator + ~99 explicit CombatMarker + ~465 bulk presence-only NoOp + 5 silent `sc_start*` no-ops on `ScriptedBonusHost`. Per-file parity docs at 0 ❌ in every active per-fn table, but several (`homunculus-parity.md`, `pet-parity.md`, `mercenary-parity.md`, etc.) carry ~340 stale ⚠️ rows that the AT-D / AT-E waves silently resolved in code — the docs need a resync sweep (~36 small doc-only PRs). Audit landed in this commit; no code changes.
 
 - **2026-05-23** — **DB-8z-SG — SeedGen pass for the 32 new typed catalog schemas (1 commit).** Closed task #307 by extending `Tools.RathenaImporter/` with 32 new typed-column converters covering every catalog the DB-8/AT-F/AT-G waves re-normalized. Each converter walks the rAthena YAML and emits SQL targeting the new parent + child tables.
 

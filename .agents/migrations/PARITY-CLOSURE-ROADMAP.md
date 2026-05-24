@@ -1,20 +1,22 @@
-# Parity-closure roadmap · 2026-05-20
+# Parity-closure roadmap · 2026-05-20 (active worklist superseded 2026-05-24)
 
 Companion to [CODE-COMPLETENESS-ROADMAP.md](CODE-COMPLETENESS-ROADMAP.md).
 
-**Status:** every rAthena map .cpp public function has a canonical C#
-entry point. The original survey counted **~56 data-pending markers**;
-post-Tier-1 sweep down to ~23, post-T2.2/T2.4 sweep down to **~19
-markers** (Strip / Suffragium / Memorize / Slowcast / Endure /
-ReflectShield / Magnificat closures landed). The remainder cluster
-around skill-specific behavior + per-shop registry exposure (no
-longer a data-availability problem; the data is in SQL or JSON,
-the consumer code just hasn't been wired through).
+> **🚦 Active worklist moved to [PARITY-REMAINING.md](PARITY-REMAINING.md)** (2026-05-24).
+> This file is retained for its tier scoreboard + history. New
+> work is tracked as discrete, named gaps in `PARITY-REMAINING.md` —
+> not as "waves" or "tiers", and not against stubs. If you're
+> picking up the next task, open `PARITY-REMAINING.md`.
 
-**Latest session (2026-05-20):** Tier 2 substantially advanced —
-T2.2 + T2.4a + T2.4b + four combat-side SC consumer closures
-(SteelBody / Kyrie / AutoGuard / Bleeding / Magnificat / Strip).
-~51 new tests. See History.
+**Status (2026-05-24):** every rAthena map .cpp public function
+has a canonical C# entry point; structural completeness gates pass
+(`StatusEffectCompletenessTests`, `dotnet build` clean). The
+remaining gap is **behavioral depth**: 1,675 of 2,439 skill replay
+baselines fail, 240 `// TODO` markers inside ported skill plugins,
+~50 SCs whose bespoke formula isn't yet hand-ported, 5 silent
+no-op `sc_start*` methods on `ScriptedBonusHost`, 47 inline
+`data-pending` markers in production code. Concrete counts +
+acceptance criteria for each one are in `PARITY-REMAINING.md`.
 
 ## Tier scoreboard (re-evaluated 2026-05-22 after T5 + T6 sweeps)
 
@@ -948,6 +950,39 @@ gameplay on Tier 4 completeness if Tier 1–3 already cover the
 hot path.
 
 ## History
+
+### 2026-05-24 — Active worklist superseded by `PARITY-REMAINING.md`
+
+Stops the "waves" / "tiers" framing for ongoing work. Every
+remaining behavioral-parity gap is now tracked as a single
+named row in [PARITY-REMAINING.md](PARITY-REMAINING.md) with
+a rAthena citation, an owner file, and a single-PR-sized
+acceptance criterion. The tier scoreboard above and the full
+history below are retained for context; the "Next steps" /
+"Next concrete tasks" / "Suggested next PR" sections are
+superseded.
+
+Re-measured ground truth (commit `af40ace`):
+
+- 0 build errors / 0 warnings; full Map.Server.Tests passes.
+- 47 `data-pending` markers across 26 production files (down
+  from the original 56 surveyed in 2026-05-20).
+- 240 `// TODO` markers across 14 of 16 ported skill-family
+  directories — each tied to a cited rAthena helper or local
+  detail that hasn't ported yet.
+- 1,675 of 2,439 skill `(skillId, level)` replay baselines
+  fail; unchanged from 2026-05-23 because NS-3 waves 4a..6
+  + 5a..5f all addressed the SC-engine layer, not skill body
+  bodies.
+- SC handler completeness 1,006 / 1,006 structural; behavioral
+  composition 107 bespoke + ~325 generator + ~99 CombatMarker
+  + ~465 bulk presence-only NoOp + ~10 OnPeriodic.
+- 5 silent no-op methods remain on `ScriptedBonusHost`
+  (`sc_start`, `sc_start2`, `sc_start4`, `sc_end`, `bonus5`).
+- Per-file `map/*-parity.md` docs at 0 ❌ in every active
+  per-function table; ~340 stale ⚠️ rows across 36 docs (the
+  code shipped real bodies via AT-D / AT-E / NS-3 / DB-8;
+  docs need a resync sweep).
 
 ### 2026-05-24 — NS-3 wave 5d: Class A family-grouped continuation (33 SCs across 7 families)
 

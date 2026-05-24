@@ -32,6 +32,24 @@ public interface IEquipService
     /// item was wearing (0 on failure).
     /// </summary>
     EquipOpResult Unequip(MapSessionData session, int serverIndex, out uint clearedPos);
+
+    /// <summary>
+    /// rAthena <c>pc_checkequip</c> (pc.cpp:6193) — return the
+    /// inventory index of the item equipped in the slots specified
+    /// by <paramref name="equipPos"/>, or -1 if nothing is equipped
+    /// there. Used by every skill formula that branches on equipped
+    /// gear ("does this character have a shield?", "is the right
+    /// hand a bow?", etc.). The bit positions match
+    /// <see cref="EquipBits"/>.
+    /// </summary>
+    int CheckEquip(MapSessionData session, uint equipPos);
+
+    /// <summary>
+    /// Convenience overload — looks up the equipped row directly
+    /// rather than the inventory index. Returns null if nothing is
+    /// equipped at the requested slot.
+    /// </summary>
+    InventoryItem? FindEquipped(MapSessionData session, uint equipPos);
 }
 
 /// <summary>

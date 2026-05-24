@@ -23,11 +23,13 @@ public sealed class BattleCalculator : IBattleCalculator
 {
     private readonly Random _rng;
     private readonly IBattleCardService? _cards;
+    private readonly IStatusChangeService? _sc;
 
-    public BattleCalculator(Random? rng = null, IBattleCardService? cards = null)
+    public BattleCalculator(Random? rng = null, IBattleCardService? cards = null, IStatusChangeService? sc = null)
     {
         _rng = rng ?? Random.Shared;
         _cards = cards;
+        _sc = sc;
     }
 
     public BattleDamage CalcWeaponAttack(Entity source, Entity target)
@@ -67,7 +69,11 @@ public sealed class BattleCalculator : IBattleCalculator
         }
 
         // --- Step 3: base damage  (battle.cpp:2453 battle_calc_base_damage, renewal) ---
-        long damage = CalcBaseDamage(s, isCritical);
+        // P0.3 — SC_MAXIMIZEPOWER forces the weapon roll to its max value
+        // (Whitesmith Maximize Power; rAthena status.cpp:11268). Pass the
+        // SC presence through so CalcBaseDamage picks atkMax.
+        var forceMaxRoll = _sc?.Get(source, StatusType.Maximizepower) != null;
+        long damage = CalcBaseDamage(s, isCritical, forceMaxRoll);
 
         // Mob/PC distinction: PCs would get size-mod via inventory atkmods.
         // Until equip is parsed, apply the default mob size-mod table.
@@ -138,13 +144,16 @@ public sealed class BattleCalculator : IBattleCalculator
     /// atk, rolls between them, adds <c>batk</c>, applies the +40% crit
     /// modifier from rAthena's <c>#ifdef RENEWAL</c> tail.
     /// </summary>
-    private long CalcBaseDamage(BattleStats s, bool isCritical)
+    private long CalcBaseDamage(BattleStats s, bool isCritical, bool forceMaxRoll = false)
     {
         int atkMin = s.WatkMin;
         int atkMax = s.WatkMax;
         if (atkMin > atkMax) atkMin = atkMax;
 
-        long dmg = isCritical
+        // P0.3 — Maximize Power / critical hits use atkMax. The
+        // SC_MAXIMIZEPOWER (Whitesmith) flag forces every swing to
+        // max roll matching rAthena's status_calc_*_atk fast path.
+        long dmg = (isCritical || forceMaxRoll)
             ? atkMax
             : (atkMax > atkMin ? _rng.Next(atkMin, atkMax + 1) : atkMin);
 

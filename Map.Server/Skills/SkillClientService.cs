@@ -113,4 +113,60 @@ public sealed class SkillClientService : ISkillClientService
         // caster sees their own fail messages.
         _visibility.SendToSelf(caster, packet);
     }
+
+    public void BroadcastSkillEstimation(PlayerEntity caster, Entity targetMob)
+    {
+        // rAthena: clif_skill_estimation packs the target's BattleStats
+        // (class, level, size, def, race, mdef, element, ele_lv) and the
+        // 9-element attribute damage modifier table. The per-element
+        // table reads from rAthena's `attr_fix_table[ele_lv][src_ele][tgt_ele]`
+        // — we don't yet expose a public helper for that, so emit zeros
+        // (client renders no per-element shading) until the lookup wires.
+        ushort classId = 0;
+        ushort level = 0;
+        ushort size = 0;
+        int hp = 0;
+        ushort def = 0;
+        ushort race = 0;
+        ushort mdef = 0;
+        ushort element = 0;
+        byte elementLv = 0;
+        if (targetMob is MobEntity mob)
+        {
+            classId = (ushort)mob.ClassId;
+            level = (ushort)mob.Level;
+            size = (ushort)mob.Stats.Size;
+            hp = mob.Hp;
+            def = (ushort)mob.Stats.Def;
+            race = (ushort)mob.Stats.Race;
+            mdef = (ushort)mob.Stats.Mdef;
+            element = (ushort)mob.Stats.DefenseElement;
+            elementLv = mob.Stats.ElementLevel;
+        }
+        var packet = new ZC_MONSTER_INFO
+        {
+            ClassId = classId,
+            Level = level,
+            Size = size,
+            Hp = hp,
+            Def = def,
+            Race = race,
+            Mdef = mdef,
+            Element = element,
+            ElementLv = elementLv,
+            // Per-element damage modifier table — left at 0 until the
+            // attr_fix lookup helper exposes a public read.
+        };
+        _visibility.SendToSelf(caster, packet);
+    }
+
+    public void BroadcastCookingList(PlayerEntity caster, int produceType, IReadOnlyList<ushort> craftableItemIds)
+    {
+        var packet = new ZC_MAKABLEITEMLIST
+        {
+            ListType = (short)produceType,
+            ItemIds = craftableItemIds,
+        };
+        _visibility.SendToSelf(caster, packet);
+    }
 }

@@ -60,6 +60,25 @@ public sealed class PlayerEntity : Entity
     /// <summary>Persisted Job level — base level lives on <see cref="Entity.Level"/>.</summary>
     public int JobLevel { get; set; } = 1;
 
+    /// <summary>
+    /// rAthena <c>status.class_</c> — the Aegis job id (0=Novice,
+    /// 1=Swordman, …). Sourced from char-server at session enter,
+    /// mutated by <c>JobChangeService</c>. Used by every formula
+    /// that branches on job (autospell job-only gates, weapon
+    /// proficiency, MAPID_* introspection).
+    /// </summary>
+    public int ClassId { get; set; }
+
+    /// <summary>
+    /// rAthena <c>sd-&gt;class_</c> = MAPID_* bitmask reduction of
+    /// <see cref="ClassId"/>. Combines the base class
+    /// (<see cref="MapidClass.FirstMask"/>) with promotion tier
+    /// bits (Transcendent / Baby / 3rd / 4th class). Computed lazily
+    /// via <see cref="MapidClass.FromClassId"/>; cache invalidated by
+    /// <c>JobChangeService</c>.
+    /// </summary>
+    public uint ClassMask { get; set; }
+
     /// <summary>Unspent stat / skill points. <c>pc_checkbaselevelup</c> awards status points; job levelup awards skill points.</summary>
     public int StatusPoints { get; set; }
     public int SkillPoints { get; set; }
@@ -160,6 +179,12 @@ public sealed class PlayerEntity : Entity
     public int SpiritCharm { get; set; }
     /// <summary>Element ID of the active spirit charm (rAthena ELE_*).</summary>
     public int SpiritCharmType { get; set; }
+    /// <summary>
+    /// Absolute tick (<see cref="Environment.TickCount64"/>) when the
+    /// current charm stack expires. 0 = no expiry tracking. Set by
+    /// <see cref="Status.IPlayerOrbService.AddCharm"/>.
+    /// </summary>
+    public long SpiritCharmExpireTick { get; set; }
 
     /// <summary>
     /// rAthena Stalker Reproduce — copied skill id / level. 0 = no

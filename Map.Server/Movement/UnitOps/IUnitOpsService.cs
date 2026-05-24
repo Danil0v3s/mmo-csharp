@@ -44,6 +44,19 @@ public interface IUnitOpsService
     /// <summary>rAthena <c>unit_movepos</c>.</summary>
     bool MovePos(Entity bl, short x, short y, byte easy, bool checkColl);
 
+    /// <summary>
+    /// rAthena <c>skill_check_unit_movepos</c> (skill.cpp:9099) —
+    /// teleport-near-target helper used by Charge Attack, Shadow Leap,
+    /// Final Strike, Cross Impact, Illusion Bewitch, and similar
+    /// movement-and-strike skills. Tries to place <paramref name="bl"/>
+    /// adjacent to <paramref name="x"/>/<paramref name="y"/> on the
+    /// same map; picks the first walkable cell in cardinal order
+    /// (N, E, S, W). Returns true on success, false if no walkable
+    /// neighbor cell exists (rare; caller should fall back to staying
+    /// in place).
+    /// </summary>
+    bool CheckUnitMovePos(Entity bl, short x, short y, byte easy);
+
     /// <summary>rAthena <c>unit_skilluse_id</c>.</summary>
     bool SkillUseId(Entity src, EntityId targetId, ushort skillId, ushort skillLevel);
 

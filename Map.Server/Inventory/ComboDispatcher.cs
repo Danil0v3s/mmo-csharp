@@ -40,6 +40,7 @@ public sealed class ComboDispatcher : IComboDispatcher
     private readonly Skills.IPlayerSkillService? _skillSvc;
     private readonly IPlayerOptionService? _optionSvc;
     private readonly Map.Server.Visibility.IVisibilityService? _visibility;
+    private readonly Map.Server.Status.IStatusChangeService? _sc;
     private readonly ILogger<ComboDispatcher> _logger;
 
     /// <summary>
@@ -59,7 +60,8 @@ public sealed class ComboDispatcher : IComboDispatcher
         IEntityRegistry? entities = null,
         Skills.IPlayerSkillService? skillSvc = null,
         IPlayerOptionService? optionSvc = null,
-        Map.Server.Visibility.IVisibilityService? visibility = null)
+        Map.Server.Visibility.IVisibilityService? visibility = null,
+        Map.Server.Status.IStatusChangeService? sc = null)
     {
         _scriptHost = scriptHost;
         _registry = registry;
@@ -69,6 +71,7 @@ public sealed class ComboDispatcher : IComboDispatcher
         _skillSvc = skillSvc;
         _optionSvc = optionSvc;
         _visibility = visibility;
+        _sc = sc;
         _logger = logger;
     }
 
@@ -97,7 +100,7 @@ public sealed class ComboDispatcher : IComboDispatcher
             // Each combo gets its own host instance so per-combo state
             // (host caches, ambient args) doesn't bleed. The host writes
             // into the shared bundle in-place.
-            var host = new ScriptedBonusHost(player, bundle, equipped, _catalog, _bonusSvc, _entities, _skillSvc, _optionSvc, _visibility);
+            var host = new ScriptedBonusHost(player, bundle, equipped, _catalog, _bonusSvc, _entities, _skillSvc, _optionSvc, _visibility, _sc);
             try
             {
                 invoker(handle.Value, host);

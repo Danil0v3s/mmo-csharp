@@ -125,6 +125,7 @@ public class ScriptedBonusHostNS2bTests
         public bool TryPlagiarize(PlayerEntity pc, ushort skillId, ushort skillLevel) => false;
         public void PlagiarismReset(PlayerEntity pc, byte type) { }
         public bool Validate(PlayerEntity pc, ushort skillId, int level) => true;
+        public int CheckSkill(PlayerEntity? pc, ushort skillId) => pc?.LearnedSkills.GetValueOrDefault(skillId) ?? 0;
         public int CheckImperialGuard(PlayerEntity pc, ushort skillId) => 0;
         public int CheckSummoner(PlayerEntity pc, ushort skillType) => 0;
         public int GetEffectiveMaxLevel(string jobAegis, ushort skillId) => 10;

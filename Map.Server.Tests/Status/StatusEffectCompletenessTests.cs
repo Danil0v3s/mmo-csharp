@@ -192,7 +192,7 @@ public class StatusEffectCompletenessTests
             [StatusType.Rushwindmill] = "WM_RUSHWINDMILL — Val2 boost magnitude read by Combat damage path",
             // Wanderer / Minstrel
             [StatusType.Moonlitserenade] = "WM_MOONLITSERENADE — Val2 Matk% read by Combat Matk path",
-            [StatusType.Leradsdew]       = "WM_LERADSDEW — Val2 MaxHp% read by status_calc_pc Hp path",
+            // [StatusType.Leradsdew] — P0.2: now has real OnStart body (MaxHp%).
             [StatusType.WindStepOption]  = "Wind sphere option — read by ElementalNpc plugin",
             [StatusType.WindCurtainOption] = "Wind curtain option — read by ElementalNpc plugin",
             // 4th-class

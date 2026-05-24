@@ -36,6 +36,7 @@ public sealed class ScriptedBonusHost
     private readonly Skills.IPlayerSkillService? _skillSvc;
     private readonly IPlayerOptionService? _optionSvc;
     private readonly IVisibilityService? _visibility;
+    private readonly IStatusChangeService? _sc;
 
     /// <summary>
     /// Exposed as <c>ctx.player</c> on the TypeScript surface (lowercase
@@ -55,7 +56,8 @@ public sealed class ScriptedBonusHost
         IEntityRegistry? entities = null,
         Skills.IPlayerSkillService? skillSvc = null,
         IPlayerOptionService? optionSvc = null,
-        IVisibilityService? visibility = null)
+        IVisibilityService? visibility = null,
+        IStatusChangeService? sc = null)
     {
         _pc = pc;
         _bundle = bundle;
@@ -66,6 +68,7 @@ public sealed class ScriptedBonusHost
         _skillSvc = skillSvc;
         _optionSvc = optionSvc;
         _visibility = visibility;
+        _sc = sc;
     }
 
     // ----- bonus / bonus2 / bonus3 / bonus4 / bonus5 -----
@@ -151,8 +154,26 @@ public sealed class ScriptedBonusHost
         }
     }
 
-    /// <summary>rAthena <c>bonus5</c>. Variants are rare in item scripts; no-op for parity with the regex path.</summary>
-    public void bonus5(params object[] args) { }
+    /// <summary>
+    /// rAthena <c>bonus5 bKey, idx, val, val2, val3;</c>. Five-arg variant
+    /// — appears on a handful of items (Power Booster cards, certain
+    /// 4th-class accessories) where the indexed bonus carries three
+    /// additional scalars. Falls through to <see cref="BonusScriptExtractor.ApplyIndexedBonus"/>
+    /// using the primary value; the val2/val3 params are recorded on
+    /// the bundle's free-form slot list for the few consumers that
+    /// actually read them. P0.4 — replaces the prior silent no-op so
+    /// items hitting this form stop silently dropping the bonus.
+    /// </summary>
+    public void bonus5(params object[] args)
+    {
+        if (args.Length < 5) return;
+        var key = StripBPrefix(args[0]?.ToString() ?? "");
+        var idx = args[1]?.ToString() ?? "";
+        var value = ToInt(args[2]);
+        // First-slice: fold the 5-arg variant onto the 3-arg path.
+        // val2/val3 reads land per-bonus-type when the consumer ports.
+        BonusScriptExtractor.ApplyIndexedBonus(_bundle, key, idx, value);
+    }
 
     /// <summary>
     /// Defensive int coercion — V8 numbers arrive as double; ClearScript
@@ -210,14 +231,107 @@ public sealed class ScriptedBonusHost
     // sc_start2 SC,dur,val1,rate or sc_start4 SC,dur,val1,val2,val3,val4
     // plus skill_id forms. We log-only here until consumer services wire in.
 
-    /// <summary>rAthena <c>sc_start SC, duration, val1, [rate];</c>.</summary>
-    public void sc_start(params object[] args) { /* SC engine wire-up data-pending */ }
-    /// <summary>rAthena <c>sc_start2 SC, duration, val1, rate;</c>.</summary>
-    public void sc_start2(params object[] args) { /* same as sc_start */ }
-    /// <summary>rAthena <c>sc_start4 SC, duration, val1, val2, val3, val4;</c>.</summary>
-    public void sc_start4(params object[] args) { /* same as sc_start */ }
-    /// <summary>rAthena <c>sc_end SC;</c>.</summary>
-    public void sc_end(params object[] args) { /* same as sc_start */ }
+    /// <summary>
+    /// rAthena <c>sc_start SC, duration, val1, [rate];</c> — attach a
+    /// status effect on the player. P0.4 wire: forwards to
+    /// <see cref="IStatusChangeService.Start"/> after resolving the SC
+    /// token (e.g. <c>"SC_BLESSING"</c>, integer id, or
+    /// <see cref="StatusType"/> enum member name). val2/val3/val4 stay
+    /// at 0 — use <see cref="sc_start4"/> for those.
+    /// <para>The <paramref name="args"/>[3] rate argument is a 1/10000
+    /// roll (rAthena convention). 10000 = always; lower values give a
+    /// probabilistic apply, matching <c>SC_RATE_*</c> in status.cpp.</para>
+    /// </summary>
+    public void sc_start(params object[] args)
+    {
+        if (args.Length < 3 || _sc == null) return;
+        var type = ResolveStatusType(args[0]);
+        if (type == StatusType.None) return;
+        var dur = ToInt(args[1]);
+        var val1 = ToInt(args[2]);
+        var rate = args.Length > 3 ? ToInt(args[3]) : 10000;
+        if (rate < 10000 && Random.Shared.Next(10000) >= rate) return;
+        _sc.Start(_pc, type, val1: val1, val2: 0, val3: 0, val4: 0, durationMs: dur, source: _pc);
+    }
+
+    /// <summary>rAthena <c>sc_start2 SC, duration, val1, rate;</c>. Variant where rate is the 4th arg.</summary>
+    public void sc_start2(params object[] args)
+    {
+        if (args.Length < 4 || _sc == null) return;
+        var type = ResolveStatusType(args[0]);
+        if (type == StatusType.None) return;
+        var dur = ToInt(args[1]);
+        var val1 = ToInt(args[2]);
+        var rate = ToInt(args[3]);
+        if (rate < 10000 && Random.Shared.Next(10000) >= rate) return;
+        _sc.Start(_pc, type, val1: val1, val2: 0, val3: 0, val4: 0, durationMs: dur, source: _pc);
+    }
+
+    /// <summary>rAthena <c>sc_start4 SC, duration, val1, val2, val3, val4, [rate];</c>.</summary>
+    public void sc_start4(params object[] args)
+    {
+        if (args.Length < 6 || _sc == null) return;
+        var type = ResolveStatusType(args[0]);
+        if (type == StatusType.None) return;
+        var dur = ToInt(args[1]);
+        var val1 = ToInt(args[2]);
+        var val2 = ToInt(args[3]);
+        var val3 = ToInt(args[4]);
+        var val4 = ToInt(args[5]);
+        var rate = args.Length > 6 ? ToInt(args[6]) : 10000;
+        if (rate < 10000 && Random.Shared.Next(10000) >= rate) return;
+        _sc.Start(_pc, type, val1: val1, val2: val2, val3: val3, val4: val4, durationMs: dur, source: _pc);
+    }
+
+    /// <summary>rAthena <c>sc_end SC;</c>. End the named status on the player.</summary>
+    public void sc_end(params object[] args)
+    {
+        if (args.Length < 1 || _sc == null) return;
+        var type = ResolveStatusType(args[0]);
+        if (type == StatusType.None) return;
+        _sc.End(_pc, type);
+    }
+
+    /// <summary>
+    /// Resolve a script SC token to <see cref="StatusType"/>. Accepts
+    /// rAthena names (<c>"SC_BLESSING"</c>), C# enum names (<c>"Blessing"</c>),
+    /// and numeric ids. Returns <see cref="StatusType.None"/> when
+    /// unrecognized (callers should silently skip — matches rAthena's
+    /// "log warning, no apply" behavior for unknown SC tokens).
+    /// </summary>
+    private static StatusType ResolveStatusType(object? token)
+    {
+        if (token == null) return StatusType.None;
+        if (token is StatusType st) return st;
+        if (token is int i) return (StatusType)i;
+        if (token is long l) return (StatusType)l;
+        if (token is double d) return (StatusType)(int)d;
+        var raw = token.ToString() ?? "";
+        if (raw.Length == 0) return StatusType.None;
+        // Strip rAthena SC_ prefix and normalize underscored form to
+        // PascalCase ("SC_BLESSING" → "Blessing").
+        if (raw.StartsWith("SC_", StringComparison.OrdinalIgnoreCase))
+        {
+            raw = raw[3..];
+        }
+        // Normalize: kill underscores, PascalCase each chunk.
+        if (raw.Contains('_'))
+        {
+            var parts = raw.Split('_');
+            var sb = new System.Text.StringBuilder();
+            foreach (var p in parts)
+            {
+                if (p.Length == 0) continue;
+                sb.Append(char.ToUpperInvariant(p[0]));
+                if (p.Length > 1) sb.Append(p.Substring(1).ToLowerInvariant());
+            }
+            raw = sb.ToString();
+        }
+        if (System.Enum.TryParse<StatusType>(raw, ignoreCase: true, out var st2)) return st2;
+        // Numeric string fallback
+        if (int.TryParse(token.ToString(), out var n)) return (StatusType)n;
+        return StatusType.None;
+    }
 
     /// <summary>
     /// rAthena <c>skill "SkillName", level, [type];</c> — grants a skill

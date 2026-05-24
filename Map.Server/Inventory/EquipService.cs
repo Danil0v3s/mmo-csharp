@@ -75,6 +75,29 @@ public sealed class EquipService : IEquipService
         return EquipOpResult.Ok;
     }
 
+    public int CheckEquip(MapSessionData session, uint equipPos)
+    {
+        if (session.Inventory is not { } inv) return -1;
+        for (var i = 0; i < inv.Count; i++)
+        {
+            var item = inv[i];
+            if (item.Amount == 0) continue;
+            if ((item.Equip & equipPos) != 0) return i;
+        }
+        return -1;
+    }
+
+    public InventoryItem? FindEquipped(MapSessionData session, uint equipPos)
+    {
+        if (session.Inventory is not { } inv) return null;
+        foreach (var item in inv)
+        {
+            if (item.Amount == 0) continue;
+            if ((item.Equip & equipPos) != 0) return item;
+        }
+        return null;
+    }
+
     public EquipOpResult Unequip(MapSessionData session, int serverIndex, out uint clearedPos)
     {
         clearedPos = 0;

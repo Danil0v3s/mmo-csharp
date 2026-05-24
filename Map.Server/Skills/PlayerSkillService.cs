@@ -187,6 +187,9 @@ public sealed class PlayerSkillService : IPlayerSkillService
         return level >= 0 && level <= def.MaxLevel;
     }
 
+    public int CheckSkill(PlayerEntity? pc, ushort skillId)
+        => pc is null ? 0 : pc.LearnedSkills.GetValueOrDefault(skillId);
+
     public int CheckImperialGuard(PlayerEntity pc, ushort skillId)
         => pc.LearnedSkills.GetValueOrDefault(skillId);
 

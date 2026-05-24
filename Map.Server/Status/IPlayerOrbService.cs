@@ -25,6 +25,24 @@ public interface IPlayerOrbService
 
     /// <summary>Look up current count.</summary>
     int Get(PlayerEntity pc, OrbKind kind);
+
+    /// <summary>
+    /// rAthena <c>pc_addspiritcharm</c> (pc.cpp:8918) — Kagerou /
+    /// Oboro element charm system. Differs from spirit/soul/servant
+    /// orbs because the count carries an element TYPE
+    /// (<paramref name="elementType"/>, rAthena <c>ELE_*</c>:
+    /// 1=WATER, 2=EARTH, 3=FIRE, 4=WIND). Charms of a different
+    /// element are dropped when a new element is added — only one
+    /// element can be active at a time. <paramref name="count"/> is
+    /// clamped to <c>MAX_SPIRITCHARM</c> (10).
+    /// <paramref name="durationMs"/> is recorded on
+    /// <see cref="PlayerEntity.SpiritCharmExpireTick"/> for the
+    /// auto-expire scan; 0 = no expiry tracking (test convenience).
+    /// </summary>
+    void AddCharm(PlayerEntity pc, int elementType, int count, int durationMs);
+
+    /// <summary>rAthena <c>pc_delspiritcharm</c> — clear all charms (any element).</summary>
+    void RemoveCharms(PlayerEntity pc);
 }
 
 public enum OrbKind
