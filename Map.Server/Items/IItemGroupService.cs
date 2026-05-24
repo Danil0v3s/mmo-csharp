@@ -42,4 +42,13 @@ public interface IItemGroupService
 
     /// <summary>Rebuild the in-memory cache from the SQL catalog (GM reload hook).</summary>
     void Reload();
+
+    /// <summary>
+    /// rAthena <c>itemdb_group::item_exists(group_id, nameid)</c>
+    /// (itemdb.cpp:1126) — does any sub-group of <paramref name="groupName"/>
+    /// contain <paramref name="itemAegis"/>? Used by skills that gate
+    /// on a kind-of-item (GN_SLINGITEM — BOMB vs THROWABLE; pet-feed
+    /// skills against the feed-item group, etc.).
+    /// </summary>
+    bool ContainsItem(string groupName, string itemAegis);
 }

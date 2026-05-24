@@ -446,6 +446,9 @@ public static class SkillIds
     public const ushort GN_MANDRAGORA = 2492;
     public const ushort GN_MIX_COOKING = 2495;
     public const ushort GN_SLINGITEM = 2493;
+    /// <summary>Sub-skill for GN_SLINGITEM with a BOMB-class ammo —
+    /// runs the per-bomb damage formula via skill_attack.</summary>
+    public const ushort GN_SLINGITEM_RANGEMELEEATK = 2498;
     public const ushort GN_SPORE_EXPLOSION = 2481;
     public const ushort GN_S_PHARMACY = 2497;
     public const ushort GN_THORNS_TRAP = 2479;

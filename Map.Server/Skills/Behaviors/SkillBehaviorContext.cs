@@ -152,4 +152,19 @@ public sealed record SkillBehaviorContext(
     /// that self-dispel mid-resolve (PA_GOSPEL recast, MG_SAFETYWALL on
     /// Land Protector overlap) call <see cref="ISkillRequirementService.RefundRequirement"/>
     /// to credit the spent pools back.</summary>
-    ISkillRequirementService? Requirements = null);
+    ISkillRequirementService? Requirements = null,
+    /// <summary>Item-group catalog — weighted random pick + membership
+    /// query. Used by GN_SLINGITEM (BOMB / THROWABLE groups), pet-feed,
+    /// drop-from-group helpers.</summary>
+    Map.Server.Items.IItemGroupService? ItemGroups = null,
+    /// <summary>Item catalog (item_db snapshot) — id ↔ aegis lookup,
+    /// per-item flag reads. Plugins that branch on the equipped /
+    /// targeted item's catalog row (SlingItem ammo lookup, weapon-mask
+    /// gates) consult this.</summary>
+    Map.Server.Items.IItemCatalog? Catalog = null,
+    /// <summary>Floor-item service — <c>TryPickup</c> for skill-driven
+    /// auto-loot. The splash itself rides on
+    /// <see cref="IEntityRegistry.ForEachInRange"/> filtered to
+    /// <see cref="EntityType.Item"/>; this service handles the actual
+    /// pickup mutation. Used by BS_GREED.</summary>
+    Map.Server.Items.IItemDropService? Drops = null);

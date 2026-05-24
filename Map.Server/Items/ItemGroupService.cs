@@ -75,6 +75,17 @@ public sealed class ItemGroupService : IItemGroupService
         return result;
     }
 
+    public bool ContainsItem(string groupName, string itemAegis)
+    {
+        if (string.IsNullOrEmpty(groupName) || string.IsNullOrEmpty(itemAegis)) return false;
+        if (!_bags.TryGetValue(groupName, out var subs)) return false;
+        foreach (var (_, bucket) in subs)
+        {
+            if (bucket.Contains(itemAegis)) return true;
+        }
+        return false;
+    }
+
     public void Reload()
     {
         if (_scopes == null) { _bags = new(StringComparer.OrdinalIgnoreCase); return; }
@@ -157,6 +168,16 @@ public sealed class ItemGroupService : IItemGroupService
             if (idx < 0) idx = ~idx;
             if (idx >= _entries.Length) idx = _entries.Length - 1;
             return _entries[idx];
+        }
+
+        public bool Contains(string itemAegis)
+        {
+            for (int i = 0; i < _entries.Length; i++)
+            {
+                if (string.Equals(_entries[i].ItemAegis, itemAegis, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
         }
     }
 }

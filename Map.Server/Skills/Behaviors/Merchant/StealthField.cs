@@ -26,12 +26,16 @@ public sealed class StealthField : SkillImpl
         if (ctx.Sc != null && ctx.Sc.Get(src, StatusType.StealthfieldMaster) != null)
         {
             ctx.Sc.End(src, StatusType.StealthfieldMaster);
-            // Deferred: rAthena sets `flag |= SKILL_NOCONSUME_REQ` so the cast-end
-            // consume pass refunds the magic-gear-fuel. The skill-flag plumbing
-            // back to SkillCastService.ResolveSkill isn't exposed yet.
+            // rAthena SKILL_NOCONSUME_REQ — re-cast dispels the field
+            // and credits the Magic Gear Fuel + SP pool back. The
+            // item-level refund (gear fuel) rides on the skill_db
+            // ItemConsume column when surfaced; HP/SP/AP refund lands
+            // via RefundRequirement.
+            if (src is PlayerEntity pc)
+                ctx.Requirements?.RefundRequirement(pc, SkillId, skillLevel);
             return;
         }
-        _units?.Place(src, SkillId, skillLevel, src.X, src.Y);
+        (ctx.Units ?? _units)?.Place(src, SkillId, skillLevel, src.X, src.Y);
         ctx.Sc?.Start(src, StatusType.StealthfieldMaster, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
     }
 }
