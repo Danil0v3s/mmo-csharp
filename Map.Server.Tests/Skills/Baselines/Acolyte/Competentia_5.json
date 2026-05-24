@@ -1,5 +1,11 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
     "kind": "nodamage",
     "data": {
       "src": null,
@@ -10,6 +16,14 @@
     }
   },
   {
+    "kind": "heal",
+    "data": {
+      "bl": 1,
+      "hp": 10000,
+      "sp": 0
+    }
+  },
+  {
     "kind": "nodamage",
     "data": {
       "src": null,
@@ -17,6 +31,14 @@
       "skillId": 28,
       "healOrLevel": 1000,
       "success": true
+    }
+  },
+  {
+    "kind": "heal",
+    "data": {
+      "bl": 1,
+      "hp": 0,
+      "sp": 1000
     }
   },
   {

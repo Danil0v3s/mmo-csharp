@@ -1,5 +1,11 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
     "kind": "skill-attack",
     "data": {
       "attackType": "Magic",
@@ -8,6 +14,14 @@
       "target": 1000,
       "skillId": 2210,
       "skillLevel": 1
+    }
+  },
+  {
+    "kind": "heal",
+    "data": {
+      "bl": 1,
+      "hp": 100,
+      "sp": 0
     }
   }
 ]

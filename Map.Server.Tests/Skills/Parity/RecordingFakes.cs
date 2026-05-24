@@ -313,6 +313,7 @@ public sealed class RecordingUnitOpsService : Map.Server.Movement.UnitOps.IUnitO
     public bool CheckUnitMovePos(Entity bl, short x, short y, byte easy)
     {
         _rec.Record("check-unit-movepos", new() { ["bl"] = (int)bl.Id, ["x"] = x, ["y"] = y });
+        _rec.Record("move-pos", new() { ["bl"] = (int)bl.Id, ["x"] = x, ["y"] = y });
         return true;
     }
 
@@ -332,4 +333,117 @@ public sealed class RecordingUnitOpsService : Map.Server.Movement.UnitOps.IUnitO
     public void DataCreate(Entity bl) { }
     public bool CanReachBl(Entity src, Entity target, short range) => true;
     public bool CanReachPos(Entity src, short x, short y, byte easy) => true;
+}
+
+/// <summary>
+/// Minimal recording <see cref="Map.Server.Status.StatusOps.IStatusOpsService"/>:
+/// captures the parity-relevant calls (`Heal`, `Zap`,
+/// `PercentHeal`, `PercentDamage`, `Damage`) so the family-parity
+/// extractor can match rAthena's `status_heal` / `status_zap` /
+/// `status_damage` references. Everything else is a stub return.
+/// </summary>
+public sealed class RecordingStatusOpsService : Map.Server.Status.StatusOps.IStatusOpsService
+{
+    private readonly SkillTraceRecorder _rec;
+    public RecordingStatusOpsService(SkillTraceRecorder rec) => _rec = rec;
+
+    public void Zap(Entity bl, long hp, long sp)
+        => _rec.Record("zap", new() { ["bl"] = (int)bl.Id, ["hp"] = hp, ["sp"] = sp });
+
+    public int Heal(Entity bl, long hp, long sp, byte flag)
+    {
+        _rec.Record("heal", new() { ["bl"] = (int)bl.Id, ["hp"] = hp, ["sp"] = sp });
+        return (int)(hp + sp);
+    }
+
+    public int PercentHeal(Entity bl, sbyte hpPercent, sbyte spPercent)
+    {
+        _rec.Record("heal", new() { ["bl"] = (int)bl.Id, ["hpPct"] = (int)hpPercent, ["spPct"] = (int)spPercent });
+        return hpPercent + spPercent;
+    }
+
+    public int PercentDamage(Entity src, Entity target, sbyte hpPercent, sbyte spPercent, bool can_kill)
+    {
+        _rec.Record("damage", new() { ["target"] = (int)target.Id, ["hpPct"] = (int)hpPercent });
+        return 0;
+    }
+
+    public int Damage(Entity src, Entity target, long hp, long sp, int walkDelay, byte flag)
+    {
+        _rec.Record("damage", new() { ["target"] = (int)target.Id, ["hp"] = hp });
+        return (int)hp;
+    }
+
+    public bool Charge(Entity bl, long hp, long sp) => true;
+    public int Revive(Entity bl, byte percentHp, byte percentSp) => 1;
+    public int FixedRevive(Entity bl, int hp, int sp) => 1;
+
+    // ---- stat / mode / identity accessor stubs ----
+    public void CalcBl(Entity bl, int flag) { }
+    public void CalcPc(PlayerEntity pc, int opt) { }
+    public void CalcMob(MobEntity mob, byte opt) { }
+    public void CalcHomunculus(Entity homun, byte opt) { }
+    public void CalcMercenary(Entity merc, byte opt) { }
+    public void CalcElemental(Entity ele, byte opt) { }
+    public void CalcPet(Entity pet, byte opt) { }
+    public int GetAtk(Entity bl, byte flag) => bl.Stats.Batk;
+    public int GetAtk2(Entity bl) => 0;
+    public int GetMatk(Entity bl, byte flag) => (bl.Stats.MatkMin + bl.Stats.MatkMax) / 2;
+    public int GetDef(Entity bl) => bl.Stats.Def;
+    public int GetDef2(Entity bl) => bl.Stats.Def2;
+    public int GetMdef(Entity bl) => bl.Stats.Mdef;
+    public int GetMdef2(Entity bl) => bl.Stats.Mdef2;
+    public int GetHit(Entity bl) => bl.Stats.Hit;
+    public int GetFlee(Entity bl) => bl.Stats.Flee;
+    public int GetCritical(Entity bl) => bl.Stats.Cri;
+    public int GetFlee2(Entity bl) => bl.Stats.Flee2;
+    public int GetAmotion(Entity bl) => bl.Stats.Amotion;
+    public int GetAdelay(Entity bl) => bl.Stats.Adelay;
+    public int GetDmotion(Entity bl) => bl.Stats.Dmotion;
+    public int GetSpeed(Entity bl) => bl.Stats.Speed;
+    public int GetAspdRate(Entity bl) => bl.Stats.AspdRate;
+    public int GetStr(Entity bl) => bl.Stats.Str;
+    public int GetAgi(Entity bl) => bl.Stats.Agi;
+    public int GetVit(Entity bl) => bl.Stats.Vit;
+    public int GetInt(Entity bl) => bl.Stats.IntStat;
+    public int GetDex(Entity bl) => bl.Stats.Dex;
+    public int GetLuk(Entity bl) => bl.Stats.Luk;
+    public int GetClass(Entity bl) => 0;
+    public int GetClassUnderscore(Entity bl) => 0;
+    public byte GetSize(Entity bl) => (byte)bl.Stats.Size;
+    public byte GetRace(Entity bl) => (byte)bl.Stats.Race;
+    public byte GetRace2(Entity bl) => 0;
+    public byte GetElement(Entity bl) => (byte)bl.Stats.DefenseElement;
+    public byte GetElementLevel(Entity bl) => bl.Stats.ElementLevel;
+    public byte GetAttackElement(Entity bl) => bl.Stats.WeaponElement;
+    public byte GetAttackScElement(Entity bl) => 0;
+    public int GetMode(Entity bl) => (int)bl.Stats.Mode;
+    public bool HasMode(Entity bl, int mode) => ((int)bl.Stats.Mode & mode) != 0;
+    public int GetHp(Entity bl) => bl.Stats.Hp;
+    public int GetMaxHp(Entity bl) => bl.Stats.MaxHp;
+    public int GetSp(Entity bl) => bl.Stats.Sp;
+    public int GetMaxSp(Entity bl) => bl.Stats.MaxSp;
+    public int GetLv(Entity bl) => bl.Level;
+    public int GetHomId(Entity bl) => 0;
+    public int GetPetId(Entity bl) => 0;
+    public int GetMercId(Entity bl) => 0;
+    public int GetEleId(Entity bl) => 0;
+    public void SetHp(Entity bl, int hp) => bl.Stats.Hp = hp;
+    public void SetMaxHp(Entity bl, int maxHp) => bl.Stats.MaxHp = maxHp;
+    public void SetSp(Entity bl, int sp) => bl.Stats.Sp = sp;
+    public void SetMaxSp(Entity bl, int maxSp) => bl.Stats.MaxSp = maxSp;
+    public int NaturalHeal(long tick) => 0;
+    public void CalcRegen(Entity bl) { }
+    public void CalcRegenRate(Entity bl) { }
+    public int ChangeClear(Entity bl, byte type) => 0;
+    public void ChangeClearBuffs(Entity bl, byte type) { }
+    public void ChangeClearDebuffs(Entity bl) { }
+    public int ChangeStart(Entity src, Entity bl, int type, int rate, int val1, int val2, int val3, int val4, int duration, byte flag) => 0;
+    public int ChangeEnd(Entity bl, int type, int timerId) => 0;
+    public object? GetSc(Entity bl) => null;
+    public bool CheckSkillUse(Entity src, Entity target, ushort skillId, byte flag) => true;
+    public bool IsDead(Entity bl) => bl.Stats.Hp <= 0;
+    public bool IsImmune(Entity bl) => false;
+    public void ReadDb() { }
+    public void DbReload() { }
 }

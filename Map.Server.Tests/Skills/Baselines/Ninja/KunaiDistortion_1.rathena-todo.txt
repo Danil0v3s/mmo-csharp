@@ -1,6 +1,0 @@
-Missing in C# port (rAthena calls but ours doesn't):
-  sc-start
-  damage
-  unit-place
-  sc-end
-  cast-effect

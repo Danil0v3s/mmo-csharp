@@ -1,3 +1,0 @@
-Missing in C# port (rAthena calls but ours doesn't):
-  cast-effect
-  heal

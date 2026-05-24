@@ -47,6 +47,7 @@ public sealed class SkillExerciser
     public RecordingSkillAttackService SkillAttack { get; }
     public RecordingSkillUnitService Units { get; }
     public RecordingUnitOpsService UnitOps { get; }
+    public RecordingStatusOpsService StatusOps { get; }
 
     public SkillExerciser(string family = "Acolyte")
     {
@@ -85,6 +86,7 @@ public sealed class SkillExerciser
         SkillAttack = new RecordingSkillAttackService(Recorder);
         Units = new RecordingSkillUnitService(Recorder);
         UnitOps = new RecordingUnitOpsService(Recorder);
+        StatusOps = new RecordingStatusOpsService(Recorder);
         // Battle calculator: a deterministic stub that returns a fixed
         // BattleDamage so ratio variation comes from the SkillImpl,
         // not the calculator.

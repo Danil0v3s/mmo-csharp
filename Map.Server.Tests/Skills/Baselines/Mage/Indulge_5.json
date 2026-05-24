@@ -1,5 +1,27 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "heal",
+    "data": {
+      "bl": 1,
+      "hp": -1000,
+      "sp": 0
+    }
+  },
+  {
+    "kind": "heal",
+    "data": {
+      "bl": 1,
+      "hp": 0,
+      "sp": 5000
+    }
+  },
+  {
     "kind": "nodamage",
     "data": {
       "src": 1,

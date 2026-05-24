@@ -103,8 +103,17 @@ public static class RathenaBaselineExtractor
         if (Regex.IsMatch(cpp, @"\bskill_unitsetting\s*\(")) kinds.Add("unit-place");
         if (Regex.IsMatch(cpp, @"\b(clif_blown|unit_blown_by|skill_blown|skill_blown_by|skill_castend_blown)\s*\("))
             kinds.Add("blow");
-        if (Regex.IsMatch(cpp, @"\bstatus_heal\s*\(")) kinds.Add("heal");
-        if (Regex.IsMatch(cpp, @"\bstatus_zap\s*\(")) kinds.Add("zap");
+        // rAthena heal family: status_heal, status_percent_heal,
+        // status_fixed_revive (revive also does HP+SP delta via heal pipe).
+        if (Regex.IsMatch(cpp, @"\bstatus_heal\s*\(")
+            || Regex.IsMatch(cpp, @"\bstatus_percent_heal\s*\(")
+            || Regex.IsMatch(cpp, @"\bstatus_fixed_revive\s*\("))
+            kinds.Add("heal");
+        // Zap family: status_zap, status_percent_damage (without can_kill
+        // = SP loss too).
+        if (Regex.IsMatch(cpp, @"\bstatus_zap\s*\(")
+            || Regex.IsMatch(cpp, @"\bstatus_percent_damage\s*\("))
+            kinds.Add("zap");
         if (Regex.IsMatch(cpp, @"\bunit_movepos\s*\(")) kinds.Add("move-pos");
         if (Regex.IsMatch(cpp, @"\bskill_check_unit_movepos\s*\(")) kinds.Add("move-pos");
 

@@ -8,5 +8,13 @@
       "healOrLevel": 5,
       "success": true
     }
+  },
+  {
+    "kind": "heal",
+    "data": {
+      "bl": 1,
+      "hpPct": 100,
+      "spPct": 100
+    }
   }
 ]

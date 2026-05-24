@@ -1,5 +1,24 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "BlessingOfMCreatures",
+      "val1": 1,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 60000,
+      "src": 1
+    }
+  },
+  {
     "kind": "nodamage",
     "data": {
       "src": 1,

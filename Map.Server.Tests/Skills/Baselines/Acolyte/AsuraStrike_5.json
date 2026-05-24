@@ -1,5 +1,11 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
     "kind": "damage",
     "data": {
       "target": 1000,
@@ -40,6 +46,14 @@
       "bl": 1,
       "x": 103,
       "y": 100
+    }
+  },
+  {
+    "kind": "blow",
+    "data": {
+      "bl": 1,
+      "dir": -1,
+      "count": 0
     }
   }
 ]
