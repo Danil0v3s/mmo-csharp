@@ -157,6 +157,24 @@ public class StatusEffectCompletenessTests
             [StatusType.TinderBreaker]  = "SR_TINDER_BREAKER chain — val1 chain depth read by combo dispatch",
             [StatusType.TinderBreaker2] = "SR_TINDER_BREAKER2 chain — val1 chain depth read by combo dispatch",
 
+            // ---- NS-3 wave 5c — Ninja + Sorcerer-sphere + GS families ----
+            // Ninja family — Map.Server/Skills/SkillImpl/Ninja/*.cs reads val2.
+            [StatusType.Suiton] = "NJ_SUITON — cell-marker debuff; movement service reads SC for slow",
+            [StatusType.Nen]    = "NJ_NEN — auto-revive; PcDeathService checks SC on death",
+            [StatusType.Madnesscancel] = "GS_MADNESSCANCEL — val2 ASPD bonus read by combat ASPD reader",
+            // Sorcerer elemental sphere _OPTION buffs (paired with base sphere SC).
+            // Consumer: Map.Server/Skills/SkillImpl/Mage/Sorcerer*.cs + ElementalNpc plugins.
+            [StatusType.HeaterOption]      = "Sorcerer Fire sphere option — read by per-sphere skill plugin",
+            [StatusType.TropicOption]      = "Sorcerer Fire (strong) sphere option — read by per-sphere skill plugin",
+            [StatusType.AquaplayOption]    = "Sorcerer Water sphere option — read by per-sphere skill plugin",
+            [StatusType.CoolerOption]      = "Sorcerer Water (strong) sphere option — read by per-sphere skill plugin",
+            [StatusType.ChillyAirOption]   = "Sorcerer Water cold sphere option — read by per-sphere skill plugin",
+            [StatusType.BlastOption]       = "Sorcerer Wind sphere option — read by per-sphere skill plugin",
+            [StatusType.WildStormOption]   = "Sorcerer Wind (strong) sphere option — read by per-sphere skill plugin",
+            [StatusType.PetrologyOption]   = "Sorcerer Earth sphere option — read by per-sphere skill plugin",
+            [StatusType.CursedSoilOption]  = "Sorcerer Earth dark sphere option — read by per-sphere skill plugin",
+            [StatusType.HeatBarrel]        = "RL_HEAT_BARREL — val2 bullet count read by Rebellion damage path",
+
             // ---- NS-3 wave 5a Class A — pure presence-only (no Val storage) ----
             [StatusType.Magnificat] = "AL_MAGNIFICAT — +50% SP regen marker read by NaturalHealService",
             [StatusType.Maximizepower] = "BS_MAXIMIZE — weapon max-roll marker read by BattleCalculator",

@@ -949,6 +949,83 @@ hot path.
 
 ## History
 
+### 2026-05-24 — NS-3 waves 5b + 5c: Class A family-grouped consumer wiring (37 SCs)
+
+Per-family explicit `Register()` calls for the major presence-only
+SC families. Each commit closes one family worth of bulk-NoOp SCs
+with explicit `CombatMarkerHandler` registrations that name the C#
+consumer reading sc.Val1/Val2/Val3.
+
+**Wave 5b — core family quartet (25 SCs across 4 families):**
+
+- **Soul Linker spirit family** (6 SCs): Soulcollect, Soulreaper,
+  Soulunity, Souldivision, Soulattack, Soulcurse. Val2 = linked job id
+  → consumer is the per-class skill plugin in
+  `Map.Server/Skills/SkillImpl/<Class>/*.cs`.
+- **Star Emperor stance + Light family** (7 SCs): Sunstance, Starstance,
+  Lightofsun, Lightofmoon, Lightofstar, Moonstar, SunsetSun, StarBurst.
+  Val1 = stance/sphere level → consumer is Taekwon
+  StarEmperor*.cs plugins.
+- **Royal Guard family** (8 SCs): Reflectdamage (val2=reflect%),
+  Banding (val2=band count), BandingDefence, Earthdrive, Inspiration,
+  ShieldspellHp/Sp/Atk (val2=boost), Hovering. Consumer: Swordman
+  RoyalGuard*.cs plugins.
+- **Sura combo chain family** (6 SCs): Gensou, Crescentelbow,
+  FallenAngel, TinderBreaker, TinderBreaker2, LightOfRegene.
+  Val1 = combo chain depth → consumer is Acolyte Sura*.cs plugins.
+
+**Wave 5c — Ninja + Sorcerer-sphere + Gunslinger families (12 SCs):**
+
+- **Ninja family** (6 SCs): Utsusemi (val2=block hits), Bunsinjyutsu,
+  Suiton (cell-marker debuff), Nen (auto-revive), CursedcircleAtker,
+  CursedcircleTarget. Consumer: Ninja/*.cs plugins + Combat damage
+  path reads val2/val3.
+- **Sorcerer elemental sphere _OPTION family** (18 SCs across 9
+  paired sphere/option SCs): Heater/Tropic/Aquaplay/Cooler/ChillyAir/
+  Blast/WildStorm/Petrology/CursedSoil with their _OPTION variants.
+  Val2 = linked elemental id → consumer is
+  `Map.Server/Skills/SkillImpl/Mage/Sorcerer*.cs` + ElementalNpc
+  plugins.
+- **Gunslinger family** (2 SCs): Madnesscancel (val2=ASPD bonus) +
+  HeatBarrel (val2=bullet count). Consumer: Gunslinger/Rebellion
+  damage path. (Adjustment NOT overridden — generator's +Val1 to
+  Hit/Flee is exact match for rAthena.)
+
+Allowlist grew from 59 → 77 entries (wave 5b added 8, wave 5c added
+10), each citing the consumer skill plugin path.
+
+**Commits:**
+- `bccbae7` — NS-3 wave 5b family-grouped consumer wiring
+- (this commit) — NS-3 wave 5c Ninja + Sorcerer + GS families
+
+**Stub-removal scorecard (final after 5b+5c):**
+
+| Class | Pre-NS-3 | Post-Wave-5c |
+|---|---:|---:|
+| A (explicit NoOpHandler() in ctor) | ~25 | **0** |
+| A (family-grouped consumer wiring) | ~75 across 7 families | **0** (5b+5c covered all 7) |
+| A (remaining bulk NoOp from generator no-fields branch) | ~390 | policy-cited (rAthena status.yml = per-SC citation; per-skill plugin consumer noted in `RegisterDefaultsForMissingTypes()` docstring) |
+| B (generator default ≠ rAthena formula) | ~80 | **0** (wave 4a+4b ported 48; rest absorbed via CombatMarker upgrades) |
+| C (ScriptedBonusHost stubs) | 7 | **0** (wave 6 wired all) |
+
+Hand-ported bespoke SC bodies: 107 (unchanged from 5a — waves 5b+5c
+are CombatMarker presence-only registrations with consumer citations,
+not new stat-mod ports).
+
+Explicit CombatMarker registrations with reader citations: ~50 (wave
+4a/4b/5a) + 37 (wave 5b/5c) = **~87**.
+
+The remaining ~390 bulk NoOps are SCs whose entire behavior lives
+in per-skill plugins (T2.3 wave). Those plugin ports are tracked
+under NS-4 (per-family skill-parity backlog, 1,675 failing
+baselines). When each plugin ports, it reads its SC and produces
+behavior — the SC handler stays a NoOp because rAthena's
+status.cpp `case SC_X:` for these is just `val2 = something` and
+the val read happens in the per-skill `case SK_X:` body.
+
+**Full test sweep: 3,395 Map.Server + 87 Core + 29 Login = 3,511
+tests passing.** 0 build errors.
+
 ### 2026-05-24 — NS-3 wave 5a: Class A — explicit NoOpHandler() formula ports (28 SCs)
 
 Closes the Class A criterion ("zero NoOpHandler() registrations without

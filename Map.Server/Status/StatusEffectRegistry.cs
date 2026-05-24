@@ -1394,6 +1394,9 @@ public sealed class StatusEffectRegistry
         RegisterWave5bStarEmperorFamily();
         RegisterWave5bRoyalGuardFamily();
         RegisterWave5bSuraFamily();
+        RegisterWave5cNinjaFamily();
+        RegisterWave5cSorcererSpheresFamily();
+        RegisterWave5cGunslingerFamily();
 
         // ====================================================================
         // NS-3 wave 4b — bards / dancers / Bragi-family + ASPD potions
@@ -2183,6 +2186,132 @@ public sealed class StatusEffectRegistry
         // Val1 = revival HP %. Consumer: PcDeathService checks SC on
         // death for auto-revive.
         Register(StatusType.LightOfRegene, CombatMarkerHandler(suraBuff));
+    }
+
+    /// <summary>
+    /// NS-3 wave 5c — Ninja family (NJ_* + KO_* Kagerou/Oboro). Includes
+    /// Suiton (movement-slow ground unit marker), Utsusemi (block-N-hits),
+    /// Bunsinjyutsu (block-N-hits clone), Nen (auto-revival), Akaitsuki
+    /// (Sura heal-flip handled in wave 5a), CursedCircle (target lock).
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/Ninja/*.cs</c>
+    /// + Combat damage path reads sc.Val2 = block hit count or
+    /// damage % marker.</para>
+    /// </summary>
+    private void RegisterWave5cNinjaFamily()
+    {
+        var ninjaBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+        var ninjaDebuff = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh;
+
+        // SC_UTSUSEMI (NJ_UTSUSEMI) — block N attacks. Val2 = remaining
+        // hits, Val3 = knockback amount. Consumer: damage pipeline
+        // decrements Val2 on each hit + skips damage; knocks back on 0.
+        Register(StatusType.Utsusemi, CombatMarkerHandler(ninjaBuff));
+
+        // SC_BUNSINJYUTSU (NJ_BUNSINJYUTSU) — clone-block N attacks.
+        // Val2 = remaining hits. Consumer: damage pipeline same as
+        // Utsusemi but for magic.
+        Register(StatusType.Bunsinjyutsu, CombatMarkerHandler(ninjaBuff));
+
+        // SC_SUITON (NJ_SUITON) — water-floor cell marker. Val1 =
+        // level, applied per-cell while standing on suiton unit. Slows
+        // + boosts agi/water dmg. Consumer: SkillUnitTickRegistry tick
+        // applies SC on cell entry; movement path reads SC for slow.
+        Register(StatusType.Suiton, CombatMarkerHandler(ninjaDebuff));
+
+        // SC_NEN (NJ_NEN) — auto-revive on death (1× consume). Val1 =
+        // level. Consumer: PcDeathService checks SC on death; consumes
+        // for revive + ends.
+        Register(StatusType.Nen, CombatMarkerHandler(ninjaBuff));
+
+        // SC_CURSEDCIRCLE_ATKER / TARGET (SR_CURSEDCIRCLE — Sura
+        // cross-family). ATKER on caster, TARGET on each affected
+        // entity. Val2 = circle id linking caster ↔ targets. Consumer:
+        // combat path checks SC to enforce "must stand still" gate.
+        Register(StatusType.CursedcircleAtker, CombatMarkerHandler(ninjaBuff));
+        Register(StatusType.CursedcircleTarget, CombatMarkerHandler(ninjaDebuff));
+    }
+
+    /// <summary>
+    /// NS-3 wave 5c — Sorcerer elemental sphere family. Each *_OPTION
+    /// SC pairs with its base SC: the base is the elemental sphere
+    /// marker, _OPTION is the option-buff applied to the linked PC.
+    /// Generator emits +Val1 to various stats; we override with explicit
+    /// markers documenting the per-skill consumer.
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/Mage/Sorcerer*.cs</c>
+    /// + ElementalNpc plugins read sc.Val2 = linked elemental id.</para>
+    /// </summary>
+    private void RegisterWave5cSorcererSpheresFamily()
+    {
+        var sorcBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+
+        // Sorcerer Heater family (Fire). Heater is the sphere marker
+        // attached to the elemental; HeaterOption is the buff applied
+        // to the linked PC. Both presence-only.
+        Register(StatusType.Heater, CombatMarkerHandler(sorcBuff));
+        Register(StatusType.HeaterOption, CombatMarkerHandler(sorcBuff));
+
+        // Tropic family (Fire stronger).
+        Register(StatusType.Tropic, CombatMarkerHandler(sorcBuff));
+        Register(StatusType.TropicOption, CombatMarkerHandler(sorcBuff));
+
+        // Aquaplay family (Water).
+        Register(StatusType.Aquaplay, CombatMarkerHandler(sorcBuff));
+        Register(StatusType.AquaplayOption, CombatMarkerHandler(sorcBuff));
+
+        // Cooler family (Water stronger).
+        Register(StatusType.Cooler, CombatMarkerHandler(sorcBuff));
+        Register(StatusType.CoolerOption, CombatMarkerHandler(sorcBuff));
+
+        // ChillyAir family (Water cold).
+        Register(StatusType.ChillyAir, CombatMarkerHandler(sorcBuff));
+        Register(StatusType.ChillyAirOption, CombatMarkerHandler(sorcBuff));
+
+        // Blast family (Wind).
+        Register(StatusType.Blast, CombatMarkerHandler(sorcBuff));
+        Register(StatusType.BlastOption, CombatMarkerHandler(sorcBuff));
+
+        // WildStorm family (Wind stronger).
+        Register(StatusType.WildStorm, CombatMarkerHandler(sorcBuff));
+        Register(StatusType.WildStormOption, CombatMarkerHandler(sorcBuff));
+
+        // Petrology family (Earth).
+        Register(StatusType.Petrology, CombatMarkerHandler(sorcBuff));
+        Register(StatusType.PetrologyOption, CombatMarkerHandler(sorcBuff));
+
+        // CursedSoil family (Earth dark).
+        Register(StatusType.CursedSoil, CombatMarkerHandler(sorcBuff));
+        Register(StatusType.CursedSoilOption, CombatMarkerHandler(sorcBuff));
+    }
+
+    /// <summary>
+    /// NS-3 wave 5c — Gunslinger / Rebellion family. Heat Barrel,
+    /// Madness Cancel, Adjustment, and Rebellion-specific markers.
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/Gunslinger/*.cs</c>
+    /// reads sc.Val2 = bullet/coin count for damage amplification.</para>
+    /// </summary>
+    private void RegisterWave5cGunslingerFamily()
+    {
+        var gsBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+
+        // SC_MADNESSCANCEL (GS_MADNESSCANCEL) — fixed-ASPD + +Watk
+        // buff. Val2 = stored ASPD bonus. Consumer: combat ASPD reader
+        // applies fixed ASPD while SC active.
+        Register(StatusType.Madnesscancel, CombatMarkerHandler(gsBuff));
+
+        // SC_ADJUSTMENT (GS_ADJUSTMENT) — has CalcFlags (Hit + Flee).
+        // NOT overridden here: generator's +Val1 default is correct
+        // (rAthena status_calc adds val1 to Hit and val1 to Flee).
+        // Leaving the generator body in place keeps stat-mod behavior
+        // exact. Family-group consumer reader docs covered by the
+        // GS_ADJUSTMENT entry in skill plugin folder.
+
+        // SC_HEAT_BARREL (RL_HEAT_BARREL) — Rebellion bullet boost.
+        // Val2 = stacked bullet count consumed per attack. Consumer:
+        // Rebellion damage path reads val2 + decrements.
+        Register(StatusType.HeatBarrel, CombatMarkerHandler(gsBuff));
     }
 
     /// <summary>
