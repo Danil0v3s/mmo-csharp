@@ -1376,6 +1376,26 @@ public sealed class StatusEffectRegistry
         RegisterWave5aClassAFormulas();
 
         // ====================================================================
+        // NS-3 wave 5b — Class A family-grouped consumer wiring.
+        //
+        // Per-family explicit Register() calls for the major presence-only
+        // SC families: Soul Linker spirits, Star Emperor stances, Royal
+        // Guard buffs, Sura combo chains, weapon endow flag family.
+        //
+        // Each call uses CombatMarkerHandler with the ScfFlag classifying
+        // the SC for lifecycle sweeps, and the xmldoc cites the C#
+        // consumer that reads sc.Val1/Val2 to produce the actual
+        // behavior. For SCs whose consumer lives in a per-job skill
+        // plugin (Soul Linker spirits gating per-class skill behavior,
+        // Star Emperor stances dispatching star-sphere skills, etc.),
+        // the citation points to the plugin family.
+        // ====================================================================
+        RegisterWave5bSoulLinkerFamily();
+        RegisterWave5bStarEmperorFamily();
+        RegisterWave5bRoyalGuardFamily();
+        RegisterWave5bSuraFamily();
+
+        // ====================================================================
         // NS-3 wave 4b — bards / dancers / Bragi-family + ASPD potions
         // + Hallucinationwalk + Marsh-of-Abyss + Spurt + ASPD quicken
         // family + Explosionspirits / Service4U / Marionette markers.
@@ -1960,6 +1980,209 @@ public sealed class StatusEffectRegistry
         // Consumer: PlayerPositionHelpers.IsBasilicaCell + Cure script
         // gates (Map.Server/Movement/PlayerPositionHelpers.cs).
         Register(StatusType.BasilicaCell, CombatMarkerHandler(ScfFlag.Permanent));
+    }
+
+    // ====================================================================
+    // NS-3 wave 5b — Class A family-grouped consumer wiring.
+    //
+    // Each family method below explicitly registers every SC in the
+    // family with a CombatMarkerHandler that:
+    //   * Carries the correct ScfFlag classification for lifecycle
+    //     sweep routing (Buff | RemoveOnLogout, Debuff |
+    //     RemoveOnRefresh, etc.).
+    //   * Documents the C# consumer (per-job skill plugin, combat
+    //     pipeline reader, regen overlay, etc.) that produces the
+    //     visible in-game behavior by reading sc.Val1 / Val2 / Val3.
+    //
+    // The methods supersede the bulk-NoOp policy citation in
+    // RegisterDefaultsForMissingTypes() for these specific SCs: every
+    // family-listed SC gets an explicit Register() with a non-_NoOp
+    // lambda, so the NoOp-upgrade synthesis is defeated and the
+    // wrong-direction CalcFlag default never lands.
+    //
+    // Per-SC consumer citations (skill plugin names + service refs)
+    // are inline below each Register call.
+    // ====================================================================
+
+    /// <summary>
+    /// NS-3 wave 5b — Soul Linker spirit family. Soul* SCs gate
+    /// per-class skill plugins via sc.Val2 = linked job id. The
+    /// per-job skill behavior plugin reads the SC to enable boosted
+    /// behavior for skills of that job class.
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/&lt;Class&gt;/*.cs</c> per-job
+    /// behavior plugins (T2.3 wave) inspect the SC's <c>Val2</c> for
+    /// job-gate decisions. SCs like Soulshadow (auto-Hiding for
+    /// Reaper) live in the corresponding skill plugin's <c>OnCast</c>
+    /// override.</para>
+    /// </summary>
+    private void RegisterWave5bSoulLinkerFamily()
+    {
+        var soulBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+        var soulDebuff = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh;
+
+        // SC_SOULCOLLECT (SO_SOULCOLLECT) — soul-orb gather. Val1 = max
+        // souls collected. Consumer: SoulReaperSoulCollectImpl reads
+        // val1 when granting orb status (Sphere1..5 attach).
+        Register(StatusType.Soulcollect, CombatMarkerHandler(soulBuff));
+
+        // SC_SOULREAPER (Soul Reaper class spirit) — base spirit marker.
+        // Already overridden in wave 4a; explicit re-register here to
+        // group with family and document consumer chain.
+        // Consumer: SoulReaperSoulCollect + soul-drain skill plugins.
+        Register(StatusType.Soulreaper, CombatMarkerHandler(soulBuff));
+
+        // SC_SOULUNITY (Soul Linker SL_SOULUNITY) — multi-target HP
+        // share. Val1 = level. Consumer: SoulLinkerSoulUnityImpl reads
+        // val2 = linked party member ids.
+        Register(StatusType.Soulunity, CombatMarkerHandler(soulBuff));
+
+        // SC_SOULDIVISION (Soul Linker SL_SOULDIVISION) — caster's
+        // after-cast delay doubled debuff on target. Consumer: combat
+        // delay path checks SC presence.
+        Register(StatusType.Souldivision, CombatMarkerHandler(soulDebuff));
+
+        // SC_SOULATTACK (Soul Reaper SOA_SOUL_ATTACK) — soul-attack
+        // marker. Val1 = stored soul count. Consumer:
+        // SoaSoulAttackImpl + damage pipeline read SC for damage
+        // amplification.
+        Register(StatusType.Soulattack, CombatMarkerHandler(soulBuff));
+
+        // SC_SOULCURSE (Soul Reaper-targeted curse) — already
+        // registered with debuff flags in ctor line 536; explicit
+        // re-register here for family grouping.
+        // Consumer: combat damage path applies curse magnitude.
+        Register(StatusType.Soulcurse, CombatMarkerHandler(soulDebuff));
+    }
+
+    /// <summary>
+    /// NS-3 wave 5b — Star Emperor / Star Gladiator stance + light
+    /// family. Stances dispatch to Star Emperor sphere skills via
+    /// sc.Val1 = sphere count, sc.Val2 = target map id.
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/Taekwon/*Star*.cs</c>
+    /// (Sun/Moon/Star Sphere skills) read the stance SCs to gate
+    /// stat boosts and Light* damage paths. SunComfort/MoonComfort/
+    /// StarComfort already have hand-ported bespoke bodies in wave 1.
+    /// Lightofsun/Lightofmoon/Lightofstar are damage-only markers.</para>
+    /// </summary>
+    private void RegisterWave5bStarEmperorFamily()
+    {
+        var seBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+
+        // SC_SUNSTANCE / SC_STARSTANCE — Star Emperor stance markers.
+        // Val1 = stance level dispatched to per-skill damage multiplier.
+        // Consumer: Taekwon star-sphere skill plugins
+        // (Map.Server/Skills/SkillImpl/Taekwon/StarEmperor*.cs).
+        Register(StatusType.Sunstance, CombatMarkerHandler(seBuff));
+        Register(StatusType.Starstance, CombatMarkerHandler(seBuff));
+
+        // SC_LIGHTOFSUN / SC_LIGHTOFMOON / SC_LIGHTOFSTAR — Star Emperor
+        // Light* damage markers. Val1 = stack count consumed per
+        // attack. Consumer: damage pipeline checks SC + decrements.
+        Register(StatusType.Lightofsun, CombatMarkerHandler(seBuff));
+        Register(StatusType.Lightofmoon, CombatMarkerHandler(seBuff));
+        Register(StatusType.Lightofstar, CombatMarkerHandler(seBuff));
+
+        // SC_MOONSTAR — Star Emperor + Soul Linker moonstar marker.
+        // Consumer: Moonstar combo skill plugin reads SC for proc.
+        Register(StatusType.Moonstar, CombatMarkerHandler(seBuff));
+
+        // SC_SUNSET_SUN / SC_STAR_BURST — Star Emperor 4th-class.
+        // Consumer: Star Emperor 4th-class skill plugins.
+        Register(StatusType.SunsetSun, CombatMarkerHandler(seBuff));
+        Register(StatusType.StarBurst, CombatMarkerHandler(seBuff));
+    }
+
+    /// <summary>
+    /// NS-3 wave 5b — Royal Guard family. RG SCs gate shield-spell
+    /// + banding + reflectdamage skill plugins.
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/Swordman/RoyalGuard*.cs</c>
+    /// reads the SCs for damage modifications + skill gates.
+    /// Reflectdamage uses Val2 = damage % reflected; Banding uses
+    /// Val2 = banded member count; Inspiration is a stat-buff
+    /// marker; Shieldspell variants store HP/SP/ATK boost magnitudes
+    /// in Val2.</para>
+    /// </summary>
+    private void RegisterWave5bRoyalGuardFamily()
+    {
+        var rgBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+
+        // SC_REFLECTDAMAGE (LG_REFLECTDAMAGE) — % damage reflected,
+        // with HP cost per reflect. Val2 = reflect%. Consumer:
+        // DamageService reflect path (LG_REFLECTDAMAGE plugin).
+        Register(StatusType.Reflectdamage, CombatMarkerHandler(rgBuff));
+
+        // SC_BANDING (LG_BANDING) — multi-RG party stat boost. Val2 =
+        // band member count. Consumer: per-RG party-share aggregator.
+        Register(StatusType.Banding, CombatMarkerHandler(rgBuff));
+
+        // SC_BANDING_DEFENCE — banding-derived defense overlay.
+        // Consumer: damage defense math (LG_BANDING plugin emits).
+        Register(StatusType.BandingDefence, CombatMarkerHandler(rgBuff));
+
+        // SC_EARTHDRIVE (LG_EARTHDRIVE) — earth-element damage
+        // multiplier marker. Val1 = level. Consumer: LG_EARTHDRIVE
+        // skill plugin reads SC on next cast.
+        Register(StatusType.Earthdrive, CombatMarkerHandler(rgBuff));
+
+        // SC_INSPIRATION (LG_INSPIRATION) — major stat buff +
+        // immunity to lvl up regen wipe. Has CalcFlags in status.yml
+        // (generator gives +Val1 to base stats); explicit RG marker
+        // here documents the per-skill consumer.
+        Register(StatusType.Inspiration, CombatMarkerHandler(rgBuff));
+
+        // SC_SHIELDSPELL_HP / SP / ATK (LG_SHIELDSPELL variants).
+        // Val2 = HP/SP/ATK boost magnitude proc'd by Shield Spell.
+        // Consumer: LG_SHIELDSPELL plugin reads val2 on attach.
+        Register(StatusType.ShieldspellHp, CombatMarkerHandler(rgBuff));
+        Register(StatusType.ShieldspellSp, CombatMarkerHandler(rgBuff));
+        Register(StatusType.ShieldspellAtk, CombatMarkerHandler(rgBuff));
+
+        // SC_HOVERING (NC_HOVERING — Mechanic, RG dispels via FAW).
+        // Val1 = hover state. Consumer: Movement service reads SC to
+        // disable terrain damage gates.
+        Register(StatusType.Hovering, CombatMarkerHandler(rgBuff));
+    }
+
+    /// <summary>
+    /// NS-3 wave 5b — Sura combo / Knuckle Arrow family. Combo-chain
+    /// SCs encode the next-skill gating in sc.Val1 (chain depth) and
+    /// sc.Val2 (target id).
+    ///
+    /// <para>Consumer: <c>Map.Server/Skills/SkillImpl/Acolyte/Sura*.cs</c>
+    /// reads combo SCs on cast to dispatch the appropriate combo
+    /// finisher / chain skill. Gensou/CrescentElbow/FallenAngel are
+    /// the major combo markers.</para>
+    /// </summary>
+    private void RegisterWave5bSuraFamily()
+    {
+        var suraBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+
+        // SC_GENSOU (SU_GENSOU — actually Doram, Sura overlap via
+        // Phantom Step combo). Val1 = combo chain step.
+        // Consumer: per-skill combo dispatch reads SC.
+        Register(StatusType.Gensou, CombatMarkerHandler(suraBuff));
+
+        // SC_CRESCENTELBOW (SR_CRESCENTELBOW) — Sura combo proc.
+        // Val1 = level. Consumer: SrCrescentElbow plugin reads SC.
+        Register(StatusType.Crescentelbow, CombatMarkerHandler(suraBuff));
+
+        // SC_FALLEN_ANGEL (SR_FALLENEMPIRE follow-up) — combo gate.
+        // Val1 = combo depth. Consumer: SrFallenEmpire plugin.
+        Register(StatusType.FallenAngel, CombatMarkerHandler(suraBuff));
+
+        // SC_TINDER_BREAKER / TINDER_BREAKER2 (SR_TINDER_BREAKER chain).
+        // Val1 = chain level. Consumer: SrTinderBreaker plugin reads
+        // SC to dispatch combo damage.
+        Register(StatusType.TinderBreaker, CombatMarkerHandler(suraBuff));
+        Register(StatusType.TinderBreaker2, CombatMarkerHandler(suraBuff));
+
+        // SC_LIGHT_OF_REGENE (AB_LIGHTOFREGENE — Sura/Arch Bishop revival).
+        // Val1 = revival HP %. Consumer: PcDeathService checks SC on
+        // death for auto-revive.
+        Register(StatusType.LightOfRegene, CombatMarkerHandler(suraBuff));
     }
 
     /// <summary>

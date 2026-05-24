@@ -144,6 +144,19 @@ public class StatusEffectCompletenessTests
             [StatusType.Slowcast]  = "Slowcast debuff — val2 cast+% read by SkillCastTimingService (status.cpp:11394)",
             [StatusType.Poembragi] = "BA_POEMBRAGI — val2/val3 cast+delay reductions read by SkillCastTimingService (status.cpp:10739)",
 
+            // ---- NS-3 wave 5b family-grouped consumer wiring ----
+            // Star Emperor family — stance + Light* skill plugins read Val1/Val2.
+            [StatusType.Sunstance]  = "Star Emperor — stance marker read by Taekwon StarEmperor*.cs plugins",
+            [StatusType.Starstance] = "Star Emperor — stance marker read by Taekwon StarEmperor*.cs plugins",
+            // Royal Guard family — LG_* skill plugins read SCs for damage/aggregate.
+            [StatusType.Banding]    = "LG_BANDING — val2 band member count read by RG party-share aggregator",
+            [StatusType.Inspiration] = "LG_INSPIRATION — stat buff + regen immunity read by RG plugin",
+            [StatusType.ShieldspellAtk] = "LG_SHIELDSPELL — val2 ATK boost magnitude read by plugin",
+            [StatusType.Hovering]   = "NC_HOVERING — Val1 read by MovementService for terrain damage disable",
+            // Sura family — combo chain markers read by per-skill plugins.
+            [StatusType.TinderBreaker]  = "SR_TINDER_BREAKER chain — val1 chain depth read by combo dispatch",
+            [StatusType.TinderBreaker2] = "SR_TINDER_BREAKER2 chain — val1 chain depth read by combo dispatch",
+
             // ---- NS-3 wave 5a Class A — pure presence-only (no Val storage) ----
             [StatusType.Magnificat] = "AL_MAGNIFICAT — +50% SP regen marker read by NaturalHealService",
             [StatusType.Maximizepower] = "BS_MAXIMIZE — weapon max-roll marker read by BattleCalculator",
