@@ -64,8 +64,9 @@ public sealed class AbsorbSpiritSphere : SkillImpl
             if (_rng.Next(100) < 20)
             {
                 spGain = 2 * mob.Level;
-                // Deferred per PARITY-REMAINING.md §P2.3: mob_target(dstmd, src, 0)
-                // re-aggro — IMobOpsService doesn't expose mob_target yet.
+                // rAthena: mob_target(dstmd, src, 0) — the mob now hates
+                // the caster regardless of prior aggro chain.
+                ctx.MobOps?.Target(mob, src, 0);
             }
         }
         else

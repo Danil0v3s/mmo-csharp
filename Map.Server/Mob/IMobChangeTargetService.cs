@@ -35,4 +35,14 @@ public interface IMobChangeTargetService
     /// when null target → always set unconditionally.
     /// </summary>
     bool TrySetTarget(MobEntity mob, Entity newTarget);
+
+    /// <summary>
+    /// rAthena <c>unit_changetarget</c> foreachinrange — sweep every
+    /// mob within <paramref name="range"/> of <paramref name="center"/>
+    /// that is currently chasing <paramref name="oldTarget"/> and
+    /// retarget it onto <paramref name="newTarget"/>. Returns the
+    /// number of mobs whose target was switched. Used by KO_GENWAKU
+    /// (Illusion Bewitch) and similar "redirect aggro" skills.
+    /// </summary>
+    int RetargetMobsChasing(Entity center, short range, Entity oldTarget, Entity newTarget);
 }

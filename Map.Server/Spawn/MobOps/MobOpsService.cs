@@ -9,11 +9,16 @@ public sealed class MobOpsService : IMobOpsService
 {
     private readonly ILogger<MobOpsService> _logger;
     private readonly IMobDb? _mobDb;
+    private readonly IMobChangeTargetService? _changeTarget;
+    private readonly IEntityRegistry? _entities;
 
-    public MobOpsService(ILogger<MobOpsService> logger, IMobDb? mobDb = null)
+    public MobOpsService(ILogger<MobOpsService> logger, IMobDb? mobDb = null,
+        IMobChangeTargetService? changeTarget = null, IEntityRegistry? entities = null)
     {
         _logger = logger;
         _mobDb = mobDb;
+        _changeTarget = changeTarget;
+        _entities = entities;
     }
 
     public bool Spawn(MobEntity mob) => true;
@@ -66,4 +71,43 @@ public sealed class MobOpsService : IMobOpsService
     public int SearchName(string name) => 0;
     public int SearchNameArray(string namePattern, IList<int> output, int max) => 0;
     public void Reload() { }
+
+    public void Target(MobEntity mob, Entity newTarget, byte type)
+    {
+        if (newTarget == null) return;
+        // rAthena: mob_target forces engagement without the
+        // "can_changetarget" gate — used by skill side effects.
+        mob.TargetId = (int)newTarget.Id.Value;
+    }
+
+    public void UnlockTarget(MobEntity mob, long tick)
+    {
+        // rAthena mob_unlocktarget — drop current target + cancel any
+        // chase. Concrete state mutations (path-cancel, FSM transition)
+        // live on the AI service; the canonical "forget target" is the
+        // TargetId zero-out.
+        mob.TargetId = 0;
+    }
+
+    public int RetargetMobsChasing(Entity center, short range, Entity oldTarget, Entity newTarget)
+    {
+        // The MobChangeTargetService ctor that consumes IEntityRegistry
+        // owns the spatial sweep. If we got a bare service we wire one
+        // up on demand using our own registry; otherwise the no-op
+        // default applies.
+        if (_changeTarget == null || _entities == null) return 0;
+        if (_changeTarget is MobChangeTargetService mcts) return mcts.RetargetMobsChasing(center, range, oldTarget, newTarget);
+        // Fallback path — replicate the spatial loop here.
+        var oldTargetId = (int)oldTarget.Id.Value;
+        var switched = 0;
+        foreach (var e in _entities.ForEachInRange(center.MapId, center.X, center.Y, range, EntityType.Mob))
+        {
+            if (e is not MobEntity mob) continue;
+            if (mob.TargetId != oldTargetId) continue;
+            if (!_changeTarget.CanChangeTarget(mob, newTarget)) continue;
+            mob.TargetId = (int)newTarget.Id.Value;
+            switched++;
+        }
+        return switched;
+    }
 }

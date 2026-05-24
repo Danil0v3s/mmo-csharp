@@ -67,4 +67,31 @@ public interface IMobOpsService
 
     /// <summary>rAthena <c>mobdb_reload</c>.</summary>
     void Reload();
+
+    /// <summary>
+    /// rAthena <c>unit_changetarget</c> foreachinrange — sweep every
+    /// mob within Chebyshev <paramref name="range"/> of
+    /// <paramref name="center"/>, find those currently chasing
+    /// <paramref name="oldTarget"/>, and switch them to
+    /// <paramref name="newTarget"/>. Used by KO_GENWAKU (Illusion
+    /// Bewitch) and similar redirect-aggro skills. Default no-op.
+    /// </summary>
+    int RetargetMobsChasing(Entity center, short range, Entity oldTarget, Entity newTarget) => 0;
+
+    /// <summary>
+    /// rAthena <c>mob_target</c> (mob.cpp:1290) — force this mob to
+    /// engage <paramref name="newTarget"/>. The <paramref name="type"/>
+    /// flag mirrors the C++ signature (0 = standard aggro). Used by
+    /// MO_ABSORBSPIRITS proc, NPC_CALLSLAVE retargeting, and similar
+    /// "this mob now hates the source" skill side effects.
+    /// </summary>
+    void Target(MobEntity mob, Entity newTarget, byte type) { }
+
+    /// <summary>
+    /// rAthena <c>mob_unlocktarget</c> (mob.cpp:1383) — drop the mob's
+    /// current target without immediately picking a new one. Used by
+    /// CR_PROVIDENCE / AL_PNEUMA / TF_DETOXIFY style debuff cures that
+    /// also break aggro.
+    /// </summary>
+    void UnlockTarget(MobEntity mob, long tick) { }
 }

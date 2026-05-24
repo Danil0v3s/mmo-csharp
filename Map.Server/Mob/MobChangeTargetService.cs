@@ -6,10 +6,15 @@ namespace Map.Server.Mob;
 /// <summary>
 /// Default <see cref="IMobChangeTargetService"/> impl. Pure function
 /// over <see cref="MobEntity.SkillState"/> + <see cref="MobMode"/>;
-/// no spatial scans needed.
+/// spatial retarget consults the entity registry when wired.
 /// </summary>
 public sealed class MobChangeTargetService : IMobChangeTargetService
 {
+    private readonly IEntityRegistry? _entities;
+
+    public MobChangeTargetService() { }
+    public MobChangeTargetService(IEntityRegistry entities) { _entities = entities; }
+
     public bool CanChangeTarget(MobEntity mob, Entity newTarget)
     {
         if (newTarget == null) return false;
@@ -54,5 +59,26 @@ public sealed class MobChangeTargetService : IMobChangeTargetService
 
         mob.TargetId = (int)newTarget.Id.Value;
         return true;
+    }
+
+    public int RetargetMobsChasing(Entity center, short range, Entity oldTarget, Entity newTarget)
+    {
+        if (_entities == null || oldTarget == null || newTarget == null) return 0;
+        var oldTargetId = (int)oldTarget.Id.Value;
+        var switched = 0;
+        // rAthena: map_foreachinallrange(unit_changetarget, src, AREA_SIZE,
+        // BL_CHAR, src, target). We scope by Mob entities (only mobs
+        // carry a TargetId in the C# port — PCs target via UnitData) and
+        // apply the per-mob gate.
+        var found = _entities.ForEachInRange(center.MapId, center.X, center.Y, range, EntityType.Mob);
+        foreach (var e in found)
+        {
+            if (e is not MobEntity mob) continue;
+            if (mob.TargetId != oldTargetId) continue;
+            if (!CanChangeTarget(mob, newTarget)) continue;
+            mob.TargetId = (int)newTarget.Id.Value;
+            switched++;
+        }
+        return switched;
     }
 }

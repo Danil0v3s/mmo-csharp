@@ -182,4 +182,9 @@ public sealed record SkillBehaviorContext(
     /// drives SA_ABRACADABRA's per-cast random spell pick. Backed by
     /// the SQL <c>abra_db</c> seed; falls back to a no-op when the
     /// table is empty.</summary>
-    Map.Server.Skills.IAbraDatabase? Abra = null);
+    Map.Server.Skills.IAbraDatabase? Abra = null,
+    /// <summary>Inventory service — rAthena <c>pc_additem</c> +
+    /// <c>pc_delitem</c> wrapper. Plugins that refund a deploy item
+    /// (HT_REMOVETRAP, RA_REMOVETRAP) or grant a script-produced item
+    /// dispatch through this.</summary>
+    Map.Server.Inventory.IInventoryService? Inventory = null);

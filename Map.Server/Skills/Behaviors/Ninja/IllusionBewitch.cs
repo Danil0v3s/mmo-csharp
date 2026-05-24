@@ -33,10 +33,12 @@ public sealed class IllusionBewitch : SkillImpl
         {
             ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
             ctx.UnitOps?.MovePos(target, origX, origY, 0, false);
-            // Deferred: map_foreachinallrange(unit_changetarget, src, AREA_SIZE, BL_CHAR, src, target)
-            // — retarget every mob currently chasing the caster onto the
-            // victim. No foreachinrange retarget sweep is exposed by
-            // IMobChangeTargetService yet.
+            // rAthena: map_foreachinallrange(unit_changetarget, src,
+            // AREA_SIZE, BL_CHAR, src, target) — every mob within AOI
+            // currently chasing the caster switches to the victim.
+            // AREA_SIZE is the rAthena AOI radius (14). IMobOpsService
+            // owns the spatial sweep + per-mob gate.
+            ctx.MobOps?.RetargetMobsChasing(src, range: 14, oldTarget: src, newTarget: target);
         }
         else
         {
