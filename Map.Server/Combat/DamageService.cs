@@ -136,6 +136,34 @@ public sealed class DamageService : IDamageService
     {
         if (damage < 0) damage = 0;
 
+        // Wave 26 — SC_DEVOTION (Crusader Devotion). When the target has
+        // an active Devotion link, the linked guard (Val1 = guard entity
+        // id) takes the hit instead. Re-dispatches the ApplyResolved
+        // call on the guard and short-circuits the target's HP delta.
+        // rAthena reference: status.cpp SC_DEVOTION + battle_calc_damage
+        // devotion check. The bookkeeping for guard distance / line-of-
+        // sight enforcement lives on the SC application (already gated
+        // before Val1 was stored), so the consumer just trusts Val1.
+        if (_sc != null && target.Id.Value != 0)
+        {
+            var dev = _sc.Get(target, StatusType.Devotion);
+            if (dev != null && dev.Val1 > 0)
+            {
+                var guardId = new EntityId(dev.Val1);
+                if (guardId.Value != target.Id.Value
+                    && _entities.Get(guardId) is Entity guard
+                    && guard.Id.Value != source?.Id.Value)
+                {
+                    // Recurse on the guard with the same action; the guard
+                    // is the new damage sink. Return the original target's
+                    // delta as 0 (rAthena draws a hit anim on target but
+                    // applies HP to guard).
+                    BroadcastAct(target, source, 0, action);
+                    return ApplyResolved(guard, source, damage, action);
+                }
+            }
+        }
+
         // T2.4b+: SC overlays on incoming damage. Order matches rAthena
         // status_calc_damage:
         //   1) AutoGuard rolls full-block first (binary outcome).
@@ -264,6 +292,21 @@ public sealed class DamageService : IDamageService
         {
             damage *= 2;
             _sc.End(target, StatusType.Aeterna);
+        }
+
+        // ---- Providence -------------------------------------------------
+        // Wave 26 — rAthena Crusader Providence (battle.cpp Providence
+        // branch). Val1 = level; the per-race damage resist is read from
+        // Val2 (rAthena's storage convention: race id of the resist) or
+        // applies broadly when Val2 == 0 / matches the attacker's race.
+        // Standard rAthena: 5*Val1 % resist vs Demon / Undead. We apply
+        // it whenever the SC is active; race-specific gating lands when
+        // attacker race is threaded through here.
+        var providence = _sc.Get(target, StatusType.Providence);
+        if (providence != null && providence.Val1 > 0)
+        {
+            var resistPct = 5 * providence.Val1;
+            damage = Math.Max(1, damage - (damage * resistPct / 100));
         }
 
         return damage;

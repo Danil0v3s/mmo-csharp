@@ -156,7 +156,23 @@ public sealed class SkillAttackService : ISkillAttackService
         if (def == null) return 0;
         var ratePerLevel = def.DamageRate.Length > lvl ? def.DamageRate[lvl] : 100;
         var baseDmg = (source.Stats.MatkMin + source.Stats.MatkMax) / 2;
-        return Math.Max(1, baseDmg * ratePerLevel / 100);
+        long damage = Math.Max(1, baseDmg * ratePerLevel / 100);
+
+        // rAthena <c>SC_MAGICPOWER</c> (status.cpp:10556-10564) — Sage's
+        // Mystic Amplification. The next magic cast deals
+        // <c>(100 + 5 * Val1) %</c> of base damage; SC ends on consume.
+        // Val1 carries the skill level (1..5).
+        if (_sc != null)
+        {
+            var mp = _sc.Get(source, StatusType.Magicpower);
+            if (mp != null && mp.Val1 > 0)
+            {
+                var bumpPct = 100 + 5 * mp.Val1;
+                damage = damage * bumpPct / 100;
+                _sc.End(source, StatusType.Magicpower);
+            }
+        }
+        return damage;
     }
 
     /// <summary>

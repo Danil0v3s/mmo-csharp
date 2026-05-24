@@ -95,6 +95,22 @@ public sealed class BattleCalculator : IBattleCalculator
         // is the normal autoattack swing.
         int def1 = t.Def;        // hard def (equipment)
         int vitDef = t.Def2;     // soft def (renewal: just def2 verbatim)
+
+        // Wave 26 — rAthena <c>SC_SIGNUMCRUCIS</c> (status.cpp:11296).
+        // Crusader's Signum Crucis reduces the target's defense by
+        // <c>Val2 %</c> when the target is Undead or Demon race. Stored
+        // per rAthena as Val2 = 14+3*level / 14+5*level. We honor whatever
+        // the caster stored.
+        if (_sc != null && (t.Race == Map.Server.Status.BattleRace.Undead || t.Race == Map.Server.Status.BattleRace.Demon))
+        {
+            var signum = _sc.Get(target, Map.Server.Status.StatusType.Signumcrucis);
+            if (signum != null && signum.Val2 > 0)
+            {
+                def1 = def1 - (def1 * signum.Val2 / 100);
+                vitDef = vitDef - (vitDef * signum.Val2 / 100);
+            }
+        }
+
         if (def1 == -400) def1 = -399; // div-by-zero guard from rAthena
         damage = damage * (4000L + def1) / (4000L + 10L * def1) - vitDef;
 
@@ -110,6 +126,20 @@ public sealed class BattleCalculator : IBattleCalculator
         if (_cards != null)
         {
             damage = _cards.CalcCardFix(BattleAttackType.Weapon, source, target, damage, leftHand: false);
+        }
+
+        // --- Step 5c: SC_HEAT_BARREL (Gunslinger) ---------------
+        // Wave 26 — rAthena <c>SC_HEAT_BARREL</c> (status.cpp:11392).
+        // Gunslinger Heat Barrel grants <c>5*Val1 %</c> ATK and a per-bullet
+        // damage bonus. Val1 = level (1..5). Read on the caster's swing.
+        if (_sc != null)
+        {
+            var hb = _sc.Get(source, Map.Server.Status.StatusType.HeatBarrel);
+            if (hb != null && hb.Val1 > 0)
+            {
+                var pct = 5 * hb.Val1;
+                damage += damage * pct / 100;
+            }
         }
 
         // --- Step 7: floor to 1 unless it actually missed (battle_min_damage) ---
