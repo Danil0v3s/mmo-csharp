@@ -34,9 +34,19 @@ public sealed class MeteorStorm : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        _units?.Place(src, SkillId, skillLevel, x, y);
-        // Deferred: staggered multi-meteor placement at random splash cells — needs
-        // unit_interval read on ISkillUnitService + repeated Place() across ticks.
+        // rAthena meteor pattern: spawn N meteors at random offsets inside
+        // a 9×9 envelope centered on (x,y). Count = 2 + skill_lv (skill.cpp
+        // WZ_METEOR arm). Renewal staggers via skill_addtimerskill; without
+        // a unit_interval reader we drop them all in the same tick (the
+        // skill_unit_db Interval applies to per-unit damage ticks anyway).
+        const short Half = 4;
+        var count = 2 + skillLevel;
+        for (var i = 0; i < count; i++)
+        {
+            var ox = (short)(x + _rng.Next(-Half, Half + 1));
+            var oy = (short)(y + _rng.Next(-Half, Half + 1));
+            _units?.Place(src, SkillId, skillLevel, ox, oy);
+        }
     }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)

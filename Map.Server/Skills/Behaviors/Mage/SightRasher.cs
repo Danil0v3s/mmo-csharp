@@ -32,12 +32,25 @@ public sealed class SightRasher : SkillImpl
     {
         ctx.Sc?.End(src, StatusType.Sight);
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // Deferred: full map_foreachinshootrange splash dispatch — primary-target hit lands
-        // via CastendDamageId; LoS-filtered splash iterator isn't on ISkillAttackService.
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
+        // rAthena map_foreachinshootrange(skill_attack_area, src, ...) — splash
+        // around the source (NOT the target) with a line-of-sight gate. Our
+        // IEntityRegistry.ForEachInRange is the Chebyshev-distance walker; we
+        // pair it with IPathService.PathSearchLong (Bresenham wall check) so
+        // only victims with clear LoS to the caster eat the hit.
+        const short SplashRadius = 7;
+        ctx.Sc?.End(src, StatusType.Sight);
+        var victims = ctx.Entities.ForEachInRange(src.MapId, src.X, src.Y, SplashRadius,
+            EntityType.Mob | EntityType.Pc);
+        foreach (var v in victims)
+        {
+            if (v.Id == src.Id) continue;
+            if (ctx.Paths != null && !ctx.Paths.PathSearchLong(src.MapId, src.X, src.Y, v.X, v.Y))
+                continue;
+            _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, v, SkillId, skillLevel);
+        }
     }
 }

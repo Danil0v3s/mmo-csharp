@@ -4,14 +4,13 @@ using Map.Server.Status;
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SO_SPELLFIST — Sorcerer Spell Fist. Manual port of
-/// <c>rathena-fork/src/map/skills/mage/spellfist.cpp</c>.
-///
-/// <para>Cancels the caster's currently queued bolt spell and replaces
-/// the next basic attacks with a magic-charged punch. Reads
-/// <c>sd-&gt;skill_id_old</c> / <c>skill_lv_old</c> set during the
-/// preceding bolt cast — that bookkeeping isn't wired in our skill
-/// engine yet, so the SC starts with the bolt slot zeroed out.</para>
+/// SO_SPELLFIST — Sorcerer Spell Fist (skill.cpp:SO_SPELLFIST arm).
+/// Captures the caster's last bolt cast (<see cref="PlayerEntity.LastBoltSkillId"/>
+/// / Level) into <c>SC_SPELLFIST</c> Val2/Val3. On each subsequent
+/// melee hit the SC consumes one charge and discharges the bolt as a
+/// magic burst (skill.cpp:6219). Val1 = remaining hit count
+/// (5 × skillLevel), Val2 = captured bolt skill id, Val3 = captured
+/// bolt skill level.
 /// </summary>
 public sealed class SpellFist : SkillImpl
 {
@@ -19,9 +18,17 @@ public sealed class SpellFist : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
+        if (src is not PlayerEntity pc) return;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // Deferred: skill_id_old / skill_lv_old bookkeeping isn't tracked per session yet,
-        // and SkillCastService.Cancel isn't surfaced — bolt-charge passthrough stays zeroed.
-        ctx.Sc?.Start(src, StatusType.Spellfist, val1: skillLevel, val2: 0, val3: 0, 0, durationMs: 30_000, src);
+        ctx.Sc?.Start(src, StatusType.Spellfist,
+            val1: 5 * skillLevel,
+            val2: pc.LastBoltSkillId,
+            val3: pc.LastBoltSkillLevel,
+            val4: 0,
+            durationMs: 30_000, src);
+        // Consume the captured bolt — rAthena clears the skill_id_old
+        // slot so the next bolt cast records into a fresh slot.
+        pc.LastBoltSkillId = 0;
+        pc.LastBoltSkillLevel = 0;
     }
 }

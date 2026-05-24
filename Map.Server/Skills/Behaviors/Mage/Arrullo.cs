@@ -22,19 +22,34 @@ public sealed class Arrullo : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // Deferred: full map_foreachinallarea splash dispatch — Arrullo is a ground-target
-        // AOE; the named-target rate roll happens in CastendNoDamageId.
+        // rAthena map_foreachinallarea around (x,y) with a 5×5 ground
+        // splash (skill_db SplashRange 2). Every enemy in the cell box
+        // rolls the deep-sleep chance.
+        const short SplashRadius = 2;
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+        var victims = ctx.Entities.ForEachInRange(src.MapId, x, y, SplashRadius,
+            EntityType.Mob | EntityType.Pc);
+        foreach (var v in victims)
+        {
+            if (v.Id == src.Id) continue;
+            RollSleep(src, v, skillLevel, ctx);
+        }
     }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        var jobLevel = 50;
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        RollSleep(src, target, skillLevel, ctx);
+    }
+
+    private void RollSleep(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        var jobLevel = src is PlayerEntity pc ? pc.JobLevel : 50;
         var rate = (15 + 5 * skillLevel)
             + src.Stats.IntStat / 5
             + jobLevel / 5
             - target.Stats.IntStat / 6
             - target.Stats.Luk / 10;
-        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         if (_rng.Next(100) < rate)
             ctx.Sc?.Start(target, StatusType.Deepsleep, val1: skillLevel, 0, 0, 0, durationMs: 5000, src);
     }

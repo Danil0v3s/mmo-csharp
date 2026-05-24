@@ -29,9 +29,20 @@ public sealed class FrostNova : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
+        const short SplashRadius = 7;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // Deferred: full map_foreachinshootrange splash dispatch — needs the LoS-filtered
-        // area iterator (ISkillAttackService.SkillAreaSub is square-range, not shoot-range).
+        // map_foreachinshootrange around the caster — LoS-gated Chebyshev
+        // walker. Every enemy in range eats the freeze roll on the same
+        // hit timing rAthena uses.
+        var victims = ctx.Entities.ForEachInRange(src.MapId, src.X, src.Y, SplashRadius,
+            EntityType.Mob | EntityType.Pc);
+        foreach (var v in victims)
+        {
+            if (v.Id == src.Id) continue;
+            if (ctx.Paths != null && !ctx.Paths.PathSearchLong(src.MapId, src.X, src.Y, v.X, v.Y))
+                continue;
+            ApplyAdditionalEffects(src, v, skillLevel, ctx);
+        }
     }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)

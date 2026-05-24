@@ -1,5 +1,11 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
     "kind": "nodamage",
     "data": {
       "src": 1,
@@ -14,7 +20,7 @@
     "data": {
       "target": 1,
       "type": "Spellfist",
-      "val1": 5,
+      "val1": 25,
       "val2": 0,
       "val3": 0,
       "val4": 0,

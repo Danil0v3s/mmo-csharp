@@ -1,5 +1,11 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
     "kind": "nodamage",
     "data": {
       "src": 1,
@@ -7,6 +13,19 @@
       "skillId": 279,
       "healOrLevel": 1,
       "success": true
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "Autospell",
+      "val1": 1,
+      "val2": 11,
+      "val3": 3,
+      "val4": 0,
+      "durationMs": 30000,
+      "src": 1
     }
   }
 ]

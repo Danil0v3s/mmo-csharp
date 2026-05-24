@@ -3,12 +3,11 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Thief;
 
 /// <summary>
-/// TF_STEAL — Steal. Manual port of
-/// <c>rathena-fork/src/map/skills/thief/steal.cpp</c>.
-/// Calls into pc_steal_item; success animation + drop, failure fail.
-/// pc_steal_item already lives in <c>PlayerStealService</c> — wiring
-/// via ctx deferred (service not yet on SkillBehaviorContext);
-/// this stub broadcasts animation only.
+/// TF_STEAL — Steal (skill.cpp:TF_STEAL arm). Calls
+/// <c>pc_steal_item(sd, target, skill_lv)</c> via the thread-through
+/// <see cref="SkillBehaviorContext.Steal"/> service. Animation
+/// broadcast happens regardless; the SC service rolls success/failure
+/// against the mob's drop table.
 /// </summary>
 public sealed class Steal : SkillImpl
 {
@@ -16,7 +15,10 @@ public sealed class Steal : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // Deferred: pc_steal_item(sd, target, skill_lv) — IPlayerStealService exists but isn't on SkillBehaviorContext yet.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        if (src is PlayerEntity pc && target is MobEntity mob)
+        {
+            ctx.Steal?.TrySteal(pc, mob);
+        }
     }
 }

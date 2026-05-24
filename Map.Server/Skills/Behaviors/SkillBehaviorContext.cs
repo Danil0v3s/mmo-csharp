@@ -99,4 +99,11 @@ public sealed record SkillBehaviorContext(
     /// <c>path_search_long</c> (Bresenham LoS), distance / direction
     /// primitives. Skills that gate on line-of-sight or wall-clear
     /// (Charge Attack, Sight, Storm Gust spawn) consult this.</summary>
-    IPathService? Paths = null);
+    IPathService? Paths = null,
+    /// <summary>Steal service — <c>pc_steal_item</c> + <c>pc_steal_coin</c>.
+    /// TF_STEAL / RG_STEALCOIN / GC_PHANTOMMENACE route here.</summary>
+    IPlayerStealService? Steal = null,
+    /// <summary>PC death + savepoint service. <c>pc_setpos(SavePoint)</c>
+    /// and the dead-respawn flow live here; ALL_ODINS_RECALL lv 2/3,
+    /// AL_TELEPORT lv 2, NV_BREAKTHROUGH dispatch through it.</summary>
+    IPcDeathService? Death = null);

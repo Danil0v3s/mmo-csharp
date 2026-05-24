@@ -26,14 +26,14 @@ public sealed class Hindsight : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        if (src is PlayerEntity)
-        {
-            // Deferred: ZC_AUTOSPELLLIST packet + handler not wired yet. rAthena opens the
-            // bolt-pick dialog and starts SC_AUTOSPELL after the pick — tracked in
-            // PARITY-REMAINING.md.
-            return;
-        }
-        // Non-player branch: deterministic spell pick.
+        // Both branches use the same deterministic spell-pick table; the
+        // canonical rAthena player path opens an autospell-list dialog
+        // (ZC_AUTOSPELLLIST) and waits for the user's pick before
+        // starting SC_AUTOSPELL — our wire surface doesn't carry that
+        // packet yet, so the player branch falls back to the same
+        // deterministic pick the mob branch uses. The SC still applies
+        // and procs on hit; the only missing piece is the player's
+        // choice override.
         ushort spellId = 0;
         int maxLv = 1;
         if (skillLevel >= 10) { spellId = SkillIds.MG_FROSTDIVER; maxLv = skillLevel - 9; }

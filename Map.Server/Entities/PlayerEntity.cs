@@ -226,6 +226,16 @@ public sealed class PlayerEntity : Entity
     public byte LastSongSkillLevel { get; set; }
 
     /// <summary>
+    /// rAthena <c>sd.skill_id_old</c> / <c>sd.skill_lv_old</c> — the
+    /// most recent bolt spell cast (Fire/Cold/Lightning Bolt or their
+    /// Sorcerer-tier counterparts). SO_SPELLFIST chains off these so
+    /// the captured spell becomes the on-hit magic burst. Cleared
+    /// after consumption.
+    /// </summary>
+    public ushort LastBoltSkillId { get; set; }
+    public byte LastBoltSkillLevel { get; set; }
+
+    /// <summary>
     /// rAthena <c>invincible_timer</c> (pc.cpp:417) — absolute tick
     /// (<see cref="Environment.TickCount64"/>) until which the PC is
     /// invulnerable. 0 = not invincible. Applied automatically on warp

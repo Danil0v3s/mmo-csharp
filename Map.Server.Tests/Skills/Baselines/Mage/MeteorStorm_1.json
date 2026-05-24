@@ -1,12 +1,38 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
     "kind": "unit-place",
     "data": {
       "caster": 1,
       "skillId": 83,
       "skillLevel": 1,
-      "centerX": 105,
-      "centerY": 105
+      "centerX": 107,
+      "centerY": 108
+    }
+  },
+  {
+    "kind": "unit-place",
+    "data": {
+      "caster": 1,
+      "skillId": 83,
+      "skillLevel": 1,
+      "centerX": 107,
+      "centerY": 106
+    }
+  },
+  {
+    "kind": "unit-place",
+    "data": {
+      "caster": 1,
+      "skillId": 83,
+      "skillLevel": 1,
+      "centerX": 102,
+      "centerY": 106
     }
   }
 ]

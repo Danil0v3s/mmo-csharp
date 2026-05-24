@@ -4,19 +4,17 @@ using Map.Server.Status;
 namespace Map.Server.Skills.Behaviors.Swordman;
 
 /// <summary>
-/// LG_HESPERUSLIT — Royal Guard Hesperus:Lit. Manual port of
-/// <c>rathena-fork/src/map/skills/swordman/hesperuslit.cpp</c>.
-/// Ratio <c>+(-100 + 300*lv) + VIT/6</c>; <c>+(-100 + 450*lv)</c> with
-/// SC_INSPIRATION. SC plumbing into ratio + Pinpoint Attack chain
-/// proc are TODO.
+/// LG_HESPERUSLIT — Royal Guard Hesperus:Lit (skill.cpp:LG_HESPERUSLIT).
+/// Ratio: <c>baseRatio + (-100 + 300*lv) + VIT/6</c>; with
+/// <c>SC_INSPIRATION</c> active: <c>baseRatio + (-100 + 450*lv) + VIT/6</c>.
 /// </summary>
 public sealed class HesperusLit : WeaponSkillImpl
 {
     public HesperusLit() : base(SkillIds.LG_HESPERUSLIT) { }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + (-100 + 300 * skillLevel) + src.Stats.Vit / 6;
-    // Deferred: with SC_INSPIRATION active the ratio becomes +(-100 + 450*lv).
-    // CalculateSkillRatio has no SkillBehaviorContext parameter, so the SC
-    // table is not reachable here; needs a ratio-hook signature change.
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        var lvMul = ctx.Sc?.Get(src, StatusType.Inspiration) != null ? 450 : 300;
+        return baseRatio + (-100 + lvMul * skillLevel) + src.Stats.Vit / 6;
+    }
 }

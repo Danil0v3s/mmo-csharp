@@ -30,7 +30,21 @@ public sealed class Monocell : SkillImpl
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         // MOBID_PORING = 1002 in rAthena's mob_db.
         ctx.MobOps?.SetClass((MobEntity)target, 1002);
-        // Deferred: rAthena also clears every common SC + a curated CC list on success;
-        // bulk SC clean-up helper isn't surfaced on IStatusChangeService yet.
+        // rAthena clears the same curated CC list every Monocell hit
+        // (skill.cpp:SA_MONOCELL): freeze / stone / stun / sleep / silence /
+        // blind / poison / curse / bleeding. These are the SCs the morph
+        // would otherwise persist into the new sprite.
+        if (ctx.Sc != null)
+        {
+            ctx.Sc.End(target, StatusType.Freeze);
+            ctx.Sc.End(target, StatusType.Stone);
+            ctx.Sc.End(target, StatusType.Stun);
+            ctx.Sc.End(target, StatusType.Sleep);
+            ctx.Sc.End(target, StatusType.Silence);
+            ctx.Sc.End(target, StatusType.Blind);
+            ctx.Sc.End(target, StatusType.Poison);
+            ctx.Sc.End(target, StatusType.Curse);
+            ctx.Sc.End(target, StatusType.Bleeding);
+        }
     }
 }
