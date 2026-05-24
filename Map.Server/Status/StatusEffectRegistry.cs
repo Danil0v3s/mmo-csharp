@@ -74,18 +74,16 @@ public sealed class StatusEffectRegistry
             }));
 
         // ===== Crowd-control gates (no stat mod — presence is the gate) =====
-        // EntityActionGates.CanAct / CanCastSkill checks for these SCs;
-        // the registry just needs an entry so Start() can attach the SC.
-
-        Register(StatusType.Stone, NoOpHandler());
-        Register(StatusType.Freeze, NoOpHandler());
-        Register(StatusType.Stun, NoOpHandler());
-        Register(StatusType.Sleep, NoOpHandler());
-        Register(StatusType.Curse, NoOpHandler());      // -75% Luk, halved MoveSpeed in rAthena
-        Register(StatusType.Silence, NoOpHandler());    // blocks magic
-        Register(StatusType.Confusion, NoOpHandler());  // blocks targeting
-        Register(StatusType.Blind, NoOpHandler());      // -25% Hit/Flee (cosmetic for now)
-        Register(StatusType.Stonewait, NoOpHandler());  // 5s petrify warmup
+        // Wave 5a (RegisterWave5aClassAFormulas) now registers Stone/
+        // Freeze/Stun/Sleep/Silence/Confusion/Stonewait via
+        // CombatMarkerHandler with explicit consumer citation
+        // (EntityActionGates.CanAct/CanCastSkill reads SC presence).
+        // Curse and Blind got real OnStart bodies in wave 1 (lines 577,
+        // 598).  Original placeholder NoOpHandler() calls removed —
+        // shadowing was already happening via dictionary overwrite; now
+        // the file has 0 literal NoOpHandler() calls per NS-3 wave 5e
+        // close-out (the bulk-policy citation in
+        // RegisterDefaultsForMissingTypes() covers everything else).
 
         // ===== Stat buffs =====
 
@@ -208,30 +206,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
             }));
 
-        // SC_ENDURE — hit-counter buff. Val1 = remaining hits before
-        // expire (rAthena: 7 hits then OnEnd). Refresh-on-hit infra
-        // ports later; for now the SC is a presence flag that combat
-        // can read to suppress stagger.
-        Register(StatusType.Endure, NoOpHandler());
-
-        // SC_MAGNIFICAT — +val1*100 % SP regen (renewal +50 % at lv1).
-        // No direct stat; we hold the marker — IPcRegenService reads it.
-        Register(StatusType.Magnificat, NoOpHandler());
-
-        // ===== Weapon-element endow (presence flags) =====
-        // SC_FIREWEAPON / WATERWEAPON / WINDWEAPON / EARTHWEAPON —
-        // damage-calc reads target.Stats.WeaponElement directly today;
-        // these registry entries just let the SC attach for duration.
-        Register(StatusType.Fireweapon, NoOpHandler());
-        Register(StatusType.Waterweapon, NoOpHandler());
-        Register(StatusType.Windweapon, NoOpHandler());
-        Register(StatusType.Earthweapon, NoOpHandler());
-
-        // ===== Defense buffs (presence flags) =====
-        // SC_KYRIE — barrier with HP-shield value. Val1 = remaining
-        // HP shield, Val2 = remaining hit count. Consumed by the
-        // damage pipeline (TBD); registry entry just holds the slots.
-        Register(StatusType.Kyrie, NoOpHandler());
+        // NS-3 wave 5e: original Endure / Magnificat / Fireweapon /
+        // Waterweapon / Windweapon / Earthweapon / Kyrie NoOpHandler()
+        // placeholders removed. Endure + Kyrie now have real Val*
+        // bodies in wave 5a (RegisterWave5aClassAFormulas, lines
+        // 1352-1500). Weapon endow family + Magnificat have explicit
+        // CombatMarkerHandler registrations in wave 4a/5a with their
+        // consumer paths cited (weapon element resolver / NaturalHealService).
 
         // SC_ASSUMPTIO — DEF +val1*20 %, MDEF +val1*20 %. Simplified
         // here as a flat boost using Val2/Val3 to remember the cached
@@ -252,45 +233,17 @@ public sealed class StatusEffectRegistry
                 target.Stats.Mdef = (short)Math.Max(0, target.Stats.Mdef - sc.Val3);
             }));
 
-        // SC_AUTOGUARD — % chance to block physical. Val1 = chance %.
-        // Consumed by DamageService.ApplyScDamageReduction (T2.4b+).
-        Register(StatusType.Autoguard, NoOpHandler());
-
-        // SC_STRIPWEAPON / SHIELD / ARMOR / HELM — Rogue's Strip family.
-        // Val1 = equip mask of the stripped slot; while attached the
-        // PC can't re-equip until the SC ends. Item-side enforcement
-        // ports when the unequip pipeline reads the SC marker on
-        // EquipService.CanEquip — registry entry holds the duration.
-        Register(StatusType.Stripweapon, NoOpHandler());
-        Register(StatusType.Stripshield, NoOpHandler());
-        Register(StatusType.Striparmor, NoOpHandler());
-        Register(StatusType.Striphelm, NoOpHandler());
-
-        // SC_HIDING — Thief Hiding (TF_HIDING). Presence flag; the
-        // visibility hook (other entities can't target hidden players)
-        // ports separately. We only need the SC slot for duration.
-        Register(StatusType.Hiding, NoOpHandler());
-
-        // SC_OVERTHRUST — Blacksmith Over Thrust (BS_OVERTHRUST).
-        // Val1 = ATK % boost. Future damage-side hook reads it from
-        // PlayerEntity.EquipBonuses-equivalent path; for now SC is
-        // a presence + duration marker.
-        Register(StatusType.Overthrust, NoOpHandler());
-
-        // SC_AETERNA — Priest Lex Aeterna (PR_LEXAETERNA). Marker
-        // that the next damage hit on the target should be doubled
-        // (and then the SC ends). Damage-side consumer ports next.
-        Register(StatusType.Aeterna, NoOpHandler());
-
-        // ---- T2.3 wave 2 — Priest support + Acolyte + Assassin SCs ----
-
-        // SC_IMPOSITIO — Priest Impositio Manus. Val1 = flat ATK boost.
-        // Damage-side consumer reads Val1 in the weapon-attack path.
-        Register(StatusType.Impositio, NoOpHandler());
-
-        // SC_ASPERSIO — Holy weapon endow (PR_ASPERSIO). Presence
-        // flag; weapon-element override consumer ports later.
-        Register(StatusType.Aspersio, NoOpHandler());
+        // NS-3 wave 5e: Autoguard / Strip* / Hiding / Overthrust / Aeterna /
+        // Impositio / Aspersio NoOpHandler() placeholders removed.
+        // All have explicit Register() in wave 1/4a/5a with formula
+        // bodies or CombatMarker + consumer citations.
+        // - Autoguard → wave 5a (val2=sum block%)
+        // - Strip family → wave 4a (CombatMarker, IEquipService consumer)
+        // - Hiding → wave 4a (CombatMarker, visibility hook)
+        // - Overthrust → wave 4a (CombatMarker → wave 4a bespoke at line 1190)
+        // - Aeterna → wave 5a (CombatMarker, damage pipeline)
+        // - Impositio → wave 1 bespoke (line 693)
+        // - Aspersio → wave 5a (CombatMarker, weapon element resolver)
 
         // SC_GLORIA — +30 Luk (PR_GLORIA).
         Register(StatusType.Gloria, new StatusEffectHandler(
@@ -303,12 +256,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
             }));
 
-        // SC_SIGNUMCRUCIS — Holy/Dark debuff (AL_CRUCIS). Val1 = DEF
-        // drop %. Damage-side consumer reads it during DEF math.
-        Register(StatusType.Signumcrucis, NoOpHandler());
-
-        // SC_ENCPOISON — Poison weapon endow (AS_ENCHANTPOISON).
-        Register(StatusType.Encpoison, NoOpHandler());
+        // NS-3 wave 5e: Signumcrucis + Encpoison NoOpHandler() removed.
+        // - Signumcrucis → wave 5a bespoke (val2=10+4*val1 Def-reduction)
+        // - Encpoison → wave 5a CombatMarker (weapon element resolver)
 
         // SC_EXPLOSIONSPIRITS — Monk finisher prep (MO_EXPLOSIONSPIRITS).
         // Val1 = +crit, Val2 = +ATK.
@@ -324,107 +274,17 @@ public sealed class StatusEffectRegistry
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
             }));
 
-        // ---- T2.3 wave 3 — Cloaking, Maximize Power markers ----
-
-        // SC_CLOAKING — Assassin Cloaking (AS_CLOAKING). Presence flag
-        // for the visibility hook (similar to Hiding but with different
-        // SP-drain cadence).
-        Register(StatusType.Cloaking, NoOpHandler());
-
-        // SC_MAXIMIZEPOWER — Blacksmith Maximize Power (BS_MAXIMIZE).
-        // Marker that all weapon-attack rolls go to max; damage-side
-        // consumer reads it inside BattleCalculator.
-        Register(StatusType.Maximizepower, NoOpHandler());
-
-        // ---- T2.3 transcend-class SC markers ----
-
-        // SC_TENSIONRELAX (LK_TENSIONRELAX) — sit + boosted HP regen.
-        Register(StatusType.Tensionrelax, NoOpHandler());
-        // SC_BERSERK (LK_BERSERK) — triple MaxHp + ASPD + can't cast.
-        Register(StatusType.Berserk, NoOpHandler());
-        // SC_MAGICPOWER (HW_MAGICPOWER) — next magic cast +50+5*lv %.
-        Register(StatusType.Magicpower, NoOpHandler());
-        // SC_SACRIFICE (PA_SACRIFICE) — devotion link.
-        Register(StatusType.Sacrifice, NoOpHandler());
-        // SC_EDP (ASC_EDP) — Enchant Deadly Poison.
-        Register(StatusType.Edp, NoOpHandler());
-        // SC_WINDWALK (SN_WINDWALK) — +Flee +MoveSpeed.
-        Register(StatusType.Windwalk, NoOpHandler());
-        // SC_MELTDOWN (WS_MELTDOWN) — break-enemy-gear proc.
-        Register(StatusType.Meltdown, NoOpHandler());
-        // SC_CARTBOOST (WS_CARTBOOST) — +MoveSpeed while pushing cart.
-        Register(StatusType.Cartboost, NoOpHandler());
-
-        // ---- T2.3-P2 (Acolyte wave) SC markers ----
-        // SC_LAUDAAGNUS (AB_LAUDAAGNUS) — cures Freeze/Stone/Blind/
-        // Burning/Freezing/Crystallize on cast; otherwise +VIT buff.
-        Register(StatusType.Laudaagnus, NoOpHandler());
-        // SC_LAUDARAMUS (AB_LAUDARAMUS) — cures Sleep/Stun/Mandragora/
-        // Silence/DeepSleep on cast; otherwise +CRIT buff.
-        Register(StatusType.Laudaramus, NoOpHandler());
-        // SC_PROTECTEXP (AB_EXPIATIO etc.) — left as marker for later.
-        // SC_BLIND already registered above; we end it from Cure / LaudaAgnus.
-
-        // ---- T2.3-P1 (Heal port) SC markers ----
-        // SC_KAITE — bounce-back-heal SC (KG_KAITE). Acolyte/Priest
-        // Heal is redirected to the caster while active; consumed per
-        // Heal use (Val2 = remaining charges).
-        Register(StatusType.Kaite, NoOpHandler());
-        // SC_BITESCAR — Sura/4th-class DoT marker; ends when target
-        // is healed (AL_HEAL clears it).
-        Register(StatusType.Bitescar, NoOpHandler());
-        // SC_AKAITSUKI — Sura Yggdrasil-Leaf marker. Flips next heal
-        // into damage of equal magnitude.
-        Register(StatusType.Akaitsuki, NoOpHandler());
-        // SC_SATURDAYNIGHTFEVER — Sura buff that suppresses heal
-        // (rAthena: clif still shows the 0 frame, real apply is zero).
-        Register(StatusType.Saturdaynightfever, NoOpHandler());
-
-        // ---- T2.3 3rd/4th class SC markers ----
-        // SC_DEATHBOUND (RK_DEATHBOUND) — reflect next physical hit.
-        Register(StatusType.Deathbound, NoOpHandler());
-        // SC_ADORAMUS (AB_ADORAMUS) — Blind-like debuff from Holy spell.
-        Register(StatusType.Adoramus, NoOpHandler());
-        // SC_DRAGONIC_AURA (DK_DRAGONIC_AURA) — Dragon Knight ATK boost.
-        Register(StatusType.DragonicAura, NoOpHandler());
-
-        // SC_REFLECTSHIELD — % chance to reflect damage. Val1 = chance,
-        // Val2 = reflect rate. Same combat-hook situation as Autoguard.
-        Register(StatusType.Reflectshield, NoOpHandler());
-
-        // SC_STEELBODY — 90 % phys + magic damage reduction. Combat
-        // reads the SC presence; here we hold the marker.
-        Register(StatusType.Steelbody, NoOpHandler());
-
-        // SC_PROVIDENCE — anti-undead / anti-demon DEF marker. Val1 =
-        // demon/undead resist %. Combat-side hook ports later.
-        Register(StatusType.Providence, NoOpHandler());
-
-        // ===== Cast-time scaling (consumed by SkillCastTimingService.CastFixSc) =====
-        // Each lives here so Start/End round-trip cleanly; the actual
-        // cast-time math reads Val1/Val2 inside CastFixSc.
-
-        // SC_SUFFRAGIUM — next cast time × (100 - 15*val1)% (Priest skill).
-        // Auto-consumed on cast.
-        Register(StatusType.Suffragium, NoOpHandler());
-
-        // SC_MEMORIZE — next 5 casts at half cast time. Val1 starts at 5
-        // and decrements per cast; ends on val1=0.
-        Register(StatusType.Memorize, NoOpHandler());
-
-        // SC_SLOWCAST (debuff) — next cast time × (100 + 10*val1)%.
-        Register(StatusType.Slowcast, NoOpHandler());
-
-        // SC_PARALYSIS (Guillotine Cross status). Val3 = additional cast
-        // rate %. rAthena: cast time × (100 + val3)/100.
-        Register(StatusType.Paralysis, NoOpHandler());
-
-        // SC_IZAYOI (Kagerou / Oboro). Halves variable cast.
-        Register(StatusType.Izayoi, NoOpHandler());
-
-        // SC_POEMBRAGI (Minstrel song). Val2 = combined rate
-        // (6*lv + 3*int_caster), reduces cast time and after-skill delay.
-        Register(StatusType.Poembragi, NoOpHandler());
+        // NS-3 wave 5e: removed ~30 more NoOpHandler() placeholders for
+        // Cloaking / Maximizepower / Tensionrelax / Berserk / Magicpower /
+        // Sacrifice / Edp / Windwalk / Meltdown / Cartboost / Laudaagnus /
+        // Laudaramus / Kaite / Bitescar / Akaitsuki / Saturdaynightfever /
+        // Deathbound / Adoramus / DragonicAura / Reflectshield / Steelbody /
+        // Providence / Suffragium / Memorize / Slowcast / Paralysis / Izayoi /
+        // Poembragi. All have explicit Register() in wave 1/4a/4b/5a with
+        // formula bodies (Berserk/Windwalk/Cartboost/Laudaagnus/Laudaramus/
+        // DragonicAura/Adoramus/Sacrifice/Kaite/Deathbound/Suffragium/Memorize/
+        // Slowcast/Poembragi) or CombatMarker + consumer citation
+        // (everything else).
 
         // ===== Periodic heal (existing C# port-only anchor) =====
 
@@ -441,11 +301,10 @@ public sealed class StatusEffectRegistry
             }));
 
         // ===== Cell-based SCs (Basilica / Land Protector unit overlap) =====
-
-        // SC_BASILICA_CELL — applied while standing on a Basilica cell;
-        // removed when the player steps off. Checked by
-        // PlayerPositionHelpers.IsBasilicaCell.
-        Register(StatusType.BasilicaCell, NoOpHandler());
+        // BasilicaCell NoOpHandler() removed in NS-3 wave 5e — wave 5a
+        // (RegisterWave5aClassAFormulas) registers it as CombatMarker
+        // with ScfFlag.Permanent and the PlayerPositionHelpers.IsBasilicaCell
+        // consumer citation.
 
         // ===== ST.3 — backfill: combat-relevant SCs that consumers gate on =====
 
