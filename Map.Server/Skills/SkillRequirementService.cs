@@ -67,7 +67,9 @@ public sealed class SkillRequirementService : ISkillRequirementService
             case PlayerEntity pc:
                 if (hp > 0) pc.Hp = Math.Max(1, pc.Hp - hp);
                 if (sp > 0) pc.Sp = Math.Max(0, pc.Sp - sp);
-                // AP not modeled on PlayerEntity yet.
+                // AP is the 4th-class trait pool (status_charge ap branch);
+                // 4th-class skills cost AP, drained the same way.
+                if (ap > 0) pc.Ap = Math.Max(0, pc.Ap - ap);
                 break;
             case MobEntity m:
                 if (hp > 0) m.Hp = Math.Max(1, m.Hp - hp);

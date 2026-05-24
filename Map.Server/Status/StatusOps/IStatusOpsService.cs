@@ -26,6 +26,27 @@ public interface IStatusOpsService
     /// <summary>rAthena <c>status_heal</c> — apply HP/SP gain.</summary>
     int Heal(Entity bl, long hp, long sp, byte flag);
 
+    /// <summary>
+    /// rAthena <c>status_heal</c> with the 4th-class AP gain argument
+    /// (status.cpp HP/SP/AP overload). AP only applies to
+    /// <see cref="PlayerEntity"/> and is clamped to
+    /// <see cref="PlayerEntity.MaxAp"/>. Default-interface body forwards
+    /// to <see cref="Heal(Entity,long,long,byte)"/> and applies the AP
+    /// delta in-place so legacy impls don't have to override.
+    /// </summary>
+    int Heal(Entity bl, long hp, long sp, long ap, byte flag)
+    {
+        var ret = Heal(bl, hp, sp, flag);
+        if (ap != 0 && bl is PlayerEntity pc)
+        {
+            var next = (long)pc.Ap + ap;
+            if (next < 0) next = 0;
+            if (next > pc.MaxAp) next = pc.MaxAp;
+            pc.Ap = (int)next;
+        }
+        return ret;
+    }
+
     /// <summary>rAthena <c>status_percent_heal</c>.</summary>
     int PercentHeal(Entity bl, sbyte hpPercent, sbyte spPercent);
 

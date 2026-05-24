@@ -4,9 +4,12 @@ using Map.Server.Status.StatusOps;
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// EM_INCREASING_ACTIVITY — Elemental Master Increasing Activity.
-/// AP (Activity Point) restore: <c>10 * skillLevel</c> AP on PC targets.
-/// AP is a 4th-class trait stat — we approximate with SP for now.
+/// EM_INCREASING_ACTIVITY — Elemental Master Increasing Activity
+/// (skill.cpp:EM_INCREASING_ACTIVITY arm). Restores <c>10 * skillLevel</c>
+/// AP on PC targets. AP (Activity Point) is the 4th-class trait pool
+/// living on <see cref="PlayerEntity.Ap"/> / <see cref="PlayerEntity.MaxAp"/>;
+/// the mutation goes straight on the entity to match the rAthena
+/// <c>status_heal(bl, 0, 0, ap)</c> third-argument pattern.
 /// </summary>
 public sealed class IncreasingActivity : SkillImpl
 {
@@ -16,7 +19,7 @@ public sealed class IncreasingActivity : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        if (target is not PlayerEntity)
+        if (target is not PlayerEntity tpc)
         {
             if (src is PlayerEntity sd)
                 ctx.Client?.BroadcastSkillFail(sd, SkillId,
@@ -24,8 +27,6 @@ public sealed class IncreasingActivity : SkillImpl
             return;
         }
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // Deferred: AP (Activity Point) heal is a 4th-class trait stat; PlayerEntity has
-        // no AP field yet so we approximate by routing the heal through SP.
-        _statusOps?.Heal(target, 0, 10 * skillLevel, 0);
+        tpc.Ap = Math.Min(tpc.MaxAp, tpc.Ap + 10 * skillLevel);
     }
 }
