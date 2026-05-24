@@ -50,6 +50,15 @@ public interface IEquipService
     /// equipped at the requested slot.
     /// </summary>
     InventoryItem? FindEquipped(MapSessionData session, uint equipPos);
+
+    /// <summary>
+    /// rAthena <c>pc_equipswitch_all</c> (pc.cpp:13110) — iterate every
+    /// inventory row whose <see cref="InventoryItem.EquipSwitch"/> bit
+    /// is set and swap it with whatever is currently equipped at the
+    /// matching slot. Used by <c>ALL_EQSWITCH</c>. Returns the number
+    /// of slots actually swapped.
+    /// </summary>
+    int SwitchAll(MapSessionData session);
 }
 
 /// <summary>

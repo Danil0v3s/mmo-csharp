@@ -255,6 +255,50 @@ public sealed class EquipService : IEquipService
             AttackRange: summary.AttackRange,
             WeaponElement: summary.WeaponElement));
     }
+
+    /// <inheritdoc />
+    public int SwitchAll(MapSessionData session)
+    {
+        if (session.Inventory is not { } inv) return 0;
+        // Snapshot the candidate rows first — Equip / Unequip mutate
+        // session.Inventory in place (via the Equip pos bits) so we can't
+        // iterate it directly during swap.
+        var pending = new List<(int slot, uint switchPos)>();
+        for (var i = 0; i < inv.Count; i++)
+        {
+            var row = inv[i];
+            if (row.NameId == 0 || row.Amount == 0) continue;
+            if (row.EquipSwitch == 0) continue;
+            pending.Add((i, row.EquipSwitch));
+        }
+        var swapped = 0;
+        foreach (var (slot, switchPos) in pending)
+        {
+            // 1. Find anything currently equipped at the target slot mask
+            //    and unequip it. The unequipped row picks up the
+            //    switch-marked row's EquipSwitch bit on the way out so
+            //    the next ALL_EQSWITCH reverses the swap (rAthena's
+            //    bidirectional behavior).
+            for (var j = 0; j < inv.Count; j++)
+            {
+                var occupant = inv[j];
+                if (j == slot) continue;
+                if (occupant.Equip == 0) continue;
+                if ((occupant.Equip & switchPos) == 0) continue;
+                if (Unequip(session, j, out _) == EquipOpResult.Ok)
+                    occupant.EquipSwitch = switchPos;
+            }
+            // 2. Equip the switch-marked row into the slot mask.
+            var pending_row = inv[slot];
+            pending_row.EquipSwitch = 0;
+            if (Equip(session, slot, switchPos, out _) == EquipOpResult.Ok)
+                swapped++;
+        }
+        if (swapped > 0)
+            _logger.LogInformation("pc_equipswitch_all: char {Char} swapped {N} slot(s)",
+                session.CharacterId, swapped);
+        return swapped;
+    }
 }
 
 /// <summary>
