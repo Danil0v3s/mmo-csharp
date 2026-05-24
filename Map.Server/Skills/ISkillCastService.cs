@@ -37,6 +37,17 @@ public interface ISkillCastService
     /// </summary>
     bool ResolveSkill(Entity source, Entity target, ushort skillId, ushort skillLevel);
 
+    /// <summary>
+    /// Resolve a ground-targeted skill RIGHT NOW (no cast timer). Drives
+    /// the CastendPos2 plugin hook directly. Used by sub-skill ground
+    /// dispatch (AG_VIOLENT_QUAKE → AG_VIOLENT_QUAKE_ATK staggered
+    /// spawns, AG_ALL_BLOOM → AG_ALL_BLOOM_ATK), abracadabra picks
+    /// (SA_ABRACADABRA → CAST_GROUND skill), and skill_mirage_cast
+    /// (SS_ANTENPOU → SS_SHINKIROU mirror). Default no-op so legacy
+    /// test stubs that pre-date the cell-dispatch path keep compiling.
+    /// </summary>
+    bool ResolveSkillAt(Entity source, short x, short y, ushort skillId, ushort skillLevel) => false;
+
     /// <summary>Tick — advance pending cast timers and resolve casts whose timer elapsed.</summary>
     void Tick(long nowTick);
 

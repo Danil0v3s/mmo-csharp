@@ -48,6 +48,9 @@ public sealed class SkillUnitService : ISkillUnitService
     }
 
     public SkillUnitGroup? Place(Entity caster, ushort skillId, ushort skillLevel, short centerX, short centerY)
+        => Place(caster, skillId, skillLevel, centerX, centerY, delayMs: 0);
+
+    public SkillUnitGroup? Place(Entity caster, ushort skillId, ushort skillLevel, short centerX, short centerY, int delayMs)
     {
         var h = _handlers.Get(skillId);
         if (h == null)
@@ -57,14 +60,16 @@ public sealed class SkillUnitService : ISkillUnitService
         }
 
         var now = Environment.TickCount64;
+        var startAt = delayMs > 0 ? now + delayMs : 0;
         var group = new SkillUnitGroup
         {
             SkillId = skillId,
             SkillLevel = skillLevel,
             CasterId = caster.Id,
             MapId = caster.MapId,
-            ExpiresAt = now + h.DurationMs(skillLevel),
+            ExpiresAt = (startAt > 0 ? startAt : now) + h.DurationMs(skillLevel),
             IntervalMs = h.IntervalMs(skillLevel),
+            StartAt = startAt,
         };
 
         var radius = (short)h.Radius(skillLevel);
@@ -111,6 +116,20 @@ public sealed class SkillUnitService : ISkillUnitService
                 EvictGroupPresence(g);
                 _groups.RemoveAt(i);
                 continue;
+            }
+            // Deferred-start gate — sub-unit spawns (AG_VIOLENT_QUAKE_ATK,
+            // AG_ALL_BLOOM_ATK) sit dormant until their stagger window
+            // elapses. Once StartAt fires, also kick the per-unit
+            // NextTick so the first tick lands at the stagger boundary
+            // instead of the original (pre-delay) placement time.
+            if (g.StartAt > 0)
+            {
+                if (g.StartAt > nowTick) continue;
+                foreach (var u in g.Units)
+                {
+                    if (u.NextTick < nowTick) u.NextTick = nowTick;
+                }
+                g.StartAt = 0;
             }
             var h = _handlers.Get(g.SkillId);
             if (h == null) continue;

@@ -36,6 +36,15 @@ public sealed class SkillUnitGroup
     public List<SkillUnit> Units = new();
 
     /// <summary>
+    /// Deferred-start gate. Tick processing skips this group until
+    /// <see cref="StartAt"/> &lt;= now. Used by staggered sub-unit
+    /// spawns (AG_VIOLENT_QUAKE_ATK / AG_ALL_BLOOM_ATK fan out their
+    /// child units across the parent's duration via per-stagger
+    /// offsets). Default 0 = fire immediately.
+    /// </summary>
+    public long StartAt;
+
+    /// <summary>
     /// SK.100-1c — per-unit visibility cloaking. When true, the unit is
     /// only visible to the caster + party/guild allies (rAthena's
     /// <c>UF_HIDDEN_TRAP</c> / Pneuma / Lullaby / Land Protector

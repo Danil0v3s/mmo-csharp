@@ -177,4 +177,9 @@ public sealed record SkillBehaviorContext(
     /// look up recipes by id or by require-skill. Used by skills
     /// that need to enumerate the recipes a caster qualifies for
     /// (open the produce-mix picker UI).</summary>
-    IProduceRecipeService? Recipes = null);
+    IProduceRecipeService? Recipes = null,
+    /// <summary>Abracadabra random-skill pool (<c>abra_db</c>) —
+    /// drives SA_ABRACADABRA's per-cast random spell pick. Backed by
+    /// the SQL <c>abra_db</c> seed; falls back to a no-op when the
+    /// table is empty.</summary>
+    Map.Server.Skills.IAbraDatabase? Abra = null);

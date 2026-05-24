@@ -19,6 +19,16 @@ public interface ISkillUnitService
     /// </summary>
     SkillUnitGroup? Place(Entity caster, ushort skillId, ushort skillLevel, short centerX, short centerY);
 
+    /// <summary>
+    /// Deferred-start variant — same as <see cref="Place(Entity, ushort, ushort, short, short)"/>
+    /// but the group's tick processing is gated until <paramref name="delayMs"/>
+    /// elapses. Used by staggered sub-unit spawns
+    /// (AG_VIOLENT_QUAKE_ATK / AG_ALL_BLOOM_ATK fan-out, where each
+    /// child unit lands at <c>i * skill_get_unit_interval</c>).
+    /// </summary>
+    SkillUnitGroup? Place(Entity caster, ushort skillId, ushort skillLevel, short centerX, short centerY, int delayMs)
+        => Place(caster, skillId, skillLevel, centerX, centerY);
+
     /// <summary>Game-loop pump — fires periodic effects, expires groups.</summary>
     void Tick(long nowTick);
 

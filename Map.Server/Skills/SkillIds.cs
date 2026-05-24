@@ -206,6 +206,8 @@ public static class SkillIds
     public const ushort AC_CHARGEARROW = 148;
     public const ushort AC_MAKINGARROW = 147;
     public const ushort AG_ALL_BLOOM = 5222;
+    public const ushort AG_ALL_BLOOM_ATK = 5223;
+    public const ushort AG_ALL_BLOOM_ATK2 = 5224;
     public const ushort AG_ASTRAL_STRIKE = 5230;
     public const ushort AG_CRIMSON_ARROW = 5235;
     public const ushort AG_CRYSTAL_IMPACT = 5225;
@@ -221,6 +223,7 @@ public static class SkillIds
     public const ushort AG_STRANTUM_TREMOR = 5221;
     public const ushort AG_TORNADO_STORM = 5227;
     public const ushort AG_VIOLENT_QUAKE = 5218;
+    public const ushort AG_VIOLENT_QUAKE_ATK = 5219;
     public const ushort ALL_BUYING_STORE = 2535;
     public const ushort ALL_CATCRY = 692;
     public const ushort ALL_DREAM_SUMMERNIGHT = 695;

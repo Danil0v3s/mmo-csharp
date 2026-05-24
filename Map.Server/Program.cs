@@ -1823,6 +1823,8 @@ builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.PneumaUnit>();
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.SafetyWallUnit>();
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.SanctuaryUnit>();
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.ViolentQuakeAtkUnit>();
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.AllBloomAtkUnit>();
 builder.Services.AddSingleton<Map.Server.Skills.Units.SkillUnitTickRegistry>();
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitContext, Map.Server.Skills.Units.SkillUnitContext>();
 builder.Services.AddSingleton<Map.Server.Skills.ISkillUnitService, Map.Server.Skills.SkillUnitService>();

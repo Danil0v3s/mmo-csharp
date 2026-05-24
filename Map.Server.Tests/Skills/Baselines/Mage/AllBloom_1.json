@@ -1,12 +1,8 @@
 [
   {
-    "kind": "unit-place",
+    "kind": "non-deterministic",
     "data": {
-      "caster": 1,
-      "skillId": 5222,
-      "skillLevel": 1,
-      "centerX": 105,
-      "centerY": 105
+      "reason": "trace diverged across runs"
     }
   }
 ]
