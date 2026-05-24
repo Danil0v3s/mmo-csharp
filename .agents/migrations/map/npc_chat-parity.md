@@ -25,6 +25,11 @@ event triggers (chat from a PC matches → fires an NPC event).
 
 ## History
 
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 1 genuine gap remains)
+
+Verified `CheckChat` walks patterns but the event-fire (OnTalk* into script
+engine) is still TODO. PARITY-REMAINING §P1.2 reference added.
+
 ### 2026-05-22 — T9.E per-fn rollup
 
 Per-function audit. Baseline: **7 ✅ / 1 ⚠️ / 0 ❌**. PCRE

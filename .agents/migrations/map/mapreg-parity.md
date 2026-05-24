@@ -25,6 +25,10 @@ persistent script variables (`$foo`, `$@bar`).
 
 ## History
 
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 0 genuine gaps remain)
+
+Verified: doc is at 100% ✅; ⚠️ grep hits are header glyphs only. No-op resync.
+
 ### 2026-05-22 — T7.8 mapreg IPC seam
 
 Added `ICharServerIpcServiceMapreg` sub-IPC (2 methods:

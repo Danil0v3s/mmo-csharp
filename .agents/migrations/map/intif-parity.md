@@ -144,6 +144,13 @@ sites, others split when the typed sub-IPC wrappers ported.)
 
 ## History
 
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 0 genuine gaps remain)
+
+Sweep confirmed: doc already at **75 ✅ / 0 ⚠️ / 0 ❌**. T7.8
+(2026-05-22) closed the last ⚠️ (mapreg typed seam). The
+remaining ⚠️ markers in the legend / history paragraphs are
+text-level, not table rows. No flips needed.
+
 ### 2026-05-22 — T7.8 (mapreg typed seam — last ⚠️ closed)
 
 Wraps T7 by closing the lone `intif_request_mapreg` /

@@ -49,6 +49,12 @@ Canonical entry points: [ICashShopService](/Map.Server/Shop/Cash/ICashShopServic
 
 ## History
 
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 0 genuine gaps remain)
+
+Verified: no functional ⚠️ rows; ⚠️ grep hits are header glyphs only. 4 ❌
+sale-timer entries remain as documented (sales display without scheduled
+auto-activation). No-op resync.
+
 ### 2026-05-22 — T9.D per-fn rollup
 
 Per-function audit. Baseline: **11 ✅ / 0 ⚠️ / 4 ❌** across 15

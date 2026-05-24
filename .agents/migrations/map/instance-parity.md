@@ -24,8 +24,8 @@ Canonical entry points: [IInstanceService](/Map.Server/Instance/IInstanceService
 | `instance_generate_mapname` | ✅ | `IInstanceService.GenerateMapName` |
 | `instance_getsd` | ✅ | `IInstanceService.GetOwner` |
 | `instance_mapid` | ❌ | No C# helper. Resolve "base map id + instance id → instance-specific map id." Needed for per-instance NPC placement / cell lookups. |
-| `do_init_instance` | ⚠️ | rAthena lifecycle hook; C# DI registration covers init implicitly. No explicit method on `IInstanceService`. |
-| `do_final_instance` | ⚠️ | Same — covered by DI dispose. No explicit method. |
+| `do_init_instance` | ⚠️ | rAthena lifecycle hook; C# DI registration covers init implicitly. No explicit method on `IInstanceService`. PARITY-REMAINING §P1.2 |
+| `do_final_instance` | ⚠️ | Same — covered by DI dispose. No explicit method. PARITY-REMAINING §P1.2 |
 | `do_reload_instance` | ✅ | `IInstanceService.Reload` |
 
 ## Coverage summary
@@ -41,6 +41,12 @@ Canonical entry points: [IInstanceService](/Map.Server/Instance/IInstanceService
 3. **`do_init_instance` / `do_final_instance`** — cosmetic; DI covers the lifecycle.
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 2 genuine gaps remain)
+
+Both ⚠️ rows (`do_init_instance` / `do_final_instance`) remain cosmetic-only —
+DI lifecycle covers them but no explicit method exists on `IInstanceService`.
+PARITY-REMAINING §P1.2 references added.
 
 ### 2026-05-22 — T8.5 per-function table
 

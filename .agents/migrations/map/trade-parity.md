@@ -36,6 +36,10 @@ backed by TradeService.
 
 ## History
 
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 0 genuine gaps remain)
+
+Verified: doc is at 100% ✅; ⚠️ grep hits are header glyphs only. No-op resync.
+
 ### 2026-05-22 — T9.D per-fn rollup
 
 Per-function audit. Baseline: **9 ✅ / 0 ⚠️ / 0 ❌** — 100% parity.
