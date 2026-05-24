@@ -3,24 +3,36 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SO_EL_CONTROL — Sorcerer Spirit Control. Manual port of
-/// <c>rathena-fork/src/map/skills/mage/spiritcontrol.cpp</c>.
-///
-/// <para>Controls the caster's bound elemental:
-/// lv 1 → passive, lv 2 → assist, lv 3 → aggressive, lv 4 → dismiss.
-/// Bound-elemental access + mode change isn't wired here — for now we
-/// only validate caster type and broadcast the cast.</para>
+/// SO_EL_CONTROL — Sorcerer Spirit Control (skill.cpp:SO_EL_CONTROL
+/// arm). Controls the caster's bound elemental:
+/// <list type="bullet">
+///   <item>lv 1 → EL_MODE_PASSIVE</item>
+///   <item>lv 2 → EL_MODE_ASSIST</item>
+///   <item>lv 3 → EL_MODE_AGGRESSIVE</item>
+///   <item>lv 4 → dismiss (elemental_delete)</item>
+/// </list>
 /// </summary>
 public sealed class SpiritControl : SkillImpl
 {
+    // rAthena EL_MODE_* values (elemental.hpp).
+    private const int ElModePassive = 1;
+    private const int ElModeAssist = 2;
+    private const int ElModeAggressive = 4;
+
     public SpiritControl() : base(SkillIds.SO_EL_CONTROL) { }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        if (src is not PlayerEntity)
-            return;
-        // Deferred: bound-elemental subsystem not ported — mode change (passive/assist/
-        // aggressive) + delete per skillLevel needs it.
+        if (src is not PlayerEntity pc) return;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        if (pc.ActiveElementalClassId == 0) return;
+        if (ctx.Elemental == null) return;
+        switch (skillLevel)
+        {
+            case 1: ctx.Elemental.ChangeMode(pc, ElModePassive); break;
+            case 2: ctx.Elemental.ChangeMode(pc, ElModeAssist); break;
+            case 3: ctx.Elemental.ChangeMode(pc, ElModeAggressive); break;
+            case 4: ctx.Elemental.Delete(pc); break;
+        }
     }
 }

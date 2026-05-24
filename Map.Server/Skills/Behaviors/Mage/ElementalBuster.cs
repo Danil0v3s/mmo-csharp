@@ -1,17 +1,16 @@
+using Map.Server.Elemental;
 using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// EM_ELEMENTAL_BUSTER — Elemental Master Elemental Buster. Manual port of
-/// <c>rathena-fork/src/map/skills/mage/elementalbuster.cpp</c>.
-///
-/// <para>Requires a bound EM-tier elemental (ARDOR / DILUVIO / PROCELLA
-/// / TERREMOTUS / SERPENS). Dispatches the matching elemental-specific
-/// buster (Fire/Water/Wind/Ground/Poison) as a 6-tile splash. Elemental
-/// binding + per-element dispatch is TODO until the EM-elemental
-/// service lands; for now we only fail-fast if the caster isn't a
-/// player.</para>
+/// EM_ELEMENTAL_BUSTER — Elemental Master Elemental Buster
+/// (skill.cpp:EM_ELEMENTAL_BUSTER arm). Looks up the caster's bound
+/// EM-tier elemental and dispatches to the matching sub-skill:
+/// Ardor → Fire, Diluvio → Water, Procella → Wind, Terremotus → Ground,
+/// Serpens → Poison. Refuses when no EM-tier is bound. Sub-skill
+/// dispatch routes through <see cref="IUnitOpsService.SkillUseId"/> so
+/// the standard damage pipeline runs.
 /// </summary>
 public sealed class ElementalBuster : SkillImpl
 {
@@ -19,11 +18,24 @@ public sealed class ElementalBuster : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        if (src is not PlayerEntity sd)
+        if (src is not PlayerEntity pc) return;
+        var subSkill = ResolveSubSkill(pc.ActiveElementalClassId);
+        if (subSkill == 0)
+        {
+            ctx.Client?.BroadcastSkillFail(pc, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SummonNone);
             return;
-        // Deferred: bound-elemental subsystem not ported — class lookup + per-element
-        // dispatch to EM_ELEMENTAL_BUSTER_{FIRE,WATER,WIND,GROUND,POISON} requires it.
-        // For now, fail the cast so the requirement-refund path runs.
-        ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SummonNone);
+        }
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        ctx.UnitOps?.SkillUseId(src, target.Id, subSkill, skillLevel);
     }
+
+    private static ushort ResolveSubSkill(int classId) => classId switch
+    {
+        ElementalClassIds.Ardor      => SkillIds.EM_ELEMENTAL_BUSTER_FIRE,
+        ElementalClassIds.Diluvio    => SkillIds.EM_ELEMENTAL_BUSTER_WATER,
+        ElementalClassIds.Procella   => SkillIds.EM_ELEMENTAL_BUSTER_WIND,
+        ElementalClassIds.Terremotus => SkillIds.EM_ELEMENTAL_BUSTER_GROUND,
+        ElementalClassIds.Serpens    => SkillIds.EM_ELEMENTAL_BUSTER_POISON,
+        _                            => (ushort)0,
+    };
 }

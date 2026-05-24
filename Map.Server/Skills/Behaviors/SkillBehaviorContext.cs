@@ -1,4 +1,5 @@
 using Map.Server.Combat;
+using Map.Server.Elemental;
 using Map.Server.Entities;
 using Map.Server.Inventory;
 using Map.Server.Movement;
@@ -119,4 +120,10 @@ public sealed record SkillBehaviorContext(
     /// trip / dispel / chain off existing traps (SpringTrap, RemoveTrap,
     /// Detonator, Trample) and Land Protector overlap checks (SafetyWall)
     /// route here.</summary>
-    ISkillUnitService? Units = null);
+    ISkillUnitService? Units = null,
+    /// <summary>Bound-elemental service — <c>elemental_create</c> /
+    /// <c>elemental_delete</c> + master binding accessor. Sorcerer
+    /// summons (SO_SUMMON_AGNI / AQUA / VENTUS / TERA) and the EM-tier
+    /// promotions (Diluvio / Ardor / Procella / Terremotus / Serpens)
+    /// dispatch through this.</summary>
+    IElementalService? Elemental = null);

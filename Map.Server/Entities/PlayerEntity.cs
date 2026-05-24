@@ -236,6 +236,22 @@ public sealed class PlayerEntity : Entity
     public byte LastBoltSkillLevel { get; set; }
 
     /// <summary>
+    /// rAthena <c>sd-&gt;ed-&gt;db-&gt;class_</c> — the class id of the
+    /// caster's currently bound Sorcerer / Elemental Master elemental
+    /// (Agni / Aqua / Ventus / Tera tiers + EM specializations). 0
+    /// means no bound elemental. Mutated through
+    /// <c>IElementalService.Create</c> / <c>Delete</c>; read by EM-tier
+    /// upgrade skills (Diluvio, Ardor, Procella, Terremotus, Serpens).
+    /// </summary>
+    public int ActiveElementalClassId { get; set; }
+
+    /// <summary>
+    /// Tick at which the bound elemental expires (rAthena
+    /// <c>sd-&gt;ed-&gt;db-&gt;life_time</c>). 0 = no active timer.
+    /// </summary>
+    public long ActiveElementalExpiresAt { get; set; }
+
+    /// <summary>
     /// rAthena <c>invincible_timer</c> (pc.cpp:417) — absolute tick
     /// (<see cref="Environment.TickCount64"/>) until which the PC is
     /// invulnerable. 0 = not invincible. Applied automatically on warp

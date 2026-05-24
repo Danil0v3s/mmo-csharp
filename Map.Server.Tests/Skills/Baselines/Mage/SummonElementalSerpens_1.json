@@ -1,5 +1,11 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
     "kind": "nodamage",
     "data": {
       "src": 1,
@@ -7,19 +13,6 @@
       "skillId": 5379,
       "healOrLevel": 1,
       "success": true
-    }
-  },
-  {
-    "kind": "sc-start",
-    "data": {
-      "target": 1,
-      "type": "SummonElementalSerpens",
-      "val1": 1,
-      "val2": 0,
-      "val3": 0,
-      "val4": 0,
-      "durationMs": 30000,
-      "src": 1
     }
   }
 ]

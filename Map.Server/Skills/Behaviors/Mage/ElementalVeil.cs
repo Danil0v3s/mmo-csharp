@@ -1,15 +1,16 @@
+using Map.Server.Elemental;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// EM_ELEMENTAL_VEIL — Elemental Master Elemental Veil. Manual port of
-/// <c>rathena-fork/src/map/skills/mage/elementalveil.cpp</c>.
-///
-/// <para>Buffs the caster's bound EM-tier elemental with SC_ELEMENTAL_VEIL.
-/// Bound-elemental binding + the SC application on a non-Entity
-/// elemental target is TODO until that surface lands; we broadcast the
-/// no-damage frame and fail-fast if the caster isn't a player.</para>
+/// EM_ELEMENTAL_VEIL — Elemental Master Elemental Veil
+/// (skill.cpp:EM_ELEMENTAL_VEIL arm). Requires an EM-tier elemental
+/// bound to the caster (Diluvio / Ardor / Procella / Terremotus /
+/// Serpens). Applies <c>SC_ELEMENTAL_VEIL</c> to the caster on
+/// success; refuses with <c>SkillFail</c> when the EM tier is
+/// missing.
 /// </summary>
 public sealed class ElementalVeil : SkillImpl
 {
@@ -17,10 +18,20 @@ public sealed class ElementalVeil : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
+        if (src is not PlayerEntity pc) return;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        if (src is not PlayerEntity sd) return;
-        // Deferred: bound-elemental subsystem not ported — can't verify EM-tier elemental
-        // ownership, so we fail the cast and let the requirement-refund path run.
-        ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SummonNone);
+        if (!IsEmTier(pc.ActiveElementalClassId))
+        {
+            ctx.Client?.BroadcastSkillFail(pc, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SummonNone);
+            return;
+        }
+        ctx.Sc?.Start(src, StatusType.ElementalVeil, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
     }
+
+    private static bool IsEmTier(int classId)
+        => classId == ElementalClassIds.Diluvio
+        || classId == ElementalClassIds.Ardor
+        || classId == ElementalClassIds.Procella
+        || classId == ElementalClassIds.Terremotus
+        || classId == ElementalClassIds.Serpens;
 }

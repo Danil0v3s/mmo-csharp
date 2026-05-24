@@ -928,6 +928,15 @@ public static class SkillIds
     public const ushort RK_PHANTOMTHRUST = 2020;
     public const ushort RK_REFRESH = 2013;
     public const ushort RK_RUNEMASTERY = 2010;
+
+    // EM_ELEMENTAL_BUSTER per-element sub-skill ids (rAthena
+    // skill.cpp:EM_ELEMENTAL_BUSTER arm) — the parent skill dispatches
+    // to one of these based on the caster's bound EM-tier elemental.
+    public const ushort EM_ELEMENTAL_BUSTER_FIRE = 5389;
+    public const ushort EM_ELEMENTAL_BUSTER_WATER = 5390;
+    public const ushort EM_ELEMENTAL_BUSTER_WIND = 5391;
+    public const ushort EM_ELEMENTAL_BUSTER_GROUND = 5392;
+    public const ushort EM_ELEMENTAL_BUSTER_POISON = 5393;
     public const ushort RK_SONICWAVE = 2002;
     public const ushort RK_STONEHARDSKIN = 2015;
     public const ushort RK_STORMBLAST = 2017;
