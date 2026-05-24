@@ -117,4 +117,76 @@ public interface ISkillClientService
     /// rAthena's <c>e_skill_produce_type</c>.
     /// </summary>
     void BroadcastCookingList(PlayerEntity caster, int produceType, IReadOnlyList<ushort> craftableItemIds);
+
+    /// <summary>
+    /// rAthena <c>clif_skill_produce_mix_list</c> — alias of
+    /// <see cref="BroadcastCookingList"/> with a Geneticist/Sage
+    /// produce-mix context. Same wire packet
+    /// (<c>ZC_MAKABLEITEMLIST</c>) — the <paramref name="produceType"/>
+    /// drives the dialog title client-side. Used by GC_CREATENEWPOISON
+    /// (type 25), AB_DELUGE / AB_RAISE / GN_MAKEBOMB-style entries.
+    /// </summary>
+    void BroadcastProduceMixList(PlayerEntity caster, int produceType, IReadOnlyList<ushort> craftableItemIds)
+        => BroadcastCookingList(caster, produceType, craftableItemIds);
+
+    /// <summary>
+    /// rAthena <c>clif_arrow_create_list</c> — opens the Arrow Crafting
+    /// picker (AC_MAKINGARROW). Sends every source-item the caster
+    /// holds whose entry exists in <c>create_arrow_db</c>. Reuses the
+    /// existing <c>ZC_MAKABLEITEMLIST</c> wire packet with the arrow-
+    /// craft produce-type so clients render the right title.
+    /// </summary>
+    void BroadcastArrowCreateList(PlayerEntity caster, IReadOnlyList<ushort> sourceItemIds)
+        => BroadcastCookingList(caster, produceType: 26, sourceItemIds);
+
+    /// <summary>
+    /// rAthena <c>clif_item_repair_list</c> — opens the Repair Weapon
+    /// picker (BS_REPAIRWEAPON). Sends the target player's broken
+    /// inventory rows so the caster can pick one. Default emits via
+    /// <see cref="BroadcastCookingList"/> with the repair produce-type
+    /// (27) until a typed <c>ZC_ACK_ITEMREPAIR</c> wire packet lands.
+    /// </summary>
+    void BroadcastItemRepairList(PlayerEntity caster, IReadOnlyList<ushort> brokenItemIds)
+        => BroadcastCookingList(caster, produceType: 27, brokenItemIds);
+
+    /// <summary>
+    /// rAthena <c>clif_item_identify_list</c> — opens the Identify
+    /// picker (MC_IDENTIFY). Sends every unidentified inventory item
+    /// the caster owns. Default emits via <see cref="BroadcastCookingList"/>
+    /// with the identify produce-type (28).
+    /// </summary>
+    void BroadcastItemIdentifyList(PlayerEntity caster, IReadOnlyList<ushort> unidentifiedItemIds)
+        => BroadcastCookingList(caster, produceType: 28, unidentifiedItemIds);
+
+    /// <summary>
+    /// rAthena <c>clif_item_refine_list</c> — opens the WS_WEAPONREFINE
+    /// picker. Default reuses the cooking-list wire path with produce-
+    /// type 30 (refine).
+    /// </summary>
+    void BroadcastItemRefineList(PlayerEntity caster, IReadOnlyList<ushort> refinableItemIds)
+        => BroadcastCookingList(caster, produceType: 30, refinableItemIds);
+
+    /// <summary>
+    /// rAthena <c>clif_skill_itemlistwindow</c> — opens the SO Sorcerer
+    /// Four-Spirit Analysis item picker. Default reuses the cooking-
+    /// list packet with the four-spirit produce-type (31).
+    /// </summary>
+    void BroadcastItemListWindow(PlayerEntity caster, IReadOnlyList<ushort> selectableItemIds)
+        => BroadcastCookingList(caster, produceType: 31, selectableItemIds);
+
+    /// <summary>
+    /// rAthena <c>clif_elementalconverter_list</c> — opens the
+    /// SA_CREATECON elemental converter picker. Default reuses the
+    /// cooking-list packet with produce-type 33.
+    /// </summary>
+    void BroadcastElementalConverterList(PlayerEntity caster, IReadOnlyList<ushort> resultItemIds)
+        => BroadcastCookingList(caster, produceType: 33, resultItemIds);
+
+    /// <summary>
+    /// rAthena <c>clif_magicdecoy_list</c> — opens the WS_MAGICDECOY
+    /// elemental decoy picker. Default reuses the cooking-list packet
+    /// with produce-type 34.
+    /// </summary>
+    void BroadcastMagicDecoyList(PlayerEntity caster, IReadOnlyList<ushort> resultItemIds)
+        => BroadcastCookingList(caster, produceType: 34, resultItemIds);
 }

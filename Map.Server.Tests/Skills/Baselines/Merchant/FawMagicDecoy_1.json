@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 2282,
+      "healOrLevel": 1,
+      "success": true
+    }
+  },
+  {
+    "kind": "cooking-list",
+    "data": {
+      "caster": 1,
+      "produceType": 34,
+      "count": 4
+    }
+  }
+]
