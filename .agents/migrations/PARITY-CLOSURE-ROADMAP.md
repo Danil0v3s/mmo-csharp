@@ -63,7 +63,7 @@ counts.
 | Surface | Current state | Source of measurement |
 |---|---|---|
 | **Skill parity** | **1,675 of 2,439 (skillId, level) baselines fail** (31% match rate) | `Map.Server.Tests/Skills/Baselines/*.rathena-todo.txt` count vs `*.json` total |
-| **SC handler depth** | **1,006 of 1,006 valid `StatusType` values registered** (the lone exception is `None = -1`, an enum sentinel). Composition: **72 hand-ported bespoke bodies** (48 from prior waves + 24 from NS-3 wave 4a rAthena-formula port-overs) + ~360 generator-synthesized CalcFlag bodies + ~570 presence-only with non-`None` `ScfFlag` classification. Proven by `StatusEffectCompletenessTests`: every SC registered, every CalcFlag-mapped SC has a real-body OR `OnPeriodic` OR allowlisted combat-side reader (27 entries each with rAthena `src/map/status.cpp` citation), every presence-only SC has non-empty `ScfFlag`. | `StatusEffectRegistry.Count`, `StatusCalcFlagDefaults.Count`, completeness test |
+| **SC handler depth** | **1,006 of 1,006 valid `StatusType` values registered** (the lone exception is `None = -1`, an enum sentinel). Composition: **96 hand-ported bespoke bodies** (48 from prior waves + 24 from NS-3 wave 4a + 24 from wave 4b — bard/dancer songs + ASPD potions + ASPD quicken + Hallucinationwalk + Marshofabyss + Spurt fix-overrides) + ~335 generator-synthesized CalcFlag bodies + ~570 presence-only with non-`None` `ScfFlag` classification. Proven by `StatusEffectCompletenessTests`: every SC registered, every CalcFlag-mapped SC has a real-body OR `OnPeriodic` OR allowlisted combat-side reader (31 entries each with rAthena `src/map/status.cpp` citation), every presence-only SC has non-empty `ScfFlag`. | `StatusEffectRegistry.Count`, `StatusCalcFlagDefaults.Count`, completeness test |
 | **Item-script Proxy depth** | **8 distinct unknown methods, 31 hits** post-NS-2a (was 14 / 1,390 = 1.6%; now 0.04%). Residual 8 are JS-internal probes + rare rAthena array/string ops with low impact. | NS-1b harvest re-run after NS-2a; full table in [`map/ns1-audit-2026-05-23.md`](map/ns1-audit-2026-05-23.md) §NS-1b update |
 | **Pathing** | A\* matches rAthena `path.cpp` on constants / heuristic / corner-cut / Bresenham. ✅ Minor tie-break divergence (PriorityQueue ordering) is acceptable. | NS-1c — side-by-side audit of `Pathfinder.cs` vs `path.cpp` |
 
@@ -947,6 +947,72 @@ gameplay on Tier 4 completeness if Tier 1–3 already cover the
 hot path.
 
 ## History
+
+### 2026-05-24 — NS-3 wave 4b landed (bards/dancers + ASPD quicken + Hallucinationwalk, 24 SCs)
+
+Continues Class B with the bard/dancer song family + ASPD potion +
+ASPD quicken (Onehand/TwoHand/MercQuicken/Spearquicken) + a few
+Wave 1 formula corrections.
+
+**Wave 4b** added 24 more bespoke-formula handlers. Two new helpers
+(`AspdPotionHandler(deltaPct)` + `AspdQuickenHandler(baseDelta)`)
+factor out the repeated ASPD bump pattern.
+
+* Bard / Dancer songs (renewal formulas per `status.cpp:10718-10760`):
+  - **Drumbattle** (BA_DRUMBATTLEFIELD) — Batk%×(15+5×val1) + Def+(val1×15)
+  - **Whistle** (BA_WHISTLE) — Flee+(18+2×val1), Flee2+(val1+1)/2
+  - **Humming** (BA_HUMMING) — Hit+(4×val1)
+  - **Fortune** (BA_FORTUNEKISS) — Cri+(val1×100) (×10 storage)
+  - **Service4u** (BA_SERVICEFORYOU) — MaxSp%+(9+val1 cap 20)
+  - **Assncros** (BA_ASSASSINCROSS) — AspdRate+(val1×2−1 cap 20)
+  - **Appleidun** (BA_APPLEIDUN) — MaxHp%+(9+val1 cap 20)
+  - **Dontforgetme** (DC_DONTFORGETME) — AspdRate slow +(1+30×val1)
+
+* Festival songs (combat-side, no stat-mod):
+  - **Richmankim** (BD_RICHMANKIM) — val2 EXP bonus% (combat read)
+  - **Nibelungen** (BD_RINGNIBELUNGEN) — val2 random ring effect
+  - **Siegfried** (BD_SIEGFRIED) — val2/val3 ele + ailment resist
+
+* ASPD potions — fixed magnitudes per tier (status.cpp:10766-10771):
+  - **Aspdpotion0..3** — +10/+15/+20/+25 AspdRate
+
+* ASPD quicken family — fixed +30 AspdRate proxy for rAthena's val2=300%:
+  - **Onehand** (SC_ONEHAND)
+  - **Twohandquicken** (KN_TWOHANDQUICKEN)
+  - **MercQuicken** (mercenary buff)
+  - **Spearquicken** (KN_SPEARQUICKEN) — +20+val1 (pre-renewal scaling)
+
+* Other bespoke:
+  - **Explosionspirits** (MO_EXPLOSIONSPIRITS) — Cri+((75+25×val1)×10)
+    (×10 storage). Fix-overrides Wave 1 handler which used wrong magnitudes.
+  - **Hallucinationwalk** (GC_HALLUCINATIONWALK) — Flee+(50×val1) per
+    status.cpp:11530-11534. Generator: +Val1 Flee (factor of 50 too low).
+  - **Marshofabyss** (WL_MARSHOFABYSS) — Agi/Dex−(3×val1), move-slow
+    +(10×val1) (debuff direction; generator was buff-direction).
+  - **Cloakingexceed** (GC_CLOAKINGEXCEED) — AspdRate+((val1−1)×10).
+  - **Spurt** (TK_RUN stance) — Str+10 flat per status.cpp:6538-6539.
+    Fix-overrides Wave 1 handler (was wrong field/magnitude).
+  - **Marionette/Marionette2** (HP_ASSUMPTIO source/target) —
+    combat-marker overrides; full stat-transfer port deferred until
+    source-ref plumbed through Start() (TODO documented inline).
+
+Allowlist grew from 27 → 31 entries (Marionette/Marionette2 +
+Nibelungen + Siegfried — combat-side readers with rAthena
+citations).
+
+**Files**:
+- `Map.Server/Status/StatusEffectRegistry.cs` — appended ~330 LOC
+  to `RegisterWave4aBespokeFormulas()` (kept the wave-4a method
+  name for body continuity; the helper name is misleading now but
+  internal). Added `AspdPotionHandler` + `AspdQuickenHandler`
+  helpers.
+- `Map.Server.Tests/Status/StatusEffectCompletenessTests.cs` —
+  allowlist +4 entries.
+
+Hand-ported bespoke bodies: 72 → 96 (+24).
+
+**Full test sweep: 3,395 Map.Server + 87 Core + 29 Login = 3,511
+tests passing** (unchanged from wave 4a). 0 build errors.
 
 ### 2026-05-24 — NS-3 wave 4a landed (Class B bespoke-formula port-overs, 24 SCs)
 

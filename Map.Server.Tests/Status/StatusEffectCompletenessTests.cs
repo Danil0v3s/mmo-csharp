@@ -115,6 +115,12 @@ public class StatusEffectCompletenessTests
             [StatusType.Soulenergy] = "Soul Linker SoulEnergy — skill-plugin gate",
             [StatusType.Soulfairy]  = "Soul Linker SoulFairy — skill-plugin gate",
             [StatusType.Soulcold]   = "Soul Linker SoulCold — skill-plugin gate",
+
+            // ---- NS-3 wave 4b combat-marker additions ----
+            [StatusType.Marionette]  = "HP_ASSUMPTIO source — caster stat-transfer (status.cpp:11015-11027), source-ref TODO",
+            [StatusType.Marionette2] = "HP_ASSUMPTIO target — caster val3/val4 decode (status.cpp:11029-11052), source-ref TODO",
+            [StatusType.Nibelungen] = "BD_RINGNIBELUNGEN — val2 random ring effect type (status.cpp:10725-10727)",
+            [StatusType.Siegfried]  = "BD_SIEGFRIED — val2 ele resist, val3 status ailment resist (status.cpp:10728-10731)",
         };
 
     [Fact]

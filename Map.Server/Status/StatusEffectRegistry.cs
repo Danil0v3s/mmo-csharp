@@ -1349,7 +1349,378 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Soulfairy, CombatMarkerHandler(soulLink2));
         // Soulcold had Agi.
         Register(StatusType.Soulcold, CombatMarkerHandler(soulLink2));
+
+        // ====================================================================
+        // NS-3 wave 4b — bards / dancers / Bragi-family + ASPD potions
+        // + Hallucinationwalk + Marsh-of-Abyss + Spurt + ASPD quicken
+        // family + Explosionspirits / Service4U / Marionette markers.
+        //
+        // Same pattern as wave 4a — port the exact rAthena formulas
+        // from `src/map/status.cpp` per-SC switch. Defeat generator
+        // synthesis where the +Val1 default is wrong magnitude or
+        // wrong direction.
+        // ====================================================================
+
+        // ---- Bard / Dancer songs (renewal) ----
+
+        // SC_DRUMBATTLE (BA_DRUMBATTLEFIELD) — status.cpp:10721-10723
+        // val2 = 15+val1*5 atk%, val3 = val1*15 def. Generator: only Def.
+        // We materialize the Batk% delta + the Def flat bonus.
+        Register(StatusType.Drumbattle, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var atkPct = 15 + sc.Val1 * 5;
+                var defFlat = (short)(sc.Val1 * 15);
+                var batkDelta = (ushort)(target.Stats.Batk * atkPct / 100);
+                sc.Val2 = batkDelta;
+                sc.Val3 = defFlat;
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + batkDelta);
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + defFlat);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_WHISTLE (BA_WHISTLE) — status.cpp:10732-10735
+        // val2 = 18+2*val1 Flee, val3 = (val1+1)/2 Perfect dodge (Flee2).
+        // Generator: +Val1 to Flee+Flee2 (too small).
+        Register(StatusType.Whistle, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var flee = (short)(18 + 2 * sc.Val1);
+                var flee2 = (short)((sc.Val1 + 1) / 2);
+                sc.Val2 = flee;
+                sc.Val3 = flee2;
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + flee);
+                target.Stats.Flee2 = (short)Math.Min(short.MaxValue, target.Stats.Flee2 + flee2);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2);
+                target.Stats.Flee2 = (short)Math.Max(0, target.Stats.Flee2 - sc.Val3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_HUMMING (BA_HUMMING / DC_HUMMING) — status.cpp:10747-10749
+        // val2 = 4*val1 Hit. Generator: +Val1 Hit (too small).
+        Register(StatusType.Humming, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var hit = (short)(4 * sc.Val1);
+                sc.Val2 = hit;
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + hit);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_FORTUNE (BA_FORTUNEKISS) — status.cpp:10754-10756
+        // val2 = val1*10 Critical increase. Cri stored ×10 in our port,
+        // so the delta is val1*10*10 = val1*100. Generator: +Val1 to all
+        // 6 base stats (completely wrong).
+        Register(StatusType.Fortune, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var cri = (short)(sc.Val1 * 100);
+                sc.Val2 = cri;
+                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + cri);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SERVICE4U (BA_SERVICEFORYOU) — status.cpp:10757-10760
+        // val2 = val1<10 ? 9+val1 : 20 MaxSP%, val3 = 5+val1 SP cost%.
+        // Generator: +Val1 to all 6 base stats (wrong field — should be
+        // MaxSp and SP cost reduction).
+        Register(StatusType.Service4u, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var maxSpPct = sc.Val1 < 10 ? 9 + sc.Val1 : 20;
+                var maxSpDelta = target.Stats.MaxSp * maxSpPct / 100;
+                sc.Val2 = maxSpDelta;
+                target.Stats.MaxSp = Math.Max(1, target.Stats.MaxSp + maxSpDelta);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.MaxSp = Math.Max(1, target.Stats.MaxSp - sc.Val2);
+                if (target.Stats.Sp > target.Stats.MaxSp) target.Stats.Sp = target.Stats.MaxSp;
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_ASSNCROS (BA_ASSASSINCROSS) — status.cpp:10736-10738
+        // val2 = val1<10 ? val1*2-1 : 20 ASPD%. Generator: +Val1 AspdRate.
+        // Closer match: val1*2-1 (cap 20).
+        Register(StatusType.Assncros, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var aspd = (short)(sc.Val1 < 10 ? sc.Val1 * 2 - 1 : 20);
+                sc.Val2 = aspd;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + aspd);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_APPLEIDUN (BA_APPLEIDUN) — status.cpp:10743-10746
+        // val2 = val1<10 ? 9+val1 : 20 MaxHp%, val3 = 2*val1 potion
+        // recovery rate. Generator: +Val1 MaxHp (wrong — should be %).
+        Register(StatusType.Appleidun, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var pct = sc.Val1 < 10 ? 9 + sc.Val1 : 20;
+                var maxHpDelta = target.Stats.MaxHp * pct / 100;
+                sc.Val2 = maxHpDelta;
+                target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp + maxHpDelta);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val2);
+                if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_DONTFORGETME (DC_DONTFORGETME) — status.cpp:10750-10753
+        // val2 = 1+30*val1 ASPD decrease (debuff), val3 = 5+2*val1 move
+        // slow. Generator: +Val1 AspdRate (wrong direction — debuff).
+        Register(StatusType.Dontforgetme, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                // Both effects slow the target; store as AspdRate
+                // increase (which functions as a slow proxy in our port).
+                var slow = (short)(1 + 30 * sc.Val1);
+                sc.Val2 = slow;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + slow);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // ---- Festival / Bard non-stat songs (combat-side reads) ----
+
+        // SC_RICHMANKIM (BD_RICHMANKIM) — status.cpp:10718-10720
+        // val2 = 10+10*val1 EXP bonus%. Combat-side read by EXP service.
+        // Generator: not in defaults.
+        Register(StatusType.Richmankim, CombatMarkerHandler(
+            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_NIBELUNGEN (BD_RINGNIBELUNGEN) — status.cpp:10725-10727
+        // val2 = rnd() % RINGNBL_MAX (random elemental ring effect type).
+        // Combat-side read. Generator: +Val1 to all 6 base stats (wrong).
+        Register(StatusType.Nibelungen, CombatMarkerHandler(
+            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SIEGFRIED (BD_SIEGFRIED) — status.cpp:10728-10731
+        // val2 = val1*3 Elemental Resistance, val3 = val1*5 status ailment
+        // resistance. Combat-side reads. Generator: +Val1 to all 6 base
+        // stats (wrong).
+        Register(StatusType.Siegfried, CombatMarkerHandler(
+            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // ---- ASPD potions (fixed magnitudes per potion tier) ----
+
+        // SC_ASPDPOTION0..3 — status.cpp:10766-10771
+        // val2 = 50*(2+type-SC_ASPDPOTION0) → potion0:100%, 1:150%, 2:200%, 3:250%.
+        // We materialize as fixed AspdRate deltas (matching our port's
+        // absolute storage convention). Generator: +Val1 to AspdRate (wrong,
+        // val1 is just the potion power level, not the magnitude).
+        Register(StatusType.Aspdpotion0, AspdPotionHandler(deltaPct: 50 * 2));   // 100% → +10 AspdRate
+        Register(StatusType.Aspdpotion1, AspdPotionHandler(deltaPct: 50 * 3));   // 150% → +15
+        Register(StatusType.Aspdpotion2, AspdPotionHandler(deltaPct: 50 * 4));   // 200% → +20
+        Register(StatusType.Aspdpotion3, AspdPotionHandler(deltaPct: 50 * 5));   // 250% → +25
+
+        // ---- ASPD-quicken family (fixed +300 ASPD%) ----
+
+        // SC_ONEHAND / SC_TWOHANDQUICKEN — status.cpp:10685-10690
+        // val2 = 300 ASPD%. For val1>10: val2 += 20*(val1-10) (boss-only).
+        // Our port stores AspdRate as absolute delta; +30 mirrors the
+        // rAthena +300% within our scale (the existing handler had +Val1
+        // which is way too small).
+        Register(StatusType.Onehand, AspdQuickenHandler(baseDelta: 30));
+        Register(StatusType.Twohandquicken, AspdQuickenHandler(baseDelta: 30));
+
+        // SC_MERC_QUICKEN — status.cpp:10691-10693
+        // val2 = 300 ASPD% (mercenary buff). Same as above.
+        Register(StatusType.MercQuicken, AspdQuickenHandler(baseDelta: 30));
+
+        // SC_SPEARQUICKEN (KN_SPEARQUICKEN) — status.cpp:10695-10697
+        // val2 = 200+10*val1 ASPD%. Pre-renewal; renewal uses skill_db.
+        // Bespoke port: +20+val1 AspdRate (scaled-down absolute).
+        // Generator: +Val1 to AspdRate+Cri+Flee — Cri/Flee are wrong.
+        Register(StatusType.Spearquicken, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var d = (short)(20 + sc.Val1);
+                sc.Val2 = d;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + d);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // ---- Other bespoke formulas ----
+
+        // SC_EXPLOSIONSPIRITS (MO_EXPLOSIONSPIRITS) — status.cpp:10762-10764
+        // val2 = 75+25*val1 Cri bonus. Cri stored ×10 in our port, so
+        // delta = (75+25*val1)*10. Earlier handler at registry line 315
+        // used wrong magnitudes (val1=Cri, val2=Batk).
+        Register(StatusType.Explosionspirits, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var cri = (short)((75 + 25 * sc.Val1) * 10);
+                sc.Val2 = cri;
+                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + cri);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_HALLUCINATIONWALK (GC_HALLUCINATIONWALK) — status.cpp:11530-11534
+        // val2 = 50*val1 Flee (physical evasion), val3 = 10*val1 (magical
+        // evasion — no direct stat; combat-side read). Generator: +Val1
+        // Flee (way too small).
+        Register(StatusType.Hallucinationwalk, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var flee = (short)(50 * sc.Val1);
+                sc.Val2 = flee;
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + flee);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_MARSHOFABYSS (WL_MARSHOFABYSS) — status.cpp:11535-11541
+        // val2 = 3*val1 (PC) Agi+Dex reduction, val3 = 10*val1 move slow.
+        // Generator: +Val1 Agi+Dex+AspdRate (wrong direction — debuff).
+        Register(StatusType.Marshofabyss, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var statDrop = (short)(3 * sc.Val1);
+                var moveSlow = (short)(10 * sc.Val1);
+                sc.Val2 = statDrop;
+                sc.Val3 = moveSlow;
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - statDrop);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - statDrop);
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + moveSlow);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val2);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val2);
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val3);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_CLOAKINGEXCEED (GC_CLOAKINGEXCEED) — status.cpp:11521-11528
+        // val2 = (val1+1)/2 hits, val3 = (val1-1)*10 walk speed%.
+        // Generator: +Val1 AspdRate (too small). Override with absolute
+        // val3 magnitude.
+        Register(StatusType.Cloakingexceed, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var moveBoost = (short)Math.Max(0, (sc.Val1 - 1) * 10);
+                sc.Val3 = moveBoost;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + moveBoost);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SPURT (TK_RUN / Taekwon stance) — status.cpp:6538-6539
+        // `if(sc->getSCE(SC_SPURT)) str += 10;` — flat +10 STR. The
+        // earlier wave handler at line 502 used `batk += val1` which is
+        // wrong field AND wrong magnitude.
+        Register(StatusType.Spurt, new StatusEffectHandler(
+            OnStart: (target, _, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + 10);
+            },
+            OnEnd: (target, _) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - 10);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // ---- Marionette family (stat-transfer markers) ----
+        //
+        // SC_MARIONETTE / SC_MARIONETTE2 — status.cpp:11015-11052
+        // The caster pays half their base stats (encoded bit-packed into
+        // val3/val4); the target receives that bonus (capped at
+        // max_parameter - current_stat). Stat-transfer SCs require both
+        // sides to communicate via the caster's SC record.
+        //
+        // Our port doesn't carry a cross-SC read at OnStart time (the
+        // source entity reference isn't always available). Document the
+        // gap and register as combat-markers so the generator's +Val1
+        // to all 6 stats (totally wrong) is defeated.
+        //
+        // TODO: when source ref is plumbed through Start(), port the
+        // bit-packed val3/val4 stat decode here.
+        Register(StatusType.Marionette, CombatMarkerHandler(
+            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+        Register(StatusType.Marionette2, CombatMarkerHandler(
+            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
     }
+
+    /// <summary>
+    /// Wave 4b helper — ASPD potion handler with a fixed AspdRate
+    /// delta per potion tier. rAthena's val2 = 50*(2+tier) is a %
+    /// modifier; we scale down to an absolute delta (rAthena +100% ≈
+    /// our +10 AspdRate at the storage scale).
+    /// </summary>
+    private static StatusEffectHandler AspdPotionHandler(int deltaPct) =>
+        new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var d = (short)(deltaPct / 10);
+                sc.Val2 = d;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + d);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout);
+
+    /// <summary>
+    /// Wave 4b helper — Onehand/Twohandquicken/MercQuicken handler.
+    /// rAthena's val2 = 300 ASPD%. Our absolute-AspdRate storage uses
+    /// +baseDelta as the in-game proxy (+30 ≈ rAthena's "300%" weapon
+    /// quicken bonus).
+    /// </summary>
+    private static StatusEffectHandler AspdQuickenHandler(int baseDelta) =>
+        new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var d = (short)baseDelta;
+                sc.Val2 = d;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + d);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout);
 
     /// <summary>
     /// Wave 4a helper — combat/regen/cast presence-only marker.
