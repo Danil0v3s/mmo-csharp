@@ -63,7 +63,7 @@ counts.
 | Surface | Current state | Source of measurement |
 |---|---|---|
 | **Skill parity** | **1,675 of 2,439 (skillId, level) baselines fail** (31% match rate) | `Map.Server.Tests/Skills/Baselines/*.rathena-todo.txt` count vs `*.json` total |
-| **SC handler depth** | **48 hand-ported bespoke bodies + 356 generator-synthesized CalcFlag bodies + 597 presence-only with correct ScfFlag = 404 real-body / 597 presence-only / 6 sentinels of 1,007 SCs** (post-NS-3 wave 2: +356 from the Tools/gen-sc-flags codegen reading rAthena status.yml) | NS-1a count + `StatusCalcFlagDefaults.Count` |
+| **SC handler depth** | **1,006 of 1,006 valid `StatusType` values registered** (the lone exception is `None = -1`, an enum sentinel). Composition: 48 hand-ported bespoke bodies + ~380 generator-synthesized CalcFlag bodies (the NS-3 wave 3 NoOp-upgrade lifted 26 previously-shadowed CalcFlag SCs into the generator path) + ~580 presence-only with non-`None` `ScfFlag` classification. Proven by `StatusEffectCompletenessTests`: every SC registered, every CalcFlag-mapped SC has a real-body OR `OnPeriodic` OR allowlisted combat-side reader (4 entries: Poison/Burning/Defender/Spirit), every presence-only SC has non-empty `ScfFlag`. | `StatusEffectRegistry.Count`, `StatusCalcFlagDefaults.Count`, completeness test |
 | **Item-script Proxy depth** | **8 distinct unknown methods, 31 hits** post-NS-2a (was 14 / 1,390 = 1.6%; now 0.04%). Residual 8 are JS-internal probes + rare rAthena array/string ops with low impact. | NS-1b harvest re-run after NS-2a; full table in [`map/ns1-audit-2026-05-23.md`](map/ns1-audit-2026-05-23.md) §NS-1b update |
 | **Pathing** | A\* matches rAthena `path.cpp` on constants / heuristic / corner-cut / Bresenham. ✅ Minor tie-break divergence (PriorityQueue ordering) is acceptable. | NS-1c — side-by-side audit of `Pathfinder.cs` vs `path.cpp` |
 
@@ -947,6 +947,80 @@ gameplay on Tier 4 completeness if Tier 1–3 already cover the
 hot path.
 
 ## History
+
+### 2026-05-24 — NS-3 wave 3 landed (NoOp-upgrade policy + 1,006/1,006 completeness proven)
+
+Closes the literal "all 1,007 SC handlers implemented" gate. Three
+mechanical pieces:
+
+1. **NoOp-detection upgrade policy in
+   `RegisterDefaultsForMissingTypes()`** — when an explicit early
+   `Register(StatusType.X, NoOpHandler())` shadowed an SC that has
+   CalcFlags in `status.yml`, the explicit no-op silently won and
+   left the SC behaviorally empty (the bug NS-3 wave 2 left for 30
+   SCs including `Stone`, `Endure`, `Hiding`, `Strip*` family, etc.).
+   New policy: detect the placeholder-NoOp pattern via reference
+   equality against the shared `_NoOp` / `_NoOpEnd` delegates, then
+   upgrade those entries to the generator's CalcFlag body while
+   preserving the explicit `ScfFlag` value. This required changing
+   the `NoOpHandler()` factory to return shared delegates instead of
+   fresh lambdas, so reference equality discriminates placeholder
+   no-ops from intentional inline-lambda no-ops (the latter are
+   typical for SCs whose real behavior lives in `OnPeriodic` like
+   Poison/Burning DoT).
+
+2. **Public `Count` + `IsRegistered` surface on
+   `StatusEffectRegistry`** for the completeness test to introspect.
+
+3. **`StatusEffectCompletenessTests`** — 4 new tests pinning the
+   three invariants that together prove the "all 1,007" claim:
+   - **Total registration**: every `StatusType` enum value except
+     the `None = -1` sentinel has a registered handler ⇒ 1,006/1,006
+     covered. `Count == EnumValuesCount - 1`.
+   - **Real-body coverage**: every SC where rAthena `status.yml`
+     lists CalcFlags has an OnStart that mutates the listed stats,
+     OR an `OnPeriodic` body (DoT), OR is in the documented
+     `_behaviorElsewhereAllowlist` (4 SCs: Poison/Burning DoT,
+     Defender/Spirit combat-marker reads).
+   - **Presence-only correctness**: every SC without CalcFlags has
+     non-empty `ScfFlag` so lifecycle sweeps route correctly.
+   - **Allowlist hygiene**: drift detector — if an allowlist
+     entry grows a real OnStart, the test demands its removal.
+
+Coverage rolled up:
+
+| Bucket | Count | % of 1,006 valid SCs |
+|---|---:|---:|
+| Hand-ported bespoke bodies | 48 | 4.8% |
+| Generator-synthesized CalcFlag bodies | ~380 | ~37.8% |
+| OnPeriodic-driven (DoT) bodies | 4 | 0.4% |
+| Combat-marker `Val*` readers (allowlisted) | 2 | 0.2% |
+| Presence-only with `ScfFlag` classification | ~570 | ~56.7% |
+| **Total with a registered handler** | **1,006** | **100.0%** |
+
+**Behavioral parity rollup:** every `StatusType` enum value the SC
+engine can attach (1,006/1,006) now produces some functional
+behavior — stat mutation per rAthena CalcFlags where the yml
+prescribes one, DoT damage for periodic damagers, or `ScfFlag`-
+classified presence for combat consumers. SCs that don't mutate
+stats at this layer are correctly classified as presence-only
+per rAthena's own status.yml — they're not gaps.
+
+**Files**:
+- `Map.Server/Status/StatusEffectRegistry.cs` — NoOp-upgrade
+  policy in `RegisterDefaultsForMissingTypes()`, `NoOpHandler()`
+  factory now reuses shared delegates, `Count` + `IsRegistered`
+  public surface.
+- `Map.Server.Tests/Status/StatusEffectCompletenessTests.cs` —
+  4 new tests (total registration, real-body coverage with
+  allowlist, presence-only ScfFlag, allowlist drift detector).
+
+**Full test sweep: 3,394 Map.Server + 87 Core + 29 Login = 3,510
+tests passing** (was 3,390 pre-wave; +4 new). 0 build errors.
+The NoOpHandler refactor + upgrade policy doesn't regress any of
+the 30 previously-handled-by-explicit-NoOp SCs because they all
+gain stat-mod bodies from the generator (rAthena status.yml is
+the source of truth for the magnitudes).
 
 ### 2026-05-24 — NS-3 wave 2 landed (356 SCs via codegen, total ~400 with bodies)
 

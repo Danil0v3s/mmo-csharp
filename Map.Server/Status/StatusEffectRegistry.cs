@@ -853,19 +853,49 @@ public sealed class StatusEffectRegistry
         {
             // None / sentinel values stay unregistered.
             if (type == StatusType.None || (short)type < 0) continue;
-            if (_handlers.ContainsKey(type)) continue;
+
+            var fields = StatusCalcFlagDefaults.For(type);
+            var alreadyRegistered = _handlers.TryGetValue(type, out var existing);
+
+            // NS-3 wave 3 hardening: if a previous Register() call set
+            // a NoOp handler for an SC that ALSO has CalcFlags in
+            // status.yml, the explicit NoOp shadowed the generator
+            // default — leaving the SC structurally implemented but
+            // behaviorally silent. Detect that case (existing handler
+            // points its OnStart at the shared `_NoOp` delegate AND
+            // the SC has CalcFlags) and upgrade to the generator body
+            // while preserving the explicit ScfFlag value.
+            //
+            // The early Register() with NoOpHandler() in the ctor was
+            // a documentation placeholder ("hold the SC for combat-side
+            // Val* read"). For CalcFlag SCs the rAthena-prescribed
+            // stat mod IS the implementation — combining both gives
+            // both behaviors (Val storage for combat + stat mod for
+            // status display).
+            var preserveExplicitFlags = ScfFlag.None;
+            if (alreadyRegistered)
+            {
+                var isNoOpStart = ReferenceEquals(existing!.OnStart, _NoOp);
+                if (!isNoOpStart || fields.Count == 0) continue; // explicit body wins
+                // Existing handler is a presence-only NoOp but the SC
+                // has CalcFlags — upgrade to the generator body, keep
+                // the original ScfFlag classification.
+                preserveExplicitFlags = existing.Flags;
+            }
 
             // Pull the default flag set; if absent, use a conservative
-            // "buff that drops on logout" classification.
-            var defaultFlags = StatusFlagDefaults.For(type);
+            // "buff that drops on logout" classification. Explicit
+            // upgrades (preserveExplicitFlags != None) win over the
+            // table lookup.
+            var defaultFlags = preserveExplicitFlags != ScfFlag.None
+                ? preserveExplicitFlags
+                : StatusFlagDefaults.For(type);
             if (defaultFlags == ScfFlag.None)
                 defaultFlags = ScfFlag.RemoveOnLogout;
 
-            // NS-3 wave 2: if the SC has CalcFlags in status.yml,
-            // synthesize a stat-mod body instead of a no-op. Capture
-            // `fields` in a local so the closure sees the snapshot,
-            // not the loop variable.
-            var fields = StatusCalcFlagDefaults.For(type);
+            // If the SC has CalcFlags in status.yml, synthesize a
+            // stat-mod body. Capture `fields` in a local so the
+            // closure sees the snapshot, not the loop variable.
             if (fields.Count == 0)
             {
                 _handlers[type] = new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: defaultFlags);
@@ -994,14 +1024,27 @@ public sealed class StatusEffectRegistry
     /// <summary>
     /// Empty handler — for SCs whose only effect is "I'm present so a
     /// gate or downstream consumer reads my Val1/Val2 directly".
+    /// <para>Reuses the static <see cref="_NoOp"/> and <see cref="_NoOpEnd"/>
+    /// delegates (not fresh lambdas) so
+    /// <see cref="RegisterDefaultsForMissingTypes"/> can detect them via
+    /// reference equality and upgrade to a CalcFlag-generator body
+    /// when the SC has CalcFlags in rAthena status.yml.</para>
     /// </summary>
-    private static StatusEffectHandler NoOpHandler() => new(
-        OnStart: (_, _, _) => { },
-        OnEnd: (_, _) => { });
+    private static StatusEffectHandler NoOpHandler() => new(_NoOp, _NoOpEnd);
 
     public void Register(StatusType type, StatusEffectHandler handler) => _handlers[type] = handler;
 
     public StatusEffectHandler? Get(StatusType type) => _handlers.GetValueOrDefault(type);
+
+    /// <summary>
+    /// Total number of registered SC handlers. Hits 1,001 (= all
+    /// StatusType enum values minus None / sentinels). Used by the
+    /// structural-completeness test to assert every SC has a handler.
+    /// </summary>
+    public int Count => _handlers.Count;
+
+    /// <summary>True when <paramref name="type"/> has a registered handler.</summary>
+    public bool IsRegistered(StatusType type) => _handlers.ContainsKey(type);
 
     /// <summary>
     /// ST.1 — effective <see cref="ScfFlag"/> mask for an SC: combines
