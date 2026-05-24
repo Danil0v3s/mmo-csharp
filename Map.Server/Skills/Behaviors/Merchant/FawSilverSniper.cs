@@ -1,19 +1,25 @@
 using Map.Server.Entities;
+using Map.Server.Mob;
 
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// NC_SILVERSNIPER — Mechanic FAW Silver Sniper. Manual port of
-/// <c>rathena-fork/src/map/skills/merchant/fawsilversniper.cpp</c>.
-/// Spawns a Silver Sniper turret. mob_once_spawn TODO.
+/// NC_SILVERSNIPER — Mechanic FAW Silver Sniper
+/// (skill.cpp:NC_SILVERSNIPER). Spawns
+/// <see cref="MobIds.SilverSniper"/> at the cast cell with AI_FAW
+/// + master link + 60 s lifetime. The FAW AI handles the auto-attack
+/// branch.
 /// </summary>
 public sealed class FawSilverSniper : SkillImpl
 {
+    private const int LifetimeMs = 60_000;
+
     public FawSilverSniper() : base(SkillIds.NC_SILVERSNIPER) { }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // Deferred: MOBID_SILVERSNIPER turret + master-id linkage + delete-timer
-        // aren't surfaced through IMobSpawnService.SpawnAt.
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+        ctx.MobSpawn?.SpawnWithAi(src.Id, src.MapId, MobIds.SilverSniper, x, y,
+            MobSpecialAi.Faw, LifetimeMs);
     }
 }

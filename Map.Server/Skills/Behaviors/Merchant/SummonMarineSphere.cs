@@ -1,22 +1,24 @@
 using Map.Server.Entities;
+using Map.Server.Mob;
 
 namespace Map.Server.Skills.Behaviors.Merchant;
 
 /// <summary>
-/// AM_SPHEREMINE — Summon Marine Sphere. Manual port of
-/// <c>rathena-fork/src/map/skills/merchant/summonmarinesphere.cpp</c>.
-/// Spawns MOBID_MARINE_SPHERE at the cast XY with AI_SPHERE, links it
-/// to the caster, and arms the cleanup timer. Mob spawn helper isn't
-/// ported yet — TODO.
+/// AM_SPHEREMINE — Summon Marine Sphere (skill.cpp:AM_SPHEREMINE).
+/// Spawns <see cref="MobIds.MarineSphere"/> at the cast cell with
+/// AI_SPHERE + master link + 30 s lifetime. The sphere AI handles
+/// the auto-detonate on contact branch.
 /// </summary>
 public sealed class SummonMarineSphere : SkillImpl
 {
+    private const int LifetimeMs = 30_000;
+
     public SummonMarineSphere() : base(SkillIds.AM_SPHEREMINE) { }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // Deferred: MOBID_MARINE_SPHERE + AI_SPHERE + master-id linkage +
-        // delete-timer aren't surfaced through IMobSpawnService.SpawnAt; a
-        // raw spawn would create a wild mob with no auto-detonate hookup.
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+        ctx.MobSpawn?.SpawnWithAi(src.Id, src.MapId, MobIds.MarineSphere, x, y,
+            MobSpecialAi.Sphere, LifetimeMs);
     }
 }

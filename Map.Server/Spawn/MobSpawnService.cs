@@ -34,6 +34,9 @@ public sealed class MobSpawnService : IMobSpawnService, IMobDeathSink
     // entry-id ↔ live count, used to honor Amount on initial + respawn passes
     private readonly Dictionary<MobSpawnEntry, int> _liveCounts = new();
     private readonly List<PendingRespawn> _pendingRespawns = new();
+    /// <summary>Summons spawned with a lifetime cap (SpawnWithAi).
+    /// Keyed by mob entity id → absolute expiry tick.</summary>
+    private readonly Dictionary<EntityId, long> _pendingExpiries = new();
     private readonly object _gate = new();
 
     public MobSpawnService(
@@ -110,6 +113,52 @@ public sealed class MobSpawnService : IMobSpawnService, IMobDeathSink
         return mob;
     }
 
+    public Entity? SpawnWithAi(EntityId masterId, uint mapId, int classId, short x, short y,
+        Map.Server.Mob.MobSpecialAi aiTag, int lifetimeMs = 0)
+    {
+        var dbEntry = _mobDb.Get(classId);
+        if (dbEntry == null) return null;
+        // Resolve walkable cell (best-effort — same ring scan as SpawnAt).
+        var map = _worldRegistry.All.FirstOrDefault(m => (uint)m.Name.GetHashCode() == mapId);
+        if (map == null) return null;
+        if (!map.IsWalkable(x, y))
+        {
+            var found = false;
+            for (var r = 1; r <= 3 && !found; r++)
+            for (var dy = -r; dy <= r && !found; dy++)
+            for (var dx = -r; dx <= r && !found; dx++)
+            {
+                var nx = (short)(x + dx);
+                var ny = (short)(y + dy);
+                if (nx < 0 || ny < 0 || nx >= map.Xs || ny >= map.Ys) continue;
+                if (!map.IsWalkable(nx, ny)) continue;
+                x = nx; y = ny; found = true;
+            }
+            if (!found) return null;
+        }
+        var entry = new MobSpawnEntry
+        {
+            MobClassId = classId, MapId = mapId, X = x, Y = y,
+            Amount = 1, RespawnDelayMs = 0, RespawnJitterMs = 0,
+        };
+        var mob = new MobEntity(_idAllocator.NextMob(), dbEntry, entry, mapId, x, y);
+        mob.MasterId = masterId;
+        mob.SpecialAi = aiTag;
+        _statusCalc.CalcMob(mob);
+        _entities.Add(mob);
+        _visibility.NotifySpawnedToArea(mob);
+        if (lifetimeMs > 0)
+        {
+            // Schedule the summon to despawn at this tick. Tick() walks
+            // _pendingExpiries and kills any whose deadline has elapsed.
+            lock (_gate)
+            {
+                _pendingExpiries[mob.Id] = Environment.TickCount64 + lifetimeMs;
+            }
+        }
+        return mob;
+    }
+
     public void SpawnInitial()
     {
         foreach (var entry in _registry.All())
@@ -165,6 +214,20 @@ public sealed class MobSpawnService : IMobSpawnService, IMobDeathSink
             var dbEntry = _mobDb.Get(pending.Entry.MobClassId);
             if (map == null || dbEntry == null) continue;
             TrySpawnOne(pending.Entry, dbEntry, map);
+        }
+
+        // Summon-expiry pass — kill any AI-tag summon whose lifetime
+        // elapsed (SpawnWithAi lifetimeMs). Removes from the map and
+        // clears the expiry entry. No respawn — these are one-shot.
+        List<EntityId> expired;
+        lock (_gate)
+        {
+            expired = _pendingExpiries.Where(kv => kv.Value <= now).Select(kv => kv.Key).ToList();
+            foreach (var id in expired) _pendingExpiries.Remove(id);
+        }
+        foreach (var id in expired)
+        {
+            KillMob(id, lastHitter: null);
         }
 
         // Wander pass — every idle mob whose wander cooldown elapsed picks a

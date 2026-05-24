@@ -50,4 +50,23 @@ public interface IMobSpawnService
     /// walkable cell was free near the request point.
     /// </summary>
     Entity? SpawnAt(string mapName, int classId, short x, short y);
+
+    /// <summary>
+    /// rAthena <c>mob_once_spawn_sub</c> with the special-AI tag set —
+    /// summon a mob bound to <paramref name="masterId"/>, marked as one
+    /// of the script-summoned variants (Alchemist Bionic, Sphere,
+    /// Flora, Geneticist Plant, Mechanic FAW turret, Sorcerer ABR pet,
+    /// Ninja Zanzou clone). The lifetime parameter caps the entity at
+    /// <paramref name="lifetimeMs"/> ms (0 = no expiry); naturally dies
+    /// when MobEntity.Hp ≤ 0 or the timer fires.
+    ///
+    /// <para>Differs from <see cref="SpawnAt"/> in three ways: (1) sets
+    /// <see cref="Entity.MasterId"/> so MasterAttackedCondition routes
+    /// aggro through the owner; (2) sets
+    /// <see cref="MobEntity.SpecialAi"/> so the slave-AI branches fire
+    /// (e.g. AI_SPHERE triggers Cannibalize chase); (3) records the
+    /// expiry in the despawn queue so the summon vanishes on time.</para>
+    /// </summary>
+    Entity? SpawnWithAi(EntityId masterId, uint mapId, int classId, short x, short y,
+        Mob.MobSpecialAi aiTag, int lifetimeMs = 0);
 }
