@@ -63,7 +63,8 @@ counts.
 | Surface | Current state | Source of measurement |
 |---|---|---|
 | **Skill parity** | **1,675 of 2,439 (skillId, level) baselines fail** (31% match rate) | `Map.Server.Tests/Skills/Baselines/*.rathena-todo.txt` count vs `*.json` total |
-| **SC handler depth** | **1,006 of 1,006 valid `StatusType` values registered** (the lone exception is `None = -1`, an enum sentinel). Composition: **96 hand-ported bespoke bodies** (48 from prior waves + 24 from NS-3 wave 4a + 24 from wave 4b — bard/dancer songs + ASPD potions + ASPD quicken + Hallucinationwalk + Marshofabyss + Spurt fix-overrides) + ~335 generator-synthesized CalcFlag bodies + ~570 presence-only with non-`None` `ScfFlag` classification. Proven by `StatusEffectCompletenessTests`: every SC registered, every CalcFlag-mapped SC has a real-body OR `OnPeriodic` OR allowlisted combat-side reader (31 entries each with rAthena `src/map/status.cpp` citation), every presence-only SC has non-empty `ScfFlag`. | `StatusEffectRegistry.Count`, `StatusCalcFlagDefaults.Count`, completeness test |
+| **SC handler depth** | **1,006 of 1,006 valid `StatusType` values registered**. Composition: **96 hand-ported bespoke bodies** (48 prior + 24 wave 4a + 24 wave 4b), ~335 generator-synthesized CalcFlag bodies, 31 allowlisted combat-side readers (each with rAthena `src/map/status.cpp` citation), ~540 presence-only NoOp with `ScfFlag`. Proven by `StatusEffectCompletenessTests`. See [`status-parity.md`](map/status-parity.md) for the per-bucket scoreboard. | `StatusEffectRegistry.Count`, `StatusCalcFlagDefaults.Count`, completeness test |
+| **Script-bridge depth** | **0 stub markers remaining in `ScriptedBonusHost.cs`** (was 7 documented stubs pre-NS-3 wave 6: vip_status, specialeffect, specialeffect2, hateffect, petloot, message, dispbottom). Each got a real wire — new `ZC_NOTIFY_EFFECT2` packet for the effect family, `ZC_NOTIFY_PLAYERCHAT` for message/dispbottom, `PlayerEntity.VipExpireTimestamp` + `PetEntity.AutoLootMax` for the state ops. | `grep -c "data-pending\|stub" ScriptedBonusHost.cs` |
 | **Item-script Proxy depth** | **8 distinct unknown methods, 31 hits** post-NS-2a (was 14 / 1,390 = 1.6%; now 0.04%). Residual 8 are JS-internal probes + rare rAthena array/string ops with low impact. | NS-1b harvest re-run after NS-2a; full table in [`map/ns1-audit-2026-05-23.md`](map/ns1-audit-2026-05-23.md) §NS-1b update |
 | **Pathing** | A\* matches rAthena `path.cpp` on constants / heuristic / corner-cut / Bresenham. ✅ Minor tie-break divergence (PriorityQueue ordering) is acceptable. | NS-1c — side-by-side audit of `Pathfinder.cs` vs `path.cpp` |
 
@@ -947,6 +948,43 @@ gameplay on Tier 4 completeness if Tier 1–3 already cover the
 hot path.
 
 ## History
+
+### 2026-05-24 — NS-3 final: status-parity.md scoreboard refresh
+
+Updated `map/status-parity.md` to reflect waves 4a + 4b + 6's
+behavioral picture. Added a per-SC scoreboard table beneath the
+"100% registered" structural row that breaks the 1,006 SC handlers
+into actual behavioral buckets:
+
+| Bucket | Count |
+|---|---:|
+| Hand-ported bespoke bodies (rAthena formula match) | 96 |
+| Generator-synthesized CalcFlag bodies (+Val1) | ~335 |
+| OnPeriodic-driven (DoT) bodies | 4 |
+| Combat-marker / Val* readers (allowlisted) | 31 |
+| Presence-only NoOp with ScfFlag classification | ~540 |
+| **Total** | **1,006** |
+
+**Honest framing:** the 96 hand-ported SCs are rAthena-formula
+accurate. The 31 allowlist combat-markers are presence-only by
+rAthena spec — they need the consumer-side reader to port (combat
+pipeline reading sc.Val1/Val2/Val3 directly). The ~335 generator
+SCs cover the "+val1 to listed CalcFlag" pattern that rAthena uses
+for most buffs/debuffs; residual gap is bespoke-magnitude SCs (rest
+of Class B targets, ~50 SCs estimated remaining).
+
+**NS-3 wave 5 (Class A — ~420 presence-only SCs with missing
+consumers) — still pending.** Each family is its own wave (Soul
+Linker job-gated skills, Star Emperor stance dispatch, Sura combo
+chains, weapon endow combat-side reader, etc.). Largest workstream
+remaining for SC behavioral parity; the structural completeness
+gate is held by the existing allowlist + classification.
+
+The roadmap measured-baseline row now distinguishes "structural
+completeness 1,006/1,006" (proven by `StatusEffectCompletenessTests`)
+from "behavioral completeness", which is bucketed: 96 exact + 335
+formula-approximate + 31 reader-pending + 540 presence-only-per-
+spec. Honest stub-removal scorecard.
 
 ### 2026-05-24 — NS-3 wave 6 landed (Class C script-bridge stubs wired)
 

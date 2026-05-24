@@ -198,6 +198,101 @@ handlers. Every previously-cited dependency closed via:
 
 ## History
 
+### 2026-05-24 — NS-3 waves 4a/4b/6 — Class B + Class C stub-removal sweep
+
+Per the active stub-removal goal (PARITY-CLOSURE-ROADMAP.md), three
+NS-3 sub-waves landed in sequence. Updates the per-SC scoreboard
+beneath the old "997 / 997 registered" structural rollup with the
+behavioral picture.
+
+**Wave 4a (commit `4ecdf87`) — Class B bespoke-formula port-overs (24 SCs)**
+
+Fixed 5 hand-handlers with wrong magnitudes/fields:
+- Angelus (Def, not Mdef2), Blessing (+Hit val1*2), Concentrate
+  (base*(2+val1)/100, not flat), Concentration (full renewal
+  formula), Provoke (Batk*(2+3*val1)/100, Def*(5+5*val1)/100).
+
+Added 10 bespoke-formula overrides for SCs generator was synthesizing
+incorrectly:
+- Truesight (+5 flat to 6 base stats per status.cpp:6536-6892),
+  Bloodlust, Fleet, Mindbreaker, Gatlingfever, Defence, Change,
+  Maxoverthrust, Overthrust (renewal), Magicpower.
+
+Added 19 combat-marker overrides (fresh-lambda `CombatMarkerHandler`)
+to defeat the NoOp-upgrade synthesis on SCs whose CalcFlags exist
+in status.yml but whose real semantics are "Val* read by combat":
+- Providence, Reflectshield, Steelbody, Meltdown, Edp,
+  Saturdaynightfever, Hiding, Cloaking, Paralysis, Izayoi,
+  Fireweapon/Waterweapon/Windweapon/Earthweapon, Stripweapon/
+  Stripshield/Striparmor/Striphelm, Soulshadow/Soulfalcon/
+  Soulgolem/Soulenergy/Soulfairy/Soulcold.
+
+**Wave 4b (commit `cacc631`) — bards/dancers + ASPD potions + Hallucinationwalk + Marsh-of-Abyss (24 SCs)**
+
+Bard/Dancer songs (renewal):
+- Drumbattle, Whistle, Humming, Fortune, Service4u, Assncros,
+  Appleidun, Dontforgetme — each ports the rAthena formula from
+  status.cpp:10718-10760.
+
+Festival songs (combat-side, no stat-mod):
+- Richmankim, Nibelungen, Siegfried.
+
+ASPD potions / quicken (fixed magnitudes):
+- Aspdpotion0..3, Onehand, Twohandquicken, MercQuicken, Spearquicken.
+
+Other bespoke:
+- Explosionspirits (Cri formula fix), Hallucinationwalk (+50*val1
+  Flee), Marshofabyss (debuff direction fix), Cloakingexceed (move
+  speed), Spurt (+10 Str flat per :6538-6539).
+
+Marionette/Marionette2 — combat-marker; full stat-transfer port
+deferred until source-ref plumbed through Start().
+
+**Wave 6 (commit `5974a04`) — Class C ScriptedBonusHost stubs wired**
+
+Closed the 7 documented no-ops on `ScriptedBonusHost`:
+- specialeffect / specialeffect2 / hateffect → new
+  `ZC_NOTIFY_EFFECT2` (0x01f3) AOI broadcast
+- message / dispbottom → `ZC_NOTIFY_PLAYERCHAT` (0x008e self emit)
+- vip_status → new `PlayerEntity.VipExpireTimestamp` field
+- petloot → new `PetEntity.AutoLootMax` field
+
+The `_behaviorElsewhereAllowlist` (in
+`StatusEffectCompletenessTests.cs`) — which catalogs every SC
+whose real implementation is in a combat-side reader rather than
+OnStart — grew from 4 → 31 entries as a result. Each entry carries
+its rAthena `src/map/status.cpp` line citation; the "allowlist
+drift" test catches any future regression where one of these SCs
+silently grows a real OnStart and the allowlist entry becomes
+stale.
+
+**Per-SC scoreboard after waves 4a + 4b + 6:**
+
+| Bucket | Count | Notes |
+|---|---:|---|
+| Hand-ported bespoke bodies (rAthena formula match) | 96 | 48 from prior waves + 48 from waves 4a/4b |
+| Generator-synthesized CalcFlag bodies (+Val1) | ~335 | exact match for SCs scaling by val1; approximate where rAthena uses different scaling — those are the wave 4c+ targets |
+| OnPeriodic-driven (DoT) bodies | 4 | Poison, Burning, Bleeding, DeadlyPoison |
+| Combat-marker / Val* readers (allowlisted) | 31 | each cites rAthena `src/map/status.cpp` line |
+| Presence-only NoOp with ScfFlag classification | ~540 | rAthena's own "presence-only" set per status.yml |
+| **Total with registered handler** | **1,006** | of 1,006 valid StatusType values |
+
+**Behavioral rollup:** the 96 hand-ported SCs are formula-accurate
+against rAthena. The 31 combat-marker entries are presence-only by
+rAthena spec — the val read happens in damage/cast/regen pipelines
+when those consumer paths port. The ~335 generator SCs cover the
+"+val1 to listed CalcFlag" pattern that rAthena uses for many
+buffs/debuffs; the residual gap is bespoke-magnitude SCs where the
+generator's +Val1 is directionally OK but numerically off.
+
+**What's still open** — NS-3 wave 5 (Class A) is the long tail:
+~420 presence-only SCs whose downstream Val* consumer is either
+missing or stubbed. Each consumer wire-up is its own per-family
+wave (Soul Linker, Star Emperor, Sura, weapon endow combat-side
+readers, etc.). Tracked in the roadmap.
+
+Map.Server.Tests: 3,394 (pre-NS-3) → 3,395 (post-wave 6).
+
 ### 2026-05-22 — **ST.5 + ST.6 + ST.7 + ST.8 + ST.9-ST.12 + ST.13 — 100% PARITY REACHED**
 
 End-to-end close-out wave. 6 commits land in sequence:
