@@ -20,6 +20,10 @@ public sealed class Ganbantein : SkillImpl
 
     public Ganbantein(Random? rng = null) : base(SkillIds.HW_GANBANTEIN) => _rng = rng ?? Random.Shared;
 
+    /// <summary>3×3 splash centered on the cast cell (rAthena
+    /// HW_GANBANTEIN AREA_SIZE).</summary>
+    private const short SplashRadius = 1;
+
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (_rng.Next(100) >= 80)
@@ -28,7 +32,14 @@ public sealed class Ganbantein : SkillImpl
                 ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
             return;
         }
-        // Deferred: dispel every BL_SKILL unit in the splash — needs ISkillUnitService
-        // to surface a RemoveUnitsAt(x, y, range) helper (rAthena skill_cell_overlap).
+        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+        if (ctx.Units == null) return;
+        // rAthena skill_cell_overlap — walk every BL_SKILL unit in the
+        // splash and DelUnitGroup it. The group reaper sweeps the
+        // members at next tick.
+        var units = ctx.Units.GetUnitsInArea(src.MapId, x, y, SplashRadius);
+        var groups = new HashSet<SkillUnitGroup>();
+        foreach (var u in units) groups.Add(u.Group);
+        foreach (var g in groups) ctx.Units.DelUnitGroup(g);
     }
 }

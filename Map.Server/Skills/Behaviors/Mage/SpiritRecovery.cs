@@ -3,12 +3,12 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
-/// SO_EL_CURE — Sorcerer Spirit Recovery (Elemental Cure). Manual port of
-/// <c>rathena-fork/src/map/skills/mage/spiritrecovery.cpp</c>.
-///
-/// <para>Trades 10 % of the caster's current HP+SP to heal the bound
-/// elemental by the same amount. Bound-elemental access isn't wired
-/// here yet — for now we validate the caster type and broadcast.</para>
+/// SO_EL_CURE — Sorcerer Spirit Recovery / Elemental Cure
+/// (skill.cpp:SO_EL_CURE arm). Refuses if the caster has no bound
+/// elemental (<see cref="PlayerEntity.ActiveElementalClassId"/> = 0).
+/// On success drains 10 % of the caster's current HP+SP and hands the
+/// healed amount to the elemental via
+/// <see cref="Map.Server.Elemental.IElementalService.Heal"/>.
 /// </summary>
 public sealed class SpiritRecovery : SkillImpl
 {
@@ -16,9 +16,18 @@ public sealed class SpiritRecovery : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        if (src is not PlayerEntity) return;
-        // Deferred: bound-elemental subsystem not ported — no BoundElemental to heal,
-        // and the 10 % HP/SP siphon has no recipient.
+        if (src is not PlayerEntity pc) return;
         ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+        if (pc.ActiveElementalClassId == 0)
+        {
+            ctx.Client?.BroadcastSkillFail(pc, SkillId,
+                Core.Server.Packets.Out.ZC.SkillFailCause.SummonNone);
+            return;
+        }
+        var hpTransfer = pc.Hp / 10;
+        var spTransfer = pc.Sp / 10;
+        pc.Hp = Math.Max(1, pc.Hp - hpTransfer);
+        pc.Sp = Math.Max(0, pc.Sp - spTransfer);
+        ctx.Elemental?.Heal(pc, hpTransfer, spTransfer);
     }
 }

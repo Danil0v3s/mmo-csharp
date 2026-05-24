@@ -154,6 +154,13 @@ public class MobEntity : Entity
     public bool IsLooter => (Stats.Mode & MobMode.Looter) != 0;
 
     /// <summary>
+    /// rAthena <c>md-&gt;state.steal_coin_flag</c> — set true the first
+    /// time RG_STEALCOIN successfully mugs this mob; blocks further
+    /// zeny steals from the same mob instance.
+    /// </summary>
+    public bool StolenCoin { get; set; }
+
+    /// <summary>
     /// rAthena <c>md-&gt;special_state.ai</c> (map.hpp:436 <c>enum mob_ai</c>).
     /// Set when the mob is summoned (homunculus, alchemist sphere,
     /// Cannibalize, ABR, Bionic, etc.). Non-zero gates MSC_ALCHEMIST

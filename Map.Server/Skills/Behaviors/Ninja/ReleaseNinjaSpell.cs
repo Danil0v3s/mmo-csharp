@@ -20,17 +20,28 @@ public sealed class ReleaseNinjaSpell : SkillImpl
         _skillAttack = skillAttack;
     }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
+        var ratio = baseRatio;
         if (src is PlayerEntity sd && sd.SpiritCharmType != 0 && sd.SpiritCharm > 0)
-            return baseRatio + (-100 + 200 * sd.SpiritCharm);
-        // Deferred: RE_LVL_DMOD(100) scale by caster base level (no
-        // CalculateSkillRatio-side helper plumbed yet) and pc_delspiritcharm
-        // consumption (no IPlayerOrbService access in this signature; charms
-        // must currently be cleared elsewhere or left to natural expiry).
-        return baseRatio;
+        {
+            ratio += (-100 + 200 * sd.SpiritCharm);
+            // rAthena RE_LVL_DMOD(100) — multiply final ratio by
+            // (caster base level / 100). Implements the renewal-tier
+            // damage scaling.
+            ratio = ratio * Math.Max(1, sd.Level) / 100;
+        }
+        return ratio;
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
-        => _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
+    {
+        _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
+        // rAthena pc_delspiritcharm: consume every active charm after
+        // the cast (the damage formula already read SpiritCharm above).
+        if (src is PlayerEntity sd && sd.SpiritCharm > 0)
+        {
+            ctx.Orbs?.RemoveCharms(sd);
+        }
+    }
 }

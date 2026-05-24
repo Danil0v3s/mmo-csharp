@@ -1,11 +1,12 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Gunslinger;
 
 /// <summary>
-/// GS_DESPERADO — Gunslinger Desperado. Manual port of
-/// <c>rathena-fork/src/map/skills/gunslinger/desperado.cpp</c>.
-/// Ratio <c>+50*(lv-1)</c>; ×2 with SC_FALLEN_ANGEL active.
+/// GS_DESPERADO — Gunslinger Desperado (skill.cpp:GS_DESPERADO arm).
+/// Base ratio <c>baseRatio + 50*(lv-1)</c>; doubled when the caster
+/// has <c>SC_FALLEN_ANGEL</c> active (Rebellion Fallen Angel proc).
 /// CastendPos2 drops the splash unit at (x, y).
 /// </summary>
 public sealed class Desperado : SkillImpl
@@ -19,10 +20,13 @@ public sealed class Desperado : SkillImpl
         _units = units;
     }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + 50 * (skillLevel - 1);
-    // Deferred: doubles under SC_FALLEN_ANGEL — CalculateSkillRatio has no ctx, so SC readback isn't accessible here.
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        var ratio = baseRatio + 50 * (skillLevel - 1);
+        if (ctx.Sc?.Get(src, StatusType.FallenAngel) != null) ratio *= 2;
+        return ratio;
+    }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
-        => _units?.Place(src, SkillId, skillLevel, x, y);
+        => (ctx.Units ?? _units)?.Place(src, SkillId, skillLevel, x, y);
 }

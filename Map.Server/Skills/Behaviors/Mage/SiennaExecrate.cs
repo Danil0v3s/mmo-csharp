@@ -21,23 +21,35 @@ public sealed class SiennaExecrate : SkillImpl
 
     public SiennaExecrate(Random? rng = null) : base(SkillIds.WL_SIENNAEXECRATE) => _rng = rng ?? Random.Shared;
 
+    /// <summary>3×3 splash for the petrify chain (rAthena WL_SIENNAEXECRATE SplashRange).</summary>
+    private const short SplashRadius = 1;
+
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if ((target.Stats.Mode & MobMode.StatusImmune) != 0)
             return;
 
-        var jobLevel = 50; // rAthena uses sd->status.job_level; not surfaced on Entity yet — fall back to 50.
+        var jobLevel = src is PlayerEntity pc ? pc.JobLevel : 50;
         var rate = 45 + 5 * skillLevel + jobLevel / 4;
-        if (_rng.Next(100) < rate)
+        if (_rng.Next(100) >= rate)
         {
-            ctx.Sc?.Start(target, StatusType.Stone, val1: skillLevel, val2: (int)src.Id, 0, 0, durationMs: 10_000, src);
-            ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-            // Deferred: chain petrify across the splash via skill_area_sub — the BCT_ENEMY
-            // splash iterator needs predicate-based SC application, not yet on SkillAreaSub.
+            if (src is PlayerEntity sd)
+                ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
+            return;
         }
-        else if (src is PlayerEntity sd)
+        // Primary target lands the petrify.
+        ctx.Sc?.Start(target, StatusType.Stone, val1: skillLevel, val2: (int)src.Id, 0, 0, durationMs: 10_000, src);
+        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
+        // Chain across the BCT_ENEMY splash centered on the primary target
+        // (rAthena WL_SIENNAEXECRATE splash arm). Each victim eats the
+        // same SC start; status-immune mobs skip.
+        var victims = ctx.Entities.ForEachInRange(target.MapId, target.X, target.Y, SplashRadius,
+            EntityType.Mob | EntityType.Pc);
+        foreach (var v in victims)
         {
-            ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
+            if (v.Id == target.Id || v.Id == src.Id) continue;
+            if ((v.Stats.Mode & MobMode.StatusImmune) != 0) continue;
+            ctx.Sc?.Start(v, StatusType.Stone, val1: skillLevel, val2: (int)src.Id, 0, 0, durationMs: 10_000, src);
         }
     }
 }
