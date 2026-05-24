@@ -125,23 +125,23 @@ public class StatusEffectGeneratorTests
     [Fact]
     public void Hand_ported_Blessing_uses_bespoke_body_not_generator_default()
     {
-        // SC_BLESSING has CalcFlags (Str/Int/Dex/Hit) in status.yml — the
-        // generator would target 4 fields. The hand-ported Blessing
-        // handler targets 3 (Str/Int/Dex), no Hit. If the generator
-        // overwrote the bespoke handler, Hit would also move; this
-        // test asserts it doesn't (the explicit Register wins).
+        // SC_BLESSING has CalcFlags (Str/Int/Dex/Hit) in status.yml. The
+        // hand-ported Blessing handler (NS-3 wave 4a) applies:
+        //   STR/INT/DEX += val1 (status.cpp:11205-11210, val2 = val1)
+        //   Hit += val1*2 (status.cpp:7349-7350 status_calc_hit read)
+        // This matches rAthena exactly — the generator's +val1 to all 4
+        // would give Hit += 5 (wrong); the bespoke gives Hit += 10.
         var mob = MakeTarget();
         var hitBefore = mob.Stats.Hit;
         var sc = Sc(val1: 5, StatusType.Blessing);
 
         _reg.Get(StatusType.Blessing)!.OnStart(mob, sc, null);
 
-        // Bespoke handler boosted STR/INT/DEX by 5 each.
         Assert.Equal(55, mob.Stats.Str);
         Assert.Equal(55, mob.Stats.IntStat);
         Assert.Equal(55, mob.Stats.Dex);
-        // …but didn't touch Hit (which the generator would have).
-        Assert.Equal(hitBefore, mob.Stats.Hit);
+        // Bespoke Hit bump is val1*2, NOT generator's +val1.
+        Assert.Equal(hitBefore + 10, mob.Stats.Hit);
     }
 
     [Fact]

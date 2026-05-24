@@ -794,6 +794,31 @@ public sealed class StatusEffectRegistry
         // SC_PROVIDENCE (CR_PROVIDENCE) — combat-side resist marker.
         Register(StatusType.Providence, new StatusEffectHandler(_NoOp, _NoOpEnd, Flags: combatMarker));
 
+        // ====================================================================
+        // NS-3 wave 4a — Class B bespoke formula port-overs.
+        //
+        // Each SC below has a rAthena formula that the +Val1 generator
+        // default mis-models. These Register() calls land last in the
+        // ctor (dictionary overwrite at Register()) so they win over
+        // both the earlier hand-handlers and the generator synthesis
+        // inside RegisterDefaultsForMissingTypes().
+        //
+        // The pattern for combat-side markers (SCs whose real semantics
+        // are "presence + Val1/Val2/Val3 read by the damage/cast
+        // pipeline") is a fresh non-`_NoOp` lambda: that defeats the
+        // NoOp-upgrade reference-equality check in
+        // RegisterDefaultsForMissingTypes() (lines 876-884), preventing
+        // the generator from synthesizing a wrong +Val1 stat-mod body
+        // on top of the SC. ScfFlag classification is preserved so
+        // ClearBuffs / RemoveOnLogout / RemoveOnRefresh route correctly.
+        //
+        // Source of truth: rAthena `src/map/status.cpp` per-SC switch
+        // in `status_change_start` (val1/val2/val3 computation) +
+        // `status_calc_*` family (stat-field reads). Inline citations
+        // give the status.cpp line.
+        // ====================================================================
+        RegisterWave4aBespokeFormulas();
+
         // ===== ST.9-ST.12 bulk backfill =====
         // Every remaining StatusType enum value gets a NoOpHandler with
         // explicit flags so the SC engine's classification methods
@@ -812,6 +837,532 @@ public sealed class StatusEffectRegistry
         // wire time and replaces the NoOp.
         RegisterDefaultsForMissingTypes();
     }
+
+    /// <summary>
+    /// NS-3 wave 4a — explicit overrides for SCs whose generator
+    /// default (Val1×each CalcFlag) doesn't match rAthena's formula.
+    /// Three classes:
+    ///
+    /// <list type="bullet">
+    ///   <item><b>Formula corrections</b> — SCs with hand-handlers that
+    ///   landed early waves but have known formula gaps (Provoke,
+    ///   Concentration, Concentrate, Angelus, Blessing). These
+    ///   Register() calls overwrite the earlier handler with the
+    ///   rAthena-accurate body.</item>
+    ///
+    ///   <item><b>Bespoke stat scalings</b> — generator emits +Val1
+    ///   to the CalcFlag fields, but rAthena uses a different formula
+    ///   (Truesight = +5 flat to base stats not +val1; Bloodlust =
+    ///   base*(20+10*val1)/100 Batk%; Fleet = 30*val1 AspdRate + bAtk%;
+    ///   etc.). Each Register here applies the exact rAthena
+    ///   computation and caches deltas in sc.Val2/Val3 for round-trip.</item>
+    ///
+    ///   <item><b>Combat-marker overrides</b> — SCs whose status.yml
+    ///   has CalcFlags (so generator would synthesize a body) but
+    ///   rAthena semantics are "presence-only, combat/regen/cast
+    ///   pipeline reads sc.Val1/Val2/Val3 directly". The generator's
+    ///   +Val1 body is wrong-direction or wrong-field. Override with
+    ///   a fresh non-`_NoOp` lambda to defeat the NoOp-upgrade check
+    ///   and preserve presence-only semantics. Includes Magicpower,
+    ///   Providence, Cloaking, Hiding, weapon endow family, Soul Linker
+    ///   spirits, Strip family, Steelbody, Edp, Paralysis, Izayoi,
+    ///   Saturdaynightfever.</item>
+    /// </list>
+    /// </summary>
+    private void RegisterWave4aBespokeFormulas()
+    {
+        // ---- (a) Formula corrections — hand-handlers wave 1 left wrong ----
+
+        // SC_ANGELUS (AL_ANGELUS) — rAthena status.cpp:11258-11260
+        // val2 = 5*val1 (Def increase, NOT Mdef2). The earlier registry
+        // entry at line 131-141 put the delta into Mdef2; status_calc_def
+        // reads val2 and adds it to Def (status.cpp ~6500 area).
+        Register(StatusType.Angelus, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var d = (short)(sc.Val1 * 5);
+                sc.Val2 = d;
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + d);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_BLESSING (AL_BLESSING) — rAthena status.cpp:11205-11210 +
+        // 7349-7350 (Hit read). Existing handler boosts Str/Int/Dex +val1;
+        // rAthena ALSO adds Hit += val1*2 (line 7349-7350). Add that.
+        // Note: undead/demon targets get val2=0 (= half-stat in rAthena);
+        // we don't gate by race yet — TODO when race table ports for SCs.
+        Register(StatusType.Blessing, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                var hit = (short)(sc.Val1 * 2);
+                sc.Val2 = hit;
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + hit);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_CONCENTRATE (Awakening Potion / item buff) — rAthena
+        // status.cpp:11215-11221: val2 = 2+val1 (percentage applied to
+        // (agi-card_bonus_agi)). Earlier handler added flat +val1 to
+        // Agi/Dex; the right port is base*(2+val1)/100. We cache the
+        // delta so OnEnd round-trips even if base agi/dex moved.
+        Register(StatusType.Concentrate, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var pct = 2 + sc.Val1;
+                var agiDelta = (short)(target.Stats.Agi * pct / 100);
+                var dexDelta = (short)(target.Stats.Dex * pct / 100);
+                sc.Val2 = agiDelta;
+                sc.Val3 = dexDelta;
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + agiDelta);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + dexDelta);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val2);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_CONCENTRATION (LK_CONCENTRATION) — rAthena status.cpp:
+        // 11247-11257 (renewal): val2 = 5+val1*2 (Batk/Watk%),
+        // val3 = 10*val1 (Hit flat), val4 = 5+val1*2 (Def% reduction
+        // — takes more damage). Earlier handler only added val1*2 to Hit.
+        // Note rAthena also sc_starts SC_ENDURE 1 alongside (line 11256);
+        // we leave that out here — SC_ENDURE attach is presence-only in
+        // our port.
+        Register(StatusType.Concentration, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var batkPct = 5 + sc.Val1 * 2;
+                var hitFlat = sc.Val1 * 10;
+                var defPct = 5 + sc.Val1 * 2;
+                var batkDelta = (ushort)(target.Stats.Batk * batkPct / 100);
+                var defDelta = (short)(target.Stats.Def * defPct / 100);
+                sc.Val2 = batkDelta;
+                sc.Val3 = defDelta;
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + batkDelta);
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + hitFlat);
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - defDelta);
+            },
+            OnEnd: (target, sc) =>
+            {
+                var hitFlat = sc.Val1 * 10;
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - hitFlat);
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_PROVOKE (SM_PROVOKE) — rAthena status.cpp:11299-11303:
+        // val2 = 2+3*val1 (ATK%), val3 = 5+5*val1 (DEF% reduction).
+        // status_calc_batk applies batk*(100+val2)/100; status_calc_def
+        // applies def*(100-val3)/100. Earlier handler used wrong magnitudes.
+        Register(StatusType.Provoke, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var batkPct = 2 + 3 * sc.Val1;
+                var defPct = 5 + 5 * sc.Val1;
+                var batkDelta = (ushort)(target.Stats.Batk * batkPct / 100);
+                var defDelta = (short)(target.Stats.Def * defPct / 100);
+                sc.Val2 = batkDelta;
+                sc.Val3 = defDelta;
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + batkDelta);
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - defDelta);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val3);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // ---- (b) Bespoke stat-mod scalings — generator default mismatches ----
+
+        // SC_TRUESIGHT (BS_TRUESIGHT? no — HT_TRUESIGHT) — rAthena
+        // status.cpp:11268-11271 sets val2 = 10*val1 (Crit), val3 = 3*val1
+        // (Hit). Plus status_calc_str/agi/vit/int/dex/luk all add a flat
+        // +5 (line 6536-6537 etc., NOT val1-scaled). Generator's +Val1
+        // to 6 base stats is wrong — should be flat +5.
+        // Cri is stored ×10 in our port (rAthena convention), so the
+        // +10*val1 raw crit lands as +100*val1 in storage.
+        Register(StatusType.Truesight, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + 5);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + 5);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + 5);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + 5);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + 5);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + 5);
+                var cri = (short)(sc.Val1 * 100);
+                var hit = (short)(sc.Val1 * 3);
+                sc.Val2 = cri;
+                sc.Val3 = hit;
+                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + cri);
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + hit);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - 5);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - 5);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - 5);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - 5);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - 5);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - 5);
+                target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val2);
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_BLOODLUST (DC_BLOODLUST? no — TF_BLOODLUST? — actually NPC
+        // skill via status.cpp:11319-11327) — val2 = 20+10*val1 ATK rate%,
+        // val3 = 9*val1 leech chance%, val4 = 20 leech %. Generator
+        // applies flat +Val1 Batk — wrong magnitude AND wrong type
+        // (rAthena uses %-mod via status_calc_batk).
+        Register(StatusType.Bloodlust, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var pct = 20 + 10 * sc.Val1;
+                var delta = (ushort)(target.Stats.Batk * pct / 100);
+                sc.Val2 = delta;
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + delta);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_FLEET (TK_SEVENWIND? — actually a buff status) — rAthena
+        // status.cpp:11328-11331: val2 = 30*val1 ASPD%, val3 = 5+5*val1
+        // bAtk/wAtk%. Generator does flat +Val1 to AspdRate+Batk.
+        Register(StatusType.Fleet, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var aspdDelta = (short)(sc.Val1 * 30);
+                var batkPct = 5 + 5 * sc.Val1;
+                var batkDelta = (ushort)(target.Stats.Batk * batkPct / 100);
+                sc.Val2 = aspdDelta;
+                sc.Val3 = batkDelta;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + aspdDelta);
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + batkDelta);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_MINDBREAKER (PF_MINDBREAKER) — rAthena status.cpp:11332-11335:
+        // val2 = 20*val1 MAtk%, val3 = 12*val1 Mdef2 reduction.
+        // Generator's +Val1 to all 6 base stats is completely wrong
+        // (Mindbreaker is a debuff that boosts caster Matk + cuts target
+        // Mdef2 — applied per attack via combat read). We materialize
+        // the Matk boost on the source via Smatk (4th-class matk proxy)
+        // and the Mdef2 drop on target.
+        // NOTE: in rAthena Mindbreaker is target-side: target gets
+        // -Mdef2/+Matk reception. The "+Matk" lands on the TARGET so
+        // their attacks are stronger (Mindbreaker is technically a
+        // "berserker rage" debuff). Here we model it target-side too.
+        Register(StatusType.Mindbreaker, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var smatkPct = 20 * sc.Val1;
+                var mdef2Drop = (short)(12 * sc.Val1);
+                var smatkDelta = (short)(target.Stats.Smatk * smatkPct / 100);
+                sc.Val2 = smatkDelta;
+                sc.Val3 = mdef2Drop;
+                target.Stats.Smatk = (short)Math.Min(short.MaxValue, target.Stats.Smatk + smatkDelta);
+                target.Stats.Mdef2 = (short)Math.Max(0, target.Stats.Mdef2 - mdef2Drop);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Smatk = (short)Math.Max(0, target.Stats.Smatk - sc.Val2);
+                target.Stats.Mdef2 = (short)Math.Min(short.MaxValue, target.Stats.Mdef2 + sc.Val3);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_GATLINGFEVER (GS_GATLINGFEVER) — rAthena status.cpp:11286-11290:
+        // val2 = 20*val1 ASPD, val3 = 20+10*val1 ATK flat, val4 = 5*val1
+        // Flee decrease. Generator does +Val1 Flee+AspdRate (wrong both
+        // ways: should boost AspdRate by 20*val1 not val1, and Flee
+        // should DROP by 5*val1 not increase by val1).
+        Register(StatusType.Gatlingfever, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var aspd = (short)(20 * sc.Val1);
+                var batk = (ushort)(20 + 10 * sc.Val1);
+                var fleeDrop = (short)(5 * sc.Val1);
+                sc.Val2 = aspd;
+                sc.Val3 = batk;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + aspd);
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + batk);
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - fleeDrop);
+            },
+            OnEnd: (target, sc) =>
+            {
+                var fleeDrop = (short)(5 * sc.Val1);
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val3);
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + fleeDrop);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_DEFENCE (HAMI_DEFENCE — homunculus skill) — rAthena
+        // status.cpp:11311-11318 (renewal): val2 = 5+5*val1 Vit+Def bonus.
+        // Generator does +Val1 to Def+Vit (low magnitude).
+        Register(StatusType.Defence, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var bonus = (short)(5 + 5 * sc.Val1);
+                sc.Val2 = bonus;
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + bonus);
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + bonus);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val2);
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_CHANGE (HAMI_CHANGE — homunculus skill) — rAthena status.cpp:
+        // 11361-11364: val2 = 30*val1 Vit, val3 = 20*val1 Int. Generator
+        // does flat +Val1 each (too low).
+        Register(StatusType.Change, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var vit = (short)(30 * sc.Val1);
+                var ints = (short)(20 * sc.Val1);
+                sc.Val2 = vit;
+                sc.Val3 = ints;
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + vit);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + ints);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val2);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_MAXOVERTHRUST (BS_MAXOVERTHRUST) — rAthena status.cpp:
+        // 11223-11225: val2 = 20*val1 Power% increase. Applied as
+        // batk*(100+val2)/100 in status_calc_batk. Generator: not in
+        // defaults table — would land in NoOp path. We give it the
+        // real formula.
+        Register(StatusType.Maxoverthrust, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var pct = 20 * sc.Val1;
+                var delta = (ushort)(target.Stats.Batk * pct / 100);
+                sc.Val2 = delta;
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + delta);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_OVERTHRUST (BS_OVERTHRUST) — rAthena status.cpp:11226-11246
+        // (renewal): val3 = val2 ? 5*val1 : (val1>4?15:val1>2?10:5).
+        // Default (cast on self, val2=0): val1>4 → 15%, val1>2 → 10%,
+        // else 5%. Generator: not in defaults. Earlier registration at
+        // line 775 was combat-marker NoOp (shared _NoOp → would NoOp-
+        // upgrade if it were in the defaults; it isn't, so it stays
+        // NoOp). Here we promote to bespoke %-Batk boost.
+        Register(StatusType.Overthrust, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var pct = sc.Val1 > 4 ? 15 : sc.Val1 > 2 ? 10 : 5;
+                var delta = (ushort)(target.Stats.Batk * pct / 100);
+                sc.Val2 = delta;
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + delta);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_MAGICPOWER (HW_MAGICPOWER) — rAthena status.cpp:10556-10564
+        // (renewal): val3 = 5*val1 MAtk% increase. status_calc_smatk reads
+        // val3 and applies smatk*(100+val3)/100. Generator currently
+        // synthesizes +Val1 Batk (wrong field, wrong magnitude).
+        Register(StatusType.Magicpower, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var pct = 5 * sc.Val1;
+                var delta = (short)(target.Stats.Smatk * pct / 100);
+                sc.Val3 = delta;
+                target.Stats.Smatk = (short)Math.Min(short.MaxValue, target.Stats.Smatk + delta);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Smatk = (short)Math.Max(0, target.Stats.Smatk - sc.Val3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_MELTDOWN (WS_MELTDOWN) — rAthena status.cpp:11264-11267:
+        // val2 = 100*val1 weapon-break chance, val3 = 70*val1 armor-break
+        // chance. Both are combat-side procs read on hit; no direct
+        // stat-mod. Override as combat-marker (defeat any future generator
+        // synthesis).
+        Register(StatusType.Meltdown, CombatMarkerHandler(
+            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_REFLECTSHIELD (CR_REFLECTSHIELD) — rAthena status.cpp:
+        // 10587-10602: val2 = 10+val1*3 reflect %. Combat-side proc
+        // reads val2 on damage hit. No stat-mod. Earlier line 393
+        // registered NoOpHandler (shared _NoOp) — not in CalcFlagDefaults
+        // so safe from upgrade, but make explicit override defensible.
+        Register(StatusType.Reflectshield, CombatMarkerHandler(
+            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_PROVIDENCE (CR_PROVIDENCE) — rAthena status.cpp:10584-10586
+        // (val2 = val1*5 race/ele resist) + 4788-4790 (status_calc_pc
+        // adds val2 to subele[HOLY] and subrace[DEMON]). Generator
+        // upgrades the earlier NoOp registration with +Val1 to all 6
+        // base stats (totally wrong — Providence doesn't touch stats).
+        // Override with combat-marker so the upgrade is defeated.
+        Register(StatusType.Providence, CombatMarkerHandler(
+            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_HIDING (TF_HIDING) — visibility marker. Generator: +Val1
+        // AspdRate (semi-OK proxy for the walk-speed change but
+        // direction is opposite — hiding SLOWS you). Override with
+        // combat-marker; the visibility hook handles the real semantics.
+        Register(StatusType.Hiding, CombatMarkerHandler(
+            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_CLOAKING (AS_CLOAKING) — visibility marker. Generator
+        // emits +Val1 Cri + AspdRate (Cri is wrong; cloaking has speed
+        // adjustment driven by val3, NOT a flat Crit boost). Override.
+        Register(StatusType.Cloaking, CombatMarkerHandler(
+            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_EDP (ASC_EDP — Enchant Deadly Poison) — rAthena status.cpp:
+        // 10522-10535: val2 = (val1+1)/2 + 2 poison chance %; val3 =
+        // 50*(val1+1) damage increase % (pre-renewal). Combat reads val3
+        // for the damage boost on poison-element hits. Generator emits
+        // +Val1 Batk (wrong field — it's a damage% mod, not a flat batk
+        // bump). Override.
+        Register(StatusType.Edp, CombatMarkerHandler(
+            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_STEELBODY (MO_STEELBODY) — 90% damage reduction (phys+magic),
+        // applied combat-side via DamageService SC presence check.
+        // Generator: +Val1 Def+Mdef+AspdRate (wrong — steel body's
+        // semantics are a damage CAP, not stat-mod). Override.
+        Register(StatusType.Steelbody, CombatMarkerHandler(
+            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SATURDAYNIGHTFEVER (WM_SATURDAY_NIGHT_FEVER) — Sura SC.
+        // Generator emits +Val1 Hit+Flee — but rAthena's spec is "heal
+        // suppressed + always 0 cure animation". No direct stat-mod.
+        Register(StatusType.Saturdaynightfever, CombatMarkerHandler(
+            ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // ---- (c) Cast-time SCs: combat-marker overrides ----
+        //
+        // SkillCastTimingService.CastFixSc reads val1/val2/val3 directly.
+        // Generator-synthesized stat-mod bodies would mutate unrelated
+        // fields; defeat the upgrade so the SC stays presence-only.
+
+        // SC_PARALYSIS (Guillotine Cross) — val3 = +cast rate %.
+        // Generator: Def2 (wrong field).
+        Register(StatusType.Paralysis, CombatMarkerHandler(
+            ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_IZAYOI (Kagerou/Oboro) — halves variable cast time.
+        // Generator: +Val1 Batk (wrong field).
+        Register(StatusType.Izayoi, CombatMarkerHandler(
+            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // ---- (d) Weapon endow family: combat-marker overrides ----
+        //
+        // SC_{Fire,Water,Wind,Earth}WEAPON / SC_ASPERSIO / SC_ENCPOISON —
+        // weapon-element overrides read by damage pipeline. Generator
+        // assigns +Val1 to all 6 base stats for the WEAPON variants
+        // (status.yml's "All" CalcFlag); rAthena's actual semantics are
+        // pure element-override markers (val1 = element, val2 = duration).
+
+        var endowFlags = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+        Register(StatusType.Fireweapon, CombatMarkerHandler(endowFlags));
+        Register(StatusType.Waterweapon, CombatMarkerHandler(endowFlags));
+        Register(StatusType.Windweapon, CombatMarkerHandler(endowFlags));
+        Register(StatusType.Earthweapon, CombatMarkerHandler(endowFlags));
+
+        // ---- (e) Strip family: combat-marker overrides ----
+        //
+        // SC_STRIP{WEAPON,SHIELD,ARMOR,HELM} (Rogue strip skills) —
+        // rAthena status.cpp:10603-10618: val2 = item-removal magnitude.
+        // The actual gameplay effect is "equipped item temporarily
+        // disabled" — not a stat field mutation in our port (the equip
+        // disable is enforced by the inventory/equip service when SC is
+        // active). Generator: +Val1 to Batk/Def/Vit/IntStat — these are
+        // wrong proxies. Override as combat-markers.
+
+        var stripFlags = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh;
+        Register(StatusType.Stripweapon, CombatMarkerHandler(stripFlags));
+        Register(StatusType.Stripshield, CombatMarkerHandler(stripFlags));
+        Register(StatusType.Striparmor, CombatMarkerHandler(stripFlags));
+        Register(StatusType.Striphelm, CombatMarkerHandler(stripFlags));
+
+        // ---- (f) Soul Linker spirit family: combat-marker overrides ----
+        //
+        // Soul* SCs are presence-only — they enable job-gated skill
+        // behavior (SoulShadow enables auto-Hiding for Soul Reaper,
+        // SoulGolem boosts Steel Body for Monks, etc.). status.yml gave
+        // some of them CalcFlags so the generator synthesized +Val1 stat
+        // bumps, but the real semantics live in per-skill behavior plugins.
+        //
+        // Reclassify all of them as Soul Linker combat-markers so the
+        // skill plugins are the source of truth.
+
+        var soulLink2 = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+        // Soulshadow had CalcFlags AspdRate+Cri in defaults.
+        Register(StatusType.Soulshadow, CombatMarkerHandler(soulLink2));
+        // Soulfalcon had Batk+Hit.
+        Register(StatusType.Soulfalcon, CombatMarkerHandler(soulLink2));
+        // Soulgolem had Def+Mdef.
+        Register(StatusType.Soulgolem, CombatMarkerHandler(soulLink2));
+        // Soulenergy had Batk.
+        Register(StatusType.Soulenergy, CombatMarkerHandler(soulLink2));
+        // Soulfairy had Batk.
+        Register(StatusType.Soulfairy, CombatMarkerHandler(soulLink2));
+        // Soulcold had Agi.
+        Register(StatusType.Soulcold, CombatMarkerHandler(soulLink2));
+    }
+
+    /// <summary>
+    /// Wave 4a helper — combat/regen/cast presence-only marker.
+    /// Uses fresh non-`_NoOp` lambdas so the NoOp-upgrade check in
+    /// <see cref="RegisterDefaultsForMissingTypes"/> (reference-equality
+    /// against the shared `_NoOp` delegate) skips synthesis. ScfFlag
+    /// classification is preserved so lifecycle sweeps still route.
+    /// </summary>
+    private static StatusEffectHandler CombatMarkerHandler(ScfFlag flags) =>
+        new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* combat-side reader does work */ },
+            OnEnd:   (_, _) => { },
+            Flags: flags);
 
     /// <summary>
     /// NS-3 wave 2 — bulk-register a handler for every

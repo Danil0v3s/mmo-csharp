@@ -122,6 +122,10 @@ public class StatusEffectsExpansionTests
     [Fact]
     public void Provoke_DropsDef_AndBoostsBatk()
     {
+        // NS-3 wave 4a rAthena port: status.cpp:11299-11303
+        //   val2 = 2+3*val1 = ATK% rate, val3 = 5+5*val1 = DEF% reduction.
+        // val1=10: batk_delta = base_batk*(2+30)/100 = 100*32/100 = 32;
+        //          def_delta  = base_def*(5+50)/100 = 50*55/100 = 27.
         var ctx = Build();
         var pc = ctx.AddPlayer(1, 100, 100);
         pc.Stats.Def = 50;
@@ -129,59 +133,73 @@ public class StatusEffectsExpansionTests
 
         ctx.Service.Start(pc, StatusType.Provoke, val1: 10, 0, 0, 0, durationMs: 10_000);
 
-        // val1=10: Def −50, Batk +20.
-        Assert.Equal(0, pc.Stats.Def);
-        Assert.Equal(120, pc.Stats.Batk);
+        Assert.Equal(50 - 27, pc.Stats.Def);
+        Assert.Equal((ushort)(100 + 32), pc.Stats.Batk);
 
         Assert.True(ctx.Service.End(pc, StatusType.Provoke));
         Assert.Equal(50, pc.Stats.Def);
-        Assert.Equal(100, pc.Stats.Batk);
+        Assert.Equal((ushort)100, pc.Stats.Batk);
     }
 
     [Fact]
     public void Concentrate_AddsAgiAndDex_OnPotion()
     {
+        // NS-3 wave 4a rAthena port: status.cpp:11215-11221
+        //   val2 = 2+val1 = percent applied to (agi - card_bonus_agi)/dex.
+        // val1=5, base agi=50: delta = 50*7/100 = 3.5 → 3 (int trunc).
         var ctx = Build();
         var pc = ctx.AddPlayer(1, 100, 100);
-        pc.Stats.Agi = 20;
-        pc.Stats.Dex = 20;
+        pc.Stats.Agi = 50;
+        pc.Stats.Dex = 50;
 
         ctx.Service.Start(pc, StatusType.Concentrate, val1: 5, 0, 0, 0, durationMs: 10_000);
 
-        Assert.Equal(25, pc.Stats.Agi);
-        Assert.Equal(25, pc.Stats.Dex);
+        Assert.Equal(50 + 3, pc.Stats.Agi);
+        Assert.Equal(50 + 3, pc.Stats.Dex);
 
         Assert.True(ctx.Service.End(pc, StatusType.Concentrate));
-        Assert.Equal(20, pc.Stats.Agi);
-        Assert.Equal(20, pc.Stats.Dex);
+        Assert.Equal(50, pc.Stats.Agi);
+        Assert.Equal(50, pc.Stats.Dex);
     }
 
     [Fact]
     public void Concentration_LkSkill_AddsHit()
     {
+        // NS-3 wave 4a rAthena port: status.cpp:11247-11257 (renewal)
+        //   val2 = 5+val1*2 (Batk%), val3 = 10*val1 (Hit flat), val4 = 5+val1*2 (Def%-).
+        // val1=5: hit_delta = 50; batk_delta = base*(5+10)/100 = 200*15/100 = 30;
+        //         def_delta = base*(5+10)/100 = 50*15/100 = 7.
         var ctx = Build();
         var pc = ctx.AddPlayer(1, 100, 100);
         pc.Stats.Hit = 100;
+        pc.Stats.Batk = 200;
+        pc.Stats.Def = 50;
 
         ctx.Service.Start(pc, StatusType.Concentration, val1: 5, 0, 0, 0, durationMs: 10_000);
-        Assert.Equal(110, pc.Stats.Hit);
+        Assert.Equal(100 + 50, pc.Stats.Hit);
+        Assert.Equal((ushort)(200 + 30), pc.Stats.Batk);
+        Assert.Equal(50 - 7, pc.Stats.Def);
 
         ctx.Service.End(pc, StatusType.Concentration);
         Assert.Equal(100, pc.Stats.Hit);
+        Assert.Equal((ushort)200, pc.Stats.Batk);
+        Assert.Equal(50, pc.Stats.Def);
     }
 
     [Fact]
-    public void Angelus_AddsMdef2_PerLevel()
+    public void Angelus_AddsDef_PerLevel()
     {
+        // NS-3 wave 4a rAthena port: status.cpp:11258-11260
+        //   val2 = 5*val1 (Def increase, NOT Mdef2). status_calc_def adds val2.
         var ctx = Build();
         var pc = ctx.AddPlayer(1, 100, 100);
-        pc.Stats.Mdef2 = 20;
+        pc.Stats.Def = 20;
 
         ctx.Service.Start(pc, StatusType.Angelus, val1: 10, 0, 0, 0, durationMs: 10_000);
-        Assert.Equal(20 + 50, pc.Stats.Mdef2);
+        Assert.Equal(20 + 50, pc.Stats.Def);
 
         ctx.Service.End(pc, StatusType.Angelus);
-        Assert.Equal(20, pc.Stats.Mdef2);
+        Assert.Equal(20, pc.Stats.Def);
     }
 
     [Fact]

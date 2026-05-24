@@ -63,7 +63,7 @@ counts.
 | Surface | Current state | Source of measurement |
 |---|---|---|
 | **Skill parity** | **1,675 of 2,439 (skillId, level) baselines fail** (31% match rate) | `Map.Server.Tests/Skills/Baselines/*.rathena-todo.txt` count vs `*.json` total |
-| **SC handler depth** | **1,006 of 1,006 valid `StatusType` values registered** (the lone exception is `None = -1`, an enum sentinel). Composition: 48 hand-ported bespoke bodies + ~380 generator-synthesized CalcFlag bodies (the NS-3 wave 3 NoOp-upgrade lifted 26 previously-shadowed CalcFlag SCs into the generator path) + ~580 presence-only with non-`None` `ScfFlag` classification. Proven by `StatusEffectCompletenessTests`: every SC registered, every CalcFlag-mapped SC has a real-body OR `OnPeriodic` OR allowlisted combat-side reader (4 entries: Poison/Burning/Defender/Spirit), every presence-only SC has non-empty `ScfFlag`. | `StatusEffectRegistry.Count`, `StatusCalcFlagDefaults.Count`, completeness test |
+| **SC handler depth** | **1,006 of 1,006 valid `StatusType` values registered** (the lone exception is `None = -1`, an enum sentinel). Composition: **72 hand-ported bespoke bodies** (48 from prior waves + 24 from NS-3 wave 4a rAthena-formula port-overs) + ~360 generator-synthesized CalcFlag bodies + ~570 presence-only with non-`None` `ScfFlag` classification. Proven by `StatusEffectCompletenessTests`: every SC registered, every CalcFlag-mapped SC has a real-body OR `OnPeriodic` OR allowlisted combat-side reader (27 entries each with rAthena `src/map/status.cpp` citation), every presence-only SC has non-empty `ScfFlag`. | `StatusEffectRegistry.Count`, `StatusCalcFlagDefaults.Count`, completeness test |
 | **Item-script Proxy depth** | **8 distinct unknown methods, 31 hits** post-NS-2a (was 14 / 1,390 = 1.6%; now 0.04%). Residual 8 are JS-internal probes + rare rAthena array/string ops with low impact. | NS-1b harvest re-run after NS-2a; full table in [`map/ns1-audit-2026-05-23.md`](map/ns1-audit-2026-05-23.md) §NS-1b update |
 | **Pathing** | A\* matches rAthena `path.cpp` on constants / heuristic / corner-cut / Bresenham. ✅ Minor tie-break divergence (PriorityQueue ordering) is acceptable. | NS-1c — side-by-side audit of `Pathfinder.cs` vs `path.cpp` |
 
@@ -947,6 +947,114 @@ gameplay on Tier 4 completeness if Tier 1–3 already cover the
 hot path.
 
 ## History
+
+### 2026-05-24 — NS-3 wave 4a landed (Class B bespoke-formula port-overs, 24 SCs)
+
+Closes the "generator default mismatches rAthena formula" gap for 24
+high-impact SCs. Two patterns:
+
+1. **Formula corrections (5 SCs)** — hand-handlers that landed in
+   wave 1 with the wrong magnitude or wrong field, now match
+   rAthena's `status.cpp` exactly:
+   - **`Angelus`** — was Mdef2 += 5×val1, now Def += 5×val1 per
+     `status.cpp:11258-11260`.
+   - **`Blessing`** — was Str/Int/Dex += val1; now also Hit +=
+     val1×2 per `status.cpp:7349-7350` `status_calc_hit` read.
+   - **`Concentrate`** (Awakening Potion) — was flat +val1 Agi/Dex;
+     now base×(2+val1)/100 per `status.cpp:11215-11221`.
+   - **`Concentration`** (LK_CONCENTRATION) — was only +Hit; now
+     full renewal formula Batk×(5+val1×2)/100 + Hit+val1×10 +
+     Def×(5+val1×2)/100 reduction per `status.cpp:11247-11257`.
+   - **`Provoke`** — was -val1×5 Def flat + val1×2 Batk; now
+     `status_calc_batk` formula Batk×(2+3×val1)/100, Def×(5+5×val1)/100
+     reduction per `status.cpp:11299-11303`.
+
+2. **Bespoke stat-mod scalings (10 SCs)** — generator-default
+   +val1 to CalcFlag fields was directionally OK but wrong
+   magnitude; now uses the rAthena formula and caches deltas in
+   `sc.Val2/Val3` for round-trip OnEnd:
+   - **`Truesight`** — flat +5 to Str/Agi/Vit/Int/Dex/Luk
+     (`status.cpp:6536-6892`), +val1×10×10 Cri (×10 storage convention),
+     +val1×3 Hit (`status.cpp:11268-11271`). Generator did +val1 to 6
+     base stats (too small at low levels).
+   - **`Bloodlust`** — Batk × (20+10×val1) / 100 per
+     `status.cpp:11319-11327`.
+   - **`Fleet`** — +30×val1 AspdRate + Batk × (5+5×val1) / 100 per
+     `status.cpp:11328-11331`.
+   - **`Mindbreaker`** — Smatk × 20×val1 / 100 + Mdef2 -= 12×val1 per
+     `status.cpp:11332-11335` (4th-class Smatk used as Matk proxy).
+   - **`Gatlingfever`** — +20×val1 AspdRate, +(20+10×val1) Batk, -5×val1
+     Flee per `status.cpp:11286-11290`.
+   - **`Defence`** — Vit + Def += (5+5×val1) per `status.cpp:11311-11318`
+     (renewal).
+   - **`Change`** — Vit += 30×val1, Int += 20×val1 per
+     `status.cpp:11361-11364`.
+   - **`Maxoverthrust`** — Batk × 20×val1 / 100 per
+     `status.cpp:11223-11225`.
+   - **`Overthrust`** (renewal self) — Batk × ({5,5,10,15} per val1
+     bucket) / 100 per `status.cpp:11235`.
+   - **`Magicpower`** (renewal) — Smatk × 5×val1 / 100 per
+     `status.cpp:10556-10564`.
+
+3. **Combat-marker overrides (19 SCs)** — SCs whose `status.yml`
+   has CalcFlags so the generator would synthesize a body, but
+   rAthena's actual semantics are "presence-only, val read by
+   damage/cast/regen pipeline." A new `CombatMarkerHandler(ScfFlag)`
+   helper returns a handler with fresh non-`_NoOp` lambdas, which
+   defeats the NoOp-upgrade reference-equality check in
+   `RegisterDefaultsForMissingTypes()` and prevents the wrong
+   `+val1` stat-mod from being synthesized. Each entry preserves the
+   ScfFlag classification so lifecycle sweeps still route. Covers:
+   - **Combat-side**: `Providence`, `Reflectshield`, `Steelbody`,
+     `Meltdown`, `Edp`, `Saturdaynightfever`.
+   - **Visibility**: `Hiding`, `Cloaking`.
+   - **Cast-time**: `Paralysis`, `Izayoi`.
+   - **Weapon endow**: `Fireweapon`, `Waterweapon`, `Windweapon`,
+     `Earthweapon` (status.yml's `All` CalcFlag would touch every
+     base stat — wrong, these are pure element-override markers).
+   - **Strip family**: `Stripweapon`, `Stripshield`, `Striparmor`,
+     `Striphelm` (equip-disable enforced by IEquipService while SC
+     active; no stat mutation needed at this layer).
+   - **Soul Linker spirits**: `Soulshadow`, `Soulfalcon`, `Soulgolem`,
+     `Soulenergy`, `Soulfairy`, `Soulcold` (per-skill behavior
+     plugins consume these via the Spirit job-gate read; no direct
+     stat mod per rAthena).
+
+Allowlist (`_behaviorElsewhereAllowlist` in `StatusEffectCompletenessTests`)
+grew from 4 → 27 entries — each is a documented combat-side reader
+with a citation to the rAthena `src/map/status.cpp` line that
+proves the spec. This is **not** drift: it's the honest enumeration
+of SCs that look like stat-mods (because `status.yml` has CalcFlags)
+but whose real implementation is in a consumer-side reader.
+
+**Files**:
+- `Map.Server/Status/StatusEffectRegistry.cs` — `RegisterWave4aBespokeFormulas()`
+  (~310 LOC) + `CombatMarkerHandler(ScfFlag)` helper.
+- `Map.Server.Tests/Status/StatusEffectsExpansionTests.cs` — 4 tests
+  updated to assert the rAthena formulas (Provoke, Concentrate,
+  Concentration, Angelus).
+- `Map.Server.Tests/Status/StatusEffectGeneratorTests.cs` — Blessing
+  test now asserts Hit += val1×2 (was: Hit unchanged).
+- `Map.Server.Tests/Status/StatusEffectCompletenessTests.cs` — allowlist
+  expanded to 27 entries with rAthena citations.
+
+**Full test sweep: 3,395 Map.Server + 87 Core + 29 Login = 3,511 tests
+passing** (+1 net vs wave 3). 0 build errors. Wave 4a is the first
+of three remaining sub-waves before the SC behavioral parity is
+done — see Class B / C / A sequencing in the active stub-removal goal.
+
+**What's next:**
+- **NS-3 wave 4b** — Continue Class B with TwoHandQuicken/Adrenaline
+  (ASPD flat magnitudes), Marionette/Marionette2 (stat-transfer from
+  caster), Sphere1..5, Hallucinationwalk, additional bespoke
+  formulas.
+- **NS-3 wave 5** (Class A) — ~420 presence-only NoOp SCs whose
+  Val* consumer is missing/stubbed. Group by family (Soul Linker,
+  Star Emperor, Sura, etc.) and either port the OnStart stat-mod or
+  wire the consumer side. Commit per family.
+- **NS-3 wave 6** (Class C) — 7 documented ScriptedBonusHost stubs
+  (vip_status, specialeffect, specialeffect2, hateffect, petloot,
+  message, dispbottom). Each needs a new service or AOI emitter.
 
 ### 2026-05-24 — NS-3 wave 3 landed (NoOp-upgrade policy + 1,006/1,006 completeness proven)
 

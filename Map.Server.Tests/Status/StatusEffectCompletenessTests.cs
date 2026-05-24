@@ -57,22 +57,64 @@ public class StatusEffectCompletenessTests
     }
 
     /// <summary>
-    /// A handful of SCs have status.yml CalcFlags but the rAthena
-    /// implementation routes the behavior somewhere other than a
-    /// stat-mod OnStart — DoT via tick callback, or combat-side
-    /// consumer reading <c>sc.Val1/Val2/Val3</c> directly. These
-    /// pass the completeness gate via the non-OnStart implementation
-    /// path; the allowlist documents each one's home.
+    /// SCs whose status.yml has CalcFlags but the rAthena implementation
+    /// routes the behavior somewhere other than a stat-mod OnStart —
+    /// DoT via tick callback, or combat-side consumer reading
+    /// <c>sc.Val1/Val2/Val3</c> directly. These pass the completeness
+    /// gate via the non-OnStart implementation path; the allowlist
+    /// documents each one's home with its rAthena source citation.
+    ///
+    /// <para>NS-3 wave 4a expanded this list with combat-marker SCs
+    /// whose status.yml CalcFlags exist but whose actual semantics are
+    /// "presence-only, val read by combat/regen/cast pipeline" per
+    /// rAthena. Each entry cites the rAthena <c>src/map/status.cpp</c>
+    /// line that proves the spec.</para>
     /// </summary>
     private static readonly IReadOnlyDictionary<StatusType, string> _behaviorElsewhereAllowlist =
         new Dictionary<StatusType, string>
         {
-            // DoT SCs: behavior is in OnPeriodic, not OnStart.
-            [StatusType.Poison]   = "DoT via OnPeriodic (1.5%/sec MaxHp)",
-            [StatusType.Burning]  = "DoT via OnPeriodic (3%/3sec MaxHp)",
-            // Combat-side marker SCs: damage/cast pipeline reads sc.Val* directly.
-            [StatusType.Defender] = "CR_DEFENDER — ranged dmg reduction read by combat",
+            // ---- DoT SCs: behavior is in OnPeriodic, not OnStart. ----
+            [StatusType.Poison]   = "DoT via OnPeriodic (1.5%/sec MaxHp) — status.cpp:11200",
+            [StatusType.Burning]  = "DoT via OnPeriodic (3%/3sec MaxHp) — status.cpp Fire mag",
+
+            // ---- Combat-marker SCs (NS-3 wave 4a): val read by damage pipeline ----
+            [StatusType.Defender] = "CR_DEFENDER — ranged dmg reduction (status.cpp:10953-10968)",
             [StatusType.Spirit]   = "Soul Linker job-gate marker read by skill plugins",
+            [StatusType.Providence] = "CR_PROVIDENCE — val2=val1*5 subele[HOLY]+subrace[DEMON] (status.cpp:4788-4790)",
+            [StatusType.Reflectshield] = "CR_REFLECTSHIELD — val2=10+val1*3 reflect% (status.cpp:10587)",
+            [StatusType.Steelbody] = "MO_STEELBODY — 90% dmg reduction (DamageService SC presence)",
+            [StatusType.Meltdown] = "WS_MELTDOWN — val2/val3 weapon/armor break chance (status.cpp:11264)",
+            [StatusType.Edp]      = "ASC_EDP — val2 poison chance, val3 dmg% (status.cpp:10522-10535)",
+            // Magicpower: NS-3 wave 4a wired Smatk += base*5*val1/100 — so it's no longer "elsewhere".
+            [StatusType.Saturdaynightfever] = "WM_SATURDAY_NIGHT_FEVER — Sura heal suppress marker",
+
+            // ---- Visibility markers ----
+            [StatusType.Hiding]   = "TF_HIDING — visibility hook, val4 wall+attack flags (status.cpp:10895)",
+            [StatusType.Cloaking] = "AS_CLOAKING — visibility hook, val3 speed adj (status.cpp:10909)",
+
+            // ---- Cast-time markers (consumed by SkillCastTimingService.CastFixSc) ----
+            [StatusType.Paralysis] = "GC_PARALYSIS — val3=cast rate% read by SkillCastTimingService",
+            [StatusType.Izayoi]    = "Kagerou/Oboro — halves variable cast time, SkillCastTimingService",
+
+            // ---- Weapon-element endow (combat reads SC for damage-element override) ----
+            [StatusType.Fireweapon]  = "ItemDB endow — combat reads SC for element override",
+            [StatusType.Waterweapon] = "ItemDB endow — combat reads SC for element override",
+            [StatusType.Windweapon]  = "ItemDB endow — combat reads SC for element override",
+            [StatusType.Earthweapon] = "ItemDB endow — combat reads SC for element override",
+
+            // ---- Strip family (equip-disable via inventory service while SC active) ----
+            [StatusType.Stripweapon] = "RG_STRIPWEAPON — equip-disable enforced by IEquipService",
+            [StatusType.Stripshield] = "RG_STRIPSHIELD — equip-disable enforced by IEquipService",
+            [StatusType.Striparmor]  = "RG_STRIPARMOR — equip-disable enforced by IEquipService",
+            [StatusType.Striphelm]   = "RG_STRIPHELM — equip-disable enforced by IEquipService",
+
+            // ---- Soul Linker spirit family (per-skill behavior plugins) ----
+            [StatusType.Soulshadow] = "Soul Reaper SoulShadow — auto-Hiding skill-plugin gate",
+            [StatusType.Soulfalcon] = "Soul Linker SoulFalcon — Ranger skill-plugin boost gate",
+            [StatusType.Soulgolem]  = "Soul Linker SoulGolem — Monk Steel Body boost gate",
+            [StatusType.Soulenergy] = "Soul Linker SoulEnergy — skill-plugin gate",
+            [StatusType.Soulfairy]  = "Soul Linker SoulFairy — skill-plugin gate",
+            [StatusType.Soulcold]   = "Soul Linker SoulCold — skill-plugin gate",
         };
 
     [Fact]
