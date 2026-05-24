@@ -6,6 +6,7 @@ using Map.Server.Movement;
 using Map.Server.Movement.UnitOps;
 using Map.Server.Party;
 using Map.Server.Pathing;
+using Map.Server.Pet.PetOps;
 using Map.Server.Session;
 using Map.Server.Shop.Buying;
 using Map.Server.Spawn;
@@ -136,4 +137,8 @@ public sealed record SkillBehaviorContext(
     /// <summary>Buying-store service — <c>buyingstore_open</c> +
     /// trade / search / autotrade lifecycle. Used by
     /// ALL_BUYING_STORE / ALL_GUARDIAN_RECALL / vending plugins.</summary>
-    IBuyingStoreService? BuyingStore = null);
+    IBuyingStoreService? BuyingStore = null,
+    /// <summary>Pet operations service — <c>pet_catch_process_start</c> /
+    /// <c>pet_catch_process_end</c>, autobonus + support bonus lifecycle.
+    /// Used by SA_TAMINGMONSTER and pet-related script bonuses.</summary>
+    IPetOpsService? PetOps = null);
