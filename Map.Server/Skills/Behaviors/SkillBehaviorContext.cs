@@ -1,6 +1,7 @@
 using Map.Server.Combat;
 using Map.Server.Elemental;
 using Map.Server.Entities;
+using Map.Server.Homunculus;
 using Map.Server.Inventory;
 using Map.Server.Movement;
 using Map.Server.Movement.UnitOps;
@@ -141,4 +142,8 @@ public sealed record SkillBehaviorContext(
     /// <summary>Pet operations service — <c>pet_catch_process_start</c> /
     /// <c>pet_catch_process_end</c>, autobonus + support bonus lifecycle.
     /// Used by SA_TAMINGMONSTER and pet-related script bonuses.</summary>
-    IPetOpsService? PetOps = null);
+    IPetOpsService? PetOps = null,
+    /// <summary>Homunculus service — <c>hom_call</c> / <c>hom_vaporize</c>
+    /// / <c>hom_ressurect</c> + the wider lifecycle. Used by AM_CALLHOMUN,
+    /// AM_RESURRECTHOMUN, AM_REST.</summary>
+    IHomunculusService? Homunculus = null);
