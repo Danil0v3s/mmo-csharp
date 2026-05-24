@@ -19,6 +19,14 @@ public sealed class WeaponPerfection : SkillImpl
         var self = src == target ? 1 : 0;
         ctx.Sc?.Start(target, StatusType.Weaponperfection, val1: skillLevel, val2: self, 0, 0, durationMs: 60_000 * skillLevel, src);
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: party_foreachsamemap splash when src is in a party.
+
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                ctx.Sc?.Start(m, StatusType.Weaponperfection, val1: skillLevel, val2: 0, 0, 0, durationMs: 60_000 * skillLevel, src);
+            }, includeSelf: false);
+        }
     }
 }

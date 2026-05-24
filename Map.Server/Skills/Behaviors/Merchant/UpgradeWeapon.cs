@@ -14,7 +14,8 @@ public sealed class UpgradeWeapon : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity) return;
-        // TODO: clif_item_refine_list(sd) — opens the refining UI.
+        // Deferred: clif_item_refine_list emits ZC_NOTIFY_WEAPONITEMLIST (refine UI)
+        // and the refine catalog hooks aren't ported yet.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

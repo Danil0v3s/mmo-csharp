@@ -15,7 +15,8 @@ public sealed class SummonMarineSphere : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: spawn MOBID_MARINE_SPHERE at (x, y) with AI_SPHERE, master_id = src.Id,
-        // and delete-timer of skill_get_time(AM_SPHEREMINE, skillLevel).
+        // Deferred: MOBID_MARINE_SPHERE + AI_SPHERE + master-id linkage +
+        // delete-timer aren't surfaced through IMobSpawnService.SpawnAt; a
+        // raw spawn would create a wild mob with no auto-detonate hookup.
     }
 }

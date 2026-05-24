@@ -23,13 +23,27 @@ public sealed class AidCondensedPotion : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: read potion_hp/potion_sp from inventory script + party splash.
+        // First-slice heal magnitude: 100*lv. The full rAthena
+        // formula reads the consumed potion's inventory-script
+        // potion_hp/potion_sp values; deferred until the potion-script
+        // pipeline ports (P2.2.a SkillProductionService row).
         _statusOps?.Heal(target, 100 * skillLevel, 0, 0);
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: party_foreachsamemap splash with potion-script heal.
+        // rAthena: ground-target Slim Pitcher splashes its heal across
+        // every same-map partymate. Same heal magnitude as the targeted
+        // form (100*lv first-slice; potion_hp read deferred to P2.2.a).
+        var amount = 100 * skillLevel;
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                _statusOps?.Heal(m, amount, 0, 0);
+                ctx.Client?.BroadcastSkillNoDamage(src, m, SkillId, skillLevel);
+            });
+        }
     }
 }

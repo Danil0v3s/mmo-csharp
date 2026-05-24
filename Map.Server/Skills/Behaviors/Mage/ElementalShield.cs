@@ -30,6 +30,20 @@ public sealed class ElementalShield : SkillImpl
         _units?.Place(target, SkillIds.MG_SAFETYWALL, (ushort)(skillLevel + 5), target.X, target.Y);
         // Pneuma lv 1 on the same tile.
         _units?.Place(target, SkillIds.AL_PNEUMA, 1, target.X, target.Y);
-        // TODO: party splash + bound-elemental consumption.
+
+        // rAthena party_foreachsamemap fan-out: drop the same Safety Wall +
+        // Pneuma pair at every same-map partymate's current cell.
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                _units?.Place(m, SkillIds.MG_SAFETYWALL, (ushort)(skillLevel + 5), m.X, m.Y);
+                _units?.Place(m, SkillIds.AL_PNEUMA, 1, m.X, m.Y);
+            }, includeSelf: false);
+        }
+        // Bound-elemental consumption: the rAthena ST_ELEMENTALSPIRIT2
+        // state is enforced at cast-init; the actual delete fires when
+        // the elemental subsystem ports (out of scope for this layer).
     }
 }

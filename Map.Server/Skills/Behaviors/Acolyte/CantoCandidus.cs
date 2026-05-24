@@ -26,10 +26,8 @@ public sealed class CantoCandidus : SkillImpl
         int agiLv;
         if (src is PlayerEntity caster)
         {
-            var learnedAgi = caster.LearnedSkills.GetValueOrDefault(SkillIds.AL_INCAGI);
-            // JobLevel is on PlayerEntity but we may not always have it set.
-            // Default to 50 to match the mob-caster fallback in rAthena.
-            agiLv = learnedAgi + (50 / 10); // TODO: read caster.JobLevel when surfaced.
+            var learnedAgi = ctx.PlayerSkill?.CheckSkill(caster, SkillIds.AL_INCAGI) ?? 0;
+            agiLv = learnedAgi + (caster.JobLevel / 10);
         }
         else
         {
@@ -42,6 +40,13 @@ public sealed class CantoCandidus : SkillImpl
         ctx.Sc?.Start(target, StatusType.IncreaseAgi,
             val1: agiLv, 0, 0, 0, durationMs: 120_000, src);
 
-        // TODO: party_foreachsamemap (see Angelus pattern).
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                ctx.Sc?.Start(m, StatusType.IncreaseAgi, val1: agiLv, 0, 0, 0, durationMs: 120_000, src);
+            }, includeSelf: false);
+        }
     }
 }

@@ -20,7 +20,8 @@ public sealed class SummonElementalArdor : SkillImpl
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         if (src is not PlayerEntity) return;
-        // TODO: verify bound elemental is AGNI_L, delete + create ARDOR.
+        // Deferred: bound-elemental subsystem not ported — can't verify AGNI_L ownership
+        // or perform delete + create ARDOR swap.
         ctx.Sc?.Start(src, StatusType.SummonElementalArdor, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
     }
 }

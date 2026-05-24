@@ -46,30 +46,50 @@ public sealed class ColuceoHeal : SkillImpl
         }
 
         // rAthena: i = skill_calc_heal(src, target, AL_HEAL, pc_checkskill(sd, AL_HEAL), true);
-        var alHealLearned = caster.LearnedSkills.GetValueOrDefault(SkillIds.AL_HEAL);
+        var alHealLearned = ctx.PlayerSkill?.CheckSkill(caster, SkillIds.AL_HEAL) ?? 10;
         if (alHealLearned == 0) alHealLearned = 10;
-        var heal = (caster.Level + caster.Stats.IntStat) / 5 * 30 * alHealLearned / 10;
-        heal = Math.Max(1, heal);
+        var baseHeal = (caster.Level + caster.Stats.IntStat) / 5 * 30 * alHealLearned / 10;
+        baseHeal = Math.Max(1, baseHeal);
 
-        // TODO: partycount bonus — needs party member iteration.
-        // partycount > 1: heal += heal * (partycount * 10 / 4) / 100.
-
-        // Mado-gear / status-immune zero the heal (rAthena: "in iRO it
-        // breaks the healing to members.. [malufett]").
-        if ((target.Stats.Mode & MobMode.StatusImmune) != 0) heal = 0;
-
-        ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, heal);
-
-        if (ctx.Sc?.Get(target, StatusType.Akaitsuki) != null && heal != 0)
-            heal = -heal;
-
-        if (heal > 0)
+        // rAthena partycount bonus: partycount > 1 → heal += heal * (partycount * 10 / 4) / 100.
+        var partyCount = 0;
+        if (caster.PartyId > 0 && ctx.PartyMap != null)
         {
-            _statusOps?.Heal(target, heal, 0, 0);
+            partyCount = ctx.PartyMap.ForEachOnSameMap(caster, _ => { }, includeSelf: true);
         }
-        else if (heal < 0)
+        if (partyCount > 1)
         {
-            ctx.Damage?.ApplyDamage(target, -heal, src);
+            baseHeal += baseHeal * (partyCount * 10 / 4) / 100;
         }
+
+        ApplyHealOne(target, baseHeal, src, ctx);
+
+        // rAthena fan-out to every other same-map partymate at the same magnitude.
+        if (caster.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(caster, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                ApplyHealOne(m, baseHeal, src, ctx);
+            }, includeSelf: false);
+        }
+    }
+
+    private void ApplyHealOne(Entity bl, int baseHeal, Entity src, SkillBehaviorContext ctx)
+    {
+        if (bl.Stats.Race == BattleRace.Undead ||
+            bl.Stats.DefenseElement == BattleElement.Undead ||
+            (ctx.Sc?.Get(bl, StatusType.Berserk) != null)) return;
+
+        var heal = baseHeal;
+        // Mado-gear / status-immune zero the heal.
+        if ((bl.Stats.Mode & MobMode.StatusImmune) != 0) heal = 0;
+
+        ctx.Client?.BroadcastSkillNoDamage(src, bl, SkillId, heal);
+
+        if (ctx.Sc?.Get(bl, StatusType.Akaitsuki) != null && heal != 0) heal = -heal;
+
+        if (heal > 0) _statusOps?.Heal(bl, heal, 0, 0);
+        else if (heal < 0) ctx.Damage?.ApplyDamage(bl, -heal, src);
     }
 }

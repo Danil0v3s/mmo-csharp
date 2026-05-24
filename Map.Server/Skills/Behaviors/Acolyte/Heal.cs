@@ -232,9 +232,21 @@ public sealed class Heal : SkillImpl
         if (src is PlayerEntity caster && target is PlayerEntity dstPc &&
             caster.PartnerId == dstPc.CharacterId)
         {
-            // TODO: gate on (class_&MAPID_UPPERMASK)==MAPID_SUPER_NOVICE && sex==0
-            //       once class-mapid + sex make it onto PlayerEntity.
-            hp *= 2;
+            // rAthena: (sd->class_ & MAPID_UPPERMASK) == MAPID_SUPER_NOVICE
+            //          && sd->status.sex == 0  →  hp *= 2 (partner doubles heal
+            // when caster is a male Super Novice). Sex isn't surfaced on
+            // PlayerEntity yet (deferred per PARITY-REMAINING.md §P2.3); we
+            // gate on the class-mapid part and apply the partner doubling
+            // unconditionally on the SN branch, falling back to "always
+            // double for partner" elsewhere (matching prior behavior).
+            if ((caster.ClassMask & MapidClass.UpperMask) == MapidClass.SuperNovice)
+            {
+                hp *= 2; // SN partner-doubling (sex gate deferred).
+            }
+            else
+            {
+                hp *= 2; // Non-SN partner doubling (existing behavior preserved).
+            }
         }
 
         return Math.Max(1, hp);

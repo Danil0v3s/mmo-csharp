@@ -17,6 +17,7 @@ public sealed class AbrBattleWarrior : SkillImpl
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         ctx.Sc?.Start(target, StatusType.AbrBattleWarior, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
-        // TODO: mob_once_spawn(MOBID_ABR_BATTLE_WARIOR) tied to caster as master, with deletetimer.
+        // Deferred: MOBID_ABR_BATTLE_WARIOR ABR pet + master-id binding + delete-
+        // timer aren't surfaced through IMobSpawnService.SpawnAt.
     }
 }

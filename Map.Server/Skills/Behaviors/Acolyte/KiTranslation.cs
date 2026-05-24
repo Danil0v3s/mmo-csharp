@@ -34,6 +34,15 @@ public sealed class KiTranslation : SkillImpl
             return;
         }
 
+        // Gunslinger/Rebellion targets reject the transfer — their coin
+        // counter isn't compatible with the spirit-sphere counter.
+        if (MapidClass.IsBase(dstsd.ClassMask, MapidClass.Gunslinger))
+        {
+            ctx.Client?.BroadcastSkillFail(caster, SkillId,
+                Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
+            return;
+        }
+
         // Target must be under 5 spheres for the transfer to be useful.
         var targetSpheres = _orbs?.Get(dstsd, OrbKind.Spirit) ?? 0;
         if (targetSpheres >= 5)
@@ -43,7 +52,6 @@ public sealed class KiTranslation : SkillImpl
             return;
         }
 
-        // TODO: Gunslinger/Rebellion class guard.
         // rAthena: require.spiritball spheres from caster → +1 each on target.
         var transfer = Math.Min(5 - targetSpheres, _orbs?.Get(caster, OrbKind.Spirit) ?? 0);
         if (transfer > 0)

@@ -32,7 +32,8 @@ public sealed class SightRasher : SkillImpl
     {
         ctx.Sc?.End(src, StatusType.Sight);
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: full splash dispatch via map_foreachinshootrange.
+        // Deferred: full map_foreachinshootrange splash dispatch — primary-target hit lands
+        // via CastendDamageId; LoS-filtered splash iterator isn't on ISkillAttackService.
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)

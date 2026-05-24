@@ -23,7 +23,9 @@ public sealed class IceMeteor : SkillImpl
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
         var ratio = baseRatio + 50 * skillLevel;
-        // TODO: +100 * spiritcharm when CHARM_TYPE_WATER.
+        // rAthena: +100 * sd->spiritcharm when sd->spiritcharm_type == CHARM_TYPE_WATER (= 1).
+        if (src is PlayerEntity sd && sd.SpiritCharmType == 1 && sd.SpiritCharm > 0)
+            ratio += 100 * sd.SpiritCharm;
         return ratio;
     }
 

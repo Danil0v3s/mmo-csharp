@@ -13,7 +13,8 @@ public sealed class CastCancel : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: unit_skillcastcancel(src, 1) — needs SkillCastService.Cancel.
-        // TODO: SP refund of (90 - (lv-1)*20)% of the cancelled skill's SP cost.
+        // Deferred: unit_skillcastcancel(src, 1) — needs SkillCastService.Cancel which
+        // isn't surfaced through SkillBehaviorContext yet. SP refund of
+        // (90 - (lv-1)*20)% of the cancelled skill's SP cost depends on the cancel hook.
     }
 }

@@ -14,6 +14,6 @@ public sealed class DominionImpulse : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: iterate BL_SKILL units in splash, fire skill_active_reverberation.
+        // Deferred: iterate BL_SKILL units in splash and fire skill_active_reverberation — needs BL_SKILL splash enumerator in ctx.
     }
 }

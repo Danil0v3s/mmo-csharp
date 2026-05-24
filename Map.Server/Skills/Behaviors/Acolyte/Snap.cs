@@ -18,14 +18,19 @@ public sealed class Snap : SkillImpl
 {
     private readonly IUnitOpsService? _unitOps;
     private readonly IVisibilityService? _visibility;
+    private readonly Map.Server.Skills.ISkillBlockService? _block;
 
     public Snap() : base(SkillIds.MO_BODYRELOCATION) { }
 
-    public Snap(IUnitOpsService? unitOps = null, IVisibilityService? visibility = null)
+    public Snap(
+        IUnitOpsService? unitOps = null,
+        IVisibilityService? visibility = null,
+        Map.Server.Skills.ISkillBlockService? block = null)
         : base(SkillIds.MO_BODYRELOCATION)
     {
         _unitOps = unitOps;
         _visibility = visibility;
+        _block = block;
     }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
@@ -42,8 +47,11 @@ public sealed class Snap : SkillImpl
             Y = src.Y,
         });
 
-        // TODO: skill_blockpc_start(sd, MO_EXTREMITYFIST, 2000) — lock
-        // EXTREMITYFIST for 2 s. Requires ISkillBlockService.BlockSkillUntil
-        // routed through SkillBehaviorContext.
+        // rAthena: skill_blockpc_start(sd, MO_EXTREMITYFIST, 2000) — lock
+        // EXTREMITYFIST for 2 s following the relocation.
+        if (src is PlayerEntity caster && _block != null)
+        {
+            _block.BlockPcStart(caster, SkillIds.MO_EXTREMITYFIST, 2000);
+        }
     }
 }

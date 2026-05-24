@@ -14,7 +14,12 @@ public sealed class ShadowLeap : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: skill_check_unit_movepos teleport (gated outside GvG/BG).
+        // rAthena: skill_check_unit_movepos teleports the caster near (x,y).
+        // Deferred: explicit GvG/BG gating — the C# IUnitOpsService.CheckUnitMovePos
+        // contract does not yet document the mapflag refusal that rAthena
+        // performs ("You don't move on GVG grounds."); when that gate is added
+        // server-side, this call honors it automatically.
+        ctx.UnitOps?.CheckUnitMovePos(src, x, y, 1);
         ctx.Sc?.End(src, StatusType.Hiding);
     }
 }

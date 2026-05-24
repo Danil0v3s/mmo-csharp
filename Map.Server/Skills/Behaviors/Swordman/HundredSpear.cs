@@ -14,6 +14,17 @@ public sealed class HundredSpear : RecursiveDamageSplashSkillImpl
     public HundredSpear() : base(SkillIds.RK_HUNDREDSPEAR) { }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + (-100 + 600 + 200 * skillLevel);
-    // TODO: + 50 * pc_checkskill(sd, LK_SPIRALPIERCE); + DragonicAura bonus; *2 with ChargingPierceCount.
+    {
+        var ratio = baseRatio + (-100 + 600 + 200 * skillLevel);
+        // rAthena: + 50 * pc_checkskill(sd, LK_SPIRALPIERCE).
+        if (src is PlayerEntity sd)
+        {
+            ratio += 50 * sd.LearnedSkills.GetValueOrDefault(SkillIds.LK_SPIRALPIERCE);
+        }
+        // DragonicAura / ChargingPierceCount SC bonuses are read from
+        // the caster's status table. The status_change Val storage
+        // isn't exposed on this hook (no ctx), so the read lands when
+        // the ratio path threads ctx through.
+        return ratio;
+    }
 }

@@ -53,8 +53,8 @@ public sealed class Arbitrium : SkillImpl
                 val1: skillLevel, 0, 0, 0, durationMs: 5000, src);
         }
 
-        // TODO: follow-up CD_ARBITRIUM_ATK splash hit (rAthena calls
-        // skill_castend_damage_id(CD_ARBITRIUM_ATK, ...)). Requires
-        // SkillBehaviorRegistry lookup mid-cast.
+        // Deferred per PARITY-REMAINING.md §P2.3: follow-up CD_ARBITRIUM_ATK splash
+        // hit needs SkillBehaviorRegistry lookup mid-cast (not surfaced through
+        // SkillBehaviorContext yet); rAthena calls skill_castend_damage_id(CD_ARBITRIUM_ATK, ...).
     }
 }

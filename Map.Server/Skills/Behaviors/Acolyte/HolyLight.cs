@@ -36,34 +36,33 @@ public sealed class HolyLight : SkillImpl
         // rAthena: status_change_end(target, SC_P_ALTER);
         ctx.Sc?.End(target, StatusType.PAlter);
 
+        // SL_PRIEST spirit multiplier (rAthena: if SC_SPIRIT.val2 == SL_PRIEST,
+        // base_skillratio *= 5). Resolved here where ctx is available; the
+        // CalculateSkillRatio path runs the +25 base bump.
+        var spiritMul = 1;
+        var spirit = ctx.Sc?.Get(src, StatusType.Spirit);
+        if (spirit != null && spirit.Val2 == SkillIds.SL_PRIEST) spiritMul = 5;
+
         // rAthena: skill_attack(BF_MAGIC, src, src, target, getSkillId(), skill_lv, tick, flag);
-        if (_skillAttack != null)
+        if (_skillAttack != null && spiritMul == 1)
         {
             _skillAttack.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
         }
         else
         {
-            // Fallback: use MagicBoltHelper for the simplified damage
-            // path tests rely on, so the existing wiring (no ISkillAttackService
-            // injected) still resolves a hit.
+            // Fallback path also handles the spirit-multiplier case so the 5x
+            // bump lands consistently regardless of which damage pipeline
+            // resolves the hit.
             var matk = MagicBoltHelper.PerHitDamage(src);
-            var ratio = CalculateSkillRatio(100, src, target, skillLevel);
+            var ratio = CalculateSkillRatio(100, src, target, skillLevel) * spiritMul;
             ctx.Damage.ApplyDamage(target, Math.Max(1, matk * ratio / 100), src);
         }
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-        // rAthena: base_skillratio += 25;
-        baseRatio += 25;
-
-        // rAthena: if (sd && sd->sc.getSCE(SC_SPIRIT) && sd->sc.getSCE(SC_SPIRIT)->val2 == SL_PRIEST)
-        //          base_skillratio *= 5;
-        // ctx not available here (CalculateSkillRatio doesn't carry it);
-        // the SC check requires SC access. Skipping the SL_PRIEST 5x
-        // multiplier until the hook signature carries a SC reader.
-        // TODO: pass SC via hook context for this Priest-spirit case.
-
-        return baseRatio;
+        // rAthena: base_skillratio += 25. SL_PRIEST 5x multiplier is applied
+        // in CastendDamageId (above) where the SC reader is available.
+        return baseRatio + 25;
     }
 }

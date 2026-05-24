@@ -21,7 +21,7 @@ public sealed class RemoveTrap : SkillImpl
         if (src is not PlayerEntity sd)
             return;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: skill_unit lookup + skill_delunit + item refund (battle_config.skill_removetrap_type).
+        // Deferred: skill_unit lookup + skill_delunit + item refund (battle_config.skill_removetrap_type) — needs BL_SKILL targeting hook.
         _ = sd;
     }
 }

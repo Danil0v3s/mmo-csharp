@@ -26,6 +26,8 @@ public sealed class ViolentQuake : SkillImpl
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
         _units?.Place(src, SkillId, skillLevel, x, y);
-        // TODO: staggered AG_VIOLENT_QUAKE_ATK sub-unit spawns + Climax modes.
+        // Deferred: staggered AG_VIOLENT_QUAKE_ATK sub-unit spawns + SC_CLIMAX modes
+        // (lv 1 2× rock spawn / lv 4 SC-inflict / lv 5 7×7 area) — needs repeated-Place
+        // helper and Climax SC readback.
     }
 }

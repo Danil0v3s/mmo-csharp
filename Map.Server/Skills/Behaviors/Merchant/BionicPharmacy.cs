@@ -14,8 +14,11 @@ public sealed class BionicPharmacy : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        if (src is not PlayerEntity) return;
+        if (src is not PlayerEntity sd) return;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: clif_cooking_list to open Biolo crafting panel.
+        // rAthena clif_cooking_list(sd, 32, BO_BIONIC_PHARMACY, 1, 8) — opens
+        // the Biolo crafting panel. The recipe-material check isn't ported
+        // yet, so the craftable list goes out empty for now.
+        ctx.Client?.BroadcastCookingList(sd, produceType: 32, craftableItemIds: Array.Empty<ushort>());
     }
 }

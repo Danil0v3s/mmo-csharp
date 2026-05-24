@@ -14,8 +14,10 @@ public sealed class MoonSlasher : RecursiveDamageSplashSkillImpl
     public MoonSlasher() : base(SkillIds.LG_MOONSLASHER) { }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + (-100 + 120 * skillLevel);
-    // TODO: + 80 * pc_checkskill(sd, LG_OVERBRAND).
+    {
+        var overBrandLv = (src as PlayerEntity)?.LearnedSkills.GetValueOrDefault(SkillIds.LG_OVERBRAND) ?? 0;
+        return baseRatio + (-100 + 120 * skillLevel) + 80 * overBrandLv;
+    }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
         => ctx.Sc?.Start(src, StatusType.Overbrandready, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);

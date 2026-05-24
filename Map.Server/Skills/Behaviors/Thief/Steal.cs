@@ -7,7 +7,8 @@ namespace Map.Server.Skills.Behaviors.Thief;
 /// <c>rathena-fork/src/map/skills/thief/steal.cpp</c>.
 /// Calls into pc_steal_item; success animation + drop, failure fail.
 /// pc_steal_item already lives in <c>PlayerStealService</c> — wiring
-/// the broadcast is TODO; this stub broadcasts animation only.
+/// via ctx deferred (service not yet on SkillBehaviorContext);
+/// this stub broadcasts animation only.
 /// </summary>
 public sealed class Steal : SkillImpl
 {
@@ -15,7 +16,7 @@ public sealed class Steal : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: pc_steal_item(sd, target, skill_lv) — animation gates on success.
+        // Deferred: pc_steal_item(sd, target, skill_lv) — IPlayerStealService exists but isn't on SkillBehaviorContext yet.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

@@ -15,8 +15,9 @@ public sealed class GuardianShield : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: SC_GUARDIAN_SHIELD enum is missing from StatusType; once added,
-        // start it here for both the solo and party-splash branches.
+        // Deferred: SC_GUARDIAN_SHIELD is not yet defined in StatusType. Once
+        // the enum lands, the solo branch starts it on the target and the
+        // party branch splashes it via ctx.PartyMap?.ForEachOnSameMap.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

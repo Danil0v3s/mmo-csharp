@@ -24,6 +24,13 @@ public sealed class Renovatio : StatusSkillImpl
         ctx.Sc?.Start(target, StatusType.Renovatio,
             val1: skillLevel, 0, 0, 0, durationMs: 90_000, src);
 
-        // TODO: party_foreachsamemap iteration when caster is partied.
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                ctx.Sc?.Start(m, StatusType.Renovatio, val1: skillLevel, 0, 0, 0, durationMs: 90_000, src);
+            }, includeSelf: false);
+        }
     }
 }

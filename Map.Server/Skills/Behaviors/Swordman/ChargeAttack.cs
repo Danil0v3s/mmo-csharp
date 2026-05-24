@@ -27,8 +27,11 @@ public sealed class ChargeAttack : SkillImpl
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: path_search_long + skill_check_unit_movepos to teleport src next to target.
+        // Deferred: path_search_long pre-flight gate + skill_check_unit_movepos to
+        // teleport src adjacent to target needs path_search_long parity in MovementService.
+        ctx.UnitOps?.CheckUnitMovePos(src, target.X, target.Y, 1);
         _skillAttack?.SkillAttack(BattleAttackType.Weapon, src, src, target, SkillId, skillLevel);
-        // TODO: skill_blown(src, target, blewcount, dir, BLOWN_NONE) after a successful hit.
+        // Deferred: skill_blown(src, target, blewcount, dir, BLOWN_NONE) after the
+        // hit lands — needs src→target direction resolution.
     }
 }

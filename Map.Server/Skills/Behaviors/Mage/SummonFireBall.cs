@@ -14,7 +14,8 @@ public sealed class SummonFireBall : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: SC_SPHERE_1..5 slot management with WLS_FIRE element.
+        // Deferred: SC_SPHERE_1..5 slot management (Warlock summoned-ball element registry)
+        // isn't wired through IStatusChangeService yet — WLS_FIRE ball not retained.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, 0);
     }
 }

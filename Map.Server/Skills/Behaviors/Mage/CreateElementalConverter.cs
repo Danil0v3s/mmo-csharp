@@ -14,6 +14,7 @@ public sealed class CreateElementalConverter : SkillImpl
     {
         if (src is not PlayerEntity) return;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: clif_elementalconverter_list — sends the chooser packet.
+        // Deferred: ZC_ELEMENTAL_CONVERTER chooser packet (clif_elementalconverter_list)
+        // isn't ported yet — the per-element converter pick UI is omitted.
     }
 }

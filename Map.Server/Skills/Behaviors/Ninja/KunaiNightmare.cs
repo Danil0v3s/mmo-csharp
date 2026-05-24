@@ -27,8 +27,8 @@ public sealed class KunaiNightmare : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: splash via skill_area_sub.
-        _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
+        // rAthena map_foreachinrange( skill_area_sub … BCT_ENEMY | SD_SPLASH | 1 ).
+        (_skillAttack ?? ctx.SkillAttack)?.SkillAttackArea(src, target, SkillId, skillLevel);
     }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)

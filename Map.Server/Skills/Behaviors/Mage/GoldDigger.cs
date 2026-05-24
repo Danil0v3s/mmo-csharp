@@ -15,6 +15,7 @@ public sealed class GoldDigger : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: grant src zeny += target.Level * 100 via IPlayerEconomyService.
+        // Deferred: zeny grant — PlayerEntity has no zeny field; the value lives in the
+        // char-server DB row and mutations route through char-server IPC.
     }
 }

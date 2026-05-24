@@ -58,7 +58,9 @@ public sealed class StatusRecovery : SkillImpl
             ctx.Sc?.End(target, StatusType.Burning);
             ctx.Sc?.End(target, StatusType.Whiteimprison);
             ctx.Sc?.End(target, StatusType.Stonewait);
-            // TODO: mob_unlocktarget(dstmd, tick) — reset mob AI to idle.
+            // Deferred per PARITY-REMAINING.md §P2.3: mob_unlocktarget(dstmd, tick)
+            // — reset mob AI to idle. IMobOpsService doesn't expose target/aggro
+            // reset yet; lands when the mob AI surface is opened.
         }
 
         // Always ends Netherworld + NoRecover state (even on undead).

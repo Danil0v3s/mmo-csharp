@@ -18,7 +18,8 @@ public sealed class SummonEarthSpiritTera : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity) return;
-        // TODO: elemental_delete(sd.BoundElemental) then elemental_create(sd, TERA-tier).
+        // Deferred: bound-elemental subsystem not ported — elemental_delete + elemental_create
+        // TERA-tier swap requires it.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

@@ -14,7 +14,8 @@ public sealed class TwilightAlchemy2 : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity) return;
-        // TODO: skill_produce_mix(sd, AM_TWILIGHT2, ITEMID_WHITE_SLIM_POTION, qty: 200).
+        // Deferred: skill_produce_mix pipeline isn't ported — can't brew the 200
+        // Slim White Potions.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

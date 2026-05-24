@@ -28,6 +28,8 @@ public sealed class AllBloom : SkillImpl
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
         _units?.Place(src, SkillId, skillLevel, x, y);
-        // TODO: rose-bud staggered spawns + Climax variants.
+        // Deferred: rose-bud staggered spawns at random splash cells + SC_CLIMAX
+        // modulation (lv 1 2× speed / lv 2 double-bud / lv 4 SC-inflict / lv 5 finisher) —
+        // needs the repeated-Place + Climax SC readback helpers.
     }
 }

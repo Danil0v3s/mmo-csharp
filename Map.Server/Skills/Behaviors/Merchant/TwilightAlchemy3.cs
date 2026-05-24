@@ -16,8 +16,8 @@ public sealed class TwilightAlchemy3 : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity) return;
-        // TODO: validate ITEMID_EMPTY_BOTTLE>=200 and skill_can_produce_mix for
-        // ALCOHOL/ACID_BOTTLE/FIRE_BOTTLE, then mix 100/50/50.
+        // Deferred: empty-bottle count check + skill_can_produce_mix for the three
+        // potion ids need the produce/inventory pipeline which isn't ported yet.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

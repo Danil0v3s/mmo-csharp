@@ -6,7 +6,8 @@ namespace Map.Server.Skills.Behaviors.MercenaryNpc;
 /// MER_ESTIMATION — Mercenary Sense. Manual port of
 /// <c>rathena-fork/src/map/skills/mercenary/mercenary_sense.cpp</c>.
 /// Sends estimation packet for the targeted mob to the mercenary's
-/// master. Estimation packet + master lookup are TODO.
+/// master. Master lookup deferred (mercenary master-link not yet on
+/// MercenaryEntity).
 /// </summary>
 public sealed class MercenarySense : SkillImpl
 {
@@ -15,7 +16,7 @@ public sealed class MercenarySense : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (target is PlayerEntity) return; // Only works on mobs.
-        // TODO: clif_skill_estimation(master, dstmd).
+        // Deferred: clif_skill_estimation(master, dstmd) — needs mercenary→master link plumbed into ctx.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

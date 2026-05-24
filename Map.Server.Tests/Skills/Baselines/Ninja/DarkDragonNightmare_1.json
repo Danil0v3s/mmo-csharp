@@ -1,5 +1,11 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
     "kind": "nodamage",
     "data": {
       "src": 1,
@@ -10,12 +16,10 @@
     }
   },
   {
-    "kind": "skill-attack",
+    "kind": "skill-attack-area",
     "data": {
-      "attackType": "Magic",
       "source": 1,
-      "damageSource": 1,
-      "target": 1,
+      "center": 1,
       "skillId": 5495,
       "skillLevel": 1
     }

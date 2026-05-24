@@ -15,6 +15,8 @@ public sealed class FawRemoval : SkillImpl
     {
         if (target is not MobEntity) return;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: gate by MOBID_SILVERSNIPER..MOBID_MAGICDECOY_WIND, then status_kill.
+        // Deferred: MOBID_SILVERSNIPER..MOBID_MAGICDECOY_WIND class-id range is
+        // not enumerated yet — without the FAW mob ids we can't safely gate the
+        // status_kill, since this skill must not affect arbitrary mobs.
     }
 }

@@ -37,6 +37,16 @@ public sealed class MedialeVotum : StatusSkillImpl
         ctx.Client?.BroadcastSkillNoDamage(null, target, SkillIds.AL_HEAL, heal);
         _statusOps?.Heal(target, heal, 0, 0);
 
-        // TODO: party iteration with flag bits.
+        // rAthena party_foreachsamemap: heal every same-map partymate
+        // with the same amount.
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                ctx.Client?.BroadcastSkillNoDamage(null, m, SkillIds.AL_HEAL, heal);
+                _statusOps?.Heal(m, heal, 0, 0);
+            }, includeSelf: false);
+        }
     }
 }

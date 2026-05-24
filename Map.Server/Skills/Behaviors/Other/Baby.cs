@@ -15,10 +15,25 @@ public sealed class Baby : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        if (src is not PlayerEntity) return;
-        // TODO: pc_get_father / pc_get_mother lookups + same-party + same-screen gates,
-        // then SC_BABY on both parents and SC_STUN on the baby.
+        if (src is not PlayerEntity baby) return;
+
+        // Always stun the baby.
         ctx.Sc?.Start(src, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 10_000, src);
         ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+
+        // rAthena pc_get_father / pc_get_mother: char-server holds the
+        // adoption table; cross-server lookup not surfaced on PlayerEntity
+        // yet. As a pragmatic fallback, apply SC_BABY to every same-map
+        // partymate (the parents are normally in the same party with the
+        // baby). When the adoption IPC ports, swap this for the exact
+        // father/mother CharId lookup.
+        if (baby.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(baby, m =>
+            {
+                if (m.Id.Value == baby.Id.Value) return;
+                ctx.Sc?.Start(m, StatusType.Wedding, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+            }, includeSelf: false);
+        }
     }
 }

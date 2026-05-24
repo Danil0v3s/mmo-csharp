@@ -20,7 +20,8 @@ public sealed class SpellFist : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: read sd.skill_id_old / skill_lv_old, cancel current cast, then SC start with bolt info.
+        // Deferred: skill_id_old / skill_lv_old bookkeeping isn't tracked per session yet,
+        // and SkillCastService.Cancel isn't surfaced — bolt-charge passthrough stays zeroed.
         ctx.Sc?.Start(src, StatusType.Spellfist, val1: skillLevel, val2: 0, val3: 0, 0, durationMs: 30_000, src);
     }
 }

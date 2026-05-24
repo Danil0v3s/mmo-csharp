@@ -26,8 +26,8 @@ public sealed class HurricaneRage : SkillImpl
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
-        // TODO: EL_HURRICANE_ATK splash isn't yet a registered SkillId — treat
-        // as single direct hit; 30% splash branch deferred.
+        // Deferred: EL_HURRICANE_ATK splash isn't yet a registered SkillId — treat
+        // as single direct hit; 30% splash branch awaits skill-id registration.
         _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
     }
 }

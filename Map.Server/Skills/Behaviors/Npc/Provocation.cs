@@ -1,4 +1,5 @@
 using Map.Server.Entities;
+using Map.Server.Mob;
 
 namespace Map.Server.Skills.Behaviors.Npc;
 
@@ -16,8 +17,13 @@ public sealed class Provocation : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // mob_unlocktarget(src, tick) — clears the mob's combat target.
-        // TODO: wire through IMobAiService when the mob-aggro interface
-        // lands; until then this is a no-op aside from the broadcast.
+        // rAthena mob_unlocktarget(src, tick): clears the mob's combat
+        // target. Direct mutation on the MobEntity since the aggro
+        // interface doesn't expose a public unlock entry point.
+        if (src is MobEntity mob)
+        {
+            mob.TargetId = 0;
+            mob.SkillState = MobSkillState.Idle;
+        }
     }
 }

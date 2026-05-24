@@ -13,6 +13,7 @@ public sealed class FawSilverSniper : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: mob_once_spawn(MOBID_SILVERSNIPER) tied to caster with deletetimer.
+        // Deferred: MOBID_SILVERSNIPER turret + master-id linkage + delete-timer
+        // aren't surfaced through IMobSpawnService.SpawnAt.
     }
 }

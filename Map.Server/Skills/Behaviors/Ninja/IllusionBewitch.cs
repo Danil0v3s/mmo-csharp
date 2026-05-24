@@ -22,9 +22,25 @@ public sealed class IllusionBewitch : SkillImpl
                 ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
             return;
         }
+        // Cache caster origin BEFORE the swap.
+        var (origX, origY) = (src.X, src.Y);
         ctx.Sc?.Start(src, StatusType.Confusion, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
         ctx.Sc?.Start(target, StatusType.Confusion, val1: skillLevel, 0, 0, 0, durationMs: 5_000, src);
-        ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
-        // TODO: position swap + clif_blown + retarget mobs.
+        // rAthena: skill_check_unit_movepos(5, src, target->x, target->y, 0, 0)
+        // then unit_movepos(target, origX, origY, 0, 0). C# MovePos / CheckUnitMovePos
+        // run the same teleport contract.
+        if (ctx.UnitOps?.CheckUnitMovePos(src, target.X, target.Y, 0) == true)
+        {
+            ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+            ctx.UnitOps?.MovePos(target, origX, origY, 0, false);
+            // Deferred: map_foreachinallrange(unit_changetarget, src, AREA_SIZE, BL_CHAR, src, target)
+            // — retarget every mob currently chasing the caster onto the
+            // victim. No foreachinrange retarget sweep is exposed by
+            // IMobChangeTargetService yet.
+        }
+        else
+        {
+            ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
+        }
     }
 }

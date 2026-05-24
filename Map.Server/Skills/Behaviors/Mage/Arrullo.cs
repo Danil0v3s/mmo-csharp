@@ -22,7 +22,8 @@ public sealed class Arrullo : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: full splash dispatch via map_foreachinallarea.
+        // Deferred: full map_foreachinallarea splash dispatch — Arrullo is a ground-target
+        // AOE; the named-target rate roll happens in CastendNoDamageId.
     }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)

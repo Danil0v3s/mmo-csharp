@@ -6,7 +6,7 @@ namespace Map.Server.Skills.Behaviors.Thief;
 /// SC_AUTOSHADOWSPELL — Auto Shadow Spell. Manual port of
 /// <c>rathena-fork/src/map/skills/thief/autoshadowspell.cpp</c>.
 /// Opens the autocast list of reproduced / cloned skills. Skill-list
-/// UI is TODO — animation only when the player has a candidate skill.
+/// UI deferred — animation only when the player has a candidate skill.
 /// </summary>
 public sealed class AutoShadowSpell : SkillImpl
 {
@@ -14,7 +14,8 @@ public sealed class AutoShadowSpell : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: clif_autoshadowspell_list dialog + SC_STOP for menu lock.
+        // Deferred per PARITY-REMAINING.md §P2: clif_autoshadowspell_list
+        // packet + SC_STOP menu-lock not yet ported. Animation lands.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

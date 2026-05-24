@@ -16,8 +16,8 @@ public sealed class SlingItem : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: Inspect EQI_AMMO, branch on IG_BOMB vs IG_THROWABLE, and either
-        // skill_attack(GN_SLINGITEM_RANGEMELEEATK) or run the throwable item script.
+        // Deferred: ammo branch needs the item-DB IG_BOMB / IG_THROWABLE group
+        // lookup and the throwable-item script runner — neither is wired to ctx.
         // The packet is intentionally broadcast twice — that's what triggers the
         // hurl animation client-side.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);

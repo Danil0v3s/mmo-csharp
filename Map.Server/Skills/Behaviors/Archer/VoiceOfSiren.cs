@@ -7,7 +7,7 @@ namespace Map.Server.Skills.Behaviors.Archer;
 /// WM_VOICEOFSIREN — Minstrel/Wanderer Voice of Siren. Manual port of
 /// <c>rathena-fork/src/map/skills/archer/voiceofsiren.cpp</c>.
 /// SC apply at <c>lv*6 + 25 %</c> (Voice Lesson + job_level bonuses
-/// TODO).
+/// deferred).
 /// </summary>
 public sealed class VoiceOfSiren : SkillImpl
 {

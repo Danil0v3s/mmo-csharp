@@ -6,7 +6,7 @@ namespace Map.Server.Skills.Behaviors.Archer;
 /// WH_HAWKRUSH — Wind Hawk Hawk Rush. Manual port of
 /// <c>rathena-fork/src/map/skills/archer/hawkrush.cpp</c>.
 /// Ratio: <c>+(-100 + 500*lv) + 5*CON</c>. WH_NATUREFRIENDLY scale
-/// TODO.
+/// deferred — skill id not yet registered.
 /// </summary>
 public sealed class HawkRush : WeaponSkillImpl
 {

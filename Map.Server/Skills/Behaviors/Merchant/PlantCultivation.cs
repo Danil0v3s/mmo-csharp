@@ -14,6 +14,8 @@ public sealed class PlantCultivation : SkillImpl
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity) return;
-        // TODO: spawn random plant mob (MOBID_GREEN/RED/YELLOW/WHITE/BLUE/SHINING_PLANT).
+        // Deferred: MOBID_GREEN/RED/YELLOW/WHITE/BLUE/SHINING_PLANT class ids
+        // aren't enumerated yet, and IMobSpawnService.SpawnAt won't apply the
+        // AI_PLANT idle behavior these require.
     }
 }

@@ -15,6 +15,7 @@ public sealed class Greed : SkillImpl
     {
         if (src is not PlayerEntity) return;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: iterate BL_ITEM in splash and auto-pickup.
+        // Deferred: BL_ITEM splash iteration + auto-pickup requires IItemDropService
+        // access from SkillBehaviorContext (TryPickup), which isn't surfaced yet.
     }
 }

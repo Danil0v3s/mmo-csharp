@@ -32,7 +32,8 @@ public sealed class SiennaExecrate : SkillImpl
         {
             ctx.Sc?.Start(target, StatusType.Stone, val1: skillLevel, val2: (int)src.Id, 0, 0, durationMs: 10_000, src);
             ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-            // TODO: chain petrify across splash via skill_area_sub.
+            // Deferred: chain petrify across the splash via skill_area_sub — the BCT_ENEMY
+            // splash iterator needs predicate-based SC application, not yet on SkillAreaSub.
         }
         else if (src is PlayerEntity sd)
         {

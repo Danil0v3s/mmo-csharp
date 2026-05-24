@@ -13,6 +13,7 @@ public sealed class FawMagicDecoy : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: clif_magicdecoy_list(sd, lv, x, y) to surface the picker.
+        // Deferred: clif_magicdecoy_list emits the elemental-decoy picker — the
+        // packet + the four BL_MOB Magic Decoy mob ids aren't ported yet.
     }
 }

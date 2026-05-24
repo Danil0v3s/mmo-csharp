@@ -19,7 +19,8 @@ public sealed class HocusPocus : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: roll abra_db, set sd.skillitem for players or unit_skilluse_* for mobs.
+        // Deferred: abra_db.yml loader not ported — needs per-row probability weights +
+        // sd.skillitem set on player picks and unit_skilluse_* dispatch on mob picks.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

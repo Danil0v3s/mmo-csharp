@@ -15,7 +15,7 @@ public sealed class SummonElementalProcella : SkillImpl
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         if (src is not PlayerEntity) return;
-        // TODO: bound-elemental upgrade VENTUS_L → PROCELLA.
+        // Deferred: bound-elemental subsystem not ported — VENTUS_L → PROCELLA upgrade.
         ctx.Sc?.Start(src, StatusType.SummonElementalProcella, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
     }
 }

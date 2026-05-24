@@ -15,7 +15,9 @@ public sealed class CannonSpear : RecursiveDamageSplashSkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
         => baseRatio + (-100 + skillLevel * (120 + src.Stats.Str));
-    // TODO: + 400 if src has SC_SPEAR_SCAR.
+    // Deferred: rAthena adds +400 when src has SC_SPEAR_SCAR.
+    // CalculateSkillRatio has no SkillBehaviorContext parameter, so the SC
+    // table is not reachable here; needs a ratio-hook signature change.
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
         => ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);

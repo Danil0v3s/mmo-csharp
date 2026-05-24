@@ -1,11 +1,12 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
 /// <summary>
 /// CH_CHAINCRUSH — Champion Chain Crush Combo. Manual port of
 /// <c>rathena-fork/src/map/skills/acolyte/chaincrushcombo.cpp</c>.
-/// Ratio <c>+(-100 + 200*lv)</c>; GT_ENERGYGAIN multiplier is TODO.
+/// Ratio <c>+(-100 + 200*lv)</c>; GT_ENERGYGAIN adds +50 % when active.
 /// </summary>
 public sealed class ChainCrushCombo : WeaponSkillImpl
 {
@@ -15,11 +16,22 @@ public sealed class ChainCrushCombo : WeaponSkillImpl
     {
         // Renewal: skillratio += -100 + 200 * skill_lv;  RE_LVL_DMOD(100);
         // Final: (-100 + 200*lv) + base 100 = 200*lv % at base level.
-        var ratio = baseRatio + (-100 + 200 * skillLevel);
+        return baseRatio + (-100 + 200 * skillLevel);
+    }
 
-        // GT_ENERGYGAIN buff bumps skillratio by +50 % multiplicatively.
-        // SC reader isn't available in CalculateSkillRatio's hook signature —
-        // TODO: thread ISC through this hook so the multiplier lands.
-        return ratio;
+    public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        // GT_ENERGYGAIN bumps damage by +50% multiplicatively (rAthena bumps
+        // the skillratio inside calc_misc; we apply on top of the resolved
+        // damage so the base ratio formula above stays simple).
+        var swing = ctx.Battle.CalcWeaponAttack(src, target);
+        var ratio = CalculateSkillRatio(100, src, target, skillLevel);
+        var dmg = (long)swing.Total * ratio / 100;
+        if (ctx.Sc?.Get(src, StatusType.GtEnergygain) != null)
+        {
+            dmg = dmg * 150 / 100;
+        }
+        ctx.Damage.ApplyDamage(target, (int)Math.Clamp(dmg, 0, int.MaxValue), src);
+        ApplyAdditionalEffects(src, target, skillLevel, ctx);
     }
 }

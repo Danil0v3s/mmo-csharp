@@ -18,7 +18,7 @@ public sealed class MercenaryBlessing : SkillImpl
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         if (target is PlayerEntity && ctx.Sc?.Get(target, StatusType.Changeundead) != null)
         {
-            // TODO: skill_attack(BF_MISC) when target is undead-flagged player with HP > 1.
+            // Deferred: skill_attack(BF_MISC) on undead-flagged player with HP > 1 — needs BF_MISC damage dispatch.
             return;
         }
         ctx.Sc?.Start(target, StatusType.Blessing, val1: skillLevel, 0, 0, 0, durationMs: 120_000, src);

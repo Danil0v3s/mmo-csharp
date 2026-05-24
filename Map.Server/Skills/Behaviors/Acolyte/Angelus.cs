@@ -13,10 +13,6 @@ namespace Map.Server.Skills.Behaviors.Acolyte;
 /// <c>flag &amp; 1</c> bit to mark the inner per-member recursion
 /// (so the same function ends up at the SC apply once the
 /// iterator reaches each member).</para>
-///
-/// <para>Party-iteration branch is TODO: requires a
-/// <c>ForEachPartyMemberOnSameMap</c> helper that the map server
-/// doesn't yet expose. Single-target / no-party path is faithful.</para>
 /// </summary>
 public sealed class Angelus : SkillImpl
 {
@@ -33,9 +29,18 @@ public sealed class Angelus : SkillImpl
         var duration = 30 * (3 + skillLevel) * 1000;
         ctx.Sc?.Start(target, StatusType.Angelus, val1: skillLevel, 0, 0, 0, duration, src);
 
-        // TODO: party_foreachsamemap — when caster is in a party and
-        // flag&1 is unset, rAthena iterates same-map party members and
-        // recursively invokes self with flag|BCT_PARTY|1. Skipped
-        // until IPartyMapService exposes the iterator.
+        // rAthena party_foreachsamemap fan-out: when caster is in a party
+        // (and we haven't already recursed via flag&1), apply the SC to
+        // every same-map partymate. Routed through IPartyMapService;
+        // includeSelf is false because the line above already covered
+        // the explicit target.
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                ctx.Sc?.Start(m, StatusType.Angelus, val1: skillLevel, 0, 0, 0, duration, src);
+            }, includeSelf: false);
+        }
     }
 }

@@ -28,7 +28,7 @@ public sealed class TyphoonMissile : SkillImpl
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
-        // TODO: 30% splash via EL_TYPOON_MIS_ATK isn't yet a registered SkillId.
+        // Deferred: 30% splash via EL_TYPOON_MIS_ATK isn't yet a registered SkillId — single hit only.
         _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
     }
 

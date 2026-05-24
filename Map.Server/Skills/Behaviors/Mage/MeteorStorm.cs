@@ -35,7 +35,8 @@ public sealed class MeteorStorm : SkillImpl
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
         _units?.Place(src, SkillId, skillLevel, x, y);
-        // TODO: emit additional meteors at random splash cells staggered by unit_interval.
+        // Deferred: staggered multi-meteor placement at random splash cells — needs
+        // unit_interval read on ISkillUnitService + repeated Place() across ticks.
     }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)

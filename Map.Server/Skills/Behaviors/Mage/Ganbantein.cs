@@ -28,6 +28,7 @@ public sealed class Ganbantein : SkillImpl
                 ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
             return;
         }
-        // TODO: dispel every BL_SKILL unit in the splash via skill_cell_overlap.
+        // Deferred: dispel every BL_SKILL unit in the splash — needs ISkillUnitService
+        // to surface a RemoveUnitsAt(x, y, range) helper (rAthena skill_cell_overlap).
     }
 }

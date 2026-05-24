@@ -28,6 +28,9 @@ public sealed class Monocell : SkillImpl
             return;
         }
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: mob_class_change(target, MOBID_PORING) + SC clean-up.
+        // MOBID_PORING = 1002 in rAthena's mob_db.
+        ctx.MobOps?.SetClass((MobEntity)target, 1002);
+        // Deferred: rAthena also clears every common SC + a curated CC list on success;
+        // bulk SC clean-up helper isn't surfaced on IStatusChangeService yet.
     }
 }

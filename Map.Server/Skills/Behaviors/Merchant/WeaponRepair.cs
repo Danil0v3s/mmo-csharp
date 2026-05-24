@@ -14,7 +14,8 @@ public sealed class WeaponRepair : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity || target is not PlayerEntity) return;
-        // TODO: clif_item_repair_list(sd, dstsd, skill_lv).
+        // Deferred: clif_item_repair_list emits ZC_ACK_ITEMREPAIR — the repair-UI
+        // packet isn't ported and ISkillClientService doesn't expose it yet.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

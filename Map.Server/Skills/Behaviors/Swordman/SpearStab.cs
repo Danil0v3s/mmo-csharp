@@ -8,7 +8,8 @@ namespace Map.Server.Skills.Behaviors.Swordman;
 /// <c>rathena-fork/src/map/skills/swordman/spearstab.cpp</c>.
 /// Ratio <c>+20*lv</c>. Hits the line of enemies between caster and
 /// target (knockback after the last hit). Line splash + knockback are
-/// TODO.
+/// deferred until <c>map_foreachindir</c> and a directional <c>skill_blown</c>
+/// helper land.
 /// </summary>
 public sealed class SpearStab : SkillImpl
 {

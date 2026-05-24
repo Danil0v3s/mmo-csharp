@@ -21,7 +21,7 @@ public sealed class Desperado : SkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
         => baseRatio + 50 * (skillLevel - 1);
-    // TODO: doubles under SC_FALLEN_ANGEL — needs SC plumbing into ratio.
+    // Deferred: doubles under SC_FALLEN_ANGEL — CalculateSkillRatio has no ctx, so SC readback isn't accessible here.
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
         => _units?.Place(src, SkillId, skillLevel, x, y);

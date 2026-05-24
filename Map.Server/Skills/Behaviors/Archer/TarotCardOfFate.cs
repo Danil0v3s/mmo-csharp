@@ -28,7 +28,7 @@ public sealed class TarotCardOfFate : SkillImpl
                 ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
             return;
         }
-        // TODO: skill_tarotcard dispatch — 14 card effects.
+        // Deferred: skill_tarotcard dispatch — 14 distinct card effects (HP/SP zap, freeze, curse, full-heal, strip equip, etc.) require their own port pass.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

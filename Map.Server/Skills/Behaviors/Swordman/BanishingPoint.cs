@@ -15,9 +15,11 @@ public sealed class BanishingPoint : WeaponSkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-        var ratio = baseRatio + (-100 + 100 * skillLevel);
-        // TODO: + pc_checkskill(sd, SM_BASH) * 70 when skill tree is wired through.
-        // TODO: + 800 if src has SC_SPEAR_SCAR.
+        var bashLv = (src as PlayerEntity)?.LearnedSkills.GetValueOrDefault(SkillIds.SM_BASH) ?? 0;
+        var ratio = baseRatio + (-100 + 100 * skillLevel) + 70 * bashLv;
+        // Deferred: rAthena adds +800 when src has SC_SPEAR_SCAR.
+        // CalculateSkillRatio has no SkillBehaviorContext parameter, so the SC
+        // table is not reachable here; needs a ratio-hook signature change.
         return ratio;
     }
 

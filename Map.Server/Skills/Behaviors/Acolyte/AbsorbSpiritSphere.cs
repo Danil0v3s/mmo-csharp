@@ -41,10 +41,15 @@ public sealed class AbsorbSpiritSphere : SkillImpl
 
         if (target is PlayerEntity dstsd)
         {
-            // TODO: gunslinger class check via MAPID_FIRSTMASK == MAPID_GUNSLINGER.
-            // The C# port doesn't have class-mapid surfaced yet; we apply
-            // to all PCs as a safe fallback (gunslinger coin protection
-            // becomes available when ClassMapid lands).
+            // rAthena: Gunslinger coins are protected — skip the drain for any
+            // class in the Gunslinger family (Rebellion too).
+            if (MapidClass.IsBase(dstsd.ClassMask, MapidClass.Gunslinger))
+            {
+                if (src is PlayerEntity sdg)
+                    ctx.Client?.BroadcastSkillFail(sdg, SkillId,
+                        Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
+                return;
+            }
             var spheres = _orbs?.Get(dstsd, OrbKind.Spirit) ?? 0;
             if (spheres > 0)
             {
@@ -59,7 +64,8 @@ public sealed class AbsorbSpiritSphere : SkillImpl
             if (_rng.Next(100) < 20)
             {
                 spGain = 2 * mob.Level;
-                // TODO: mob_target(dstmd, src, 0) — re-aggro the mob.
+                // Deferred per PARITY-REMAINING.md §P2.3: mob_target(dstmd, src, 0)
+                // re-aggro — IMobOpsService doesn't expose mob_target yet.
             }
         }
         else

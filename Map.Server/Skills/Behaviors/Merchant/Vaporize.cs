@@ -15,7 +15,8 @@ public sealed class Vaporize : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity) return;
-        // TODO: hom_vaporize(sd, HOM_ST_REST) → on success animate, else SkillFailCause.Level.
+        // Deferred: hom_vaporize(HOM_ST_REST) requires the homunculus subsystem
+        // (state machine + active-homunculus lookup), which is not ported.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

@@ -24,17 +24,52 @@ public sealed class Convenio : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity caster) return;
+        if (caster.PartyId <= 0 || ctx.PartyMap == null || ctx.Setpos == null)
+        {
+            ctx.Client?.BroadcastSkillFail(caster, SkillId,
+                Core.Server.Packets.Out.ZC.SkillFailCause.NeedHelpers);
+            return;
+        }
 
-        // rAthena: requires party + leader. Currently we can't read
-        // party-leader flag from the map side (party state lives on
-        // char-server). Emit fail-broadcast until the IPC surfaces it.
-        ctx.Client?.BroadcastSkillFail(caster, SkillId,
-            Core.Server.Packets.Out.ZC.SkillFailCause.NeedHelpers);
+        // rAthena AB_CONVENIO: walk every same-map party member and
+        // warp them to the caster's cell. Party-leader gate is
+        // deferred — the char-server holds the leader flag and
+        // doesn't surface it on PlayerEntity yet; first-slice runs
+        // for any party member with this skill.
+        var teleported = 0;
+        var dstX = caster.X;
+        var dstY = caster.Y;
+        // Resolve the caster's current map name from the hashed MapId.
+        string? mapName = null;
+        if (ctx.World != null)
+        {
+            foreach (var m in ctx.World.All)
+            {
+                if ((uint)m.Name.GetHashCode() == caster.MapId) { mapName = m.Name; break; }
+            }
+        }
+        if (mapName == null)
+        {
+            ctx.Client?.BroadcastSkillFail(caster, SkillId,
+                Core.Server.Packets.Out.ZC.SkillFailCause.NeedHelpers);
+            return;
+        }
+        ctx.PartyMap.ForEachOnSameMap(caster, m =>
+        {
+            if (m.Id.Value == caster.Id.Value) return;
+            if (m is not PlayerEntity pcm) return;
+            var result = ctx.Setpos.Setpos(pcm, mapName, dstX, dstY);
+            if (result == Map.Server.Movement.SetposResult.Ok) teleported++;
+        }, includeSelf: false);
 
-        // TODO: when party-leader + party-member iteration is wired:
-        //   1. Verify caster is party leader.
-        //   2. For each party member on the same map (excluding caster, dead, disabled-call):
-        //        if (map allows teleport) pc_setpos(member, src.MapId, src.X, src.Y, CLR_TELEPORT)
-        //   3. If 0 teleported, emit clif_skill_fail.
+        if (teleported == 0)
+        {
+            ctx.Client?.BroadcastSkillFail(caster, SkillId,
+                Core.Server.Packets.Out.ZC.SkillFailCause.NeedHelpers);
+        }
+        else
+        {
+            ctx.Client?.BroadcastSkillNoDamage(src, caster, SkillId, skillLevel);
+        }
     }
 }

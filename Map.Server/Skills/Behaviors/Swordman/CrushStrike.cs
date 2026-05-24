@@ -15,7 +15,9 @@ public sealed class CrushStrike : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity) return;
-        // TODO: gate on pc_checkskill(sd, RK_RUNEMASTERY) >= 7.
+        // Deferred: rAthena gates this on pc_checkskill(sd, RK_RUNEMASTERY) >= 7;
+        // RK_RUNEMASTERY is not yet in SkillIds. Gate via
+        // ctx.PlayerSkill?.CheckSkill(sd, SkillIds.RK_RUNEMASTERY) >= 7 once added.
         ctx.Sc?.Start(target, StatusType.Crushstrike, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }

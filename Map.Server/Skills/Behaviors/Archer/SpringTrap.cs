@@ -19,6 +19,6 @@ public sealed class SpringTrap : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: trip the targeted skill_unit when ground-unit references land in ctx.
+        // Deferred: trip the targeted skill_unit — needs BL_SKILL ground-unit reference plumbed through ctx.
     }
 }

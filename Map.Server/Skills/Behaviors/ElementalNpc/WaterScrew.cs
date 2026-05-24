@@ -26,7 +26,7 @@ public sealed class WaterScrew : SkillImpl
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
-        // TODO: 30% splash via EL_WATER_SCREW_ATK — deferred.
+        // Deferred: 30% splash via EL_WATER_SCREW_ATK awaits skill-id registration.
         _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
     }
 }

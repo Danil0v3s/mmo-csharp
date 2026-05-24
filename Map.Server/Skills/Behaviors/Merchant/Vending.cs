@@ -16,7 +16,9 @@ public sealed class Vending : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity sd) return;
-        // TODO: pc_can_give_items(sd) gate, intif_storage_save on cart pending, clif_openvendingreq(sd, 2 + skill_lv).
+        // Deferred: full vending bring-up needs pc_can_give_items (trade-gate check),
+        // intif_storage_save (cart sync via the char/inter server), and the
+        // clif_openvendingreq packet — none of these are ported yet.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

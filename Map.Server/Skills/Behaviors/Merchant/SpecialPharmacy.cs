@@ -15,8 +15,12 @@ public sealed class SpecialPharmacy : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: send clif_cooking_list(sd, type=29, GN_S_PHARMACY, qty=1, page=6) once
-        // the production UI is ported. Until then, just animate.
+        // rAthena clif_cooking_list(sd, 29, GN_S_PHARMACY, 1, 6) — open the
+        // Genetic Special Pharmacy panel. The craftable-list lookup (per-recipe
+        // material check) isn't ported yet, so the list is sent empty; the
+        // dialog still surfaces.
+        if (src is PlayerEntity sd)
+            ctx.Client?.BroadcastCookingList(sd, produceType: 29, craftableItemIds: Array.Empty<ushort>());
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

@@ -20,8 +20,13 @@ public sealed class HolyCross : WeaponSkillImpl
         => _rng = rng ?? Random.Shared;
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + 35 * skillLevel;
-    // TODO: + 70*lv with W_2HSPEAR.
+    {
+        // rAthena W_2HSPEAR = 5 (pc.hpp). Two-handed spear doubles the per-level
+        // ratio bump; every other weapon stays at +35*lv.
+        const int W_2HSPEAR = 5;
+        var bonus = (src is PlayerEntity pc && pc.WeaponType == W_2HSPEAR) ? 70 : 35;
+        return baseRatio + bonus * skillLevel;
+    }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {

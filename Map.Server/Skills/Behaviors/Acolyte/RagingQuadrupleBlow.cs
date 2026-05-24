@@ -31,9 +31,10 @@ public sealed class RagingQuadrupleBlow : WeaponSkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-        var ratio = baseRatio + 150 + 50 * skillLevel;
-        // TODO: ×2 multiplier when caster weapon == W_KNUCKLE. Weapon-type
-        // gate requires equip introspection on PlayerEntity.
-        return ratio;
+        var bump = 150 + 50 * skillLevel;
+        // rAthena: skillratio *= 2 when caster wields a Knuckle (W_KNUCKLE = 10).
+        // PlayerEntity.WeaponType carries the W_* constant per the doc comment.
+        if (src is PlayerEntity sd && sd.WeaponType == 10) bump *= 2;
+        return baseRatio + bump;
     }
 }

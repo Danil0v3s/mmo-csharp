@@ -26,7 +26,10 @@ public sealed class DragonicBreath : RecursiveDamageSplashSkillImpl
         // sc plumbing into the ratio path we apply the no-aura formula.
         ratio += (skillLevel * (src.Stats.MaxHp * 25 / 100) * 5) / 100;
         ratio += (skillLevel * (src.Stats.MaxSp * 50 / 100) * 5) / 100;
-        // TODO: with SC_DRAGONIC_AURA, add 3*POW + (hpSpBlock - already-added 5/100 block).
+        // Deferred: with SC_DRAGONIC_AURA active the bonus becomes 3*POW +
+        // (hpSpBlock - already-added 5/100 block). CalculateSkillRatio has
+        // no SkillBehaviorContext parameter, so it can't reach ctx.Sc; needs
+        // a ratio-hook signature change before this branch can wire in.
         _ = hpSpBlock; // suppress warning until aura branch is wired.
         return ratio;
     }

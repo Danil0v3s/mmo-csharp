@@ -45,20 +45,35 @@ public sealed class EarthShaker : WeaponSkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-        // Hidden-target check via SC presence (Hide / Cloaking / Camouflage / etc.).
-        // We approximate by looking at any of the documented hide SCs;
-        // OPTION_* bitflag check isn't on our SC surface.
-        var hidden = false; // TODO: ISkillBehaviorContext needs SC access in CalculateSkillRatio.
-        if (hidden)
-            return baseRatio + (-100 + 300 * skillLevel) + 3 * src.Stats.Str;
+        // Visible-target ratio — the hidden-target +300*lv branch lands in
+        // CastendDamageId where the SC reader is available.
         return baseRatio + (-100 + 400 * skillLevel) + 2 * src.Stats.Str;
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // rAthena outer path: splash around target; inner path: single hit + hide-strip.
-        // We always run the inner path (faithful to per-victim resolution).
-        base.CastendDamageId(src, target, skillLevel, ctx);
+        // Hidden-target check via SC presence (Hide / Cloaking / Camouflage /
+        // StealthField / ShadowForm). When hidden, override the ratio path
+        // before invoking the standard weapon pipeline.
+        var hidden = ctx.Sc != null && (
+            ctx.Sc.Get(target, StatusType.Hiding) != null
+            || ctx.Sc.Get(target, StatusType.Cloaking) != null
+            || ctx.Sc.Get(target, StatusType.Cloakingexceed) != null
+            || ctx.Sc.Get(target, StatusType.Camouflage) != null
+            || ctx.Sc.Get(target, StatusType.Stealthfield) != null
+            || ctx.Sc.Get(target, StatusType.Shadowform) != null);
+        if (hidden)
+        {
+            var swing = ctx.Battle.CalcWeaponAttack(src, target);
+            var ratio = 100 + (-100 + 300 * skillLevel) + 3 * src.Stats.Str;
+            var dmg = (int)Math.Clamp((long)swing.Total * ratio / 100, 0, int.MaxValue);
+            ctx.Damage.ApplyDamage(target, dmg, src);
+            ApplyAdditionalEffects(src, target, skillLevel, ctx);
+        }
+        else
+        {
+            base.CastendDamageId(src, target, skillLevel, ctx);
+        }
         ctx.Sc?.End(target, StatusType.Cloakingexceed);
     }
 

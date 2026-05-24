@@ -17,7 +17,7 @@ public sealed class WoodenWarrior : SkillImpl
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         ctx.Sc?.Start(src, StatusType.BionicWoodenwarrior, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
-        // TODO: mob_once_spawn MOBID_BIONIC_WOODENWARRIOR with AI_BIONIC, master_id = src.Id,
-        // delete-timer of skill_get_time(BO_WOODENWARRIOR, skillLevel).
+        // Deferred: MOBID_BIONIC_WOODENWARRIOR + AI_BIONIC + master-id linkage
+        // + delete-timer aren't surfaced through IMobSpawnService.SpawnAt.
     }
 }

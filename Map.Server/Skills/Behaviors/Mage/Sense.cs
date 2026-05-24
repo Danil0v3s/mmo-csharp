@@ -23,7 +23,7 @@ public sealed class Sense : SkillImpl
             ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
             return;
         }
-        // TODO: clif_skill_estimation(sd, dstmd) — emit ZC_MONSTER_INFO with mob stats / drops.
+        ctx.Client?.BroadcastSkillEstimation(sd, target);
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

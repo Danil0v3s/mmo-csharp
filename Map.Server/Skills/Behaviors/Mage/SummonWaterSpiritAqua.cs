@@ -14,7 +14,7 @@ public sealed class SummonWaterSpiritAqua : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity) return;
-        // TODO: elemental_create AQUA-tier replacing any bound elemental.
+        // Deferred: bound-elemental subsystem not ported — elemental_create AQUA-tier swap.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

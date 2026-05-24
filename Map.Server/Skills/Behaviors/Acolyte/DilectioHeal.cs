@@ -50,6 +50,16 @@ public sealed class DilectioHeal : SkillImpl
 
         _statusOps?.Heal(target, heal, 0, 0);
 
-        // TODO: outer recursion on party members via flag bits.
+        // rAthena outer recursion via flag&1: heal every same-map
+        // partymate by the same calculated amount.
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                ctx.Client?.BroadcastSkillNoDamage(null, m, SkillIds.AL_HEAL, heal);
+                _statusOps?.Heal(m, heal, 0, 0);
+            }, includeSelf: false);
+        }
     }
 }

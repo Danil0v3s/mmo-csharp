@@ -48,6 +48,19 @@ public sealed class Competentia : SkillImpl
             val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
         ctx.Client?.BroadcastSkillNoDamage(target, target, SkillId, skillLevel);
 
-        // TODO: party iteration when caster is partied.
+        // rAthena party_foreachsamemap: same heal + SC fan-out for each partymate.
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                var mHp = m.Stats.MaxHp * (20 * skillLevel) / 100;
+                var mSp = m.Stats.MaxSp * (20 * skillLevel) / 100;
+                ctx.Client?.BroadcastSkillNoDamage(null, m, SkillIds.AL_HEAL, mHp);
+                _statusOps?.Heal(m, mHp, 0, 0);
+                _statusOps?.Heal(m, 0, mSp, 0);
+                ctx.Sc?.Start(m, StatusType.Competentia, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
+            }, includeSelf: false);
+        }
     }
 }

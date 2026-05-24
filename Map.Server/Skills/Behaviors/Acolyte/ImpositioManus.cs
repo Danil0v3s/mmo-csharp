@@ -23,6 +23,13 @@ public sealed class ImpositioManus : SkillImpl
     {
         ctx.Client?.BroadcastSkillNoDamage(target, target, SkillId, skillLevel);
         ctx.Sc?.Start(target, StatusType.Impositio, val1: skillLevel, 0, 0, 0, 120_000, src);
-        // TODO: party_foreachsamemap (see Angelus).
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                ctx.Sc?.Start(m, StatusType.Impositio, val1: skillLevel, 0, 0, 0, 120_000, src);
+            }, includeSelf: false);
+        }
     }
 }

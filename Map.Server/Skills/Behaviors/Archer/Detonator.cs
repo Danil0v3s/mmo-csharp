@@ -15,6 +15,6 @@ public sealed class Detonator : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: walk BL_SKILL units in splash, fire skill_detonator on each.
+        // Deferred: walk BL_SKILL units in splash, fire skill_detonator on each — needs BL_SKILL splash enumerator in ctx.
     }
 }

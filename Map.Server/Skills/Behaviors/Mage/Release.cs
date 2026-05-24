@@ -22,7 +22,9 @@ public sealed class Release : SkillImpl
     {
         if (src is not PlayerEntity)
             return;
-        // TODO: spellbook detonation (lv 1) + summoned-ball release (lv 2).
+        // Deferred: spellbook detonation (lv 1) drains SC_FREEZE_SP / SC_SPELLBOOK1..7 stack,
+        // summoned-ball release (lv 2) consumes SC_SPHERE_1..5. Both SC families + the
+        // skill_addtimerskill per-element ATK helper aren't wired here yet.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, 0);
     }
 }

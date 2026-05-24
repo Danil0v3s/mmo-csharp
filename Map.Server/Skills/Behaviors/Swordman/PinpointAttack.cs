@@ -1,4 +1,5 @@
 using Map.Server.Entities;
+using Map.Server.Inventory;
 using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Swordman;
@@ -25,11 +26,26 @@ public sealed class PinpointAttack : WeaponSkillImpl
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         var rate = 30 + 5 * skillLevel + (src.Stats.Agi + src.Level) / 10;
-        if (skillLevel == 1)
+        // rAthena (LG_PINPOINTATTACK): lv1 bleeds, lv2-5 break helm / shield /
+        // armor / weapon. The break-equip pipe takes rate as a centi-percent.
+        switch (skillLevel)
         {
-            if (_rng.Next(100) < rate)
-                ctx.Sc?.Start(target, StatusType.Bleeding, val1: skillLevel, val2: (int)src.Id, 0, 0, durationMs: 30_000, src);
+            case 1:
+                if (_rng.Next(100) < rate)
+                    ctx.Sc?.Start(target, StatusType.Bleeding, val1: skillLevel, val2: (int)src.Id, 0, 0, durationMs: 30_000, src);
+                break;
+            case 2:
+                ctx.SideEffect?.BreakEquip(src, target, (int)EquipBits.Helm, rate * 100);
+                break;
+            case 3:
+                ctx.SideEffect?.BreakEquip(src, target, (int)EquipBits.HandL, rate * 100);
+                break;
+            case 4:
+                ctx.SideEffect?.BreakEquip(src, target, (int)EquipBits.Armor, rate * 100);
+                break;
+            case 5:
+                ctx.SideEffect?.BreakEquip(src, target, (int)EquipBits.HandR, rate * 100);
+                break;
         }
-        // TODO: lv2-5 — call skill_break_equip(target, EQP_*, rate*100) once the break-equip path lands.
     }
 }

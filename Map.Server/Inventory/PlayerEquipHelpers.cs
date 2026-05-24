@@ -37,7 +37,7 @@ public sealed class PlayerEquipHelpers : IPlayerEquipHelpers
         // Composite "dual" detection is class-mask gated; first slice
         // copies the right-hand's subtype int (0 = bare).
         var session = _sessions.GetByEntityId(pc.Id);
-        if (session?.Inventory == null) return;
+        if (session?.Inventory == null) { pc.WeaponType = 0; return; }
         int rhSubtype = 0;
         int lhSubtype = 0;
         foreach (var row in session.Inventory)
@@ -48,6 +48,12 @@ public sealed class PlayerEquipHelpers : IPlayerEquipHelpers
             if ((row.Equip & EquipBits.HandR) != 0 && int.TryParse(def.Subtype, out var rh)) rhSubtype = rh;
             if ((row.Equip & EquipBits.HandL) != 0 && int.TryParse(def.Subtype, out var lh)) lhSubtype = lh;
         }
+        // Store on PlayerEntity for skill plugins that branch on weapon kind.
+        // Mirrors rAthena `sd->status.weapon` (the persistable right-hand)
+        // and `sd->weapontype` (the composite). First-slice records the
+        // right-hand subtype only; dual-wield W_DOUBLE_* composite when
+        // the class-mask dispatcher ports.
+        pc.WeaponType = rhSubtype;
         _logger.LogDebug(
             "pc_calcweapontype: char {Char} R={Rh} L={Lh}",
             pc.CharacterId, rhSubtype, lhSubtype);

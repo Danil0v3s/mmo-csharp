@@ -28,8 +28,9 @@ public sealed class Hindsight : SkillImpl
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         if (src is PlayerEntity)
         {
-            // TODO: open clif_autospell dialog so the player can pick a Bolt — autospell SC
-            // is started after the pick lands.
+            // Deferred: ZC_AUTOSPELLLIST packet + handler not wired yet. rAthena opens the
+            // bolt-pick dialog and starts SC_AUTOSPELL after the pick — tracked in
+            // PARITY-REMAINING.md.
             return;
         }
         // Non-player branch: deterministic spell pick.

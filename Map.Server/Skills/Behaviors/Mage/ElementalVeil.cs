@@ -19,7 +19,8 @@ public sealed class ElementalVeil : SkillImpl
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         if (src is not PlayerEntity sd) return;
-        // TODO: read sd.BoundElemental, verify it's an EM-tier elemental, then sc_start(SC_ELEMENTAL_VEIL).
+        // Deferred: bound-elemental subsystem not ported — can't verify EM-tier elemental
+        // ownership, so we fail the cast and let the requirement-refund path run.
         ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SummonNone);
     }
 }

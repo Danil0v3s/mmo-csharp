@@ -19,7 +19,8 @@ public sealed class SpiritControl : SkillImpl
     {
         if (src is not PlayerEntity)
             return;
-        // TODO: bound-elemental mode change / delete per skillLevel.
+        // Deferred: bound-elemental subsystem not ported — mode change (passive/assist/
+        // aggressive) + delete per skillLevel needs it.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

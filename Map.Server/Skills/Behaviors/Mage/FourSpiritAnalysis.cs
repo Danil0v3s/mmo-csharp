@@ -14,6 +14,7 @@ public sealed class FourSpiritAnalysis : SkillImpl
     {
         if (src is not PlayerEntity) return;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: clif_skill_itemlistwindow — opens item-selection UI.
+        // Deferred: ZC_ITEMLISTWIN_OPEN item-selection packet isn't ported yet —
+        // the chooser UI is opened in rAthena via clif_skill_itemlistwindow.
     }
 }

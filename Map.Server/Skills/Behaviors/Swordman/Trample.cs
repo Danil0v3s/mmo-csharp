@@ -16,7 +16,8 @@ public sealed class Trample : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: 25 + 25*lv % chance to dispel traps in splash range.
+        // Deferred: 25 + 25*lv % chance to dispel traps in splash range needs
+        // the skill-unit (trap) enumeration path, which is not yet ported.
         ctx.Sc?.End(target, StatusType.SvRoottwist);
     }
 }

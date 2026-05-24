@@ -33,6 +33,7 @@ public sealed class MindBreaker : SkillImpl
         }
         ctx.Sc?.Start(target, StatusType.Mindbreaker, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: cancel target's current cast + retarget mob aggro toward src.
+        // Deferred: cancel target's current cast (SkillCastService.Cancel not wired) +
+        // retarget mob aggro toward src (mob.target_id mutator not surfaced here).
     }
 }

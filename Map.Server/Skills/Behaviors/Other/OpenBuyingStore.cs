@@ -15,7 +15,7 @@ public sealed class OpenBuyingStore : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity) return;
-        // TODO: buyingstore_setup(sd, MAX_BUYINGSTORE_SLOTS).
+        // Deferred: buyingstore_setup(sd, MAX_BUYINGSTORE_SLOTS) — buying-store subsystem not yet ported.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

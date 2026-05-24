@@ -9,7 +9,7 @@ namespace Map.Server.Skills.Behaviors.Archer;
 ///
 /// <para>Stacking bow skill. Ratio: <c>+(-100 + 500 + 1300*lv) + 5*CON</c>,
 /// scaled by 20× the SC_CRESCIVEBOLT stack count (caster SC readback
-/// TODO) and ×1.2 with SC_CALAMITYGALE (+×1.5 vs Brute/Fish). After
+/// deferred) and ×1.2 with SC_CALAMITYGALE (+×1.5 vs Brute/Fish). After
 /// the hit, the SC_CRESCIVEBOLT stack increments up to 3.</para>
 /// </summary>
 public sealed class CresciveBolt : WeaponSkillImpl

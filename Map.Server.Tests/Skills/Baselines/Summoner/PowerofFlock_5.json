@@ -1,5 +1,11 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
     "kind": "nodamage",
     "data": {
       "src": 1,
@@ -12,7 +18,7 @@
   {
     "kind": "sc-start",
     "data": {
-      "target": 1,
+      "target": 1000,
       "type": "Fear",
       "val1": 5,
       "val2": 0,
@@ -25,7 +31,7 @@
   {
     "kind": "sc-start",
     "data": {
-      "target": 1,
+      "target": 1000,
       "type": "Freeze",
       "val1": 5,
       "val2": 0,

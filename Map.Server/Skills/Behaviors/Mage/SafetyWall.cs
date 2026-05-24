@@ -38,10 +38,8 @@ public sealed class SafetyWall : SkillImpl
         // off the MG_SAFETYWALL skill_unit_db entry (max hits = level-dependent).
         _units?.Place(src, SkillId, skillLevel, x, y);
 
-        // TODO: Land Protector overlap check (skill_cell_overlap).
-        // When the target cell already has a Land Protector unit,
-        // rAthena's branch sets SKILL_NOCONSUME_REQ to refund the
-        // Yellow Gemstone. Implement once ISkillUnitService surfaces
-        // a HasUnitAt(skillId, x, y) query.
+        // Deferred: Land Protector overlap check (skill_cell_overlap). When the target
+        // cell already has a Land Protector unit, rAthena sets SKILL_NOCONSUME_REQ to refund
+        // the Yellow Gemstone. Needs ISkillUnitService.HasUnitAt(skillId, x, y) query.
     }
 }

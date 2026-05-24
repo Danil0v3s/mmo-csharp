@@ -5,8 +5,7 @@ namespace Map.Server.Skills.Behaviors.Merchant;
 /// <summary>
 /// NC_B_SIDESLIDE — Mechanic Back Side Slide. Manual port of
 /// <c>rathena-fork/src/map/skills/merchant/backsideslide.cpp</c>.
-/// Slides caster backward via knockback. UnitOps.BlownBy ignores the
-/// no-knockback flag here; direction lookup TODO.
+/// rAthena skill.cpp:11822: blewcount = 7 in caster's facing direction.
 /// </summary>
 public sealed class BackSideSlide : SkillImpl
 {
@@ -14,7 +13,11 @@ public sealed class BackSideSlide : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
+        if (ctx.UnitOps != null)
+        {
+            var dir = ctx.UnitOps.GetDir(src);
+            ctx.UnitOps.BlownBy(src, dir, count: 7);
+        }
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: slide via UnitOps.BlownBy with caster facing direction.
     }
 }

@@ -8,6 +8,7 @@ using Map.Server.Session;
 using Map.Server.Spawn;
 using Map.Server.Spawn.MobOps;
 using Map.Server.Status;
+using Map.Server.World;
 
 namespace Map.Server.Skills.Behaviors;
 
@@ -79,4 +80,11 @@ public sealed record SkillBehaviorContext(
     IMobOpsService? MobOps = null,
     ISkillAttackService? SkillAttack = null,
     ISkillSideEffectService? SideEffect = null,
-    IMapSessionRegistry? Sessions = null);
+    IMapSessionRegistry? Sessions = null,
+    /// <summary>Map-name → MapData registry. Lets plugins resolve the
+    /// caster's current map name from its hashed <see cref="Entity.MapId"/>
+    /// for Setpos / warp dispatch.</summary>
+    IMapWorldRegistry? World = null,
+    /// <summary>Map-flag service (no-teleport / no-skill / no-pvp / etc.).
+    /// Plugins gate fail-early when a forbidden flag is set.</summary>
+    IMapFlagService? MapFlags = null);

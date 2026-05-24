@@ -10,8 +10,8 @@ namespace Map.Server.Skills.Behaviors.Archer;
 /// <para>Renewal: a Performer "song" handled by the song dispatcher
 /// (party-wide buff per tick). Pre-renewal: drops a ground unit at
 /// the cast XY. <c>skill_castend_song</c> isn't wired here yet — we
-/// drop the unit (renewal path) and leave the song dispatcher as
-/// TODO.</para>
+/// drop the unit (renewal path) and leave the song dispatcher
+/// deferred until skill_castend_song lands.</para>
 /// </summary>
 public sealed class AcousticRhythm : SkillImpl
 {

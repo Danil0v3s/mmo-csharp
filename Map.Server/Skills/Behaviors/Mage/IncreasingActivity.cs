@@ -24,7 +24,8 @@ public sealed class IncreasingActivity : SkillImpl
             return;
         }
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: AP heal (Activity Point trait); SP-heal placeholder.
+        // Deferred: AP (Activity Point) heal is a 4th-class trait stat; PlayerEntity has
+        // no AP field yet so we approximate by routing the heal through SP.
         _statusOps?.Heal(target, 0, 10 * skillLevel, 0);
     }
 }

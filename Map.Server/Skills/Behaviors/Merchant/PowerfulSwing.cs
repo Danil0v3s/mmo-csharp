@@ -5,8 +5,10 @@ namespace Map.Server.Skills.Behaviors.Merchant;
 /// <summary>
 /// MT_POWERFUL_SWING — Meister Powerful Swing. Manual port of
 /// <c>rathena-fork/src/map/skills/merchant/powerfulswing.cpp</c>.
-/// Ratio: <c>+(-100 + 300 + 850*lv) + 5*POW</c>. SC_AXE_STOMP bonus
-/// TODO.
+/// Ratio: <c>+(-100 + 300 + 850*lv) + 5*POW</c>. Deferred: rAthena
+/// also adds <c>+100 + 100*lv</c> when the caster has SC_AXE_STOMP,
+/// but <see cref="CalculateSkillRatio"/> has no SC accessor on
+/// <see cref="Entity"/>; routing requires extending the hook signature.
 /// </summary>
 public sealed class PowerfulSwing : RecursiveDamageSplashSkillImpl
 {

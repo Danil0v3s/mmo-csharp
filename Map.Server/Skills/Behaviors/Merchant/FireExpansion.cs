@@ -18,6 +18,8 @@ public sealed class FireExpansion : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: locate GN_DEMONIC_FIRE unit near (x, y) and apply per-level transform.
+        // Deferred: rAthena map_foreachinrange(BL_SKILL) lookup for GN_DEMONIC_FIRE
+        // groups + per-level transform (extend / detonate / smoke / tear-gas /
+        // acid-cascade) needs skill-unit splash iteration that isn't on ctx yet.
     }
 }

@@ -22,7 +22,12 @@ public sealed class ReleaseNinjaSpell : SkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
-        // TODO: scale by sd->spiritcharm + RE_LVL_DMOD(100) + pc_delspiritcharm.
+        if (src is PlayerEntity sd && sd.SpiritCharmType != 0 && sd.SpiritCharm > 0)
+            return baseRatio + (-100 + 200 * sd.SpiritCharm);
+        // Deferred: RE_LVL_DMOD(100) scale by caster base level (no
+        // CalculateSkillRatio-side helper plumbed yet) and pc_delspiritcharm
+        // consumption (no IPlayerOrbService access in this signature; charms
+        // must currently be cleared elsewhere or left to natural expiry).
         return baseRatio;
     }
 

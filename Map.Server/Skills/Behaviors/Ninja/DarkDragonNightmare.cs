@@ -28,11 +28,12 @@ public sealed class DarkDragonNightmare : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: splash via skill_area_sub — for now hit primary target.
-        _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
+        // rAthena map_foreachinrange( skill_area_sub … BCT_ENEMY | SD_SPLASH | 1 ).
+        var attack = _skillAttack ?? ctx.SkillAttack;
+        attack?.SkillAttackArea(src, target, SkillId, skillLevel);
         if (ctx.Sc?.Get(target, StatusType.Nightmare) != null)
         {
-            _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
+            attack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
         }
     }
 

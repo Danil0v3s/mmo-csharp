@@ -21,9 +21,9 @@ public sealed class ElementalBuster : SkillImpl
     {
         if (src is not PlayerEntity sd)
             return;
-        // TODO: bound-elemental class lookup + per-element dispatch to
-        // EM_ELEMENTAL_BUSTER_{FIRE,WATER,WIND,GROUND,POISON}. For now,
-        // fail the cast so the requirement-refund path runs.
+        // Deferred: bound-elemental subsystem not ported — class lookup + per-element
+        // dispatch to EM_ELEMENTAL_BUSTER_{FIRE,WATER,WIND,GROUND,POISON} requires it.
+        // For now, fail the cast so the requirement-refund path runs.
         ctx.Client?.BroadcastSkillFail(sd, SkillId, Core.Server.Packets.Out.ZC.SkillFailCause.SummonNone);
     }
 }

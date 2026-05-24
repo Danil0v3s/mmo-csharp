@@ -23,7 +23,7 @@ public sealed class Adoramus : RecursiveDamageSplashSkillImpl
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         // rAthena: sc_start(src,target, SC_ADORAMUS, skill_lv*4 + (sd ? job_lv : 50)/2, skill_lv, skill_get_time2(...));
-        var jobLv = 50; // TODO: read caster.JobLevel when surfaced on PlayerEntity.
+        var jobLv = src is PlayerEntity pcCaster ? pcCaster.JobLevel : 50;
         var chance = skillLevel * 4 + jobLv / 2;
 
         // Duration: skill_db.yml Duration2 for AB_ADORAMUS — 6000 + 4000*lv ms.

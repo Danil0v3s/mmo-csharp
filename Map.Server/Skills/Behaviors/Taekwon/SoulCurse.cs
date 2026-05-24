@@ -7,9 +7,17 @@ namespace Map.Server.Skills.Behaviors.Taekwon;
 public sealed class SoulCurse : SkillImpl
 {
     public SoulCurse() : base(SkillIds.SP_SOULCURSE) { }
+    private readonly System.Random _rng = System.Random.Shared;
+
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: SC_SOULCURSE enum may not be exposed yet — gated via animation only.
+        // rAthena: 30 + 10*lv% to apply SC_SOULCURSE. Duration scales
+        // with skill_db Duration2; first-slice uses 30s flat.
+        var chance = 30 + 10 * skillLevel;
+        if (_rng.Next(100) < chance)
+        {
+            ctx.Sc?.Start(target, StatusType.Soulcurse, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
+        }
     }
 }

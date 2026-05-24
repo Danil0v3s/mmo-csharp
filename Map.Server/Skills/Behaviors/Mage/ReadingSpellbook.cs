@@ -22,6 +22,7 @@ public sealed class ReadingSpellbook : SkillImpl
             return;
         }
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: skill_spellbook(sd, ITEMID_WL_MB_SG + lv - 1) — wired with the spellbook service.
+        // Deferred: skill_spellbook(sd, ITEMID_WL_MB_SG + lv - 1) — needs the Warlock
+        // spellbook service (book→spell mapping + SC_SPELLBOOK1..7 stack) which isn't ported yet.
     }
 }

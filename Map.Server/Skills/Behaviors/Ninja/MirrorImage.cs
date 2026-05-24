@@ -14,7 +14,8 @@ public sealed class MirrorImage : StatusSkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: SC_BUNSINJYUTSU enum missing.
+        // rAthena: recasting cancels existing mirror image.
+        ctx.Sc?.End(target, StatusType.Bunsinjyutsu);
         base.CastendNoDamageId(src, target, skillLevel, ctx);
         ctx.Sc?.End(target, StatusType.Nen);
     }

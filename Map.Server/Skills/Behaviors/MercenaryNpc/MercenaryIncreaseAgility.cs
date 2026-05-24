@@ -17,7 +17,7 @@ public sealed class MercenaryIncreaseAgility : SkillImpl
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         if (target is PlayerEntity && ctx.Sc?.Get(target, StatusType.Changeundead) != null)
-            return; // TODO: BF_MISC damage.
+            return; // Deferred: BF_MISC damage path (skill_attack BF_MISC) — needs misc-damage dispatch.
         ctx.Sc?.Start(target, StatusType.IncreaseAgi, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
     }
 }

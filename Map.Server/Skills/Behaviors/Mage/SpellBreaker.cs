@@ -38,7 +38,8 @@ public sealed class SpellBreaker : SkillImpl
             return;
         }
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: cancel target's current cast + drain its SP cost back to the caster.
+        // Deferred: cancel target's current cast + drain its actual SP cost — needs
+        // SkillCastService.Cancel + ud->skill_id/lv read which isn't surfaced here yet.
         // For now refund a flat SP token to the caster.
         _statusOps?.Heal(src, 0, 10 * skillLevel, 2);
     }

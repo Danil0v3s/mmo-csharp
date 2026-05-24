@@ -30,7 +30,8 @@ public sealed class FrostNova : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: full splash dispatch via map_foreachinshootrange.
+        // Deferred: full map_foreachinshootrange splash dispatch — needs the LoS-filtered
+        // area iterator (ISkillAttackService.SkillAreaSub is square-range, not shoot-range).
     }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)

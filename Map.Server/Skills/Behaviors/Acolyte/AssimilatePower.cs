@@ -33,7 +33,13 @@ public sealed class AssimilatePower : SkillImpl
         // Inner per-victim path: drain spheres + SP %heal caster.
         if (target is PlayerEntity dstsd)
         {
-            // TODO: gunslinger class guard via MAPID_FIRSTMASK.
+            // rAthena: gunslinger coins are protected — skip the drain path
+            // when the victim is any Gunslinger-family class (Rebellion too).
+            if (MapidClass.IsBase(dstsd.ClassMask, MapidClass.Gunslinger))
+            {
+                ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel, success: false);
+                return;
+            }
             int amount = _orbs?.Get(dstsd, OrbKind.Spirit) ?? 0;
             if (amount > 0)
             {
@@ -47,6 +53,19 @@ public sealed class AssimilatePower : SkillImpl
             ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel, success: amount != 0);
         }
 
-        // TODO: outer splash iteration when called via skill_area_sub.
+        // Outer splash iteration: rAthena's skill_area_sub invokes the inner
+        // per-victim path on each PC in range. Use ctx.SkillAttack.SkillAreaSub
+        // when present so the drain extends beyond the primary target.
+        if (ctx.SkillAttack != null && target != null && ReferenceEquals(target, src))
+        {
+            // Self-cast outer iteration (PvP/GvG drain): walk a 3-cell range
+            // around the caster and recursively invoke the inner branch.
+            ctx.SkillAttack.SkillAreaSub(src, range: 3, victim =>
+            {
+                if (ReferenceEquals(victim, src)) return false;
+                if (victim is PlayerEntity) CastendNoDamageId(src, victim, skillLevel, ctx);
+                return true;
+            });
+        }
     }
 }

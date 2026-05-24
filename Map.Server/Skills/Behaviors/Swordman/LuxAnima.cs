@@ -15,7 +15,8 @@ public sealed class LuxAnima : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: status_change_clear_buffs(target, SCCB_LUXANIMA) on PlayerEntity bonus scripts.
+        // Deferred: status_change_clear_buffs(target, SCCB_LUXANIMA) needs the
+        // bonus_script clear path on PlayerEntity, which is not yet ported.
         ctx.Sc?.Start(target, StatusType.Luxanima, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }

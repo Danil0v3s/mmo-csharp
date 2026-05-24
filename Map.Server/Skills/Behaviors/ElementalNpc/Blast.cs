@@ -15,13 +15,14 @@ public sealed class Blast : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: SC_BLAST target SC not in StatusType yet; using BlastOption-only pair.
-        if (ctx.Sc?.Get(src, StatusType.BlastOption) != null)
+        if (ctx.Sc?.Get(src, StatusType.BlastOption) != null || ctx.Sc?.Get(target, StatusType.Blast) != null)
         {
-            ctx.Sc.End(src, StatusType.BlastOption);
+            ctx.Sc?.End(src, StatusType.BlastOption);
+            ctx.Sc?.End(target, StatusType.Blast);
             return;
         }
         ctx.Sc?.Start(src, StatusType.BlastOption, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+        ctx.Sc?.Start(target, StatusType.Blast, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
         ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
     }
 }

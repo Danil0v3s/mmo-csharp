@@ -77,10 +77,23 @@ public sealed class Clearance : SkillImpl
             }
         }
 
-        // TODO: splash iteration (Clearance is "super-Dispell" — the
-        // rAthena outer branch also runs a 1-cell splash on hit).
-        // Inner per-victim resolution is what's here; the outer splash
-        // path lands once SkillAreaSub takes the per-cell predicate
-        // form Clearance needs.
+        // Outer 1-cell splash: rAthena dispatches Clearance on every BCT_NOENEMY
+        // unit in the 1-cell ring around the primary victim.
+        if (ctx.SkillAttack != null)
+        {
+            ctx.SkillAttack.SkillAreaSub(target, range: 1, victim =>
+            {
+                if (ReferenceEquals(victim, target)) return false;
+                // Same party-only gate as the inner branch for PC victims.
+                if (victim is PlayerEntity vpc && src is PlayerEntity csp
+                    && (csp.PartyId == 0 || csp.PartyId != vpc.PartyId)) return false;
+                if ((victim.Stats.Mode & MobMode.StatusImmune) != 0) return false;
+                if (ctx.Sc != null)
+                {
+                    foreach (var sc in DispellableSubset) ctx.Sc.End(victim, sc);
+                }
+                return true;
+            });
+        }
     }
 }

@@ -15,6 +15,8 @@ public sealed class EmergencyCool : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: pc_overheat(sd, -45 / -75 / -105) based on inventory cooling item tier.
+        // Deferred: pc_overheat helper not ported; selecting the -45/-75/-105 tier
+        // also requires consuming the matching cooling-item from inventory, which
+        // depends on the produce / item-consume pipeline that isn't wired yet.
     }
 }

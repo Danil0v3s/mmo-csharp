@@ -26,7 +26,10 @@ public sealed class DarkeningCannon : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: splash via skill_area_sub + mirage cast.
-        _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
+        // rAthena map_foreachinrange( skill_area_sub … BCT_ENEMY | SD_SPLASH | 1 ).
+        (_skillAttack ?? ctx.SkillAttack)?.SkillAttackArea(src, target, SkillId, skillLevel);
+        // Deferred: skill_mirage_cast — invokes the SS_SHINKIROU mirror cell
+        // unit at the cannon's origin to extend the skill's effective range.
+        // No C# wrapper for skill_mirage_cast on ISkillUnitService yet.
     }
 }

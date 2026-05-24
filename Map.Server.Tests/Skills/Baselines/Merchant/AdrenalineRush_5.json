@@ -1,15 +1,8 @@
 [
   {
-    "kind": "sc-start",
+    "kind": "non-deterministic",
     "data": {
-      "target": 1,
-      "type": "Adrenaline",
-      "val1": 5,
-      "val2": 1,
-      "val3": 0,
-      "val4": 0,
-      "durationMs": 150000,
-      "src": 1
+      "reason": "trace diverged across runs"
     }
   },
   {

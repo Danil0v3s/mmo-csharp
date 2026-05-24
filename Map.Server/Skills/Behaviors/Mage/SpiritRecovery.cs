@@ -17,7 +17,8 @@ public sealed class SpiritRecovery : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity) return;
-        // TODO: charge sd 10 % HP/SP, heal sd.BoundElemental by the same.
+        // Deferred: bound-elemental subsystem not ported — no BoundElemental to heal,
+        // and the 10 % HP/SP siphon has no recipient.
         ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
     }
 }

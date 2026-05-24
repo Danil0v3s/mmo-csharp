@@ -9,9 +9,9 @@ namespace Map.Server.Skills.Behaviors.Mage;
 ///
 /// <para>Drops the Fire Pillar ground unit. Per-tick MATK ratio:
 /// <c>+(-60 + 20*lv)</c>. Player casters split damage across hits
-/// (negative div_ on rAthena); this nuance is TODO until BattleDamage
+/// (negative div_ on rAthena); this nuance is deferred until BattleDamage
 /// gains the signed-div field. Walk-delay slow on hit victims is also
-/// TODO.</para>
+/// deferred.</para>
 /// </summary>
 public sealed class FirePillar : SkillImpl
 {

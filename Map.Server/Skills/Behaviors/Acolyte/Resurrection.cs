@@ -75,8 +75,9 @@ public sealed class Resurrection : SkillImpl
 
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
 
-        // TODO: battle_config.resurrection_exp grants partial base/job EXP
-        // to the caster based on level delta. Requires next-level EXP
-        // lookup which isn't surfaced yet.
+        // Deferred per PARITY-REMAINING.md §P2.3: battle_config.resurrection_exp
+        // grants partial base/job EXP to the caster based on level delta.
+        // Requires next-level EXP lookup that isn't surfaced through
+        // SkillBehaviorContext yet.
     }
 }

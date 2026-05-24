@@ -16,5 +16,7 @@ public sealed class HesperusLit : WeaponSkillImpl
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
         => baseRatio + (-100 + 300 * skillLevel) + src.Stats.Vit / 6;
-    // TODO: when SC_INSPIRATION is active, ratio becomes +(-100 + 450*lv).
+    // Deferred: with SC_INSPIRATION active the ratio becomes +(-100 + 450*lv).
+    // CalculateSkillRatio has no SkillBehaviorContext parameter, so the SC
+    // table is not reachable here; needs a ratio-hook signature change.
 }

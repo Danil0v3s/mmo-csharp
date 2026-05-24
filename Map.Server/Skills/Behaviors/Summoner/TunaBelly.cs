@@ -15,7 +15,9 @@ public sealed class TunaBelly : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: skip Emperium / BG class targets.
+        // Skip status-immune mobs (Emperium / BG / WoE-only) via MobMode.
+        if (target is MobEntity mob && (mob.Stats.Mode & Map.Server.Status.MobMode.StatusImmune) != 0)
+            return;
         if (target.Stats.Hp == target.Stats.MaxHp) return;
         var heal = ((2 * skillLevel - 1) * 10) * target.Stats.MaxHp / 100;
         if (target is PlayerEntity p)

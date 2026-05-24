@@ -25,7 +25,8 @@ public sealed class Praefatio : SkillImpl
         // application + party-count Val4 land once SC_PRAEFATIO is added.
         ctx.Client?.BroadcastSkillNoDamage(target, target, SkillId, skillLevel);
 
-        // TODO: when StatusType.Praefatio is added, apply the SC with
-        // Val4 = party member count for proportional damage absorb.
+        // Deferred per PARITY-REMAINING.md §P2.3: SC_PRAEFATIO not yet on the
+        // StatusType enum. Once added, apply with Val4 = party member count
+        // for proportional damage absorb.
     }
 }

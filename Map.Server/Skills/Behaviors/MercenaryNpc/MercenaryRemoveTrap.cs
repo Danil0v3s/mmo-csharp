@@ -6,7 +6,7 @@ namespace Map.Server.Skills.Behaviors.MercenaryNpc;
 /// MA_REMOVETRAP — Mercenary Remove Trap. Manual port of
 /// <c>rathena-fork/src/map/skills/mercenary/mercenary_removetrap.cpp</c>.
 /// Removes any skill unit flagged INF2_ISTRAP. Trap-unit lookup +
-/// delete are TODO.
+/// delete deferred.
 /// </summary>
 public sealed class MercenaryRemoveTrap : SkillImpl
 {
@@ -14,7 +14,7 @@ public sealed class MercenaryRemoveTrap : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: skill_delunit on target if it's a trap unit.
+        // Deferred: skill_delunit on target if it's a trap unit — needs BL_SKILL targeting hook.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

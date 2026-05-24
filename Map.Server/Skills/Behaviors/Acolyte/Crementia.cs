@@ -24,8 +24,8 @@ public sealed class Crementia : SkillImpl
         int blessLv;
         if (src is PlayerEntity sd)
         {
-            var learned = sd.LearnedSkills.GetValueOrDefault(SkillIds.AL_BLESSING);
-            blessLv = learned + 50 / 10; // TODO: read caster.JobLevel.
+            var learned = ctx.PlayerSkill?.CheckSkill(sd, SkillIds.AL_BLESSING) ?? 0;
+            blessLv = learned + sd.JobLevel / 10;
         }
         else
         {
@@ -37,6 +37,13 @@ public sealed class Crementia : SkillImpl
         ctx.Sc?.Start(target, StatusType.Blessing,
             val1: blessLv, 0, 0, 0, durationMs: 120_000, src);
 
-        // TODO: party iteration.
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                ctx.Sc?.Start(m, StatusType.Blessing, val1: blessLv, 0, 0, 0, durationMs: 120_000, src);
+            }, includeSelf: false);
+        }
     }
 }

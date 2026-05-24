@@ -16,7 +16,7 @@ public sealed class SummonElementalSerpens : SkillImpl
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         if (src is not PlayerEntity) return;
-        // TODO: bound-elemental upgrade any L3 → SERPENS.
+        // Deferred: bound-elemental subsystem not ported — any L3 → SERPENS upgrade.
         ctx.Sc?.Start(src, StatusType.SummonElementalSerpens, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
     }
 }

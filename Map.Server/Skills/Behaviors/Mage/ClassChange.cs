@@ -21,7 +21,13 @@ public sealed class ClassChange : SkillImpl
             return;
         }
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: mob_class_change(target, random_id_from(MOBG_CLASSCHANGE))
-        // — requires mob class-mutation helper on IMobSpawnService.
+        if (target is MobEntity mob && ctx.MobOps != null)
+        {
+            // rAthena: mob_class_change(target, mob_get_random_id(MOBG_CLASSCHANGE,...)).
+            // The MOBG_CLASSCHANGE group YAML isn't loaded yet, so we fall through with
+            // type=0 (unfiltered) — Deferred: proper mob-group filter table.
+            var newClass = ctx.MobOps.GetRandomId(0, 0, 1);
+            if (newClass > 0) ctx.MobOps.SetClass(mob, newClass);
+        }
     }
 }

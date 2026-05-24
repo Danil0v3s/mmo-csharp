@@ -24,6 +24,13 @@ public sealed class Magnificat : SkillImpl
         ctx.Client?.BroadcastSkillNoDamage(target, target, SkillId, skillLevel);
         var duration = 15_000 * (1 + skillLevel);
         ctx.Sc?.Start(target, StatusType.Magnificat, val1: skillLevel, 0, 0, 0, duration, src);
-        // TODO: party_foreachsamemap — see Angelus for the rAthena pattern.
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                ctx.Sc?.Start(m, StatusType.Magnificat, val1: skillLevel, 0, 0, 0, duration, src);
+            }, includeSelf: false);
+        }
     }
 }

@@ -7,9 +7,9 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// <c>rathena-fork/src/map/skills/mage/firewalk.cpp</c>.
 ///
 /// <para>Self-buff that paints burning ground while the caster moves.
-/// Ratio: <c>+(-100 + 60*lv)</c>; SC_HEATER_OPTION job-level/2 bonus is
-/// TODO. Buff replaces any active SC_FIREWALK before starting fresh —
-/// SC_FIREWALK is not yet on our StatusType enum (TODO).</para>
+/// Ratio: <c>+(-100 + 60*lv)</c>; SC_HEATER_OPTION job-level/2 bonus and the
+/// SC_FIREWALK buff itself are deferred — SC_FIREWALK is not yet on the
+/// StatusType enum.</para>
 /// </summary>
 public sealed class FireWalk : SkillImpl
 {

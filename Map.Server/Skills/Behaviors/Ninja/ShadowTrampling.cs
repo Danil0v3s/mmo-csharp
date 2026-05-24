@@ -17,10 +17,20 @@ public sealed class ShadowTrampling : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        if (target is PlayerEntity)
+        if (target is PlayerEntity && ctx.Sc != null)
         {
-            ctx.Sc?.End(target, StatusType.Hiding);
-            // TODO: end SC_CLOAKING / SC_CLOAKINGEXCEED / SC_CAMOUFLAGE / SC_NEWMOON / SC__SHADOWFORM / SC_MARIONETTE / SC_HARMONIZE.
+            ctx.Sc.End(target, StatusType.Hiding);
+            ctx.Sc.End(target, StatusType.Cloaking);
+            ctx.Sc.End(target, StatusType.Cloakingexceed);
+            ctx.Sc.End(target, StatusType.Camouflage);
+            ctx.Sc.End(target, StatusType.Newmoon);
+            ctx.Sc.End(target, StatusType.Shadowform);
+            ctx.Sc.End(target, StatusType.Marionette);
+            ctx.Sc.End(target, StatusType.Harmonize);
+            // rAthena: on a successful trample, apply SC_KG_KAGEHUMI to the
+            // victim (Duration1 ranges 5000..9000 ms by level per skill_db).
+            var duration = 5_000 + (skillLevel - 1) * 1_000;
+            ctx.Sc.Start(target, StatusType.Kagehumi, val1: skillLevel, 0, 0, 0, durationMs: duration, src);
         }
     }
 }

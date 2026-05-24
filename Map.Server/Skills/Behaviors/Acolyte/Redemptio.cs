@@ -1,6 +1,7 @@
 using Map.Server.Entities;
 using Map.Server.Status;
 using Map.Server.Status.StatusOps;
+using Map.Server.World;
 
 namespace Map.Server.Skills.Behaviors.Acolyte;
 
@@ -36,8 +37,24 @@ public sealed class Redemptio : SkillImpl
     {
         if (src is not PlayerEntity caster) return;
 
-        // TODO: map-flag gating (WoE / Battleground) once IMapFlagService
-        // is routed through SkillBehaviorContext.
+        // Map-flag gating: WoE / GvG / NoSkill reject the revive entirely.
+        // (Battleground is a separate flag in rAthena's mapflag.yml and isn't
+        // modeled in our MapFlag enum yet — deferred per PARITY-REMAINING.md §P2.3.)
+        if (ctx.MapFlags != null && ctx.World != null)
+        {
+            string? mapName = null;
+            foreach (var m in ctx.World.All)
+            {
+                if ((uint)m.Name.GetHashCode() == caster.MapId) { mapName = m.Name; break; }
+            }
+            if (mapName != null && (ctx.MapFlags.IsSet(mapName, MapFlag.Gvg)
+                                     || ctx.MapFlags.IsSet(mapName, MapFlag.NoSkill)))
+            {
+                ctx.Client?.BroadcastSkillFail(caster, SkillId,
+                    Core.Server.Packets.Out.ZC.SkillFailCause.SkillFail);
+                return;
+            }
+        }
 
         // Per-victim path: must be dead, no SC_HELLPOWER.
         if (target.Stats.Hp > 0) return;

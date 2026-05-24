@@ -17,7 +17,10 @@ public sealed class ColdBloodedCannon : SkillImpl
     {
         var ratio = baseRatio + (-100 + 450 + 950 * skillLevel);
         ratio += 5 * src.Stats.Spl;
-        // TODO: SS_ANTENPOU * 40 * lv bonus and SC_WATER_CHARM_POWER +7000.
+        // Deferred: pc_checkskill(sd, SS_ANTENPOU) * 40 * lv bonus — needs the
+        // PlayerSkill service which isn't routed through CalculateSkillRatio.
+        // Deferred: +7000 when SC_WATER_CHARM_POWER is active — that SC is
+        // not yet defined in StatusType.cs.
         return ratio;
     }
 }

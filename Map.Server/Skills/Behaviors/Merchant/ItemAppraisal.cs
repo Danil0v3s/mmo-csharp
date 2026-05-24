@@ -14,6 +14,7 @@ public sealed class ItemAppraisal : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity) return;
-        // TODO: clif_item_identify_list(sd) — UI packet to surface unidentified-item chooser.
+        // Deferred: clif_item_identify_list emits ZC_ACK_ITEMIDENTIFY — the
+        // identify-UI packet isn't ported and ISkillClientService doesn't expose it.
     }
 }

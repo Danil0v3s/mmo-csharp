@@ -28,7 +28,8 @@ public sealed class BattleChant : SkillImpl
         if (existing != null && existing.Val4 == BctSelf)
         {
             ctx.Sc?.End(src, StatusType.Gospel);
-            // TODO: SKILL_NOCONSUME_REQ refund.
+            // Deferred: SKILL_NOCONSUME_REQ requirement refund — needs the
+            // skill-cost / requirement pipeline to expose a refund hook.
             return;
         }
         _units?.Place(src, SkillId, skillLevel, src.X, src.Y);

@@ -15,6 +15,6 @@ public sealed class Encore : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: re-trigger sd.skill_id_dance at sd.skill_lv_dance.
+        // Deferred: re-trigger sd.skill_id_dance at sd.skill_lv_dance — needs dance bookkeeping on PlayerEntity.
     }
 }

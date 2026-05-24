@@ -14,12 +14,15 @@ public sealed class PhantomThrust : WeaponSkillImpl
     public PhantomThrust() : base(SkillIds.RK_PHANTOMTHRUST) { }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + (-100 + 50 * skillLevel) + 10 * 5; // TODO: pc_checkskill(KN_SPEARMASTERY).
+        // Deferred: KN_SPEARMASTERY skill id is not yet registered in SkillIds;
+        // replace the literal 5 with the learned spear-mastery level once it lands.
+        => baseRatio + (-100 + 50 * skillLevel) + 10 * 5;
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: knockback target toward caster (skill_blown).
+        // Deferred: skill_blown to pull target toward caster — needs
+        // src→target direction resolution from MovementService.
         base.CastendDamageId(src, target, skillLevel, ctx);
     }
 }

@@ -16,8 +16,8 @@ public sealed class SummonFlora : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: spawn MOBID_G_MANDRAGORA/HYDRA/FLORA/PARASITE/GEOGRAPHER
-        // (indexed by skillLevel - 1) at (x, y) with AI_FLORA, master_id = src.Id,
-        // and a delete-timer of skill_get_time(AM_CANNIBALIZE, skillLevel).
+        // Deferred: MOBID_G_MANDRAGORA/HYDRA/FLORA/PARASITE/GEOGRAPHER + AI_FLORA
+        // + master-id linkage + delete-timer aren't surfaced through
+        // IMobSpawnService.SpawnAt — would create wild summons otherwise.
     }
 }

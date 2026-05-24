@@ -27,8 +27,7 @@ public sealed class Basilica : StatusSkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // Pre-renewal: ground unit placement. Not used in renewal.
-        // TODO: if pre-renewal compat is ever needed, place a Basilica
-        // SkillUnit + handle the SC_BASILICA cancel-on-recast semantic.
+        // Pre-renewal ground-unit placement is intentionally out of scope —
+        // the codebase targets renewal where the SC carries the entire effect.
     }
 }

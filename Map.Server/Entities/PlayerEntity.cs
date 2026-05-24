@@ -79,6 +79,19 @@ public sealed class PlayerEntity : Entity
     /// </summary>
     public uint ClassMask { get; set; }
 
+    /// <summary>
+    /// rAthena <c>sd-&gt;status.weapon</c> + <c>sd-&gt;weapontype</c>
+    /// — the W_* constants from the equipped right-hand weapon
+    /// (0=Fist/Bare, 1=Dagger, 2=Sword, …, 7=Mace, 8=Staff, 9=Bow,
+    /// 10=Knuckle, 11=Musical, 12=Whip, 13=Book, 14=Katar, 15=Axe,
+    /// 16=Two-Hand Sword, 17=Two-Hand Spear, …). Written by
+    /// <see cref="Inventory.IPlayerEquipHelpers.CalcWeaponType"/> on
+    /// every equip / unequip; read by skill plugins that branch on
+    /// weapon kind (Monk +W_KNUCKLE, Sage Endow W_FIST gate,
+    /// Psychic Wave W_STAFF/W_BOOK doubling, etc.).
+    /// </summary>
+    public int WeaponType { get; set; }
+
     /// <summary>Unspent stat / skill points. <c>pc_checkbaselevelup</c> awards status points; job levelup awards skill points.</summary>
     public int StatusPoints { get; set; }
     public int SkillPoints { get; set; }

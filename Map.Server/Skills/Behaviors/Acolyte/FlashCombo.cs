@@ -36,8 +36,8 @@ public sealed class FlashCombo : StatusSkillImpl
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
 
-        // TODO: lock caster's attack/cast/use-item for 1250 ms via PlayerEntity
-        // canact_tick when that field is surfaced.
+        // Deferred per PARITY-REMAINING.md §P2.3: lock caster's attack/cast/
+        // use-item for 1250 ms — PlayerEntity.canact_tick isn't surfaced yet.
 
         // Schedule the 3-skill chain. Each fires through SkillAttackService
         // as a BF_WEAPON hit on the target.

@@ -13,6 +13,7 @@ public sealed class BeastlyHypnosis : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: pet_catch_process_start(sd, mob_id, PET_CATCH_UNIVERSAL_ALL).
+        // Deferred: pet-catch process (pet_catch_process_start) — needs the pet subsystem
+        // (PetCatchService) which isn't ported yet.
     }
 }

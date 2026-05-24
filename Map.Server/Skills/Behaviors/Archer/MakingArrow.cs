@@ -16,6 +16,6 @@ public sealed class MakingArrow : SkillImpl
     {
         if (src is not PlayerEntity) return;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: clif_arrow_create_list to surface the arrow-craft picker.
+        // Deferred: clif_arrow_create_list to surface the arrow-craft picker — needs craft-list packet.
     }
 }

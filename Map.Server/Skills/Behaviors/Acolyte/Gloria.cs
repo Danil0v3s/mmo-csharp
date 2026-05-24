@@ -20,6 +20,13 @@ public sealed class Gloria : SkillImpl
         ctx.Client?.BroadcastSkillNoDamage(target, target, SkillId, skillLevel);
         var duration = (5 + 5 * skillLevel) * 1000;
         ctx.Sc?.Start(target, StatusType.Gloria, val1: skillLevel, 0, 0, 0, duration, src);
-        // TODO: party_foreachsamemap (see Angelus).
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                ctx.Sc?.Start(m, StatusType.Gloria, val1: skillLevel, 0, 0, 0, duration, src);
+            }, includeSelf: false);
+        }
     }
 }

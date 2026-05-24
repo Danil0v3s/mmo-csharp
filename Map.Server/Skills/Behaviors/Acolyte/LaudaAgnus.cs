@@ -55,6 +55,15 @@ public sealed class LaudaAgnus : SkillImpl
         ctx.Sc?.Start(target, StatusType.Laudaagnus,
             val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
 
-        // TODO: party_foreachsamemap iteration when caster is partied.
+        // rAthena party_foreachsamemap fan-out: when caster is partied
+        // the SC propagates to every same-map partymate.
+        if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
+        {
+            ctx.PartyMap.ForEachOnSameMap(pcSrc, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                ctx.Sc?.Start(m, StatusType.Laudaagnus, val1: skillLevel, 0, 0, 0, durationMs: 60_000, src);
+            }, includeSelf: false);
+        }
     }
 }

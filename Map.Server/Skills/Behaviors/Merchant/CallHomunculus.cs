@@ -16,6 +16,6 @@ public sealed class CallHomunculus : SkillImpl
     {
         if (src is not PlayerEntity) return;
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
-        // TODO: invoke IHomunculusService.Call(sd).
+        // Deferred: homunculus subsystem (IHomunculusService.Call) is not ported.
     }
 }

@@ -26,7 +26,9 @@ public sealed class StealthField : SkillImpl
         if (ctx.Sc != null && ctx.Sc.Get(src, StatusType.StealthfieldMaster) != null)
         {
             ctx.Sc.End(src, StatusType.StealthfieldMaster);
-            // TODO: refund consumables (flag |= SKILL_NOCONSUME_REQ).
+            // Deferred: rAthena sets `flag |= SKILL_NOCONSUME_REQ` so the cast-end
+            // consume pass refunds the magic-gear-fuel. The skill-flag plumbing
+            // back to SkillCastService.ResolveSkill isn't exposed yet.
             return;
         }
         _units?.Place(src, SkillId, skillLevel, src.X, src.Y);

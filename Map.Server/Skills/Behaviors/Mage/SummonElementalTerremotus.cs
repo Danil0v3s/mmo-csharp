@@ -15,7 +15,7 @@ public sealed class SummonElementalTerremotus : SkillImpl
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         if (src is not PlayerEntity) return;
-        // TODO: bound-elemental upgrade TERA_L → TERREMOTUS.
+        // Deferred: bound-elemental subsystem not ported — TERA_L → TERREMOTUS upgrade.
         ctx.Sc?.Start(src, StatusType.SummonElementalTerremotus, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
     }
 }

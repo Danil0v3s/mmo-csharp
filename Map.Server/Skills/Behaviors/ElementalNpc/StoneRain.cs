@@ -26,7 +26,7 @@ public sealed class StoneRain : SkillImpl
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         ctx.Client?.BroadcastSkillNoDamage(src, src, SkillId, skillLevel);
-        // TODO: 30% splash via skill_area_sub — for now single hit only.
+        // Deferred: 30% splash via skill_area_sub — single hit only until elementalNPC splash plumbing lands.
         _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
     }
 }

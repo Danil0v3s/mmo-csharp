@@ -27,9 +27,11 @@ public sealed class Ancilla : SkillImpl
 
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
 
-        // TODO: ISkillProductionService.Produce(sd, ITEMID_ANCILLA, 1).
-        // The fork's production helper handles the SP-cost + cooldown +
-        // inventory-overweight check. Until wired through, no item is
-        // actually granted — broadcast lands so the cast visual plays.
+        // Deferred per PARITY-REMAINING.md §P2.3 (SK-M4): skill-produced item
+        // dispatch isn't wired through SkillBehaviorContext yet —
+        // ISkillProductionService.Produce(sd, ITEMID_ANCILLA, 1). The
+        // production helper handles SP-cost + cooldown + overweight check.
+        // Until wired through, no item is actually granted — broadcast lands
+        // so the cast visual plays.
     }
 }

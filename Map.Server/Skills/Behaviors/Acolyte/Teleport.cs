@@ -34,8 +34,9 @@ public sealed class Teleport : SkillImpl
     {
         if (src is not PlayerEntity sd)
         {
-            // Mob caster: random-warp on same map. TODO: hook into
-            // IUnitOpsService.Warp once it lands.
+            // Mob caster: random-warp on same map. Deferred per
+            // PARITY-REMAINING.md §P2.3 — IUnitOpsService.Warp isn't surfaced
+            // yet (only MovePos / BlownBy / CheckUnitMovePos available).
             return;
         }
 
@@ -43,7 +44,10 @@ public sealed class Teleport : SkillImpl
 
         // Send the chooser packet at lv1 (just "Random") or lv2+ (Random + Save).
         var maps = new List<string> { "Random" };
-        if (skillLevel >= 2) maps.Add("SavePoint"); // TODO: actual save_point.map.
+        // Deferred per PARITY-REMAINING.md §P2.3: save_point.map isn't yet on
+        // PlayerEntity; for now we send the literal label and let the warp
+        // dispatcher resolve at selection time.
+        if (skillLevel >= 2) maps.Add("SavePoint");
 
         _visibility?.SendToSelf(sd, new ZC_WARPLIST
         {

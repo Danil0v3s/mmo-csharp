@@ -17,5 +17,8 @@ public sealed class BowlingBash : WeaponSkillImpl
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
         => baseRatio + 40 * skillLevel;
 
-    // TODO: ModifyDamageData — set Hits to 3 or 4 based on weapon (W_2HSWORD) + miscflag splash count.
+    // Deferred: ModifyDamageData should bump Hits to 3 or 4 with a 2H sword
+    // (W_2HSWORD = 3) based on the splash miscflag (≥2 → 3 hits, ≥4 → 4 hits).
+    // The miscflag count isn't yet plumbed into the damage-modify hook, so the
+    // multi-hit branch waits on that wiring.
 }

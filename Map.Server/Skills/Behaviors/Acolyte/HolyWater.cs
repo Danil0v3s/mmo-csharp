@@ -22,12 +22,15 @@ public sealed class HolyWater : SkillImpl
     {
         if (src is not PlayerEntity caster) return;
 
-        // TODO: skill_produce_mix(sd, AL_HOLYWATER, ITEMID_HOLY_WATER, 0,0,0, 1, -1).
+        // Deferred per PARITY-REMAINING.md §P2.3 (SK-M4): skill-produced item
+        // dispatch isn't wired through SkillBehaviorContext yet —
+        // skill_produce_mix(sd, AL_HOLYWATER, ITEMID_HOLY_WATER, 0,0,0, 1, -1).
         // For now broadcast the cast visual; once production wires up
         // it'll deliver the item + clear SUITON at the cell.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
 
-        // TODO: clear NJ_SUITON skill unit at (target.X, target.Y) via
-        // ISkillUnitService.RemoveAt(skillId, x, y) once that accessor lands.
+        // Deferred per PARITY-REMAINING.md §P2.3: clear NJ_SUITON skill unit
+        // at (target.X, target.Y) — ISkillUnitService has no RemoveAt(skillId,
+        // x, y) accessor yet (only DelUnit / DelUnitGroup by handle).
     }
 }

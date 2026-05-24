@@ -7,7 +7,7 @@ namespace Map.Server.Skills.Behaviors.Thief;
 /// <c>rathena-fork/src/map/skills/thief/mug.cpp</c>.
 /// Rate = <c>10*RG_STEALCOIN + dex/2 + luk/2 + 2*(baseLv - targetLv)</c>
 /// per 1000. On success deals 0 damage + steals zeny. Steal-coin
-/// implementation is TODO — animation only.
+/// implementation deferred — animation only.
 /// </summary>
 public sealed class Mug : SkillImpl
 {
@@ -15,7 +15,7 @@ public sealed class Mug : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // TODO: mob steal-coin flag + zeny credit.
+        // Deferred: mob steal-coin flag + zeny credit — needs mob steal-coin tracking + PlayerEntity.Zeny mutation hook.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

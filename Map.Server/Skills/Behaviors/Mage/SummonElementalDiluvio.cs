@@ -15,7 +15,7 @@ public sealed class SummonElementalDiluvio : SkillImpl
     {
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
         if (src is not PlayerEntity) return;
-        // TODO: bound-elemental upgrade AQUA_L → DILUVIO.
+        // Deferred: bound-elemental subsystem not ported — AQUA_L → DILUVIO upgrade.
         ctx.Sc?.Start(src, StatusType.SummonElementalDiluvio, val1: skillLevel, 0, 0, 0, durationMs: 30_000, src);
     }
 }

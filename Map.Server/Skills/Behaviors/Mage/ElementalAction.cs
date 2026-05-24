@@ -19,7 +19,8 @@ public sealed class ElementalAction : SkillImpl
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         if (src is not PlayerEntity sd) return;
-        // TODO: dispatch sd.BoundElemental.Action(target) when the bound-elemental control surface lands.
+        // Deferred: bound-elemental subsystem (elemental_action + skill_blockpc_start) isn't
+        // ported yet — PlayerEntity has no BoundElemental field.
         ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);
     }
 }

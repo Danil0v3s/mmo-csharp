@@ -17,7 +17,11 @@ public sealed class HuumaShurikenConstruct : WeaponSkillImpl
     {
         var ratio = baseRatio + (-100 + 900 + 1750 * skillLevel);
         ratio += 5 * src.Stats.Pow;
-        // TODO: alt-flag +200 modifier and SS_FUUMASHOUAKU * 100 * lv per-skill bonus.
+        // Deferred: SKILL_ALTDMG_FLAG (+200) and SS_FUUMASHOUAKU * 100 * lv
+        // partner-skill bonus. Both require flow into CalculateSkillRatio that
+        // isn't plumbed: the alt-flag comes from the recursive foreachindir
+        // splash dispatch, and the partner-skill bonus needs a PlayerSkill
+        // lookup which this signature (no SkillBehaviorContext) doesn't expose.
         return ratio;
     }
 }
