@@ -117,6 +117,16 @@ public static class RathenaBaselineExtractor
         if (Regex.IsMatch(cpp, @"\bunit_movepos\s*\(")) kinds.Add("move-pos");
         if (Regex.IsMatch(cpp, @"\bskill_check_unit_movepos\s*\(")) kinds.Add("move-pos");
 
+        // --- transitive helpers ---
+        // skill_spellbook (skill.cpp): pushes one spell into the Warlock
+        // SC_SPELLBOOK ring + bumps SC_FREEZE_SP. Plugins that call it
+        // (WL_READING_SB_READING) inherit those sc-start emits.
+        if (Regex.IsMatch(cpp, @"\bskill_spellbook\s*\("))
+        {
+            kinds.Add("sc-start");
+            kinds.Add("zap");      // status_zap at the end of skill_spellbook
+        }
+
         // --- base-class call inference ---
         // WeaponSkillImpl::castendDamageId → emits both nodamage and
         // damage-broadcast through the standard weapon-hit pipeline.
