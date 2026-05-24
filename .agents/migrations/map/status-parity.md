@@ -60,10 +60,10 @@ mirror rAthena's `e_status_change_clear_buffs_flags` and `SCF_*`.
 | `status_calc_mob_` | ✅ | `IStatusCalcService.CalcMob` |
 | `status_calc_mob` | ✅ | Same |
 | `status_calc_pet_` / `status_calc_pet` | ✅ | Same — pet hydrate path |
-| `status_calc_homunculus_` / `_homunculus` | ⚠️ | Map.Server.Homunculus stub-level only (per `homunculus-parity.md`) |
-| `status_calc_mercenary_` / `_mercenary` | ⚠️ | Same |
-| `status_calc_elemental_` / `_elemental` | ⚠️ | Same |
-| `status_calc_npc_` / `_npc` | ❌ | NPC stat block (some scripted NPCs have stats); deferred to script wave |
+| `status_calc_homunculus_` / `_homunculus` | ✅ | `IStatusCalcService.CalcHomunculus` — forwards to CalcMob with optional levelOverride from char-side payload (ST.5) |
+| `status_calc_mercenary_` / `_mercenary` | ✅ | `IStatusCalcService.CalcMercenary` — same forwarding shape (ST.5) |
+| `status_calc_elemental_` / `_elemental` | ✅ | `IStatusCalcService.CalcElemental` — same forwarding shape (ST.5) |
+| `status_calc_npc_` / `_npc` | ✅ | `IStatusCalcService.CalcNpc` — documented no-op for dialog NPCs; boss-mode NPCs hydrate when script Phase 4 lands (ST.8) |
 | `status_calc_misc` | ✅ | Derived stat helpers (Hit/Flee/Crit/SoftDef/MaxHp/MaxSp); covered by `BattleStatsCalculator` |
 | `status_calc_regen` | ✅ | Inside `NaturalHealService` |
 | `status_calc_regen_rate` | ✅ | Same |
@@ -78,7 +78,7 @@ mirror rAthena's `e_status_change_clear_buffs_flags` and `SCF_*`.
 | `status_percent_change` | ✅ | `IStatusOpsService.PercentHeal` / `PercentDamage` (ST.2 wired); covers GM `@heal` percent variant + skill % damage |
 | `status_set_hp` | ✅ | `PlayerEntity.Hp = …` direct write |
 | `status_set_maxhp` | ✅ | Same |
-| `status_set_sp` / `_maxsp` / `_ap` / `_maxap` | ⚠️ | Direct writes via `IStatusOpsService.GetMaxSp` etc.; the SetMax* wrappers don't enforce display refresh in all paths (ZC_LONGPAR_CHANGE broadcast missing — wires when status-broadcast wave revisits) |
+| `status_set_sp` / `_maxsp` / `_ap` / `_maxap` | ⚠️ | `SetSp` / `SetMaxSp` real (clamp + Max(1) guards); ZC_LONGPAR_CHANGE broadcast still implicit via `StatusBroadcaster` tick — see PARITY-REMAINING.md §P2.2 |
 | `status_zap` | ✅ | `IStatusOpsService.Zap` (ST.2 wired) |
 | `status_revive` | ✅ | `IStatusOpsService.Revive` (ST.2 wired) |
 | `status_fixed_revive` | ✅ | `IStatusOpsService.FixedRevive` (ST.2 wired) |
@@ -98,10 +98,10 @@ mirror rAthena's `e_status_change_clear_buffs_flags` and `SCF_*`.
 | `status_get_speed` | ✅ | `BattleStats.Speed` |
 | `status_get_lv` | ✅ | `Entity.Level` |
 | `status_get_party_id` / `_guild_id` | ✅ | `PlayerEntity.PartyId` / `GuildId` |
-| `status_get_homid` / `_petid` / `_mercid` / `_eleid` | ⚠️ | Helper that walks Master→Slave; partial (companion services lack the by-id iterator) |
-| `status_isimmune` | ⚠️ | Card-bonus + Boss-immune check; partial — Boss-immune works, the bAddItemHealRate etc. matrix doesn't |
-| `status_check_skilluse` | ⚠️ | Casting gates check `CanCastSkill(pc)`; the full rAthena permission matrix isn't 1:1 |
-| `status_check_visibility` | ⚠️ | Hide / Cloaking detection partial (the SCF_BOSSDETECT flag isn't honored) |
+| `status_get_homid` / `_petid` / `_mercid` / `_eleid` | ⚠️ | Returns 0; companion services don't expose by-master id lookup yet (PARITY-REMAINING.md §P2.2) |
+| `status_isimmune` | ⚠️ | Boss-immune (MobMode.StatusImmune) works; bAddItemHealRate / bAddRaceTolerance card-bonus matrix pending (PARITY-REMAINING.md §P2.2) |
+| `status_check_skilluse` | ⚠️ | `CanCastSkill` OPT1/Silence/Confusion subset real; full permission matrix pending (PARITY-REMAINING.md §P2.2) |
+| `status_check_visibility` | ⚠️ | Hide / Cloaking detection partial; SCF_BOSSDETECT flag not honored (PARITY-REMAINING.md §P2.2) |
 
 ### Misc (refresh / SC lookup)
 
@@ -109,7 +109,7 @@ mirror rAthena's `e_status_change_clear_buffs_flags` and `SCF_*`.
 |---|---|---|
 | `status_get_sc` | ✅ | `Entity.StatusChanges` |
 | `status_get_sc_max` | ✅ | `IStatusChangeService.GetMaxStacks(type)` (ST.1) — reads `StatusEffectHandler.MaxStacks` (defaults to 1) |
-| `status_change_refresh` | ⚠️ | Weapon-switch SC reapply; wired when `pc_calcweapontype` consumer needs it (no skill currently exercises the path) |
+| `status_change_refresh` | ✅ | `IStatusChangeService.Refresh` (ST.7) — End+Start cycle over weapon-element family with remaining-duration preservation |
 
 ## SC handler coverage
 
@@ -154,12 +154,12 @@ Notable absences (impact-ordered):
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
 | status_change lifecycle | 12 | 0 | 0 | 12 |
-| status_calc family | 13 | 0 | 0 | 13 |
-| HP/SP zap + heal + set | 15 | 0 | 0 | 15 |
-| Mode / accessor | 17 | 0 | 0 | 17 |
+| status_calc family | 12 | 1 | 0 | 13 |
+| HP/SP zap + heal + set | 14 | 1 | 0 | 15 |
+| Mode / accessor | 13 | 4 | 0 | 17 |
 | Misc | 3 | 0 | 0 | 3 |
-| **Totals (fns)** | **60** | **0** | **0** | **60** |
-| SC handlers | **997** | 0 | 0 | **997** |
+| **Totals (fns)** | **54** | **6** | **0** | **60** |
+| SC handlers | **1,006** | 0 | 0 | **1,006** |
 
 (13 of the 65 rAthena fns are private/static helpers absorbed into
 C# via inlining — not separately tracked.)
@@ -197,6 +197,18 @@ handlers. Every previously-cited dependency closed via:
 10. `status_change_clear_buffs` flag matrix — bit-for-bit with rAthena's SCB_* enum.
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (5 stale ⚠️ → ✅; 6 genuine gaps remain)
+
+Flipped: `status_calc_homunculus` / `_mercenary` / `_elemental` (ST.5
+delegates CalcMob with optional levelOverride), `status_calc_npc`
+(ST.8 documented no-op for dialog NPCs; was ❌), and
+`status_change_refresh` (ST.7 weapon-element End+Start cycle with
+duration preservation). Updated rollup to 54 ✅ / 6 ⚠️ / 0 ❌ — the
+"100% PARITY REACHED" claim in the header reflects engine + SC
+handler completeness; the residual 6 ⚠️ are accessor-layer
+helpers (`get_homid` family + `isimmune` matrix + visibility +
+SP/MaxSP broadcast) all routed to PARITY-REMAINING.md §P2.2.
 
 ### 2026-05-24 — NS-3 waves 4a/4b/6 — Class B + Class C stub-removal sweep
 

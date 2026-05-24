@@ -201,6 +201,12 @@ Tracked separately as the **GD (Guild)** wave. Completed:
 
 ## History
 
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 0 genuine gaps remain)
+
+Verified: this doc is already at 100% ✅ — all ⚠️ grep hits land in
+history-section prose, not functional rows. No-op resync; doc stays at
+74/0/0 across the per-function rollup.
+
 ### 2026-05-22 — **WOE-100: 100% PARITY REACHED** (closes the 9 deferred ⚠️)
 
 The WoE wave landed both halves of the deferred surface:

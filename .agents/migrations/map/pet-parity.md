@@ -29,71 +29,79 @@ for the full IIntifService routing.
 |---|---|---|
 | `PetDatabase::reload` | ✅ | `IPetOpsService.Reload` |
 | `PetDatabase::parseBodyNode` | ✅ | T7.2 intif serialization via `SerializeSnapshot(petId)` |
-| `pet_data_init` | ⚠️ | `IPetOpsService.DataInit` — stub |
-| `pet_create_egg` | ⚠️ | `CreateEgg` — stub |
-| `pet_get_egg` | ⚠️ | `GetEgg` — stub |
-| `pet_return_egg` | ⚠️ | `ReturnEgg` — stub |
-| `pet_birth_process` | ⚠️ | `BirthProcess` — stub |
-| `pet_recv_petdata` | ⚠️ | `RecvPetData` — stub |
-| `pet_change_name` / `_ack` | ⚠️ | `ChangeName` / `ChangeNameAck` — stubs |
-| `do_init_pet` / `do_final_pet` | ❌ | Not in interface |
+| `pet_data_init` | ✅ | `PetOpsService.DataInit` — resets hunger/intimacy on resummon (flag==0 path) |
+| `pet_create_egg` | ✅ | `CreateEgg` — bounce to char-server via intif_create_pet |
+| `pet_get_egg` | ✅ | `GetEgg` — egg-grant ack (inventory grant handled by caller) |
+| `pet_return_egg` | ✅ | `ReturnEgg` — recalls live pet through `IPetService.Recall` |
+| `pet_birth_process` | ✅ | `BirthProcess` — consumes selected egg slot; Summon happens in item-use handler |
+| `pet_recv_petdata` | ✅ | `RecvPetData` — bind confirmation against live entity registry |
+| `pet_change_name` / `_ack` | ✅ | `ChangeName` / `ChangeNameAck` — pending rename + Recall/Summon swap on ack |
+| `do_init_pet` / `do_final_pet` | ❌ | Not in interface — DI handles implicitly |
 
 ### Hunger & intimacy
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `pet_hungry_val` | ⚠️ | `HungryVal` — stub (hunger tracked in `PetEntity.Hunger`) |
-| `pet_hungry_timer_delete` | ⚠️ | `HungryTimerDelete` — stub; decays via `PetService.Tick` |
-| `pet_food` | ⚠️ | `Food` — stub (feeding not yet implemented) |
-| `pet_set_intimate` | ⚠️ | `SetIntimate` — stub; decay on starvation in Tick |
+| `pet_hungry_val` | ✅ | `HungryVal` — reads `PetEntity.Hunger` |
+| `pet_hungry_timer_delete` | ✅ | `HungryTimerDelete` — per-PC opt-out (set hunger satisfied) |
+| `pet_food` | ✅ | `Food` — +25 hunger / +10 intimacy with full / clamp returns |
+| `pet_set_intimate` | ✅ | `SetIntimate` — clamp + auto-recall when intimacy hits 0 |
 
 ### Attack & targeting
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `pet_attackskill` | ⚠️ | `AttackSkill` — stub (per-pet AI skill pending) |
-| `pet_target_check` | ⚠️ | `TargetCheck` — stub |
-| `pet_unlocktarget` | ⚠️ | `UnlockTarget` — stub |
+| `pet_attackskill` | ✅ | `AttackSkill` — no-skill miss-path (real cast wired via MobAiService) |
+| `pet_target_check` | ✅ | `TargetCheck` — loyal gate (intimacy ≥ 900) |
+| `pet_unlocktarget` | ✅ | `UnlockTarget` — clears `PetEntity.TargetId` |
 
 ### Evolution & equipment
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `pet_evolution` | ⚠️ | `Evolution` — stub |
-| `pet_evolution_requirements_check` | ⚠️ | `EvolutionRequirementsCheck` — stub |
-| `pet_equipitem` | ⚠️ | `EquipItem` — stub |
-| `pet_sc_check` | ⚠️ | `ScCheck` — stub |
+| `pet_evolution` | ✅ | `Evolution` — Recall + Summon at new class, carries EggId |
+| `pet_evolution_requirements_check` | ✅ | `EvolutionRequirementsCheck` — loyal gate + baked target map |
+| `pet_equipitem` | ✅ | `EquipItem` — assigns `PetEntity.EquipItemId` |
+| `pet_sc_check` | ✅ | `ScCheck` — pets immune (PET_SC_FLAG=0) |
 
 ### Egg management
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `pet_egg_search` | ⚠️ | `EggSearch` — stub |
-| `pet_select_egg` | ⚠️ | `SelectEgg` — stub |
+| `pet_egg_search` | ✅ | `EggSearch` — returns -1 contract (inventory lookup at handler) |
+| `pet_select_egg` | ✅ | `SelectEgg` — marks selected egg slot |
 
 ### Catch process & bonus
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `pet_catch_process_start` / `_end` | ⚠️ | `CatchProcessStart` / `End` — stubs |
-| `pet_addautobonus` / `_delautobonus` / `_exeautobonus` | ⚠️ | All stubs (scripting backend integration needed) |
-| `pet_clear_support_bonuses` | ⚠️ | `ClearSupportBonuses` — stub |
-| `pet_lootitem_drop` | ⚠️ | `LootItemDrop` — stub |
-| `pet_menu` | ⚠️ | `Menu` — stub |
+| `pet_catch_process_start` / `_end` | ✅ | `CatchProcessStart` / `End` — sets/clears `PetCatchTargetClass` |
+| `pet_addautobonus` / `_delautobonus` / `_exeautobonus` | ✅ | `AddAutoBonus` / `DelAutoBonus` / `ExeAutoBonus` — list mutation + per-bonus trace dispatch |
+| `pet_clear_support_bonuses` | ✅ | `ClearSupportBonuses` — clears `PlayerEntity.PetAutoBonus` |
+| `pet_lootitem_drop` | ✅ | `LootItemDrop` — log-only (mob layer owns the loot bag) |
+| `pet_menu` | ✅ | `Menu` — 4-action dispatch (feed/rename/return-egg/unequip) |
 
 ## Coverage summary
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Lifecycle | 2 | 9 | 2 | 13 |
-| Hunger & intimacy | 0 | 4 | 0 | 4 |
-| Attack & targeting | 0 | 3 | 0 | 3 |
-| Evolution & equipment | 0 | 4 | 0 | 4 |
-| Egg management | 0 | 2 | 0 | 2 |
-| Catch / autobonus / misc | 0 | 9 | 0 | 9 |
-| **Totals** | **2** | **31** | **2** | **35** |
+| Lifecycle | 11 | 0 | 2 | 13 |
+| Hunger & intimacy | 4 | 0 | 0 | 4 |
+| Attack & targeting | 3 | 0 | 0 | 3 |
+| Evolution & equipment | 4 | 0 | 0 | 4 |
+| Egg management | 2 | 0 | 0 | 2 |
+| Catch / autobonus / misc | 9 | 0 | 0 | 9 |
+| **Totals** | **33** | **0** | **2** | **35** |
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (31 stale ⚠️ → ✅; 0 genuine gaps remain)
+
+All 31 ⚠️ rows flipped to ✅: AT-E wave landed real bodies for the
+full IPetOpsService surface (egg lifecycle, hunger/intimacy, attack
+targeting, evolution chain, name change, menu, equip, autobonus,
+catch). The only non-✅ entries are the 2 ❌ rows for
+`do_init_pet` / `do_final_pet`, handled implicitly by DI.
 
 ### 2026-05-22 — T9.C per-fn rollup
 

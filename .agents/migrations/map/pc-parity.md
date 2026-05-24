@@ -21,7 +21,7 @@ groups the function list by subsystem and tracks our C# coverage.
 | `pc_authfail` | ✅ | Session disconnect path + `IClifWireService.AuthFail` (PC-23) |
 | `pc_setnewpc` | ✅ | `MapSessionService` emits AID + PCB + initial spawn packets in the rAthena order (PC-23) |
 | `pc_reg_received` | ✅ | `IPlayerLifecycleHelpers.OnRegReceived` (PC-22 — wires `IPlayerVarService` load completion) |
-| `pc_scdata_received` | ⚠️ | `IStatusChangeService` re-applies persisted SCs at session enter; some 4th-class SCs still pending YAML |
+| `pc_scdata_received` | ⚠️ | `IStatusChangeService` re-applies persisted SCs at session enter; some 4th-class SCs still pending YAML. PARITY-REMAINING §P1.2 |
 | `pc_makesavestatus` | ✅ | `IPlayerLifecycleHelpers.MakeSaveStatus` (PC-22 — full mmo_charstatus snapshot) |
 | `pc_should_log_commands` | ✅ | `AtCommandLogger` gates on group LogCommands |
 
@@ -47,7 +47,7 @@ groups the function list by subsystem and tracks our C# coverage.
 | `pc_readparam` | ✅ | `IPlayerStatHelpers.ReadParam` (PC-22) |
 | `pc_maxbaselv` / `pc_maxjoblv` / `pc_maxparameter` | ✅ | `IPlayerStatHelpers.MaxBaseLevel` / `MaxJobLevel` / `MaxParameter` (PC-22 / PC-S6 — class-aware) |
 | `pc_is_maxbaselv` / `pc_is_maxjoblv` | ✅ | `IPlayerStatHelpers.IsMaxBaseLv` / `IsMaxJobLv` (PC-22) |
-| `pc_updateweightstatus` | ⚠️ | Weight stage applied on equip/inventory mutation; SC overlay (SC_WEIGHT50/90) lands with the weight-SC port |
+| `pc_updateweightstatus` | ⚠️ | Weight stage applied on equip/inventory mutation; SC_WEIGHT50/90 now registered (NS-3 wave 5) but auto-application not wired. PARITY-REMAINING §P1.2 |
 
 ### EXP / level
 
@@ -136,7 +136,7 @@ groups the function list by subsystem and tracks our C# coverage.
 | `pc_addservantball` / `pc_delservantball` | ✅ | `IPlayerOrbService.AddServant` / `DelServant` (PC-4 — cap 5) |
 | `pc_addabyssball` / `pc_delabyssball` | ✅ | `IPlayerOrbService.AddAbyss` / `DelAbyss` (PC-4 — cap 5) |
 | `pc_addspiritcharm` / `pc_delspiritcharm` | ✅ | `IPlayerOrbService.AddCharm` / `DelCharm` (PC-14 — Kagerou/Oboro, typed) |
-| `pc_crimson_marker_clear` | ⚠️ | `IPlayerOrbService.ClearCrimsonMarker` exposed; Rebellion auto-marker hook lands with the gunslinger SkillImpl pass |
+| `pc_crimson_marker_clear` | ⚠️ | `CrimsonMarker` SkillImpl landed (NS-3); per-player marker-list clear method still pending. PARITY-REMAINING §P1.2 |
 
 ### Bonuses & scripts
 
@@ -168,7 +168,7 @@ groups the function list by subsystem and tracks our C# coverage.
 | rAthena fn | Status | C# location |
 |---|---|---|
 | `pc_setfalcon` / `pc_setriding` / `pc_setmadogear` | ✅ | `IPlayerOptionService` (PC-2 — see Options/appearance row) |
-| `pc_overheat` | ⚠️ | `IPlayerOptionService.OverheatTick` hook exposed; full Mado overheat damage/cooldown lands with the mado SkillImpl pass |
+| `pc_overheat` | ⚠️ | SC_OVERHEAT / SC_OVERHEAT_LIMITPOINT registered (NS-3 wave 5); full Mado overheat damage/cooldown not yet wired. PARITY-REMAINING §P1.2 |
 
 ### Damage / heal / revive
 
@@ -203,7 +203,7 @@ groups the function list by subsystem and tracks our C# coverage.
 
 | rAthena fn | Status | C# location |
 |---|---|---|
-| `pc_macro_*` (8 fns) | ⚠️ | `IPlayerMacroDetectorService` (PC-20 / PC-S10 — captcha challenge/answer flow live; full bot-scoring is a premium-server feature out of scope) |
+| `pc_macro_*` (8 fns) | ⚠️ | `IPlayerMacroDetectorService` (PC-20 / PC-S10 — captcha challenge/answer flow live; full bot-scoring is a premium-server feature out of scope). PARITY-REMAINING §P1.2 |
 
 ### Misc
 
@@ -290,6 +290,15 @@ Replace inline trade/shop gate checks with the canonical helpers so
 bounded/expired/storage-protected logic centralises.
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 5 genuine gaps remain)
+
+Verified all 5 ⚠️ rows. SC_WEIGHT50/90 and SC_OVERHEAT* are now registered
+via NS-3 wave 5 (presence-only), but the actual `pc_updateweightstatus` and
+Mado overheat damage/cooldown auto-application is not wired. CrimsonMarker
+SkillImpl landed via NS-3 but per-player marker-list clear not yet exposed.
+4th-class SC YAML and macro bot-scoring remain advisory-only. All notes
+re-pointed to PARITY-REMAINING §P1.2.
 
 ### 2026-05-22 — T5.2c (pc-parity refresh to 0 ❌)
 

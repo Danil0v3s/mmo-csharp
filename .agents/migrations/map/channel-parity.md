@@ -18,10 +18,10 @@ In-memory registry + per-PC membership; channels.conf loader pending.
 | `channel_pcleave` | ✅ | `PcLeave` |
 | `channel_pcquit` | ✅ | `PcQuit` (cascade leave) |
 | `channel_join` | ✅ | `Join` (delegates to PcJoin) |
-| `channel_pckick` | ⚠️ | `PcKick` — stub (name→entity lookup pending) |
-| `channel_pcban` | ⚠️ | `PcBan` — stub |
-| `channel_pcunbind` / `_pcbind` | ⚠️ | `PcUnbind` / `PcBind` — stubs |
-| `channel_pccolor` / `_pcsetopt` | ⚠️ | `PcColor` / `PcSetOpt` — stubs |
+| `channel_pckick` | ✅ | `PcKick` — owner-check + `FindOnlineByName` via IPlayerMapService (AT-D2) |
+| `channel_pcban` | ✅ | `PcBan` — owner-check + name→entity lookup, adds to Banned, removes from Members (AT-D2) |
+| `channel_pcunbind` / `_pcbind` | ✅ | `PcUnbind` / `PcBind` — toggles per-PC BoundTo set |
+| `channel_pccolor` / `_pcsetopt` | ✅ | `PcColor` / `PcSetOpt` — per-member dictionaries on ChannelRoom |
 | `channel_pccheckgroup` | ✅ | `PcCheckGroup` — always true |
 | `channel_pc_haschan` / `channel_haspc` / `_haspcbanned` | ✅ | Membership / ban checks |
 
@@ -29,23 +29,23 @@ In-memory registry + per-PC membership; channels.conf loader pending.
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `channel_create` | ⚠️ | `Create` — exists; ReadConfig data-pending |
+| `channel_create` | ✅ | `Create` — registers ChannelRoom with type/owner/passwd/color |
 | `channel_delete` | ✅ | `Delete` |
 | `channel_chk` | ✅ | `Check` (existence + type) |
 | `channel_clean` | ✅ | `Clean` (cascade quit) |
 | `channel_display_list` | ✅ | `DisplayList` |
-| `channel_send` | ⚠️ | `Send` — membership count only; wire data-pending |
+| `channel_send` | ✅ | `Send` — real ZC_NOTIFY_CHAT_PARTY emit to all members via ISessionManagerAccessor (AT-D2) |
 
 ### Autojoin / config
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `channel_ajoin` | ⚠️ | `AJoin` — stub |
-| `channel_mjoin` | ⚠️ | `MJoin` — stub |
-| `channel_gjoin` | ⚠️ | `GJoin` — stub |
-| `channel_autojoin` | ⚠️ | `Autojoin` — no-op |
-| `channel_pcautojoin_sub` | ⚠️ | `PcAutojoinSub` — stub |
-| `channel_read_config` | ⚠️ | `ReadConfig` — data-pending |
+| `channel_ajoin` | ✅ | `AJoin` — joins canonical `main` channel |
+| `channel_mjoin` | ✅ | `MJoin` — joins canonical `map` channel |
+| `channel_gjoin` | ✅ | `GJoin` — joins canonical `guild` channel |
+| `channel_autojoin` | ✅ | `Autojoin` — fires AJoin + MJoin + GJoin (latter gated on GuildId) |
+| `channel_pcautojoin_sub` | ✅ | `PcAutojoinSub` — wraps PcJoin |
+| `channel_read_config` | ✅ | `ReadConfig` — loads `config/channels.json` (DB-6); falls back to baked DefaultChannels (AT-F) |
 | `channel_read_sub` | ✅ | `ReadSub` |
 | `do_init_channel` / `do_final_channel` | ❌ | Not exposed (DI implicit) |
 
@@ -53,12 +53,28 @@ In-memory registry + per-PC membership; channels.conf loader pending.
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| PC create / join / leave | 8 | 6 | 0 | 14 |
-| Channel management | 4 | 2 | 0 | 6 |
-| Autojoin / config | 1 | 5 | 2 | 8 |
-| **Totals** | **13** | **13** | **2** | **28** |
+| PC create / join / leave | 14 | 0 | 0 | 14 |
+| Channel management | 6 | 0 | 0 | 6 |
+| Autojoin / config | 7 | 0 | 1 | 8 |
+| **Totals** | **27** | **0** | **1** | **28** |
+
+(`do_init_channel` / `do_final_channel` row covers two rAthena entries — both folded into DI lifecycle, not exposed.)
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (13 stale ⚠️ → ✅; 0 genuine gaps remain)
+
+Audited every ⚠️ row against
+[ChannelService.cs](/Map.Server/Chat/Channels/ChannelService.cs).
+Every prior ⚠️ now has a real body — AT-D2 wave wired the
+`ISessionManagerAccessor` + `IPlayerMapService` deps so PcKick /
+PcBan do name→entity lookups, Send emits ZC_NOTIFY_CHAT_PARTY to
+every member, and the AT-F pass added a real channels.json
+loader (DB-6 conf→JSON) with the baked-default fallback. Bind /
+Unbind / Color / SetOpt all maintain per-room state today.
+
+**Coverage delta:** 13 ✅ / 13 ⚠️ / 2 ❌ → **27 ✅ / 0 ⚠️ / 1 ❌**
+(prior 2 ❌ row covers both DI-implicit lifecycle entries).
 
 ### 2026-05-22 — T9.E per-fn rollup
 

@@ -95,6 +95,16 @@ they live in `CharServerIpcService` (gRPC channel layer) or
 
 ## History
 
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 22 genuine gaps remain)
+
+Audited every ⚠️ row against `ChrifService.cs` at HEAD. All 22
+remaining ⚠️ rows are intentional wire-shim stubs — the real IPC
+work lives in `CharServerIpcService` (gRPC) and the chrif-named
+entry points have no consumers calling them yet. Each gap maps to
+PARITY-REMAINING.md §P2.2 leaf work and will flip when a caller
+ports through the rAthena name instead of going straight to the
+typed gRPC client.
+
 ### 2026-05-22 — T9.E per-fn rollup
 
 Per-function audit. Baseline: **1 ✅ / 22 ⚠️ / 44 ❌** across 67

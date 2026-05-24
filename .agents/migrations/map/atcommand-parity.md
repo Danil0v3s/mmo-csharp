@@ -112,19 +112,18 @@ inner behavior can land without changing the GM-facing surface.
 | `atcommand_commands` | ✅ | `CommandsCommand.cs` |
 | `atcommand_charcommands` | ✅ | `CharCommandsCommand.cs` |
 
-### Implemented per-command handlers (40 + 1 ⚠️ = 41)
+### Implemented per-command handlers (41)
 
 `alive` / `baselevelup` (→ level) / `broadcast` / `cart` / `damage` / `gvgoff` / `gvgon` /
 `heal` / `hide` / `item` / `jobchange` (→ job) / `joblevelup` / `jump` / `jumpto` /
 `kill` / `killmob` / `load` / `localbroadcast` / `mapinfo` / `me` / `monster` /
-`mount` / `pvpoff` / `pvpon` / `recall` / `refresh` / `reloaddb` / `save` /
+`mount` / `option` / `pvpoff` / `pvpon` / `recall` / `refresh` / `reloaddb` / `save` /
 `servertime` (→ time) / `soulball` / `speed` / `spiritball` / `storage` /
 `uptime` / `users` / `version` / `warp` (→ mapmove) / `where` / `who` / `zeny` — all
 exist at `Map.Server/Gm/Commands/<Name>Command.cs`.
 
-`option` — ⚠️ partial. `Map.Server/Gm/Commands/OptionCommand.cs` covers `@hide` /
-`@show` only; the full renewal option bitmask (OPTION_CLOAK / OPTION_FALCON /
-OPTION_MADOGEAR / etc.) is gated on the status / mount subsystem.
+`option` now parses opt1/opt2/option-hex and writes the triplet via
+`IPlayerOptionService.SetOption` (full rAthena `atcommand_option` parity).
 
 ### Stubbed (subsystem genuinely deferred — 19 ❌)
 
@@ -141,11 +140,11 @@ AT-C wave delta vs AT-100 baseline (124 / 1 / 165):
 |---|---|---|---|---|
 | Dispatch / registry / permission | 10 | 0 | 0 | 10 |
 | Meta commands | 3 | 0 | 0 | 3 |
-| Implemented per-command handlers | 111 | 1 | 0 | 112 |
+| Implemented per-command handlers | 112 | 0 | 0 | 112 |
 | AT-C canonical entry reserved (real or entry-reserved) | 114 | 0 | 0 | 114 |
 | Stubbed (subsystem-deferred) | 0 | 0 | 19 | 19 |
 | Other rAthena fns (unregistered handlers) | 0 | 0 | 32 | 32 |
-| **Totals** | **238** | **1** | **51** | **290** |
+| **Totals** | **239** | **0** | **51** | **290** |
 
 **AT-C wave landed 114 new `IGmCommand` classes** in a single mega-file
 ([AtCWaveCommands.cs](../../Map.Server/Gm/Commands/AtCWaveCommands.cs)).
@@ -181,6 +180,12 @@ Migrated from `MinGroupId` int to a richer model:
   per the rAthena convention.
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (1 stale ⚠️ → ✅; 0 genuine gaps remain)
+
+`option` flipped to ✅ — `OptionCommand` now parses opt1/opt2/option-hex and
+writes the triplet via `IPlayerOptionService.SetOption` (full
+`atcommand_option` parity, not just @hide/@show). Rollup: 238/1/51 → 239/0/51.
 
 ### 2026-05-23 — AT-C / AT-FINAL — all subsystem-pending stubs retired
 

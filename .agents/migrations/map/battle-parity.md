@@ -20,14 +20,14 @@ companion header `battle.hpp` (793 lines) exports the
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `battle_calc_attack` | ⚠️ | [BattleCalculator.CalcWeaponAttack](/Map.Server/Combat/BattleCalculator.cs) covers weapon path end-to-end; magic + misc branches still per-skill (SkillImpl-owned) rather than centralised |
+| `battle_calc_attack` | ⚠️ | [BattleCalculator.CalcWeaponAttack](/Map.Server/Combat/BattleCalculator.cs) covers weapon path end-to-end; magic + misc branches still per-skill (SkillImpl-owned) rather than centralised — gated on PARITY-REMAINING.md §P1.2 (per-skill backlog) |
 | `battle_calc_weapon_attack` | ✅ | `BattleCalculator.CalcWeaponAttack` |
 | `battle_calc_base_damage` | ✅ | `BattleCalculator` inline base-ATK formula |
-| `battle_calc_damage` | ⚠️ | `BattleDamage` carries Total + Hits + Type; rAthena `isspdamage` / `damage2` fields land when SP-drain skills port |
+| `battle_calc_damage` | ⚠️ | `BattleDamage` carries Total + Hits + Type; rAthena `isspdamage` / `damage2` fields land when SP-drain skills port (PARITY-REMAINING.md §P1.2) |
 | `battle_attr_fix` | ✅ | [ElementTable](/Map.Server/Status/ElementTable.cs) — element matrix verbatim |
 | `battle_calc_cardfix` | ✅ | `BattleCardService.CalcCardFix` (B-H1 — reads `PlayerEntity.EquipBonuses`; race/element/size multipliers verbatim) |
 | `battle_addmastery` | ✅ | `BattleCardService.AddMastery` (B-H1) |
-| `battle_calc_chorusbonus` | ⚠️ | Hooked through `BattleCardService`; full Minstrel/Wanderer chorus ATK matrix lands with the bard SkillImpl port |
+| `battle_calc_chorusbonus` | ⚠️ | Hooked through `BattleCardService`; full Minstrel/Wanderer chorus ATK matrix lands with the bard SkillImpl port (PARITY-REMAINING.md §P1.2) |
 | `battle_calc_return_damage` | ✅ | `BattleReflectService.CalcReturnDamage` (B-H2) |
 | `battle_do_reflect` | ✅ | `BattleReflectService.DoReflect` (B-H2) |
 
@@ -43,8 +43,8 @@ companion header `battle.hpp` (793 lines) exports the
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `battle_damage` | ⚠️ | [DamageService.ApplyDamage](/Map.Server/Combat/DamageService.cs) covers HP delta + death routing + DmgList + AttackerLog; walkdelay / dmotion lands with the post-swing animation refactor |
-| `battle_fix_damage` | ⚠️ | Same as `battle_damage` — caller passes raw damage; full helper splits once dmotion lands |
+| `battle_damage` | ⚠️ | [DamageService.ApplyDamage](/Map.Server/Combat/DamageService.cs) covers HP delta + death routing + DmgList + AttackerLog; walkdelay / dmotion lands with the post-swing animation refactor (PARITY-REMAINING.md §P2.2 leaf wires) |
+| `battle_fix_damage` | ⚠️ | Same as `battle_damage` — caller passes raw damage; full helper splits once dmotion lands (§P2.2) |
 | `battle_delay_damage` | ✅ | `DelayedDamageService` (B-M1 — skill_addtimerskill bridge) |
 | `battle_damage_area` | ✅ | `BattleEffectsService.ApplyAreaDamage` (B-M1) |
 | `battle_vanish_damage` | ✅ | `BattleEffectsService.ApplyVanishDamage` (B-M4) |
@@ -63,7 +63,7 @@ companion header `battle.hpp` (793 lines) exports the
 | `battle_get_master` | ✅ | `BattleTargetService.GetMaster` (B-H4 — pet/homun/merc/slave) |
 | `battle_getcurrentskill` | ✅ | `BattleTargetService.GetCurrentSkill` (B-H4) |
 | `battle_check_undead` | ✅ | `BattleElementService.CheckUndead` (B-M3) |
-| `battle_check_coma` | ⚠️ | `BattleEffectsService.RollComa` (B-M4 — base hook; full coma matrix lands when card scripts port) |
+| `battle_check_coma` | ⚠️ | `BattleTargetService.CheckComa` — returns false; coma proc reads `sd->bonus.coma_class` / `coma_race` arrays, gated on equip-bonus aggregator (PARITY-REMAINING.md §P2.2) |
 | `is_infinite_defense` | ✅ | `BattleTargetService.IsInfiniteDefense` (B-H4 — reads SteelBody + mob mode) |
 | `battle_can_hit_bg_target` | ✅ | `BattleZoneGateService.CanHitBgTarget` (B-L2) |
 | `battle_can_hit_gvg_target` | ✅ | `BattleZoneGateService.CanHitGvgTarget` (B-L2) |
@@ -73,8 +73,8 @@ companion header `battle.hpp` (793 lines) exports the
 | rAthena fn | Status | C# location / note |
 |---|---|---|
 | `battle_weapon_attack` | ✅ | [DamageService.PerformMeleeAttack](/Map.Server/Combat/DamageService.cs) |
-| `battle_autocast_aftercast` | ⚠️ | `BattleEffectsService.AutoCastAfter` (B-M2 — Magnum-style proc roll; full proc table lands with the per-skill autospell port) |
-| `battle_autocast_elembuff_skill` | ⚠️ | `BattleEffectsService.AutoCastElementBuff` (B-M2 — Flame Launcher / Frost Weapon hooks; some elemental buffs pending) |
+| `battle_autocast_aftercast` | ⚠️ | `BattleEffectsService.AutocastAfterCast` — entry point only (empty); full proc table lands with the per-skill autospell port (PARITY-REMAINING.md §P1.2) |
+| `battle_autocast_elembuff_skill` | ⚠️ | `BattleEffectsService.AutocastElemBuff` — entry point only; elemental-buff autocast pending equip-bonus aggregator (§P2.2) |
 | `battle_consume_ammo` | ✅ | `BattleEffectsService.ConsumeAmmo` (B-M2) |
 
 ### Drain / reflect / element
@@ -102,7 +102,7 @@ companion header `battle.hpp` (793 lines) exports the
 |---|---|---|
 | `do_init_battle` | ✅ | Handled by DI service lifecycle |
 | `do_final_battle` | ✅ | Handled by DI service lifecycle |
-| `battle_get_exception_ai` | ⚠️ | `MobDbEntry.Modes` carries the bits; helper lookup landing with the per-mob exception override pass |
+| `battle_get_exception_ai` | ✅ | `BattleZoneGateService.HasAiException` — reads `MobMode.NoRandomWalk` from `MobEntity.Stats.Mode` (treasure-box / static-spawn sentinel) |
 
 ## Coverage summary
 
@@ -115,8 +115,8 @@ companion header `battle.hpp` (793 lines) exports the
 | Combat entry | 2 | 2 | 0 |
 | Drain / reflect / element | 4 | 0 | 0 |
 | Battle config | 5 | 0 | 0 |
-| Lifecycle | 2 | 1 | 0 |
-| **Totals** | **39** | **9** | **0** |
+| Lifecycle | 3 | 0 | 0 |
+| **Totals** | **40** | **8** | **0** |
 
 **T5.2a (2026-05-22) — zero-❌ reached.** All 36 previously-missing
 entries audited and remapped to the matching C# service that the
@@ -161,6 +161,22 @@ side-system polish > admin knobs).
 10. **B-L2** — BG/GvG friendly-fire gates + AI exception list.
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (1 stale ⚠️ → ✅; 8 genuine gaps remain)
+
+Audited each ⚠️ row against the
+[Combat services](/Map.Server/Combat/). `battle_get_exception_ai`
+flips to ✅ — `BattleZoneGateService.HasAiException` reads the
+`MobMode.NoRandomWalk` sentinel from `MobEntity.Stats.Mode`.
+Residual 8 ⚠️ all have documented dependency cites:
+- magic/misc calc_attack + chorus + autocast_aftercast (§P1.2 —
+  per-skill SkillImpl backlog)
+- walkdelay / dmotion split on battle_damage / fix_damage,
+  autocast_elembuff, check_coma (§P2.2 — equip-bonus aggregator
+  and animation refactor leaf wires)
+- calc_damage `isspdamage` / `damage2` (§P1.2)
+
+**Coverage delta:** 39 ✅ / 9 ⚠️ / 0 ❌ → **40 ✅ / 8 ⚠️ / 0 ❌**.
 
 ### 2026-05-22 — T5.2a (battle-parity refresh to 0 ❌)
 

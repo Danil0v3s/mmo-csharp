@@ -275,6 +275,11 @@ breadth > admin).
 
 ## History
 
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 0 genuine gaps remain)
+
+Verified: doc is already at 100% ✅ — all ⚠️ grep hits are in legend / history
+prose, not functional rows. No-op resync; doc stays at 135/0/0.
+
 ### 2026-05-22 — **SK.100-1 + SK.100-2 + SK.100-3 — 100% PARITY REACHED**
 
 End-to-end close-out wave. skill.cpp is the second per-file rAthena

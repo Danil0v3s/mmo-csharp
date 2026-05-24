@@ -21,17 +21,22 @@ Canonical entry points: [IVendingService](/Map.Server/Shop/Vending/IVendingServi
 | `do_init_vending_autotrade` | ✅ | `InitAutotrade` (boot load) |
 | `vending_autotrader_remove` | ✅ | Implicit (cleanup) |
 | `vending_autotrader_free` | ✅ | Implicit (cleanup) |
-| `vending_update` | ⚠️ | Update shop coords; low-impact (shops static) |
+| `vending_update` | ✅ | AT-D2 — `VendingService.Update` writes X/Y/MapId snapshot into stall on each update call |
 | `do_init_vending` / `do_final_vending` | ✅ | Implicit via DI |
 
 ## Coverage summary
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Shop lifecycle / search / autotrade | 13 | 1 | 0 | 14 |
-| **Totals** | **13** | **1** | **0** | **14** |
+| Shop lifecycle / search / autotrade | 14 | 0 | 0 | 14 |
+| **Totals** | **14** | **0** | **0** | **14** |
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (1 stale ⚠️ → ✅; 0 genuine gaps remain)
+
+`vending_update` flipped to ✅ — AT-D2 wave landed coord refresh: `Update`
+writes X/Y/MapId on each call. Rollup: 13/1/0 → 14/0/0.
 
 ### 2026-05-22 — T9.D per-fn rollup
 

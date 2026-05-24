@@ -7,16 +7,16 @@ feeding / NPC).
 | rAthena fn | Status | C# location |
 |---|---|---|
 | `log_atcommand` | ✅ | [GameLogService.Atcommand](/Map.Server/Logging/GameLogService.cs) + AtCommandLogger (SQL) |
-| `log_branch` | ⚠️ | Info-log only; SQL table data-pending |
-| `log_cash` | ⚠️ | same |
-| `log_chat` | ⚠️ | same |
-| `log_feeding` | ⚠️ | same |
-| `log_mvpdrop` | ⚠️ | same |
-| `log_npc` | ⚠️ | same |
-| `log_pick` | ⚠️ | same |
-| `log_pick_pc` | ⚠️ | same |
-| `log_pick_mob` | ⚠️ | same |
-| `log_zeny` | ⚠️ | same |
+| `log_branch` | ⚠️ | Info-log only; `branchlog` EF entity pending (PARITY-REMAINING.md §P2.2 leaf wires) |
+| `log_cash` | ⚠️ | Info-log only; `cashlog` EF entity pending (§P2.2) |
+| `log_chat` | ⚠️ | Info-log only; `chatlog` EF entity pending (§P2.2) |
+| `log_feeding` | ⚠️ | Info-log only; `feedinglog` EF entity pending (§P2.2) |
+| `log_mvpdrop` | ⚠️ | Info-log only; `mvplog` EF entity pending (§P2.2) |
+| `log_npc` | ⚠️ | Info-log only; `npclog` EF entity pending (§P2.2) |
+| `log_pick` | ⚠️ | Info-log only; `picklog` EF entity pending (§P2.2) |
+| `log_pick_pc` | ⚠️ | Info-log only; routes to `log_pick` with who='P' (§P2.2) |
+| `log_pick_mob` | ⚠️ | Info-log only; routes to `log_pick` with who='M' (§P2.2) |
+| `log_zeny` | ⚠️ | Info-log only; `zenylog` EF entity pending (§P2.2) |
 | `log_set_defaults` | ✅ | no-op |
 | `log_config_read` | ✅ | returns true |
 
@@ -28,6 +28,15 @@ feeding / NPC).
 | **Totals** | **3** | **10** | **0** | **13** |
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 10 genuine gaps remain)
+
+Audited every ⚠️ row against
+[GameLogService.cs](/Map.Server/Logging/GameLogService.cs); each
+non-atcommand log path emits a structured `LogInformation` line
+only — no SQL persistence layer landed. Notes refreshed with the
+PARITY-REMAINING.md §P2.2 (leaf wires) citation; each row now
+calls out the missing EF entity by name. No flips.
 
 ### 2026-05-22 — T9.H per-fn rollup
 

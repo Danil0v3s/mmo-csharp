@@ -154,6 +154,26 @@ the dependency tracks first and is out of T4.9 scope.
 
 ## History
 
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 9 genuine gaps remain)
+
+Audited every ⚠️ row against the current code at HEAD. All 9
+remaining ⚠️ rows have accurate notes already (each cites the
+out-of-T4.9-scope blocker inline):
+- AI think-loop `skilltimer / OPT1` partial — SCF_MOBLOSETARGET
+  flag scan still depends on status_yml SCF column expose.
+- `master_id slave AI` — assist-on-master-target branch belongs
+  with the slave AI overhaul (PARITY-REMAINING.md §P2.2).
+- BG ally follow — gated on T-BG (battleground-parity).
+- `mob_ai_sub_hard_attacktimer` — depends on attack-timer
+  refactor (PARITY-REMAINING.md §P2.2).
+- `battle_check_range` gate — delegated to `SkillCastService.StartCast`
+  outer-gate; tracked as P2.2 leaf.
+- `mob_skill_event` rude-attacked counter reset — lives in
+  `MobAiService.NotifyAttacked`; status-quo intentional.
+- `MapId2Name` reverse-lookup — P2.2 leaf.
+- MSC_SPAWN proxy — needs precise spawn tick; P2.2 leaf.
+- MST_RANDOM allegiance filter — `battle_getenemy` port; P2.2 leaf.
+
 ### 2026-05-22 — T5.1d (OPT1 / SCF_MOBLOSETARGET gate)
 
 Fourth slice of T5.1. Lands the OPT1 lose-target gate from rAthena

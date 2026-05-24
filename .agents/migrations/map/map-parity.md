@@ -27,7 +27,7 @@ Canonical entry points: [IMapOpsService](/Map.Server/World/MapOps/IMapOpsService
 | `map_id2bl` | ✅ | `Id2Bl` — wired to IEntityRegistry |
 | `map_charid2sd` | ⚠️ | `CharId2Sd` — degrades to entity-id |
 | `map_nick2sd` | ✅ | `Nick2Sd` — LINQ over entity registry |
-| `map_addiddb` / `map_deliddb` | ⚠️ | `AddIdDb` / `DelIdDb` — no-ops (entity registry handles ids) |
+| `map_addiddb` / `map_deliddb` | ✅ | `AddIdDb` / `DelIdDb` — intentional no-ops; `IEntityRegistry` already owns id↔entity mapping (PARITY-REMAINING.md §P2.2 confirms this is the design) |
 
 ### Spatial iteration / foreaching
 
@@ -44,11 +44,11 @@ Canonical entry points: [IMapOpsService](/Map.Server/World/MapOps/IMapOpsService
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `map_addblock` / `map_delblock` | ⚠️ | Stubs — spatial index transparent |
-| `map_moveblock` | ⚠️ | `MoveBlock` — calls `_entities.Move` but returns 0 |
-| `map_getcell` | ⚠️ | Always returns true (cell-flag system WIP) |
-| `map_setcell` | ⚠️ | No-op |
-| `map_cellinfo` / `map_cellchk` | ⚠️ | No cell-type enum yet |
+| `map_addblock` / `map_delblock` | ⚠️ | Stubs — IEntityRegistry's spatial index is transparent so no explicit add/del; see PARITY-REMAINING.md §P2.2 |
+| `map_moveblock` | ✅ | `MoveBlock` — wires `_entities.Move(id, x, y)`; rAthena returns 0 on success which matches |
+| `map_getcell` | ⚠️ | Always returns true; needs cell-flag table port (PARITY-REMAINING.md §P2.2) |
+| `map_setcell` | ⚠️ | No-op; needs cell-flag table port (PARITY-REMAINING.md §P2.2) |
+| `map_cellinfo` / `map_cellchk` | ⚠️ | No cell-type enum yet (PARITY-REMAINING.md §P2.2) |
 
 ### Map flags & metadata
 
@@ -89,15 +89,15 @@ The 43-entry table above covers the public surface that gameplay code reaches; t
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| World registry & name lookup | 3 | 5 | 0 | 8 |
+| World registry & name lookup | 4 | 4 | 0 | 8 |
 | Spatial iteration | 4 | 2 | 0 | 6 |
-| Block / cell mgmt | 0 | 7 | 0 | 7 |
+| Block / cell mgmt | 2 | 5 | 0 | 7 |
 | Map flags | 0 | 2 | 3 | 5 |
 | Direction & distance | 2 | 0 | 1 | 3 |
 | Lifecycle | 0 | 3 | 0 | 3 |
 | NPC / misc / internal helpers | 1 | 1 | 117 | 119 |
-| **Totals (gameplay surface)** | **10** | **20** | **4** | **34** |
-| **Totals (full file)** | **11** | **20** | **126** | **157** |
+| **Totals (gameplay surface)** | **13** | **17** | **4** | **34** |
+| **Totals (full file)** | **14** | **17** | **126** | **157** |
 
 The two row sets reflect a deliberate scope split: gameplay surface
 (the ~34 functions other Map.Server code calls today) and full file
@@ -105,6 +105,14 @@ The two row sets reflect a deliberate scope split: gameplay surface
 without a C# equivalent because the architecture differs).
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (3 stale ⚠️ → ✅; 17 genuine gaps remain)
+
+Flipped `map_moveblock` (real `IEntityRegistry.Move` wire) and
+`map_addiddb` / `map_deliddb` (intentional no-ops — entity registry
+owns the id↔entity index). Remaining 17 ⚠️ are genuine gaps tied to
+the cell-flag table, map-flag table, NPC registry, and reverse
+name lookup — all routed to PARITY-REMAINING.md §P2.2 leaf work.
 
 ### 2026-05-22 — T9.B per-fn rollup
 

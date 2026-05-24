@@ -16,15 +16,15 @@ data-pending on packet emitters.
 | `chat_createnpcchat` | ✅ | `CreateNpcChat` |
 | `chat_joinchat` | ✅ | `JoinChat` (password + limit checks) |
 | `chat_leavechat` | ✅ | `LeaveChat` |
-| `chat_changechatowner` | ⚠️ | `ChangeChatOwner` — stub |
-| `chat_changechatstatus` | ⚠️ | `ChangeChatStatus` — stub |
-| `chat_kickchat` | ⚠️ | `KickChat` — stub |
-| `chat_npckickchat` | ⚠️ | `NpcKickChat` — stub |
+| `chat_changechatowner` | ⚠️ | `ChangeChatOwner` — stub (`=> false`). PARITY-REMAINING §P1.2 |
+| `chat_changechatstatus` | ⚠️ | `ChangeChatStatus` — stub (`=> false`). PARITY-REMAINING §P1.2 |
+| `chat_kickchat` | ⚠️ | `KickChat` — stub (`=> false`). PARITY-REMAINING §P1.2 |
+| `chat_npckickchat` | ⚠️ | `NpcKickChat` — stub (`=> false`). PARITY-REMAINING §P1.2 |
 | `chat_npckickall` | ✅ | `NpcKickAll` (clears members) |
 | `chat_deletenpcchat` | ✅ | `DeleteNpcChat` |
-| `chat_enableevent` | ⚠️ | `EnableEvent` — existence check only |
-| `chat_disableevent` | ⚠️ | `DisableEvent` — existence check only |
-| `chat_triggerevent` | ⚠️ | `TriggerEvent` — existence check only |
+| `chat_enableevent` | ⚠️ | `EnableEvent` — existence check only; script dispatch pending. PARITY-REMAINING §P1.2 |
+| `chat_disableevent` | ⚠️ | `DisableEvent` — existence check only; script dispatch pending. PARITY-REMAINING §P1.2 |
+| `chat_triggerevent` | ⚠️ | `TriggerEvent` — existence check only; script dispatch pending. PARITY-REMAINING §P1.2 |
 
 ## Coverage summary
 
@@ -34,6 +34,12 @@ data-pending on packet emitters.
 | **Totals** | **6** | **7** | **0** | **13** |
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 7 genuine gaps remain)
+
+Verified all 7 ⚠️ rows are still real stubs in `ChatRoomService.cs` (4 return
+`false`, 3 are existence-only checks). No P0/P1/NS waves touched chat-room
+internals. PARITY-REMAINING §P1.2 references added.
 
 ### 2026-05-22 — T9.E per-fn rollup
 

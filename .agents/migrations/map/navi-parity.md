@@ -13,16 +13,16 @@ script `navigate_to` BUILTIN have somewhere to land.
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `navi_create_lists` | ⚠️ | `CreateLists` — entry reserved, generator pending |
-| `navi_path_search` | ⚠️ | `PathSearch` — returns false |
-| `map_type` | ⚠️ | `MapType` — returns 0 placeholder |
+| `navi_create_lists` | ⚠️ | `CreateLists` — entry reserved; deferred per PARITY-REMAINING.md §P2.2.e (cell-level navmesh exporter is a build-time tool, client ships with rAthena mesh) |
+| `navi_path_search` | ⚠️ | `PathSearch` — returns false (§P2.2.e) |
+| `map_type` | ⚠️ | `MapType` — returns 0 placeholder (§P2.2.e) |
 | `fileExists` | ✅ | `FileExists` (System.IO.File.Exists) |
-| `write_header` / `write_footer` | ⚠️ | No-op placeholders |
-| `write_map` / `write_map_distance` / `write_map_distances` / `write_map_header` / `write_mapdist_header` | ⚠️ | All no-op placeholders |
-| `write_npc` / `write_npc_distance` / `write_npc_distances` | ⚠️ | All no-op placeholders |
-| `write_object_lists` | ⚠️ | No-op placeholder |
-| `write_spawn` | ⚠️ | No-op placeholder |
-| `write_warp` | ⚠️ | No-op placeholder |
+| `write_header` / `write_footer` | ⚠️ | No-op placeholders (§P2.2.e) |
+| `write_map` / `write_map_distance` / `write_map_distances` / `write_map_header` / `write_mapdist_header` | ⚠️ | All no-op placeholders (§P2.2.e) |
+| `write_npc` / `write_npc_distance` / `write_npc_distances` | ⚠️ | All no-op placeholders (§P2.2.e) |
+| `write_object_lists` | ⚠️ | No-op placeholder (§P2.2.e) |
+| `write_spawn` | ⚠️ | No-op placeholder (§P2.2.e) |
+| `write_warp` | ⚠️ | No-op placeholder (§P2.2.e) |
 
 ## Coverage summary
 
@@ -32,6 +32,15 @@ script `navigate_to` BUILTIN have somewhere to land.
 | **Totals** | **1** | **16** | **0** | **17** |
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 16 genuine gaps remain)
+
+All 16 ⚠️ entries audited against
+[NaviService.cs](/Map.Server/Navi/NaviService.cs); every method is
+a no-op / `false` / `0` placeholder. Notes refreshed with the
+PARITY-REMAINING.md §P2.2.e citation (navmesh exporter is a
+build-time tool, client ships with rAthena-generated mesh — runtime
+port not on critical path). No flips.
 
 ### 2026-05-22 — T9.H per-fn rollup
 

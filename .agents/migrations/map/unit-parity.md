@@ -24,7 +24,7 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 | `unit_walktoxy_sub` / `ontouch` | ⚠️ | Internal pathfinding — not in interface |
 | `unit_walktobl` | ⚠️ | `WalkToBl` — stub |
 | `unit_stop_walking` / `_soon` | ⚠️ | `StopWalking` — stub |
-| `unit_movepos` | ⚠️ | `MovePos` — stub |
+| `unit_movepos` | ✅ | `MovePos` — real (teleport-step move; walkable gate via MapData; clif_slide + clif_fixpos AOI emission) |
 | `unit_run` | ⚠️ | Flee-walk variant — not in interface |
 | `unit_can_move` | ✅ | `CanMove` (semantic check returns true) |
 | `unit_can_reach_pos` / `_bl` | ✅ | Both stubs returning true |
@@ -99,7 +99,7 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Walking / pathing | 2 | 6 | 2 | 10 |
+| Walking / pathing | 3 | 5 | 2 | 10 |
 | Attack & combat | 0 | 3 | 3 | 6 |
 | Direction & heading | 0 | 2 | 0 | 2 |
 | Knockback | 1 | 0 | 1 | 2 |
@@ -107,7 +107,7 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 | Teleport & map transit | 0 | 2 | 0 | 2 |
 | Lifecycle & data | 0 | 3 | 1 | 4 |
 | Misc | 0 | 2 | 9 | 11 |
-| **Totals (gameplay surface)** | **3** | **20** | **17** | **40** |
+| **Totals (gameplay surface)** | **4** | **19** | **17** | **40** |
 
 The remaining ~11 rAthena fns are internal helpers (NPC step-action
 chains, attack-target db bookkeeping) without a C# equivalent
@@ -115,6 +115,17 @@ because the architecture differs (`IEntityRegistry` + `MovementService`
 + `AttackService` split the surface differently).
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (1 stale ⚠️ → ✅; 19 genuine gaps remain)
+
+Flipped `unit_movepos` (real impl shipped with `MovePos` + the
+new `CheckUnitMovePos` helper: walkable-cell gate via MapData,
+slide + fixpos AOI broadcast). The other ⚠️ rows still return
+default no-op results — Warp / WalkToXy / WalkToBl / StopWalking /
+StopAttack / Attack / SetDir / GetDir / SkillUseId / SkillUsePos /
+RemoveMap / Free / ChangeViewSize / DataCreate — and all map to
+PARITY-REMAINING.md §P2.2 leaf work (consumer-driven; will land
+when callers port).
 
 ### 2026-05-22 — T9.B per-fn rollup
 

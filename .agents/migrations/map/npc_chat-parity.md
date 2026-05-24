@@ -11,7 +11,7 @@ event triggers (chat from a PC matches → fires an NPC event).
 | `buildin_activatepset` | ✅ | `NpcChatService.ActivatePset` |
 | `buildin_deactivatepset` | ✅ | `NpcChatService.DeactivatePset` |
 | `buildin_deletepset` | ✅ | `NpcChatService.DeletePset` |
-| `npc_chat_sub` | ⚠️ | `CheckChat` — event-fire wiring data-pending |
+| `npc_chat_sub` | ⚠️ | `CheckChat` walks patterns + counts matches; OnTalk* event-fire into the script engine still TODO. PARITY-REMAINING §P1.2 |
 | `npc_chat_def_pattern` | ✅ | `DefaultPattern` |
 | `npc_chat_finalize` | ✅ | `Finalize` |
 | `finalize_pcrematch_entry` | ✅ | `FinalizeEntry` |

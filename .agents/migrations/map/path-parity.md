@@ -13,8 +13,8 @@ helpers + A* path search + knockback position resolver.
 | `check_distance_client` | ✅ | `PathService.CheckDistanceClient` |
 | `direction_diagonal` | ✅ | `PathService.DirectionDiagonal` |
 | `direction_opposite` | ✅ | `PathService.DirectionOpposite` |
-| `path_search` | ⚠️ | A* exists in `MovementService`; entry returns true today |
-| `path_search_long` | ⚠️ | LOS check pending |
+| `path_search` | ✅ | `PathService.PathSearch` — delegates to `Pathfinder.Search` (A* with MAX_WALKPATH=32) |
+| `path_search_long` | ✅ | `PathService.PathSearchLong` — Bresenham LOS, halts at non-walkable cells |
 | `path_blownpos` | ✅ | `PathService.BlownPos` — 8-direction delta table |
 | `do_init_path` / `do_final_path` | ✅ | DI |
 
@@ -22,10 +22,17 @@ helpers + A* path search + knockback position resolver.
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Distance / direction / knockback / pathing | 9 | 2 | 0 | 11 |
-| **Totals** | **9** | **2** | **0** | **11** |
+| Distance / direction / knockback / pathing | 11 | 0 | 0 | 11 |
+| **Totals** | **11** | **0** | **0** | **11** |
 
 ## History
+
+### 2026-05-24 — P2.1 doc-resync close-out (2 stale ⚠️ → ✅; 0 genuine gaps remain)
+
+Both `path_search` + `path_search_long` flipped to ✅ — `PathService.PathSearch`
+now delegates to `Pathfinder.Search` (A* MAX_WALKPATH=32, anti-corner-cut),
+and `PathSearchLong` implements Bresenham LOS halting at non-walkable cells.
+Rollup: 9/2/0 → 11/0/0.
 
 ### 2026-05-22 — T9.H per-fn rollup
 
