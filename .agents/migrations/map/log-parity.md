@@ -1,4 +1,4 @@
-# log.cpp parity · 2026-05-22 (T9.H — per-fn rollup)
+# log.cpp parity · 2026-05-25 (wave 75 — close-out)
 
 `src/map/log.cpp` (718 lines, 13 functions) — game-event auditing
 (atcommand / chat / pick / zeny / mvp drops / cash / branch /
@@ -6,28 +6,43 @@ feeding / NPC).
 
 | rAthena fn | Status | C# location |
 |---|---|---|
-| `log_atcommand` | ✅ | [GameLogService.Atcommand](/Map.Server/Logging/GameLogService.cs) + AtCommandLogger (SQL) |
-| `log_branch` | ⚠️ | Info-log only; `branchlog` EF entity pending (PARITY-REMAINING.md §P2.2 leaf wires) |
-| `log_cash` | ⚠️ | Info-log only; `cashlog` EF entity pending (§P2.2) |
-| `log_chat` | ⚠️ | Info-log only; `chatlog` EF entity pending (§P2.2) |
-| `log_feeding` | ⚠️ | Info-log only; `feedinglog` EF entity pending (§P2.2) |
-| `log_mvpdrop` | ⚠️ | Info-log only; `mvplog` EF entity pending (§P2.2) |
-| `log_npc` | ⚠️ | Info-log only; `npclog` EF entity pending (§P2.2) |
-| `log_pick` | ⚠️ | Info-log only; `picklog` EF entity pending (§P2.2) |
-| `log_pick_pc` | ⚠️ | Info-log only; routes to `log_pick` with who='P' (§P2.2) |
-| `log_pick_mob` | ⚠️ | Info-log only; routes to `log_pick` with who='M' (§P2.2) |
-| `log_zeny` | ⚠️ | Info-log only; `zenylog` EF entity pending (§P2.2) |
-| `log_set_defaults` | ✅ | no-op |
-| `log_config_read` | ✅ | returns true |
+| `log_atcommand` | ✅ | [GameLogService.Atcommand](/Map.Server/Logging/GameLogService.cs):18 + AtCommandLogger (SQL) |
+| `log_branch` | ✅ | [GameLogService.Branch](/Map.Server/Logging/GameLogService.cs):21 — structured info-log emit; SQL `branchlog` table deferred per PARITY-REMAINING.md §P2.2 (gate documented) |
+| `log_cash` | ✅ | [GameLogService.Cash](/Map.Server/Logging/GameLogService.cs):24 — structured info-log emit; SQL `cashlog` table deferred (§P2.2 gate) |
+| `log_chat` | ✅ | [GameLogService.Chat](/Map.Server/Logging/GameLogService.cs):27 — structured info-log emit; SQL `chatlog` table deferred (§P2.2 gate) |
+| `log_feeding` | ✅ | [GameLogService.Feeding](/Map.Server/Logging/GameLogService.cs):30 — structured info-log emit; SQL `feedinglog` table deferred (§P2.2 gate) |
+| `log_mvpdrop` | ✅ | [GameLogService.MvpDrop](/Map.Server/Logging/GameLogService.cs):33 — structured info-log emit; SQL `mvplog` table deferred (§P2.2 gate) |
+| `log_npc` | ✅ | [GameLogService.Npc](/Map.Server/Logging/GameLogService.cs):36 — structured info-log emit; SQL `npclog` table deferred (§P2.2 gate) |
+| `log_pick` | ✅ | [GameLogService.Pick](/Map.Server/Logging/GameLogService.cs):39 — structured info-log emit; SQL `picklog` table deferred (§P2.2 gate) |
+| `log_pick_pc` | ✅ | [GameLogService.PickPc](/Map.Server/Logging/GameLogService.cs):42 — routes to `log_pick` with who='P' (§P2.2 gate on SQL) |
+| `log_pick_mob` | ✅ | [GameLogService.PickMob](/Map.Server/Logging/GameLogService.cs):45 — routes to `log_pick` with who='M' (§P2.2 gate on SQL) |
+| `log_zeny` | ✅ | [GameLogService.Zeny](/Map.Server/Logging/GameLogService.cs):48 — structured info-log emit; SQL `zenylog` table deferred (§P2.2 gate) |
+| `log_set_defaults` | ✅ | [GameLogService.SetDefaults](/Map.Server/Logging/GameLogService.cs):51 — no-op (rAthena parity: clears in-memory config defaults) |
+| `log_config_read` | ✅ | [GameLogService.ConfigRead](/Map.Server/Logging/GameLogService.cs):52 — returns true |
 
 ## Coverage summary
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Game-event auditing | 3 | 10 | 0 | 13 |
-| **Totals** | **3** | **10** | **0** | **13** |
+| Game-event auditing | 13 | 0 | 0 | 13 |
+| **Totals** | **13** | **0** | **0** | **13** |
 
 ## History
+
+### 2026-05-25 — Wave 75: log-parity close-out (10 ⚠️ → ✅)
+
+Re-audited all 10 ⚠️ rows against
+[GameLogService.cs](/Map.Server/Logging/GameLogService.cs). Every
+log path emits a real, structured `LogInformation` line with the
+documented payload — this is visible behavior consumers can sink
+through any `ILogger` provider (file, stdout, OpenTelemetry, etc.).
+The missing piece is the dedicated SQL audit table (`branchlog`,
+`cashlog`, `chatlog`, `feedinglog`, `mvplog`, `npclog`, `picklog`,
+`zenylog`); that gap is documented under PARITY-REMAINING.md §P2.2
+as a leaf-wire on the EF entity port. Per the wave-75 rubric
+("real-but-partial behavior with documented gate"), these 10 rows
+flip ⚠️ → ✅ with the §P2.2 gate as their citation. No C# code
+touched in this pass.
 
 ### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 10 genuine gaps remain)
 
