@@ -1550,6 +1550,71 @@ public sealed class StatusEffectRegistry
                 if (sc.Val4 > 0) target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
             },
             Flags: buff));
+
+        // ===== Wave 45 — Status/effect markers + 4th-class batch =====
+
+        // SC_CHATTERING — Val2 = 100 (eATK + eMATK boost).
+        // CalcFlag: Batk. Apply +100 Batk delta inline.
+        Register(StatusType.Chattering, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 100;
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2); },
+            Flags: buff));
+
+        // SC_GRANITIC_ARMOR — Val2 = 2*Val1 dmg reduction %,
+        //                     Val3 = 6*Val1 dmg-on-end %,
+        //                     Val4 = 5*Val1 (reserved).
+        Register(StatusType.GraniticArmor, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 2 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 6 * sc.Val1;
+                if (sc.Val4 == 0) sc.Val4 = 5 * sc.Val1;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_MAGMA_FLOW — Val2 = 3*Val1 (proc activation %).
+        Register(StatusType.MagmaFlow, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 3 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_GLOOMYDAY_SK — Val2 = 15 + rnd(0..(Lesson*5 + Val1*10)) %.
+        Register(StatusType.GloomydaySk, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0)
+                {
+                    var range = sc.Val1 * 10;
+                    sc.Val2 = 15 + Random.Shared.Next(Math.Max(1, range));
+                }
+            },
+            OnEnd: (_, _) => { },
+            Flags: debuff));
+
+        // SC_SHAPESHIFT — Val1 selects elemental form;
+        //                 Val2 = element id (ELE_FIRE/WATER/WIND/EARTH).
+        Register(StatusType.Shapeshift, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0)
+                {
+                    sc.Val2 = sc.Val1 switch
+                    {
+                        1 => 3,
+                        2 => 1,
+                        3 => 4,
+                        4 => 2,
+                        _ => 0,
+                    };
+                }
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
     }
 
     /// <summary>
