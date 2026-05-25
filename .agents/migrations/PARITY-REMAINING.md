@@ -491,6 +491,49 @@ any moment.
 
 ## History
 
+### 2026-05-25 — Wave 60: 1006-SC sweep, phase 4 — full allowlist evacuation
+
+Per the latest directive ("I want every SC migrated, doesn't matter if
+they're presence only or what — I want them on our side"), the remaining
+**46 allowlist entries** were migrated to real `Register()` bodies in a
+new `RegisterWave60FinalAllowlistMigration()` method.
+
+* **Bespoke Val2/Val3 materialisers (24)**: Reflectshield (val2=10+val1\*3),
+  Meltdown (val2=100\*val1, val3=70\*val1), Kyrie (val2=MaxHp\*12%, val3=5+val1),
+  Autoguard (val2=5+5\*val1), Sacrifice (val2=5), Deathbound (val2=500+100\*val1),
+  Kaite (val2=1+val1/5), Suffragium (val2=15\*val1), Memorize (val2=5),
+  Slowcast (val2=50\*val1), Poembragi (val2=2\*val1, val3=3\*val1),
+  Encpoison (val2=250+50\*val1), Ancilla (val2=30), Closeconfine2 (val3=50),
+  EChain (val2=10), Fallingstar (val2=8+2\*(1+val1)/2), GuardianS
+  (val2=MaxHp\*30%\*25\*val1%), OverheatLimitpoint (val2=1), PAlter
+  (val2=10\*val1), ReboundS (val2=10\*val1), RelieveOn (val2=min(10\*val1,99)),
+  Tunaparty (val2=MaxHp\*val1\*10%), Weaponperfection (val3 tiered: 5/10/15).
+* **Presence-only with explicit ScfFlag (22)**: Stun, Sleep, Silence,
+  Confusion, Stonewait (CC: Debuff+RemoveOnRefresh, Sleep adds
+  RemoveOnDamaged), Magnificat, Maximizepower, Tensionrelax, Aeterna,
+  Aspersio, Bitescar, Akaitsuki, BasilicaCell (Permanent), Bladestop,
+  Bossmapinfo, ClanInfo (Buff+Permanent), CursedcircleTarget, DamageHeal,
+  Hermode, SubWeaponproperty, TalismanOfProtection, VacuumExtreme, Warmer.
+
+**Final done-condition state**:
+- `_behaviorElsewhereAllowlist` active entries: **0** ✅ (was 46)
+- `grep -c "Register.*CombatMarkerHandler" StatusEffectRegistry.cs`: **0** ✅
+- All four `StatusEffectCompletenessTests` pass:
+  - `Registry_registers_every_StatusType_except_None_sentinel` ✅
+  - `Every_CalcFlag_SC_has_a_real_stat_mod_handler` ✅
+  - `Behavior_elsewhere_allowlist_only_lists_SCs_with_OnStart_NoOp` ✅
+  - `Presence_only_SCs_carry_non_empty_ScfFlag_classification` ✅
+- Full suite: **3,395 / 3,395** Map.Server.Tests, 87 / 87 Core.Server, 29 / 29 Login.Server ✅
+- Bespoke OnStart bodies / presence-only explicit: **~337 / 997 (34%)**
+- Presence-only via generator default: ~660 / 997 (66%)
+
+Every SC in `StatusType` now has a real `Register()` entry in the
+registry — either a bespoke OnStart body that mutates state, or an
+explicit presence-only no-op with documented ScfFlag classification.
+The drift-detector test infrastructure is preserved (allowlist
+dictionary kept as commented history) so any regression that re-adds
+no-op OnStart bodies for CalcFlag SCs will fail loudly.
+
 ### 2026-05-25 — Waves 52–59: 1006-SC sweep, phase 3 — CalcFlag+allowlist migration
 
 The strict goal of "every CalcFlag SC has a real stat-mod OnStart

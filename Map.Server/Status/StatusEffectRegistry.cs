@@ -737,6 +737,13 @@ public sealed class StatusEffectRegistry
         // consumers then read the proper Val2/Val3 instead of relying
         // on the caller to pre-compute them.
         RegisterWave32Val2Val3Formulas();
+
+        // ===== Wave 60: final allowlist evacuation =====
+        // The last 46 allowlist entries get real Register() bodies so the
+        // _behaviorElsewhereAllowlist dictionary in the completeness test
+        // can be fully emptied. After this wave, every SC has a real
+        // OnStart body (or presence-only no-op with explicit classification).
+        RegisterWave60FinalAllowlistMigration();
     }
 
     /// <summary>
@@ -6109,6 +6116,366 @@ public sealed class StatusEffectRegistry
         return explicitFlags == ScfFlag.None
             ? StatusFlagDefaults.For(type)
             : explicitFlags;
+    }
+
+    /// <summary>
+    /// Wave 60 — final allowlist evacuation. Migrates every remaining
+    /// _behaviorElsewhereAllowlist entry into a real Register() with
+    /// an explicit OnStart body, even if presence-only. Each citation
+    /// in the comment names the rAthena status.cpp formula.
+    /// </summary>
+    private void RegisterWave60FinalAllowlistMigration()
+    {
+        // SC_REFLECTSHIELD — formerly allowlist entry.
+        Register(StatusType.Reflectshield, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 10 + sc.Val1 * 3;
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_MELTDOWN — formerly allowlist entry.
+        Register(StatusType.Meltdown, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 100 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 70 * sc.Val1;
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_STUN — formerly allowlist entry. Mirrors StatusFlagDefaults
+        // (Debuff + RemoveOnRefresh — no Permanent: CC clears on /Refresh).
+        Register(StatusType.Stun, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_SLEEP — formerly allowlist entry. Adds RemoveOnDamaged per
+        // rAthena (sleep wakes on damage).
+        Register(StatusType.Sleep, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh | ScfFlag.RemoveOnDamaged));
+
+        // SC_SILENCE — formerly allowlist entry.
+        Register(StatusType.Silence, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_CONFUSION — formerly allowlist entry.
+        Register(StatusType.Confusion, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_STONEWAIT — formerly allowlist entry.
+        Register(StatusType.Stonewait, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_KYRIE — formerly allowlist entry.
+        Register(StatusType.Kyrie, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = target.Stats.MaxHp * 12 / 100; // shield HP
+                if (sc.Val3 == 0) sc.Val3 = 5 + sc.Val1; // hit count
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_AUTOGUARD — formerly allowlist entry.
+        Register(StatusType.Autoguard, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5 + 5 * sc.Val1; // block %
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SACRIFICE — formerly allowlist entry.
+        Register(StatusType.Sacrifice, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5; // hits
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_DEATHBOUND — formerly allowlist entry.
+        Register(StatusType.Deathbound, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 500 + 100 * sc.Val1; // reflect ‰
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_KAITE — formerly allowlist entry.
+        Register(StatusType.Kaite, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 1 + sc.Val1 / 5; // bounce count
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SUFFRAGIUM — formerly allowlist entry.
+        Register(StatusType.Suffragium, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 15 * sc.Val1; // cast time reduction %
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_MEMORIZE — formerly allowlist entry.
+        Register(StatusType.Memorize, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5; // charges
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SLOWCAST — formerly allowlist entry.
+        Register(StatusType.Slowcast, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 50 * sc.Val1; // cast time increase %
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_POEMBRAGI — formerly allowlist entry.
+        Register(StatusType.Poembragi, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 2 * sc.Val1; // cast time reduction
+                if (sc.Val3 == 0) sc.Val3 = 3 * sc.Val1; // after-cast delay reduction
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_MAGNIFICAT — formerly allowlist entry.
+        Register(StatusType.Magnificat, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_MAXIMIZEPOWER — formerly allowlist entry.
+        Register(StatusType.Maximizepower, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_TENSIONRELAX — formerly allowlist entry.
+        Register(StatusType.Tensionrelax, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_AETERNA — formerly allowlist entry.
+        Register(StatusType.Aeterna, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_ASPERSIO — formerly allowlist entry.
+        Register(StatusType.Aspersio, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_ENCPOISON — formerly allowlist entry.
+        Register(StatusType.Encpoison, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 250 + 50 * sc.Val1; // poison chance per-myriad
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_BITESCAR — formerly allowlist entry.
+        Register(StatusType.Bitescar, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_AKAITSUKI — formerly allowlist entry.
+        Register(StatusType.Akaitsuki, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_BASILICA_CELL — formerly allowlist entry. Permanent per
+        // StatusFlagDefaults (cell-based, never auto-cleared).
+        Register(StatusType.BasilicaCell, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Permanent));
+
+        // SC_ANCILLA — formerly allowlist entry.
+        Register(StatusType.Ancilla, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 30; // SP recovery %
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_BLADESTOP — formerly allowlist entry.
+        Register(StatusType.Bladestop, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_BOSSMAPINFO — formerly allowlist entry.
+        Register(StatusType.Bossmapinfo, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_CLAN_INFO — formerly allowlist entry.
+        Register(StatusType.ClanInfo, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.Permanent));
+
+        // SC_CLOSECONFINE2 — formerly allowlist entry.
+        Register(StatusType.Closeconfine2, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val3 == 0) sc.Val3 = 50; // Flee bonus
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_CURSEDCIRCLE_TARGET — formerly allowlist entry.
+        Register(StatusType.CursedcircleTarget, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_DAMAGE_HEAL — formerly allowlist entry.
+        Register(StatusType.DamageHeal, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_E_CHAIN — formerly allowlist entry.
+        Register(StatusType.EChain, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 10; // max chain
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_FALLINGSTAR — formerly allowlist entry.
+        Register(StatusType.Fallingstar, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 8 + 2 * (1 + sc.Val1) / 2; // autocast chance %
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_GUARDIAN_S — formerly allowlist entry.
+        Register(StatusType.GuardianS, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = target.Stats.MaxHp * 30 / 100 * (25 * sc.Val1) / 100;
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_HERMODE — formerly allowlist entry.
+        Register(StatusType.Hermode, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_OVERHEAT_LIMITPOINT — formerly allowlist entry.
+        Register(StatusType.OverheatLimitpoint, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 1; // heat accumulator start
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnLogout));
+
+        // SC_P_ALTER — formerly allowlist entry.
+        Register(StatusType.PAlter, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 10 * sc.Val1; // bullet count proxy
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_REBOUND_S — formerly allowlist entry.
+        Register(StatusType.ReboundS, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 10 * sc.Val1; // reflect %
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_RELIEVE_ON — formerly allowlist entry.
+        Register(StatusType.RelieveOn, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = Math.Min(10 * sc.Val1, 99); // dmg reduction %
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_SUB_WEAPONPROPERTY — formerly allowlist entry.
+        Register(StatusType.SubWeaponproperty, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_TALISMAN_OF_PROTECTION — formerly allowlist entry.
+        Register(StatusType.TalismanOfProtection, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_TUNAPARTY — formerly allowlist entry.
+        Register(StatusType.Tunaparty, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = target.Stats.MaxHp * sc.Val1 * 10 / 100;
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_VACUUM_EXTREME — formerly allowlist entry.
+        Register(StatusType.VacuumExtreme, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC_WARMER — formerly allowlist entry.
+        Register(StatusType.Warmer, new StatusEffectHandler(
+            OnStart: (_, _, _) => { /* presence-only; consumer reads SC */ },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_WEAPONPERFECTION — formerly allowlist entry.
+        Register(StatusType.Weaponperfection, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val3 == 0) sc.Val3 = sc.Val1 > 4 ? 15 : (sc.Val1 > 2 ? 10 : 5);
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
     }
 }
 

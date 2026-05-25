@@ -81,9 +81,9 @@ public class StatusEffectCompletenessTests
             // [StatusType.Defender] — Wave 58: real OnStart body migrated; allowlist entry removed
             // [StatusType.Spirit] — Wave 59: real OnStart body migrated (+Val1 to all 6 base stats)
             // [StatusType.Providence] — Wave 58: real OnStart body migrated; allowlist entry removed
-            [StatusType.Reflectshield] = "CR_REFLECTSHIELD — val2=10+val1*3 reflect% (status.cpp:10587)",
+            // [StatusType.Reflectshield] — Wave 60: real Register() body migrated; allowlist entry removed
             // [StatusType.Steelbody] — Wave 55: real OnStart body migrated
-            [StatusType.Meltdown] = "WS_MELTDOWN — val2/val3 weapon/armor break chance (status.cpp:11264)",
+            // [StatusType.Meltdown] — Wave 60: real Register() body migrated; allowlist entry removed
             // [StatusType.Edp] — Wave 58: real OnStart body migrated; allowlist entry removed
             // Magicpower: NS-3 wave 4a wired Smatk += base*5*val1/100 — so it's no longer "elsewhere".
             // [StatusType.Saturdaynightfever] — Wave 55: real OnStart body migrated
@@ -121,24 +121,24 @@ public class StatusEffectCompletenessTests
             // ---- NS-3 wave 5a Class A — CC family — Wave 57: Stone+Freeze
             // migrated to real OnStart (-Val1 Def/Mdef); CC gate semantic
             // still on EntityActionGates.CanAct.
-            [StatusType.Stun]    = "CC gate — EntityActionGates.CanAct reads SC presence (status.cpp:9412)",
-            [StatusType.Sleep]   = "CC gate — EntityActionGates.CanAct reads SC presence (status.cpp:9442)",
-            [StatusType.Silence] = "CC gate — EntityActionGates.CanCastSkill reads SC presence (status.cpp:9422)",
-            [StatusType.Confusion] = "CC gate — EntityActionGates.CanCastSkill (status.cpp:9496)",
-            [StatusType.Stonewait] = "CC warmup — 5s petrify timer (status.cpp:9452, 10786)",
+            // [StatusType.Stun] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Sleep] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Silence] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Confusion] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Stonewait] — Wave 60: real Register() body migrated; allowlist entry removed
 
             // ---- NS-3 wave 5a Class A — Val2-only readers (no stat mutation) ----
             // [StatusType.Endure] — Wave 58: real OnStart body migrated; allowlist entry removed
-            [StatusType.Kyrie]     = "PR_KYRIE — val2/val3 shield absorb read by DamageService (status.cpp:10547)",
-            [StatusType.Autoguard] = "CR_AUTOGUARD — val2 block% read by DamageService (status.cpp:10931)",
-            [StatusType.Sacrifice] = "PA_SACRIFICE — val2=5 hits read by damage pipeline (status.cpp:10565)",
-            [StatusType.Deathbound] = "RK_DEATHBOUND — val2 reflect% read by damage pipeline (status.cpp:11465)",
+            // [StatusType.Kyrie] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Autoguard] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Sacrifice] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Deathbound] — Wave 60: real Register() body migrated; allowlist entry removed
             // [StatusType.Signumcrucis] — Wave 58: real OnStart body migrated; allowlist entry removed
-            [StatusType.Kaite]     = "KG_KAITE — val2 bounce count read by SkillHealRedirector (status.cpp:11149)",
-            [StatusType.Suffragium] = "PR_SUFFRAGIUM — val2 cast reduction read by SkillCastTimingService (status.cpp:11419)",
-            [StatusType.Memorize]  = "PF_MEMORIZE — val2=5 charges read by SkillCastTimingService (status.cpp:11078)",
-            [StatusType.Slowcast]  = "Slowcast debuff — val2 cast+% read by SkillCastTimingService (status.cpp:11394)",
-            [StatusType.Poembragi] = "BA_POEMBRAGI — val2/val3 cast+delay reductions read by SkillCastTimingService (status.cpp:10739)",
+            // [StatusType.Kaite] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Suffragium] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Memorize] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Slowcast] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Poembragi] — Wave 60: real Register() body migrated; allowlist entry removed
 
             // ---- NS-3 wave 5b family-grouped consumer wiring ----
             // Star Emperor family — stance + Light* skill plugins read Val1/Val2.
@@ -197,15 +197,15 @@ public class StatusEffectCompletenessTests
             // [StatusType.ShinkirouCall] — Wave 58: real OnStart body migrated; allowlist entry removed
 
             // ---- NS-3 wave 5a Class A — pure presence-only (no Val storage) ----
-            [StatusType.Magnificat] = "AL_MAGNIFICAT — +50% SP regen marker read by NaturalHealService",
-            [StatusType.Maximizepower] = "BS_MAXIMIZE — weapon max-roll marker read by BattleCalculator",
-            [StatusType.Tensionrelax] = "LK_TENSIONRELAX — HP regen overlay marker read by NaturalHealService",
-            [StatusType.Aeterna]    = "PR_LEXAETERNA — next-hit-doubled marker read by damage pipeline",
-            [StatusType.Aspersio]   = "PR_ASPERSIO — holy weapon endow marker read by element resolver",
-            [StatusType.Encpoison]  = "AS_ENCHANTPOISON — poison weapon endow marker read by element resolver",
-            [StatusType.Bitescar]   = "Sura DoT marker — ends on heal; consumer in per-skill plugin",
-            [StatusType.Akaitsuki]  = "Sura heal-flip marker — heal pipeline reads on AL_HEAL apply",
-            [StatusType.BasilicaCell] = "Basilica cell marker — PlayerPositionHelpers.IsBasilicaCell reads",
+            // [StatusType.Magnificat] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Maximizepower] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Tensionrelax] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Aeterna] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Aspersio] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Encpoison] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Bitescar] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Akaitsuki] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.BasilicaCell] — Wave 60: real Register() body migrated; allowlist entry removed
 
             // ---- Wave 47 — Elemental option + 4th-class markers with rAthena
             // Val2/Val3 storage but consumer-side reads (no stat mod from OnStart).
@@ -232,27 +232,27 @@ public class StatusEffectCompletenessTests
             // rAthena status.cpp formula it implements. Only SCs whose
             // current C# registration is purely presence-only (no stat mod)
             // are added; SCs with real OnStart bodies are NOT included.
-            [StatusType.Ancilla] = "SC_ANCILLA — Val2 = 30 SP recovery %; consumer-side regen overlay",
-            [StatusType.Bladestop] = "SC_BLADESTOP — Val4 = paired-bladestop entity id; combat path reads",
-            [StatusType.Bossmapinfo] = "SC_BOSSMAPINFO — Val4 = mini-map mark countdown; UI broadcast tick",
-            [StatusType.ClanInfo] = "SC_CLAN_INFO — clan-membership marker; clan chat + UI reads",
-            [StatusType.Closeconfine2] = "SC_CLOSECONFINE2 — Val3 = 50 Flee bonus; combat path reads",
-            [StatusType.CursedcircleTarget] = "SC_CURSEDCIRCLE_TARGET — Val2 = circle link id; Sura combat reads",
-            [StatusType.DamageHeal] = "SC_DAMAGE_HEAL — Val2 = BF_WEAPON type filter; damage path heal swap",
-            [StatusType.EChain] = "SC_E_CHAIN — Val2 = 10 max chain count; Rebellion combat plugin",
-            [StatusType.Fallingstar] = "SC_FALLINGSTAR — Val2 = autocast chance %; Star Emperor plugin reads",
-            [StatusType.GuardianS] = "SC_GUARDIAN_S — Val2 = damage absorb pool; combat path consumes",
-            [StatusType.Hermode] = "SC_HERMODE — area-buff marker; Bard/Dancer plugin reads",
-            [StatusType.OverheatLimitpoint] = "SC_OVERHEAT_LIMITPOINT — Val2 = heat accumulator; Mechanic plugin reads",
-            [StatusType.PAlter] = "SC_P_ALTER — Val2 = 10*n bullet count; Rebellion combat reads",
-            [StatusType.ReboundS] = "SC_REBOUND_S — Val2 = 10*Val1 reflect %; combat reflect path",
-            [StatusType.RelieveOn] = "SC_RELIEVE_ON — Val2 = min(10*Val1,99) dmg reduction; combat reads",
-            [StatusType.SubWeaponproperty] = "SC_SUB_WEAPONPROPERTY — element overlay; combat element reads",
-            [StatusType.TalismanOfProtection] = "SC_TALISMAN_OF_PROTECTION — marker; 4th-class talisman plugin",
-            [StatusType.Tunaparty] = "SC_TUNAPARTY — Val2 = MaxHp absorb pool; combat consumes",
-            [StatusType.VacuumExtreme] = "SC_VACUUM_EXTREME — root marker; movement service blocks",
-            [StatusType.Warmer] = "SC_WARMER — Val4 = tick countdown; OnPeriodic-style heal overlay",
-            [StatusType.Weaponperfection] = "SC_WEAPONPERFECTION — Val3 = power increase %; combat path reads",
+            // [StatusType.Ancilla] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Bladestop] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Bossmapinfo] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.ClanInfo] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Closeconfine2] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.CursedcircleTarget] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.DamageHeal] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.EChain] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Fallingstar] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.GuardianS] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Hermode] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.OverheatLimitpoint] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.PAlter] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.ReboundS] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.RelieveOn] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.SubWeaponproperty] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.TalismanOfProtection] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Tunaparty] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.VacuumExtreme] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Warmer] — Wave 60: real Register() body migrated; allowlist entry removed
+            // [StatusType.Weaponperfection] — Wave 60: real Register() body migrated; allowlist entry removed
 
             // ---- Wave 51: removed — the 33 entries originally drafted
             // all turned out to have real OnStart bodies registered via
