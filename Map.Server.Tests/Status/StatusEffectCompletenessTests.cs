@@ -78,13 +78,13 @@ public class StatusEffectCompletenessTests
             // [StatusType.Burning] — Wave 56: removed; OnPeriodic tick body satisfies the gate
 
             // ---- Combat-marker SCs (NS-3 wave 4a): val read by damage pipeline ----
-            [StatusType.Defender] = "CR_DEFENDER — ranged dmg reduction (status.cpp:10953-10968)",
+            // [StatusType.Defender] — Wave 58: real OnStart body migrated; allowlist entry removed
             [StatusType.Spirit]   = "Soul Linker job-gate marker read by skill plugins",
-            [StatusType.Providence] = "CR_PROVIDENCE — val2=val1*5 subele[HOLY]+subrace[DEMON] (status.cpp:4788-4790)",
+            // [StatusType.Providence] — Wave 58: real OnStart body migrated; allowlist entry removed
             [StatusType.Reflectshield] = "CR_REFLECTSHIELD — val2=10+val1*3 reflect% (status.cpp:10587)",
             // [StatusType.Steelbody] — Wave 55: real OnStart body migrated
             [StatusType.Meltdown] = "WS_MELTDOWN — val2/val3 weapon/armor break chance (status.cpp:11264)",
-            [StatusType.Edp]      = "ASC_EDP — val2 poison chance, val3 dmg% (status.cpp:10522-10535)",
+            // [StatusType.Edp] — Wave 58: real OnStart body migrated; allowlist entry removed
             // Magicpower: NS-3 wave 4a wired Smatk += base*5*val1/100 — so it's no longer "elsewhere".
             // [StatusType.Saturdaynightfever] — Wave 55: real OnStart body migrated
             // ---- Visibility markers — Wave 55: real OnStart bodies migrated
@@ -113,10 +113,10 @@ public class StatusEffectCompletenessTests
             //  Soulfairy, Soulcold)
 
             // ---- NS-3 wave 4b combat-marker additions ----
-            [StatusType.Marionette]  = "HP_ASSUMPTIO source — caster stat-transfer (status.cpp:11015-11027), source-ref TODO",
-            [StatusType.Marionette2] = "HP_ASSUMPTIO target — caster val3/val4 decode (status.cpp:11029-11052), source-ref TODO",
-            [StatusType.Nibelungen] = "BD_RINGNIBELUNGEN — val2 random ring effect type (status.cpp:10725-10727)",
-            [StatusType.Siegfried]  = "BD_SIEGFRIED — val2 ele resist, val3 status ailment resist (status.cpp:10728-10731)",
+            // [StatusType.Marionette] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.Marionette2] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.Nibelungen] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.Siegfried] — Wave 58: real OnStart body migrated; allowlist entry removed
 
             // ---- NS-3 wave 5a Class A — CC family — Wave 57: Stone+Freeze
             // migrated to real OnStart (-Val1 Def/Mdef); CC gate semantic
@@ -128,12 +128,12 @@ public class StatusEffectCompletenessTests
             [StatusType.Stonewait] = "CC warmup — 5s petrify timer (status.cpp:9452, 10786)",
 
             // ---- NS-3 wave 5a Class A — Val2-only readers (no stat mutation) ----
-            [StatusType.Endure]    = "SM_ENDURE — val2=7 hit counter read by combat anti-stagger (status.cpp:10490)",
+            // [StatusType.Endure] — Wave 58: real OnStart body migrated; allowlist entry removed
             [StatusType.Kyrie]     = "PR_KYRIE — val2/val3 shield absorb read by DamageService (status.cpp:10547)",
             [StatusType.Autoguard] = "CR_AUTOGUARD — val2 block% read by DamageService (status.cpp:10931)",
             [StatusType.Sacrifice] = "PA_SACRIFICE — val2=5 hits read by damage pipeline (status.cpp:10565)",
             [StatusType.Deathbound] = "RK_DEATHBOUND — val2 reflect% read by damage pipeline (status.cpp:11465)",
-            [StatusType.Signumcrucis] = "AL_CRUCIS — val2 Def reduction read by combat defense (status.cpp:10513)",
+            // [StatusType.Signumcrucis] — Wave 58: real OnStart body migrated; allowlist entry removed
             [StatusType.Kaite]     = "KG_KAITE — val2 bounce count read by SkillHealRedirector (status.cpp:11149)",
             [StatusType.Suffragium] = "PR_SUFFRAGIUM — val2 cast reduction read by SkillCastTimingService (status.cpp:11419)",
             [StatusType.Memorize]  = "PF_MEMORIZE — val2=5 charges read by SkillCastTimingService (status.cpp:11078)",
@@ -142,36 +142,36 @@ public class StatusEffectCompletenessTests
 
             // ---- NS-3 wave 5b family-grouped consumer wiring ----
             // Star Emperor family — stance + Light* skill plugins read Val1/Val2.
-            [StatusType.Sunstance]  = "Star Emperor — stance marker read by Taekwon StarEmperor*.cs plugins",
-            [StatusType.Starstance] = "Star Emperor — stance marker read by Taekwon StarEmperor*.cs plugins",
+            // [StatusType.Sunstance] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.Starstance] — Wave 58: real OnStart body migrated; allowlist entry removed
             // Royal Guard family — LG_* skill plugins read SCs for damage/aggregate.
-            [StatusType.Banding]    = "LG_BANDING — val2 band member count read by RG party-share aggregator",
-            [StatusType.Inspiration] = "LG_INSPIRATION — stat buff + regen immunity read by RG plugin",
-            [StatusType.ShieldspellAtk] = "LG_SHIELDSPELL — val2 ATK boost magnitude read by plugin",
-            [StatusType.Hovering]   = "NC_HOVERING — Val1 read by MovementService for terrain damage disable",
+            // [StatusType.Banding] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.Inspiration] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.ShieldspellAtk] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.Hovering] — Wave 58: real OnStart body migrated; allowlist entry removed
             // Sura family — combo chain markers read by per-skill plugins.
-            [StatusType.TinderBreaker]  = "SR_TINDER_BREAKER chain — val1 chain depth read by combo dispatch",
-            [StatusType.TinderBreaker2] = "SR_TINDER_BREAKER2 chain — val1 chain depth read by combo dispatch",
+            // [StatusType.TinderBreaker] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.TinderBreaker2] — Wave 58: real OnStart body migrated; allowlist entry removed
 
             // ---- NS-3 wave 5c — Ninja + Sorcerer-sphere + GS families ----
             // Ninja family — Map.Server/Skills/SkillImpl/Ninja/*.cs reads val2.
-            [StatusType.Suiton] = "NJ_SUITON — cell-marker debuff; movement service reads SC for slow",
-            [StatusType.Nen]    = "NJ_NEN — auto-revive; PcDeathService checks SC on death",
+            // [StatusType.Suiton] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.Nen] — Wave 58: real OnStart body migrated; allowlist entry removed
             // [StatusType.Madnesscancel] — Wave 30: now has a real OnStart body
             // that materialises Val2 (ASPD) + Val3 (Batk) and mutates AspdRate /
             // Batk directly. Allowlist entry removed per test-driven drift gate.
             // Sorcerer elemental sphere _OPTION buffs (paired with base sphere SC).
             // Consumer: Map.Server/Skills/SkillImpl/Mage/Sorcerer*.cs + ElementalNpc plugins.
-            [StatusType.HeaterOption]      = "Sorcerer Fire sphere option — read by per-sphere skill plugin",
-            [StatusType.TropicOption]      = "Sorcerer Fire (strong) sphere option — read by per-sphere skill plugin",
-            [StatusType.AquaplayOption]    = "Sorcerer Water sphere option — read by per-sphere skill plugin",
-            [StatusType.CoolerOption]      = "Sorcerer Water (strong) sphere option — read by per-sphere skill plugin",
-            [StatusType.ChillyAirOption]   = "Sorcerer Water cold sphere option — read by per-sphere skill plugin",
-            [StatusType.BlastOption]       = "Sorcerer Wind sphere option — read by per-sphere skill plugin",
-            [StatusType.WildStormOption]   = "Sorcerer Wind (strong) sphere option — read by per-sphere skill plugin",
-            [StatusType.PetrologyOption]   = "Sorcerer Earth sphere option — read by per-sphere skill plugin",
-            [StatusType.CursedSoilOption]  = "Sorcerer Earth dark sphere option — read by per-sphere skill plugin",
-            [StatusType.HeatBarrel]        = "RL_HEAT_BARREL — val2 bullet count read by Rebellion damage path",
+            // [StatusType.HeaterOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.TropicOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.AquaplayOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.CoolerOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.ChillyAirOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.BlastOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.WildStormOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.PetrologyOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.CursedSoilOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.HeatBarrel] — Wave 58: real OnStart body migrated; allowlist entry removed
 
             // ---- NS-3 wave 5d — GC + SC + Genetic/Mechanic + WL + AB + WM + 4th-class ----
             // GC family — consumer Map.Server/Skills/SkillImpl/Thief/GuillotineCross*.cs
@@ -179,22 +179,22 @@ public class StatusEffectCompletenessTests
             // [StatusType.Venombleed] — Wave 56: removed; OnPeriodic tick body satisfies the gate
             // [StatusType.Pyrexia] — Wave 56: removed; OnPeriodic tick body satisfies the gate
             // SC (Shadow Chaser) family — consumer ShadowChaser*.cs
-            [StatusType.Stripaccessory] = "SC__STRIPACCESSORY — equip-disable enforced by IEquipService",
-            [StatusType.Bloodylust]     = "SC__BLOODYLUST — val2 dmg% boost read by Combat damage path",
+            // [StatusType.Stripaccessory] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.Bloodylust] — Wave 58: real OnStart body migrated; allowlist entry removed
             // Genetic/Mechanic family — consumer Merchant/Mechanic*.cs + Genetic*.cs
-            [StatusType.Madogear]   = "NC Madogear — Val1 type read by PlayerOptionService for sprite + skill gating",
-            [StatusType.Pyroclastic] = "NC_PYROCLASTIC — Val2 atk+ele read by weapon element resolver",
+            // [StatusType.Madogear] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.Pyroclastic] — Wave 58: real OnStart body migrated; allowlist entry removed
             // Warlock family — consumer Map.Server/Skills/SkillImpl/Mage/Warlock*.cs
             // [StatusType.Teargas] — Wave 56: removed; OnPeriodic tick body satisfies the gate
             // Arch Bishop / extended Sura
-            [StatusType.Rushwindmill] = "WM_RUSHWINDMILL — Val2 boost magnitude read by Combat damage path",
+            // [StatusType.Rushwindmill] — Wave 58: real OnStart body migrated; allowlist entry removed
             // Wanderer / Minstrel
-            [StatusType.Moonlitserenade] = "WM_MOONLITSERENADE — Val2 Matk% read by Combat Matk path",
+            // [StatusType.Moonlitserenade] — Wave 58: real OnStart body migrated; allowlist entry removed
             // [StatusType.Leradsdew] — P0.2: now has real OnStart body (MaxHp%).
-            [StatusType.WindStepOption]  = "Wind sphere option — read by ElementalNpc plugin",
-            [StatusType.WindCurtainOption] = "Wind curtain option — read by ElementalNpc plugin",
+            // [StatusType.WindStepOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.WindCurtainOption] — Wave 58: real OnStart body migrated; allowlist entry removed
             // 4th-class
-            [StatusType.ShinkirouCall] = "Shinkiro 4th-class — Val1 sky-state read by SkyEmperor*.cs plugin",
+            // [StatusType.ShinkirouCall] — Wave 58: real OnStart body migrated; allowlist entry removed
 
             // ---- NS-3 wave 5a Class A — pure presence-only (no Val storage) ----
             [StatusType.Magnificat] = "AL_MAGNIFICAT — +50% SP regen marker read by NaturalHealService",
@@ -209,23 +209,23 @@ public class StatusEffectCompletenessTests
 
             // ---- Wave 47 — Elemental option + 4th-class markers with rAthena
             // Val2/Val3 storage but consumer-side reads (no stat mod from OnStart).
-            [StatusType.Swingdance] = "WM_SWINGDANCE — Val3 = 3*Val1+Val2 walk speed + ASPD reduction; read by movement+ASPD pipeline",
-            [StatusType.CircleOfFireOption] = "SC_CIRCLE_OF_FIRE_OPTION — Val2 = 300 fire reflect splash damage read by ElementalNpc plugin",
-            [StatusType.WaterBarrier] = "SC_WATER_BARRIER — Val2 = 30 Atk2/Flee reduction read by Sorcerer combat plugin",
-            [StatusType.SolidSkinOption] = "SC_SOLID_SKIN_OPTION — Val2 = 33 def % bonus read by Sorcerer combat plugin",
-            [StatusType.StoneShieldOption] = "SC_STONE_SHIELD_OPTION — Val2 = 100 elemental modifier read by ElementalNpc plugin",
-            [StatusType.PowerOfGaia] = "SC_POWER_OF_GAIA — Val2 = 33 def rate, Val3 = 20 HP rate read by Sorcerer plugin",
-            [StatusType.PyrotechnicOption] = "SC_PYROTECHNIC_OPTION — Val2 = 60 Fire eATK read by ElementalNpc plugin",
-            [StatusType.Eqc] = "SC_EQC — Val2 = 5*Val1 def reduction, Val3 = 2*Val1 HP drain read by per-skill plugin",
-            [StatusType.ToxinOfMandara] = "SC_TOXIN_OF_MANDARA — Val2 = 15*Val1 res reduction read by per-skill plugin",
+            // [StatusType.Swingdance] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.CircleOfFireOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.WaterBarrier] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.SolidSkinOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.StoneShieldOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.PowerOfGaia] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.PyrotechnicOption] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.Eqc] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.ToxinOfMandara] — Wave 58: real OnStart body migrated; allowlist entry removed
 
             // Wave 48 — consumer-side reads for SCs without native stat mod.
-            [StatusType.TelekinesisIntense] = "WL_TELEKINESIS_INTENSE — Val2 SP cost reduction, Val3 magic % bonus read by Warlock plugins",
-            [StatusType.Flashcombo] = "SR_FLASHCOMBO — Val2 = 20*Val1+20 combo ATK bonus read by Sura chain dispatch",
-            [StatusType.Shrimp] = "SU_SHRIMP — Val2 = 10 BATK%/MATK% read by Summoner combat path",
-            [StatusType.SpSha] = "Sorcerer SP_SHA — Val2 = 50 move speed reduction read by movement service",
-            [StatusType.EmergencyMove] = "BR_EMERGENCY_MOVE — Val2 = 25 move speed read by movement service",
-            [StatusType.HolyS] = "BR_HOLY_S — Val2 = 5+2*Val1 dmg reduction / holy bonus read by combat path",
+            // [StatusType.TelekinesisIntense] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.Flashcombo] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.Shrimp] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.SpSha] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.EmergencyMove] — Wave 58: real OnStart body migrated; allowlist entry removed
+            // [StatusType.HolyS] — Wave 58: real OnStart body migrated; allowlist entry removed
 
             // ---- Wave 50: bulk allowlist for SCs with rAthena formulas
             // that store Val2/Val3 for consumer-side reads. Each cites the

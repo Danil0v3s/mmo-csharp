@@ -2023,6 +2023,779 @@ public sealed class StatusEffectRegistry
             OnStart: (_, _, _) => { },
             OnEnd: (_, _) => { },
             Flags: buff));
+
+        // Wave 58 — SC_AquaplayOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.AquaplayOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Banding: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Banding, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_BlastOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.BlastOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Bloodylust: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Bloodylust, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
+                target.Stats.Def2 = (short)Math.Min(short.MaxValue, target.Stats.Def2 + sc.Val1);
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
+                target.Stats.Def2 = (short)Math.Max(0, target.Stats.Def2 - sc.Val1);
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_ChillyAirOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.ChillyAirOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_CircleOfFireOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.CircleOfFireOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_CoolerOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.CoolerOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_CursedSoilOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.CursedSoilOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.MaxHp = (int)Math.Max(0, target.Stats.MaxHp - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Defender: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Defender, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Edp: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Edp, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_EmergencyMove: +Val1 to listed CalcFlag fields.
+        Register(StatusType.EmergencyMove, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Endure: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Endure, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Mdef = (short)Math.Max(0, target.Stats.Mdef - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Eqc: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Eqc, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Def2 = (short)Math.Min(short.MaxValue, target.Stats.Def2 + sc.Val1);
+                target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def2 = (short)Math.Max(0, target.Stats.Def2 - sc.Val1);
+                target.Stats.MaxHp = (int)Math.Max(0, target.Stats.MaxHp - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Flashcombo: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Flashcombo, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_HeatBarrel: +Val1 to listed CalcFlag fields.
+        Register(StatusType.HeatBarrel, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val1);
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val1);
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_HeaterOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.HeaterOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_HolyS: +Val1 to listed CalcFlag fields.
+        Register(StatusType.HolyS, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Hovering: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Hovering, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Inspiration: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Inspiration, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val1);
+                target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val1);
+                target.Stats.MaxHp = (int)Math.Max(0, target.Stats.MaxHp - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Madogear: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Madogear, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Marionette: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Marionette, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Marionette2: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Marionette2, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Moonlitserenade: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Moonlitserenade, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Nen: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Nen, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Nibelungen: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Nibelungen, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_PetrologyOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.PetrologyOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.MaxHp = (int)Math.Max(0, target.Stats.MaxHp - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_PowerOfGaia: +Val1 to listed CalcFlag fields.
+        Register(StatusType.PowerOfGaia, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1);
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.MaxHp = (int)Math.Max(0, target.Stats.MaxHp - sc.Val1);
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Providence: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Providence, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Pyroclastic: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Pyroclastic, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_PyrotechnicOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.PyrotechnicOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Rushwindmill: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Rushwindmill, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_ShieldspellAtk: +Val1 to listed CalcFlag fields.
+        Register(StatusType.ShieldspellAtk, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_ShinkirouCall: +Val1 to listed CalcFlag fields.
+        Register(StatusType.ShinkirouCall, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Shrimp: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Shrimp, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Siegfried: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Siegfried, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_SIGNUMCRUCIS: -Val1 Def (debuff vs Undead/Demon).
+        // Skipped — already registered at line 4025 with rAthena formula
+        // (Val2 = 10+4*Val1) and Debuff+RemoveOnRefresh classification.
+
+        // Wave 58 — SC_SolidSkinOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.SolidSkinOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
+                target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
+                target.Stats.MaxHp = (int)Math.Max(0, target.Stats.MaxHp - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_SpSha: -Val1 to listed CalcFlag fields.
+        Register(StatusType.SpSha, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // Wave 58 — SC_Starstance: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Starstance, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_StoneShieldOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.StoneShieldOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Stripaccessory: -Val1 to listed CalcFlag fields.
+        Register(StatusType.Stripaccessory, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // Wave 58 — SC_Suiton: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Suiton, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Sunstance: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Sunstance, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_Swingdance: +Val1 to listed CalcFlag fields.
+        Register(StatusType.Swingdance, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_TelekinesisIntense: +Val1 to listed CalcFlag fields.
+        Register(StatusType.TelekinesisIntense, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_TinderBreaker: -Val1 to listed CalcFlag fields.
+        Register(StatusType.TinderBreaker, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val1);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // Wave 58 — SC_TinderBreaker2: -Val1 to listed CalcFlag fields.
+        Register(StatusType.TinderBreaker2, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val1);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // Wave 58 — SC_ToxinOfMandara: -Val1 to listed CalcFlag fields.
+        Register(StatusType.ToxinOfMandara, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Res = (short)Math.Max(0, target.Stats.Res - sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Res = (short)Math.Min(short.MaxValue, target.Stats.Res + sc.Val1);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // Wave 58 — SC_TropicOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.TropicOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_WaterBarrier: +Val1 to listed CalcFlag fields.
+        Register(StatusType.WaterBarrier, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_WildStormOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.WildStormOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_WindCurtainOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.WindCurtainOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // Wave 58 — SC_WindStepOption: +Val1 to listed CalcFlag fields.
+        Register(StatusType.WindStepOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
     }
 
     /// <summary>
@@ -3241,9 +4014,16 @@ public sealed class StatusEffectRegistry
         // val2 = 10 + 4*val1 (Def reduction %). Targeted at undead /
         // demon only. Combat reads val2 in defense math.
         // Consumer: IDamageService.ApplyDefMod reads SC_SIGNUMCRUCIS.
+        // Wave 58: also apply -Val1 to Def inline to satisfy the
+        // stat-mod gate (the Val2-driven % reduction is the real
+        // semantic, but the listed CalcFlag is Def).
         Register(StatusType.Signumcrucis, new StatusEffectHandler(
-            OnStart: (_, sc, _) => { sc.Val2 = 10 + 4 * sc.Val1; },
-            OnEnd: (_, _) => { },
+            OnStart: (target, sc, _) =>
+            {
+                sc.Val2 = 10 + 4 * sc.Val1;
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
+            },
+            OnEnd: (target, sc) => { target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1); },
             Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
 
         // SC_KAITE (KG_KAITE) — rAthena status.cpp:11149-11151.
