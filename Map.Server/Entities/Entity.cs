@@ -19,7 +19,13 @@ public abstract class Entity
     public uint MapId { get; internal set; }
     public short X { get; internal set; }
     public short Y { get; internal set; }
-    public byte Dir { get; internal set; }
+    /// <summary>
+    /// Facing direction (rAthena <c>unit_data.dir</c>, unit.cpp:1841).
+    /// 0-7 cardinal/diagonal indices matching the dirx/diry tables.
+    /// Setter is public so <c>UnitOpsService.SetDir</c> can update it
+    /// in response to skill / movement / wire-input.
+    /// </summary>
+    public byte Dir { get; set; }
 
     /// <summary>
     /// Non-null while this entity is walking. Owned by <c>IMovementService</c>;

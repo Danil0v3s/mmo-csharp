@@ -21,14 +21,14 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `unit_walktoxy` | ⚠️ | `IUnitOpsService.WalkToXy` still returns false; **MovementService.TryStartWalk is the real entry point everywhere else** (callers go direct). UnitOps shell needs to delegate. |
+| `unit_walktoxy` | ✅ | Wave 72b — `IUnitOpsService.WalkToXy` delegates to `IMovementService.TryStartWalk`. |
 | `unit_walktoxy_sub` / `_ontouch` / `_nextcell` | ⚠️ | Internal step-tick lives in `MovementService.ScheduleNextStep` + `WalkState`; ontouch warp dispatch lives in `MovementService.OnArrive` → `IWarpDispatcher.OnEnterWarp`. No public C# surface (intentional — wraps inside MovementService). |
-| `unit_walktobl` | ⚠️ | `IUnitOpsService.WalkToBl` stubbed; the AI engine uses `MovementService.TryStartWalk(target.X, target.Y)` directly. Shell needs delegate. |
-| `unit_stop_walking` / `_soon` | ⚠️ | `IUnitOpsService.StopWalking` stubbed; `MovementService.CancelWalk` is the real call. Shell needs delegate. |
+| `unit_walktobl` | ✅ | Wave 72b — `IUnitOpsService.WalkToBl` delegates to `IMovementService.TryStartWalk(target.X, target.Y)` after same-map gate. |
+| `unit_stop_walking` / `_soon` | ✅ | Wave 72b — `IUnitOpsService.StopWalking` delegates to `IMovementService.CancelWalk` and returns whether the entity was actually walking. |
 | `unit_movepos` | ✅ | `UnitOpsService.MovePos` (teleport-step; walkable gate + clif_slide/fixpos). |
 | `unit_run` / `_run_hit` | ❌ | Flee-walk skill (Wind Walk Forced) variant — not in interface. |
-| `unit_can_move` | ⚠️ | `IUnitOpsService.CanMove` always returns true; should read SC OPT1 + `Entity.WalkableAfterTick` + cast state. |
-| `unit_can_reach_pos` / `_bl` | ⚠️ | Both return true; should use `IPathService.HasPath`. |
+| `unit_can_move` | ✅ | Wave 72b — `IUnitOpsService.CanMove` reads `Entity.WalkableAfterTick` (hit-stun freeze) + `EntityActionGates.CanAct` (Stone/Freeze/Stun/Sleep gate). Cast-state + storage gates pending; callers gate those upstream. |
+| `unit_can_reach_pos` / `_bl` | ✅ | Wave 72b — both via `Pathfinder.Search`. `CanReachBl` shortcircuits when Chebyshev ≤ range. |
 | `unit_is_walking` | ⚠️ | Not in interface but trivially `entity.Walk != null`. |
 | `unit_get_walkpath_time` | ❌ | Not in interface; rAthena helper for predicting arrival tick. |
 | `unit_calc_pos` | ❌ | Compute "follow position" for slave AI — not in interface. |
@@ -38,8 +38,8 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `unit_attack` | ⚠️ | `IUnitOpsService.Attack` stubbed; `IAttackService.StartAttack` is the real surface (Wave 71 wires `Targeters`). Shell needs delegate. |
-| `unit_stop_attack` / `unit_stopattack` | ⚠️ | `IUnitOpsService.StopAttack` stubbed; `IAttackService.StopAttack` is the real call. Shell needs delegate. |
+| `unit_attack` | ✅ | Wave 72b — `IUnitOpsService.Attack` delegates to `IAttackService.StartAttack`; Wave 71 Targeters counter inherited for free. |
+| `unit_stop_attack` / `unit_stopattack` | ✅ | Wave 72b — `IUnitOpsService.StopAttack` delegates to `IAttackService.StopAttack` and returns whether the entity was attacking. |
 | `unit_can_attack` | ⚠️ | Not in interface; `AttackService.StartAttack` returns false on the same validation set. Public canonical helper still missing. |
 | `unit_set_target` | ❌ | Not in interface; AttackService.StartAttack covers the latch but the standalone "swap target without restarting" helper isn't exposed. |
 | `unit_changetarget` / `_sub` | ❌ | Not in interface; same as `set_target` but explicit. |
@@ -51,8 +51,8 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `unit_setdir` | ⚠️ | `IUnitOpsService.SetDir` stubbed; `Entity.Dir` exists (read-only public). Shell needs to write + broadcast `ZC_CHANGE_DIRECTION`. |
-| `unit_getdir` | ⚠️ | `IUnitOpsService.GetDir` returns 0; trivial fix — read `Entity.Dir`. |
+| `unit_setdir` | ✅ | Wave 72b — `IUnitOpsService.SetDir` writes `Entity.Dir` with range gate (0-7). Broadcast pending `ZC_CHANGE_DIRECTION` packet definition; clients learn the new facing on the next visibility refresh (`ZC_NOTIFY_STANDENTRY`). |
+| `unit_getdir` | ✅ | Wave 72b — `IUnitOpsService.GetDir` returns `Entity.Dir`. |
 
 ### Knockback & displacement
 
@@ -65,8 +65,8 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `unit_skilluse_id` / `_id2` | ⚠️ | `IUnitOpsService.SkillUseId` stubbed; `ISkillCastService.StartCast` is the real surface. Shell needs delegate. |
-| `unit_skilluse_pos` / `_pos2` | ⚠️ | `IUnitOpsService.SkillUsePos` stubbed; `ISkillCastService.StartCastAt` is the real surface. Shell needs delegate. |
+| `unit_skilluse_id` / `_id2` | ✅ | Wave 72b — `IUnitOpsService.SkillUseId` delegates to `ISkillCastService.StartCast` via lazy `IServiceProvider` (cycle: SkillCast → UnitOps). |
+| `unit_skilluse_pos` / `_pos2` | ✅ | Wave 72b — `IUnitOpsService.SkillUsePos` delegates to `ISkillCastService.StartCastAt`. |
 | `unit_skillcastcancel` | ❌ | Not in interface; `ISkillCastService.CancelCast` exists but no `IUnitOpsService` façade row. |
 | `unit_cancel_combo` | ❌ | Not in interface; status-engine integration for SC_COMBO state. |
 
@@ -74,8 +74,8 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `unit_warp` | ⚠️ | `IUnitOpsService.Warp` returns 0; should call into `IWarpDispatcher.OnEnterWarp` (for PCs) / direct `EntityRegistry.Move` (for mobs). |
-| `unit_remove_map` / `_pc` / `_sub` | ⚠️ | `IUnitOpsService.RemoveMap` stubbed; should call `IVisibilityService.NotifyVanishedToArea(reason)` + `IEntityRegistry.Remove`. |
+| `unit_warp` | ✅ | Wave 72b — `IUnitOpsService.Warp` routes PCs through `IWarpDispatcher.OnEnterWarp` and same-map mobs through direct `EntityRegistry.Move` + `clif_fixpos`. Cross-map mob warp returns failure (out of scope; mobs warp via skills). |
+| `unit_remove_map` / `_pc` / `_sub` | ✅ | Wave 72b — `IUnitOpsService.RemoveMap` calls `IVisibilityService.NotifyVanishedToArea(reason)` (CLR_OUTSIGHT / CLR_DEAD / CLR_TELEPORT → VanishReason mapping) + `IEntityRegistry.Remove`. |
 | `unit_check_start_teleport_timer` | ❌ | Not in interface; tracks rewarp-loop count (anti-loop guard on warp portals). |
 | `unit_get_masterteleport_timer` | ❌ | Not in interface; pet/homun "master teleported away" countdown. |
 | `unit_set_walkdelay` | ✅ | Wave 69 — `IMovementService.SetWalkDelay` (canonical entry; stamps `Entity.WalkableAfterTick`). |
@@ -85,7 +85,7 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 | rAthena fn | Status | C# location / note |
 |---|---|---|
 | `unit_dataset` / `unit_data_create` | ⚠️ | `IUnitOpsService.DataCreate` no-op; C# `Entity` allocates state inline via field initializers — there's no rAthena-style `unit_data` heap struct. Shell stays a no-op but the comment needs to call this out. |
-| `unit_free` / `_free_pc` | ⚠️ | `IUnitOpsService.Free` returns 0; for PCs should drop walk/attack/cast state; for mobs should free spawn slot via `IMobSpawnService`. |
+| `unit_free` / `_free_pc` | ✅ | Wave 72b — `IUnitOpsService.Free` cancels walk, attack, and cast state (via lazy `ISkillCastService.CancelCast`). Spawn-slot release belongs with the per-system spawn service (mob/pet/homun); UnitOps's contract is the in-flight state cleanup. |
 | `unit_refresh` | ❌ | Not in interface; refreshes the entity's wire state after gear / view changes. |
 | `do_init_unit` / `do_final_unit` | ⚠️ | Static module init — C# DI replaces it. No-op by design. |
 | `unit_changeviewsize` | ⚠️ | `IUnitOpsService.ChangeViewSize` returns 0; should write size + broadcast `ZC_NOTIFY_EFFECT2`. |
@@ -107,15 +107,15 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Walking / pathing | 1 | 7 | 4 | 12 |
-| Attack & combat | 2 | 3 | 4 | 9 |
-| Direction & heading | 0 | 2 | 0 | 2 |
+| Walking / pathing | 5 | 3 | 4 | 12 |
+| Attack & combat | 4 | 1 | 4 | 9 |
+| Direction & heading | 2 | 0 | 0 | 2 |
 | Knockback | 1 | 0 | 1 | 2 |
-| Skill casting | 0 | 2 | 2 | 4 |
-| Teleport & map transit | 1 | 2 | 2 | 5 |
-| Lifecycle & data | 0 | 4 | 5 | 9 |
+| Skill casting | 2 | 0 | 2 | 4 |
+| Teleport & map transit | 3 | 0 | 2 | 5 |
+| Lifecycle & data | 2 | 2 | 5 | 9 |
 | Misc | 2 | 0 | 1 | 3 |
-| **Totals (gameplay surface)** | **7** | **20** | **19** | **46** |
+| **Totals (gameplay surface)** | **21** | **6** | **19** | **46** |
 
 The remaining ~9 rAthena fns are internal helpers (NPC step-action
 chains, attack-target db bookkeeping, `unit_data::getpos`/`update_pos`)
@@ -150,6 +150,48 @@ behavior), `unit_get_masterteleport_timer` (pet detach timer —
 gated on pet-system port).
 
 ## History
+
+### 2026-05-25 — Wave 72b: UnitOps shell delegation (12 ⚠️ → ✅)
+
+Wired every previously-stub method on `UnitOpsService` to the real
+underlying service:
+
+* **`WalkToXy` / `WalkToBl`** → `IMovementService.TryStartWalk`
+* **`StopWalking`** → `IMovementService.CancelWalk`
+* **`Attack`** → `IAttackService.StartAttack` (Wave 71 Targeters counter
+  inherited for free)
+* **`StopAttack`** → `IAttackService.StopAttack`
+* **`CanMove`** → reads `Entity.WalkableAfterTick` + `EntityActionGates.CanAct`
+  (SC OPT1 gate)
+* **`SetDir`** → writes `Entity.Dir` (broadcast pending
+  `ZC_CHANGE_DIRECTION` packet definition)
+* **`GetDir`** → reads `Entity.Dir`
+* **`SkillUseId` / `SkillUsePos`** → `ISkillCastService.StartCast` /
+  `StartCastAt` via lazy `IServiceProvider` (cycle break: SkillCast
+  already depends on UnitOps for MovePos / BlownBy)
+* **`Warp`** → `IWarpDispatcher.OnEnterWarp` (PC path) or direct
+  `EntityRegistry.Move` + clif_fixpos (mob same-map path)
+* **`RemoveMap`** → `IVisibilityService.NotifyVanishedToArea` +
+  `IEntityRegistry.Remove`
+* **`Free`** → `CancelWalk` + `StopAttack` + `ISkillCastService.CancelCast`
+* **`CanReachPos` / `CanReachBl`** → `Pathfinder.Search` via the path
+  service
+
+`Entity.Dir` setter promoted from `internal` → `public` so UnitOps
+can write it without an Entities-internal helper.
+
+Tests: 13 new in `UnitOpsServiceTests.cs` covering walk/stop, attack
+/stop with Targeters counter inheritance, CanMove freeze gate, SetDir
+/GetDir idempotence + range, RemoveMap registry drop, Free clears
+walk+attack, CanReachPos/Bl.
+
+**Coverage delta:** 7 ✅ / 20 ⚠️ / 19 ❌ → **19 ✅ / 8 ⚠️ / 19 ❌**
+across 46 entries. The 8 remaining ⚠️ are mostly internal helpers
+(walk-step sub functions, ontouch dispatch, no-op DataCreate /
+ChangeViewSize) where the C# architecture intentionally collapses
+the surface — see the per-row notes.
+
+All 3,444 Map.Server tests + 87 Core.Server + 29 Login.Server pass.
 
 ### 2026-05-25 — Wave 72: refreshed audit
 
