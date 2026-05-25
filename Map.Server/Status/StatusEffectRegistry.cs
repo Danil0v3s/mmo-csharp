@@ -1194,6 +1194,100 @@ public sealed class StatusEffectRegistry
             OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = (sc.Val1 + 1) / 2; },
             OnEnd: (_, _) => { },
             Flags: buff));
+
+        // ===== Wave 41 — GC poison + Warlock + Knight + revive batch =====
+
+        // SC_VENOMIMPRESS — Val2 = 10*Val1 (poison element resist %).
+        Register(StatusType.Venomimpress, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 10 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: debuff));
+
+        // SC_MAGICMUSHROOM — Val2 = 10 (after-cast delay % reduction
+        // when caster; tick-driven proc when target via Val3 ==1).
+        Register(StatusType.Magicmushroom, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val3 != 1 && sc.Val2 == 0) sc.Val2 = 10;
+            },
+            OnEnd: (_, _) => { },
+            Flags: debuff));
+
+        // SC_BURNT — Val3 = 10 (flee penalty), Val4 = tick/1000 (visible
+        // mini-map mark countdown).
+        Register(StatusType.Burnt, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val3 == 0) sc.Val3 = 10;
+            },
+            OnEnd: (_, _) => { },
+            Flags: debuff));
+
+        // SC_AUTOSPELL — Val4 = renewal chance % (Val1*2).
+        Register(StatusType.Autospell, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val4 == 0) sc.Val4 = sc.Val1 * 2; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_SIGHTBLASTER — Val3 = splash radius (skill_get_splash),
+        //                   Val2 = tick/20 (tick counter).
+        Register(StatusType.Sightblaster, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val3 == 0) sc.Val3 = 1 + sc.Val1 / 2;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_CRITICALWOUND — Val2 = 20*Val1 (heal effectiveness penalty %).
+        // Val1 normalized to 1..5 (level 6..10 uses level 1..5 effect).
+        Register(StatusType.Criticalwound, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val1 > 5) sc.Val1 = 1 + ((sc.Val1 - 1) % 5);
+                if (sc.Val2 == 0) sc.Val2 = 20 * sc.Val1;
+            },
+            OnEnd: (_, _) => { },
+            Flags: debuff));
+
+        // SC_REBIRTH — Val2 = 20*Val1 (% HP restored on auto-revive).
+        Register(StatusType.Rebirth, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 20 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_MILLENNIUMSHIELD — Val2 = shield count (2..4, RNG-rolled),
+        //                       Val3 = 1000 (Shield HP per stack).
+        Register(StatusType.Millenniumshield, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0)
+                {
+                    var roll = Random.Shared.Next(100);
+                    sc.Val2 = roll < 20 ? 4 : (roll < 50 ? 3 : 2);
+                }
+                if (sc.Val3 == 0) sc.Val3 = 1000;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_GRAVITATION — Val2 = 50*Val1 (ASPD reduction %),
+        //                  Val3 = BCT_SELF marker (caster side).
+        Register(StatusType.Gravitation, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 50 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: debuff));
+
+        // SC_ELEMENTALCHANGE — Val1 = element level (random 1..4 if Val3=0),
+        //                      Val2 = element id (random if 0).
+        Register(StatusType.Elementalchange, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = Random.Shared.Next(10); // ELE_ALL
+                if (sc.Val1 == 1 && sc.Val3 == 0) sc.Val1 = 1 + Random.Shared.Next(4);
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
     }
 
     /// <summary>
