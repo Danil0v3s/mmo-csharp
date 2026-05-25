@@ -293,6 +293,29 @@ bounded/expired/storage-protected logic centralises.
 
 ## History
 
+### 2026-05-25 — Wave 82: pc-parity Pass-2 re-audit (0 ⚠️→✅; 4 gates still active)
+
+Pass-2 honesty sweep. All four remaining ⚠️ rows verified against the
+C# tree:
+
+- `pc_scdata_received` — 4th-class SCs still pending status.yml content
+  (PARITY-REMAINING §P1.2 upstream content gate).
+- `pc_updateweightstatus` — SC_WEIGHT50/90 registered at
+  [StatusEffectRegistry.cs:4876-4877](/Map.Server/Status/StatusEffectRegistry.cs)
+  but no auto-overlay on weight crossing 50 / 90 %; weight-mutation
+  consumers (equip / inventory) don't fire the threshold check.
+- `pc_crimson_marker_clear` — `CrimsonMarker` SkillImpl lives at
+  [CrimsonMarker.cs](/Map.Server/Skills/Behaviors/Gunslinger/CrimsonMarker.cs)
+  but the per-player marker-list clear method on the skill plugin is
+  still pending.
+- `pc_overheat` — SC_OVERHEAT + SC_OVERHEAT_LIMITPOINT registered at
+  [StatusEffectRegistry.cs:5020-5021](/Map.Server/Status/StatusEffectRegistry.cs)
+  and EmergencyCool reads them ([EmergencyCool.cs:57-65](/Map.Server/Skills/Behaviors/Merchant/EmergencyCool.cs)),
+  but the full Mado overheat damage / cooldown loop (per-tick accumulator
+  + auto-cancel) isn't wired.
+
+Coverage unchanged: **116 ✅ / 4 ⚠️ / 0 ❌**.
+
 ### 2026-05-25 — Wave 76: pc-parity close-out (1 ⚠️ → ✅; 4 genuine gaps remain)
 
 Re-audited the 5 ⚠️ rows against the actual C# tree.
