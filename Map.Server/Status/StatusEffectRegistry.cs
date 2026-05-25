@@ -914,6 +914,35 @@ public sealed class StatusEffectRegistry
         // SC_DOUBLECAST already has a bespoke body upstream (line 338).
         // Quagmire bespoke body lives at line 323. Both untouched here.
 
+        // SC_KAAHI — Val2 = 200*Val1 (HP heal on attack),
+        //            Val3 = 5*Val1 (SP cost per heal).
+        // rAthena status.cpp:case SC_KAAHI. Heal triggers on hit;
+        // OnStart materialises the magnitudes for the consumer-side
+        // heal hook.
+        Register(StatusType.Kaahi, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 200 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 5 * sc.Val1;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_KAUPE — Val2 = dodge chance % (33*Val1, +1 at Val1=3
+        //            for the 100% cap), Val3 = total dodge count.
+        Register(StatusType.Kaupe, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0)
+                {
+                    sc.Val2 = 33 * sc.Val1;
+                    if (sc.Val1 == 3) sc.Val2 += 1;  // 99→100% cap
+                }
+                if (sc.Val3 == 0) sc.Val3 = 1;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
         // SC_APPLEIDUN — Val2 = 5+2*Val1 (HP recovery %), Val3 = 25+25*Val1
         // (MaxHp bonus). status.yml CalcFlag: MaxHp; we apply the MaxHp
         // delta inline (Val3 stored as % of base; mob MaxHp 1000 ⇒
