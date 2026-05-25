@@ -108,13 +108,13 @@ public class StatusEffectCompletenessTests
             [StatusType.Striparmor]  = "RG_STRIPARMOR — equip-disable enforced by IEquipService",
             [StatusType.Striphelm]   = "RG_STRIPHELM — equip-disable enforced by IEquipService",
 
-            // ---- Soul Linker spirit family (per-skill behavior plugins) ----
-            [StatusType.Soulshadow] = "Soul Reaper SoulShadow — auto-Hiding skill-plugin gate",
-            [StatusType.Soulfalcon] = "Soul Linker SoulFalcon — Ranger skill-plugin boost gate",
-            [StatusType.Soulgolem]  = "Soul Linker SoulGolem — Monk Steel Body boost gate",
-            [StatusType.Soulenergy] = "Soul Linker SoulEnergy — skill-plugin gate",
-            [StatusType.Soulfairy]  = "Soul Linker SoulFairy — skill-plugin gate",
-            [StatusType.Soulcold]   = "Soul Linker SoulCold — skill-plugin gate",
+            // ---- Soul Linker spirit family — Wave 52: migrated to real
+            // OnStart bodies that mutate the listed CalcFlag fields per the
+            // rAthena status_calc_* default. Per-skill plugins still read
+            // SC presence for the job-gate hooks; the stat-mod side now
+            // lives on the registry entry directly.
+            // (Removed: Soulshadow, Soulfalcon, Soulgolem, Soulenergy,
+            //  Soulfairy, Soulcold)
 
             // ---- NS-3 wave 4b combat-marker additions ----
             [StatusType.Marionette]  = "HP_ASSUMPTIO source — caster stat-transfer (status.cpp:11015-11027), source-ref TODO",

@@ -2537,18 +2537,84 @@ public sealed class StatusEffectRegistry
         // skill plugins are the source of truth.
 
         var soulLink2 = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
-        // Soulshadow had CalcFlags AspdRate+Cri in defaults.
-        Register(StatusType.Soulshadow, PresenceMarker(soulLink2));
-        // Soulfalcon had Batk+Hit.
-        Register(StatusType.Soulfalcon, PresenceMarker(soulLink2));
-        // Soulgolem had Def+Mdef.
-        Register(StatusType.Soulgolem, PresenceMarker(soulLink2));
-        // Soulenergy had Batk.
-        Register(StatusType.Soulenergy, PresenceMarker(soulLink2));
-        // Soulfairy had Batk.
-        Register(StatusType.Soulfairy, PresenceMarker(soulLink2));
-        // Soulcold had Agi.
-        Register(StatusType.Soulcold, PresenceMarker(soulLink2));
+
+        // Wave 52 — Soul Linker family with real OnStart per the
+        // CalcFlag-listed stat fields. Each applies +Val1 to the
+        // listed fields and reverts on OnEnd. The +Val1 magnitude
+        // is rAthena's status_calc default for these spirit-link
+        // SCs (no bespoke formula in status.cpp:case SC_SPIRIT
+        // arm — the per-job effect lives on the consumer plugin).
+        Register(StatusType.Soulshadow, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+                target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val1);
+            },
+            Flags: soulLink2));
+
+        Register(StatusType.Soulfalcon, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val1);
+            },
+            Flags: soulLink2));
+
+        Register(StatusType.Soulgolem, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
+                target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
+                target.Stats.Mdef = (short)Math.Max(0, target.Stats.Mdef - sc.Val1);
+            },
+            Flags: soulLink2));
+
+        Register(StatusType.Soulenergy, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: soulLink2));
+
+        Register(StatusType.Soulfairy, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+            },
+            Flags: soulLink2));
+
+        Register(StatusType.Soulcold, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+            },
+            Flags: soulLink2));
 
         // ====================================================================
         // NS-3 wave 5a — Class A: remaining explicit NoOpHandler() ports.
