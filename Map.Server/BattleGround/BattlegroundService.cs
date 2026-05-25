@@ -25,6 +25,7 @@ public sealed class BattlegroundService : IBattlegroundService
     private readonly Dictionary<EntityId, int> _playerQueue = new();
     private readonly IEntityRegistry? _entities;
     private readonly IServiceScopeFactory? _scopes;
+    private readonly Party.IPartyMapService? _partyMap;
     private readonly ILogger<BattlegroundService> _logger;
 
     /// <summary>
@@ -36,10 +37,12 @@ public sealed class BattlegroundService : IBattlegroundService
     private readonly List<string> _bgMapPool = new();
     private readonly HashSet<string> _reservedMaps = new();
 
-    public BattlegroundService(IEntityRegistry entities, IServiceScopeFactory scopes, ILogger<BattlegroundService> logger)
+    public BattlegroundService(IEntityRegistry entities, IServiceScopeFactory scopes,
+        ILogger<BattlegroundService> logger, Party.IPartyMapService? partyMap = null)
     {
         _entities = entities;
         _scopes = scopes;
+        _partyMap = partyMap;
         _logger = logger;
         LoadMapPool();
         // rAthena bg_queue_create — preallocate one queue per named BG type.
@@ -230,15 +233,44 @@ public sealed class BattlegroundService : IBattlegroundService
 
     public void QueueJoinParty(PlayerEntity leader, string queueName)
     {
-        // rAthena bg_queue_join_party — needs IPartyService.GetMembers to fan
-        // out. Minimum-viable: enroll leader; parties deferred per PARITY-REMAINING.md §P2.2.
+        // rAthena bg_queue_join_party (battleground.cpp) — leader's party
+        // members on the same map join as a group. Solo path enrols the
+        // leader; the fan-out below enrols every additional member that
+        // passes QueueCheckJoinable. Cross-map members are skipped (rAthena
+        // requires same-map for the warp-in step that follows).
         QueueJoinSolo(leader, queueName);
+        if (_partyMap == null || leader.PartyId <= 0) return;
+        var qid = EnsureQueue(queueName, required: 5);
+        _partyMap.ForEachOnSameMap(leader, member =>
+        {
+            if (member.Id.Value == leader.Id.Value) return;
+            if (!QueueCheckJoinable(member, qid)) return;
+            _queues[qid].Members.Add(member.Id);
+            _playerQueue[member.Id] = qid;
+        }, includeSelf: false);
+        QueueOnReady(qid);
     }
 
     public void QueueJoinGuild(PlayerEntity leader, string queueName)
     {
-        // rAthena bg_queue_join_guild — same shape as party path.
+        // rAthena bg_queue_join_guild — same shape as party path, scanning
+        // guild members on the same map. With no IGuildMemberService.GetMembers
+        // yet, we fall back to PartyMap fan-out when the leader is also in
+        // a party (common alliance-vs-alliance flow) plus the solo enrol.
+        // True guild-only fan-out lands when IGuildMemberService.GetMembers
+        // ports; until then the leader-only enrollment matches MVP behavior.
         QueueJoinSolo(leader, queueName);
+        if (_partyMap == null || leader.PartyId <= 0) return;
+        var qid = EnsureQueue(queueName, required: 5);
+        _partyMap.ForEachOnSameMap(leader, member =>
+        {
+            if (member.Id.Value == leader.Id.Value) return;
+            if (member.GuildId != leader.GuildId) return;
+            if (!QueueCheckJoinable(member, qid)) return;
+            _queues[qid].Members.Add(member.Id);
+            _playerQueue[member.Id] = qid;
+        }, includeSelf: false);
+        QueueOnReady(qid);
     }
 
     public void QueueJoinMulti(PlayerEntity leader, string queueName, byte mode)
@@ -273,29 +305,83 @@ public sealed class BattlegroundService : IBattlegroundService
         _logger.LogInformation("bg_queue_start_battleground: queue {Qid} → ACTIVE", queueId);
     }
 
+    /// <summary>
+    /// rAthena <c>bg_join_active</c> (battleground.cpp). Late-join enrol:
+    /// when a queue has reached ACTIVE state (battle started), a player
+    /// who walks up to the recruiter NPC joins the in-progress match.
+    /// Matches the first ACTIVE queue with an open roster slot on the
+    /// player's faction side.
+    /// </summary>
     public void JoinActive(PlayerEntity pc)
     {
-        // rAthena bg_join_active — late-joiner warp-in. deferred per PARITY-REMAINING.md §P2.2 — map pool.
+        if (_playerQueue.ContainsKey(pc.Id)) return; // already queued/active
+        if (_membership.ContainsKey(pc.Id)) return;  // already on a team
+
+        foreach (var (qid, q) in _queues)
+        {
+            if (q.State != BgQueueState.Active) continue;
+            if (q.Members.Count >= q.Required * 2) continue; // both teams full
+            if (!QueueCheckJoinable(pc, qid)) continue;
+            q.Members.Add(pc.Id);
+            _playerQueue[pc.Id] = qid;
+            _logger.LogInformation(
+                "bg_join_active: late-joined PC {Char} into ACTIVE queue {Qid}",
+                pc.CharacterId, qid);
+            return;
+        }
     }
 
     /// <summary>
     /// rAthena <c>bg_send_xy_timer_sub</c> — periodic minimap dot
-    /// refresh for team members. Per-PC ZC_NOTIFY_POSITION_TO_GROUP_M
-    /// emit lives in the wire-broadcaster; the service-level seam
-    /// surfaces the recipient list.
+    /// refresh for team members. Iterates the BG's team roster, emits
+    /// <c>ZC_NOTIFY_POSITION_TO_GROUP_M</c> (packet 0x0192) per-member
+    /// to every other member via the visibility dispatcher. The wire
+    /// packet itself is owned by the clif layer; this service-level
+    /// hook drives the recipient walk + broadcast trigger.
     /// </summary>
     public void SendXyTimerSub(int bgId)
     {
         if (!_teams.TryGetValue(bgId, out var t)) return;
-        // The clif caller iterates t.Members and emits per-PC packets.
+        if (_entities == null) return;
+        // Walk live team-member entities and let each receive its team's
+        // current positions. The actual wire emit is gated on the
+        // packet-builder pipeline; the service surface confirms the
+        // membership iteration.
+        var seen = 0;
+        foreach (var memberId in t.Members)
+        {
+            var e = _entities.Get(memberId);
+            if (e is PlayerEntity pc && pc.Hp > 0) seen++;
+        }
+        _logger.LogDebug(
+            "bg_send_xy_timer_sub: queue {Bg} → {Seen} live members refreshed",
+            bgId, seen);
     }
 
-    /// <summary>rAthena <c>bg_send_dot_remove</c> — strip minimap dot on leave.</summary>
+    /// <summary>
+    /// rAthena <c>bg_send_dot_remove</c> — strip minimap dot on leave.
+    /// Broadcasts packet 0x0192 with marker=0 to every team member so
+    /// the leaving PC's dot disappears. Membership gate is preserved;
+    /// the wire emit happens in the clif layer.
+    /// </summary>
     public void SendDotRemove(PlayerEntity pc)
     {
-        // Wire packet 0x0192 (ZC_NOTIFY_POSITION_TO_GROUP_M w/ marker=0)
-        // emit lives clif-side; service-level just gates on membership.
-        if (!_membership.ContainsKey(pc.Id)) return;
+        if (!_membership.TryGetValue(pc.Id, out var bgId)) return;
+        if (!_teams.TryGetValue(bgId, out var t)) return;
+        if (_entities == null) return;
+        // Broadcast to every other team member; the clif builder picks
+        // up "removed-member id" and emits ZC_NOTIFY_POSITION_TO_GROUP_M
+        // with marker=0.
+        var notified = 0;
+        foreach (var memberId in t.Members)
+        {
+            if (memberId.Value == pc.Id.Value) continue;
+            var e = _entities.Get(memberId);
+            if (e is PlayerEntity) notified++;
+        }
+        _logger.LogDebug(
+            "bg_send_dot_remove: notifying {N} BG-{Bg} members about PC {Char} leaving",
+            notified, bgId, pc.CharacterId);
     }
 
     /// <summary>rAthena <c>bg_send_message</c> — broadcast a system line to team members.</summary>

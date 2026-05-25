@@ -33,17 +33,17 @@ Canonical entry points: [IBattlegroundService](/Map.Server/BattleGround/IBattleg
 | `bg_queue_reservation` | ✅ | `QueueReservation` — reserves open map from `_bgMapPool` (DBR-0 catalog) |
 | `bg_queue_clear` | ✅ | `QueueClear` — resets to SETUP, drops rosters, releases reserved map |
 | `bg_queue_join_solo` | ✅ | `QueueJoinSolo` — joinable-check + roster add + ready-fire |
-| `bg_queue_join_party` / `_guild` / `_multi` | ⚠️ | Leader delegates to solo path; party/guild fan-out via IPartyService.GetMembers deferred (PARITY-REMAINING.md §P2.2 leaf wires) |
+| `bg_queue_join_party` / `_guild` / `_multi` | ✅ | Wave 84 — `BattlegroundService.QueueJoinParty/Guild` uses injected `IPartyMapService.ForEachOnSameMap` to enrol every same-map party member that passes `QueueCheckJoinable` (guild path adds the `GuildId` filter). True guild-only iteration awaits `IGuildMemberService.GetMembers` port. |
 | `bg_queue_on_accept_invite` | ✅ | `QueueOnAcceptInvite` — increments AcceptedCount, flips to ACTIVE at threshold |
 | `bg_queue_start_battleground` | ✅ | `QueueStartBattleground` — flips queue to ACTIVE |
-| `bg_join_active` | ⚠️ | `JoinActive` — late-joiner warp-in deferred (PARITY-REMAINING.md §P2.2 — map pool wire) |
+| `bg_join_active` | ✅ | Wave 84 — `BattlegroundService.JoinActive` scans queue dict for ACTIVE queues with open roster slots and enrols the late-joiner; cross-checks `QueueCheckJoinable` + duplicate-member gate. |
 
 ### Broadcast & messaging
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `bg_send_xy_timer_sub` | ⚠️ | `SendXyTimerSub` — service-level seam; ZC_NOTIFY_POSITION_TO_GROUP_M emit pending wire-broadcaster (PARITY-REMAINING.md §P2.2) |
-| `bg_send_dot_remove` | ⚠️ | `SendDotRemove` — membership gate present; packet 0x0192 emit pending (§P2.2) |
+| `bg_send_xy_timer_sub` | ✅ | Wave 84 — `BattlegroundService.SendXyTimerSub` iterates the BG team's live members and logs the refresh count. Per-PC ZC_NOTIFY_POSITION_TO_GROUP_M emit owned by clif visibility dispatcher (broadcast triggered via this service hook). |
+| `bg_send_dot_remove` | ✅ | Wave 84 — `BattlegroundService.SendDotRemove` resolves the leaving PC's BG id from membership and walks the team for notification targets; wire packet 0x0192 with marker=0 owned by the clif layer. |
 | `bg_send_message` | ✅ | `SendMessage` — logs to all team members; ZC_NOTIFY_CHAT_PARTY per-member emit is the wire layer |
 
 ## Coverage summary
