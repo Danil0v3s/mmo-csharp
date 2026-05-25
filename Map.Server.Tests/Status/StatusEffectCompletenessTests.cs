@@ -82,15 +82,14 @@ public class StatusEffectCompletenessTests
             [StatusType.Spirit]   = "Soul Linker job-gate marker read by skill plugins",
             [StatusType.Providence] = "CR_PROVIDENCE — val2=val1*5 subele[HOLY]+subrace[DEMON] (status.cpp:4788-4790)",
             [StatusType.Reflectshield] = "CR_REFLECTSHIELD — val2=10+val1*3 reflect% (status.cpp:10587)",
-            [StatusType.Steelbody] = "MO_STEELBODY — 90% dmg reduction (DamageService SC presence)",
+            // [StatusType.Steelbody] — Wave 55: real OnStart body migrated
             [StatusType.Meltdown] = "WS_MELTDOWN — val2/val3 weapon/armor break chance (status.cpp:11264)",
             [StatusType.Edp]      = "ASC_EDP — val2 poison chance, val3 dmg% (status.cpp:10522-10535)",
             // Magicpower: NS-3 wave 4a wired Smatk += base*5*val1/100 — so it's no longer "elsewhere".
-            [StatusType.Saturdaynightfever] = "WM_SATURDAY_NIGHT_FEVER — Sura heal suppress marker",
-
-            // ---- Visibility markers ----
-            [StatusType.Hiding]   = "TF_HIDING — visibility hook, val4 wall+attack flags (status.cpp:10895)",
-            [StatusType.Cloaking] = "AS_CLOAKING — visibility hook, val3 speed adj (status.cpp:10909)",
+            // [StatusType.Saturdaynightfever] — Wave 55: real OnStart body migrated
+            // ---- Visibility markers — Wave 55: real OnStart bodies migrated
+            // (Hiding +Val1 AspdRate; Cloaking +Val1 Cri+AspdRate). Visibility
+            // hook semantics still live on the visibility service.
 
             // ---- Cast-time markers (consumed by SkillCastTimingService.CastFixSc) ----
             [StatusType.Paralysis] = "GC_PARALYSIS — val3=cast rate% read by SkillCastTimingService",

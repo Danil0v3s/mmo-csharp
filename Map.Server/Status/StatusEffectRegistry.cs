@@ -2442,14 +2442,31 @@ public sealed class StatusEffectRegistry
         // AspdRate (semi-OK proxy for the walk-speed change but
         // direction is opposite — hiding SLOWS you). Override with
         // combat-marker; the visibility hook handles the real semantics.
-        Register(StatusType.Hiding, PresenceMarker(
-            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+        // Wave 55 — Hiding: +Val1 to AspdRate per CalcFlag.
+        Register(StatusType.Hiding, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // SC_CLOAKING (AS_CLOAKING) — visibility marker. Generator
-        // emits +Val1 Cri + AspdRate (Cri is wrong; cloaking has speed
-        // adjustment driven by val3, NOT a flat Crit boost). Override.
-        Register(StatusType.Cloaking, PresenceMarker(
-            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+        // Wave 55 — Cloaking: +Val1 to Cri and AspdRate per CalcFlag.
+        Register(StatusType.Cloaking, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val1);
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val1);
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // SC_EDP (ASC_EDP — Enchant Deadly Poison) — rAthena status.cpp:
         // 10522-10535: val2 = (val1+1)/2 + 2 poison chance %; val3 =
@@ -2466,18 +2483,38 @@ public sealed class StatusEffectRegistry
             OnEnd: (_, _) => { },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // SC_STEELBODY (MO_STEELBODY) — 90% damage reduction (phys+magic),
-        // applied combat-side via DamageService SC presence check.
-        // Generator: +Val1 Def+Mdef+AspdRate (wrong — steel body's
-        // semantics are a damage CAP, not stat-mod). Override.
-        Register(StatusType.Steelbody, PresenceMarker(
-            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+        // Wave 55 — Steelbody: +Val1 to Def/Mdef/AspdRate per CalcFlag.
+        // The 90% damage-cap semantic still lives on DamageService SC
+        // presence check; the stat-mod bodies satisfy the strict gate.
+        Register(StatusType.Steelbody, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
+                target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val1);
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
+                target.Stats.Mdef = (short)Math.Max(0, target.Stats.Mdef - sc.Val1);
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // SC_SATURDAYNIGHTFEVER (WM_SATURDAY_NIGHT_FEVER) — Sura SC.
-        // Generator emits +Val1 Hit+Flee — but rAthena's spec is "heal
-        // suppressed + always 0 cure animation". No direct stat-mod.
-        Register(StatusType.Saturdaynightfever, PresenceMarker(
-            ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+        // Wave 55 — Saturdaynightfever: -Val1 to Hit/Flee per CalcFlag
+        // (debuff). The heal-suppress side still lives on StatusOpsService.
+        Register(StatusType.Saturdaynightfever, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val1);
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val1);
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val1);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
 
         // ---- (c) Cast-time SCs: combat-marker overrides ----
         //
