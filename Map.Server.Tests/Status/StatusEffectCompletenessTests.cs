@@ -161,7 +161,9 @@ public class StatusEffectCompletenessTests
             // Ninja family — Map.Server/Skills/SkillImpl/Ninja/*.cs reads val2.
             [StatusType.Suiton] = "NJ_SUITON — cell-marker debuff; movement service reads SC for slow",
             [StatusType.Nen]    = "NJ_NEN — auto-revive; PcDeathService checks SC on death",
-            [StatusType.Madnesscancel] = "GS_MADNESSCANCEL — val2 ASPD bonus read by combat ASPD reader",
+            // [StatusType.Madnesscancel] — Wave 30: now has a real OnStart body
+            // that materialises Val2 (ASPD) + Val3 (Batk) and mutates AspdRate /
+            // Batk directly. Allowlist entry removed per test-driven drift gate.
             // Sorcerer elemental sphere _OPTION buffs (paired with base sphere SC).
             // Consumer: Map.Server/Skills/SkillImpl/Mage/Sorcerer*.cs + ElementalNpc plugins.
             [StatusType.HeaterOption]      = "Sorcerer Fire sphere option — read by per-sphere skill plugin",

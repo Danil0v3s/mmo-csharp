@@ -204,6 +204,16 @@ public sealed class DamageService : IDamageService
         var remaining = currentHp - actual;
         if (remaining <= 0)
         {
+            // Wave 30 — SC_NEN (NJ_NEN) auto-revive. When the lethal hit
+            // lands and the target carries an active SC_NEN, consume the
+            // SC to restore the target to 1 HP instead of dying. rAthena
+            // ref: status.cpp SC_NEN consume-on-death branch.
+            if (_sc != null && _sc.Get(target, StatusType.Nen) != null)
+            {
+                SetHp(target, 1);
+                _sc.End(target, StatusType.Nen);
+                return actual;
+            }
             HandleDeath(target, source);
         }
         else if (target is MobEntity targetMob && source != null && MobAi is { } ai)

@@ -2112,14 +2112,29 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Bunsinjyutsu, CombatMarkerHandler(ninjaBuff));
 
         // SC_SUITON (NJ_SUITON) — water-floor cell marker. Val1 =
-        // level, applied per-cell while standing on suiton unit. Slows
-        // + boosts agi/water dmg. Consumer: SkillUnitTickRegistry tick
-        // applies SC on cell entry; movement path reads SC for slow.
-        Register(StatusType.Suiton, CombatMarkerHandler(ninjaDebuff));
+        // SC_SUITON (NJ_SUITON) — Ninja Hidden Water cell. rAthena
+        // status.cpp:case SC_SUITON: Val2 = 3*((val1+1)/3) AGI penalty
+        // (-1 at level 5+); Val3 = 50 walk-speed penalty. Ninjas
+        // standing on their own SUITON get no penalty (Val2/Val3 = 0).
+        // The class-gate (MAPID_NINJA) lives on the apply caller; here
+        // we materialise the magnitudes from Val1.
+        Register(StatusType.Suiton, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0)
+                {
+                    var agiPenalty = 3 * ((sc.Val1 + 1) / 3);
+                    if (sc.Val1 > 4) agiPenalty--;
+                    sc.Val2 = agiPenalty;
+                }
+                if (sc.Val3 == 0) sc.Val3 = 50;
+            },
+            OnEnd: (_, _) => { },
+            Flags: ninjaDebuff));
 
         // SC_NEN (NJ_NEN) — auto-revive on death (1× consume). Val1 =
-        // level. Consumer: PcDeathService checks SC on death; consumes
-        // for revive + ends.
+        // level. Wave 30 — DamageService consume hook implemented;
+        // SC presence triggers HP=1 restore on lethal hit + SC ends.
         Register(StatusType.Nen, CombatMarkerHandler(ninjaBuff));
 
         // SC_CURSEDCIRCLE_ATKER / TARGET (SR_CURSEDCIRCLE — Sura
@@ -2194,10 +2209,28 @@ public sealed class StatusEffectRegistry
     {
         var gsBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
 
-        // SC_MADNESSCANCEL (GS_MADNESSCANCEL) — fixed-ASPD + +Watk
-        // buff. Val2 = stored ASPD bonus. Consumer: combat ASPD reader
-        // applies fixed ASPD while SC active.
-        Register(StatusType.Madnesscancel, CombatMarkerHandler(gsBuff));
+        // SC_MADNESSCANCEL (GS_MADNESSCANCEL) — Gunslinger Madness
+        // Cancel. rAthena status.cpp:case SC_MADNESSCANCEL toggles the
+        // SC on re-cast (handled by skill arm) + grants flat +30 ASPD
+        // and +100 Watk while active. Val2 = ASPD bonus (30).
+        // Wave 30 — OnStart materialises Val2 / Val3 so the combat
+        // ASPD + watk readers see the proper magnitudes.
+        Register(StatusType.Madnesscancel, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 30;  // ASPD% bump
+                if (sc.Val3 == 0) sc.Val3 = 100; // Watk flat
+                // Apply the AspdRate + Batk deltas inline so the +Val1
+                // generator fallback doesn't double-stack.
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val2);
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val3);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val3);
+            },
+            Flags: gsBuff));
 
         // SC_ADJUSTMENT (GS_ADJUSTMENT) — has CalcFlags (Hit + Flee).
         // NOT overridden here: generator's +Val1 default is correct
