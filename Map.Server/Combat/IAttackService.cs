@@ -28,6 +28,17 @@ public interface IAttackService
     void StopAttack(Entity source);
 
     /// <summary>
+    /// Wave 69 / Track B — push <paramref name="entity"/>'s
+    /// <see cref="AttackState.AttackableTick"/> forward by
+    /// <paramref name="dmotionMs"/>. Mirrors the post-swing leg of
+    /// rAthena <c>battle_damage</c> (battle.cpp:8243) — a freshly hit
+    /// target can't swing again until its hit-stun animation finishes.
+    /// No-op when the target has no AttackState (idle entity) or the
+    /// existing AttackableTick is already further out than now+delay.
+    /// </summary>
+    void SetAttackDelay(Entity entity, int dmotionMs);
+
+    /// <summary>
     /// Process one tick of attack timers across all attacking entities.
     /// Called from the game loop (60 FPS for map, mob AI also drives this).
     /// </summary>

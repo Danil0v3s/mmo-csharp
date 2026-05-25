@@ -170,6 +170,7 @@ public class MobSpottedLootTests
             return true;
         }
         public void CancelWalk(Entity entity) { }
+        public void SetWalkDelay(Entity entity, int delayMs) { }
     }
 
     // ---- looter ----

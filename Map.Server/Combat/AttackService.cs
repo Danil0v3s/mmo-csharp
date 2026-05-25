@@ -60,6 +60,26 @@ public sealed class AttackService : IAttackService, IAttackStopper
 
     public void StopAttack(Entity source) => source.Attack = null;
 
+    /// <summary>
+    /// Wave 69 / Track B — push the entity's <see cref="AttackState.AttackableTick"/>
+    /// forward. Mirrors rAthena <c>battle_damage</c>'s post-swing leg
+    /// (battle.cpp:8243) where the target's attack-timer slips by its
+    /// hit-stun (dmotion). No-op when the target has no AttackState or
+    /// the existing AttackableTick is already further out than
+    /// now+delay (longest delay wins, matches rAthena).
+    /// </summary>
+    public void SetAttackDelay(Entity entity, int dmotionMs)
+    {
+        if (dmotionMs <= 0) return;
+        var state = entity.Attack;
+        if (state == null) return;
+        var target = Environment.TickCount64 + dmotionMs;
+        if (target > state.AttackableTick)
+        {
+            state.AttackableTick = target;
+        }
+    }
+
     public void Tick(long nowTick)
     {
         // Snapshot the attacker list — entities can die during the loop and

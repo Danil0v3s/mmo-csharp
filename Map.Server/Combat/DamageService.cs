@@ -87,28 +87,20 @@ public sealed class DamageService : IDamageService
         // even when total = 0.
         ApplyResolved(target, source, (int)Math.Clamp(damage.Total, 0, int.MaxValue), damage.Type);
 
-        // Wave 66 / Track B — apply dmotion + walkdelay on the target.
-        // rAthena: battle_damage (battle.cpp:8243) writes both ms values
-        // to the target via unit_set_walkdelay + the attack-state's
-        // attackabletime. C# parity: push the target's next swing tick
-        // forward by DMotion, and (if target is walking) cancel + freeze
-        // movement for WalkDelay ms — modeled as "current walk cancelled,
-        // next walk attempt allowed after WalkDelay".
-        if (damage.DMotion > 0 && target.Attack != null)
+        // Wave 66 + 69 / Track B — apply dmotion + walkdelay on the
+        // target via the canonical IAttackService.SetAttackDelay +
+        // IMovementService.SetWalkDelay entry points. Both are resolved
+        // lazily through IServiceProvider because IAttackService ←
+        // IDamageService forms a registration cycle.
+        if (damage.DMotion > 0)
         {
-            var newAttackable = Environment.TickCount64 + damage.DMotion;
-            if (newAttackable > target.Attack.AttackableTick)
-                target.Attack.AttackableTick = newAttackable;
+            var atk = _services?.GetService(typeof(IAttackService)) as IAttackService;
+            atk?.SetAttackDelay(target, damage.DMotion);
         }
-        if (damage.WalkDelay > 0 && target.Walk != null)
+        if (damage.WalkDelay > 0)
         {
-            // The full unit_set_walkdelay also writes a future
-            // walkable-after tick on the target — until WalkState gains
-            // such a field, the cancel-now path matches the visible
-            // gameplay effect (target stops moving on hit).
-            // Movement service is held via the BattleCalculator caller
-            // chain; we don't reach in from here. Future polish: thread
-            // an IMovementService into DamageService.
+            var mov = _services?.GetService(typeof(Movement.IMovementService)) as Movement.IMovementService;
+            mov?.SetWalkDelay(target, damage.WalkDelay);
         }
         return damage;
     }

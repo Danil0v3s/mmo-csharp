@@ -17,4 +17,15 @@ public interface IMovementService
 
     /// <summary>Stop the current walk (no-op if not walking).</summary>
     void CancelWalk(Entity entity);
+
+    /// <summary>
+    /// Wave 69 / Track B — rAthena <c>unit_set_walkdelay</c>
+    /// (unit.cpp:1450). Block <paramref name="entity"/>'s movement for
+    /// <paramref name="delayMs"/> milliseconds: cancels any active walk
+    /// and stamps a "walkable-after" tick on the WalkState. Any
+    /// `TryStartWalk` issued before the delay elapses is rejected.
+    /// Idempotent — calling with a smaller delay than the current
+    /// remaining freeze is a no-op.
+    /// </summary>
+    void SetWalkDelay(Entity entity, int delayMs);
 }

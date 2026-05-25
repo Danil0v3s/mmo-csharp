@@ -48,6 +48,12 @@ public sealed class MovementService : IMovementService
         var map = ResolveMap(entity.MapId);
         if (map == null) return false;
 
+        // Wave 69 / Track B — honor unit_set_walkdelay freeze. If the
+        // entity is still inside its hit-stun window, refuse to start
+        // a new walk (rAthena: unit_walktoxy returns 0 when canmove_tick
+        // is in the future).
+        if (entity.WalkableAfterTick > Environment.TickCount64) return false;
+
         // Cancel any prior walk before recomputing.
         if (entity.Walk != null)
         {
@@ -71,6 +77,26 @@ public sealed class MovementService : IMovementService
             Scheduler.Cancel(walk.NextStepTimer);
         }
         entity.Walk = null;
+    }
+
+    /// <summary>
+    /// Wave 69 / Track B — rAthena <c>unit_set_walkdelay</c>
+    /// (unit.cpp:1450). Cancel any active walk and stamp the entity's
+    /// next-walk-allowed tick. Idempotent: a smaller delay than the
+    /// current remaining freeze is ignored so the longest delay wins.
+    /// </summary>
+    public void SetWalkDelay(Entity entity, int delayMs)
+    {
+        if (delayMs <= 0) return;
+        var target = Environment.TickCount64 + delayMs;
+        if (target > entity.WalkableAfterTick)
+        {
+            entity.WalkableAfterTick = target;
+        }
+        if (entity.Walk != null)
+        {
+            CancelWalk(entity);
+        }
     }
 
     private MapData? ResolveMap(uint mapId)

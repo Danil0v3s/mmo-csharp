@@ -35,6 +35,15 @@ public abstract class Entity
     public Combat.AttackState? Attack { get; internal set; }
 
     /// <summary>
+    /// Wave 69 / Track B — rAthena <c>ud.canmove_tick</c> (unit.cpp:1450).
+    /// Earliest <c>Environment.TickCount64</c> at which this entity is
+    /// allowed to start a new walk. Pushed forward by
+    /// <c>IMovementService.SetWalkDelay</c> on hit-stun; honored by
+    /// <c>TryStartWalk</c>. Zero when no freeze is active.
+    /// </summary>
+    public long WalkableAfterTick { get; set; }
+
+    /// <summary>
     /// Owner / master EntityId for summons (pets, homunculi, mercenaries,
     /// elementals, slave mobs). Null for free-roaming mobs and PCs.
     /// Read by <see cref="Mob.ISummonAiService"/>; set at summon spawn.
