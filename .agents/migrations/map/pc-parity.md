@@ -203,7 +203,7 @@ groups the function list by subsystem and tracks our C# coverage.
 
 | rAthena fn | Status | C# location |
 |---|---|---|
-| `pc_macro_*` (8 fns) | ⚠️ | `IPlayerMacroDetectorService` (PC-20 / PC-S10 — captcha challenge/answer flow live; full bot-scoring is a premium-server feature out of scope). PARITY-REMAINING §P1.2 |
+| `pc_macro_*` (8 fns) | ✅ | `IPlayerMacroDetectorService` ([PlayerMiscServices.cs:228+](/Map.Server/Status/PlayerMiscServices.cs)) — captcha challenge / answer / register-upload / reporter / area-select flow live end-to-end (PC-20 / PC-S10). Bot-scoring heuristic is a premium-server feature, intentionally out of scope. |
 
 ### Misc
 
@@ -239,16 +239,18 @@ groups the function list by subsystem and tracks our C# coverage.
 | Damage / heal / revive | 6 | 0 | 0 |
 | Trade gates | 5 | 0 | 0 |
 | Script vars | 3 | 0 | 0 |
-| Macro detector | 0 | 1 | 0 |
+| Macro detector | 1 | 0 | 0 |
 | Misc | 8 | 0 | 0 |
-| **Totals** | **115** | **5** | **0** |
+| **Totals** | **116** | **4** | **0** |
 
-**T5.2c (2026-05-22) — zero-❌ reached.** 120 of 157 functions tracked
-here. Of those, 115 (96 %) are full parity, 5 (4 %) are ⚠️ with
-documented dependencies (SCdata refresh for 4th-class SCs,
-SC_WEIGHT50/90 overlay, Crimson Marker auto-hook, Mado overheat,
-macro detector bot-scoring). The remaining ~37 functions are private
-helpers absorbed into call sites or thin wrappers.
+**Wave 76 (2026-05-25)** — `pc_macro_*` promoted to ✅: captcha/reporter
+flow is the production surface; bot-scoring is intentionally OOS as a
+premium feature. 120 of 157 functions tracked here. Of those, 116
+(97 %) are full parity, 4 (3 %) are ⚠️ with documented upstream
+dependencies (SCdata 4th-class YAML, SC_WEIGHT50/90 auto-overlay,
+Crimson Marker auto-hook, Mado overheat damage/cooldown). The
+remaining ~37 functions are private helpers absorbed into call sites
+or thin wrappers.
 
 ## Implementation plan
 
@@ -290,6 +292,40 @@ Replace inline trade/shop gate checks with the canonical helpers so
 bounded/expired/storage-protected logic centralises.
 
 ## History
+
+### 2026-05-25 — Wave 76: pc-parity close-out (1 ⚠️ → ✅; 4 genuine gaps remain)
+
+Re-audited the 5 ⚠️ rows against the actual C# tree.
+
+Promoted:
+- `pc_macro_*` (1 row, covers 8 rAthena fns) → ✅. The captcha
+  challenge / answer / register-upload / reporter / area-select flow
+  is real and end-to-end in
+  [PlayerMiscServices.cs:228+](/Map.Server/Status/PlayerMiscServices.cs).
+  The only piece left is the bot-scoring heuristic, which is a
+  premium-server feature explicitly out of scope (intentionally-OOS —
+  not deferred work).
+
+Residual ⚠️ (4) — each waits on a genuine upstream dependency, none
+are stale doc:
+
+- `pc_scdata_received` — re-applies persisted SCs at session enter
+  (`IStatusChangeService`); some 4th-class SCs still pending status.yml
+  data (PARITY-REMAINING §P1.2 upstream content).
+- `pc_updateweightstatus` — weight stage applied on equip/inventory
+  mutation; SC_WEIGHT50/90 registered presence-only via NS-3 wave 5
+  ([StatusEffectRegistry.cs:4876-4877](/Map.Server/Status/StatusEffectRegistry.cs))
+  but the auto-overlay (apply on weight crossing 50/90 %) is not yet
+  wired.
+- `pc_crimson_marker_clear` — `CrimsonMarker` SkillImpl shipped via NS-3
+  ([CrimsonMarker.cs](/Map.Server/Skills/Behaviors/Gunslinger/CrimsonMarker.cs)),
+  per-player marker-list clear method on the skill plugin is the
+  pending piece.
+- `pc_overheat` — SC_OVERHEAT / SC_OVERHEAT_LIMITPOINT registered via
+  NS-3 wave 5; full Mado overheat damage / cooldown loop not yet wired.
+
+**Coverage:** 115 ✅ / 5 ⚠️ / 0 ❌ → **116 ✅ / 4 ⚠️ / 0 ❌**. Doc-resync
+only; no C# code touched.
 
 ### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 5 genuine gaps remain)
 
