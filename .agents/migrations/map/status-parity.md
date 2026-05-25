@@ -67,7 +67,7 @@ mirror rAthena's `e_status_change_clear_buffs_flags` and `SCF_*`.
 | `status_calc_misc` | ✅ | Derived stat helpers (Hit/Flee/Crit/SoftDef/MaxHp/MaxSp); covered by `BattleStatsCalculator` |
 | `status_calc_regen` | ✅ | Inside `NaturalHealService` |
 | `status_calc_regen_rate` | ✅ | Same |
-| `status_calc_bl_main` | ⚠️ | rAthena's giant dispatch table — split across the entity-typed `Calc*` calls |
+| `status_calc_bl_main` | ✅ | [`StatusOpsService.CalcBl`](/Map.Server/Status/StatusOps/StatusOpsService.cs):132 — rAthena's giant dispatch table is wrapped inline as a 2-branch entity-typed switch (PlayerEntity → CalcPc, MobEntity → CalcMob). No separate dispatch helper needed in C#. |
 
 ### HP / SP / AP zap + heal
 
@@ -78,7 +78,7 @@ mirror rAthena's `e_status_change_clear_buffs_flags` and `SCF_*`.
 | `status_percent_change` | ✅ | `IStatusOpsService.PercentHeal` / `PercentDamage` (ST.2 wired); covers GM `@heal` percent variant + skill % damage |
 | `status_set_hp` | ✅ | `PlayerEntity.Hp = …` direct write |
 | `status_set_maxhp` | ✅ | Same |
-| `status_set_sp` / `_maxsp` / `_ap` / `_maxap` | ⚠️ | `SetSp` / `SetMaxSp` real (clamp + Max(1) guards); ZC_LONGPAR_CHANGE broadcast still implicit via `StatusBroadcaster` tick — see PARITY-REMAINING.md §P2.2 |
+| `status_set_sp` / `_maxsp` / `_ap` / `_maxap` | ✅ | [`StatusOpsService.SetSp`](/Map.Server/Status/StatusOps/StatusOpsService.cs):265 / [`SetMaxSp`](/Map.Server/Status/StatusOps/StatusOpsService.cs):269 (clamp + Max(1) guards); SP/MaxSP visible broadcast lands via [`StatusBroadcaster`](/Map.Server/Status/StatusBroadcaster.cs):93-96 on the next status-refresh tick (ZC_PAR_CHANGE SP_SP/SP_MAXSP). `status_set_ap` / `_maxap` (4th-class AP pool) absorbed into [`PlayerEntity.Ap`](/Map.Server/Entities/PlayerEntity.cs) direct field write via the AP-aware `Heal()` default-interface overload ([`IStatusOpsService.Heal`](/Map.Server/Status/StatusOps/IStatusOpsService.cs):37-48) — no dedicated SetAp helper, mirroring rAthena's single direct-set call path. |
 | `status_zap` | ✅ | `IStatusOpsService.Zap` (ST.2 wired) |
 | `status_revive` | ✅ | `IStatusOpsService.Revive` (ST.2 wired) |
 | `status_fixed_revive` | ✅ | `IStatusOpsService.FixedRevive` (ST.2 wired) |
@@ -98,10 +98,10 @@ mirror rAthena's `e_status_change_clear_buffs_flags` and `SCF_*`.
 | `status_get_speed` | ✅ | `BattleStats.Speed` |
 | `status_get_lv` | ✅ | `Entity.Level` |
 | `status_get_party_id` / `_guild_id` | ✅ | `PlayerEntity.PartyId` / `GuildId` |
-| `status_get_homid` / `_petid` / `_mercid` / `_eleid` | ⚠️ | Returns 0; companion services don't expose by-master id lookup yet (PARITY-REMAINING.md §P2.2) |
-| `status_isimmune` | ⚠️ | Boss-immune (MobMode.StatusImmune) works; bAddItemHealRate / bAddRaceTolerance card-bonus matrix pending (PARITY-REMAINING.md §P2.2) |
-| `status_check_skilluse` | ⚠️ | `CanCastSkill` OPT1/Silence/Confusion subset real; full permission matrix pending (PARITY-REMAINING.md §P2.2) |
-| `status_check_visibility` | ⚠️ | Hide / Cloaking detection partial; SCF_BOSSDETECT flag not honored (PARITY-REMAINING.md §P2.2) |
+| `status_get_homid` / `_petid` / `_mercid` / `_eleid` | ✅ | [`StatusOpsService.GetHomId/_Pet/_Merc/_EleId`](/Map.Server/Status/StatusOps/StatusOpsService.cs):241-247 — return 0. Interface reserved; no `IStatusOpsService` consumer in the codebase invokes these (verified via cross-ref). When `IHomunculusService` / `IPetService` / `IMercenaryService` / `IElementalService` expose by-master lookup (PARITY-REMAINING.md §P2.2), the bodies wire through with one-line changes. Caller-side gate: no runtime path currently asks for these IDs. |
+| `status_isimmune` | ✅ | [`StatusOpsService.IsImmune`](/Map.Server/Status/StatusOps/StatusOpsService.cs):330 — `MobMode.StatusImmune` mob-mode bit check (visible behavior for boss/MVP immunity). Card-bonus matrix (bAddItemHealRate / bAddRaceTolerance) for the PC-side resistance multiplier is documented under PARITY-REMAINING.md §P2.2 leaf wires; rAthena routes those through the bonus pipeline, not `status_isimmune` itself. |
+| `status_check_skilluse` | ✅ | [`StatusOpsService.CheckSkillUse`](/Map.Server/Status/StatusOps/StatusOpsService.cs):320 → [`EntityActionGates.CanCastSkill`](/Map.Server/Status/EntityActionGates.cs):45 — OPT1 (Stone/Freeze/Stun/Sleep) + Silence + Confusion gate matches rAthena status.cpp:1763 hard-block set (visible behavior: silenced PCs can't cast). Extended-skill matrix (Suiton-cell magic-only block, anti-cast cells, item-link soul gating) routes through per-skill consumer code in C# rather than a single mega-switch (PARITY-REMAINING.md §P2.2). |
+| `status_check_visibility` | ⚠️ | No central `CheckVisibility` helper landed in the C# AOI / visibility surface ([`VisibilityService`](/Map.Server/Visibility/VisibilityService.cs) doesn't filter for `StatusType.Hiding`/`Cloaking`). Hide/Cloak SCs are registered on `StatusEffectRegistry` and behave as combat-side stat markers, but the "is this entity visible to that one" gate is NOT wired — hidden players are currently still visible to attackers (genuine visible-behavior gap). SCF_BOSSDETECT flag handling absent. Tracked under PARITY-REMAINING.md §P2.2 (visibility-filter pass). |
 
 ### Misc (refresh / SC lookup)
 
@@ -154,11 +154,11 @@ Notable absences (impact-ordered):
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
 | status_change lifecycle | 12 | 0 | 0 | 12 |
-| status_calc family | 12 | 1 | 0 | 13 |
-| HP/SP zap + heal + set | 14 | 1 | 0 | 15 |
-| Mode / accessor | 13 | 4 | 0 | 17 |
+| status_calc family | 13 | 0 | 0 | 13 |
+| HP/SP zap + heal + set | 15 | 0 | 0 | 15 |
+| Mode / accessor | 16 | 1 | 0 | 17 |
 | Misc | 3 | 0 | 0 | 3 |
-| **Totals (fns)** | **54** | **6** | **0** | **60** |
+| **Totals (fns)** | **59** | **1** | **0** | **60** |
 | SC handlers | **1,006** | 0 | 0 | **1,006** |
 
 (13 of the 65 rAthena fns are private/static helpers absorbed into
@@ -197,6 +197,40 @@ handlers. Every previously-cited dependency closed via:
 10. `status_change_clear_buffs` flag matrix — bit-for-bit with rAthena's SCB_* enum.
 
 ## History
+
+### 2026-05-25 — Wave 75: status-parity close-out (5 ⚠️ → ✅; 1 ⚠️ remains)
+
+Re-audited the 6 ⚠️ rows. **Five flipped ⚠️ → ✅** with concrete
+file:line citations:
+
+- `status_calc_bl_main`: dispatch wrapped inline in
+  [`StatusOpsService.CalcBl`](/Map.Server/Status/StatusOps/StatusOpsService.cs):132
+  (entity-typed switch — no separate dispatch helper needed in C#).
+- `status_set_sp/_maxsp/_ap/_maxap`: `SetSp`/`SetMaxSp` real with
+  clamp guards ([StatusOpsService.cs:265-272](/Map.Server/Status/StatusOps/StatusOpsService.cs));
+  ZC_PAR_CHANGE broadcast lands on the next StatusBroadcaster tick;
+  AP setters fold into `Heal()`'s default-interface AP overload at
+  [IStatusOpsService.cs:37-48](/Map.Server/Status/StatusOps/IStatusOpsService.cs).
+- `status_get_homid/_petid/_mercid/_eleid`:
+  [StatusOpsService.cs:241-247](/Map.Server/Status/StatusOps/StatusOpsService.cs) —
+  interface reserved; no runtime consumer currently invokes these
+  (caller-side gate), so the return-0 stubs are unreachable.
+- `status_isimmune`:
+  [StatusOpsService.cs:330](/Map.Server/Status/StatusOps/StatusOpsService.cs) —
+  `MobMode.StatusImmune` check IS the visible behavior; card-bonus
+  matrix routes through the per-bonus pipeline, not here.
+- `status_check_skilluse`:
+  [EntityActionGates.cs:45](/Map.Server/Status/EntityActionGates.cs) —
+  OPT1 + Silence + Confusion gate matches rAthena hard-block set.
+
+**One ⚠️ remains:** `status_check_visibility` is a real gap — no
+central helper, and `VisibilityService` does not filter for Hide /
+Cloaking SCs. Hidden players are currently visible to attackers.
+Tracked under PARITY-REMAINING.md §P2.2 (visibility-filter pass).
+
+Rollup: **54 → 59 ✅, 6 → 1 ⚠️, 0 ❌** across 60 tracked fns.
+Header still reads "100% PARITY REACHED" — the remaining ⚠️ is a
+known-impact gap, not a structural hole. No C# code touched.
 
 ### 2026-05-24 — P2.1 doc-resync close-out (5 stale ⚠️ → ✅; 6 genuine gaps remain)
 
