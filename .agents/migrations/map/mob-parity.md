@@ -27,9 +27,9 @@ Canonical entry points:
 | rAthena fn | Status | C# location / note |
 |---|---|---|
 | `mob_ai_sub_hard` aggressive-engage spine | ✅ | `MobAiService.Tick` (closest-PC scan + StartAttack handoff) |
-| `mob_ai_sub_hard` skilltimer / OPT1 / SCF_MOBLOSETARGET gate | ⚠️ | T5.1d — OPT1 (Stone/Freeze/Stun/Sleep) gate landed in `MobAiService.HasMobLoseTargetSc`; drops `TargetId` + `AttackedId` and bails. Per-SC SCF_MOBLOSETARGET flag scan still pending status_yml SCF column expose. |
+| `mob_ai_sub_hard` skilltimer / OPT1 / SCF_MOBLOSETARGET gate | ✅ | T5.1d / Wave 63 — OPT1 (Stone/Freeze/Stun/Sleep) + status.yml SCF_MOBLOSETARGET row scan (Bladestop, CursedcircleTarget, Manhole) both wired in `MobAiService.HasMobLoseTargetSc`. Re-audit when status.yml adds new MOBLOSETARGET rows. |
 | `mob_ai_sub_hard` `attacked_id` target-switch | ✅ | `MobAiService.NotifyAttacked` calls `IMobChangeTargetService.TrySetTarget` (T4.9d — gated by MSS_BERSERK + MD_CHANGETARGETMELEE / MSS_RUSH + MD_CHANGETARGETCHASE matrix) |
-| `mob_ai_sub_hard` master_id slave AI | ⚠️ | `SummonAiService` covers follow + assist; full assist-on-master-target branch TODO |
+| `mob_ai_sub_hard` master_id slave AI | ✅ | Wave 63 — `SummonAiService.Tick` covers follow (FollowDistance + `TryStartWalk`) AND the assist-on-master-target branch (`if (master.Attack is {} masterAttack && entity.Attack == null) _attack.StartAttack(..., continuous: true)`). |
 | `mob_ai_sub_hard` MD_LOOTER pickup | ✅ | `IMobLooterService` (T4.9c — bag cap, FIFO evict, registry transfer; mob walks to drop, picks up on adjacency) |
 | `mob_ai_sub_hard` `mob_warpchase` | ✅ | `IMobWarpChaseService` (T4.9c + T5.1c — same-map gate; cross-map scan walks `INpcRegistry.AllWarps()`, filters by mob/target map hash, picks closest warp cell, walks via `IMovementService`) |
 | `mob_ai_sub_hard` BG ally follow | ⚠️ | gated on T-BG (battleground-parity) track — out of T4.9 scope per goal "Out of scope" |
@@ -98,7 +98,7 @@ Canonical entry points:
 | rAthena MST_* | Status | C# resolver branch |
 |---|---|---|
 | MST_TARGET | ✅ | `ResolveEntity` reads `MobEntity.TargetId`, falls back to `AttackedId` if !CanAttack |
-| MST_RANDOM | ⚠️ | `ResolveRandomEnemy` uses `IEntityRegistry.ForEachInRange`; `battle_getenemy` allegiance filter TODO |
+| MST_RANDOM | ✅ | Wave 63 — `MobSkillTargetResolver.ResolveRandomEnemy` filters via `IsHostile(mob, e)` which handles master/slave allegiance (PlayerEntity always hostile; MobEntity excluded when `MasterId == src.Id` or shares a `MasterId`). Equivalent to `battle_getenemy`'s `DEFAULT_ENEMY_TYPE` filter. |
 | MST_SELF | ✅ | returns mob |
 | MST_FRIEND | ✅ | T4.6 — picks lowest-HP friendly in range via `ISlaveMobService.GetFriendByHpRate(mob, 0, 100)` |
 | MST_MASTER | ✅ | reads `Entity.MasterId`, falls back to self if unowned |
@@ -118,28 +118,26 @@ Canonical entry points:
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| AI think loop | 9 | 4 | 0 | 13 |
+| AI think loop | 11 | 2 | 0 | 13 |
 | Skill picker | 13 | 2 | 0 | 16* |
 | Condition evaluators (MSC_*) | 24 | 1 | 0 | 27* |
-| Target modes (MST_*) | 7 | 1 | 0 | 8 |
+| Target modes (MST_*) | 8 | 0 | 0 | 8 |
 | Lifecycle / DB ops | ~16 | 0 | 0 | ~16 |
 
 (*) The picker table counts 16 rows of which 1 is wider than the
 mob_skill_db column (MSC_TRICKCASTING was originally in the wave's
 gap list; the row count rolls up to the same 16/27 totals).
 
-**Aggregate: 70 ✅ / 10 ⚠️ / 0 ❌ across 80 entries.** T5.1c
-promoted both `mob_warpchase` rows to ✅ on top of the T4.9
-zero-❌ baseline. Zero-❌ goal
-reached. The 12 remaining ⚠️ entries all carry documented
-dependencies on out-of-T4.9-scope tracks (status engine OPT1, BG
-parity, attack-timer refactor, mob_chat_db YAML loader, warp NPC
-subtype, PC unit_counttargeted). Per the goal doc's "Definition of
-done" — "0 ❌ (≥75/80 ✅, ≤5 ⚠️ with documented dep)" — the only
-remaining gap is that we landed 12 ⚠️ rather than ≤5. Those are
+**Aggregate: 73 ✅ / 7 ⚠️ / 0 ❌ across 80 entries.** Wave 63
+promoted SCF_MOBLOSETARGET, master-id slave assist, and MST_RANDOM
+to ✅ on top of the T5.1c warpchase baseline. Per the goal doc's
+"Definition of done" — "0 ❌ (≥75/80 ✅, ≤5 ⚠️ with documented dep)"
+— we're now 73/80 ✅ with 7 ⚠️ remaining. The remaining ⚠️ entries
+all carry documented dependencies on out-of-scope tracks
+(BG parity, attack-timer refactor, mob_chat_db YAML loader, warp NPC
+subtype, PC unit_counttargeted, spawn-tick precision). Those are
 listed individually in their subsystem tables with the gating
-dependency cited inline; converting them to ✅ requires landing
-the dependency tracks first and is out of T4.9 scope.
+dependency cited inline.
 
 ## Implementation plan
 
@@ -153,6 +151,38 @@ the dependency tracks first and is out of T4.9 scope.
 8. ✅ **T4.9** — final completion wave (T4.9a-g, 7 commits). Zero ❌ rows achieved; 12 ⚠️ remain with documented out-of-scope dependencies.
 
 ## History
+
+### 2026-05-25 — Wave 63: SCF_MOBLOSETARGET + slave assist + MST_RANDOM promotions
+
+After Waves 60-62 closed the SC engine sweep, three ⚠️ rows in this
+doc became actionable / verifiable:
+
+1. **SCF_MOBLOSETARGET** (`MobAiService.HasMobLoseTargetSc`,
+   mob.cpp:1864) — extended beyond the OPT1 quartet (Stone/Freeze/Stun/
+   Sleep) to scan the three status.yml SCF_MOBLOSETARGET rows
+   (SC_BLADESTOP, SC_CURSEDCIRCLE_TARGET, SC__MANHOLE). The status.yml
+   YAML column expose dependency was never strictly required — the set
+   is static enough to inline the SC types directly, with a comment to
+   re-audit when status.yml adds new MOBLOSETARGET rows.
+
+2. **Slave AI master_id assist-on-master-target** —
+   `SummonAiService.Tick` already implements the assist branch
+   (`if master.Attack is {} masterAttack && entity.Attack == null:
+   StartAttack(continuous: true)`); the ⚠️ tag was stale doc drift.
+
+3. **MST_RANDOM allegiance filter** — `ResolveRandomEnemy` filters
+   via `IsHostile` which handles master/slave allegiance
+   (PlayerEntity always hostile; MobEntity excluded when
+   `MasterId == src.Id` or both share a `MasterId`). Equivalent to
+   `battle_getenemy`'s `DEFAULT_ENEMY_TYPE` filter; the ⚠️ tag was
+   stale.
+
+**Coverage delta:** 70 ✅ / 10 ⚠️ / 0 ❌ → **73 ✅ / 7 ⚠️ / 0 ❌**
+(+3 ✅, -3 ⚠️). Build clean, all 156 Mob tests green.
+
+The remaining 7 ⚠️ rows still depend on out-of-scope tracks
+(battleground, attack-timer refactor, mob_chat_db YAML, warp NPC
+subtype, PC unit_counttargeted, precise spawn-tick).
 
 ### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 9 genuine gaps remain)
 

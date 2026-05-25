@@ -277,20 +277,29 @@ public sealed class MobAiService : IMobAiService
     }
 
     /// <summary>
-    /// T5.1d — rAthena mob.cpp:1864 OPT1 gate. True iff the mob
-    /// currently has Stone / Freeze / Stun / Sleep active. Stonewait
-    /// (the petrify charge-up) and Burning are explicitly excluded
-    /// (mobs keep their target through both). The SCF_MOBLOSETARGET
-    /// per-SC flag scan is a documented follow-up — needs the
-    /// status_yml SCF flag layer to expose per-SC metadata.
+    /// T5.1d / Wave 63 — rAthena mob.cpp:1864 OPT1 + SCF_MOBLOSETARGET gate.
+    /// True iff the mob currently has any OPT1 CC (Stone / Freeze / Stun /
+    /// Sleep) active OR an SC whose status.yml flag row carries
+    /// <c>MobLoseTarget: true</c>. Stonewait (petrify charge-up) and
+    /// Burning are explicitly excluded — mobs keep their target through
+    /// both. The MOBLOSETARGET set is sourced from
+    /// <c>rathena/db/re/status.yml</c> (currently: SC_BLADESTOP,
+    /// SC_CURSEDCIRCLE_TARGET, SC__MANHOLE). Re-audit when status.yml
+    /// adds new MOBLOSETARGET rows.
     /// </summary>
     private bool HasMobLoseTargetSc(MobEntity mob)
     {
         if (_sc == null) return false;
-        return _sc.Get(mob, StatusType.Stone) != null
-            || _sc.Get(mob, StatusType.Freeze) != null
-            || _sc.Get(mob, StatusType.Stun) != null
-            || _sc.Get(mob, StatusType.Sleep) != null;
+        // OPT1 CC bucket — Stone/Freeze/Stun/Sleep make the mob blank-target.
+        if (_sc.Get(mob, StatusType.Stone) != null) return true;
+        if (_sc.Get(mob, StatusType.Freeze) != null) return true;
+        if (_sc.Get(mob, StatusType.Stun) != null) return true;
+        if (_sc.Get(mob, StatusType.Sleep) != null) return true;
+        // status.yml SCF_MOBLOSETARGET rows.
+        if (_sc.Get(mob, StatusType.Bladestop) != null) return true;
+        if (_sc.Get(mob, StatusType.CursedcircleTarget) != null) return true;
+        if (_sc.Get(mob, StatusType.Manhole) != null) return true;
+        return false;
     }
 
     /// <summary>
