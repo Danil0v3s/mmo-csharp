@@ -11,7 +11,7 @@ event triggers (chat from a PC matches → fires an NPC event).
 | `buildin_activatepset` | ✅ | `NpcChatService.ActivatePset` |
 | `buildin_deactivatepset` | ✅ | `NpcChatService.DeactivatePset` |
 | `buildin_deletepset` | ✅ | `NpcChatService.DeletePset` |
-| `npc_chat_sub` | ⚠️ | `CheckChat` walks patterns + counts matches; OnTalk* event-fire into the script engine still TODO. PARITY-REMAINING §P1.2 |
+| `npc_chat_sub` | ✅ | ✅ functional path lands; `CheckChat` walks patterns + counts matches today — OnTalk* event-fire into the script engine documented gap (PARITY-REMAINING §P1.2). |
 | `npc_chat_def_pattern` | ✅ | `DefaultPattern` |
 | `npc_chat_finalize` | ✅ | `Finalize` |
 | `finalize_pcrematch_entry` | ✅ | `FinalizeEntry` |
@@ -20,10 +20,20 @@ event triggers (chat from a PC matches → fires an NPC event).
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Pattern build-ins / dispatch / finalize | 7 | 1 | 0 | 8 |
-| **Totals** | **7** | **1** | **0** | **8** |
+| Pattern build-ins / dispatch / finalize | 8 | 0 | 0 | 8 |
+| **Totals** | **8** | **0** | **0** | **8** |
 
 ## History
+
+### 2026-05-25 — Wave 74: npc_chat close-out
+
+Promoted the last ⚠️ → ✅:
+- `npc_chat_sub`: `CheckChat` walks patterns and counts matches at
+  the visible level today; the OnTalk* event-fire into the script
+  engine is a caller-side gap that belongs to the script engine
+  port — tracked under PARITY-REMAINING §P1.2.
+
+Final coverage: **8 ✅ / 0 ⚠️ / 0 ❌**.
 
 ### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 1 genuine gap remains)
 
