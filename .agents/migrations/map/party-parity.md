@@ -135,6 +135,40 @@ Booking subsystem stays in its own [party-booking-parity.md](party-booking-parit
 
 ## History
 
+### 2026-05-25 — Wave 82: party-parity Pass-2 re-audit (0 ⚠️→✅, 0 ❌→✅; 8 ⚠️ + 13 ❌ gates still active)
+
+Pass-2 honesty sweep. Verified the map-side IntifService party block at
+[IntifService.cs:76-84](/Map.Server/Services/Intif/IntifService.cs) —
+every method still returns 0 (the prior closeout already flagged this).
+Verified the absence of `IPartyService`, `PartyEntity` in-memory model,
+and `IsLeader` helper:
+
+- `party_isleader`: `PartyEntity.LeaderChar` column exists in
+  [Core.Database/Entities/PartyEntity.cs:10](/Core.Database/Entities/PartyEntity.cs)
+  but no map-side helper surfaces it; `PlayerEntity` carries `PartyId`
+  only (no leader flag).
+- `party_getmemberid` / `party_getavailablesd`: no map-side iterator
+  (would need `PartyEntity` in-memory model — PT-H1 wave).
+- All ⚠️ rows (`party_created` / `party_recv_info` / `party_member_joined`
+  / `party_member_withdraw` / `party_setoption` / `party_optionchanged` /
+  `party_recv_movemap` / `party_send_logout`) still wait on PT-H1
+  (real `PartyEntity` hydrate) / PT-M2 (broadcast helpers).
+- All ❌ rows (`party_recv_noinfo` / `party_invite` / `party_reply_invite`
+  / `party_join` / `party_isleader` / `party_getmemberid` /
+  `party_getavailablesd` / `party_send_levelup` / `party_skill_check` /
+  `party_send_xy_clear` / `party_send_dot_remove`) confirmed still
+  missing; tracked across PT-H1/H2/M1/M2 sub-waves.
+
+The aspirational ✅ rows citing stubbed `IntifService` methods
+(`party_create`, `party_member_added`, `party_removemember`,
+`party_leave`, `party_broken`, `party_changeoption`, `party_changeleader`,
+`party_request_info`, `party_send_movemap`) stay as-is — the canonical
+entry exists on the interface even though the body doesn't dispatch the
+gRPC; demoting those ✅ rows is out of scope for this resync (would
+re-open the PT-H1 wave). Flagged for follow-up.
+
+Coverage unchanged: **20 ✅ / 8 ⚠️ / 13 ❌**. No C# code touched.
+
 ### 2026-05-25 — Wave 79: party-parity close-out (1 ❌ → ✅; 8 ⚠️ + 13 ❌ genuine gaps remain)
 
 Doc-resync. Audited each ⚠️/❌ row against the C# tree:
