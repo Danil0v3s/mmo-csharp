@@ -989,6 +989,58 @@ public sealed class StatusEffectRegistry
             },
             Flags: buff));
 
+        // SC_GIANTGROWTH — Val2 = 30 (damage success rate + STR increase %).
+        // rAthena status.cpp:case SC_GIANTGROWTH. CalcFlag: Str.
+        Register(StatusType.Giantgrowth, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 30;
+                var strDelta = (short)(target.Stats.Str * sc.Val2 / 100);
+                sc.Val3 = strDelta;
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + strDelta);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val3);
+            },
+            Flags: buff));
+
+        // SC_LUXANIMA — Val2 = 15 (Storm Blast success %). CalcFlag table
+        // lists all 6 base stats — Luxanima grants a flat +15 to each.
+        Register(StatusType.Luxanima, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 15;
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val2);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val2);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val2);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val2);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val2);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val2);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val2);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val2);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val2);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val2);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val2);
+            },
+            Flags: buff));
+
+        // SC_OFFERTORIUM — Val2 = 30*Val1 (heal power bonus %),
+        //                  Val3 = 100+20*Val1 (SP cost increase %).
+        // rAthena status.cpp:case SC_OFFERTORIUM.
+        Register(StatusType.Offertorium, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 30 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 100 + 20 * sc.Val1;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
         // SC_FRIGG_SONG — Val2 = 5*Val1 MaxHp % bonus, Val3 = 80+20*Val1
         // healing (per tick). status.cpp:case SC_FRIGG_SONG. CalcFlag: MaxHp.
         Register(StatusType.FriggSong, new StatusEffectHandler(
