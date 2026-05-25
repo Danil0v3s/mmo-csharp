@@ -210,6 +210,18 @@ public class StatusEffectCompletenessTests
             [StatusType.Bitescar]   = "Sura DoT marker — ends on heal; consumer in per-skill plugin",
             [StatusType.Akaitsuki]  = "Sura heal-flip marker — heal pipeline reads on AL_HEAL apply",
             [StatusType.BasilicaCell] = "Basilica cell marker — PlayerPositionHelpers.IsBasilicaCell reads",
+
+            // ---- Wave 47 — Elemental option + 4th-class markers with rAthena
+            // Val2/Val3 storage but consumer-side reads (no stat mod from OnStart).
+            [StatusType.Swingdance] = "WM_SWINGDANCE — Val3 = 3*Val1+Val2 walk speed + ASPD reduction; read by movement+ASPD pipeline",
+            [StatusType.CircleOfFireOption] = "SC_CIRCLE_OF_FIRE_OPTION — Val2 = 300 fire reflect splash damage read by ElementalNpc plugin",
+            [StatusType.WaterBarrier] = "SC_WATER_BARRIER — Val2 = 30 Atk2/Flee reduction read by Sorcerer combat plugin",
+            [StatusType.SolidSkinOption] = "SC_SOLID_SKIN_OPTION — Val2 = 33 def % bonus read by Sorcerer combat plugin",
+            [StatusType.StoneShieldOption] = "SC_STONE_SHIELD_OPTION — Val2 = 100 elemental modifier read by ElementalNpc plugin",
+            [StatusType.PowerOfGaia] = "SC_POWER_OF_GAIA — Val2 = 33 def rate, Val3 = 20 HP rate read by Sorcerer plugin",
+            [StatusType.PyrotechnicOption] = "SC_PYROTECHNIC_OPTION — Val2 = 60 Fire eATK read by ElementalNpc plugin",
+            [StatusType.Eqc] = "SC_EQC — Val2 = 5*Val1 def reduction, Val3 = 2*Val1 HP drain read by per-skill plugin",
+            [StatusType.ToxinOfMandara] = "SC_TOXIN_OF_MANDARA — Val2 = 15*Val1 res reduction read by per-skill plugin",
         };
 
     [Fact]

@@ -1657,6 +1657,163 @@ public sealed class StatusEffectRegistry
                 target.Stats.Sta = (short)Math.Max(0, target.Stats.Sta - sc.Val2);
             },
             Flags: buff));
+
+        // ===== Wave 47 — Elemental options + 4th-class batch =====
+
+        // SC_NPC_HALLUCINATIONWALK — Val2 = 50*Val1 phys flee, Val3 = 10*Val1 magic flee.
+        Register(StatusType.NpcHallucinationwalk, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 50 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 10 * sc.Val1;
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2); },
+            Flags: buff));
+
+        // SC__LAZINESS — Val2 = 10+10*Val1 cast increase, Val3 = 10*Val1 flee reduction.
+        Register(StatusType.Laziness, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 10 + 10 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 10 * sc.Val1;
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val3);
+            },
+            OnEnd: (target, sc) => { target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val3); },
+            Flags: debuff));
+
+        // SC_SWINGDANCE — Val3 = 3*Val1 + Val2 (walk speed + ASPD reduction).
+        Register(StatusType.Swingdance, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val3 == 0) sc.Val3 = 3 * sc.Val1 + sc.Val2; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_BEYONDOFWARCRY — Val2 = 10+10*Val1 STR reduction,
+        //                     Val3 = 4*Val1 MaxHP reduction.
+        Register(StatusType.Beyondofwarcry, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 10 + 10 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 4 * sc.Val1;
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val2); },
+            Flags: debuff));
+
+        // SC_PYROTECHNIC_OPTION — Val2 = 60 (Fire eATK boost).
+        Register(StatusType.PyrotechnicOption, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 60; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_SOLID_SKIN_OPTION — Val2 = 33 (% Def increase).
+        Register(StatusType.SolidSkinOption, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 33; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_CIRCLE_OF_FIRE_OPTION — Val2 = 300 (Fire reflect splash).
+        Register(StatusType.CircleOfFireOption, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 300; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_STONE_SHIELD_OPTION — Val2 = 100 (elemental modifier).
+        Register(StatusType.StoneShieldOption, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 100; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_WATER_BARRIER — Val2 = 30 (ATK2 + Flee reductions).
+        Register(StatusType.WaterBarrier, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 30; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_ZEPHYR — Val2 = 25 (Flee bonus).
+        Register(StatusType.Zephyr, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 25;
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2); },
+            Flags: buff));
+
+        // SC_POWER_OF_GAIA — Val2 = 33 (Def + speed rate), Val3 = 20 (HP rate).
+        Register(StatusType.PowerOfGaia, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 33;
+                if (sc.Val3 == 0) sc.Val3 = 20;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_GOLDENE_FERSE — Val2 = 10+10*Val1 flee bonus,
+        //                    Val3 = 6+4*Val1 ASPD bonus,
+        //                    Val4 = 2+2*Val1 holy attack chance.
+        Register(StatusType.GoldeneFerse, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 10 + 10 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 6 + 4 * sc.Val1;
+                if (sc.Val4 == 0) sc.Val4 = 2 + 2 * sc.Val1;
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val3);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2);
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val3);
+            },
+            Flags: buff));
+
+        // SC_STONE_WALL — Val2 = 100*Val1 Def bonus, Val3 = 30*Val1 Mdef bonus.
+        Register(StatusType.StoneWall, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 100 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 30 * sc.Val1;
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val2);
+                target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val3);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val2);
+                target.Stats.Mdef = (short)Math.Max(0, target.Stats.Mdef - sc.Val3);
+            },
+            Flags: buff));
+
+        // SC_OVERED_BOOST — Val2 = 400+40*Val1 flee bonus,
+        //                   Val3 = 180+2*Val1 ASPD bonus,
+        //                   Val4 = 50 def reduction %.
+        Register(StatusType.OveredBoost, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 400 + 40 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 180 + 2 * sc.Val1;
+                if (sc.Val4 == 0) sc.Val4 = 50;
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2); },
+            Flags: buff));
+
+        // SC_TOXIN_OF_MANDARA — Val2 = 15*Val1 (resistance reduction %).
+        Register(StatusType.ToxinOfMandara, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 15 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: debuff));
+
+        // SC_EQC — Val2 = 5*Val1 def % reduction, Val3 = 2*Val1 HP drain %.
+        Register(StatusType.Eqc, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 2 * sc.Val1;
+            },
+            OnEnd: (_, _) => { },
+            Flags: debuff));
     }
 
     /// <summary>
