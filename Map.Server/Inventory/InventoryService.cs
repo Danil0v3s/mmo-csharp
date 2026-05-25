@@ -1,8 +1,10 @@
 using Core.Database.Entities;
 using Core.Database.Repositories.Api;
 using Core.Server.Packets.Out.ZC;
+using Map.Server.Entities;
 using Map.Server.Items;
 using Map.Server.Session;
+using Map.Server.Status;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Map.Server.Inventory;
@@ -20,15 +22,21 @@ public sealed class InventoryService : IInventoryService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IItemCatalog _itemCatalog;
+    private readonly IEntityRegistry? _entityRegistry;
+    private readonly IPlayerWeightStatusService? _weightStatus;
     private readonly ILogger<InventoryService> _logger;
 
     public InventoryService(
         IServiceScopeFactory scopeFactory,
         IItemCatalog itemCatalog,
-        ILogger<InventoryService> logger)
+        ILogger<InventoryService> logger,
+        IEntityRegistry? entityRegistry = null,
+        IPlayerWeightStatusService? weightStatus = null)
     {
         _scopeFactory = scopeFactory;
         _itemCatalog = itemCatalog;
+        _entityRegistry = entityRegistry;
+        _weightStatus = weightStatus;
         _logger = logger;
     }
 
@@ -207,6 +215,16 @@ public sealed class InventoryService : IInventoryService
         _logger.LogInformation(
             "GiveItem: char {CharId} +{Amount}× {NameId} → slot {Slot} (now {Total})",
             session.CharacterId, amount, nameId, slot.ServerIndex, slot.Amount);
+
+        // Wave 93 — rAthena pc_additem tail (pc.cpp:8268) calls
+        // pc_updateweightstatus after every inventory mutation so the
+        // SC_WEIGHT50 / SC_WEIGHT90 overlay tracks the new bag weight.
+        if (_weightStatus != null && _entityRegistry != null
+            && session.EntityId is { } eid
+            && _entityRegistry.Get(eid) is PlayerEntity pc)
+        {
+            _weightStatus.UpdateWeightStatus(pc);
+        }
         return true;
     }
 

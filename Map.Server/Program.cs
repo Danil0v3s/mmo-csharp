@@ -2159,6 +2159,10 @@ builder.Services.AddSingleton<Map.Server.Inventory.IPlayerInventoryHelpers, Map.
 builder.Services.AddSingleton<Map.Server.Status.IPlayerBonusService, Map.Server.Status.PlayerBonusService>();
 // Wave 87c — Mado Gear overheat accumulator (pc.cpp:13082 pc_overheat).
 builder.Services.AddSingleton<Map.Server.Status.IMadoGearService, Map.Server.Status.MadoGearService>();
+// Wave 93 — pc_updateweightstatus (pc.cpp:3026). SC_WEIGHT50 / SC_WEIGHT90
+// auto-application based on the current inventory weight vs max weight
+// ratio. Called from inventory mutation paths.
+builder.Services.AddSingleton<Map.Server.Status.IPlayerWeightStatusService, Map.Server.Status.PlayerWeightStatusService>();
 // DSL-3: V8-backed scripted bonus pipeline for dynamic item scripts
 // (conditionals, autobonus, autospell) that the regex extractor
 // can't decode. Dedicated V8 engine — separate from the NPC script

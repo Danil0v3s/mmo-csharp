@@ -97,6 +97,7 @@ public sealed class BattleConfigService : IBattleConfigService
         _knobs["mob_rudeattacked_count"] = 2;
         _knobs["natural_heal_weight_rate"] = 50;
         _knobs["natural_heal_weight_rate_renewal"] = 70;
+        _knobs["major_overweight_rate"] = 90;
         _knobs["item_first_get_time"] = 3000;
         _knobs["item_second_get_time"] = 1000;
         _knobs["item_third_get_time"] = 1000;

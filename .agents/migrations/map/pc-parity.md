@@ -47,7 +47,7 @@ groups the function list by subsystem and tracks our C# coverage.
 | `pc_readparam` | ✅ | `IPlayerStatHelpers.ReadParam` (PC-22) |
 | `pc_maxbaselv` / `pc_maxjoblv` / `pc_maxparameter` | ✅ | `IPlayerStatHelpers.MaxBaseLevel` / `MaxJobLevel` / `MaxParameter` (PC-22 / PC-S6 — class-aware) |
 | `pc_is_maxbaselv` / `pc_is_maxjoblv` | ✅ | `IPlayerStatHelpers.IsMaxBaseLv` / `IsMaxJobLv` (PC-22) |
-| `pc_updateweightstatus` | ⚠️ | Weight stage applied on equip/inventory mutation; SC_WEIGHT50/90 now registered (NS-3 wave 5) but auto-application not wired. PARITY-REMAINING §P1.2 |
+| `pc_updateweightstatus` | ✅ | Wave 93 — `IPlayerWeightStatusService.UpdateWeightStatus` ([Status/PlayerWeightStatusService.cs](/Map.Server/Status/PlayerWeightStatusService.cs)). Computes `pc_getpercentweight` from `IItemCatalog.Weight * Amount` over `session.Inventory`, compares against `IBattleConfigService` cutoffs (`natural_heal_weight_rate_renewal` = 70, `major_overweight_rate` = 90), and dispatches SC_WEIGHT50 / SC_WEIGHT90 start/end. Wired into `InventoryService.GiveItem` (pc.cpp:8268 `pc_additem` tail). Job-table MaxWeight + bonus accrual layered on later — the rAthena base of 20000 is used as the floor. |
 
 ### EXP / level
 
@@ -224,7 +224,7 @@ groups the function list by subsystem and tracks our C# coverage.
 |---|---|---|---|
 | Lifecycle | 6 | 1 | 0 |
 | Position / warp / save | 7 | 0 | 0 |
-| Stat allocation | 6 | 1 | 0 |
+| Stat allocation | 7 | 0 | 0 |
 | EXP / level | 5 | 0 | 0 |
 | Skill | 9 | 0 | 0 |
 | Equipment | 13 | 0 | 0 |
@@ -241,15 +241,14 @@ groups the function list by subsystem and tracks our C# coverage.
 | Script vars | 3 | 0 | 0 |
 | Macro detector | 1 | 0 | 0 |
 | Misc | 8 | 0 | 0 |
-| **Totals** | **117** | **3** | **0** |
+| **Totals** | **118** | **2** | **0** |
 
-**Wave 87c (2026-05-25)** — `pc_overheat` promoted to ✅: `IMadoGearService`
-landed, wired into `BattleCalculator.CalcWeaponAttack`. 120 of 157
-functions tracked here. Of those, 117 (98 %) are full parity, 3 (2 %)
-are ⚠️ with documented upstream dependencies (SCdata 4th-class YAML,
-SC_WEIGHT50/90 auto-overlay, Crimson Marker auto-hook). The remaining
-~37 functions are private helpers absorbed into call sites or thin
-wrappers.
+**Wave 93 (2026-05-25)** — `pc_updateweightstatus` promoted to ✅:
+`IPlayerWeightStatusService` landed, wired into `InventoryService.GiveItem`.
+120 of 157 functions tracked here. Of those, 118 (98 %) are full
+parity, 2 (2 %) are ⚠️ with documented upstream dependencies (SCdata
+4th-class YAML, Crimson Marker auto-hook). The remaining ~37 functions
+are private helpers absorbed into call sites or thin wrappers.
 
 ## Implementation plan
 
@@ -291,6 +290,24 @@ Replace inline trade/shop gate checks with the canonical helpers so
 bounded/expired/storage-protected logic centralises.
 
 ## History
+
+### 2026-05-25 — Wave 93: pc_updateweightstatus overweight SC auto-apply landed (1 ⚠️→✅; 2 gates remain)
+
+`IPlayerWeightStatusService.UpdateWeightStatus` ported from
+`pc_updateweightstatus` (pc.cpp:3026). Reads the percent-weight from
+`IItemCatalog.Weight × InventoryItem.Amount` over `session.Inventory`,
+compares against `IBattleConfigService` cutoffs (`natural_heal_weight_rate_renewal`
+= 70, `major_overweight_rate` = 90), and dispatches SC_WEIGHT50 /
+SC_WEIGHT90 start / end matching the rAthena tier transition rules.
+
+Wired into `InventoryService.GiveItem` so every `pc_additem`-equivalent
+mutation refreshes the overlay. Equip / unequip / cart-move trigger
+points layer on the same call when their integration lands.
+
+Job-table MaxWeight + bonus accrual is the deferred follow-on; rAthena
+base of 20000 is used as the divisor until that path is ported.
+
+**Coverage:** 117 ✅ / 3 ⚠️ / 0 ❌ → **118 ✅ / 2 ⚠️ / 0 ❌**.
 
 ### 2026-05-25 — Wave 87c: pc_overheat Mado heat path landed (1 ⚠️→✅; 3 gates remain)
 
