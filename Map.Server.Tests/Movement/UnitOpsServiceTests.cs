@@ -192,6 +192,98 @@ public class UnitOpsServiceTests
         Assert.True(ctx.UnitOps.CanReachBl(a, t, range: 2));
     }
 
+    // ---- Wave 73 — small canonical helpers ----
+
+    [Fact]
+    public void IsWalking_TrueWhileWalkActive()
+    {
+        var ctx = Build();
+        var m = NewMob(1);
+        ctx.Entities.Add(m);
+        Assert.False(ctx.UnitOps.IsWalking(m));
+        ctx.Movement.TryStartWalk(m, (short)(m.X + 1), m.Y);
+        Assert.True(ctx.UnitOps.IsWalking(m));
+        ctx.Movement.CancelWalk(m);
+        Assert.False(ctx.UnitOps.IsWalking(m));
+    }
+
+    [Fact]
+    public void CanAttack_FalseForCrossMap_OrSelf_OrDead()
+    {
+        var ctx = Build();
+        var a = NewMob(1, 5, 5);
+        var t = NewMob(2, 6, 5);
+        ctx.Entities.Add(a); ctx.Entities.Add(t);
+        Assert.True(ctx.UnitOps.CanAttack(a, t));
+        // Self
+        Assert.False(ctx.UnitOps.CanAttack(a, a));
+        // Dead target
+        t.Hp = 0;
+        Assert.False(ctx.UnitOps.CanAttack(a, t));
+    }
+
+    [Fact]
+    public void SetTarget_NoPriorLatch_LatchesAndIncrementsTargeters()
+    {
+        var ctx = Build();
+        var a = NewMob(1, 5, 5);
+        var t = NewMob(2, 6, 5);
+        ctx.Entities.Add(a); ctx.Entities.Add(t);
+        Assert.True(ctx.UnitOps.SetTarget(a, t.Id));
+        Assert.Equal(1, t.Targeters);
+    }
+
+    [Fact]
+    public void SetTarget_SameTarget_NoOp()
+    {
+        var ctx = Build();
+        var a = NewMob(1, 5, 5);
+        var t = NewMob(2, 6, 5);
+        ctx.Entities.Add(a); ctx.Entities.Add(t);
+        ctx.UnitOps.SetTarget(a, t.Id);
+        Assert.Equal(1, t.Targeters);
+        Assert.True(ctx.UnitOps.SetTarget(a, t.Id));
+        Assert.Equal(1, t.Targeters); // unchanged
+    }
+
+    [Fact]
+    public void ChangeTarget_Transfers_TargetersCount()
+    {
+        var ctx = Build();
+        var a = NewMob(1, 5, 5);
+        var t1 = NewMob(2, 6, 5);
+        var t2 = NewMob(3, 7, 5);
+        ctx.Entities.Add(a); ctx.Entities.Add(t1); ctx.Entities.Add(t2);
+        ctx.UnitOps.SetTarget(a, t1.Id);
+        Assert.Equal(1, t1.Targeters);
+        ctx.UnitOps.ChangeTarget(a, t2.Id);
+        Assert.Equal(0, t1.Targeters);
+        Assert.Equal(1, t2.Targeters);
+    }
+
+    [Fact]
+    public void Unattackable_DropsAttackLock()
+    {
+        var ctx = Build();
+        var a = NewMob(1, 5, 5);
+        var t = NewMob(2, 6, 5);
+        ctx.Entities.Add(a); ctx.Entities.Add(t);
+        ctx.UnitOps.Attack(a, t.Id, continuous: 1);
+        Assert.NotNull(a.Attack);
+        ctx.UnitOps.Unattackable(a);
+        Assert.Null(a.Attack);
+        Assert.Equal(0, t.Targeters);
+    }
+
+    [Fact]
+    public void Refresh_OnNonRegisteredEntity_IsNoOp()
+    {
+        var ctx = Build();
+        var m = NewMob(1);
+        // Not added to registry — must not throw.
+        ctx.UnitOps.Refresh(m);
+    }
+
     // -- harness --
 
     private sealed record TestContext(

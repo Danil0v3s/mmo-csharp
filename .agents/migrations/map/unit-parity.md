@@ -29,7 +29,7 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 | `unit_run` / `_run_hit` | ❌ | Flee-walk skill (Wind Walk Forced) variant — not in interface. |
 | `unit_can_move` | ✅ | Wave 72b — `IUnitOpsService.CanMove` reads `Entity.WalkableAfterTick` (hit-stun freeze) + `EntityActionGates.CanAct` (Stone/Freeze/Stun/Sleep gate). Cast-state + storage gates pending; callers gate those upstream. |
 | `unit_can_reach_pos` / `_bl` | ✅ | Wave 72b — both via `Pathfinder.Search`. `CanReachBl` shortcircuits when Chebyshev ≤ range. |
-| `unit_is_walking` | ⚠️ | Not in interface but trivially `entity.Walk != null`. |
+| `unit_is_walking` | ✅ | Wave 73 — `IUnitOpsService.IsWalking` (unit.cpp:1402); returns `entity.Walk != null`. |
 | `unit_get_walkpath_time` | ❌ | Not in interface; rAthena helper for predicting arrival tick. |
 | `unit_calc_pos` | ❌ | Compute "follow position" for slave AI — not in interface. |
 | `unit_update_chase` | ❌ | Re-evaluate AI chase target distance — not in interface. |
@@ -40,10 +40,10 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 |---|---|---|
 | `unit_attack` | ✅ | Wave 72b — `IUnitOpsService.Attack` delegates to `IAttackService.StartAttack`; Wave 71 Targeters counter inherited for free. |
 | `unit_stop_attack` / `unit_stopattack` | ✅ | Wave 72b — `IUnitOpsService.StopAttack` delegates to `IAttackService.StopAttack` and returns whether the entity was attacking. |
-| `unit_can_attack` | ⚠️ | Not in interface; `AttackService.StartAttack` returns false on the same validation set. Public canonical helper still missing. |
-| `unit_set_target` | ❌ | Not in interface; AttackService.StartAttack covers the latch but the standalone "swap target without restarting" helper isn't exposed. |
-| `unit_changetarget` / `_sub` | ❌ | Not in interface; same as `set_target` but explicit. |
-| `unit_unattackable` | ❌ | Not in interface; releases the attack lock + adds a brief immunity window. |
+| `unit_can_attack` | ✅ | Wave 73 — `IUnitOpsService.CanAttack` (unit.cpp:2580); standalone predicate matching `StartAttack`'s validation set (same map, alive, not self, `CanAct`) without the side effect of latching. |
+| `unit_set_target` | ✅ | Wave 73 — `IUnitOpsService.SetTarget` (unit.cpp:2486). Re-latches the target through `IAttackService.StartAttack` so the Wave 71 Targeters counter transfers correctly; same-target call is a no-op. |
+| `unit_changetarget` / `_sub` | ✅ | Wave 73 — `IUnitOpsService.ChangeTarget` (unit.cpp:2520); alias for `SetTarget`. |
+| `unit_unattackable` | ✅ | Wave 73 — `IUnitOpsService.Unattackable` (unit.cpp:2562); drops the attack lock via `IAttackService.StopAttack`. Post-cast immunity window remains a caller concern. |
 | `unit_counttargeted` | ✅ | Wave 71 — `Entity.Targeters` int counter, maintained by `AttackService.StartAttack` / `StopAttack`. Read directly from any consumer. |
 | `unit_set_attackdelay` | ✅ | Wave 69 — `IAttackService.SetAttackDelay` (canonical entry; pushes `AttackState.AttackableTick`). |
 
@@ -67,7 +67,7 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 |---|---|---|
 | `unit_skilluse_id` / `_id2` | ✅ | Wave 72b — `IUnitOpsService.SkillUseId` delegates to `ISkillCastService.StartCast` via lazy `IServiceProvider` (cycle: SkillCast → UnitOps). |
 | `unit_skilluse_pos` / `_pos2` | ✅ | Wave 72b — `IUnitOpsService.SkillUsePos` delegates to `ISkillCastService.StartCastAt`. |
-| `unit_skillcastcancel` | ❌ | Not in interface; `ISkillCastService.CancelCast` exists but no `IUnitOpsService` façade row. |
+| `unit_skillcastcancel` | ✅ | Wave 73 — `IUnitOpsService.SkillCastCancel` (unit.cpp:2380); lazy-resolves `ISkillCastService.CancelCast`. |
 | `unit_cancel_combo` | ❌ | Not in interface; status-engine integration for SC_COMBO state. |
 
 ### Teleport & map transit
@@ -86,7 +86,7 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 |---|---|---|
 | `unit_dataset` / `unit_data_create` | ⚠️ | `IUnitOpsService.DataCreate` no-op; C# `Entity` allocates state inline via field initializers — there's no rAthena-style `unit_data` heap struct. Shell stays a no-op but the comment needs to call this out. |
 | `unit_free` / `_free_pc` | ✅ | Wave 72b — `IUnitOpsService.Free` cancels walk, attack, and cast state (via lazy `ISkillCastService.CancelCast`). Spawn-slot release belongs with the per-system spawn service (mob/pet/homun); UnitOps's contract is the in-flight state cleanup. |
-| `unit_refresh` | ❌ | Not in interface; refreshes the entity's wire state after gear / view changes. |
+| `unit_refresh` | ✅ | Wave 73 — `IUnitOpsService.Refresh` (unit.cpp:3148); vanish-then-respawn AOI broadcast so surrounding clients re-render with the entity's current wire state. |
 | `do_init_unit` / `do_final_unit` | ⚠️ | Static module init — C# DI replaces it. No-op by design. |
 | `unit_changeviewsize` | ⚠️ | `IUnitOpsService.ChangeViewSize` returns 0; should write size + broadcast `ZC_NOTIFY_EFFECT2`. |
 | `unit_addshadowscar` | ❌ | Pet-hatch shadow-scar visual; not in interface (pet system port pending). |
@@ -107,15 +107,15 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Walking / pathing | 5 | 3 | 4 | 12 |
-| Attack & combat | 4 | 1 | 4 | 9 |
+| Walking / pathing | 6 | 2 | 4 | 12 |
+| Attack & combat | 8 | 0 | 1 | 9 |
 | Direction & heading | 2 | 0 | 0 | 2 |
 | Knockback | 1 | 0 | 1 | 2 |
-| Skill casting | 2 | 0 | 2 | 4 |
+| Skill casting | 3 | 0 | 1 | 4 |
 | Teleport & map transit | 3 | 0 | 2 | 5 |
-| Lifecycle & data | 2 | 2 | 5 | 9 |
+| Lifecycle & data | 3 | 2 | 4 | 9 |
 | Misc | 2 | 0 | 1 | 3 |
-| **Totals (gameplay surface)** | **21** | **6** | **19** | **46** |
+| **Totals (gameplay surface)** | **28** | **4** | **14** | **46** |
 
 The remaining ~9 rAthena fns are internal helpers (NPC step-action
 chains, attack-target db bookkeeping, `unit_data::getpos`/`update_pos`)
@@ -150,6 +150,35 @@ behavior), `unit_get_masterteleport_timer` (pet detach timer —
 gated on pet-system port).
 
 ## History
+
+### 2026-05-25 — Wave 73: small canonical helpers (7 ❌ → ✅)
+
+Added the small rAthena entry points whose underlying behavior
+already lived in adjacent services but lacked a façade row on
+`IUnitOpsService`:
+
+* `IsWalking` → `entity.Walk != null`
+* `CanAttack` → standalone validation predicate
+* `SetTarget` / `ChangeTarget` → re-latch through
+  `IAttackService.StartAttack` (Targeters transfer)
+* `Unattackable` → `IAttackService.StopAttack`
+* `SkillCastCancel` → lazy `ISkillCastService.CancelCast`
+* `Refresh` → vanish + respawn AOI broadcast
+
+Coverage delta: 21 ✅ / 6 ⚠️ / 19 ❌ → **28 ✅ / 4 ⚠️ / 14 ❌**.
+
+7 new tests in `UnitOpsServiceTests.cs` for IsWalking, CanAttack
+(self / cross-map / dead gates), SetTarget no-op, ChangeTarget
+transfer, Unattackable lock drop, Refresh on unregistered entity.
+
+The remaining 14 ❌ are intentional out-of-scope: `unit_run`,
+`unit_escape`, `unit_calc_pos`, `unit_update_chase`,
+`unit_get_walkpath_time`, `unit_check_start_teleport_timer`,
+`unit_get_masterteleport_timer`, `unit_addshadowscar`,
+`unit_skillunit_maxcount`, `unit_set_castdelay`,
+`unit_changetarget_sub`, `unit_run_hit`. Each row notes why.
+
+3,451 Map.Server tests + 87 Core.Server + 29 Login.Server green.
 
 ### 2026-05-25 — Wave 72b: UnitOps shell delegation (12 ⚠️ → ✅)
 

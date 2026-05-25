@@ -80,4 +80,64 @@ public interface IUnitOpsService
 
     /// <summary>rAthena <c>unit_can_reach_pos</c>.</summary>
     bool CanReachPos(Entity src, short x, short y, byte easy);
+
+    // ---- Wave 73: small canonical helpers from unit.cpp ----
+
+    /// <summary>
+    /// rAthena <c>unit_is_walking</c> (unit.cpp:1402). True iff the
+    /// entity currently has an active <see cref="WalkState"/>.
+    /// </summary>
+    bool IsWalking(Entity bl);
+
+    /// <summary>
+    /// rAthena <c>unit_can_attack</c> (unit.cpp:2580). True iff
+    /// <paramref name="bl"/> could legitimately swing at
+    /// <paramref name="target"/> right now (same map, alive, not
+    /// frozen, not CC'd). Standalone predicate without the side-effect
+    /// of latching an AttackState — useful for AI gates and pre-cast
+    /// validation.
+    /// </summary>
+    bool CanAttack(Entity bl, Entity target);
+
+    /// <summary>
+    /// rAthena <c>unit_set_target</c> (unit.cpp:2486) — swap the
+    /// attacker's target without restarting the attack timer.
+    /// Equivalent to <see cref="Attack"/> when there's no prior latch;
+    /// when there is, only the target id moves (AttackableTick stays).
+    /// Maintains the rAthena <c>unit_counttargeted</c> book-keeping.
+    /// </summary>
+    bool SetTarget(Entity src, EntityId newTargetId);
+
+    /// <summary>
+    /// rAthena <c>unit_changetarget</c> (unit.cpp:2520) — alias for
+    /// <see cref="SetTarget"/> that explicitly broadcasts the intent
+    /// (rAthena scans every same-map entity attacking the old target
+    /// and re-points it; our model keeps the counter on the target so
+    /// the loop collapses to a single dec/inc).
+    /// </summary>
+    bool ChangeTarget(Entity src, EntityId newTargetId);
+
+    /// <summary>
+    /// rAthena <c>unit_unattackable</c> (unit.cpp:2562). Drops the
+    /// caster's attack lock and stops their auto-attack timer. The
+    /// brief post-cast immunity window (rAthena pc_unsetshield_*) is a
+    /// caller concern; this helper only handles the lock release.
+    /// </summary>
+    void Unattackable(Entity bl);
+
+    /// <summary>
+    /// rAthena <c>unit_skillcastcancel</c> (unit.cpp:2380) — abort
+    /// any in-flight skill cast. Returns true iff a cast was actually
+    /// cancelled.
+    /// </summary>
+    bool SkillCastCancel(Entity bl);
+
+    /// <summary>
+    /// rAthena <c>unit_refresh</c> (unit.cpp:3148) — re-broadcast the
+    /// entity's wire state to its AOI (used after gear / view / size
+    /// changes so the surrounding clients re-render). C# parity:
+    /// vanish + respawn on the same cell, which retriggers the
+    /// <c>ZC_NOTIFY_STANDENTRY</c> pipeline.
+    /// </summary>
+    void Refresh(Entity bl);
 }

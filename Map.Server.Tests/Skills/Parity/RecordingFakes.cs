@@ -339,6 +339,13 @@ public sealed class RecordingUnitOpsService : Map.Server.Movement.UnitOps.IUnitO
     public void DataCreate(Entity bl) { }
     public bool CanReachBl(Entity src, Entity target, short range) => true;
     public bool CanReachPos(Entity src, short x, short y, byte easy) => true;
+    public bool IsWalking(Entity bl) => bl.Walk != null;
+    public bool CanAttack(Entity bl, Entity target) => true;
+    public bool SetTarget(Entity src, EntityId newTargetId) => true;
+    public bool ChangeTarget(Entity src, EntityId newTargetId) => true;
+    public void Unattackable(Entity bl) { }
+    public bool SkillCastCancel(Entity bl) => false;
+    public void Refresh(Entity bl) { }
 }
 
 /// <summary>

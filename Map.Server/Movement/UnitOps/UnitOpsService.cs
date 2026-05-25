@@ -416,6 +416,82 @@ public sealed class UnitOpsService : IUnitOpsService
         return path.Count > 0;
     }
 
+    /// <summary>rAthena <c>unit_is_walking</c> (unit.cpp:1402).</summary>
+    public bool IsWalking(Entity bl) => bl.Walk != null;
+
+    /// <summary>
+    /// rAthena <c>unit_can_attack</c> (unit.cpp:2580). Standalone
+    /// predicate matching the validation set in
+    /// <see cref="IAttackService.StartAttack"/> without the side
+    /// effect of latching an AttackState.
+    /// </summary>
+    public bool CanAttack(Entity bl, Entity target)
+    {
+        if (target == null) return false;
+        if (bl.Id == target.Id) return false;
+        if (target.MapId != bl.MapId) return false;
+        if (!IsTargetAlive(target)) return false;
+        if (!bl.CanAct(sc: null)) return false;
+        return true;
+
+        static bool IsTargetAlive(Entity e) => e switch
+        {
+            PlayerEntity p => p.Hp > 0,
+            MobEntity m => m.Hp > 0,
+            _ => true,
+        };
+    }
+
+    /// <summary>
+    /// rAthena <c>unit_set_target</c> (unit.cpp:2486). Re-latches the
+    /// attack target without resetting the swing timer. When no prior
+    /// latch exists, delegates to <see cref="Attack"/>; when it does,
+    /// only the target id moves so the existing AttackableTick is
+    /// preserved and the Targeters counter transfers correctly.
+    /// </summary>
+    public bool SetTarget(Entity src, EntityId newTargetId)
+    {
+        var oldAttack = src.Attack;
+        if (oldAttack == null) return Attack(src, newTargetId, continuous: 1);
+        if (oldAttack.TargetId.Value == newTargetId.Value) return true; // no-op
+        // Delegate through AttackService.StartAttack so Targeters
+        // transfers — its same-target-same-id no-op + transfer path
+        // already mirrors rAthena's unit_set_target semantics.
+        return _attack.StartAttack(src, newTargetId, oldAttack.Continuous);
+    }
+
+    /// <summary>rAthena <c>unit_changetarget</c> (unit.cpp:2520) — same as <see cref="SetTarget"/>.</summary>
+    public bool ChangeTarget(Entity src, EntityId newTargetId) => SetTarget(src, newTargetId);
+
+    /// <summary>
+    /// rAthena <c>unit_unattackable</c> (unit.cpp:2562). Drops the
+    /// attack lock. Post-cast immunity (rAthena uses this for shield
+    /// /reflect skills) is a caller concern; we only handle the lock
+    /// release.
+    /// </summary>
+    public void Unattackable(Entity bl) => _attack.StopAttack(bl);
+
+    /// <summary>rAthena <c>unit_skillcastcancel</c> (unit.cpp:2380).</summary>
+    public bool SkillCastCancel(Entity bl)
+    {
+        var castSvc = _services?.GetService(typeof(ISkillCastService)) as ISkillCastService;
+        return castSvc?.CancelCast(bl.Id) ?? false;
+    }
+
+    /// <summary>
+    /// rAthena <c>unit_refresh</c> (unit.cpp:3148). C# parity:
+    /// vanish (Outsight) then notify-spawned again so surrounding
+    /// clients re-render the entity with its current wire state.
+    /// Idempotent at the AOI level — clients silently discard the
+    /// duplicate.
+    /// </summary>
+    public void Refresh(Entity bl)
+    {
+        if (!_entities.Contains(bl.Id)) return;
+        _visibility.NotifyVanishedToArea(bl, VanishReason.Outsight);
+        _visibility.NotifySpawnedToArea(bl);
+    }
+
     /// <summary>
     /// mapId → MapData lookup. Same hashed-name convention used by
     /// <see cref="Movement.MovementService.ResolveMap"/> and
