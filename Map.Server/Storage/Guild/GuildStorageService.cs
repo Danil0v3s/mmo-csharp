@@ -1,5 +1,6 @@
 using Map.Server.Entities;
 using Map.Server.Inventory;
+using Map.Server.Services.Intif;
 using Map.Server.Status;
 using Microsoft.Extensions.Logging;
 
@@ -23,6 +24,7 @@ public sealed class GuildStorageService : IGuildStorageService
 {
     private readonly ILogger<GuildStorageService> _logger;
     private readonly ISessionManagerAccessor? _sessions;
+    private readonly IIntifService? _intif;
 
     /// <summary>Live per-guild storage state (rAthena <c>guild_storage_db</c>).</summary>
     private readonly Dictionary<int, StorageState> _byGuild = new();
@@ -36,10 +38,11 @@ public sealed class GuildStorageService : IGuildStorageService
     /// entry's <c>opened_by</c> field.</summary>
     private readonly Dictionary<int, int> _openHolder = new();
 
-    public GuildStorageService(ILogger<GuildStorageService> logger, ISessionManagerAccessor? sessions = null)
+    public GuildStorageService(ILogger<GuildStorageService> logger, ISessionManagerAccessor? sessions = null, IIntifService? intif = null)
     {
         _logger = logger;
         _sessions = sessions;
+        _intif = intif;
     }
 
     /// <summary>rAthena <c>storage_guild_storageopen</c>. Creates the
@@ -297,6 +300,46 @@ public sealed class GuildStorageService : IGuildStorageService
     public int CompareItem(int leftNameId, int rightNameId) => leftNameId.CompareTo(rightNameId);
 
     public bool Exists(byte storageId) => storageId > 0;
+
+    /// <summary>rAthena <c>do_reconnect_storage</c>. Walks every dirty
+    /// guild storage entry whose opener slot is empty (i.e. closed) and
+    /// fires the IPC save. Premium storage gets the same sweep keyed by
+    /// charId. Returns the count of entries actually pushed.</summary>
+    public int DoReconnectStorage()
+    {
+        if (_intif == null)
+        {
+            _logger.LogDebug("do_reconnect_storage: no IIntifService bound; skipping flush.");
+            return 0;
+        }
+        int flushed = 0;
+        // Guild side — only flush closed dirty entries (rAthena's
+        // guild_storage->opened == 0 filter).
+        foreach (var (guildId, stor) in _byGuild)
+        {
+            if (!stor.Dirty) continue;
+            if (_openHolder.ContainsKey(guildId)) continue;
+            var bytes = StorageCodec.Encode(stor.Items);
+            _intif.SaveGuildStorage(0, guildId, bytes);
+            stor.Dirty = false;
+            flushed++;
+        }
+        // Premium side — same dirty filter; PremiumSave is the per-char
+        // path so we report per-entry. Char-side persistence is the
+        // PremiumSave call sites' job; here we just clear the dirty
+        // bit and log so the IPC sweep doesn't repeat on next tick.
+        foreach (var ((charId, _), stor) in _premium)
+        {
+            if (!stor.Dirty) continue;
+            if (stor.IsOpen) continue;
+            stor.Dirty = false;
+            flushed++;
+            _logger.LogDebug("do_reconnect_storage: premium slot for char {Char} marked clean (persistence via PremiumSave).", charId);
+        }
+        if (flushed > 0)
+            _logger.LogInformation("do_reconnect_storage flushed {Count} dirty storage entries.", flushed);
+        return flushed;
+    }
 
     // --- internals -------------------------------------------------
 

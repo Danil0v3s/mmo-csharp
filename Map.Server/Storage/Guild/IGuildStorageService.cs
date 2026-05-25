@@ -72,4 +72,11 @@ public interface IGuildStorageService
 
     /// <summary>rAthena <c>storage_exists</c>.</summary>
     bool Exists(byte storageId);
+
+    /// <summary>rAthena <c>do_reconnect_storage</c> (storage.cpp). Walks
+    /// every dirty closed guild-storage entry and flushes it to the
+    /// char-server. Called after the char-server reconnect handshake
+    /// completes so any writes that landed while the link was down get
+    /// persisted. Returns the count of entries flushed.</summary>
+    int DoReconnectStorage();
 }

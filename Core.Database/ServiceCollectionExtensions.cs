@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICartInventoryRepository, CartInventoryRepository>();
         services.AddScoped<IStorageRepository, StorageRepository>();
         services.AddScoped<IGuildStorageRepository, GuildStorageRepository>();
+        services.AddScoped<IGuildStorageLogRepository, GuildStorageLogRepository>();
         services.AddScoped<IGuildRepository, GuildRepository>();
         services.AddScoped<IGuildMemberRepository, GuildMemberRepository>();
         services.AddScoped<IGuildAllianceRepository, GuildAllianceRepository>();

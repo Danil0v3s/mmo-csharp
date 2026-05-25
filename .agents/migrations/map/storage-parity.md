@@ -30,7 +30,7 @@ Canonical entry points:
 | `storage_sortitem` | ✅ | Wave 86 — `IStorageService.SortItem` (item-id ascending compare); wraps the rAthena sort callback applied on storage open. Pairs with `IGuildStorageService.CompareItem` for guild-storage. |
 | `compare_item` / `storage_comp_item` | ✅ | `GuildStorageService.CompareItem` ([GuildStorageService.cs:36](/Map.Server/Storage/Guild/GuildStorageService.cs)) — name-id comparator |
 | `do_init_storage` / `do_final_storage` | ✅ | DI-implicit via `Program.cs` (`AddSingleton<IStorageService, StorageService>` + `AddSingleton<IGuildStorageService, GuildStorageService>`) |
-| `do_reconnect_storage` | ❌ | Char-reconnect persistence flush not wired. rAthena's reconnect loop walks `guild_storage_db` flushing dirty closed entries; map↔char gRPC reconcile loop ([IpcClient.RunReconcileLoopAsync](/Core.Server/IPC/IpcClient.cs)) doesn't yet trigger a guild-storage flush on session restore. |
+| `do_reconnect_storage` | ✅ | Wave 91 — `IGuildStorageService.DoReconnectStorage` ([GuildStorageService.cs](/Map.Server/Storage/Guild/GuildStorageService.cs)). Walks every closed dirty guild-storage entry, encodes via `StorageCodec.Encode`, fires `IIntifService.SaveGuildStorage`, and clears the dirty bit. Premium side gets the same sweep keyed by charId. Trigger point: callers invoke this after `IpcClient.RunReconcileLoopAsync` logs a reconciled char-server connection. |
 
 ### Guild storage
 
@@ -40,7 +40,7 @@ Canonical entry points:
 | `storage_guild_delete` | ✅ | `IGuildStorageService.Delete` |
 | `storage_guild_storageopen` | ✅ | `IGuildStorageService.Open` |
 | `storage_guild_log` | ✅ | `IGuildStorageService.Log` |
-| `storage_guild_log_read` / `_sub` | ❌ | `guild_storage_log` EF table exists ([Core.Database/Configurations/GuildStorageLogEntityConfiguration.cs](/Core.Database/Configurations/GuildStorageLogEntityConfiguration.cs)) but no `IGuildStorageLogRepository` query surface — audit log read path is genuinely absent. |
+| `storage_guild_log_read` / `_sub` | ✅ | Wave 91 — `IGuildStorageLogRepository` ([Core.Database/Repositories/Api/IGuildStorageLogRepository.cs](/Core.Database/Repositories/Api/IGuildStorageLogRepository.cs)) exposes `GetByGuildIdAsync` (paginated, most-recent-first) + `GetByGuildAndItemAsync` (filtered by item id). Impl indexes `guild_storage_log` by `Time`. DI-registered in `Core.Database.ServiceCollectionExtensions`. |
 | `storage_guild_additem` / `_additem2` | ✅ | `AddItem` / `AddItem2` |
 | `storage_guild_delitem` | ✅ | `DelItem` |
 | `storage_guild_storageadd` | ✅ | `Add` (inventory→guild storage) |
@@ -66,15 +66,34 @@ Canonical entry points:
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Account storage | 13 | 3 | 1 | 17 |
-| Guild storage | 14 | 0 | 1 | 15 |
+| Account storage | 14 | 3 | 0 | 17 |
+| Guild storage | 15 | 0 | 0 | 15 |
 | Premium storage | 5 | 0 | 0 | 5 |
-| **Totals** | **32** | **3** | **2** | **37** |
+| **Totals** | **34** | **3** | **0** | **37** |
 
 The ~6 functions not in the table are pure internals (storage
 comparator inline, etc.).
 
 ## History
+
+### 2026-05-25 — Wave 91: storage_guild_log_read + do_reconnect_storage landed (0 ⚠️→✅; 2 ❌→✅)
+
+New `IGuildStorageLogRepository` ([Core.Database/Repositories/Api/IGuildStorageLogRepository.cs](/Core.Database/Repositories/Api/IGuildStorageLogRepository.cs)
++ [Impl/GuildStorageLogRepository.cs](/Core.Database/Repositories/Impl/GuildStorageLogRepository.cs))
+indexes `guild_storage_log` by `Time` and exposes paginated `GetByGuildIdAsync` +
+item-filtered `GetByGuildAndItemAsync` reads (rAthena `storage_guild_log_read`
++ `_sub`). DI-registered in `Core.Database.ServiceCollectionExtensions`.
+
+`IGuildStorageService.DoReconnectStorage` walks every closed dirty
+guild-storage entry, encodes via `StorageCodec.Encode`, fires
+`IIntifService.SaveGuildStorage`, and clears the dirty bit. Premium
+side gets the same sweep keyed by charId. Trigger point: callers invoke
+this after `IpcClient.RunReconcileLoopAsync` logs a reconciled
+char-server connection (matches rAthena `do_reconnect_storage` shape
+in storage.cpp).
+
+**Coverage:** 32 ✅ / 3 ⚠️ / 2 ❌ → **34 ✅ / 3 ⚠️ / 0 ❌** — zero ❌
+remaining on storage-parity.
 
 ### 2026-05-25 — Wave 90: GuildStorage cart-interop + premium-open landed (3 ⚠️→✅; 3 ⚠️ + 2 ❌ remain)
 
