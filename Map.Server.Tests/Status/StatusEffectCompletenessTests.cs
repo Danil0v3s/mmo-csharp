@@ -100,11 +100,10 @@ public class StatusEffectCompletenessTests
             // applied via EndowHandler; combat path still reads SC presence
             // for the element override.
 
-            // ---- Strip family (equip-disable via inventory service while SC active) ----
-            [StatusType.Stripweapon] = "RG_STRIPWEAPON — equip-disable enforced by IEquipService",
-            [StatusType.Stripshield] = "RG_STRIPSHIELD — equip-disable enforced by IEquipService",
-            [StatusType.Striparmor]  = "RG_STRIPARMOR — equip-disable enforced by IEquipService",
-            [StatusType.Striphelm]   = "RG_STRIPHELM — equip-disable enforced by IEquipService",
+            // ---- Strip family — Wave 54: real OnStart bodies applied
+            // (-Val1 to listed CalcFlag stat); equip-disable enforcement
+            // still lives on IEquipService.
+            // (Removed: Stripweapon, Stripshield, Striparmor, Striphelm)
 
             // ---- Soul Linker spirit family — Wave 52: migrated to real
             // OnStart bodies that mutate the listed CalcFlag fields per the

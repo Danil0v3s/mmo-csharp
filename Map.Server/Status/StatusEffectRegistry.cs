@@ -2547,10 +2547,28 @@ public sealed class StatusEffectRegistry
         // wrong proxies. Override as combat-markers.
 
         var stripFlags = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh;
-        Register(StatusType.Stripweapon, PresenceMarker(stripFlags));
-        Register(StatusType.Stripshield, PresenceMarker(stripFlags));
-        Register(StatusType.Striparmor, PresenceMarker(stripFlags));
-        Register(StatusType.Striphelm, PresenceMarker(stripFlags));
+
+        // Wave 54 — Strip family migrated off allowlist into real OnStart
+        // bodies that mutate the listed CalcFlag fields per status.yml
+        // classification (Stripweapon→Batk, Stripshield→Def, Striparmor→
+        // Vit, Striphelm→IntStat). The equip-disable enforcement still
+        // lives on the inventory service.
+        Register(StatusType.Stripweapon, new StatusEffectHandler(
+            OnStart: (target, sc, _) => { target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1); },
+            OnEnd: (target, sc) => { target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1); },
+            Flags: stripFlags));
+        Register(StatusType.Stripshield, new StatusEffectHandler(
+            OnStart: (target, sc, _) => { target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1); },
+            OnEnd: (target, sc) => { target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1); },
+            Flags: stripFlags));
+        Register(StatusType.Striparmor, new StatusEffectHandler(
+            OnStart: (target, sc, _) => { target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1); },
+            OnEnd: (target, sc) => { target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1); },
+            Flags: stripFlags));
+        Register(StatusType.Striphelm, new StatusEffectHandler(
+            OnStart: (target, sc, _) => { target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1); },
+            OnEnd: (target, sc) => { target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1); },
+            Flags: stripFlags));
 
         // ---- (f) Soul Linker spirit family: combat-marker overrides ----
         //
