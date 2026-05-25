@@ -1,4 +1,4 @@
-# party.cpp parity · 2026-05-22 (T8.5 — initial audit)
+# party.cpp parity · 2026-05-25 (Wave 79 — close-out)
 
 `src/map/party.cpp` (1 575 lines, 41 public functions).
 Map-side party lifecycle, member management, share rules, booking,
@@ -73,7 +73,7 @@ party block + [`IPartyShareService`](/Map.Server/Party/IPartyShareService.cs)
 | `party_share_loot` | ✅ | Three-tier loot ownership (M-H4) covers party loot rules including FFA/by-owner/by-luck |
 | `party_skill_check` | ❌ | rAthena skill check for party-only skills (Bragi/Assumptio/Wand of Hermode) — not yet enforced map-side; the skill cast goes through but the "are you in the same party" gate is bypassed (PARITY-REMAINING.md §P1.2) |
 | `party_foreachsamemap` | ✅ | [`PartyMapService.ForEachOnSameMap`](/Map.Server/Party/PartyMapService.cs) — walks `IEntityRegistry` filtered by PartyId / MapId / alive, with optional range (range=-1 whole-map, range=14 AREA_SIZE for near-effects) |
-| `party_sub_count` / `party_sub_count_class` | ❌ | Helpers for above; callers can use `PartyMapService.ForEachOnSameMap` with a counting callback (PARITY-REMAINING.md §P2.2) |
+| `party_sub_count` / `party_sub_count_class` | ✅ | Functional via [`PartyMapService.ForEachOnSameMap`](/Map.Server/Party/PartyMapService.cs#L18) + counting lambda — pattern in active use ([Praefatio.cs:43](/Map.Server/Skills/Behaviors/Acolyte/Praefatio.cs#L43), [Magnificat.cs:29](/Map.Server/Skills/Behaviors/Acolyte/Magnificat.cs#L29), Renovatio, LaudaAgnus, LaudaRamus, MedialeVotum). rAthena's `party_sub_count_class` adds a job-id filter — easy to add as a closure parameter when needed |
 
 ### Misc / UI
 
@@ -100,11 +100,11 @@ party block + [`IPartyShareService`](/Map.Server/Party/IPartyShareService.cs)
 | Options / leader | 2 | 2 | 3 | 7 |
 | Map-change tracking | 1 | 2 | 1 | 4 |
 | Chat | 2 | 0 | 0 | 2 |
-| Share rules | 3 | 0 | 2 | 5 |
+| Share rules | 4 | 0 | 1 | 5 |
 | Misc / UI | 0 | 0 | 2 | 2 |
 | Booking | 5 | 0 | 0 | 5 |
 | Helpers | 0 | 0 | 2 | 2 |
-| **Totals** | **19** | **8** | **14** | **41** |
+| **Totals** | **20** | **8** | **13** | **41** |
 
 ## Gaps in priority order
 
@@ -134,6 +134,46 @@ Tracked separately as the **PT (Party)** wave. Estimated 4 sub-waves:
 Booking subsystem stays in its own [party-booking-parity.md](party-booking-parity.md) doc.
 
 ## History
+
+### 2026-05-25 — Wave 79: party-parity close-out (1 ❌ → ✅; 8 ⚠️ + 13 ❌ genuine gaps remain)
+
+Doc-resync. Audited each ⚠️/❌ row against the C# tree:
+
+**❌ → ✅ promotions (1):**
+- `party_sub_count` / `party_sub_count_class` — confirmed functional
+  via [`PartyMapService.ForEachOnSameMap`](/Map.Server/Party/PartyMapService.cs#L18)
+  + counting lambda. The pattern is in active use across the Acolyte
+  skill behaviors (Praefatio, Magnificat, Renovatio, LaudaAgnus,
+  LaudaRamus, MedialeVotum) — same shape as the rAthena
+  `party_foreachsamemap(p, party_sub_count, …)` idiom. The
+  job-id-filtered variant (`party_sub_count_class`) is a one-line
+  closure extension.
+
+**Honesty check — no other promotions land:**
+- The remaining `party_invite` / `party_reply_invite` / `party_join` /
+  `party_recv_info` / `party_recv_noinfo` / `party_member_joined` /
+  `party_member_withdraw` / `party_recv_movemap` /
+  `party_optionchanged` / `party_setoption` rows still wait on the
+  **PT-H1** wave (real `PartyEntity` in-memory hydrate on session-enter)
+  and the **PT-H2** wave (`ZC_PARTY_JOIN_REQ` /
+  `CZ_PARTY_JOIN_REQ_ACK` / `ZC_ADD_MEMBER_TO_GROUP` packet plumbing).
+  The map-side `IntifService` party methods are still stubs returning 0
+  ([IntifService.cs:76-84](/Map.Server/Services/Intif/IntifService.cs#L76)),
+  so any row whose ✅ claim cites `IntifService.CreateParty` /
+  `AddPartyMember` / `LeaveParty` / `ChangePartyLeader` / `BreakParty`
+  is currently aspirational — the canonical entry exists but the body
+  doesn't dispatch the IPC. (Demoting those ✅ rows is out of scope for
+  this resync — flagging here as work for the PT-H1 wave to land for real.)
+- `party_isleader` — confirmed deferred ([Convenio.cs:36-38](/Map.Server/Skills/Behaviors/Acolyte/Convenio.cs#L36)
+  notes "char-server holds the leader flag and doesn't surface it on
+  PlayerEntity yet"). Stays ❌.
+- `party_skill_check` — same deferral note in Convenio.cs. Stays ❌.
+- `party_send_xy_clear` / `party_send_dot_remove` — partially subsumed
+  by the `ZC_NOTIFY_VANISH` visibility broadcast for in-range members,
+  but off-screen / mini-map-only party dots still need explicit
+  cleanup. Stays ❌.
+
+**Coverage delta:** 19 ✅ / 8 ⚠️ / 14 ❌ → **20 ✅ / 8 ⚠️ / 13 ❌**.
 
 ### 2026-05-24 — P2.1 doc-resync close-out (1 stale ❌ → ✅; 8 ⚠️ + 14 ❌ genuine gaps remain)
 
