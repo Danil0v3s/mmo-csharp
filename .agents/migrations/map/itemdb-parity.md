@@ -166,6 +166,32 @@ helpers that don't need a C# entry point.
 
 ## History
 
+### 2026-05-25 — Wave 82: itemdb-parity Pass-2 re-audit (0 ⚠️→✅; 11 gates still active, descriptions refreshed)
+
+Pass-2 honesty sweep against the current C# tree. Verified each of the
+11 ⚠️ rows against [ItemDbService.cs:156-158](/Map.Server/Items/Db/ItemDbService.cs)
+and the entity / repository layer. **No promotions land** — every gate
+is still real:
+
+- `itemdb_isNoEquip` — `ItemEntity.NouseOverride` + `NouseSitting`
+  columns confirmed at [ItemEntity.cs:118-119](/Core.Database/Entities/ItemEntity.cs);
+  zero consumers grep-clean across `Map.Server/`. The per-item bitmap
+  predicate hasn't surfaced through `IMapFlagService` or `IEquipService`.
+- `RandomOptionExists` / `RandomOptionGetId` / `ApplyRandomOptionGroup`
+  + `RandomOptionGroupDatabase::{add_option, option_exists, option_get_id}`
+  + `s_random_opt_group::apply` — all six stubs at
+  [ItemDbService.cs:156-158](/Map.Server/Items/Db/ItemDbService.cs)
+  return false/0/no-op. Seed SQL is live (249 options + 106 groups)
+  but no caller invokes these methods yet.
+- `itemdb_parse_roulette_db` — `DbRouletteEntity` configured at
+  [DbRouletteEntityConfiguration.cs](/Core.Database/Configurations/DbRouletteEntityConfiguration.cs)
+  but zero hits for `IRouletteRepository` / `RouletteService` in the tree.
+- `itemdb_gen_itemmoveinfo` / `item_data::inventorySlotNeeded` /
+  `item_data::isStackable` — interface helpers genuinely absent;
+  functional coverage via `IsStackable2` for the last one.
+
+Coverage unchanged: **35 ✅ / 11 ⚠️ / 0 ❌**.
+
 ### 2026-05-25 — Wave 78: itemdb-parity close-out (19 ⚠️ → ✅; 11 genuine gaps remain)
 
 Doc-resync only — no C# changes. The auxiliary YAML loaders that were
