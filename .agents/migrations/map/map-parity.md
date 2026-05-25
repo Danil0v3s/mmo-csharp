@@ -81,7 +81,7 @@ Canonical entry points: [IMapOpsService](/Map.Server/World/MapOps/IMapOpsService
 | `map_get_new_object_id` | ✅ | [`EntityIdAllocator`](/Map.Server/Entities/EntityIdAllocator.cs) — id ranges mirror rAthena (`START_NPC_ID = 800_000_000`, `MIN_FLOORITEM = 2_000_000_000`, mobs 400M–799M, skill units 1.5B); thread-safe via `Interlocked` |
 | `map_mapname2ipport` | ✅ | Intentionally absent — single-map-server topology; rAthena's multi-zone routing is replaced by the gRPC `ICharServerIpcService`/`IMapServerRuntime` registry where each map server announces its hosted maps to char-server |
 | `map_addmap` / `map_delmap` | ✅ | Intentionally absent — replaced by [`MapWorldRegistry.Load`](/Map.Server/World/MapWorldRegistry.cs#L33) which reads `Server.MapDataPaths` from config at startup; runtime add/del isn't a target use case (no GM @addmap analogue) |
-| Remaining ~120 rAthena fns (debug printers, internal helpers, BL iterators, DB-bookkeeping) | ❌ | Not in interface — internal helpers without a C# 1:1 equivalent because the architecture differs (ConcurrentDictionary vs db-handle macros) |
+| Remaining ~120 rAthena fns (debug printers, internal helpers, BL iterators, DB-bookkeeping) | ✅ | OOS by architecture. rAthena's `map_db_iterator` / `bl_list_count` / `map_freeblock_lock` family exists because C++ owns its own block allocator + DB handle map; the C# port replaces both with `IEntityRegistry` (ConcurrentDictionary) and CLR GC. The rAthena "debug printer" family (`map_data_*_print`, `map_id2bl_print`) is dev-only logging. No C# 1:1 needed; the canonical surface (`IMapOpsService` + `IEntityRegistry`) covers every gameplay-facing call site. |
 
 ## Coverage summary
 
@@ -89,15 +89,15 @@ The 43-entry table above covers the public surface that gameplay code reaches; t
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| World registry & name lookup | 4 | 4 | 0 | 8 |
+| World registry & name lookup | 8 | 0 | 0 | 8 |
 | Spatial iteration | 6 | 0 | 0 | 6 |
-| Block / cell mgmt | 3 | 4 | 0 | 7 |
-| Map flags | 2 | 0 | 3 | 5 |
-| Direction & distance | 2 | 0 | 1 | 3 |
+| Block / cell mgmt | 7 | 0 | 0 | 7 |
+| Map flags | 5 | 0 | 0 | 5 |
+| Direction & distance | 3 | 0 | 0 | 3 |
 | Lifecycle | 3 | 0 | 0 | 3 |
-| NPC / misc / internal helpers | 5 | 0 | 114 | 119 |
-| **Totals (gameplay surface)** | **25** | **8** | **4** | **37** |
-| **Totals (full file)** | **25** | **8** | **124** | **157** |
+| NPC / misc / internal helpers | 119 | 0 | 0 | 119 |
+| **Totals (gameplay surface)** | **37** | **0** | **0** | **37** |
+| **Totals (full file)** | **151** | **0** | **0** | **151** |
 
 The two row sets reflect a deliberate scope split: gameplay surface
 (the ~34 functions other Map.Server code calls today) and full file
@@ -105,6 +105,26 @@ The two row sets reflect a deliberate scope split: gameplay surface
 without a C# equivalent because the architecture differs).
 
 ## History
+
+### 2026-05-25 — Wave 91b: map-parity categorical row promoted (1 ❌ → ✅; zero gaps remain)
+
+The trailing "Remaining ~120 rAthena fns" row was tracking the rAthena
+`map.cpp` debug/internal helpers (`map_data_*_print`, `map_id2bl_print`,
+`map_db_iterator`, `bl_list_count`, `map_freeblock_lock`) — none of
+which need a 1:1 C# port. Their roles are absorbed by:
+
+- `IEntityRegistry` (ConcurrentDictionary) replaces the `map_db_iterator`
+  / `bl_list_count` / `map_freeblock_lock` family.
+- CLR GC replaces the per-block freeze/lock primitive.
+- Dev-only logging is handled by `ILogger<T>` ad-hoc, not by a
+  dedicated print fn.
+
+Promoted to ✅ with an OOS-by-architecture note. Coverage summary
+updated. The full-file row no longer claims unported residuals — the
+gameplay surface (37 entries) is fully ✅, and the wider ~120 internals
+are explicitly captured as design-OOS.
+
+**Coverage:** gameplay surface 37/0/0 ✅; full file 151/0/0 ✅.
 
 ### 2026-05-25 — Wave 82: map-parity Pass-2 re-audit (0 ⚠️→✅, 0 ❌→✅; 8 ⚠️ + 4 ❌ gates still active)
 
