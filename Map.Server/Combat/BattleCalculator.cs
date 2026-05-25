@@ -34,7 +34,7 @@ public sealed class BattleCalculator : IBattleCalculator
 
     public BattleDamage CalcWeaponAttack(Entity source, Entity target)
     {
-        var result = new BattleDamage();
+        var result = new BattleDamage { Lane = BattleAttackType.Weapon };
         var s = source.Stats;
         var t = target.Stats;
         var srcIsPc = source is PlayerEntity;
@@ -283,7 +283,7 @@ public sealed class BattleCalculator : IBattleCalculator
     /// </summary>
     public BattleDamage CalcMagicAttack(Entity source, Entity target, ushort skillId, ushort skillLevel, int ratePerLevel)
     {
-        var result = new BattleDamage { Hits = 1 };
+        var result = new BattleDamage { Hits = 1, Lane = BattleAttackType.Magic };
         var s = source.Stats;
         var t = target.Stats;
 
@@ -344,7 +344,7 @@ public sealed class BattleCalculator : IBattleCalculator
     /// </summary>
     public BattleDamage CalcMiscAttack(Entity source, Entity target, ushort skillId, ushort skillLevel, int ratePerLevel)
     {
-        var result = new BattleDamage { Hits = 1 };
+        var result = new BattleDamage { Hits = 1, Lane = BattleAttackType.Misc };
         var s = source.Stats;
         var t = target.Stats;
 

@@ -67,4 +67,15 @@ public sealed class BattleDamage
     /// the wire so the client renders the orange numbers.
     /// </summary>
     public bool IsSpDamage;
+
+    /// <summary>
+    /// Wave 70 / Track C — rAthena <c>Damage.flag</c> (battle.hpp).
+    /// Which BF_* lane produced this damage. Set by
+    /// <see cref="BattleCalculator.CalcWeaponAttack"/> (BF_WEAPON),
+    /// <see cref="BattleCalculator.CalcMagicAttack"/> (BF_MAGIC),
+    /// <see cref="BattleCalculator.CalcMiscAttack"/> (BF_MISC).
+    /// Consumers (autocast triggers, reflect, vellum, vanish) branch on
+    /// this flag without re-deriving the lane from caller context.
+    /// </summary>
+    public BattleAttackType Lane = BattleAttackType.Weapon;
 }
