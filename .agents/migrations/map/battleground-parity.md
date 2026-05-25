@@ -59,6 +59,35 @@ Canonical entry points: [IBattlegroundService](/Map.Server/BattleGround/IBattleg
 
 ## History
 
+### 2026-05-25 — Wave 76: battleground-parity re-audit (0 stale ⚠️ → ✅; 4 genuine gaps remain)
+
+Re-audited every ⚠️ row against
+[BattlegroundService.cs](/Map.Server/BattleGround/BattlegroundService.cs).
+All four entries are bona-fide partials gated on upstream work that
+hasn't shipped yet — none are stale doc-only mismatches that can be
+honestly promoted today.
+
+Residual ⚠️ (4) and the upstream gate each waits on:
+
+- `bg_queue_join_party` / `_guild` / `_multi` (1 row;
+  [BattlegroundService.cs:231-253](/Map.Server/BattleGround/BattlegroundService.cs)) —
+  leader delegates to the solo path; fan-out to party / guild rosters
+  needs `IPartyService.GetMembers` (not yet ported per
+  `PARITY-REMAINING.md §P2.2 leaf wires`).
+- `bg_join_active` ([BattlegroundService.cs:276-279](/Map.Server/BattleGround/BattlegroundService.cs)) —
+  late-joiner warp-in deferred for map-pool wire (`PARITY-REMAINING.md §P2.2`).
+- `bg_send_xy_timer_sub` ([BattlegroundService.cs:287-291](/Map.Server/BattleGround/BattlegroundService.cs)) —
+  service-level seam surfaces team membership; per-PC
+  `ZC_NOTIFY_POSITION_TO_GROUP_M` emit lives in the clif wire-broadcaster
+  (per project convention: service surfaces + clif emit split).
+- `bg_send_dot_remove` ([BattlegroundService.cs:294-299](/Map.Server/BattleGround/BattlegroundService.cs)) —
+  service-side membership gate present; packet 0x0192 emit waits on
+  clif layer same way.
+
+**Coverage:** unchanged at 20 ✅ / 4 ⚠️ / 0 ❌. Wave 76 close-out is a
+no-op resync — the doc already reflects honest state. No C# code
+touched.
+
 ### 2026-05-24 — P2.1 doc-resync close-out (13 stale ⚠️/❌ → ✅; 4 genuine gaps remain)
 
 Audited every ⚠️ / ❌ row against
