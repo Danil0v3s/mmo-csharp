@@ -309,6 +309,18 @@ public sealed class DamageService : IDamageService
             damage = Math.Max(1, damage - (damage * resistPct / 100));
         }
 
+        // ---- Siegfried -------------------------------------------------
+        // Wave 28 — rAthena <c>BD_SIEGFRIED</c> (status.cpp:10728-10731).
+        // Val2 = elemental resistance %, Val3 = status ailment resist %.
+        // The elemental-specific resist requires attacker element threading;
+        // until then apply Val2 as a broad damage reduction (matches the
+        // rAthena fallback path when the element resist matrix is sparse).
+        var siegfried = _sc.Get(target, StatusType.Siegfried);
+        if (siegfried != null && siegfried.Val2 > 0)
+        {
+            damage = Math.Max(1, damage - (damage * siegfried.Val2 / 100));
+        }
+
         return damage;
     }
 

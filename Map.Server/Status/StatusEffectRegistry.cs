@@ -1445,16 +1445,34 @@ public sealed class StatusEffectRegistry
 
         // SC_NIBELUNGEN (BD_RINGNIBELUNGEN) — status.cpp:10725-10727
         // val2 = rnd() % RINGNBL_MAX (random elemental ring effect type).
-        // Combat-side read. Generator: +Val1 to all 6 base stats (wrong).
-        Register(StatusType.Nibelungen, CombatMarkerHandler(
-            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+        // Wave 28 — OnStart rolls Val2 if unset; combat-side reads
+        // consult the rolled ring type.
+        Register(StatusType.Nibelungen, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                // RINGNBL_MAX = 9 in rAthena (see e_nibelungen_status).
+                // Caller may pre-set Val2 (deterministic tests); otherwise roll.
+                if (sc.Val2 <= 0)
+                {
+                    sc.Val2 = Random.Shared.Next(9);
+                }
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // SC_SIEGFRIED (BD_SIEGFRIED) — status.cpp:10728-10731
         // val2 = val1*3 Elemental Resistance, val3 = val1*5 status ailment
-        // resistance. Combat-side reads. Generator: +Val1 to all 6 base
-        // stats (wrong).
-        Register(StatusType.Siegfried, CombatMarkerHandler(
-            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+        // resistance. Wave 28 — OnStart computes Val2 / Val3 from Val1
+        // so combat damage reduction + status-ailment resist gates pick
+        // up the correct magnitudes.
+        Register(StatusType.Siegfried, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 <= 0) sc.Val2 = sc.Val1 * 3;
+                if (sc.Val3 <= 0) sc.Val3 = sc.Val1 * 5;
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // ---- ASPD potions (fixed magnitudes per potion tier) ----
 
