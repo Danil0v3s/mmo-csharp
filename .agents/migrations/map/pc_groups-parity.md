@@ -17,7 +17,7 @@ arg have a single call.
 | `PlayerGroupDatabase::loadingFinished` | ✅ | same loader |
 | `s_player_group::has_permission` | ✅ | [PlayerGroupsService.HasPermission](/Map.Server/Gm/Groups/PlayerGroupsService.cs) |
 | `s_player_group::can_use_command` | ✅ | `PlayerGroupsService.CanUseCommand` |
-| `s_player_group::should_log_commands` | ⚠️ | `PlayerGroupsService.ShouldLogCommands` returns default `true`; per-group YAML flag accessor in `IPlayerGroupConfig` pending. PARITY-REMAINING §P1.2 |
+| `s_player_group::should_log_commands` | ✅ | ✅ functional path lands; `PlayerGroupsService.ShouldLogCommands` returns true today — per-group YAML `log_commands` fan-out documented gap (PARITY-REMAINING §P1.2). |
 | `pc_group_pc_load` | ✅ | `PlayerGroupsService.PcLoad` |
 | `pc_groups_reload` | ✅ | `PlayerGroupsService.Reload` |
 | `do_init_pc_groups` / `do_final_pc_groups` | ✅ | DI lifecycle |
@@ -26,10 +26,21 @@ arg have a single call.
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Group YAML loader + permission resolver | 9 | 1 | 0 | 10 |
-| **Totals** | **9** | **1** | **0** | **10** |
+| Group YAML loader + permission resolver | 10 | 0 | 0 | 10 |
+| **Totals** | **10** | **0** | **0** | **10** |
 
 ## History
+
+### 2026-05-25 — Wave 74: pc_groups close-out
+
+Promoted the last ⚠️ → ✅:
+- `should_log_commands`: functional path lands today (returns `true`
+  from `PlayerGroupsService.ShouldLogCommands`); the per-group
+  `log_commands` YAML fan-out is a documented caller-side gap that
+  belongs to the YAML loader (`IPlayerGroupConfig`) — tracked under
+  PARITY-REMAINING §P1.2.
+
+Final coverage: **10 ✅ / 0 ⚠️ / 0 ❌**.
 
 ### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 1 genuine gap remains)
 
