@@ -24,12 +24,14 @@ public sealed class BattleCalculator : IBattleCalculator
     private readonly Random _rng;
     private readonly IBattleCardService? _cards;
     private readonly IStatusChangeService? _sc;
+    private readonly IMadoGearService? _mado;
 
-    public BattleCalculator(Random? rng = null, IBattleCardService? cards = null, IStatusChangeService? sc = null)
+    public BattleCalculator(Random? rng = null, IBattleCardService? cards = null, IStatusChangeService? sc = null, IMadoGearService? mado = null)
     {
         _rng = rng ?? Random.Shared;
         _cards = cards;
         _sc = sc;
+        _mado = mado;
     }
 
     public BattleDamage CalcWeaponAttack(Entity source, Entity target)
@@ -195,6 +197,18 @@ public sealed class BattleCalculator : IBattleCalculator
         // battle_drain's neighbors that set wd.dmotion + wd.amotion right
         // after the hit-roll resolution.
         PopulateMotionFields(result, t);
+
+        // Wave 87c — Mado Gear overheat accumulator (battle.cpp:2031).
+        // Each weapon swing while in Mado mode bumps SC_OVERHEAT_LIMITPOINT.
+        // Fire-element weapons add 3 heat per hit, all others add 1.
+        // SC_OVERHEAT starts when the limitpoint hits the cap, draining
+        // HP per tick until a cooling device is used (NC_EMERGENCYCOOL).
+        if (_mado != null && _sc != null && source is PlayerEntity pcMado
+            && _sc.Get(pcMado, StatusType.Madogear) != null)
+        {
+            int heat = atkEle == BattleElement.Fire ? 3 : 1;
+            _mado.AddHeat(pcMado, heat);
+        }
         return result;
     }
 

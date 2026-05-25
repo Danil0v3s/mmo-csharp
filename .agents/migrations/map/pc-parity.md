@@ -168,7 +168,7 @@ groups the function list by subsystem and tracks our C# coverage.
 | rAthena fn | Status | C# location |
 |---|---|---|
 | `pc_setfalcon` / `pc_setriding` / `pc_setmadogear` | ✅ | `IPlayerOptionService` (PC-2 — see Options/appearance row) |
-| `pc_overheat` | ⚠️ | SC_OVERHEAT / SC_OVERHEAT_LIMITPOINT registered (NS-3 wave 5); full Mado overheat damage/cooldown not yet wired. PARITY-REMAINING §P1.2 |
+| `pc_overheat` | ✅ | `IMadoGearService.AddHeat` (Status/MadoGearService.cs) — Val1 cap at 1000, starts SC_OVERHEAT at cap, ends both SCs when cooled to 0. Wired into `BattleCalculator.CalcWeaponAttack` (battle.cpp:2031) for fire(3)/non-fire(1) heat-per-swing; cooled via `EmergencyCool` (NC_EMERGENCYCOOL). |
 
 ### Damage / heal / revive
 
@@ -235,22 +235,21 @@ groups the function list by subsystem and tracks our C# coverage.
 | Bonuses / scripts | 3 | 0 | 0 |
 | State flags / timers | 7 | 0 | 0 |
 | Marriage / fame | 5 | 0 | 0 |
-| Pet / mount | 1 | 1 | 0 |
+| Pet / mount | 2 | 0 | 0 |
 | Damage / heal / revive | 6 | 0 | 0 |
 | Trade gates | 5 | 0 | 0 |
 | Script vars | 3 | 0 | 0 |
 | Macro detector | 1 | 0 | 0 |
 | Misc | 8 | 0 | 0 |
-| **Totals** | **116** | **4** | **0** |
+| **Totals** | **117** | **3** | **0** |
 
-**Wave 76 (2026-05-25)** — `pc_macro_*` promoted to ✅: captcha/reporter
-flow is the production surface; bot-scoring is intentionally OOS as a
-premium feature. 120 of 157 functions tracked here. Of those, 116
-(97 %) are full parity, 4 (3 %) are ⚠️ with documented upstream
-dependencies (SCdata 4th-class YAML, SC_WEIGHT50/90 auto-overlay,
-Crimson Marker auto-hook, Mado overheat damage/cooldown). The
-remaining ~37 functions are private helpers absorbed into call sites
-or thin wrappers.
+**Wave 87c (2026-05-25)** — `pc_overheat` promoted to ✅: `IMadoGearService`
+landed, wired into `BattleCalculator.CalcWeaponAttack`. 120 of 157
+functions tracked here. Of those, 117 (98 %) are full parity, 3 (2 %)
+are ⚠️ with documented upstream dependencies (SCdata 4th-class YAML,
+SC_WEIGHT50/90 auto-overlay, Crimson Marker auto-hook). The remaining
+~37 functions are private helpers absorbed into call sites or thin
+wrappers.
 
 ## Implementation plan
 
@@ -292,6 +291,24 @@ Replace inline trade/shop gate checks with the canonical helpers so
 bounded/expired/storage-protected logic centralises.
 
 ## History
+
+### 2026-05-25 — Wave 87c: pc_overheat Mado heat path landed (1 ⚠️→✅; 3 gates remain)
+
+Ported `pc_overheat` (pc.cpp:13082) as `IMadoGearService.AddHeat` in
+`Map.Server/Status/MadoGearService.cs`. Clamps `SC_OVERHEAT_LIMITPOINT.Val1`
+to 0..1000, starts `SC_OVERHEAT` damage SC when the limitpoint hits the
+cap, and ends both SCs when a cooling device drains the counter to 0.
+
+Wired the consumer in `BattleCalculator.CalcWeaponAttack`
+(battle.cpp:2031): every weapon swing while the source carries
+`SC_MADOGEAR` calls `AddHeat(source, fireWeapon ? 3 : 1)`. Cooled
+side already lived in `EmergencyCool` (NC_EMERGENCYCOOL) since
+Wave 17 — both paths now share the same SC contract.
+
+Test count unchanged (no new tests needed — `MadoGearService` is a
+thin wrapper over `IStatusChangeService`).
+
+**Coverage:** 116 ✅ / 4 ⚠️ / 0 ❌ → **117 ✅ / 3 ⚠️ / 0 ❌**.
 
 ### 2026-05-25 — Wave 82: pc-parity Pass-2 re-audit (0 ⚠️→✅; 4 gates still active)
 
