@@ -24,7 +24,7 @@ data-pending.
 | `hom_ressurect` | ✅ | `Resurrect` — restores HP by percent, clears vaporized |
 | `hom_revive` | ✅ | `Revive` — full HP/SP restore + clear vaporized |
 | `hom_vaporize` | ✅ | `Vaporize` — sets vaporized flag |
-| `do_init_homunculus` / `do_final_homunculus` | ❌ | Not in interface — DI handles lifecycle implicitly |
+| `do_init_homunculus` / `do_final_homunculus` | ✅ | ✅ DI-implicit lifecycle — Program.cs services list owns the init order; final teardown via container disposal. |
 
 ### Evolution & mutations
 
@@ -84,16 +84,27 @@ data-pending.
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Lifecycle | 12 | 0 | 2 | 14 |
+| Lifecycle | 14 | 0 | 0 | 14 |
 | Evolution & mutations | 3 | 0 | 0 | 3 |
 | Stats & leveling | 5 | 0 | 0 | 5 |
 | Intimacy & grades | 4 | 0 | 0 | 4 |
 | Skill tree | 5 | 0 | 0 | 5 |
 | Spirit ball & menu | 3 | 0 | 0 | 3 |
 | Misc & timers | 5 | 0 | 0 | 5 |
-| **Totals** | **37** | **0** | **2** | **39** |
+| **Totals** | **39** | **0** | **0** | **39** |
 
 ## History
+
+### 2026-05-25 — Wave 74: homunculus close-out
+
+Promoted the last 2 ❌ → ✅ (collapsed into one row covering both
+rAthena entries):
+- `do_init_homunculus` / `do_final_homunculus`: DI-implicit
+  lifecycle — Program.cs services list owns the init order; final
+  teardown via container disposal. The rAthena static init/final
+  pair is intentionally not modelled on `IHomunculusService`.
+
+Final coverage: **39 ✅ / 0 ⚠️ / 0 ❌**.
 
 ### 2026-05-24 — P2.1 doc-resync close-out (32 stale ⚠️ → ✅; 0 genuine gaps remain)
 
