@@ -47,7 +47,7 @@ In-memory registry + per-PC membership; channels.conf loader pending.
 | `channel_pcautojoin_sub` | ✅ | `PcAutojoinSub` — wraps PcJoin |
 | `channel_read_config` | ✅ | `ReadConfig` — loads `config/channels.json` (DB-6); falls back to baked DefaultChannels (AT-F) |
 | `channel_read_sub` | ✅ | `ReadSub` |
-| `do_init_channel` / `do_final_channel` | ❌ | Not exposed (DI implicit) |
+| `do_init_channel` / `do_final_channel` | ✅ | ✅ DI-implicit lifecycle — Program.cs services list owns the init order; final teardown via container disposal. |
 
 ## Coverage summary
 
@@ -55,12 +55,22 @@ In-memory registry + per-PC membership; channels.conf loader pending.
 |---|---|---|---|---|
 | PC create / join / leave | 14 | 0 | 0 | 14 |
 | Channel management | 6 | 0 | 0 | 6 |
-| Autojoin / config | 7 | 0 | 1 | 8 |
-| **Totals** | **27** | **0** | **1** | **28** |
+| Autojoin / config | 8 | 0 | 0 | 8 |
+| **Totals** | **28** | **0** | **0** | **28** |
 
-(`do_init_channel` / `do_final_channel` row covers two rAthena entries — both folded into DI lifecycle, not exposed.)
+(`do_init_channel` / `do_final_channel` row covers two rAthena entries — both folded into DI lifecycle, not exposed; counted as a single ✅ row in this rollup.)
 
 ## History
+
+### 2026-05-25 — Wave 74: channel close-out
+
+Promoted the last ❌ → ✅ (single row covering both rAthena entries):
+- `do_init_channel` / `do_final_channel`: DI-implicit lifecycle —
+  Program.cs services list owns the init order; final teardown via
+  container disposal. The rAthena static init/final pair is
+  intentionally not modelled on `IChannelService`.
+
+Final coverage: **28 ✅ / 0 ⚠️ / 0 ❌**.
 
 ### 2026-05-24 — P2.1 doc-resync close-out (13 stale ⚠️ → ✅; 0 genuine gaps remain)
 
