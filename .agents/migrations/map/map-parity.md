@@ -21,11 +21,11 @@ Canonical entry points: [IMapOpsService](/Map.Server/World/MapOps/IMapOpsService
 | rAthena fn | Status | C# location / note |
 |---|---|---|
 | `map_mapname2mapid` | ✅ | [`IMapOpsService.Name2MapId`](/Map.Server/World/MapOps/MapOpsService.cs#L18) (hash-based) |
-| `map_mapid2mapname` | ⚠️ | `MapId2Name` — returns empty; reverse-lookup table pending |
-| `map_random_cell` | ⚠️ | `RandomCell` — stub |
-| `map_search_freecell_dist` | ⚠️ | `SearchFreeCell` — stub (degrades to (cx, cy)) |
+| `map_mapid2mapname` | ✅ | Wave 85 — `MapOpsService.MapId2Name`. Walks `IMapWorldRegistry.All` matching the hashed name; "" fallback on miss. |
+| `map_random_cell` | ✅ | Wave 85 — `MapOpsService.RandomCell`. 100-iter random walkable-cell pick bounded by `MapData.Xs/Ys`; (0,0)+false on exhaustion. |
+| `map_search_freecell_dist` | ✅ | Wave 85 — `MapOpsService.SearchFreeCell`. Square outward ring scan returning the first walkable cell; falls back to input cell when none found. |
 | `map_id2bl` | ✅ | [`Id2Bl`](/Map.Server/World/MapOps/MapOpsService.cs#L41) — wired to `IEntityRegistry.Get` |
-| `map_charid2sd` | ⚠️ | `CharId2Sd` — degrades to entity-id (CharId column on PlayerEntity is on the porting backlog) |
+| `map_charid2sd` | ✅ | Wave 85 — `MapOpsService.CharId2Sd`. Direct `IEntityRegistry.Get(new EntityId(charId))` lookup; works because `PlayerEntity.CharacterId == Id.Value` per the rAthena convention documented on PlayerEntity. |
 | `map_nick2sd` | ✅ | [`Nick2Sd`](/Map.Server/World/MapOps/MapOpsService.cs#L50) — LINQ over entity registry |
 | `map_addiddb` / `map_deliddb` | ✅ | `AddIdDb` / `DelIdDb` — intentional no-ops; `IEntityRegistry` already owns id↔entity mapping (PARITY-REMAINING.md §P2.2 confirms this is the design) |
 
@@ -46,9 +46,9 @@ Canonical entry points: [IMapOpsService](/Map.Server/World/MapOps/IMapOpsService
 |---|---|---|
 | `map_addblock` / `map_delblock` | ✅ | Intentional no-ops on `IMapOpsService`; the spatial-index insert/remove is part of [`EntityRegistry.Add` / `Remove`](/Map.Server/Entities/EntityRegistry.cs#L21) (per-map `MapSpatialIndex` updated transparently). Splitting block-mgmt out of registry insertion would re-introduce the rAthena two-step Add/Block sequencing for no benefit |
 | `map_moveblock` | ✅ | [`MoveBlock`](/Map.Server/World/MapOps/MapOpsService.cs#L38) — wires `_entities.Move(id, x, y)`; rAthena returns 0 on success which matches |
-| `map_getcell` | ⚠️ | `IMapOpsService.GetCell` returns true; the real cell-flag store lives on [`MapData.GetCell`](/Map.Server/World/MapData.cs#L51) (`CellFlags` bitmask, terrain + dynamic layers) — wiring `IMapOpsService` through `IMapWorldRegistry` is the remaining gap (PARITY-REMAINING.md §P2.2) |
-| `map_setcell` | ⚠️ | `IMapOpsService.SetCell` no-op; [`MapData.SetDynamicFlag`](/Map.Server/World/MapData.cs#L77) is the real entry point (used by NPC registrar / skill systems). Same wiring gap as `GetCell` (§P2.2) |
-| `map_cellinfo` / `map_cellchk` | ⚠️ | [`CellFlags`](/Map.Server/World/CellFlags.cs) enum exists (Walkable / Shootable / Water / NpcTrigger); `IMapOpsService.GetCell(cellChk)` doesn't route through it yet (§P2.2) |
+| `map_getcell` | ✅ | Wave 85 — `MapOpsService.GetCell` (map.cpp:1450). Reads `MapData.GetCell(x,y)` and tests against `CellFlags`; maps rAthena `CELL_CHK*` to bitset (0=Walkable, 1=Shootable, 2=Water, 5=NpcTrigger). |
+| `map_setcell` | ✅ | Wave 85 — `MapOpsService.SetCell` (map.cpp:1496). Routes to `MapData.SetDynamicFlag`. Only the dynamic-layer flags accept mutation; fixed terrain bits stay immutable per `MapData`'s invariant. |
+| `map_cellinfo` / `map_cellchk` | ✅ | Wave 85 — same routing as `map_getcell`; `IMapOpsService.GetCell(cellChk)` now consults the live `CellFlags` bitmask through `IMapWorldRegistry`. |
 
 ### Map flags & metadata
 
