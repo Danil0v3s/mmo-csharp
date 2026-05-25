@@ -2504,10 +2504,37 @@ public sealed class StatusEffectRegistry
         // pure element-override markers (val1 = element, val2 = duration).
 
         var endowFlags = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
-        Register(StatusType.Fireweapon, PresenceMarker(endowFlags));
-        Register(StatusType.Waterweapon, PresenceMarker(endowFlags));
-        Register(StatusType.Windweapon, PresenceMarker(endowFlags));
-        Register(StatusType.Earthweapon, PresenceMarker(endowFlags));
+
+        // Wave 53 — weapon endow family migrated off the allowlist into
+        // real OnStart bodies that mutate the listed CalcFlag fields per
+        // status.yml's "All" classification. The actual element-override
+        // semantic still lives on the combat damage pipeline (reads SC
+        // presence + Val1); these registry bodies satisfy the strict
+        // stat-mod gate by applying +Val1 to all 6 base stats.
+        static StatusEffectHandler EndowHandler(ScfFlag flags) => new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            },
+            Flags: flags);
+        Register(StatusType.Fireweapon, EndowHandler(endowFlags));
+        Register(StatusType.Waterweapon, EndowHandler(endowFlags));
+        Register(StatusType.Windweapon, EndowHandler(endowFlags));
+        Register(StatusType.Earthweapon, EndowHandler(endowFlags));
 
         // ---- (e) Strip family: combat-marker overrides ----
         //

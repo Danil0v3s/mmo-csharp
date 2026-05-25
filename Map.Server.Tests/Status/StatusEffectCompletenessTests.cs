@@ -96,11 +96,9 @@ public class StatusEffectCompletenessTests
             [StatusType.Paralysis] = "GC_PARALYSIS — val3=cast rate% read by SkillCastTimingService",
             [StatusType.Izayoi]    = "Kagerou/Oboro — halves variable cast time, SkillCastTimingService",
 
-            // ---- Weapon-element endow (combat reads SC for damage-element override) ----
-            [StatusType.Fireweapon]  = "ItemDB endow — combat reads SC for element override",
-            [StatusType.Waterweapon] = "ItemDB endow — combat reads SC for element override",
-            [StatusType.Windweapon]  = "ItemDB endow — combat reads SC for element override",
-            [StatusType.Earthweapon] = "ItemDB endow — combat reads SC for element override",
+            // ---- Weapon-element endow — Wave 53: real OnStart bodies
+            // applied via EndowHandler; combat path still reads SC presence
+            // for the element override.
 
             // ---- Strip family (equip-disable via inventory service while SC active) ----
             [StatusType.Stripweapon] = "RG_STRIPWEAPON — equip-disable enforced by IEquipService",
