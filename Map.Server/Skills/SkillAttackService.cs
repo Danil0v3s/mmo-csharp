@@ -171,6 +171,14 @@ public sealed class SkillAttackService : ISkillAttackService
                 damage = damage * bumpPct / 100;
                 _sc.End(source, StatusType.Magicpower);
             }
+
+            // SC_MOONLITSERENADE — Wanderer / Minstrel song.
+            // Val2 stores the % Matk boost for the band.
+            var mls = _sc.Get(source, StatusType.Moonlitserenade);
+            if (mls != null && mls.Val2 > 0)
+            {
+                damage += damage * mls.Val2 / 100;
+            }
         }
         return damage;
     }

@@ -128,17 +128,54 @@ public sealed class BattleCalculator : IBattleCalculator
             damage = _cards.CalcCardFix(BattleAttackType.Weapon, source, target, damage, leftHand: false);
         }
 
-        // --- Step 5c: SC_HEAT_BARREL (Gunslinger) ---------------
-        // Wave 26 — rAthena <c>SC_HEAT_BARREL</c> (status.cpp:11392).
-        // Gunslinger Heat Barrel grants <c>5*Val1 %</c> ATK and a per-bullet
-        // damage bonus. Val1 = level (1..5). Read on the caster's swing.
+        // --- Step 5c: caster-side weapon-damage SC bumps ---------------
+        // Each read here is one of the rAthena allowlist entries where the
+        // SC's combat impact lives on the attacker side. Order matches
+        // rAthena status.cpp arms:
         if (_sc != null)
         {
+            // SC_HEAT_BARREL (status.cpp:11392) — Gunslinger Heat Barrel.
+            // 5 * Val1 % atk bonus. Val1 = level (1..5).
             var hb = _sc.Get(source, Map.Server.Status.StatusType.HeatBarrel);
             if (hb != null && hb.Val1 > 0)
             {
-                var pct = 5 * hb.Val1;
-                damage += damage * pct / 100;
+                damage += damage * (5 * hb.Val1) / 100;
+            }
+
+            // SC_EDP (status.cpp:10522-10535) — Assassin Cross Enchant
+            // Deadly Poison. Val3 stores the bonus damage % the SC adds
+            // to weapon hits. Falls back to a per-level default
+            // (50 + 50*Val1 %) when Val3 is unset.
+            var edp = _sc.Get(source, Map.Server.Status.StatusType.Edp);
+            if (edp != null)
+            {
+                var pct = edp.Val3 > 0 ? edp.Val3 : (50 + 50 * edp.Val1);
+                if (pct > 0) damage += damage * pct / 100;
+            }
+
+            // SC__BLOODYLUST — Shadow Chaser Bloody Lust. Val2 = dmg%
+            // boost applied to the caster's weapon hit.
+            var bl = _sc.Get(source, Map.Server.Status.StatusType.Bloodylust);
+            if (bl != null && bl.Val2 > 0)
+            {
+                damage += damage * bl.Val2 / 100;
+            }
+
+            // SC_RUSHWINDMILL — Wanderer / Minstrel song. Val2 stores
+            // the % weapon-damage boost for the band.
+            var rwm = _sc.Get(source, Map.Server.Status.StatusType.Rushwindmill);
+            if (rwm != null && rwm.Val2 > 0)
+            {
+                damage += damage * rwm.Val2 / 100;
+            }
+
+            // SC_PYROCLASTIC — Mechanic Pyroclastic. Val2 = additive
+            // atk bonus; the element override is handled by the
+            // element resolver elsewhere.
+            var pyro = _sc.Get(source, Map.Server.Status.StatusType.Pyroclastic);
+            if (pyro != null && pyro.Val2 > 0)
+            {
+                damage += pyro.Val2;
             }
         }
 
