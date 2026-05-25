@@ -76,6 +76,26 @@ comparator inline, etc.).
 
 ## History
 
+### 2026-05-25 — Wave 82: storage-parity Pass-2 re-audit (0 ⚠️→✅, 0 ❌→✅; 6 ⚠️ + 2 ❌ gates still active)
+
+Pass-2 honesty sweep. Verified every ⚠️/❌ row:
+
+- `storage_storageaddfromcart` / `storage_storagegettocart` —
+  grep-clean on `Map.Server/Storage/StorageService.cs`; `IStorageService`
+  still lacks `AddFromCart` / `GetToCart` methods on the interface.
+- `storage_guild_storageaddfromcart` / `storage_guild_storagegettocart`
+  ([GuildStorageService.cs:20-22](/Map.Server/Storage/Guild/GuildStorageService.cs))
+  remain empty-body stubs.
+- `storage_premiumStorage_open` ([GuildStorageService.cs:32](/Map.Server/Storage/Guild/GuildStorageService.cs))
+  remains empty-body stub.
+- `storage_sortitem` — sort wrapper not exposed on either interface.
+- `do_reconnect_storage` ❌ — gRPC reconcile loop still doesn't trigger
+  guild-storage flush on session restore.
+- `storage_guild_log_read` / `_sub` ❌ — no `IGuildStorageLogRepository`
+  in the tree (grep-clean for the symbol).
+
+Coverage unchanged: **29 ✅ / 6 ⚠️ / 2 ❌**. No C# code touched.
+
 ### 2026-05-25 — Wave 77: storage-parity close-out (0 ⚠️→✅, 0 ❌→✅; gate descriptions refreshed)
 
 Honest re-audit against [StorageService.cs](/Map.Server/Storage/StorageService.cs)
