@@ -491,6 +491,58 @@ any moment.
 
 ## History
 
+### 2026-05-25 — Waves 61–62: bespoke formula overrides + enum gap closure
+
+Wave 60 evacuated the allowlist but the stop hook correctly flagged
+two remaining gaps:
+1. Generator-defaulted SCs whose rAthena formula stores a divergent
+   magnitude in Val2/Val3 (NOT +Val1 to CalcFlag fields).
+2. ~19-SC gap between the C# StatusType enum (997) and the rAthena
+   active enum (1016).
+
+**Wave 61** added `RegisterWave61BespokeGeneratorOverrides()` with
+16 bespoke OnStart bodies replacing the +Val1 generator default:
+
+* `SC_SUN/MOON/STAR_COMFORT` (status.cpp:11633-11641) — Def2/Flee/AspdRate
+  scaled by (lv+dex+luk)/{2,10,1}.
+* `SC_SYMPHONYOFLOVER/ECHOSONG` (:12054, :12061) — Mdef/Def += 2-6*val1 + val2 + jobLv/4.
+* `SC_GLOOMYDAY` (:12084) — Flee -= 20+5*val1, AspdRate -= 15+5*val1.
+* `SC_PRESTIGE` (:12144) — Def += (val1*15+50)*lv/100.
+* `SC_PROMOTE/ENERGY_DRINK_RESERCH` (:12316, :12327) — MaxHp/MaxSp from
+  potion-tier formula.
+* `SC_ZANGETSU` (:12348) — Batk ± (lv/3 + 20*val1) on HP parity.
+* `SC_DELUGE` (:11021) — MaxHp += MaxHp * deluge_eff[(val1-1)%5] / 100.
+* `SC_ARMORCHANGE` (:11765) — Def/Mdef ± 20*val1 (NPC variant signs).
+* `SC_STONEHARDSKIN` (:11835) — Def/Mdef += val1 (caller pre-computed).
+* `SC_GIANTGROWTH` (:11858) — Str += 30 flat.
+* `SC_LUNARSTANCE/UNIVERSESTANCE` (:12711, :12724) — MaxHp%/all stats += 2+val1.
+
+**Wave 62** added 19 missing rAthena enum entries to `StatusType.cs`
+at their exact rAthena positions (1025-1043):
+
+* `Contents15-20, 34, 35` — content/event buff slots.
+* `CBuff3-6` — content buff family.
+* `NoAction` — pause-action marker.
+* `OvercomingCrisis` (status.cpp:13018) — val2=3*val1, val3=15000*val1.
+* `Chasing` — 4th-class pursuit marker.
+* `FireCharmPower / WaterCharmPower / WindCharmPower / GroundCharmPower`
+  — Doram 4th-class charm SCs (presence-only; per-charm element
+  scripts read presence).
+
+**Final state**:
+- `_behaviorElsewhereAllowlist` active entries: **0**
+- `grep "Register.*CombatMarkerHandler" StatusEffectRegistry.cs`: **0**
+- C# `StatusType` rAthena-mapped count: **1016** (was 997)
+- Bespoke OnStart bodies: **~353** of 1016 (35%)
+- Presence-only with explicit ScfFlag: **~67** (7%)
+- Presence-only via generator default: **~596** (58%)
+- Generator-default CalcFlag SCs with verified divergent rAthena
+  formulas: **0 unresolved** (16 ported in Wave 61).
+- Remaining rAthena enum tokens not in C#: all commented-out
+  (`//SC_FOO`) deprecated entries that rAthena itself doesn't use.
+
+Tests: 3,395 / 3,395 Map.Server + 87 / 87 Core.Server + 29 / 29 Login.
+
 ### 2026-05-25 — Wave 60: 1006-SC sweep, phase 4 — full allowlist evacuation
 
 Per the latest directive ("I want every SC migrated, doesn't matter if
