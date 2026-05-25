@@ -373,9 +373,28 @@ public sealed class StatusEffectRegistry
         // linked class; downstream skills check this to gate their
         // boosted behavior. Most skills just need "is the SC active";
         // detailed per-job branching lives in the skill behavior plugin.
+        // Wave 59 — Spirit: apply +Val1 to all 6 base stats per CalcFlag
+        // listing. The per-job skill plugin still reads sc.Val2 for the
+        // specific job-link mode (SL_BARDDANCER, SL_KNIGHT, etc.).
         Register(StatusType.Spirit, new StatusEffectHandler(
-            OnStart: (_, _, _) => { },
-            OnEnd: (_, _) => { },
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+            },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // ===== Soul Linker family — Val1 = soul-orb count / lv =====

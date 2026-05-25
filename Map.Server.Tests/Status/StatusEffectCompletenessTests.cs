@@ -79,7 +79,7 @@ public class StatusEffectCompletenessTests
 
             // ---- Combat-marker SCs (NS-3 wave 4a): val read by damage pipeline ----
             // [StatusType.Defender] — Wave 58: real OnStart body migrated; allowlist entry removed
-            [StatusType.Spirit]   = "Soul Linker job-gate marker read by skill plugins",
+            // [StatusType.Spirit] — Wave 59: real OnStart body migrated (+Val1 to all 6 base stats)
             // [StatusType.Providence] — Wave 58: real OnStart body migrated; allowlist entry removed
             [StatusType.Reflectshield] = "CR_REFLECTSHIELD — val2=10+val1*3 reflect% (status.cpp:10587)",
             // [StatusType.Steelbody] — Wave 55: real OnStart body migrated
