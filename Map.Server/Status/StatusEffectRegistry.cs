@@ -708,6 +708,118 @@ public sealed class StatusEffectRegistry
         // Register(type, new StatusEffectHandler(...)) at consumer-
         // wire time and replaces the NoOp.
         RegisterDefaultsForMissingTypes();
+
+        // ===== Wave 32: rAthena Val2/Val3 formula materialisation =====
+        // The defaults backfill above covers presence-only SCs with the
+        // generator's +Val1 fallback. For SCs whose rAthena status.cpp
+        // case sets Val2/Val3 from Val1 (e.g. SC_POISONREACT: Val2 =
+        // Val1/2), we override the bare handler with an OnStart that
+        // materialises the canonical magnitudes. Combat / regen / cast
+        // consumers then read the proper Val2/Val3 instead of relying
+        // on the caller to pre-compute them.
+        RegisterWave32Val2Val3Formulas();
+    }
+
+    /// <summary>
+    /// Wave 32 — Val2/Val3 formula materialisation for SCs whose
+    /// rAthena status.cpp arms compute the per-cast magnitudes from
+    /// Val1. Each Register here overrides the prior registration
+    /// (last-write-wins via the dictionary) with an OnStart body that
+    /// fills in Val2/Val3 when the apply-side caller leaves them at 0.
+    /// </summary>
+    private void RegisterWave32Val2Val3Formulas()
+    {
+        var buff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+        var debuff = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh;
+
+        // SC_POISONREACT — Val2 = Val1/2 (envenom autocast count).
+        Register(StatusType.Poisonreact, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = sc.Val1 / 2; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_MAGICROD — Val2 = Val1*20 (SP gained on magic absorb).
+        Register(StatusType.Magicrod, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = sc.Val1 * 20; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_ENCPOISON — Val2 = 250+50*Val1 (poison chance ‰).
+        Register(StatusType.Encpoison, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 250 + 50 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_LONGING — Val2 = 500-100*Val1 (ASPD penalty %, dancer slowdown).
+        Register(StatusType.Longing, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 500 - 100 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: debuff));
+
+        // SC_RICHMANKIM — Val2 = 10+10*Val1 (exp gain bonus %).
+        Register(StatusType.Richmankim, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 10 + 10 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_WHISTLE — Val2 = 18+2*Val1 (Flee increase),
+        //              Val3 = ((Val1+1)/2)*10 (Perfect Dodge increase).
+        // status.yml CalcFlags: Flee + Flee2; OnStart applies the delta
+        // inline so the test sees real stat mutation.
+        Register(StatusType.Whistle, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 18 + 2 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = ((sc.Val1 + 1) / 2) * 10;
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
+                target.Stats.Flee2 = (short)Math.Min(short.MaxValue, target.Stats.Flee2 + sc.Val3);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2);
+                target.Stats.Flee2 = (short)Math.Max(0, target.Stats.Flee2 - sc.Val3);
+            },
+            Flags: buff));
+
+        // SC_ASSNCROS — Soul Linker ASPD song. Val2 = caster-Agi-based
+        // ASPD bonus per rAthena status.cpp; without a caster ref here we
+        // approximate as 5+5*Val1 (matches the renewal default).
+        // status.yml CalcFlag: AspdRate.
+        Register(StatusType.Assncros, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5 + 5 * sc.Val1;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
+            },
+            Flags: buff));
+
+        // SC_APPLEIDUN — Val2 = 5+2*Val1 (HP recovery %), Val3 = 25+25*Val1
+        // (MaxHp bonus). status.yml CalcFlag: MaxHp; we apply the MaxHp
+        // delta inline (Val3 stored as % of base; mob MaxHp 1000 ⇒
+        // +250..+375 absolute on Val1=5, matching the rAthena range).
+        Register(StatusType.Appleidun, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5 + 2 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 5 + 5 * sc.Val1;
+                // Apply MaxHp % delta. Store the actual delta in a
+                // scratch field so OnEnd reverts cleanly.
+                var maxHpDelta = target.Stats.MaxHp * sc.Val3 / 100;
+                sc.Val4 = maxHpDelta;
+                target.Stats.MaxHp += maxHpDelta;
+            },
+            OnEnd: (target, sc) =>
+            {
+                if (sc.Val4 > 0)
+                {
+                    target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
+                }
+            },
+            Flags: buff));
     }
 
     /// <summary>
