@@ -797,6 +797,77 @@ public sealed class StatusEffectRegistry
             },
             Flags: buff));
 
+        // SC_HUMMING — Val2 = 4*Val1 (Hit increase). status.yml CalcFlag: Hit.
+        // Generator default adds +Val1 to Hit — wrong magnitude (off by 4x).
+        Register(StatusType.Humming, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 4 * sc.Val1;
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val2);
+            },
+            Flags: buff));
+
+        // SC_DONTFORGETME — Val2 = 1+30*Val1 (ASPD decrease %),
+        //                   Val3 = 5+2*Val1 (Movement speed adjustment %).
+        // status.yml CalcFlag: AspdRate. Debuff — slows victims in the area.
+        Register(StatusType.Dontforgetme, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 1 + 30 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 5 + 2 * sc.Val1;
+                // ASPD decrease: stored as a negative AspdRate delta.
+                target.Stats.AspdRate = (short)Math.Max(short.MinValue, target.Stats.AspdRate - sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val2);
+            },
+            Flags: debuff));
+
+        // SC_FORTUNE — Val2 = Val1*10 (Critical increase, ×10 storage).
+        // status.yml CalcFlag table says Str/Agi/Vit/Int/Dex/Luk (incorrect
+        // upstream entry); rAthena actually mutates only Cri. Override with
+        // explicit Cri delta.
+        Register(StatusType.Fortune, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = sc.Val1 * 10;
+                // Cri is stored ×10 in C# port — multiply once more.
+                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val2 * 10);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val2 * 10);
+            },
+            Flags: buff));
+
+        // SC_SERVICE4U — Val2 = MaxSP % bonus (9+Val1 capped at 20),
+        //                Val3 = 5+Val1 (SP cost reduction %).
+        // status.yml CalcFlag table also reads all 6 base stats — wrong.
+        // Real formula targets MaxSp only.
+        Register(StatusType.Service4u, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = sc.Val1 < 10 ? 9 + sc.Val1 : 20;
+                if (sc.Val3 == 0) sc.Val3 = 5 + sc.Val1;
+                // Apply MaxSP % delta.
+                var maxSpDelta = target.Stats.MaxSp * sc.Val2 / 100;
+                sc.Val4 = maxSpDelta;
+                target.Stats.MaxSp += maxSpDelta;
+            },
+            OnEnd: (target, sc) =>
+            {
+                if (sc.Val4 > 0)
+                {
+                    target.Stats.MaxSp = Math.Max(1, target.Stats.MaxSp - sc.Val4);
+                }
+            },
+            Flags: buff));
+
         // SC_APPLEIDUN — Val2 = 5+2*Val1 (HP recovery %), Val3 = 25+25*Val1
         // (MaxHp bonus). status.yml CalcFlag: MaxHp; we apply the MaxHp
         // delta inline (Val3 stored as % of base; mob MaxHp 1000 ⇒
