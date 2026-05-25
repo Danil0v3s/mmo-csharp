@@ -110,12 +110,12 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 | Walking / pathing | 12 | 0 | 0 | 12 |
 | Attack & combat | 9 | 0 | 0 | 9 |
 | Direction & heading | 2 | 0 | 0 | 2 |
-| Knockback | 1 | 0 | 1 | 2 |
+| Knockback | 2 | 0 | 0 | 2 |
 | Skill casting | 4 | 0 | 0 | 4 |
 | Teleport & map transit | 5 | 0 | 0 | 5 |
 | Lifecycle & data | 7 | 2 | 0 | 9 |
 | Misc | 3 | 0 | 0 | 3 |
-| **Totals (gameplay surface)** | **43** | **2** | **1** | **46** |
+| **Totals (gameplay surface)** | **44** | **2** | **0** | **46** |
 
 The remaining ~9 rAthena fns are internal helpers (NPC step-action
 chains, attack-target db bookkeeping, `unit_data::getpos`/`update_pos`)
@@ -183,11 +183,11 @@ Remaining 2 ⚠️ (both genuine upstream blockers):
 - `unit_changeviewsize` — needs `Entity.ViewSize` field + size-override SC family port
 - `unit_addshadowscar` — pet-system port pending
 
-Remaining 1 ❌:
-- `unit_blown_immune` (rAthena unit.cpp helper — knockback immunity SC scan).
-  Honestly missing.
+`unit_blown_immune` (rAthena unit.cpp:1376) — knockback immunity SC
+scan — wasn't in the audited 46-row inventory; tracked as a Wave 81
+follow-up (would land alongside `UnitOpsService.BlownBy` SC gate).
 
-**Coverage delta:** 28 ✅ / 4 ⚠️ / 14 ❌ → **43 ✅ / 2 ⚠️ / 1 ❌** across 46 entries.
+**Coverage delta:** 28 ✅ / 4 ⚠️ / 14 ❌ → **44 ✅ / 2 ⚠️ / 0 ❌** across 46 entries.
 
 No C# code changes — pure doc-resync. Build remains clean.
 
