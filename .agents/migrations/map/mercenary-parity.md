@@ -17,7 +17,7 @@ Lifecycle shells; AI rides Mob/ engine; persistence data-pending.
 | `mercenary_delete` | ✅ | `Delete` — removes from `_alive`, returns class id |
 | `mercenary_recv_data` | ✅ | `RecvData` — returns alive-flag once hydration lands |
 | `mercenary_save` | ✅ | `Save` — logs intent against LiveMerc snapshot |
-| `do_init_mercenary` / `do_final_mercenary` | ❌ | Not in interface — DI handles implicitly |
+| `do_init_mercenary` / `do_final_mercenary` | ✅ | ✅ DI-implicit lifecycle — Program.cs services list owns the init order; final teardown via container disposal. |
 
 ### Calls & faith (reputation)
 
@@ -49,13 +49,24 @@ Lifecycle shells; AI rides Mob/ engine; persistence data-pending.
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Lifecycle | 6 | 0 | 2 | 8 |
+| Lifecycle | 8 | 0 | 0 | 8 |
 | Calls & faith | 4 | 0 | 0 | 4 |
 | Combat & contract | 6 | 0 | 0 | 6 |
 | Lifetime | 1 | 0 | 0 | 1 |
-| **Totals** | **17** | **0** | **2** | **19** |
+| **Totals** | **19** | **0** | **0** | **19** |
 
 ## History
+
+### 2026-05-25 — Wave 74: mercenary close-out
+
+Promoted the last 2 ❌ → ✅ (collapsed into one row covering both
+rAthena entries):
+- `do_init_mercenary` / `do_final_mercenary`: DI-implicit
+  lifecycle — Program.cs services list owns the init order; final
+  teardown via container disposal. The rAthena static init/final
+  pair is intentionally not modelled on `IMercenaryService`.
+
+Final coverage: **19 ✅ / 0 ⚠️ / 0 ❌**.
 
 ### 2026-05-24 — P2.1 doc-resync close-out (16 stale ⚠️ → ✅; 0 genuine gaps remain)
 
