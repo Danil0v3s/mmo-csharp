@@ -97,4 +97,23 @@ public interface IMapOpsService
     /// to a square ring search when none land.
     /// </summary>
     bool RandomDir(string mapName, short srcX, short srcY, short range, out short x, out short y);
+
+    /// <summary>
+    /// rAthena <c>map_iwall_set</c> (map.cpp:3475). Place an invisible
+    /// wall on <paramref name="mapName"/> starting at (x, y) extending
+    /// <paramref name="size"/> cells along <paramref name="dir"/>.
+    /// Returns false if the wall name is taken or the start cell isn't
+    /// walkable. Each cell gets the dynamic NpcTrigger overlay; visible
+    /// AoE broadcast (<c>clif_changemapcell</c>) lives on the caller.
+    /// </summary>
+    bool IwallSet(string mapName, short x, short y, int size, byte dir, bool shootable, string wallName);
+
+    /// <summary>
+    /// rAthena <c>map_iwall_remove</c> (map.cpp:3542). Drop a wall by
+    /// name; restores underlying cells. False on unknown name.
+    /// </summary>
+    bool IwallRemove(string wallName);
+
+    /// <summary>rAthena <c>map_iwall_exist</c> (map.cpp:3453).</summary>
+    bool IwallExist(string wallName);
 }

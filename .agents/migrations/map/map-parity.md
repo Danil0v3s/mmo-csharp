@@ -56,7 +56,7 @@ Canonical entry points: [IMapOpsService](/Map.Server/World/MapOps/IMapOpsService
 |---|---|---|
 | `map_getmapflag` | ✅ | [`IMapFlagService.IsSet`](/Map.Server/World/MapFlagService.cs#L22) is the canonical entry — reads `INpcRegistry.AllMapFlags()` once and caches per-map bitmasks (15 flags wired today: NoPvp/NoSkill/NoTeleport/NoDrop/NoLoot/NoExp/NoPenalty/NoSave/NoTrade/NoChat/NoVending/NoBuyingStore/NoBranch/NoMemo/Gvg). `IMapOpsService.GetMapFlag` still returns 0; callers use `IMapFlagService` directly |
 | `map_setmapflag` | ✅ | [`IMapFlagService.Set`](/Map.Server/World/MapFlagService.cs#L34) — used by GM commands (@pvpon, @pvpoff, @gvgon, @gvgoff) to flip flags in-place at runtime |
-| `map_iwall_set` / `_remove` / `_exist` | ❌ | Invisible-wall system not modeled |
+| `map_iwall_set` / `_remove` / `_exist` | ✅ | Wave 87 — `MapOpsService.IwallSet/Remove/Exist` (map.cpp:3475/3542/3453). Per-wall cell list tracked in `_iwalls` dict keyed by name; each cell flipped via `MapData.SetDynamicFlag(NpcTrigger)` on set, cleared on remove. Visible-AoE broadcast (`clif_changemapcell`) owned by caller. |
 
 ### Direction & distance
 

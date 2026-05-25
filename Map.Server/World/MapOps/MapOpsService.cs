@@ -217,6 +217,81 @@ public sealed class MapOpsService : IMapOpsService
     public void Final() { }
     public void Reload() { }
 
+    // rAthena map_iwall_db. wallName → IwallData. Tracks per-wall cell
+    // list so removal can restore the cells (dynamic NPC_TRIGGER bits
+    // are restored; the underlying terrain bits are immutable so we
+    // toggle only the dynamic NPC_TRIGGER overlay).
+    private sealed record IwallData(string MapName, List<(short X, short Y)> Cells, bool Shootable);
+    private readonly Dictionary<string, IwallData> _iwalls = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>rAthena <c>map_iwall_exist</c> (map.cpp:3453).</summary>
+    public bool IwallExist(string wallName) => _iwalls.ContainsKey(wallName);
+
+    /// <summary>
+    /// rAthena <c>map_iwall_set</c> (map.cpp:3475). Place a wall along
+    /// <paramref name="dir"/> starting at (x, y). Uses
+    /// <see cref="MapData.SetDynamicFlag"/> to flag each cell as
+    /// NpcTrigger (the dynamic overlay rAthena uses for invisible-wall
+    /// gating). Returns false if the wall name exists or the start
+    /// cell isn't walkable.
+    /// </summary>
+    public bool IwallSet(string mapName, short x, short y, int size, byte dir, bool shootable, string wallName)
+    {
+        if (size < 1 || string.IsNullOrEmpty(wallName)) return false;
+        if (_iwalls.ContainsKey(wallName)) return false;
+        if (_world == null) return false;
+        var map = _world.Get(mapName);
+        if (map == null) return false;
+        if (!map.IsWalkable(x, y)) return false;
+
+        // rAthena map_iwall_nextxy: dir converts to (dx, dy) offset.
+        // The dirx/diry table matches the canonical 8-direction step
+        // layout used elsewhere in the codebase.
+        var dxTab = new short[] { 0, -1, -1, -1, 0, 1, 1, 1 };
+        var dyTab = new short[] { 1, 1, 0, -1, -1, -1, 0, 1 };
+        if (dir >= 8) return false;
+        var dx = dxTab[dir];
+        var dy = dyTab[dir];
+
+        var cells = new List<(short X, short Y)>();
+        for (var i = 0; i < size; i++)
+        {
+            var cx = (short)(x + dx * i);
+            var cy = (short)(y + dy * i);
+            // Stop on collision (rAthena breaks the placement loop).
+            if (!map.IsWalkable(cx, cy)) break;
+            map.SetDynamicFlag(cx, cy, CellFlags.NpcTrigger, true);
+            cells.Add((cx, cy));
+        }
+        if (cells.Count == 0) return false;
+        _iwalls[wallName] = new IwallData(mapName, cells, shootable);
+        _logger.LogDebug("map_iwall_set: {Wall} on {Map} {N} cells",
+            wallName, mapName, cells.Count);
+        return true;
+    }
+
+    /// <summary>
+    /// rAthena <c>map_iwall_remove</c> (map.cpp:3542). Drops the wall
+    /// + clears the dynamic NpcTrigger overlay on each cell.
+    /// </summary>
+    public bool IwallRemove(string wallName)
+    {
+        if (!_iwalls.TryGetValue(wallName, out var data)) return false;
+        if (_world?.Get(data.MapName) is not { } map)
+        {
+            _iwalls.Remove(wallName);
+            return true;
+        }
+        foreach (var (cx, cy) in data.Cells)
+        {
+            map.SetDynamicFlag(cx, cy, CellFlags.NpcTrigger, false);
+        }
+        _iwalls.Remove(wallName);
+        _logger.LogDebug("map_iwall_remove: {Wall} ({N} cells cleared)",
+            wallName, data.Cells.Count);
+        return true;
+    }
+
     /// <summary>
     /// rAthena <c>map_random_dir</c> (map.cpp). Picks 8 random angles
     /// at the requested range; returns the first cell whose direction
