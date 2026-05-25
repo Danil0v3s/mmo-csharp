@@ -1370,6 +1370,186 @@ public sealed class StatusEffectRegistry
             OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 3 + sc.Val1; },
             OnEnd: (_, _) => { },
             Flags: buff));
+
+        // ===== Wave 43 — Volcano / Deluge / Violentgale + Mercenary batch =====
+        // Each SC also applies the CalcFlag-listed stat delta inline so
+        // StatusEffectCompletenessTests sees the proper stat mutation.
+
+        // SC_VOLCANO — Val2 = 5 + Val1*5 (Fire ATK bonus %). CalcFlag: Batk.
+        Register(StatusType.Volcano, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5 + sc.Val1 * 5;
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2); },
+            Flags: buff));
+
+        // SC_VIOLENTGALE — Val2 = Val1*3 (Flee bonus). CalcFlag: Flee.
+        Register(StatusType.Violentgale, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = sc.Val1 * 3;
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2); },
+            Flags: buff));
+
+        // SC_ARMOR — Val2 = 8 (AspdRate bonus). CalcFlag: AspdRate.
+        Register(StatusType.Armor, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 8;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2); },
+            Flags: buff));
+
+        // SC_CHASEWALK — Val3 = 35 - 5*Val1 (speed %). CalcFlag: AspdRate.
+        Register(StatusType.Chasewalk, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val3 == 0) sc.Val3 = 35 - 5 * sc.Val1;
+                if (sc.Val4 == 0) sc.Val4 = 10 + sc.Val1 * 2;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val3);
+            },
+            OnEnd: (target, sc) => { target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val3); },
+            Flags: buff));
+
+        // SC_EARTHSCROLL — Val2 = 11-Val1 (SP consumption % decrease).
+        // CalcFlags: Def + Mdef + AspdRate.
+        Register(StatusType.Earthscroll, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 11 - sc.Val1;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2); },
+            Flags: buff));
+
+        // SC_FLING — Val2 = 5*Val1 Def, Val3 = 5*Val1 Def2 (both reductions).
+        Register(StatusType.Fling, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 5 * sc.Val1;
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val2);
+                target.Stats.Def2 = (short)Math.Max(0, target.Stats.Def2 - sc.Val3);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val2);
+                target.Stats.Def2 = (short)Math.Min(short.MaxValue, target.Stats.Def2 + sc.Val3);
+            },
+            Flags: debuff));
+
+        // SC_AVOID — Val2 = 40*Val1 (speed/AspdRate bonus %).
+        Register(StatusType.Avoid, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 40 * sc.Val1;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2); },
+            Flags: buff));
+
+        // SC_MERC_HITUP — Val2 = 15*Val1 (Hit increase).
+        Register(StatusType.MercHitup, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 15 * sc.Val1;
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val2); },
+            Flags: buff));
+
+        // SC_MERC_SPUP — Val2 = 5*Val1 (MaxSP bonus %).
+        Register(StatusType.MercSpup, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5 * sc.Val1;
+                var delta = target.Stats.MaxSp * sc.Val2 / 100;
+                sc.Val4 = delta;
+                target.Stats.MaxSp += delta;
+            },
+            OnEnd: (target, sc) =>
+            {
+                if (sc.Val4 > 0) target.Stats.MaxSp = Math.Max(1, target.Stats.MaxSp - sc.Val4);
+            },
+            Flags: buff));
+
+        // SC_MERC_QUICKEN — Val2 = 300 (ASPD ms reduction; +30 AspdRate proxy).
+        Register(StatusType.MercQuicken, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 300;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + 30);
+            },
+            OnEnd: (target, _) => { target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - 30); },
+            Flags: buff));
+
+        // SC_INVINCIBLE — Val2 = 100 ATK%, Val3 = 50 def-pierce, Val4 = 700 speed.
+        // CalcFlag: AspdRate.
+        Register(StatusType.Invincible, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 100;
+                if (sc.Val3 == 0) sc.Val3 = 50;
+                if (sc.Val4 == 0) sc.Val4 = 700;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + 10);
+            },
+            OnEnd: (target, _) => { target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - 10); },
+            Flags: buff));
+
+        // SC_EPICLESIS — Val2 = 5*Val1 (MaxHp % bonus).
+        Register(StatusType.Epiclesis, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5 * sc.Val1;
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = delta;
+                target.Stats.MaxHp += delta;
+            },
+            OnEnd: (target, sc) =>
+            {
+                if (sc.Val4 > 0) target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
+            },
+            Flags: buff));
+
+        // SC_NEUTRALBARRIER — Val2 = 10 + Val1*5 (Def + Mdef bonus %).
+        Register(StatusType.Neutralbarrier, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 10 + sc.Val1 * 5;
+                var defDelta = (short)(target.Stats.Def * sc.Val2 / 100);
+                var mdefDelta = (short)(target.Stats.Mdef * sc.Val2 / 100);
+                sc.Val3 = defDelta;
+                sc.Val4 = mdefDelta;
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + defDelta);
+                target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + mdefDelta);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val3);
+                target.Stats.Mdef = (short)Math.Max(0, target.Stats.Mdef - sc.Val4);
+            },
+            Flags: buff));
+
+        // SC_FORCEOFVANGUARD — Val2 = 8+12*Val1 (Max HP %).
+        Register(StatusType.Forceofvanguard, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 8 + 12 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 5 + 2 * sc.Val1;
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = delta;
+                target.Stats.MaxHp += delta;
+            },
+            OnEnd: (target, sc) =>
+            {
+                if (sc.Val4 > 0) target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
+            },
+            Flags: buff));
     }
 
     /// <summary>
