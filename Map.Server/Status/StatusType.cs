@@ -1028,6 +1028,29 @@ public enum StatusType : short
     ShinkirouCall,  // SC_SHINKIROU_CALL
     Nightmare,  // SC_NIGHTMARE
     Sbunshin,  // SC_SBUNSHIN
+    // ---- T2.5 Wave 62: missing rAthena enum entries (positions 1025-1043) ----
+    // These are SCs that exist in rAthena status.hpp but were absent from
+    // our enum until Wave 62. Each preserves lockstep position with rAthena's
+    // numeric ordering so save/load round-trips stay stable.
+    Contents34,  // SC_CONTENTS_34
+    Contents35,  // SC_CONTENTS_35
+    NoAction,  // SC_NOACTION
+    CBuff3,  // SC_C_BUFF_3
+    CBuff4,  // SC_C_BUFF_4
+    CBuff5,  // SC_C_BUFF_5
+    CBuff6,  // SC_C_BUFF_6
+    Contents15,  // SC_CONTENTS_15
+    Contents16,  // SC_CONTENTS_16
+    Contents17,  // SC_CONTENTS_17
+    Contents18,  // SC_CONTENTS_18
+    Contents19,  // SC_CONTENTS_19
+    Contents20,  // SC_CONTENTS_20
+    OvercomingCrisis,  // SC_OVERCOMING_CRISIS — val2=3*val1, val3=15000*val1 (status.cpp:13018)
+    Chasing,  // SC_CHASING
+    FireCharmPower,  // SC_FIRE_CHARM_POWER
+    WaterCharmPower,  // SC_WATER_CHARM_POWER
+    WindCharmPower,  // SC_WIND_CHARM_POWER
+    GroundCharmPower,  // SC_GROUND_CHARM_POWER
     // ---- C# port-specific anchors (outside the rAthena range) ----
     // These existed before T2.4a and don't correspond to any rAthena
     // SC; they're parked at high ids so they don't collide with any

@@ -6757,6 +6757,47 @@ public sealed class StatusEffectRegistry
             },
             Flags: buff));
 
+        // SC_OVERCOMING_CRISIS (status.cpp:13018) — val2 = 3*val1, val3 = 15000*val1
+        // (defense bonus + extended duration). Presence-only with Val* materialisation
+        // for the combat-side consumer that reads sc.Val2/Val3.
+        Register(StatusType.OvercomingCrisis, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 3 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 15000 * sc.Val1;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_FIRE/WATER/WIND/GROUND_CHARM_POWER (status.hpp:1040-1043) — Doram
+        // 4th-class charm SCs. Presence-only; per-charm element scripts read
+        // SC presence to apply elemental bonus on attacks.
+        Register(StatusType.FireCharmPower, PresenceMarker(buff));
+        Register(StatusType.WaterCharmPower, PresenceMarker(buff));
+        Register(StatusType.WindCharmPower, PresenceMarker(buff));
+        Register(StatusType.GroundCharmPower, PresenceMarker(buff));
+
+        // SC_NOACTION (status.hpp:1027) — pause-action marker.
+        Register(StatusType.NoAction, PresenceMarker(debuff | ScfFlag.Permanent));
+
+        // SC_C_BUFF_3..6 + SC_CONTENTS_15..20, 34, 35 — content/buff slots
+        // for special events. Presence-only; event scripts toggle.
+        Register(StatusType.CBuff3, PresenceMarker(buff));
+        Register(StatusType.CBuff4, PresenceMarker(buff));
+        Register(StatusType.CBuff5, PresenceMarker(buff));
+        Register(StatusType.CBuff6, PresenceMarker(buff));
+        Register(StatusType.Contents15, PresenceMarker(buff));
+        Register(StatusType.Contents16, PresenceMarker(buff));
+        Register(StatusType.Contents17, PresenceMarker(buff));
+        Register(StatusType.Contents18, PresenceMarker(buff));
+        Register(StatusType.Contents19, PresenceMarker(buff));
+        Register(StatusType.Contents20, PresenceMarker(buff));
+        Register(StatusType.Contents34, PresenceMarker(buff));
+        Register(StatusType.Contents35, PresenceMarker(buff));
+
+        // SC_CHASING (status.hpp:1039) — 4th-class movement/pursuit marker.
+        Register(StatusType.Chasing, PresenceMarker(buff));
+
         // SC_UNIVERSESTANCE (status.cpp:12724) — val2 = 2 + val1 (All Stats Increase).
         Register(StatusType.Universestance, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
