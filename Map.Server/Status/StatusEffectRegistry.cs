@@ -1288,6 +1288,88 @@ public sealed class StatusEffectRegistry
             },
             OnEnd: (_, _) => { },
             Flags: buff));
+
+        // ===== Wave 42 — AB + Mech + Sorc + Wanderer batch =====
+
+        // SC_SECRAMENT — Val2 = 10*Val1 (cast time reduction %).
+        Register(StatusType.Secrament, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 10 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_WEAPONBLOCKING — Val2 = 10+2*Val1 (block chance %).
+        Register(StatusType.Weaponblocking, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 10 + 2 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_SIRCLEOFNATURE — Val2 = 50*Val1 (HP recovery rate %).
+        Register(StatusType.Sircleofnature, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 50 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_SONGOFMANA — Val3 = 50*Val1 (SP recovery rate %).
+        Register(StatusType.Songofmana, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val3 == 0) sc.Val3 = 50 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_UNLIMITEDHUMMINGVOICE — Val3 = 4*Val1 + min(3*Val2,15)
+        // (variable cast time reduction; Val2 carries Lesson level).
+        Register(StatusType.Unlimitedhummingvoice, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val3 == 0) sc.Val3 = 4 * sc.Val1 + Math.Min(3 * sc.Val2, 15);
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_TIDAL_WEAPON — Val2 = 20 (Elemental ATK boost).
+        Register(StatusType.TidalWeapon, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 20; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_MEIKYOUSISUI — Val2 = Val1*2 % HP/sec recovery,
+        //                   Val3 = Val1 % SP/sec recovery.
+        Register(StatusType.Meikyousisui, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = sc.Val1 * 2;
+                if (sc.Val3 == 0) sc.Val3 = sc.Val1;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_KAGEMUSYA — Val2 = 20 (damage increase %),
+        //                Val3 = Val1*2 (number of shadows).
+        Register(StatusType.Kagemusya, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 20;
+                if (sc.Val3 == 0) sc.Val3 = sc.Val1 * 2;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_DARKCROW — Val2 = 30*Val1 (ATK bonus %).
+        Register(StatusType.Darkcrow, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 30 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: debuff));
+
+        // SC_UNLIMIT — Val2 = 50*Val1 (def-pierce %).
+        Register(StatusType.Unlimit, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 50 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_KINGS_GRACE — Val2 = 3+Val1 (HP recovery rate %).
+        Register(StatusType.KingsGrace, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 3 + sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
     }
 
     /// <summary>
