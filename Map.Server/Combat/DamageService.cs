@@ -214,6 +214,20 @@ public sealed class DamageService : IDamageService
                 _sc.End(target, StatusType.Nen);
                 return actual;
             }
+            // Wave 33 — SC_KAIZEL (Soul Linker Kaizel). Val2 = % of MaxHp
+            // to revive with (10*Val1). Same consume-on-death semantic.
+            if (_sc != null)
+            {
+                var kaizel = _sc.Get(target, StatusType.Kaizel);
+                if (kaizel != null && kaizel.Val2 > 0)
+                {
+                    var (_, max) = GetHp(target);
+                    var reviveHp = Math.Max(1, max * kaizel.Val2 / 100);
+                    SetHp(target, reviveHp);
+                    _sc.End(target, StatusType.Kaizel);
+                    return actual;
+                }
+            }
             HandleDeath(target, source);
         }
         else if (target is MobEntity targetMob && source != null && MobAi is { } ai)

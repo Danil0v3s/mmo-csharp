@@ -868,6 +868,52 @@ public sealed class StatusEffectRegistry
             },
             Flags: buff));
 
+        // SC_AURABLADE — Val2 = 20*Val1 (Power increase / Watk bonus).
+        // rAthena status.cpp:case SC_AURABLADE. Generator: +Val1 Batk
+        // (off by 20x).
+        Register(StatusType.Aurablade, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 20 * sc.Val1;
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
+            },
+            Flags: buff));
+
+        // SC_PARRYING — Val2 = 20+Val1*3 (Block chance %). rAthena
+        // status.cpp:case SC_PARRYING. Block roll lives on the combat
+        // hit path; OnStart materialises Val2.
+        Register(StatusType.Parrying, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 20 + sc.Val1 * 3; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_REJECTSWORD — Val2 = 15*Val1 (Reflect chance %),
+        //                  Val3 = 3 (reflection count).
+        Register(StatusType.Rejectsword, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 15 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 3;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_KAIZEL — Val2 = 10*Val1 (% life to revive with). rAthena
+        // status.cpp:case SC_KAIZEL. Auto-revive on lethal hit; consumer
+        // reads Val2 to compute the revive HP. DamageService HandleDeath
+        // gate hooks Val2 alongside the SC_NEN consume.
+        Register(StatusType.Kaizel, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 10 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_DOUBLECAST already has a bespoke body upstream (line 338).
+        // Quagmire bespoke body lives at line 323. Both untouched here.
+
         // SC_APPLEIDUN — Val2 = 5+2*Val1 (HP recovery %), Val3 = 25+25*Val1
         // (MaxHp bonus). status.yml CalcFlag: MaxHp; we apply the MaxHp
         // delta inline (Val3 stored as % of base; mob MaxHp 1000 ⇒
