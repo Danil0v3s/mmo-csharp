@@ -58,6 +58,24 @@ AI lives in Mob/; this is the rAthena-name shim.
 
 ## History
 
+### 2026-05-25 — Wave 82: elemental-parity Pass-2 re-audit (0 ⚠️→✅; 11 gates still active)
+
+Pass-2 honesty sweep. Re-verified every ⚠️ row against
+[ElementalService.cs](/Map.Server/Elemental/ElementalService.cs);
+all 11 are confirmed bona-fide stubs:
+
+- `DataReceived` / `Save` ([ElementalService.cs:39-40](/Map.Server/Elemental/ElementalService.cs))
+  return 0; per-master `ElementalEntity` store still absent.
+- `ChangeMode` / `ChangeModeAck` / `CleanEffect` / `Action` / `SetTarget` /
+  `UnlockTarget` / `Heal` / `SkillNotOk` / `SummonInit`
+  ([ElementalService.cs:56-76](/Map.Server/Elemental/ElementalService.cs))
+  all return 0 / false / no-op. Each waits on the Mob/ AI engine
+  hook-in (PARITY-REMAINING §P2.2).
+- `SerializeSnapshot` ([ElementalService.cs:80-87](/Map.Server/Elemental/ElementalService.cs))
+  returns null per T7.3 contract — same gate.
+
+Coverage unchanged: **7 ✅ / 11 ⚠️ / 0 ❌**. No C# code touched.
+
 ### 2026-05-25 — Wave 77: elemental-parity close-out (5 ⚠️→✅, 1 ❌→✅)
 
 Honest re-audit of [ElementalService.cs](/Map.Server/Elemental/ElementalService.cs)
