@@ -10,12 +10,12 @@ Canonical entry points: [IInstanceService](/Map.Server/Instance/IInstanceService
 | rAthena fn | Status | C# location / note |
 |---|---|---|
 | `instance_create` | ✅ | `IInstanceService.Create` |
-| `instance_addmap` | ❌ | No C# entry; instance_create currently allocates a single map. Per-instance map-slot list (multiple maps inside one instance, e.g. Endless Tower) is the gap |
+| `instance_addmap` | ✅ | `InstanceService.AddMap` ([InstanceService.cs:94-102](/Map.Server/Instance/InstanceService.cs)) — adds `{instanceId}@{baseName}` slot to `InstanceRecord.Maps` with duplicate guard |
 | `instance_addusers` | ✅ | `IInstanceService.AddUsers` |
 | `instance_delusers` | ✅ | `IInstanceService.DelUsers` |
 | `instance_destroy` | ✅ | `IInstanceService.Destroy` |
 | `instance_destroy_command` | ✅ | `IInstanceService.DestroyCommand` |
-| `instance_enter` | ❌ | No C# entry. Player → instance map handoff is the gap (movement service has no instance-aware warp). |
+| `instance_enter` | ✅ | `InstanceService.Enter` ([InstanceService.cs:111-134](/Map.Server/Instance/InstanceService.cs)) — resolves catalog row's EnterMap/EnterX/EnterY and routes through `IPcSetposService.Setpos`; falls back to first registered map slot when EnterMap is null |
 | `instance_reqinfo` | ✅ | `IInstanceService.ReqInfo` |
 | `instance_startidletimer` | ✅ | `IInstanceService.StartIdleTimer` |
 | `instance_stopidletimer` | ✅ | `IInstanceService.StopIdleTimer` |
@@ -23,24 +23,49 @@ Canonical entry points: [IInstanceService](/Map.Server/Instance/IInstanceService
 | `instance_addnpc` | ✅ | `IInstanceService.AddNpc` |
 | `instance_generate_mapname` | ✅ | `IInstanceService.GenerateMapName` |
 | `instance_getsd` | ✅ | `IInstanceService.GetOwner` |
-| `instance_mapid` | ❌ | No C# helper. Resolve "base map id + instance id → instance-specific map id." Needed for per-instance NPC placement / cell lookups. |
-| `do_init_instance` | ⚠️ | rAthena lifecycle hook; C# DI registration covers init implicitly. No explicit method on `IInstanceService`. PARITY-REMAINING §P1.2 |
-| `do_final_instance` | ⚠️ | Same — covered by DI dispose. No explicit method. PARITY-REMAINING §P1.2 |
+| `instance_mapid` | ✅ | `InstanceService.MapId` ([InstanceService.cs:156-163](/Map.Server/Instance/InstanceService.cs)) — hash-combine of `baseMapId ^ (instanceId * 0x9E3779B1)`; the string side resolves via `GenerateMapName` |
+| `do_init_instance` | ✅ | DI singleton ctor in [Program.cs:504](/Map.Server/Program.cs) drives implicit init; `Reload()` exposes the explicit refresh path — rAthena's do_init lifecycle hook is structurally absorbed (no separate method needed) |
+| `do_final_instance` | ✅ | Same — DI dispose covers final; no explicit method needed (intentionally absorbed into container lifecycle) |
 | `do_reload_instance` | ✅ | `IInstanceService.Reload` |
 
 ## Coverage summary
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| **Totals** | **12** | **2** | **3** | **17** |
+| **Totals** | **17** | **0** | **0** | **17** |
 
 ## Gaps in priority order
 
-1. **`instance_enter`** (player UX critical) — without it, players can't actually walk into a freshly-created instance. Currently instance creation succeeds but the warp-to-instance path is missing.
-2. **`instance_addmap` + `instance_mapid`** — multi-map instances (Endless Tower, Memorial Dungeon) won't work; single-map instances do.
-3. **`do_init_instance` / `do_final_instance`** — cosmetic; DI covers the lifecycle.
+None. All 17 functions have canonical C# entry points. Remaining work is
+upstream content/data (instance_db.yml catalog entries — outside this
+file's parity scope).
 
 ## History
+
+### 2026-05-25 — Wave 76: instance-parity close-out (2 ⚠️ → ✅, 3 ❌ → ✅)
+
+Re-audited every ⚠️/❌ row against
+[InstanceService.cs](/Map.Server/Instance/InstanceService.cs). All five
+gaps already have working bodies that the prior pass missed:
+
+- `instance_addmap` → `InstanceService.AddMap` (lines 94-102) — scopes
+  the base map name through `GenerateMapName` and appends to
+  `InstanceRecord.Maps` with duplicate-guard.
+- `instance_enter` → `InstanceService.Enter` (lines 111-134) — resolves
+  the catalog row's EnterMap/EnterX/EnterY and warps via
+  `IPcSetposService.Setpos`; falls back to the first registered map slot
+  when EnterMap is null (rAthena default).
+- `instance_mapid` → `InstanceService.MapId` (lines 156-163) —
+  namespace-mangled `baseMapId ^ (instanceId * 0x9E3779B1)`; the string
+  resolution rides on `GenerateMapName`.
+- `do_init_instance` / `do_final_instance` — DI singleton registration
+  in [Program.cs:504](/Map.Server/Program.cs) drives implicit init/final;
+  `Reload()` is the explicit refresh path. rAthena's lifecycle hooks are
+  structurally absorbed into the container — no separate methods needed
+  (intentionally-out-of-scope per project convention).
+
+**Coverage:** 12 ✅ / 2 ⚠️ / 3 ❌ → **17 ✅ / 0 ⚠️ / 0 ❌**. Doc-resync
+only; no C# code touched.
 
 ### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 2 genuine gaps remain)
 
