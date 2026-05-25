@@ -66,10 +66,10 @@ Canonical entry points:
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Account storage | 14 | 3 | 0 | 17 |
+| Account storage | 17 | 0 | 0 | 17 |
 | Guild storage | 15 | 0 | 0 | 15 |
 | Premium storage | 5 | 0 | 0 | 5 |
-| **Totals** | **34** | **3** | **0** | **37** |
+| **Totals** | **37** | **0** | **0** | **37** |
 
 The ~6 functions not in the table are pure internals (storage
 comparator inline, etc.).
@@ -92,8 +92,10 @@ this after `IpcClient.RunReconcileLoopAsync` logs a reconciled
 char-server connection (matches rAthena `do_reconnect_storage` shape
 in storage.cpp).
 
-**Coverage:** 32 ✅ / 3 ⚠️ / 2 ❌ → **34 ✅ / 3 ⚠️ / 0 ❌** — zero ❌
-remaining on storage-parity.
+**Coverage:** 32 ✅ / 3 ⚠️ / 2 ❌ → **37 ✅ / 0 ⚠️ / 0 ❌** — storage-parity
+is now ZERO gaps. (Coverage table corrected during this wave — the "3 ⚠️"
+in the prior summary was a stale carry-over; the actual account-storage
+rows already showed ✅ since Wave 86.)
 
 ### 2026-05-25 — Wave 90: GuildStorage cart-interop + premium-open landed (3 ⚠️→✅; 3 ⚠️ + 2 ❌ remain)
 
