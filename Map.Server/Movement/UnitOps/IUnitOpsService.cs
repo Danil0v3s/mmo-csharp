@@ -140,4 +140,17 @@ public interface IUnitOpsService
     /// <c>ZC_NOTIFY_STANDENTRY</c> pipeline.
     /// </summary>
     void Refresh(Entity bl);
+
+    /// <summary>
+    /// rAthena <c>unit_addshadowscar</c> (unit.cpp:4258) — append a
+    /// Shadow Scar timer entry to <paramref name="bl"/>. Caps at
+    /// <see cref="Entities.Entity.MaxShadowScar"/>; on cap the call is
+    /// a logged no-op. Each entry expires after
+    /// <paramref name="intervalMs"/> milliseconds; the
+    /// <see cref="Status.IStatusChangeService.Tick"/> pump prunes
+    /// expired entries. After modifying the list the helper writes
+    /// the new count into SC_SHADOW_SCAR's Val1 so combat consumers
+    /// read the live scar count.
+    /// </summary>
+    void AddShadowScar(Entity bl, int intervalMs);
 }

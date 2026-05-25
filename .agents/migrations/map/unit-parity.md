@@ -89,7 +89,7 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 | `unit_refresh` | ✅ | Wave 73 — `IUnitOpsService.Refresh` (unit.cpp:3148); vanish-then-respawn AOI broadcast so surrounding clients re-render with the entity's current wire state. |
 | `do_init_unit` / `do_final_unit` | ✅ | Wave 80 — DI-implicit lifecycle. Static rAthena init/final pair is replaced by the `Program.cs` service registrations + container disposal; no standalone entry needed. |
 | `unit_changeviewsize` | ✅ | Wave 82 — misnamed audit row (no `unit_changeviewsize` in rAthena unit.cpp; closest is `clif_changeunitlook` driven by SC-size mutation). `PlayerEntity.ViewSize` (line 368) carries the field; size-override SCs mutate it via the `StatusEffectRegistry` OnStart bodies. The C# entry point on `IUnitOpsService` is documented for forward compat. |
-| `unit_addshadowscar` | ⚠️ | Sura Shadow Scar accumulator (rAthena unit.cpp:`unit_addshadowscar`). Adds a 30s timer onto the unit's `shadow_scar_timer` vector, capped at MAX_SHADOW_SCAR (5). C# port needs a `List<long>` on `Entity` and a 30s tick clean-up; consumer is Sura GT_HEATBARREL damage-rate read. Tracked under PARITY-REMAINING §P2.2 (Sura skill family follow-up). |
+| `unit_addshadowscar` | ✅ | Wave 83 — `IUnitOpsService.AddShadowScar` (unit.cpp:4258). Appends timer-expiry tick to `Entity.ShadowScarTimers` (capped at `Entity.MaxShadowScar` = 100); updates SC_SHADOW_SCAR Val1 to live count. `StatusChangeService.Tick` calls `UnitOpsService.PruneExpiredShadowScars` per tick to drop expired entries; when the list empties the SC ends. Combat consumers read sc.Val1 for the live scar count. |
 | `unit_skillunit_maxcount` | ✅ | Wave 80 — intentional collapse. `ISkillUnitService` enforces the per-skill ground-unit cap inline at placement time; no standalone helper. |
 | `unit_stop_stepaction` | ✅ | Wave 80 — intentional collapse. `MovementService.OnArrive` runs `IWarpDispatcher.OnEnterWarp` (the primary step-action). The broader skill-on-arrive queue lives on the skill caster; clearing it = `IAttackService.StopAttack` + `ISkillCastService.CancelCast` (already exposed). |
 | `unit_set_castdelay` | ✅ | Wave 80 — intentional collapse. `ISkillCastService.StartCast` reads cast delay from `skill_db` inline; no separate setter needed because the cast state isn't mutable mid-cast (rAthena's setter was used for re-cast helpers we replace via `CancelCast` + `StartCast`). |
@@ -113,9 +113,9 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 | Knockback | 2 | 0 | 0 | 2 |
 | Skill casting | 4 | 0 | 0 | 4 |
 | Teleport & map transit | 5 | 0 | 0 | 5 |
-| Lifecycle & data | 8 | 1 | 0 | 9 |
+| Lifecycle & data | 9 | 0 | 0 | 9 |
 | Misc | 3 | 0 | 0 | 3 |
-| **Totals (gameplay surface)** | **45** | **1** | **0** | **46** |
+| **Totals (gameplay surface)** | **46** | **0** | **0** | **46** |
 
 The remaining ~9 rAthena fns are internal helpers (NPC step-action
 chains, attack-target db bookkeeping, `unit_data::getpos`/`update_pos`)

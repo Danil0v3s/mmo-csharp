@@ -198,6 +198,15 @@ public sealed class StatusChangeService : IStatusChangeService
                 continue;
             }
 
+            // Wave 83 — Shadow Scar timer prune. Runs alongside the SC
+            // tick so the SC_SHADOW_SCAR Val1 count stays in sync with
+            // the timer list (and the SC ends when the list empties).
+            if (entity.ShadowScarTimers.Count > 0)
+            {
+                Map.Server.Movement.UnitOps.UnitOpsService
+                    .PruneExpiredShadowScars(entity, nowTick, this);
+            }
+
             foreach (var sc in perEntity.Values.ToArray())
             {
                 // Periodic first — rAthena fires the tick effect before

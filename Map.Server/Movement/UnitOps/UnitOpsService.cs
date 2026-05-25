@@ -493,6 +493,67 @@ public sealed class UnitOpsService : IUnitOpsService
     }
 
     /// <summary>
+    /// rAthena <c>unit_addshadowscar</c> (unit.cpp:4258). Appends a
+    /// Shadow Scar expiry tick to <see cref="Entity.ShadowScarTimers"/>;
+    /// caps at <see cref="Entity.MaxShadowScar"/>. Updates SC_SHADOW_SCAR
+    /// Val1 to the new count so combat consumers read live data. The
+    /// per-entry expiry is pruned lazily by
+    /// <c>StatusChangeService.Tick</c> via
+    /// <see cref="PruneExpiredShadowScars"/>.
+    /// </summary>
+    public void AddShadowScar(Entity bl, int intervalMs)
+    {
+        if (bl.ShadowScarTimers.Count >= Entity.MaxShadowScar)
+        {
+            _logger.LogWarning(
+                "unit_addshadowscar: entity {Id} hit MAX_SHADOW_SCAR ({Cap})",
+                bl.Id.Value, Entity.MaxShadowScar);
+            return;
+        }
+        bl.ShadowScarTimers.Add(Environment.TickCount64 + intervalMs);
+
+        // Mirror SC_SHADOW_SCAR.Val1 to the live count so consumers
+        // can read the magnitude through the normal sc.Val1 path.
+        var sc = _services?.GetService(typeof(Status.IStatusChangeService)) as Status.IStatusChangeService;
+        if (sc == null) return;
+        var existing = sc.Get(bl, Status.StatusType.ShadowScar);
+        if (existing != null)
+        {
+            existing.Val1 = bl.ShadowScarTimers.Count;
+        }
+        else
+        {
+            // INFINITE_TICK duration — the SC stays until the timer
+            // list empties (handled by PruneExpiredShadowScars).
+            sc.Start(bl, Status.StatusType.ShadowScar, val1: 1, val2: 0, val3: 0, val4: 0,
+                durationMs: int.MaxValue, source: bl);
+        }
+    }
+
+    /// <summary>
+    /// Sweep expired Shadow Scar timers off <paramref name="bl"/>;
+    /// called from the status-change tick. When the list goes empty
+    /// the SC is also ended.
+    /// </summary>
+    public static void PruneExpiredShadowScars(Entity bl, long nowTick,
+        Status.IStatusChangeService? sc)
+    {
+        if (bl.ShadowScarTimers.Count == 0) return;
+        bl.ShadowScarTimers.RemoveAll(expiry => expiry <= nowTick);
+        var live = bl.ShadowScarTimers.Count;
+        var existing = sc?.Get(bl, Status.StatusType.ShadowScar);
+        if (existing == null) return;
+        if (live == 0)
+        {
+            sc!.End(bl, Status.StatusType.ShadowScar);
+        }
+        else
+        {
+            existing.Val1 = live;
+        }
+    }
+
+    /// <summary>
     /// mapId → MapData lookup. Same hashed-name convention used by
     /// <see cref="Movement.MovementService.ResolveMap"/> and
     /// <see cref="Entities.IEntityRegistry"/>; replace with a proper

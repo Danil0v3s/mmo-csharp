@@ -346,6 +346,7 @@ public sealed class RecordingUnitOpsService : Map.Server.Movement.UnitOps.IUnitO
     public void Unattackable(Entity bl) { }
     public bool SkillCastCancel(Entity bl) => false;
     public void Refresh(Entity bl) { }
+    public void AddShadowScar(Entity bl, int intervalMs) { }
 }
 
 /// <summary>

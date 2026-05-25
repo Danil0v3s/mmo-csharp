@@ -63,6 +63,20 @@ public abstract class Entity
     public int Targeters { get; set; }
 
     /// <summary>
+    /// Wave 83 — rAthena <c>ud.shadow_scar_timer</c> (unit.cpp:4258).
+    /// Each entry is the <c>Environment.TickCount64</c> tick at which a
+    /// Sura Shadow Scar expires. Capped at <see cref="MaxShadowScar"/>;
+    /// `IUnitOpsService.AddShadowScar` pushes a new entry, and the
+    /// game-loop tick prunes expired ones. The list size IS the SC_SHADOW_SCAR
+    /// Val1 (number of active scars on the unit). Sura damage paths
+    /// (Knuckle Arrow / Earth Shaker / RAMPAGE family) read the count.
+    /// </summary>
+    public List<long> ShadowScarTimers { get; } = new();
+
+    /// <summary>rAthena MAX_SHADOW_SCAR (unit.cpp:44). Cap on simultaneous scars per unit.</summary>
+    public const int MaxShadowScar = 100;
+
+    /// <summary>
     /// Owner / master EntityId for summons (pets, homunculi, mercenaries,
     /// elementals, slave mobs). Null for free-roaming mobs and PCs.
     /// Read by <see cref="Mob.ISummonAiService"/>; set at summon spawn.
