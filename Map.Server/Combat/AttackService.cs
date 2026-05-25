@@ -46,6 +46,22 @@ public sealed class AttackService : IAttackService, IAttackStopper
         // / STUN / SLEEP all refuse the attack at unit.cpp:2615.
         if (!source.CanAct(_sc)) return false;
 
+        // Wave 71 / Track D — maintain rAthena unit_counttargeted by
+        // bumping the new target's Targeters and dropping the old.
+        // Same-target re-latch (Continuous refresh) is a no-op count
+        // delta — only bump when the latch genuinely moves.
+        var oldTargetId = source.Attack?.TargetId;
+        if (oldTargetId != null && oldTargetId.Value != targetId)
+        {
+            var oldTarget = _entities.Get(oldTargetId.Value);
+            if (oldTarget != null && oldTarget.Targeters > 0)
+                oldTarget.Targeters--;
+        }
+        if (oldTargetId == null || oldTargetId.Value != targetId)
+        {
+            target.Targeters++;
+        }
+
         source.Attack = new AttackState
         {
             TargetId = targetId,
@@ -58,7 +74,18 @@ public sealed class AttackService : IAttackService, IAttackStopper
         return true;
     }
 
-    public void StopAttack(Entity source) => source.Attack = null;
+    public void StopAttack(Entity source)
+    {
+        // Wave 71 / Track D — release the target's Targeters slot.
+        var oldTargetId = source.Attack?.TargetId;
+        if (oldTargetId != null)
+        {
+            var oldTarget = _entities.Get(oldTargetId.Value);
+            if (oldTarget != null && oldTarget.Targeters > 0)
+                oldTarget.Targeters--;
+        }
+        source.Attack = null;
+    }
 
     /// <summary>
     /// Wave 69 / Track B — push the entity's <see cref="AttackState.AttackableTick"/>

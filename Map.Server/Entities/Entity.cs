@@ -44,6 +44,19 @@ public abstract class Entity
     public long WalkableAfterTick { get; set; }
 
     /// <summary>
+    /// Wave 71 / Track D — rAthena <c>unit_counttargeted</c> (unit.cpp:1834).
+    /// Count of distinct entities currently latched onto this one as
+    /// their attack target. Incremented by
+    /// <c>IAttackService.StartAttack</c> when a fresh latch lands;
+    /// decremented by <c>StopAttack</c> and on death. Read by mob AI
+    /// (MSC_ATTACKPCGT condition) and the rude-attacked steal logic.
+    /// Mirrors the inverse map rAthena builds by walking the registry
+    /// — the C# port keeps the count on the target instead of scanning
+    /// every entity on every read.
+    /// </summary>
+    public int Targeters { get; set; }
+
+    /// <summary>
     /// Owner / master EntityId for summons (pets, homunculi, mercenaries,
     /// elementals, slave mobs). Null for free-roaming mobs and PCs.
     /// Read by <see cref="Mob.ISummonAiService"/>; set at summon spawn.

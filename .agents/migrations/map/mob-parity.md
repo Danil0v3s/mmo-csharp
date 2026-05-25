@@ -148,6 +148,39 @@ MSC_SPAWN precise tick (Wave 68, Track D). **Zero-⚠️ achieved.**
 
 ## History
 
+### 2026-05-25 — Wave 71 / Track D: explicit unit_counttargeted + warp subtype gate
+
+Cleanup pass on the two Track D items that were satisfied
+functionally by adjacent infrastructure but lacked the exact
+rAthena entry-point surface called out in the goal:
+
+1. **`unit_counttargeted` parity** — added `Entity.Targeters` int
+   counter mirroring rAthena `unit_counttargeted` (unit.cpp:1834).
+   `IAttackService.StartAttack` increments the new target and
+   decrements the old when the latch moves; `StopAttack` clears
+   the slot. Same-target re-latch is a no-op (matches rAthena's
+   `ud->target` pointer-equality check). The pre-existing
+   `MasterAttackedCondition` / `AttackerCountGreaterCondition`
+   readers stay on `DmgList`/`AttackerLog.DistinctAttackerCount`
+   for the rude-attacked semantic; `Entity.Targeters` is the new
+   "currently engaged" counter, which is the rAthena-canonical
+   `unit_counttargeted` semantic.
+
+2. **Warp subtype filter** — `MobWarpChaseService` (mob.cpp:1776)
+   now gates its candidate scan on `IsWalkableWarpSubtype` (accepts
+   `"warp"` and `"warp2"`, matches rAthena `nd->subtype == NPCTYPE_WARP`).
+   `WarpRegistration` already constrains the registry to warps, but
+   the explicit gate documents intent and guards against any future
+   `WarpRegistration` subtype that isn't a passable cell (event
+   teleport-banks, hidden-only warps).
+
+Tests: 6 new in `Wave71TargetersTests.cs` — single-attacker
+increment / decrement, same-target re-latch no-op, transfer on
+target switch, no-latch stop is no-op, multi-attacker accumulation.
+
+All 3,431 Map.Server tests + 87 Core.Server + 29 Login.Server pass.
+Both parity docs remain at zero ⚠️ / zero ❌.
+
 ### 2026-05-25 — Waves 66 + 68 / Tracks B + D: mob.cpp zero-⚠️ close-out
 
 Wave 66 (Track B): `MobAiService.Tick` now defers re-think when

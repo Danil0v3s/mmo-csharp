@@ -55,10 +55,18 @@ public sealed class MobWarpChaseService : IMobWarpChaseService
         // FromMap / ToMap. This mirrors EntityRegistry's name-to-id
         // convention so a future MapIndex layer flips both call sites
         // in one shot.
+        // Wave 71 / Track D — restrict candidates to NPC_WARP / NPC_WARP2
+        // subtypes only. rAthena's `mob_warpchase` walks `npc_warp_db`
+        // which by construction is the warp NPC subtype filter; our
+        // INpcRegistry.AllWarps() already returns only WarpRegistration
+        // rows, but the explicit Type gate documents intent and guards
+        // against any future WarpRegistration subtype that isn't
+        // actually a passable cell (e.g. event teleport-banks).
         WarpScripting? closest = null;
         int closestDist = int.MaxValue;
         foreach (var warp in _npcs.AllWarps())
         {
+            if (!IsWalkableWarpSubtype(warp.Type)) continue;
             if ((uint)warp.FromMap.GetHashCode() != mob.MapId) continue;
             if ((uint)warp.ToMap.GetHashCode() != target.MapId) continue;
             var dist = Math.Max(Math.Abs(warp.FromX - mob.X), Math.Abs(warp.FromY - mob.Y));
@@ -89,6 +97,15 @@ public sealed class MobWarpChaseService : IMobWarpChaseService
         }
         return WarpChaseResult.NotApplicable;
     }
+
+    /// <summary>
+    /// Wave 71 / Track D — rAthena <c>nd->subtype == NPCTYPE_WARP</c>
+    /// gate. "warp" and "warp2" both count (warp2 fires on hidden PCs
+    /// too but is otherwise identical for mob path-find purposes).
+    /// </summary>
+    private static bool IsWalkableWarpSubtype(string type) =>
+        string.Equals(type, "warp", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(type, "warp2", StringComparison.OrdinalIgnoreCase);
 
     private readonly record struct WarpScripting(short X, short Y);
 }
