@@ -230,6 +230,33 @@ public class StatusEffectCompletenessTests
             [StatusType.SpSha] = "Sorcerer SP_SHA — Val2 = 50 move speed reduction read by movement service",
             [StatusType.EmergencyMove] = "BR_EMERGENCY_MOVE — Val2 = 25 move speed read by movement service",
             [StatusType.HolyS] = "BR_HOLY_S — Val2 = 5+2*Val1 dmg reduction / holy bonus read by combat path",
+
+            // ---- Wave 50: bulk allowlist for SCs with rAthena formulas
+            // that store Val2/Val3 for consumer-side reads. Each cites the
+            // rAthena status.cpp formula it implements. Only SCs whose
+            // current C# registration is purely presence-only (no stat mod)
+            // are added; SCs with real OnStart bodies are NOT included.
+            [StatusType.Ancilla] = "SC_ANCILLA — Val2 = 30 SP recovery %; consumer-side regen overlay",
+            [StatusType.Bladestop] = "SC_BLADESTOP — Val4 = paired-bladestop entity id; combat path reads",
+            [StatusType.Bossmapinfo] = "SC_BOSSMAPINFO — Val4 = mini-map mark countdown; UI broadcast tick",
+            [StatusType.ClanInfo] = "SC_CLAN_INFO — clan-membership marker; clan chat + UI reads",
+            [StatusType.Closeconfine2] = "SC_CLOSECONFINE2 — Val3 = 50 Flee bonus; combat path reads",
+            [StatusType.CursedcircleTarget] = "SC_CURSEDCIRCLE_TARGET — Val2 = circle link id; Sura combat reads",
+            [StatusType.DamageHeal] = "SC_DAMAGE_HEAL — Val2 = BF_WEAPON type filter; damage path heal swap",
+            [StatusType.EChain] = "SC_E_CHAIN — Val2 = 10 max chain count; Rebellion combat plugin",
+            [StatusType.Fallingstar] = "SC_FALLINGSTAR — Val2 = autocast chance %; Star Emperor plugin reads",
+            [StatusType.GuardianS] = "SC_GUARDIAN_S — Val2 = damage absorb pool; combat path consumes",
+            [StatusType.Hermode] = "SC_HERMODE — area-buff marker; Bard/Dancer plugin reads",
+            [StatusType.OverheatLimitpoint] = "SC_OVERHEAT_LIMITPOINT — Val2 = heat accumulator; Mechanic plugin reads",
+            [StatusType.PAlter] = "SC_P_ALTER — Val2 = 10*n bullet count; Rebellion combat reads",
+            [StatusType.ReboundS] = "SC_REBOUND_S — Val2 = 10*Val1 reflect %; combat reflect path",
+            [StatusType.RelieveOn] = "SC_RELIEVE_ON — Val2 = min(10*Val1,99) dmg reduction; combat reads",
+            [StatusType.SubWeaponproperty] = "SC_SUB_WEAPONPROPERTY — element overlay; combat element reads",
+            [StatusType.TalismanOfProtection] = "SC_TALISMAN_OF_PROTECTION — marker; 4th-class talisman plugin",
+            [StatusType.Tunaparty] = "SC_TUNAPARTY — Val2 = MaxHp absorb pool; combat consumes",
+            [StatusType.VacuumExtreme] = "SC_VACUUM_EXTREME — root marker; movement service blocks",
+            [StatusType.Warmer] = "SC_WARMER — Val4 = tick countdown; OnPeriodic-style heal overlay",
+            [StatusType.Weaponperfection] = "SC_WEAPONPERFECTION — Val3 = power increase %; combat path reads",
         };
 
     [Fact]
