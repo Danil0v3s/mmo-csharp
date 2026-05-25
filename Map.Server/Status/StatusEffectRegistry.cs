@@ -2522,15 +2522,19 @@ public sealed class StatusEffectRegistry
         // Generator-synthesized stat-mod bodies would mutate unrelated
         // fields; defeat the upgrade so the SC stays presence-only.
 
-        // SC_PARALYSIS (Guillotine Cross) — val3 = +cast rate %.
-        // Generator: Def2 (wrong field).
-        Register(StatusType.Paralysis, PresenceMarker(
-            ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+        // Wave 57 — SC_PARALYSIS: -Val1 Def2 (matches status.yml CalcFlag);
+        // cast-rate slowdown still lives on SkillCastTimingService.
+        Register(StatusType.Paralysis, new StatusEffectHandler(
+            OnStart: (target, sc, _) => { target.Stats.Def2 = (short)Math.Max(0, target.Stats.Def2 - sc.Val1); },
+            OnEnd: (target, sc) => { target.Stats.Def2 = (short)Math.Min(short.MaxValue, target.Stats.Def2 + sc.Val1); },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
 
-        // SC_IZAYOI (Kagerou/Oboro) — halves variable cast time.
-        // Generator: +Val1 Batk (wrong field).
-        Register(StatusType.Izayoi, PresenceMarker(
-            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+        // Wave 57 — SC_IZAYOI: +Val1 Batk per CalcFlag; cast-time half
+        // still on SkillCastTimingService.
+        Register(StatusType.Izayoi, new StatusEffectHandler(
+            OnStart: (target, sc, _) => { target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1); },
+            OnEnd: (target, sc) => { target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1); },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // ---- (d) Weapon endow family: combat-marker overrides ----
         //
@@ -3303,8 +3307,32 @@ public sealed class StatusEffectRegistry
         // CC family — EntityActionGates.CanAct / CanCastSkill reads SC
         // presence; no Val* storage needed. Consumer:
         // Map.Server/Entities/EntityActionGates.cs.
-        Register(StatusType.Stone, PresenceMarker(ccDebuff));
-        Register(StatusType.Freeze, PresenceMarker(ccDebuff));
+        // Wave 57 — Stone/Freeze: -Val1 to Def+Mdef per CalcFlag (matches
+        // status.yml). CC gate semantic still on EntityActionGates.
+        Register(StatusType.Stone, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
+                target.Stats.Mdef = (short)Math.Max(0, target.Stats.Mdef - sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
+                target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val1);
+            },
+            Flags: ccDebuff));
+        Register(StatusType.Freeze, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
+                target.Stats.Mdef = (short)Math.Max(0, target.Stats.Mdef - sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
+                target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val1);
+            },
+            Flags: ccDebuff));
         Register(StatusType.Stun, PresenceMarker(ccDebuff));
         Register(StatusType.Sleep, PresenceMarker(ccDebuff));
         Register(StatusType.Silence, PresenceMarker(ccDebuff));
@@ -3792,7 +3820,10 @@ public sealed class StatusEffectRegistry
         // SC_HALLUCINATIONWALK_POSTDELAY — post-cast cooldown marker
         // for GC_HALLUCINATIONWALK. Consumer: SkillCastTimingService
         // checks SC presence before allowing re-cast.
-        Register(StatusType.HallucinationwalkPostdelay, PresenceMarker(gcDebuff));
+        Register(StatusType.HallucinationwalkPostdelay, new StatusEffectHandler(
+            OnStart: (target, sc, _) => { target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1); },
+            OnEnd: (target, sc) => { target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1); },
+            Flags: gcDebuff));
     }
 
     /// <summary>

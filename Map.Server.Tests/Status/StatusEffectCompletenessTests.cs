@@ -91,9 +91,9 @@ public class StatusEffectCompletenessTests
             // (Hiding +Val1 AspdRate; Cloaking +Val1 Cri+AspdRate). Visibility
             // hook semantics still live on the visibility service.
 
-            // ---- Cast-time markers (consumed by SkillCastTimingService.CastFixSc) ----
-            [StatusType.Paralysis] = "GC_PARALYSIS — val3=cast rate% read by SkillCastTimingService",
-            [StatusType.Izayoi]    = "Kagerou/Oboro — halves variable cast time, SkillCastTimingService",
+            // ---- Cast-time markers — Wave 57: real OnStart bodies
+            // applied (Paralysis: -Val1 Def2; Izayoi: +Val1 Batk).
+            // Cast-time semantics still on SkillCastTimingService.
 
             // ---- Weapon-element endow — Wave 53: real OnStart bodies
             // applied via EndowHandler; combat path still reads SC presence
@@ -118,9 +118,9 @@ public class StatusEffectCompletenessTests
             [StatusType.Nibelungen] = "BD_RINGNIBELUNGEN — val2 random ring effect type (status.cpp:10725-10727)",
             [StatusType.Siegfried]  = "BD_SIEGFRIED — val2 ele resist, val3 status ailment resist (status.cpp:10728-10731)",
 
-            // ---- NS-3 wave 5a Class A — CC family (presence-only gates) ----
-            [StatusType.Stone]   = "CC gate — EntityActionGates.CanAct reads SC presence (status.cpp:9320)",
-            [StatusType.Freeze]  = "CC gate — EntityActionGates.CanAct reads SC presence (status.cpp:9462)",
+            // ---- NS-3 wave 5a Class A — CC family — Wave 57: Stone+Freeze
+            // migrated to real OnStart (-Val1 Def/Mdef); CC gate semantic
+            // still on EntityActionGates.CanAct.
             [StatusType.Stun]    = "CC gate — EntityActionGates.CanAct reads SC presence (status.cpp:9412)",
             [StatusType.Sleep]   = "CC gate — EntityActionGates.CanAct reads SC presence (status.cpp:9442)",
             [StatusType.Silence] = "CC gate — EntityActionGates.CanCastSkill reads SC presence (status.cpp:9422)",
@@ -175,7 +175,7 @@ public class StatusEffectCompletenessTests
 
             // ---- NS-3 wave 5d — GC + SC + Genetic/Mechanic + WL + AB + WM + 4th-class ----
             // GC family — consumer Map.Server/Skills/SkillImpl/Thief/GuillotineCross*.cs
-            [StatusType.HallucinationwalkPostdelay] = "GC_HALLUCINATIONWALK postdelay marker — SkillCastTimingService re-cast gate",
+            // [StatusType.HallucinationwalkPostdelay] — Wave 57: real OnStart body migrated (-Val1 AspdRate)
             // [StatusType.Venombleed] — Wave 56: removed; OnPeriodic tick body satisfies the gate
             // [StatusType.Pyrexia] — Wave 56: removed; OnPeriodic tick body satisfies the gate
             // SC (Shadow Chaser) family — consumer ShadowChaser*.cs
@@ -383,10 +383,13 @@ public class StatusEffectCompletenessTests
         mob.Stats.Spl = 10; mob.Stats.Con = 10; mob.Stats.Crt = 10;
         mob.Stats.Hit = 100; mob.Stats.Flee = 100; mob.Stats.Cri = 100;
         mob.Stats.Def = 50; mob.Stats.Mdef = 25;
+        mob.Stats.Def2 = 30; mob.Stats.Mdef2 = 20; mob.Stats.Flee2 = 30;
+        mob.Stats.Hplus = 10; mob.Stats.Crate = 10;
         mob.Stats.Batk = 200;
+        mob.Stats.AspdRate = 50;  // Non-zero so debuff handlers see a mutation
         mob.Stats.Patk = 30; mob.Stats.Smatk = 30;
         mob.Stats.Res = 20; mob.Stats.Mres = 20;
-        mob.Stats.AspdRate = 0;
+        // mob.Stats.AspdRate left at 50 from above so debuff handlers see a mutation.
         mob.Stats.MaxHp = 1000; mob.Stats.Hp = 1000;
         mob.Stats.MaxSp = 200; mob.Stats.Sp = 200;
         return mob;
