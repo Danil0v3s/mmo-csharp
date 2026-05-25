@@ -31,11 +31,20 @@ public sealed class Convenio : SkillImpl
             return;
         }
 
+        // Wave 87 — party_isleader gate now wired through IPartyService.
+        // Conservatively allow the cast when the cache is empty (hydrate-
+        // on-demand may not have populated for a freshly-logged-in caster);
+        // strict-fail when the cache shows a party and the caster isn't
+        // the leader.
+        if (ctx.Party != null && ctx.Party.Get(caster.PartyId) != null && !ctx.Party.IsLeader(caster))
+        {
+            ctx.Client?.BroadcastSkillFail(caster, SkillId,
+                Core.Server.Packets.Out.ZC.SkillFailCause.NeedHelpers);
+            return;
+        }
+
         // rAthena AB_CONVENIO: walk every same-map party member and
-        // warp them to the caster's cell. Party-leader gate is
-        // deferred — the char-server holds the leader flag and
-        // doesn't surface it on PlayerEntity yet; first-slice runs
-        // for any party member with this skill.
+        // warp them to the caster's cell.
         var teleported = 0;
         var dstX = caster.X;
         var dstY = caster.Y;

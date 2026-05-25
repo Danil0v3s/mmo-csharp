@@ -44,6 +44,7 @@ public sealed class SkillCastService : ISkillCastService
     // P0 plumbing — every cross-cutting helper a per-skill plugin
     // may need, threaded into SkillBehaviorContext.
     private readonly Map.Server.Party.IPartyMapService? _partyMap;
+    private readonly Map.Server.Party.IPartyService? _party;
     private readonly IPlayerSkillService? _playerSkill;
     private readonly Map.Server.Status.IPlayerOrbService? _orbs;
     private readonly Map.Server.Inventory.IEquipService? _equip;
@@ -92,6 +93,7 @@ public sealed class SkillCastService : ISkillCastService
         IDamageService? damage = null,
         ISkillClientService? client = null,
         Map.Server.Party.IPartyMapService? partyMap = null,
+        Map.Server.Party.IPartyService? party = null,
         IPlayerSkillService? playerSkill = null,
         Map.Server.Status.IPlayerOrbService? orbs = null,
         Map.Server.Inventory.IEquipService? equip = null,
@@ -133,6 +135,7 @@ public sealed class SkillCastService : ISkillCastService
         _damage = damage;
         _client = client;
         _partyMap = partyMap;
+        _party = party;
         _playerSkill = playerSkill;
         _orbs = orbs;
         _equip = equip;
@@ -385,7 +388,7 @@ public sealed class SkillCastService : ISkillCastService
             var plugin = _behaviors.Get(skillId);
             if (plugin != null)
             {
-                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions, _maps, _mapFlags, _options, _paths, _steal, _death, _statusOps, _skillUnits, _elemental, this, _buyingStore, _petOps, _homunculus, _requirements, _itemGroups, _catalog, _drops, _production, _recipes, _abra, _inventory);
+                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _party, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions, _maps, _mapFlags, _options, _paths, _steal, _death, _statusOps, _skillUnits, _elemental, this, _buyingStore, _petOps, _homunculus, _requirements, _itemGroups, _catalog, _drops, _production, _recipes, _abra, _inventory);
                 plugin.CastendPos2(source, x, y, skillLevel, ctx);
                 return true;
             }
@@ -417,7 +420,7 @@ public sealed class SkillCastService : ISkillCastService
             var plugin = _behaviors.Get(skillId);
             if (plugin != null)
             {
-                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions, _maps, _mapFlags, _options, _paths, _steal, _death, _statusOps, _skillUnits, _elemental, this, _buyingStore, _petOps, _homunculus, _requirements, _itemGroups, _catalog, _drops, _production, _recipes, _abra, _inventory);
+                var ctx = new Behaviors.SkillBehaviorContext(_entities, _damage, _battleCalc, _sc, _client, _partyMap, _party, _playerSkill, _orbs, _equip, _unitOps, _setpos, _mobSpawn, _mobOps, _skillAttack, _sideEffect, _sessions, _maps, _mapFlags, _options, _paths, _steal, _death, _statusOps, _skillUnits, _elemental, this, _buyingStore, _petOps, _homunculus, _requirements, _itemGroups, _catalog, _drops, _production, _recipes, _abra, _inventory);
                 if (def.DamageKind == SkillDamageKind.None)
                     plugin.CastendNoDamageId(source, target, skillLevel, ctx);
                 else

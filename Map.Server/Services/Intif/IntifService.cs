@@ -28,6 +28,9 @@ public sealed class IntifService : IIntifService
     private readonly Map.Server.Homunculus.IHomunculusService? _homunService;
     private readonly Map.Server.Mercenary.IMercenaryService? _mercService;
     private readonly Map.Server.Elemental.IElementalService? _elemService;
+    private readonly ICharServerIpcServiceParty? _partyIpc;
+    private readonly Map.Server.Party.IPartyService? _partyService;
+    private readonly Map.Server.World.IMapWorldRegistry? _world;
     public IntifService(ILogger<IntifService> logger,
         ICharServerIpcServiceMail? mailIpc = null,
         ICharServerIpcServiceQuest? questIpc = null,
@@ -38,12 +41,15 @@ public sealed class IntifService : IIntifService
         ICharServerIpcServiceStorage? storageIpc = null,
         ICharServerIpcServiceAuction? auctionIpc = null,
         ICharServerIpcServiceMapreg? mapregIpc = null,
+        ICharServerIpcServiceParty? partyIpc = null,
         Map.Server.Quest.IQuestService? questService = null,
         Map.Server.Achievement.IAchievementService? achievementService = null,
         Map.Server.Pet.IPetService? petService = null,
         Map.Server.Homunculus.IHomunculusService? homunService = null,
         Map.Server.Mercenary.IMercenaryService? mercService = null,
-        Map.Server.Elemental.IElementalService? elemService = null)
+        Map.Server.Elemental.IElementalService? elemService = null,
+        Map.Server.Party.IPartyService? partyService = null,
+        Map.Server.World.IMapWorldRegistry? world = null)
     {
         _logger = logger;
         _mailIpc = mailIpc;
@@ -55,12 +61,15 @@ public sealed class IntifService : IIntifService
         _storageIpc = storageIpc;
         _auctionIpc = auctionIpc;
         _mapregIpc = mapregIpc;
+        _partyIpc = partyIpc;
         _questService = questService;
         _achievementService = achievementService;
         _petService = petService;
         _homunService = homunService;
         _mercService = mercService;
         _elemService = elemService;
+        _partyService = partyService;
+        _world = world;
     }
 
     public int RequestChatName(int charId) => 0;
@@ -73,15 +82,94 @@ public sealed class IntifService : IIntifService
     public int SaveRegistry(PlayerEntity pc) => 0;
     public int RequestRegistry(PlayerEntity pc, byte flag) => 0;
 
-    public int CreateParty(PlayerEntity pc, string name, byte item, byte itemDiv) => 0;
-    public int RequestPartyInfo(int partyId, int charId) => 0;
-    public int AddPartyMember(int partyId, PlayerEntity pc) => 0;
-    public int ChangePartyLeader(int partyId, int accountId, int charId) => 0;
-    public int PartyChangeOption(int partyId, int accountId, int exp, int item, int flag) => 0;
-    public int LeaveParty(int partyId, int accountId, int charId) => 0;
-    public int PartyChangemap(PlayerEntity pc, bool online) => 0;
-    public int BreakParty(int partyId) => 0;
-    public int PartyMessage(int partyId, int accountId, string text) => 0;
+    /// <summary>Wave 87 — rAthena <c>intif_create_party</c>. Dispatches typed PartyCreate RPC.</summary>
+    public int CreateParty(PlayerEntity pc, string name, byte item, byte itemDiv)
+    {
+        if (_partyIpc == null) return 0;
+        _ = _partyIpc.PartyCreateAsync(name ?? string.Empty, item, itemDiv,
+            pc.AccountId, pc.CharacterId, pc.Name ?? string.Empty,
+            pc.ClassId, ResolveMapName(pc.MapId), (uint)pc.Level);
+        return 1;
+    }
+
+    /// <summary>Wave 87 — rAthena <c>intif_request_partyinfo</c>. Async pull → hydrates map-side cache.</summary>
+    public int RequestPartyInfo(int partyId, int charId)
+    {
+        if (_partyService == null) return 0;
+        _partyService.Hydrate(partyId, charId);
+        return 1;
+    }
+
+    /// <summary>Wave 87 — rAthena <c>intif_party_addmember</c>.</summary>
+    public int AddPartyMember(int partyId, PlayerEntity pc)
+    {
+        if (_partyIpc == null) return 0;
+        _ = _partyIpc.PartyAddMemberAsync(partyId, pc.AccountId, pc.CharacterId,
+            pc.Name ?? string.Empty, pc.ClassId, ResolveMapName(pc.MapId), (uint)pc.Level);
+        return 1;
+    }
+
+    /// <summary>Wave 87 — rAthena <c>intif_party_leaderchange</c>.</summary>
+    public int ChangePartyLeader(int partyId, int accountId, int charId)
+    {
+        if (_partyIpc == null) return 0;
+        _ = _partyIpc.PartyLeaderChangeAsync(partyId, accountId, charId);
+        return 1;
+    }
+
+    /// <summary>Wave 87 — rAthena <c>intif_party_changeoption</c>.</summary>
+    public int PartyChangeOption(int partyId, int accountId, int exp, int item, int flag)
+    {
+        if (_partyIpc == null) return 0;
+        _ = _partyIpc.PartyChangeOptionAsync(partyId, accountId, exp, item);
+        return 1;
+    }
+
+    /// <summary>Wave 87 — rAthena <c>intif_party_leave</c>. Covers party_removemember / removemember2 / leave.</summary>
+    public int LeaveParty(int partyId, int accountId, int charId)
+    {
+        if (_partyIpc == null) return 0;
+        _ = _partyIpc.PartyLeaveAsync(partyId, accountId, charId, string.Empty, 0);
+        return 1;
+    }
+
+    /// <summary>Wave 87 — rAthena <c>intif_party_changemap</c>. Updates cache then dispatches RPC.</summary>
+    public int PartyChangemap(PlayerEntity pc, bool online)
+    {
+        if (pc.PartyId <= 0) return 0;
+        var mapName = ResolveMapName(pc.MapId);
+        _partyService?.UpdateMemberMap(pc.PartyId, pc.CharacterId, mapName, (uint)pc.Level, online);
+        if (_partyIpc == null) return 0;
+        _ = _partyIpc.PartyChangeMapAsync(pc.PartyId, pc.AccountId, pc.CharacterId, online, (uint)pc.Level, mapName);
+        return 1;
+    }
+
+    /// <summary>Wave 87 — rAthena <c>intif_break_party</c>. Pre-drops cached entry.</summary>
+    public int BreakParty(int partyId)
+    {
+        _partyService?.Forget(partyId);
+        if (_partyIpc == null) return 0;
+        _ = _partyIpc.PartyBreakAsync(partyId);
+        return 1;
+    }
+
+    /// <summary>Wave 87 — rAthena <c>intif_party_message</c>. PartyChatHandler drives this too.</summary>
+    public int PartyMessage(int partyId, int accountId, string text)
+    {
+        if (_partyIpc == null) return 0;
+        _ = _partyIpc.PartyMessageAsync(partyId, accountId, text ?? string.Empty);
+        return 1;
+    }
+
+    private string ResolveMapName(uint mapId)
+    {
+        if (_world == null) return string.Empty;
+        foreach (var m in _world.All)
+        {
+            if ((uint)m.Name.GetHashCode() == mapId) return m.Name;
+        }
+        return string.Empty;
+    }
 
     public bool GuildCreate(string name, PlayerEntity master) => false;
     public int GuildRequestInfo(int guildId) => 0;

@@ -77,6 +77,11 @@ public sealed record SkillBehaviorContext(
     IStatusChangeService? Sc,
     ISkillClientService? Client = null,
     IPartyMapService? PartyMap = null,
+    /// <summary>Wave 87 — party-cache facade (party_search / party_isleader /
+    /// party_skill_check / party_send_levelup). Consumed by leader-gated
+    /// skills (AB_CONVENIO) and trigger-class-gated passives (TK_COUNTER,
+    /// MO_COMBOFINISH, AM_TWILIGHT2/3).</summary>
+    IPartyService? Party = null,
     IPlayerSkillService? PlayerSkill = null,
     Map.Server.Status.IPlayerOrbService? Orbs = null,
     IEquipService? Equip = null,
