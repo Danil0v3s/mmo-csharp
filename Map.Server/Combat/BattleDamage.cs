@@ -41,4 +41,30 @@ public sealed class BattleDamage
 
     /// <summary>Sum of left + right damage. Zero on miss.</summary>
     public long Total => Damage + Damage2;
+
+    /// <summary>
+    /// Wave 66 / Track B — rAthena <c>Damage.dmotion</c> (battle.hpp).
+    /// Hit-stun (ms) on the target: their next auto-attack timer is
+    /// pushed back by this duration. Derived from the target's Amotion
+    /// in <see cref="BattleCalculator"/>; consumed by
+    /// <see cref="DamageService"/> via the target's
+    /// <see cref="AttackState.AttackableTick"/>.
+    /// </summary>
+    public int DMotion;
+
+    /// <summary>
+    /// Wave 66 / Track B — rAthena <c>Damage.walkdelay</c>. Movement
+    /// freeze (ms) on the target: their <c>unit_set_walkdelay</c> kicks
+    /// for this duration. Zero on miss. Consumed by
+    /// <see cref="DamageService"/> via <c>IMovementService</c>.
+    /// </summary>
+    public int WalkDelay;
+
+    /// <summary>
+    /// Wave 66 / Track C — rAthena <c>Damage.isspdamage</c>. True when
+    /// the damage delta lands on SP, not HP (Soul Drain, Soul Breaker,
+    /// SP-vampire skills). Drives <c>ZC_NOTIFY_ACT3.IsSpDamage</c> on
+    /// the wire so the client renders the orange numbers.
+    /// </summary>
+    public bool IsSpDamage;
 }

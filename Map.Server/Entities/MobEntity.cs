@@ -63,6 +63,14 @@ public class MobEntity : Entity
     public long NextWanderTick { get; set; }
 
     /// <summary>
+    /// Wave 68 / Track D — rAthena <c>md-&gt;spawn_timer</c> origin
+    /// tick (mob.cpp:1525). Stamped on registry insert; consumed by
+    /// MSC_SPAWN to compare against a 1-tick "fresh spawn" window.
+    /// Zero before the mob is registered.
+    /// </summary>
+    public long SpawnedAtTick { get; set; }
+
+    /// <summary>
     /// rAthena <c>md-&gt;state.attacked_count</c> (mob.cpp:1748). Incremented
     /// every time the mob takes damage from an attacker it can't reach
     /// (out of range / pathing-blocked). Once it crosses

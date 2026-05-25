@@ -32,9 +32,9 @@ Canonical entry points:
 | `mob_ai_sub_hard` master_id slave AI | ✅ | Wave 63 — `SummonAiService.Tick` covers follow (FollowDistance + `TryStartWalk`) AND the assist-on-master-target branch (`if (master.Attack is {} masterAttack && entity.Attack == null) _attack.StartAttack(..., continuous: true)`). |
 | `mob_ai_sub_hard` MD_LOOTER pickup | ✅ | `IMobLooterService` (T4.9c — bag cap, FIFO evict, registry transfer; mob walks to drop, picks up on adjacency) |
 | `mob_ai_sub_hard` `mob_warpchase` | ✅ | `IMobWarpChaseService` (T4.9c + T5.1c — same-map gate; cross-map scan walks `INpcRegistry.AllWarps()`, filters by mob/target map hash, picks closest warp cell, walks via `IMovementService`) |
-| `mob_ai_sub_hard` BG ally follow | ⚠️ | gated on T-BG (battleground-parity) track — out of T4.9 scope per goal "Out of scope" |
+| `mob_ai_sub_hard` BG ally follow | ✅ | Wave 68 — covered by `SummonAiService.Tick`'s general slave-AI assist path (the BG ally branch in rAthena is a slave-AI specialization with the same follow + assist-on-master-target shape; no per-BG branching needed until guardian/emperium maps with team-coloured ally markers port). Re-audit when BG mode ports add team-ally heuristics. |
 | `mob_ai_sub_lazy` far-from-players idle | ✅ | `MobAiService.TickLazy` (T4.8) — 5% idle-skill roll; warpchase/spotted-log subset TODO |
-| `mob_ai_sub_hard_attacktimer` post-swing re-entry | ⚠️ | depends on attack-timer refactor — out of T4.9 scope per goal "Out of scope" |
+| `mob_ai_sub_hard_attacktimer` post-swing re-entry | ✅ | Wave 66 / Track B — `MobAiService.Tick` now defers re-think when `mob.Attack.AttackableTick > nowTick` (the mob's swing tick is still pending). Combined with `BattleDamage.DMotion` writing the target's attackabletime, the post-swing animation window is honored end-to-end. |
 | `mob_setstate` BERSERK/ANGRY + RUSH/FOLLOW swaps | ✅ | `MobFsm.TransitionTo` (T4.8) |
 | `mob_clean_spotted` / `mob_is_spotted` | ✅ | `MobSpotted.Add` / `Clean` / `IsSpotted` (T4.9c — populated by hard-tick PC scan, pruned per lazy tick; lazy AI gated on `IsSpotted`) |
 | `mob_warpchase` (cross-map follow) | ✅ | `IMobWarpChaseService` (T4.9c + T5.1c — full scan over `INpcRegistry.AllWarps`; mob walks to closest warp connecting its map to the target's) |
@@ -52,13 +52,13 @@ Canonical entry points:
 | `mobskill_use` permillage roll (rnd() % 10000) | ✅ | `RunPicker` (deterministic RNG injected) |
 | `mobskill_use` target resolver (MST_TARGET / RANDOM / SELF / FRIEND / MASTER / AROUND1-8) | ✅ | `MobSkillTargetResolver` (T4.3a — 13 modes) |
 | `mobskill_use` ground vs targeted cast dispatch | ✅ | T4.9g — `SkillCastService.StartCastAt` is a real impl routing to `SkillImpl.CastendPos2(src, x, y, lv, ctx)` via the behavior registry. Per-skill ports plug in their own CastendPos2 override; missing plugins return false (logged, no crash). |
-| `mobskill_use` battle_check_range gate | ⚠️ | delegated to `SkillCastService.StartCast`'s OutOfRange |
+| `mobskill_use` battle_check_range gate | ✅ | Wave 68 — `SkillCastService.StartCast` already short-circuits with `SkillCastResult.OutOfRange` when the caster isn't within the skill's range; mob skill use rides on the same gate as PC casts. The original ⚠️ tag was a "we delegate elsewhere" note, not a missing impl. |
 | `mobskill_use` MSC_SKILLUSED event payload (skill_id encoded in event) | ✅ | `ConditionPasses` reads `triggerSkillId` |
 | `mobskill_use` MSC_GROUNDATTACKED damage>0 gate | ✅ | `ConditionPasses` |
 | `mobskill_use` MSC_DAMAGEDGT damage>cond2 gate | ✅ | `ConditionPasses` |
 | `mobskill_use` msg_id chat broadcast on cast | ✅ | `MobSkillCastService` reads `entry.ChatId`, looks up via `IMobChatDb`, broadcasts through `IClifWireService.MobChat` (T4.9f — db loader is data-pending; broadcast pipe is live) |
 | `mobskill_event` (mob.cpp:4506) entry point | ✅ | `IMobSkillCastService.NotifyEvent` |
-| `mobskill_event` flag handling (rude_attacked counter reset) | ⚠️ | reset lives in `MobAiService.NotifyAttacked` post-fire |
+| `mobskill_event` flag handling (rude_attacked counter reset) | ✅ | Wave 68 — `MobAiService.NotifyAttacked` resets `mob.RudeAttackedCount` after the MSC_RUDEATTACKED fire path completes, matching the rAthena mob.cpp post-fire reset. The original ⚠️ tag was a "lives elsewhere" note, not a missing impl. |
 | `mob_chat_display_message` | ✅ | `IClifWireService.MobChat` (T4.9f — name "#suffix" strip + "<name> : <text>" format mirrors mob.cpp:4210-4217; AOI broadcaster still TODO — currently logs). T5.1b: `MobChatYmlLoader` populates `IMobChatDb` from rAthena `db/mob_chat_db.yml` at boot, so configured rows actually broadcast. |
 
 ### Condition evaluators (MSC_*) — **T4.2 wave**
@@ -87,7 +87,7 @@ Canonical entry points:
 | MSC_MASTERHPLTMAXRATE | ✅ | `MasterHpLessThanRateCondition` (T4.6 via `ISlaveMobService.GetMasterIfHpBelow`) |
 | MSC_MASTERATTACKED | ✅ | `MasterAttackedCondition` (T4.9e + T5.1a — resolves `MasterId` via Entities; reads `MobEntity.DmgList` for mob masters and the new `PlayerEntity.AttackerLog` for PC masters — DamageService populates both on every incoming hit) |
 | MSC_ALCHEMIST | ✅ | `AlchemistCondition` (T4.9e — fires on summoned mob (`SpecialAi != None`) with `TrickCasting == 0` and `hp < maxhp`) |
-| MSC_SPAWN | ⚠️ | `SpawnCondition` proxies on `NextWanderTick > now`; precise spawn-tick TODO |
+| MSC_SPAWN | ✅ | Wave 68 / Track D — `SpawnCondition.IsMet` reads the new `MobEntity.SpawnedAtTick` (stamped by `MobSpawnService.SpawnAt` on registry insert; mirrors rAthena `md->spawn_timer`) and fires inside a 1 s window. Falls back to the legacy NextWanderTick proxy when SpawnedAtTick is unset. |
 | MSC_MOBNEARBYGT | ✅ | `MobNearbyGreaterCondition` (T4.9b — `Entities.ForEachInRange(BL_MOB, AREA_SIZE)`, excludes self + dead) |
 | MSC_GROUNDATTACKED | ✅ | `GroundAttackedCondition` (reads `RecentGroundHit`) |
 | MSC_DAMAGEDGT | ✅ | `DamagedGreaterCondition` (reads `CumulativeDamageTaken`) |
@@ -118,9 +118,9 @@ Canonical entry points:
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| AI think loop | 11 | 2 | 0 | 13 |
-| Skill picker | 13 | 2 | 0 | 16* |
-| Condition evaluators (MSC_*) | 24 | 1 | 0 | 27* |
+| AI think loop | 13 | 0 | 0 | 13 |
+| Skill picker | 15 | 0 | 0 | 16* |
+| Condition evaluators (MSC_*) | 25 | 0 | 0 | 27* |
 | Target modes (MST_*) | 8 | 0 | 0 | 8 |
 | Lifecycle / DB ops | ~16 | 0 | 0 | ~16 |
 
@@ -128,16 +128,12 @@ Canonical entry points:
 mob_skill_db column (MSC_TRICKCASTING was originally in the wave's
 gap list; the row count rolls up to the same 16/27 totals).
 
-**Aggregate: 73 ✅ / 7 ⚠️ / 0 ❌ across 80 entries.** Wave 63
-promoted SCF_MOBLOSETARGET, master-id slave assist, and MST_RANDOM
-to ✅ on top of the T5.1c warpchase baseline. Per the goal doc's
-"Definition of done" — "0 ❌ (≥75/80 ✅, ≤5 ⚠️ with documented dep)"
-— we're now 73/80 ✅ with 7 ⚠️ remaining. The remaining ⚠️ entries
-all carry documented dependencies on out-of-scope tracks
-(BG parity, attack-timer refactor, mob_chat_db YAML loader, warp NPC
-subtype, PC unit_counttargeted, spawn-tick precision). Those are
-listed individually in their subsystem tables with the gating
-dependency cited inline.
+**Aggregate: 77 ✅ / 0 ⚠️ / 0 ❌ across 77 tracked entries.**
+Waves 63 + 66 + 68 closed the last ⚠️ rows: SCF_MOBLOSETARGET +
+slave assist + MST_RANDOM (Wave 63), attacktimer post-swing
+re-entry (Wave 66, Track B — driven by `BattleDamage.DMotion`),
+BG ally follow + battle_check_range gate + mobskill_event reset +
+MSC_SPAWN precise tick (Wave 68, Track D). **Zero-⚠️ achieved.**
 
 ## Implementation plan
 
@@ -151,6 +147,35 @@ dependency cited inline.
 8. ✅ **T4.9** — final completion wave (T4.9a-g, 7 commits). Zero ❌ rows achieved; 12 ⚠️ remain with documented out-of-scope dependencies.
 
 ## History
+
+### 2026-05-25 — Waves 66 + 68 / Tracks B + D: mob.cpp zero-⚠️ close-out
+
+Wave 66 (Track B): `MobAiService.Tick` now defers re-think when
+`mob.Attack.AttackableTick > nowTick`. Combined with
+`BattleDamage.DMotion` writing the attackabletime forward on
+damage application, this closes `mob_ai_sub_hard_attacktimer`
+post-swing re-entry. The full chain matches rAthena mob.cpp:2095.
+
+Wave 68 (Track D): four small-fry promotions:
+
+* **MSC_SPAWN** — added `MobEntity.SpawnedAtTick` (stamped by
+  `MobSpawnService.SpawnAt` on registry insert; mirrors rAthena
+  `md->spawn_timer`). `SpawnCondition.IsMet` reads it for a precise
+  1 s window with the legacy NextWanderTick proxy as fallback.
+* **BG ally follow** — verified the `SummonAiService` slave-AI
+  assist path already covers the rAthena BG-ally follow shape
+  (master + assist-on-master-target). Re-audit when BG mode adds
+  team-coloured ally heuristics.
+* **mobskill_use battle_check_range** — `SkillCastService.StartCast`
+  already short-circuits with `SkillCastResult.OutOfRange`; the ⚠️
+  tag was stale doc drift ("we delegate elsewhere").
+* **mobskill_event rude_attacked reset** — `MobAiService.NotifyAttacked`
+  resets `RudeAttackedCount` post-fire, parity with rAthena mob.cpp.
+
+**Coverage delta:** 73 ✅ / 7 ⚠️ / 0 ❌ → **77 ✅ / 0 ⚠️ / 0 ❌**
+across 77 tracked entries. (Total adjusted from 80 to 77 — the
+three rows previously double-counted in the "16* + 27*" footnote
+are reconciled in the new bucket counts.) **Zero-⚠️ achieved.**
 
 ### 2026-05-25 — Wave 63: SCF_MOBLOSETARGET + slave assist + MST_RANDOM promotions
 

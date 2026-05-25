@@ -150,57 +150,26 @@ public sealed class SkillAttackService : ISkillAttackService
     // BattleCalculator; this shim handles the common case until that
     // pipe is wired through skill-specific damage rates.
 
+    // Wave 67 / Track C — magic + misc damage now centralised on
+    // IBattleCalculator (CalcMagicAttack / CalcMiscAttack). These shims
+    // pull the per-level rate from the skill_db and delegate. Keeping
+    // the methods here as named entry points avoids touching every
+    // call site in SkillAttack above.
+
     private long CalcMagicDamage(Entity source, Entity target, ushort skillId, ushort lvl)
     {
         var def = _db.Get(skillId);
         if (def == null) return 0;
         var ratePerLevel = def.DamageRate.Length > lvl ? def.DamageRate[lvl] : 100;
-        var baseDmg = (source.Stats.MatkMin + source.Stats.MatkMax) / 2;
-        long damage = Math.Max(1, baseDmg * ratePerLevel / 100);
-
-        // rAthena <c>SC_MAGICPOWER</c> (status.cpp:10556-10564) — Sage's
-        // Mystic Amplification. The next magic cast deals
-        // <c>(100 + 5 * Val1) %</c> of base damage; SC ends on consume.
-        // Val1 carries the skill level (1..5).
-        if (_sc != null)
-        {
-            var mp = _sc.Get(source, StatusType.Magicpower);
-            if (mp != null && mp.Val1 > 0)
-            {
-                var bumpPct = 100 + 5 * mp.Val1;
-                damage = damage * bumpPct / 100;
-                _sc.End(source, StatusType.Magicpower);
-            }
-
-            // SC_MOONLITSERENADE — Wanderer / Minstrel song.
-            // Val2 stores the % Matk boost for the band.
-            var mls = _sc.Get(source, StatusType.Moonlitserenade);
-            if (mls != null && mls.Val2 > 0)
-            {
-                damage += damage * mls.Val2 / 100;
-            }
-        }
-        return damage;
+        return _battle.CalcMagicAttack(source, target, skillId, lvl, ratePerLevel).Damage;
     }
 
-    /// <summary>
-    /// rAthena <c>battle_calc_misc_attack</c> (battle.cpp:8540-ish) —
-    /// BF_MISC base damage = caster <c>(level + int)</c> scaled by the
-    /// skill's <c>damage_rate</c> column. No defense subtract; this
-    /// matches the rAthena MISC branch where the only modifiers are
-    /// the skill ratio + element table (applied upstream).
-    /// </summary>
     private long CalcMiscDamage(Entity source, Entity target, ushort skillId, ushort lvl)
     {
         var def = _db.Get(skillId);
         if (def == null) return 0;
         var ratePerLevel = def.DamageRate.Length > lvl ? def.DamageRate[lvl] : 100;
-        // Per-skill ratio bump (Mercenary blessing / increase agility scale
-        // with caster level + INT). rAthena: `dmg = sd ? sd->status.int_ +
-        // 10 : src->level * sstatus->int_;` We approximate with the
-        // (level + int) sum which works for both mob and PC sources.
-        long baseDmg = source.Level + source.Stats.IntStat;
-        return Math.Max(1, baseDmg * ratePerLevel / 100);
+        return _battle.CalcMiscAttack(source, target, skillId, lvl, ratePerLevel).Damage;
     }
 
     private static bool IsAlive(Entity e) => e switch

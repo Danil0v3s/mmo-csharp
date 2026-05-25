@@ -147,6 +147,19 @@ public sealed class MobAiService : IMobAiService
                 continue;
             }
 
+            // Wave 66 / Track B — mob_ai_sub_hard_attacktimer post-swing
+            // re-entry (mob.cpp:2095). After a mob swings, its
+            // AttackState.AttackableTick gets pushed forward by adelay,
+            // and the next re-think is gated on that — the mob doesn't
+            // re-pick a target / wander while still in mid-swing.
+            // Pre-Wave-66 this gate lived only inside AttackService.Tick;
+            // pulling it into MobAiService.Tick prevents stale target
+            // re-evaluation during the swing's amotion window.
+            if (mob.Attack != null && mob.Attack.AttackableTick > nowTick)
+            {
+                continue;
+            }
+
             // Validate existing target — drop it if it's gone or unreachable.
             if (mob.Attack != null)
             {

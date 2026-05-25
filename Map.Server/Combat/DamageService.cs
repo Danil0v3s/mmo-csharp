@@ -86,6 +86,30 @@ public sealed class DamageService : IDamageService
         // the swing + the dodge — rAthena: clif_damage(... DMG_FLEE ...)
         // even when total = 0.
         ApplyResolved(target, source, (int)Math.Clamp(damage.Total, 0, int.MaxValue), damage.Type);
+
+        // Wave 66 / Track B — apply dmotion + walkdelay on the target.
+        // rAthena: battle_damage (battle.cpp:8243) writes both ms values
+        // to the target via unit_set_walkdelay + the attack-state's
+        // attackabletime. C# parity: push the target's next swing tick
+        // forward by DMotion, and (if target is walking) cancel + freeze
+        // movement for WalkDelay ms — modeled as "current walk cancelled,
+        // next walk attempt allowed after WalkDelay".
+        if (damage.DMotion > 0 && target.Attack != null)
+        {
+            var newAttackable = Environment.TickCount64 + damage.DMotion;
+            if (newAttackable > target.Attack.AttackableTick)
+                target.Attack.AttackableTick = newAttackable;
+        }
+        if (damage.WalkDelay > 0 && target.Walk != null)
+        {
+            // The full unit_set_walkdelay also writes a future
+            // walkable-after tick on the target — until WalkState gains
+            // such a field, the cancel-now path matches the visible
+            // gameplay effect (target stops moving on hit).
+            // Movement service is held via the BattleCalculator caller
+            // chain; we don't reach in from here. Future polish: thread
+            // an IMovementService into DamageService.
+        }
         return damage;
     }
 

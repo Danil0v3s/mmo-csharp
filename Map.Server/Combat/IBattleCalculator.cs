@@ -20,4 +20,27 @@ public interface IBattleCalculator
     /// <c>battle_calc_weapon_attack(src, target, 0, 0, BDMG_NONE)</c>.
     /// </summary>
     BattleDamage CalcWeaponAttack(Entity source, Entity target);
+
+    /// <summary>
+    /// Wave 67 / Track C — rAthena <c>battle_calc_magic_attack</c>
+    /// (battle.cpp:battle_calc_magic_attack). Centralises BF_MAGIC
+    /// damage through the same pipeline as weapon attacks:
+    ///   base = (MatkMin + MatkMax)/2 + skill_amp
+    ///   - apply SC_MAGICPOWER / SC_MOONLITSERENADE caster bumps
+    ///   - vs element table (defense element + level)
+    ///   - vs MDEF1 (flat) + MDEF2 (% bypass)
+    ///   - card_fix with BattleAttackType.Magic
+    /// <paramref name="ratePerLevel"/> = skill_db DamageRate column.
+    /// </summary>
+    BattleDamage CalcMagicAttack(Entity source, Entity target, ushort skillId, ushort skillLevel, int ratePerLevel);
+
+    /// <summary>
+    /// Wave 67 / Track C — rAthena <c>battle_calc_misc_attack</c>
+    /// (battle.cpp:8540). Centralises BF_MISC damage:
+    ///   base = src.Level + src.Int
+    ///   - element table applied (no def subtract per rAthena)
+    ///   - scaled by skill DamageRate
+    ///   - card_fix with BattleAttackType.Misc
+    /// </summary>
+    BattleDamage CalcMiscAttack(Entity source, Entity target, ushort skillId, ushort skillLevel, int ratePerLevel);
 }

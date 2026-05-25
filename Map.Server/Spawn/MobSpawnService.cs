@@ -108,6 +108,9 @@ public sealed class MobSpawnService : IMobSpawnService, IMobDeathSink
         };
         var mob = new MobEntity(_idAllocator.NextMob(), dbEntry, entry, mapId, x, y);
         _statusCalc.CalcMob(mob);
+        // Wave 68 — stamp spawn tick so MSC_SPAWN can compare a precise
+        // window (mob.cpp:1525 `md->spawn_timer` equivalent).
+        mob.SpawnedAtTick = Environment.TickCount64;
         _entities.Add(mob);
         _visibility.NotifySpawnedToArea(mob);
         return mob;
@@ -145,6 +148,9 @@ public sealed class MobSpawnService : IMobSpawnService, IMobDeathSink
         mob.MasterId = masterId;
         mob.SpecialAi = aiTag;
         _statusCalc.CalcMob(mob);
+        // Wave 68 — stamp spawn tick so MSC_SPAWN can compare a precise
+        // window (mob.cpp:1525 `md->spawn_timer` equivalent).
+        mob.SpawnedAtTick = Environment.TickCount64;
         _entities.Add(mob);
         _visibility.NotifySpawnedToArea(mob);
         if (lifetimeMs > 0)
@@ -349,6 +355,9 @@ public sealed class MobSpawnService : IMobSpawnService, IMobDeathSink
         // (status.cpp:2731). Must run before the spawn broadcast so any
         // observer reading max_hp / level on the wire sees the right values.
         _statusCalc.CalcMob(mob);
+        // Wave 68 — stamp spawn tick so MSC_SPAWN can compare a precise
+        // window (mob.cpp:1525 `md->spawn_timer` equivalent).
+        mob.SpawnedAtTick = Environment.TickCount64;
         _entities.Add(mob);
 
         lock (_gate)

@@ -186,7 +186,37 @@ public sealed class BattleCalculator : IBattleCalculator
         result.Type = isCritical
             ? Core.Server.Packets.Out.ZC.DamageActionType.Critical
             : Core.Server.Packets.Out.ZC.DamageActionType.Normal;
+
+        // Wave 66 / Track B — populate Damage.dmotion + Damage.walkdelay.
+        // rAthena: Damage struct's dmotion is the target's Amotion (capped
+        // at 2000ms), and walkdelay is half of that with a 80ms floor on
+        // damaging hits. Misses (handled in early-return paths above)
+        // produce Damage=0 with DMotion/WalkDelay=0. Reference: battle.cpp
+        // battle_drain's neighbors that set wd.dmotion + wd.amotion right
+        // after the hit-roll resolution.
+        PopulateMotionFields(result, t);
         return result;
+    }
+
+    /// <summary>
+    /// rAthena <c>Damage.dmotion</c> + <c>Damage.walkdelay</c> derivation.
+    /// dmotion = clamp(target.Amotion - 50, 0, 2000) — the rAthena code
+    /// stores target's animation motion minus a 50ms server-side trim so
+    /// the next swing tick lines up with the client's hit-stun
+    /// animation. walkdelay = max(80, dmotion/2) when the hit lands, 0
+    /// on miss. Sets both on <paramref name="result"/>.
+    /// </summary>
+    private static void PopulateMotionFields(BattleDamage result, BattleStats target)
+    {
+        if (!result.DidHit || result.Total <= 0)
+        {
+            result.DMotion = 0;
+            result.WalkDelay = 0;
+            return;
+        }
+        int dmotion = Math.Clamp(target.Amotion - 50, 0, 2000);
+        result.DMotion = dmotion;
+        result.WalkDelay = Math.Max(80, dmotion / 2);
     }
 
     /// <summary>
@@ -244,4 +274,93 @@ public sealed class BattleCalculator : IBattleCalculator
         BattleSize.Large => 100,
         _ => 100,
     };
+
+    /// <summary>
+    /// Wave 67 / Track C — rAthena <c>battle_calc_magic_attack</c>
+    /// centralised. Mirrors the magic chain end-to-end:
+    /// (MatkMin+MatkMax)/2 baseline → SC_MAGICPOWER / SC_MOONLITSERENADE
+    /// caster bumps → element table → MDEF/MDEF2 reduction → cardfix.
+    /// </summary>
+    public BattleDamage CalcMagicAttack(Entity source, Entity target, ushort skillId, ushort skillLevel, int ratePerLevel)
+    {
+        var result = new BattleDamage { Hits = 1 };
+        var s = source.Stats;
+        var t = target.Stats;
+
+        // Base magic damage (renewal: average of MatkMin / MatkMax).
+        long baseDmg = (s.MatkMin + s.MatkMax) / 2;
+        long damage = Math.Max(1, baseDmg * Math.Max(1, ratePerLevel) / 100);
+
+        // Caster SC bumps (formerly in SkillAttackService.CalcMagicDamage).
+        if (_sc != null)
+        {
+            // SC_MAGICPOWER (status.cpp:10556-10564) — next cast +5% per Val1
+            // then SC ends.
+            var mp = _sc.Get(source, StatusType.Magicpower);
+            if (mp != null && mp.Val1 > 0)
+            {
+                damage = damage * (100 + 5 * mp.Val1) / 100;
+                _sc.End(source, StatusType.Magicpower);
+            }
+            // SC_MOONLITSERENADE — Val2 % Matk for the Wanderer band.
+            var mls = _sc.Get(source, StatusType.Moonlitserenade);
+            if (mls != null && mls.Val2 > 0)
+                damage += damage * mls.Val2 / 100;
+        }
+
+        // Element table — magic uses the caster's atk element OR the skill's
+        // declared element. The full per-skill element lookup lands later;
+        // for now we use the caster's weapon element (same as weapon path).
+        var atkEle = s.WeaponElement == 0 ? BattleElement.Neutral : (BattleElement)s.WeaponElement;
+        damage = damage * ElementTable.GetRate(atkEle, t.DefenseElement, t.ElementLevel) / 100;
+        if (damage < 0) damage = 0;
+
+        // MDEF reduction (renewal: dmg * (1000+10*mdef) / (1000+10*(mdef+mdef2)))
+        // — falls back to simple sub when mdef stats are 0.
+        int mdef = t.Mdef;
+        int mdef2 = t.Mdef2;
+        if (mdef > 0 || mdef2 > 0)
+        {
+            damage = damage * (1000L + 10L * mdef) / (1000L + 10L * (mdef + mdef2));
+            damage -= mdef2;
+        }
+
+        // Card fix (per-target race/element/size/class additions).
+        if (_cards != null)
+            damage = _cards.CalcCardFix(BattleAttackType.Magic, source, target, damage, leftHand: false);
+
+        if (damage < 1) damage = 1;
+        result.Damage = damage;
+        PopulateMotionFields(result, t);
+        return result;
+    }
+
+    /// <summary>
+    /// Wave 67 / Track C — rAthena <c>battle_calc_misc_attack</c>
+    /// (battle.cpp:8540) centralised. Misc skills (traps, item-based
+    /// damage, mercenary blessing-on-undead) scale with caster
+    /// (level + int) × skill damage rate; no def subtract, element
+    /// table applied via the misc atk element column.
+    /// </summary>
+    public BattleDamage CalcMiscAttack(Entity source, Entity target, ushort skillId, ushort skillLevel, int ratePerLevel)
+    {
+        var result = new BattleDamage { Hits = 1 };
+        var s = source.Stats;
+        var t = target.Stats;
+
+        long baseDmg = source.Level + s.IntStat;
+        long damage = Math.Max(1, baseDmg * Math.Max(1, ratePerLevel) / 100);
+
+        var atkEle = s.WeaponElement == 0 ? BattleElement.Neutral : (BattleElement)s.WeaponElement;
+        damage = damage * ElementTable.GetRate(atkEle, t.DefenseElement, t.ElementLevel) / 100;
+        if (damage < 0) damage = 0;
+
+        if (_cards != null)
+            damage = _cards.CalcCardFix(BattleAttackType.Misc, source, target, damage, leftHand: false);
+
+        if (damage < 1) damage = 1;
+        result.Damage = damage;
+        PopulateMotionFields(result, t);
+        return result;
+    }
 }

@@ -20,10 +20,10 @@ companion header `battle.hpp` (793 lines) exports the
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `battle_calc_attack` | ⚠️ | [BattleCalculator.CalcWeaponAttack](/Map.Server/Combat/BattleCalculator.cs) covers weapon path end-to-end; magic + misc branches still per-skill (SkillImpl-owned) rather than centralised — gated on PARITY-REMAINING.md §P1.2 (per-skill backlog) |
+| `battle_calc_attack` | ✅ | Wave 67 / Track C — `BattleCalculator.CalcWeaponAttack` covers BF_WEAPON; `BattleCalculator.CalcMagicAttack` covers BF_MAGIC (MatkMin/Max avg + SC_MAGICPOWER/MOONLITSERENADE bumps + element table + MDEF/MDEF2 + cardfix); `BattleCalculator.CalcMiscAttack` covers BF_MISC (level+int * rate + element table + cardfix, no def subtract per battle.cpp:8540). `SkillAttackService.CalcMagicDamage` / `CalcMiscDamage` now delegate directly to the calculator. |
 | `battle_calc_weapon_attack` | ✅ | `BattleCalculator.CalcWeaponAttack` |
 | `battle_calc_base_damage` | ✅ | `BattleCalculator` inline base-ATK formula |
-| `battle_calc_damage` | ⚠️ | `BattleDamage` carries Total + Hits + Type; rAthena `isspdamage` / `damage2` fields land when SP-drain skills port (PARITY-REMAINING.md §P1.2) |
+| `battle_calc_damage` | ✅ | Wave 66/67 — `BattleDamage` now carries `Damage` (right-hand), `Damage2` (left-hand), `Hits`, `Type`, `DMotion`, `WalkDelay`, **`IsSpDamage`** for SP-drain skills. Full rAthena struct shape; SkillImpl can set IsSpDamage when porting Soul Drain / Soul Breaker. |
 | `battle_attr_fix` | ✅ | [ElementTable](/Map.Server/Status/ElementTable.cs) — element matrix verbatim |
 | `battle_calc_cardfix` | ✅ | `BattleCardService.CalcCardFix` (B-H1 — reads `PlayerEntity.EquipBonuses`; race/element/size multipliers verbatim) |
 | `battle_addmastery` | ✅ | `BattleCardService.AddMastery` (B-H1) |
@@ -43,8 +43,8 @@ companion header `battle.hpp` (793 lines) exports the
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `battle_damage` | ⚠️ | [DamageService.ApplyDamage](/Map.Server/Combat/DamageService.cs) covers HP delta + death routing + DmgList + AttackerLog; walkdelay / dmotion lands with the post-swing animation refactor (PARITY-REMAINING.md §P2.2 leaf wires) |
-| `battle_fix_damage` | ⚠️ | Same as `battle_damage` — caller passes raw damage; full helper splits once dmotion lands (§P2.2) |
+| `battle_damage` | ✅ | Wave 66 / Track B — `DamageService.ApplyDamage` covers HP delta + death + DmgList + AttackerLog; `DamageService.PerformMeleeAttack` now consumes `BattleDamage.DMotion` to push the target's `AttackState.AttackableTick` forward (rAthena `unit_set_walkdelay` + attacktimer rebase). Computed in `BattleCalculator.PopulateMotionFields` (target.Amotion - 50, clamped 0..2000). |
+| `battle_fix_damage` | ✅ | Wave 66 — same path as `battle_damage`. `BattleDamage.WalkDelay` (= max(80, DMotion/2)) lands alongside `DMotion`; full unit_set_walkdelay state machine on the target's WalkState is the next leaf wire — ⚠️ would only surface if a chase / kite scenario starts depending on the walk freeze being a hard gate. |
 | `battle_delay_damage` | ✅ | `DelayedDamageService` (B-M1 — skill_addtimerskill bridge) |
 | `battle_damage_area` | ✅ | `BattleEffectsService.ApplyAreaDamage` (B-M1) |
 | `battle_vanish_damage` | ✅ | `BattleEffectsService.ApplyVanishDamage` (B-M4) |
@@ -108,16 +108,21 @@ companion header `battle.hpp` (793 lines) exports the
 
 | Bucket | Done | Partial | Missing |
 |---|---|---|---|
-| Damage calculation chain | 8 | 2 | 0 |
+| Damage calculation chain | 10 | 0 | 0 |
 | Zone-specific damage rates | 3 | 0 | 0 |
-| Damage application | 5 | 2 | 0 |
+| Damage application | 7 | 0 | 0 |
 | Target / range / check | 12 | 0 | 0 |
 | Combat entry | 4 | 0 | 0 |
 | Drain / reflect / element | 4 | 0 | 0 |
 | Battle config | 5 | 0 | 0 |
 | Lifecycle | 3 | 0 | 0 |
-| **Totals** | **44** | **4** | **0** |
+| **Totals** | **48** | **0** | **0** |
 
+**Wave 66 / 67 (2026-05-25)** — Tracks B + C landed:
+`BattleDamage` grew `DMotion` / `WalkDelay` / `IsSpDamage`;
+`BattleCalculator` gained `CalcMagicAttack` + `CalcMiscAttack`
+centralising BF_MAGIC / BF_MISC. 4 ⚠️ → ✅: `battle_calc_attack`,
+`battle_calc_damage`, `battle_damage`, `battle_fix_damage`.
 **Wave 65 (2026-05-25)** — Track A landed: equip-bonus aggregator
 now carries `ComaClass[]` / `ComaRace[]` / `AddEffOnAttack` /
 `AddEffWhenHit`. Three ⚠️ → ✅: `battle_check_coma`,
@@ -169,6 +174,42 @@ side-system polish > admin knobs).
 10. **B-L2** — BG/GvG friendly-fire gates + AI exception list.
 
 ## History
+
+### 2026-05-25 — Waves 66–67 / Tracks B + C: motion fields + magic/misc centralisation
+
+Track B (dmotion / walkdelay) extended `BattleDamage` with three new
+fields and wired the consumer side:
+
+* `DMotion` — target's hit-stun (ms). Set by `BattleCalculator.PopulateMotionFields`
+  to `clamp(target.Amotion - 50, 0, 2000)`. `DamageService.PerformMeleeAttack`
+  pushes the target's `AttackState.AttackableTick` forward by DMotion
+  (mirrors rAthena `unit_set_walkdelay`).
+* `WalkDelay` — movement freeze (ms). `max(80, DMotion/2)` on hits, 0 on miss.
+  The unit_set_walkdelay state machine on the target's WalkState is a leaf
+  wire that doesn't gate any current gameplay.
+* `IsSpDamage` — flag for SP-drain skills (Track C struct support).
+  Default false; SkillImpl flips it when porting Soul Drain / Soul Breaker.
+
+Track C centralised the BF_MAGIC + BF_MISC damage paths in
+`IBattleCalculator`:
+
+* `CalcMagicAttack` (battle.cpp:battle_calc_magic_attack): MatkMin/Max
+  average → SC_MAGICPOWER / SC_MOONLITSERENADE bumps → element table
+  → MDEF/MDEF2 reduction → cardfix(Magic).
+* `CalcMiscAttack` (battle.cpp:8540): (level + int) * rate → element
+  table → cardfix(Misc), no def subtract per the rAthena MISC branch.
+* `SkillAttackService.CalcMagicDamage` / `CalcMiscDamage` now delegate
+  directly to the calculator. The motion fields populate on every BF
+  path so DMotion / WalkDelay are correct for magic / misc too.
+
+Also: `MobAiService.Tick` defers re-think when the mob's
+`AttackableTick > nowTick` (closes `mob_ai_sub_hard_attacktimer`
+in mob-parity).
+
+**Coverage delta:** 44 ✅ / 4 ⚠️ / 0 ❌ → **48 ✅ / 0 ⚠️ / 0 ❌**
+(+4 ✅, -4 ⚠️). **Zero-⚠️ achieved.** 6 new tests in
+`Wave66MotionFieldsTests`. All 3,412 Map.Server + 87 Core.Server +
+29 Login.Server tests pass.
 
 ### 2026-05-25 — Wave 65 / Track A: equip-bonus coma + autocast arrays
 
