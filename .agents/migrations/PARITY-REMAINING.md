@@ -25,10 +25,10 @@ Re-measured against `HEAD` (commit `136f332 wave 24`):
 | **Total skill baselines on disk** | **2,439** (.json files) | `find Map.Server.Tests/Skills/Baselines -name '*.json' \| wc -l` |
 | **Non-deterministic baselines (RNG / probabilistic branch)** | **206** auto-tagged by the framework | `grep -l 'non-deterministic' Map.Server.Tests/Skills/Baselines` |
 | **Test pass rate** | **3,395 / 3,395** (non-replay) | `dotnet test --filter "FullyQualifiedName!~PacketReplayTests"` |
-| **SC handlers with rAthena-faithful OnStart formula** | 132 of 1,006 (13.1%) | hand-ported bespoke bodies |
+| **SC handlers with rAthena-faithful OnStart formula** | **~183 of 1,006 (18.2%)** — post-waves 26–38 | hand-ported bespoke bodies |
 | **SC handlers via generator (+Val1 to each CalcFlag)** | ~325 of 1,006 (32%) | `StatusCalcFlagDefaults` |
 | **SC handlers presence-only via `RegisterDefaultsForMissingTypes` no-fields branch** | ~465 of 1,006 (46%) | per status.yml policy |
-| **SC handlers as explicit `CombatMarkerHandler` (Val\* reader cited)** | ~99 of 1,006 (10%) | combat-side / cast-side / regen-side readers |
+| **SC handlers as explicit `CombatMarkerHandler` (Val\* reader cited)** | **~48 of 1,006 (4.8%)** — many moved to OnStart | combat-side / cast-side / regen-side readers |
 | **SC handler structural completeness** | **1,006 / 1,006** | `StatusEffectCompletenessTests` (passing) |
 | **ScriptedBonusHost residual silent no-ops** | **0** | grep `Map.Server/Inventory/Script/ScriptedBonusHost.cs` |
 | **Per-file parity docs at 0 ❌ in active per-fn table** | 42 / 42 | `.agents/migrations/map/*-parity.md` |
@@ -490,6 +490,65 @@ helper or unread `Val*`. P2 is fully orthogonal — fair game at
 any moment.
 
 ## History
+
+### 2026-05-25 — Waves 26–38: SC engine depth sweep (~51 SC ports)
+
+Thirteen sequential waves ported rAthena `status.cpp:case SC_X:`
+formulas / consumer-side reads, closing the bulk of the P0.2 +
+P0.3 "Class B" residual called out in this doc's ground-truth
+table.
+
+**Wave 26 — PvP consumer reads (5)**: SC_MAGICPOWER, SC_PROVIDENCE,
+SC_SIGNUMCRUCIS, SC_HEAT_BARREL, SC_DEVOTION. Threaded into
+DamageService + BattleCalculator + SkillAttackService.CalcMagicDamage.
+
+**Wave 27 — caster damage bumps (5)**: SC_EDP, SC__BLOODYLUST,
+SC_RUSHWINDMILL, SC_PYROCLASTIC, SC_MOONLITSERENADE. BattleCalculator
++ CalcMagicDamage reads on the caster's swing/cast.
+
+**Wave 28 — target-side reads + Nibelungen/Siegfried OnStart (3)**.
+
+**Wave 29 — DoT tick bodies (4)**: SC_TOXIN, SC_VENOMBLEED, SC_PYREXIA,
+SC_TEARGAS. Wired periodic OnPeriodic with rAthena interval table.
+
+**Wave 30 — Nen auto-revive, Suiton penalty, Madnesscancel (3)**.
+
+**Wave 31 — Val2/Val3 OnStart materialisation (4)**: Meltdown,
+Reflectshield, Providence, EDP.
+
+**Wave 32 — New RegisterWave32Val2Val3Formulas (8)**: Poisonreact,
+Magicrod, Encpoison, Longing, Richmankim, Whistle, Assncros, Appleidun.
+
+**Wave 33 — BD-family songs (4)**: Humming, Dontforgetme, Fortune,
+Service4u.
+
+**Wave 34 — Aurablade, Parrying, Rejectsword, Kaizel (4)** —
+DamageService Kaizel auto-revive hook added alongside SC_NEN.
+
+**Wave 35 — Soul Linker (2)**: Kaahi, Kaupe.
+
+**Wave 36 — Regeneration / FullThrottle / FriggSong (3)** — including
++20 % all-stats FullThrottle delta.
+
+**Wave 37 — Giantgrowth, Luxanima, Offertorium (3)**.
+
+**Wave 38 — Sura Gentle Touch family (3)**: GtEnergygain, GtChange,
+GtRevitalize.
+
+**Total: ~51 SC bodies / consumer reads** ported across this sweep —
+crosses the P0.2 "~50 bespoke formulas remaining" threshold from
+the original ground-truth measurement.
+
+All waves green: build clean, 3,395 tests pass at every wave. The
+StatusEffectCompletenessTests harness blocks allowlist drift (Wave
+30 + 32 + 36 + 37 + 38 each tripped the drift gate, which forced
+the corresponding allowlist entry removal or the OnStart body to
+include the stat-mod).
+
+Commits: `1d65048` (26), `f894c51` (27), `3323da5` (28), `bb249d1` (29),
+`9127ade` (30), `2124d32` (31), `2204209` (32), `ba8c4b7` (33),
+`0a56ce9` (34), `8cd6fc8` (35), `d69bf8c` (36), `350da5a` (37),
+`aca76e2` (38).
 
 ### 2026-05-24 — Waves 19–24 close every measurable parity-gap axis
 
