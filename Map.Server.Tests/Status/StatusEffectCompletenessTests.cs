@@ -222,6 +222,14 @@ public class StatusEffectCompletenessTests
             [StatusType.PyrotechnicOption] = "SC_PYROTECHNIC_OPTION — Val2 = 60 Fire eATK read by ElementalNpc plugin",
             [StatusType.Eqc] = "SC_EQC — Val2 = 5*Val1 def reduction, Val3 = 2*Val1 HP drain read by per-skill plugin",
             [StatusType.ToxinOfMandara] = "SC_TOXIN_OF_MANDARA — Val2 = 15*Val1 res reduction read by per-skill plugin",
+
+            // Wave 48 — consumer-side reads for SCs without native stat mod.
+            [StatusType.TelekinesisIntense] = "WL_TELEKINESIS_INTENSE — Val2 SP cost reduction, Val3 magic % bonus read by Warlock plugins",
+            [StatusType.Flashcombo] = "SR_FLASHCOMBO — Val2 = 20*Val1+20 combo ATK bonus read by Sura chain dispatch",
+            [StatusType.Shrimp] = "SU_SHRIMP — Val2 = 10 BATK%/MATK% read by Summoner combat path",
+            [StatusType.SpSha] = "Sorcerer SP_SHA — Val2 = 50 move speed reduction read by movement service",
+            [StatusType.EmergencyMove] = "BR_EMERGENCY_MOVE — Val2 = 25 move speed read by movement service",
+            [StatusType.HolyS] = "BR_HOLY_S — Val2 = 5+2*Val1 dmg reduction / holy bonus read by combat path",
         };
 
     [Fact]

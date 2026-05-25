@@ -1814,6 +1814,143 @@ public sealed class StatusEffectRegistry
             },
             OnEnd: (_, _) => { },
             Flags: debuff));
+
+        // ===== Wave 48 — 4th-class faith/Telum + ED sphere markers =====
+
+        // SC_ANTI_M_BLAST — Val2 = 10*Val1 (resistance reduction %).
+        Register(StatusType.AntiMBlast, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 10 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_LIGHTOFSTAR — Val2 = 5*Val1 (skill damage % bonus).
+        Register(StatusType.Lightofstar, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 5 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_FLASHCOMBO — Val2 = 20*Val1+20 (Sura combo ATK bonus).
+        Register(StatusType.Flashcombo, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 20 * sc.Val1 + 20; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_ILLUSIONDOPING — Val2 = 50 (Hit penalty).
+        Register(StatusType.Illusiondoping, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 50;
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val2); },
+            Flags: debuff));
+
+        // SC_MAGIC_POISON — Val2 = 50 (element resistance reduction %).
+        Register(StatusType.MagicPoison, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 50; },
+            OnEnd: (_, _) => { },
+            Flags: debuff));
+
+        // SC_TELEKINESIS_INTENSE — Val2 = 10*Val1 SP cost reduction,
+        //                          Val3 = 40*Val1 magic damage % bonus.
+        Register(StatusType.TelekinesisIntense, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 10 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 40 * sc.Val1;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_SHRIMP — Val2 = 10 (BATK% + MATK% bonus).
+        Register(StatusType.Shrimp, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 10; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_GROOMING — Val2 = 100 (Flee bonus).
+        Register(StatusType.Grooming, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 100;
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2); },
+            Flags: buff));
+
+        // SC_EMERGENCY_MOVE — Val2 = 25 (movement speed increase %).
+        Register(StatusType.EmergencyMove, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 25; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_SP_SHA — Val2 = 50 (movement speed reduction %).
+        Register(StatusType.SpSha, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 50; },
+            OnEnd: (_, _) => { },
+            Flags: debuff));
+
+        // SC_POWERFUL_FAITH — Val2 = 5+5*Val1 ATK%, Val3 = 5+2*Val1 PAtk%.
+        Register(StatusType.PowerfulFaith, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5 + 5 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 5 + 2 * sc.Val1;
+                target.Stats.Patk = (short)Math.Min(short.MaxValue, target.Stats.Patk + sc.Val3);
+            },
+            OnEnd: (target, sc) => { target.Stats.Patk = (short)Math.Max(0, target.Stats.Patk - sc.Val3); },
+            Flags: buff));
+
+        // SC_FIRM_FAITH — Val2 = 2*Val1 MaxHP%, Val3 = 8*Val1 Res.
+        Register(StatusType.FirmFaith, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 2 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 8 * sc.Val1;
+                target.Stats.Res = (short)Math.Min(short.MaxValue, target.Stats.Res + sc.Val3);
+                var hpDelta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = hpDelta;
+                target.Stats.MaxHp += hpDelta;
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Res = (short)Math.Max(0, target.Stats.Res - sc.Val3);
+                if (sc.Val4 > 0) target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
+            },
+            Flags: buff));
+
+        // SC_SINCERE_FAITH — Val2 = (1+Val1)/2 ASPD%, Val3 = 4*Val1 Perfect Hit%.
+        Register(StatusType.SincereFaith, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = (1 + sc.Val1) / 2;
+                if (sc.Val3 == 0) sc.Val3 = 4 * sc.Val1;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2); },
+            Flags: buff));
+
+        // SC_HOLY_S — Val2 = 5+2*Val1 damage reduction + holy damage % increase.
+        Register(StatusType.HolyS, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 5 + 2 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_A_TELUM — Val2 = 5*Val1 (Res/MRes pierce %).
+        Register(StatusType.ATelum, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 5 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_PRE_ACIES — Val2 = 2*Val1 (CRate increase).
+        Register(StatusType.PreAcies, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 2 * sc.Val1;
+                target.Stats.Crt = (short)Math.Min(short.MaxValue, target.Stats.Crt + sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.Crt = (short)Math.Max(0, target.Stats.Crt - sc.Val2); },
+            Flags: buff));
     }
 
     /// <summary>
