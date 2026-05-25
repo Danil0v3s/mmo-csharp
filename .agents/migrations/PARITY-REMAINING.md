@@ -491,6 +491,51 @@ any moment.
 
 ## History
 
+### 2026-05-25 — Waves 47–51: 1006-SC sweep, phase 2 (+39 ports + allowlist citations)
+
+Continuing the SC handler sweep:
+
+* **Wave 47** — Elemental options + 4th-class formulas (18 SCs):
+  SC_NPC_HALLUCINATIONWALK, SC__LAZINESS, SC_SWINGDANCE,
+  SC_BEYONDOFWARCRY, SC_PYROTECHNIC_OPTION, SC_SOLID_SKIN_OPTION,
+  SC_CIRCLE_OF_FIRE_OPTION, SC_STONE_SHIELD_OPTION, SC_WATER_BARRIER,
+  SC_ZEPHYR, SC_POWER_OF_GAIA, SC_GOLDENE_FERSE, SC_STONE_WALL,
+  SC_OVERED_BOOST, SC_TOXIN_OF_MANDARA, SC_EQC + 9 allowlist citations.
+* **Wave 48** — 4th-class faith/Telum (16 SCs): SC_ANTI_M_BLAST,
+  SC_LIGHTOFSTAR, SC_FLASHCOMBO, SC_ILLUSIONDOPING, SC_MAGIC_POISON,
+  SC_TELEKINESIS_INTENSE, SC_SHRIMP, SC_GROOMING, SC_EMERGENCY_MOVE,
+  SC_SP_SHA, SC_POWERFUL_FAITH, SC_FIRM_FAITH, SC_SINCERE_FAITH,
+  SC_HOLY_S, SC_A_TELUM, SC_PRE_ACIES + 6 allowlist citations.
+* **Wave 49** — Elemental option markers (10 SCs): SC_ENSEMBLEFATIGUE,
+  SC_UPHEAVAL_OPTION, SC_FLAMETECHNIC_OPTION, SC_COLD_FORCE_OPTION,
+  SC_GRACE_BREEZE_OPTION, SC_EARTH_CARE_OPTION, SC_DEEP_POISONING_OPTION,
+  SC_COLORS_OF_HYUN_ROK_BUFF, SC_PROPERTYWALK.
+* **Wave 50** — Bulk allowlist (21 entries): SC_ANCILLA, SC_BLADESTOP,
+  SC_BOSSMAPINFO, SC_CLAN_INFO, SC_CLOSECONFINE2, SC_CURSEDCIRCLE_TARGET,
+  SC_DAMAGE_HEAL, SC_E_CHAIN, SC_FALLINGSTAR, SC_GUARDIAN_S, SC_HERMODE,
+  SC_OVERHEAT_LIMITPOINT, SC_P_ALTER, SC_REBOUND_S, SC_RELIEVE_ON,
+  SC_SUB_WEAPONPROPERTY, SC_TALISMAN_OF_PROTECTION, SC_TUNAPARTY,
+  SC_VACUUM_EXTREME, SC_WARMER, SC_WEAPONPERFECTION.
+* **Wave 51** — Drop redundant allowlist drafts (33 SCs that already
+  had real OnStart bodies upstream).
+
+Final state of this session:
+- Real OnStart bodies: 234 (up from 132 at session start)
+- Allowlist entries: 130 (up from 94)
+- Combined coverage: 364 of 997 (36.5%)
+- `grep -c "Register.*CombatMarkerHandler"`: 0 ✅
+- Build clean, 3,395 tests pass.
+
+Goal status: 4 done-conditions —
+1. ✅ CombatMarkerHandler grep = 0
+2. ⚠️ Every CalcFlag SC has real OnStart: still ~69 use allowlist
+   exception (legitimate per consumer-side reads, but strict goal
+   wants real bodies).
+3. ⚠️ Every allowlist has verified consumer read: 130/130 cite a
+   consumer file; verification of each consumer wire is per-entry
+   future work.
+4. ✅ Build + tests green.
+
 ### 2026-05-25 — Waves 40–46: 1006-SC sweep, phase 1 (~58 ports + helper rename)
 
 Continuing the 1006-SC goal with seven more waves. The helper rename
