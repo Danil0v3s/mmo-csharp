@@ -84,6 +84,26 @@ public sealed class EquipBonusBundle
     public int DrainHpRate { get; set; }     // % chance × 100
     public int DrainSpRate { get; set; }     // % chance × 100
 
+    // Wave 65 — Coma proc tables (PC kills target instantly to 1 HP).
+    // Indexed by (int)BattleRace / BattleClassFlag; the All slot is
+    // additive on top of the specific-race / specific-class slots.
+    // Sourced from `bonus2 bComaClass, c, rate;` and
+    // `bonus2 bComaRace, r, rate;` in card / equip scripts. rAthena
+    // stores these as fixed arrays on `sd->bonus` (status.hpp:1980-ish).
+    public short[] ComaClass { get; } = new short[ClassSize];
+    public short[] ComaRace  { get; } = new short[RaceSize];
+
+    // Wave 65 — AddEff proc tables (status proc on hit / when hit).
+    // The autocast spell tables already live on PlayerBonusService as
+    // Autobonus entries; AddEff is the SC-side analog — a list of
+    // (SC type, rate, duration) entries that fire on hit. rAthena
+    // `bonus3 bAddEff, sc, rate, dur;` (against the target on attack)
+    // and `bonus3 bAddEffWhenHit, sc, rate, dur;` (against the attacker
+    // when receiving damage). The lists are append-only per build and
+    // get cleared in Reset() before each rebuild.
+    public List<AddEffEntry> AddEffOnAttack { get; } = new();
+    public List<AddEffEntry> AddEffWhenHit  { get; } = new();
+
     /// <summary>Reset all fields. Cheap allocation-free recycle.</summary>
     public void Reset()
     {
@@ -91,6 +111,8 @@ public sealed class EquipBonusBundle
         Array.Clear(AddEle); Array.Clear(SubEle);
         Array.Clear(AddSize); Array.Clear(SubSize);
         Array.Clear(AddClass); Array.Clear(SubClass);
+        Array.Clear(ComaClass); Array.Clear(ComaRace);
+        AddEffOnAttack.Clear(); AddEffWhenHit.Clear();
         FlatAtk = FlatMatk = FlatCritical = FlatHit = FlatFlee = 0;
         FlatAspd = FlatAspdRate = 0;
         FlatMaxHp = FlatMaxSp = MaxHpRate = MaxSpRate = 0;
@@ -115,4 +137,14 @@ public enum BattleClassFlag
     Boss = 1,
     Guardian = 2,
     All = 3,
+    Max = 4,
 }
+
+/// <summary>
+/// One AddEff slot — fires a status change with the given rate on
+/// every hit landed (AddEffOnAttack) or received (AddEffWhenHit).
+/// Sourced from <c>bonus3 bAddEff{,WhenHit}, sc, rate, dur;</c> in
+/// item / card scripts. rAthena reference: pc.cpp:5440 (pc_bonus3 case
+/// SP_ADDEFF) — rate is permille (out of 10 000), dur in ms.
+/// </summary>
+public readonly record struct AddEffEntry(StatusType Sc, short RatePermille, uint DurationMs);

@@ -63,7 +63,7 @@ companion header `battle.hpp` (793 lines) exports the
 | `battle_get_master` | ✅ | `BattleTargetService.GetMaster` (B-H4 — pet/homun/merc/slave) |
 | `battle_getcurrentskill` | ✅ | `BattleTargetService.GetCurrentSkill` (B-H4) |
 | `battle_check_undead` | ✅ | `BattleElementService.CheckUndead` (B-M3) |
-| `battle_check_coma` | ⚠️ | `BattleTargetService.CheckComa` — returns false; coma proc reads `sd->bonus.coma_class` / `coma_race` arrays, gated on equip-bonus aggregator (PARITY-REMAINING.md §P2.2) |
+| `battle_check_coma` | ✅ | Wave 65 — `BattleTargetService.CheckComa` (battle.cpp:6543). Reads `EquipBonusBundle.ComaClass[tgt.ClassFlag] + ComaClass[All] + ComaRace[tgt.Race] + ComaRace[All]`; per-myriad roll vs `Rng.Next(10_000)`. PC-source only (mobs can't equip cards). `bonus2 bComaClass` / `bComaRace` flows through `BonusScriptExtractor.ApplyIndexed`. Emperium/Battlefield mob exclusions pending an MD_EMPERIUM mode bit. |
 | `is_infinite_defense` | ✅ | Wave 64 — `BattleTargetService.IsInfiniteDefense` (battle.cpp:2878). Checks SC_INVINCIBLE universally + MobMode `IgnoreMagic`/`IgnoreMisc` per BF lane. MobMode `IgnoreMelee`/`IgnoreRanged` need attack-range disambiguation; caller-side BF_SHORT/BF_LONG overload pending. BL_SKILL plant-target branch (NPC_REVERBERATION / WM_POEMOFNETHERWORLD) skipped — skill units aren't damage targets in our model. |
 | `battle_can_hit_bg_target` | ✅ | `BattleZoneGateService.CanHitBgTarget` (B-L2) |
 | `battle_can_hit_gvg_target` | ✅ | `BattleZoneGateService.CanHitGvgTarget` (B-L2) |
@@ -73,8 +73,8 @@ companion header `battle.hpp` (793 lines) exports the
 | rAthena fn | Status | C# location / note |
 |---|---|---|
 | `battle_weapon_attack` | ✅ | [DamageService.PerformMeleeAttack](/Map.Server/Combat/DamageService.cs) |
-| `battle_autocast_aftercast` | ⚠️ | `BattleEffectsService.AutocastAfterCast` — entry point only (empty); full proc table lands with the per-skill autospell port (PARITY-REMAINING.md §P1.2) |
-| `battle_autocast_elembuff_skill` | ⚠️ | `BattleEffectsService.AutocastElemBuff` — entry point only; elemental-buff autocast pending equip-bonus aggregator (§P2.2) |
+| `battle_autocast_aftercast` | ✅ | Wave 65 — `BattleEffectsService.AutocastAfterCast` (battle.cpp:6603). Two layers: (a) `IPlayerBonusService.ExecuteAutobonus(OnHit)` for `bonus3 bAutoSpell` rows (already tracked as Autobonus entries; full script execution lands with the script-engine port), (b) iterates `EquipBonusBundle.AddEffOnAttack`, rolls per-myriad rate, and starts the SC on the target via `IStatusChangeService.Start` (Mantis Stun, Wraith Curse, …). |
+| `battle_autocast_elembuff_skill` | ✅ | Wave 65 — `BattleEffectsService.AutocastElemBuff` (battle.cpp:6685). Invokes `IPlayerBonusService.ExecuteAutobonus(OnSkill)` for `bonus3 bAutoSpellOnSkill` rows. Per-row skill-id filter (cast only on specific skills) pending a future ExecuteAutobonus(trigger, skillId) overload. |
 | `battle_consume_ammo` | ✅ | `BattleEffectsService.ConsumeAmmo` (B-M2) |
 
 ### Drain / reflect / element
@@ -111,13 +111,17 @@ companion header `battle.hpp` (793 lines) exports the
 | Damage calculation chain | 8 | 2 | 0 |
 | Zone-specific damage rates | 3 | 0 | 0 |
 | Damage application | 5 | 2 | 0 |
-| Target / range / check | 11 | 1 | 0 |
-| Combat entry | 2 | 2 | 0 |
+| Target / range / check | 12 | 0 | 0 |
+| Combat entry | 4 | 0 | 0 |
 | Drain / reflect / element | 4 | 0 | 0 |
 | Battle config | 5 | 0 | 0 |
 | Lifecycle | 3 | 0 | 0 |
-| **Totals** | **41** | **7** | **0** |
+| **Totals** | **44** | **4** | **0** |
 
+**Wave 65 (2026-05-25)** — Track A landed: equip-bonus aggregator
+now carries `ComaClass[]` / `ComaRace[]` / `AddEffOnAttack` /
+`AddEffWhenHit`. Three ⚠️ → ✅: `battle_check_coma`,
+`battle_autocast_aftercast`, `battle_autocast_elembuff_skill`.
 **Wave 64 (2026-05-25)** — `battle_calc_chorusbonus` ⚠️ → ✅
 (renewal-correct return 0); `is_infinite_defense` impl
 corrected to read SC_INVINCIBLE + MobMode IgnoreMagic/IgnoreMisc
@@ -165,6 +169,44 @@ side-system polish > admin knobs).
 10. **B-L2** — BG/GvG friendly-fire gates + AI exception list.
 
 ## History
+
+### 2026-05-25 — Wave 65 / Track A: equip-bonus coma + autocast arrays
+
+Extended `EquipBonusBundle` with the four rAthena `sd->bonus`
+tables that gate the last three battle-parity ⚠️ rows:
+
+* **`ComaClass[4]`** (Normal/Boss/Guardian/All) — coma proc rate
+  vs target class. Indexed adds via `bonus2 bComaClass, Class_*, N;`
+  through `BonusScriptExtractor.ApplyIndexed` (case `comaclass`).
+* **`ComaRace[12]`** — coma proc rate vs target race. Indexed adds
+  via `bonus2 bComaRace, RC_*, N;`.
+* **`AddEffOnAttack: List<AddEffEntry>`** — `bonus3 bAddEff, sc, rate, dur;`
+  rows that fire SCs on landing a hit (Mantis Stun, Wraith Curse).
+  Routed through `ScriptedBonusHost.bonus3` with a new
+  `ParseEffectId` helper that accepts integer SC ids or `Eff_X`
+  strings.
+* **`AddEffWhenHit: List<AddEffEntry>`** — `bonus3 bAddEffWhenHit, …`
+  rows that fire SCs on receiving a hit. Stored separately so
+  consumer code can branch (attack vs hit).
+
+Consumer wiring:
+
+1. `BattleTargetService.CheckComa` (battle.cpp:6543) — was a stub
+   `return false`; now reads ComaClass[tgt.ClassFlag] +
+   ComaClass[All] + ComaRace[tgt.Race] + ComaRace[All], rolls
+   per-myriad. PC-source only.
+2. `BattleEffectsService.AutocastAfterCast` (battle.cpp:6603) —
+   was empty; now calls `IPlayerBonusService.ExecuteAutobonus(OnHit)`
+   AND iterates `AddEffOnAttack` to start the SC on the target
+   via `IStatusChangeService.Start`.
+3. `BattleEffectsService.AutocastElemBuff` (battle.cpp:6685) —
+   was empty; now calls `ExecuteAutobonus(OnSkill)`.
+
+**Coverage delta:** 41 ✅ / 7 ⚠️ / 0 ❌ → **44 ✅ / 4 ⚠️ / 0 ❌**
+(+3 ✅, -3 ⚠️). 11 new tests in `Wave65EquipBonusTrackATests`:
+bundle population from extractor + scripted-host, CheckComa roll
+behavior with class/race/All slots, and AutocastAfterCast wiring.
+3,406 Map.Server tests + 87 Core.Server + 29 Login.Server pass.
 
 ### 2026-05-25 — Wave 64: chorusbonus + is_infinite_defense correctness
 

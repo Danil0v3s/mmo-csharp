@@ -138,10 +138,24 @@ public static class BonusScriptExtractor
             case "subclass": Add(b.SubClass, ParseClass(idxToken), v); break;
             case "hpdrainrate": b.DrainHpRate += v; break;
             case "spdrainrate": b.DrainSpRate += v; break;
+            // Wave 65 — coma proc tables.
+            case "comaclass": AddShort(b.ComaClass, ParseClass(idxToken), (short)v); break;
+            case "comarace":  AddShort(b.ComaRace,  ParseRace(idxToken),  (short)v); break;
             // bAddRace2, bMagicAddRace, bIgnoreDefRate, ... — many
             // more layered options. Leave at 0 until the consumer
             // ports.
         }
+    }
+
+    private static void AddShort(short[] arr, int idx, short v)
+    {
+        if (idx < 0 || idx >= arr.Length) return;
+        // Saturated add to short range — rate is in permille so the
+        // largest sane value is ~10 000, well within short.MaxValue.
+        var sum = arr[idx] + v;
+        if (sum > short.MaxValue) sum = short.MaxValue;
+        if (sum < short.MinValue) sum = short.MinValue;
+        arr[idx] = (short)sum;
     }
 
     private static void Add(int[] arr, int idx, int v)

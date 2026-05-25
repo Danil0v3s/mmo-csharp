@@ -85,11 +85,42 @@ public sealed class BattleTargetService : IBattleTargetService
 
     public bool CheckComa(Entity src, Entity target)
     {
-        // rAthena coma proc reads sd->bonus.coma_class / coma_race
-        // arrays — those don't exist on BattleStats yet. Canonical
-        // entry exists; aggregator wiring lands when equip-bonus
-        // accumulators do.
-        return false;
+        // rAthena battle_check_coma (battle.cpp:6543).
+        // Only PCs roll coma — cards/equip slots belong to a player.
+        if (src is not PlayerEntity pc) return false;
+        var bundle = pc.EquipBonuses;
+        if (bundle == null) return false;
+
+        // Resolve target class flag (Normal / Boss / Guardian) and race.
+        var ts = target.Stats;
+        var classIdx = (int)Inventory.BattleClassFlag.Normal;
+        if ((ts.Mode & MobMode.Mvp) != 0)
+            classIdx = (int)Inventory.BattleClassFlag.Boss;
+        // CLASS_GUARDIAN requires a mob mode bit we don't expose yet
+        // (mode_guardian); guardians collapse to Normal until that lands.
+        var classAll = (int)Inventory.BattleClassFlag.All;
+
+        var raceIdx = (int)ts.Race;
+        var raceAll = (int)BattleRace.All;
+
+        // Skip rate roll entirely when both buckets are zero.
+        int rate = 0;
+        if (classIdx >= 0 && classIdx < bundle.ComaClass.Length) rate += bundle.ComaClass[classIdx];
+        if (classAll < bundle.ComaClass.Length) rate += bundle.ComaClass[classAll];
+        if (raceIdx >= 0 && raceIdx < bundle.ComaRace.Length) rate += bundle.ComaRace[raceIdx];
+        if (raceAll < bundle.ComaRace.Length) rate += bundle.ComaRace[raceAll];
+        if (rate <= 0) return false;
+
+        // rAthena excludes the Emperium + Battlefield-class targets
+        // from coma. Our MobMode doesn't carry the Emperium bit yet;
+        // a future MD_EMPERIUM exposure adds the early return.
+        // Per-myriad roll: rate is permille × 10 (out of 10 000).
+        if (Rng.Next(10_000) >= rate) return false;
+
+        _logger.LogDebug(
+            "battle_check_coma: PC {Char} procced coma on target {Tgt} (rate {Rate}/10000)",
+            pc.CharacterId, target.Id.Value, rate);
+        return true;
     }
 
     public bool IsInfiniteDefense(Entity target, BattleAttackType type)

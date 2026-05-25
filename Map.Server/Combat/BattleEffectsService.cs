@@ -20,16 +20,19 @@ public sealed class BattleEffectsService : IBattleEffectsService
 {
     private readonly IDamageService _damage;
     private readonly IStatusChangeService? _sc;
+    private readonly IPlayerBonusService? _bonusSvc;
     private readonly ILogger<BattleEffectsService> _logger;
 
     public BattleEffectsService(
         IDamageService damage,
         ILogger<BattleEffectsService> logger,
-        IStatusChangeService? sc = null)
+        IStatusChangeService? sc = null,
+        IPlayerBonusService? bonusSvc = null)
     {
         _damage = damage;
         _logger = logger;
         _sc = sc;
+        _bonusSvc = bonusSvc;
     }
 
     public void Drain(PlayerEntity attacker, Entity target, long rDamage, long lDamage, int race, int classKind)
@@ -49,12 +52,40 @@ public sealed class BattleEffectsService : IBattleEffectsService
 
     public void AutocastAfterCast(PlayerEntity attacker, Entity target)
     {
-        // Bonus autospell aftercast — equip-bonus driven.
+        // Wave 65 — rAthena battle_autocast_aftercast (battle.cpp:6603).
+        // Two layers:
+        // (a) Autospell list — `bonus3 bAutoSpell, sid, lv, rate;` lives
+        //     on IPlayerBonusService as OnHit autobonus entries.
+        //     ExecuteAutobonus rolls each row and logs the fire event;
+        //     full script execution lands with the script-engine port.
+        // (b) AddEffOnAttack — `bonus3 bAddEff, sc, rate, dur;` from
+        //     EquipBonusBundle. Each entry rolls per-myriad and starts
+        //     the SC on the target (Mantis Stun, Wraith Card Curse, …).
+        _bonusSvc?.ExecuteAutobonus(attacker, AutobonusTrigger.OnHit);
+
+        var bundle = attacker.EquipBonuses;
+        if (bundle == null || _sc == null) return;
+        foreach (var entry in bundle.AddEffOnAttack)
+        {
+            if (entry.RatePermille <= 0) continue;
+            if (Random.Shared.Next(10_000) >= entry.RatePermille) continue;
+            var dur = entry.DurationMs > 0 ? (int)entry.DurationMs : 10_000;
+            _sc.Start(target, entry.Sc, val1: 1, val2: 0, val3: 0, val4: 0, dur, attacker);
+            _logger.LogDebug(
+                "battle_autocast_aftercast: PC {Char} procced {Sc} on target {Tgt} (rate {Rate}/10000)",
+                attacker.CharacterId, entry.Sc, target.Id.Value, entry.RatePermille);
+        }
     }
 
     public void AutocastElemBuff(PlayerEntity attacker, ushort skillId)
     {
-        // Element-buff autocast — same equip-bonus path.
+        // Wave 65 — rAthena battle_autocast_elembuff_skill (battle.cpp:6685).
+        // OnSkill autobonus rows fire when the PC casts skillId. The
+        // skill-id filter currently lives inside the bonus row's flag
+        // column; PlayerBonusService rolls every OnSkill entry on each
+        // call (a future refinement threads skillId so per-row gating
+        // can fire).
+        _bonusSvc?.ExecuteAutobonus(attacker, AutobonusTrigger.OnSkill);
     }
 
     public void VanishDamage(PlayerEntity attacker, Entity target, int hpPercent, int spPercent)

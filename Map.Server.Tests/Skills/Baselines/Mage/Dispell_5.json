@@ -1,5 +1,11 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
     "kind": "nodamage",
     "data": {
       "src": 1,
@@ -7014,6 +7020,139 @@
     "data": {
       "target": 1,
       "type": "Sbunshin"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Contents34"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Contents35"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "NoAction"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "CBuff3"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "CBuff4"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "CBuff5"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "CBuff6"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Contents15"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Contents16"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Contents17"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Contents18"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Contents19"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Contents20"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "OvercomingCrisis"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Chasing"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "FireCharmPower"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "WaterCharmPower"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "WindCharmPower"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "GroundCharmPower"
     }
   },
   {

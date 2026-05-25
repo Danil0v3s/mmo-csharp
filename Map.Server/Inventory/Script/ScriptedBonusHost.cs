@@ -134,7 +134,56 @@ public sealed class ScriptedBonusHost
             var script = $"skill \"{skillName}\",{lvl};";
             _bonusSvc?.AddAutobonus(_pc, AutobonusTrigger.WhenHit, script,
                 rate: rate, durationMs: 0, flag: 0);
+            return;
         }
+        // Wave 65 — AddEff family: `bonus3 bAddEff, Eff_X, rate, dur;`
+        // The script engine pre-resolves Eff_X to its integer SC id
+        // (via the rAthena constants table). Rate is permille (out
+        // of 10 000); duration in ms (0 = scdb default). bAddEff2
+        // is the same shape but fires only on the attacker (skip — we
+        // fold both onto AddEffOnAttack).
+        if (string.Equals(key, "AddEff", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "AddEff2", StringComparison.OrdinalIgnoreCase))
+        {
+            var sc = ParseEffectId(args[1]);
+            var rate = (short)ToInt(args[2]);
+            var dur = (uint)Math.Max(0, ToInt(args[3]));
+            if (sc != StatusType.None)
+                _bundle.AddEffOnAttack.Add(new AddEffEntry(sc, rate, dur));
+            return;
+        }
+        if (string.Equals(key, "AddEffWhenHit", StringComparison.OrdinalIgnoreCase))
+        {
+            var sc = ParseEffectId(args[1]);
+            var rate = (short)ToInt(args[2]);
+            var dur = (uint)Math.Max(0, ToInt(args[3]));
+            if (sc != StatusType.None)
+                _bundle.AddEffWhenHit.Add(new AddEffEntry(sc, rate, dur));
+        }
+    }
+
+    /// <summary>
+    /// Parse an SC argument from a bonus call. The script engine
+    /// resolves <c>Eff_Stun</c>-style tokens to their integer SC id
+    /// (via rAthena <c>db/const.txt</c>); strings come through
+    /// untranslated as the legacy regex pass.
+    /// </summary>
+    private static StatusType ParseEffectId(object? arg)
+    {
+        if (arg == null) return StatusType.None;
+        // V8 numeric path — preferred.
+        if (arg is int i) return ScClamp(i);
+        if (arg is long l) return ScClamp((int)l);
+        if (arg is double d) return ScClamp((int)d);
+        var s = arg.ToString();
+        if (string.IsNullOrEmpty(s)) return StatusType.None;
+        if (int.TryParse(s, out var n)) return ScClamp(n);
+        // Strip Eff_ prefix, try PascalCase enum parse
+        var name = s.StartsWith("Eff_", StringComparison.OrdinalIgnoreCase) ? s[4..] : s;
+        return Enum.TryParse<StatusType>(name, ignoreCase: true, out var sc) ? sc : StatusType.None;
+
+        static StatusType ScClamp(int v) =>
+            v >= 0 && v < 2000 ? (StatusType)v : StatusType.None;
     }
 
     /// <summary>rAthena <c>bonus4 bKey, a, b, c, val;</c>.</summary>
