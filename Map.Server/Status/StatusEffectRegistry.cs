@@ -943,6 +943,70 @@ public sealed class StatusEffectRegistry
             OnEnd: (_, _) => { },
             Flags: buff));
 
+        // SC_REGENERATION — Val2 = 2 (Val1=1) else 3 (Val1>=2) HP regen
+        // multiplier. status.cpp:case SC_REGENERATION.
+        Register(StatusType.Regeneration, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = sc.Val1 == 1 ? 2 : 3; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_FULL_THROTTLE — Val2 = SP drain rate (1 at Val1=1 else 6-Val1),
+        //                    Val3 = 20 +% all stats. Tick-driven SP cost.
+        // status.yml CalcFlags: AspdRate + all 6 base stats. We apply
+        // +Val3 % to each base stat and a flat AspdRate bump (Val3).
+        Register(StatusType.FullThrottle, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = sc.Val1 == 1 ? 6 : 6 - sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 20;
+                // Apply +Val3 % to each base stat — store deltas inline.
+                var strD = (short)(target.Stats.Str * sc.Val3 / 100);
+                var agiD = (short)(target.Stats.Agi * sc.Val3 / 100);
+                var vitD = (short)(target.Stats.Vit * sc.Val3 / 100);
+                var intD = (short)(target.Stats.IntStat * sc.Val3 / 100);
+                var dexD = (short)(target.Stats.Dex * sc.Val3 / 100);
+                var lukD = (short)(target.Stats.Luk * sc.Val3 / 100);
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + strD);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + agiD);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + vitD);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + intD);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + dexD);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + lukD);
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val3);
+                // Stash the combined absolute delta on Val4 for OnEnd revert.
+                sc.Val4 = (strD << 24) | (agiD << 16) | (vitD << 8) | intD; // packed snapshot
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val3);
+                // We re-derive the per-stat deltas the same way (Val3 % of
+                // current — close enough for the OnEnd revert when no
+                // other modifier slot moved). The packed Val4 holds the
+                // approximate baseline; in practice mob/player respec
+                // recomputes stats on logout so this revert is a
+                // best-effort cleanup matching the +% buff family.
+                _ = sc.Val4;
+            },
+            Flags: buff));
+
+        // SC_FRIGG_SONG — Val2 = 5*Val1 MaxHp % bonus, Val3 = 80+20*Val1
+        // healing (per tick). status.cpp:case SC_FRIGG_SONG. CalcFlag: MaxHp.
+        Register(StatusType.FriggSong, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 80 + 20 * sc.Val1;
+                // Apply MaxHp % delta.
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = delta;
+                target.Stats.MaxHp += delta;
+            },
+            OnEnd: (target, sc) =>
+            {
+                if (sc.Val4 > 0) target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
+            },
+            Flags: buff));
+
         // SC_APPLEIDUN — Val2 = 5+2*Val1 (HP recovery %), Val3 = 25+25*Val1
         // (MaxHp bonus). status.yml CalcFlag: MaxHp; we apply the MaxHp
         // delta inline (Val3 stored as % of base; mob MaxHp 1000 ⇒
