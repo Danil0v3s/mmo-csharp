@@ -106,6 +106,31 @@ without a C# equivalent because the architecture differs).
 
 ## History
 
+### 2026-05-25 — Wave 82: map-parity Pass-2 re-audit (0 ⚠️→✅, 0 ❌→✅; 8 ⚠️ + 4 ❌ gates still active)
+
+Pass-2 honesty sweep against the current C# tree. Verified each ⚠️/❌
+row against [MapOpsService.cs](/Map.Server/World/MapOps/MapOpsService.cs)
++ [MapWorldRegistry.cs](/Map.Server/World/MapWorldRegistry.cs):
+
+- `MapId2Name` ([MapOpsService.cs:19](/Map.Server/World/MapOps/MapOpsService.cs))
+  returns `""` — reverse-lookup table still absent.
+- `RandomCell` / `SearchFreeCell` ([MapOpsService.cs:20-22](/Map.Server/World/MapOps/MapOpsService.cs))
+  cell-iteration helpers stubbed.
+- `CharId2Sd` ([MapOpsService.cs:42-49](/Map.Server/World/MapOps/MapOpsService.cs))
+  degrades to entity-id; `PlayerEntity.CharId` column still on backlog.
+- `GetCell` / `SetCell` / `CellInfo/CellChk` ([MapOpsService.cs:79-80](/Map.Server/World/MapOps/MapOpsService.cs))
+  return true / no-op. The real cell store at
+  [MapData.GetCell](/Map.Server/World/MapData.cs) is functional, but
+  [`MapWorldRegistry`](/Map.Server/World/MapWorldRegistry.cs) is keyed by
+  string name while `IMapOpsService.GetCell(int mapId, ...)` uses int —
+  the int↔name bridge wiring is the residual gap.
+- `map_iwall_set` / `_remove` / `_exist` ❌ — invisible-wall system
+  still not modeled.
+- `map_random_dir` ❌ — simple helper genuinely missing.
+
+Coverage unchanged: **25 ✅ / 8 ⚠️ / 124 ❌** (full file) / **25 ✅ /
+8 ⚠️ / 4 ❌** (gameplay surface). No C# code touched.
+
 ### 2026-05-25 — Wave 79: map-parity close-out (9 ⚠️ → ✅; 3 ❌ → ✅)
 
 Doc-resync pass after auditing the C# surface that the audit doc didn't
