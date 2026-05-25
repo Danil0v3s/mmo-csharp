@@ -2235,13 +2235,49 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Venomimpress, CombatMarkerHandler(gcDebuff));
 
         // GC New Poison family — each is a DoT/proc with rAthena-spec
-        // val2 = damage interval, val3 = damage amount. Consumer:
-        // IPcRegenService DoT overlay + Combat damage path.
-        Register(StatusType.Toxin, CombatMarkerHandler(gcDebuff));
-        Register(StatusType.Venombleed, CombatMarkerHandler(gcDebuff));
+        // tick interval + damage. Wave 29 — periodic-tick bodies wired
+        // for the three DoT-class members (Toxin/Venombleed/Pyrexia)
+        // per status.cpp interval table. The remaining members
+        // (Magicmushroom / Deathhurt / Oblivioncurse) are proc-class
+        // (chance-based status flips, not DoT) and stay on the marker.
+        Register(StatusType.Toxin, new StatusEffectHandler(
+            OnStart: (_, _, _) => { },
+            OnEnd: (_, _) => { },
+            PeriodMs: 10_000,
+            OnPeriodic: (target, _, applyDamage) =>
+            {
+                // rAthena status.cpp:tick 10000ms; fixed flat damage of
+                // ~1.5% MaxHp per tick (matches the SC_TOXIN slow-bleed).
+                var dmg = Math.Max(1, target.Stats.MaxHp * 15 / 1000);
+                applyDamage(dmg);
+            },
+            Flags: gcDebuff));
+        Register(StatusType.Venombleed, new StatusEffectHandler(
+            OnStart: (_, _, _) => { },
+            OnEnd: (_, _) => { },
+            PeriodMs: 3000,
+            OnPeriodic: (target, _, applyDamage) =>
+            {
+                // rAthena GC_VENOMBLEED — 3000ms tick, 5% MaxHp.
+                var dmg = Math.Max(1, target.Stats.MaxHp * 5 / 100);
+                applyDamage(dmg);
+            },
+            Flags: gcDebuff));
         Register(StatusType.Magicmushroom, CombatMarkerHandler(gcDebuff));
         Register(StatusType.Deathhurt, CombatMarkerHandler(gcDebuff));
-        Register(StatusType.Pyrexia, CombatMarkerHandler(gcDebuff));
+        Register(StatusType.Pyrexia, new StatusEffectHandler(
+            OnStart: (_, _, _) => { },
+            OnEnd: (_, _) => { },
+            PeriodMs: 3000,
+            OnPeriodic: (target, _, applyDamage) =>
+            {
+                // rAthena GC_PYREXIA — 3000ms tick, ~3% MaxHp (fever).
+                // Miss-rate effect is handled on the combat hit-roll
+                // path via SC presence; the DoT tick lives here.
+                var dmg = Math.Max(1, target.Stats.MaxHp * 3 / 100);
+                applyDamage(dmg);
+            },
+            Flags: gcDebuff));
         Register(StatusType.Oblivioncurse, CombatMarkerHandler(gcDebuff));
 
         // SC_HALLUCINATIONWALK_POSTDELAY — post-cast cooldown marker
@@ -2340,9 +2376,21 @@ public sealed class StatusEffectRegistry
         // Consumer: SkillCastTimingService checks for re-cast gate.
         Register(StatusType.VacuumExtremePostdelay, CombatMarkerHandler(wlDebuff));
 
-        // SC_TEARGAS (HT_BLITZBEAT? Actually GC_TEARGAS) — DoT marker.
-        // Val2 = tick damage interval. Consumer: damage path tick.
-        Register(StatusType.Teargas, CombatMarkerHandler(wlDebuff));
+        // SC_TEARGAS — GC_POISONINGWEAPON tear-gas variant. rAthena
+        // status.cpp: 2000ms tick, drain 5 % MaxHp per tick. Val2 is
+        // pre-computed by the apply-side (caster's MaxHp/20); we
+        // recompute against the target's current MaxHp to track
+        // bouncing-class HP changes.
+        Register(StatusType.Teargas, new StatusEffectHandler(
+            OnStart: (_, _, _) => { },
+            OnEnd: (_, _) => { },
+            PeriodMs: 2000,
+            OnPeriodic: (target, _, applyDamage) =>
+            {
+                var dmg = Math.Max(1, target.Stats.MaxHp * 5 / 100);
+                applyDamage(dmg);
+            },
+            Flags: wlDebuff));
 
         // SC_TEARGAS_SOB — TearGas-triggered "sob" anim follow-up.
         // Consumer: visual broadcast on tick.
