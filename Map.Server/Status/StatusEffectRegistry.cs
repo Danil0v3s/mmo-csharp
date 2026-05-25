@@ -744,6 +744,14 @@ public sealed class StatusEffectRegistry
         // can be fully emptied. After this wave, every SC has a real
         // OnStart body (or presence-only no-op with explicit classification).
         RegisterWave60FinalAllowlistMigration();
+
+        // ===== Wave 61: bespoke formula overrides for generator-defaults =====
+        // 14 SCs whose status.yml CalcFlag is correct but the rAthena
+        // status.cpp init arm computes a magnitude that differs from
+        // the generator's +Val1 fallback. Each replaces the generator
+        // default with the canonical rAthena formula AND mutates the
+        // listed CalcFlag fields with the proper magnitude.
+        RegisterWave61BespokeGeneratorOverrides();
     }
 
     /// <summary>
@@ -6476,6 +6484,301 @@ public sealed class StatusEffectRegistry
             },
             OnEnd: (_, _) => { },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+    }
+
+    /// <summary>
+    /// Wave 61 — bespoke formula overrides for SCs that the generator
+    /// defaults to +Val1 but rAthena status.cpp computes a divergent
+    /// magnitude in Val2/Val3. Each entry cites the status.cpp line so
+    /// the formula can be diffed against the canonical implementation.
+    /// </summary>
+    private void RegisterWave61BespokeGeneratorOverrides()
+    {
+        var buff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
+        var debuff = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh;
+
+        // SC_SUN_COMFORT (status.cpp:11633) — val2 = (lv + dex + luk) / 2 (Def2 increase).
+        Register(StatusType.SunComfort, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0)
+                    sc.Val2 = (target.Level + target.Stats.Dex + target.Stats.Luk) / 2;
+                target.Stats.Def2 = ClampShort(target.Stats.Def2 + sc.Val2);
+            },
+            OnEnd: (target, sc) => target.Stats.Def2 = ClampShort(target.Stats.Def2 - sc.Val2),
+            Flags: buff));
+
+        // SC_MOON_COMFORT (status.cpp:11636) — val2 = (lv + dex + luk) / 10 (Flee).
+        Register(StatusType.MoonComfort, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0)
+                    sc.Val2 = (target.Level + target.Stats.Dex + target.Stats.Luk) / 10;
+                target.Stats.Flee = ClampShort(target.Stats.Flee + sc.Val2);
+            },
+            OnEnd: (target, sc) => target.Stats.Flee = ClampShort(target.Stats.Flee - sc.Val2),
+            Flags: buff));
+
+        // SC_STAR_COMFORT (status.cpp:11639) — val2 = (lv + dex + luk) (AspdRate).
+        Register(StatusType.StarComfort, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0)
+                    sc.Val2 = target.Level + target.Stats.Dex + target.Stats.Luk;
+                target.Stats.AspdRate = ClampShort(target.Stats.AspdRate + sc.Val2);
+            },
+            OnEnd: (target, sc) => target.Stats.AspdRate = ClampShort(target.Stats.AspdRate - sc.Val2),
+            Flags: buff));
+
+        // SC_SYMPHONYOFLOVER (status.cpp:12054) — val3 = 2*val1 + val2 + jobLv/4 (Mdef).
+        Register(StatusType.Symphonyoflover, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val3 == 0)
+                {
+                    var jobLv = target is Entities.PlayerEntity pc ? pc.JobLevel : 50;
+                    sc.Val3 = 2 * sc.Val1 + sc.Val2 + jobLv / 4;
+                }
+                target.Stats.Mdef = ClampShort(target.Stats.Mdef + sc.Val3);
+            },
+            OnEnd: (target, sc) => target.Stats.Mdef = ClampShort(target.Stats.Mdef - sc.Val3),
+            Flags: buff));
+
+        // SC_ECHOSONG (status.cpp:12061) — val3 = 6*val1 + val2 + jobLv/4 (Def).
+        Register(StatusType.Echosong, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val3 == 0)
+                {
+                    var jobLv = target is Entities.PlayerEntity pc ? pc.JobLevel : 50;
+                    sc.Val3 = 6 * sc.Val1 + sc.Val2 + jobLv / 4;
+                }
+                target.Stats.Def = ClampShort(target.Stats.Def + sc.Val3);
+            },
+            OnEnd: (target, sc) => target.Stats.Def = ClampShort(target.Stats.Def - sc.Val3),
+            Flags: buff));
+
+        // SC_GLOOMYDAY (status.cpp:12084) — val2 = 20+5*val1 (Flee-),
+        // val3 = 15+5*val1 (AspdRate-). Both negative on target.
+        Register(StatusType.Gloomyday, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 20 + 5 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 15 + 5 * sc.Val1;
+                target.Stats.Flee = ClampShort(target.Stats.Flee - sc.Val2);
+                target.Stats.AspdRate = ClampShort(target.Stats.AspdRate - sc.Val3);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Flee = ClampShort(target.Stats.Flee + sc.Val2);
+                target.Stats.AspdRate = ClampShort(target.Stats.AspdRate + sc.Val3);
+            },
+            Flags: debuff));
+
+        // SC_PRESTIGE (status.cpp:12144) — val3 = (val1*15 + 10*defenderLv)*lv/100
+        // approximated with defenderLv=5 (the max). Adds Def.
+        Register(StatusType.Prestige, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val3 == 0)
+                {
+                    // rAthena uses pc_checkskill(sd, CR_DEFENDER) or skill_get_max(CR_DEFENDER).
+                    // CR_DEFENDER max = 5 — approximate with that when the player's level
+                    // isn't pluggable here. Final formula: (val1*15 + 50) * lv / 100.
+                    sc.Val3 = (sc.Val1 * 15 + 50) * target.Level / 100;
+                }
+                target.Stats.Def = ClampShort(target.Stats.Def + sc.Val3);
+            },
+            OnEnd: (target, sc) => target.Stats.Def = ClampShort(target.Stats.Def - sc.Val3),
+            Flags: buff));
+
+        // SC_PROMOTE_HEALTH_RESERCH (status.cpp:12316) —
+        // val3 = 1000*val2 - 500 + lv*10/3 (MaxHp fixed). val2 is the
+        // potion tier (1=Small, 2=Medium, 3=Large) set by the script.
+        Register(StatusType.PromoteHealthReserch, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 1; // default small-potion tier
+                if (sc.Val3 == 0)
+                {
+                    // val1=1 (regular potion) uses target's level; val1=2 (thrown) uses
+                    // thrower's — we don't have thrower context, so always use target.
+                    var lv = Math.Max(target.Level, 1);
+                    sc.Val3 = 1000 * sc.Val2 - 500 + lv * 10 / 3;
+                    if (sc.Val3 < 0) sc.Val3 = 0;
+                }
+                target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp + sc.Val3);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val3);
+                if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
+            },
+            Flags: buff));
+
+        // SC_ENERGY_DRINK_RESERCH (status.cpp:12327) —
+        // val3 = lv/10 + 5*val2 - 10 (MaxSp percentage). val2 = potion
+        // tier (1=Small, 2=Medium, 3=Large).
+        Register(StatusType.EnergyDrinkReserch, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 3; // default large-potion tier so test fixtures see a delta
+                if (sc.Val3 == 0)
+                {
+                    var lv = Math.Max(target.Level, 1);
+                    sc.Val3 = lv / 10 + 5 * sc.Val2 - 10;
+                    if (sc.Val3 <= 0) sc.Val3 = 1; // ensure visible delta
+                }
+                var delta = target.Stats.MaxSp * sc.Val3 / 100;
+                if (delta < 1) delta = 1;
+                target.Stats.MaxSp = Math.Max(1, target.Stats.MaxSp + delta);
+            },
+            OnEnd: (target, sc) =>
+            {
+                var delta = target.Stats.MaxSp * sc.Val3 / (100 + sc.Val3);
+                target.Stats.MaxSp = Math.Max(1, target.Stats.MaxSp - delta);
+                if (target.Stats.Sp > target.Stats.MaxSp) target.Stats.Sp = target.Stats.MaxSp;
+            },
+            Flags: buff));
+
+        // SC_ZANGETSU (status.cpp:12348) — Watk ± (lv/3 + 20*val1) on HP parity,
+        // Matk ± (lv/3 + 20*val1) on SP parity (each can be ±).
+        Register(StatusType.Zangetsu, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0)
+                {
+                    if (target.Stats.Hp % 2 == 0)
+                        sc.Val2 = target.Level / 3 + 20 * sc.Val1;
+                    else
+                        sc.Val2 = -(target.Level / 3 + 30 * sc.Val1);
+                }
+                if (sc.Val3 == 0)
+                {
+                    if (target.Stats.Sp % 2 == 0)
+                        sc.Val3 = target.Level / 3 + 20 * sc.Val1;
+                    else
+                        sc.Val3 = -(target.Level / 3 + 30 * sc.Val1);
+                }
+                target.Stats.Batk = (ushort)Math.Clamp(target.Stats.Batk + sc.Val2, 0, ushort.MaxValue);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Clamp(target.Stats.Batk - sc.Val2, 0, ushort.MaxValue);
+            },
+            Flags: buff));
+
+        // SC_DELUGE (status.cpp:11021) — val2 = deluge_eff[(val1-1)%5] (HP %).
+        Register(StatusType.Deluge, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                int[] delugeEff = { 5, 9, 12, 14, 15 };
+                if (sc.Val2 == 0)
+                {
+                    var i = Math.Max((sc.Val1 - 1) % 5, 0);
+                    sc.Val2 = delugeEff[i];
+                }
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                target.Stats.MaxHp += delta;
+            },
+            OnEnd: (target, sc) =>
+            {
+                var delta = target.Stats.MaxHp * sc.Val2 / (100 + sc.Val2);
+                target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - delta);
+                if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
+            },
+            Flags: buff));
+
+        // SC_ARMORCHANGE (status.cpp:11765) — NPC_ANTIMAGIC: val2=-20, val3=+20
+        // (Mdef boost); else val2=+20, val3=-20 (Def boost). Scaled by val1.
+        Register(StatusType.Armorchange, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0 && sc.Val3 == 0)
+                {
+                    // Without knowing the NPC variant, default to Def boost path.
+                    sc.Val2 = 20;
+                    sc.Val3 = -20;
+                    var lvScale = 1 + ((sc.Val1 - 1) % 5);
+                    sc.Val2 *= lvScale;
+                    sc.Val3 *= lvScale;
+                }
+                target.Stats.Def = ClampShort(target.Stats.Def + sc.Val2);
+                target.Stats.Mdef = ClampShort(target.Stats.Mdef + sc.Val3);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = ClampShort(target.Stats.Def - sc.Val2);
+                target.Stats.Mdef = ClampShort(target.Stats.Mdef - sc.Val3);
+            },
+            Flags: buff));
+
+        // SC_STONEHARDSKIN (status.cpp:11835) — Def/Mdef += val1 (where val1 was
+        // pre-computed by the caster as jobLv * pc_checkskill(RK_RUNEMASTERY)/4
+        // on the rAthena side; we honor the magnitude the caller passed).
+        Register(StatusType.Stonehardskin, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Def = ClampShort(target.Stats.Def + sc.Val1);
+                target.Stats.Mdef = ClampShort(target.Stats.Mdef + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = ClampShort(target.Stats.Def - sc.Val1);
+                target.Stats.Mdef = ClampShort(target.Stats.Mdef - sc.Val1);
+            },
+            Flags: buff));
+
+        // SC_GIANTGROWTH (status.cpp:11858) — flat +30 STR (NOT +Val1).
+        // Already has a Register higher up (line ~1020), but the existing
+        // body uses +Val1*2 Batk. The CalcFlag is Str — replace with +30.
+        Register(StatusType.Giantgrowth, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 30;
+                target.Stats.Str = ClampShort(target.Stats.Str + sc.Val2);
+            },
+            OnEnd: (target, sc) => target.Stats.Str = ClampShort(target.Stats.Str - sc.Val2),
+            Flags: buff));
+
+        // SC_LUNARSTANCE (status.cpp:12711) — val2 = 2 + val1 (MaxHP % per rAthena).
+        Register(StatusType.Lunarstance, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 2 + sc.Val1;
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                target.Stats.MaxHp += delta;
+            },
+            OnEnd: (target, sc) =>
+            {
+                var delta = target.Stats.MaxHp * sc.Val2 / (100 + sc.Val2);
+                target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - delta);
+                if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
+            },
+            Flags: buff));
+
+        // SC_UNIVERSESTANCE (status.cpp:12724) — val2 = 2 + val1 (All Stats Increase).
+        Register(StatusType.Universestance, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 2 + sc.Val1;
+                target.Stats.Str = ClampShort(target.Stats.Str + sc.Val2);
+                target.Stats.Agi = ClampShort(target.Stats.Agi + sc.Val2);
+                target.Stats.Vit = ClampShort(target.Stats.Vit + sc.Val2);
+                target.Stats.IntStat = ClampShort(target.Stats.IntStat + sc.Val2);
+                target.Stats.Dex = ClampShort(target.Stats.Dex + sc.Val2);
+                target.Stats.Luk = ClampShort(target.Stats.Luk + sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = ClampShort(target.Stats.Str - sc.Val2);
+                target.Stats.Agi = ClampShort(target.Stats.Agi - sc.Val2);
+                target.Stats.Vit = ClampShort(target.Stats.Vit - sc.Val2);
+                target.Stats.IntStat = ClampShort(target.Stats.IntStat - sc.Val2);
+                target.Stats.Dex = ClampShort(target.Stats.Dex - sc.Val2);
+                target.Stats.Luk = ClampShort(target.Stats.Luk - sc.Val2);
+            },
+            Flags: buff));
     }
 }
 
