@@ -1126,6 +1126,74 @@ public sealed class StatusEffectRegistry
                 }
             },
             Flags: buff));
+
+        // ===== Wave 40 — Soul Reaper / Royal Guard / Ninja formula batch =====
+
+        // SC_SOULREAPER — Val2 = 10+5*Val1 (Soul Sphere gain chance %).
+        // rAthena status.cpp:case SC_SOULREAPER.
+        Register(StatusType.Soulreaper, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 10 + 5 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_SOULDIVISION — Val2 = 10*Val1 (skill aftercast increase %).
+        Register(StatusType.Souldivision, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 10 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: debuff));
+
+        // SC_SOULCOLLECT — Val2 = 5 + 3*Val2 (max Soul Sphere capacity),
+        // Val3 = duration window (default 60s). status.cpp:SC_SOULCOLLECT.
+        Register(StatusType.Soulcollect, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                sc.Val2 = 5 + 3 * sc.Val2; // accumulate per-cast
+                if (sc.Val3 == 0) sc.Val3 = 60_000;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_REFLECTDAMAGE — Val2 = 10*Val1 (reflect % within 7-cell aura).
+        Register(StatusType.Reflectdamage, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 10 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_SHIELDSPELL_HP — Val2 = 5 (5% HP regen every 3s).
+        Register(StatusType.ShieldspellHp, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 5; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_SHIELDSPELL_SP — Val2 = 3 (3% SP regen every 5s).
+        Register(StatusType.ShieldspellSp, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 3; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_CRESCENTELBOW — Val2 ≈ 50+5*Val1 (reflect % approximation;
+        // job_level component handled when caster ref threads through).
+        Register(StatusType.Crescentelbow, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 50 + 5 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_UTSUSEMI — Val2 = (Val1+1)/2 (hits blocked),
+        //               Val3 = knockback value.
+        Register(StatusType.Utsusemi, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = (sc.Val1 + 1) / 2;
+                if (sc.Val3 == 0) sc.Val3 = 2;
+            },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_BUNSINJYUTSU — Val2 = (Val1+1)/2 (hits blocked).
+        Register(StatusType.Bunsinjyutsu, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = (sc.Val1 + 1) / 2; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
     }
 
     /// <summary>
