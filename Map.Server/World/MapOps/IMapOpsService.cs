@@ -88,4 +88,13 @@ public interface IMapOpsService
 
     /// <summary>rAthena <c>map_reload</c>.</summary>
     void Reload();
+
+    /// <summary>
+    /// rAthena <c>map_random_dir</c> (map.cpp). Returns a random
+    /// walkable cell within <paramref name="range"/> cells of
+    /// (<paramref name="srcX"/>, <paramref name="srcY"/>) on
+    /// <paramref name="mapName"/>. Tries 8 random angles; falls back
+    /// to a square ring search when none land.
+    /// </summary>
+    bool RandomDir(string mapName, short srcX, short srcY, short range, out short x, out short y);
 }

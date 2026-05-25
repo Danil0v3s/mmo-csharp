@@ -64,7 +64,7 @@ Canonical entry points: [IMapOpsService](/Map.Server/World/MapOps/IMapOpsService
 |---|---|---|
 | `map_calc_dir` | ✅ | `IMapOpsService.CalcDir` (8-dir) |
 | `map_check_dir` | ✅ | `IMapOpsService.CheckDir` |
-| `map_random_dir` | ❌ | Not in interface |
+| `map_random_dir` | ✅ | Wave 85b — `MapOpsService.RandomDir`. 8 random angles × range step; first walkable cell wins. Falls back to `SearchFreeCell` ring scan when no angle lands. |
 
 ### Lifecycle
 

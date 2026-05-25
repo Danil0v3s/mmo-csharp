@@ -216,4 +216,33 @@ public sealed class MapOpsService : IMapOpsService
     public void Init() { }
     public void Final() { }
     public void Reload() { }
+
+    /// <summary>
+    /// rAthena <c>map_random_dir</c> (map.cpp). Picks 8 random angles
+    /// at the requested range; returns the first cell whose direction
+    /// resolves to a walkable destination. Falls back to
+    /// <see cref="RandomCell"/>-style scan when no angle lands.
+    /// </summary>
+    public bool RandomDir(string mapName, short srcX, short srcY, short range, out short x, out short y)
+    {
+        x = srcX; y = srcY;
+        if (_world == null) return false;
+        var map = _world.Get(mapName);
+        if (map == null) return false;
+        // 8 random directions; convert dir → (dx,dy) via dirx/diry style.
+        var dx = new short[] { 0, -1, -1, -1, 0, 1, 1, 1 };
+        var dy = new short[] { 1, 1, 0, -1, -1, -1, 0, 1 };
+        for (var attempt = 0; attempt < 8; attempt++)
+        {
+            var d = Rng.Next(8);
+            var nx = (short)(srcX + dx[d] * range);
+            var ny = (short)(srcY + dy[d] * range);
+            if (map.IsWalkable(nx, ny))
+            {
+                x = nx; y = ny; return true;
+            }
+        }
+        // Fall back to a free-cell scan within range.
+        return SearchFreeCell(mapName, srcX, srcY, range, out x, out y, flag: 0);
+    }
 }
