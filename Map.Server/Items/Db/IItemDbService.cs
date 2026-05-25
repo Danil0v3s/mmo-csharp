@@ -63,6 +63,18 @@ public interface IItemDbService
     /// <summary>rAthena <c>itemdb_searchname_array</c>.</summary>
     int SearchNameArray(string namePattern, IList<int> output, int max);
 
+    /// <summary>
+    /// rAthena <c>item_data::inventorySlotNeeded</c>
+    /// (<c>itemdb.cpp:4944</c>) — number of inventory slots a stack of
+    /// <paramref name="quantity"/> would need: 1 for stackables,
+    /// <paramref name="quantity"/> for non-stackables. Non-stackables
+    /// also include the <c>flag.guid</c> case (UniqueId-bound items
+    /// that never merge — not currently surfaced on
+    /// <see cref="Core.Database.Entities.ItemEntity"/>, treated as
+    /// stackable until that bit lands).
+    /// </summary>
+    int InventorySlotNeeded(int itemId, int quantity);
+
     // --- aux loaders --------------------------------------------------
     /// <summary>rAthena <c>itemdb_reload</c>.</summary>
     void Reload();

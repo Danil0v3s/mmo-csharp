@@ -1,4 +1,5 @@
 using Map.Server.Entities;
+using Map.Server.World;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Items.Db;
@@ -15,16 +16,22 @@ public sealed class ItemDbService : IItemDbService
 {
     private readonly IItemCatalog? _catalog;
     private readonly IRandomOptionService? _randomOpt;
+    private readonly IMapFlagService? _mapFlags;
+    private readonly IMapWorldRegistry? _maps;
     private readonly ILogger<ItemDbService> _logger;
 
     public ItemDbService(
         ILogger<ItemDbService> logger,
         IItemCatalog? catalog = null,
-        IRandomOptionService? randomOpt = null)
+        IRandomOptionService? randomOpt = null,
+        IMapFlagService? mapFlags = null,
+        IMapWorldRegistry? maps = null)
     {
         _logger = logger;
         _catalog = catalog;
         _randomOpt = randomOpt;
+        _mapFlags = mapFlags;
+        _maps = maps;
     }
 
     public bool CanTrade(int itemId, PlayerEntity pc)
@@ -76,14 +83,61 @@ public sealed class ItemDbService : IItemDbService
     }
 
     /// <summary>
-    /// rAthena <c>itemdb_isNoEquip</c> — checks `nouse` mapflag.
-    /// The map-side flag check lives in IMapFlagService; the per-item
-    /// nouse column isn't currently on the catalog (rAthena's
-    /// nouse_override + nouse_sitting are bitmap flags). First-slice
-    /// returns false (no map gates equip by item id) — when the column
-    /// surfaces, the map-id check threads through here.
+    /// rAthena <c>itemdb_isNoEquip</c> (<c>itemdb.cpp:4442</c>) — bit
+    /// 1=normal, 2=PVP, 4=GVG, 8=BG, 16=WOE:TE on the item's
+    /// <c>nouse_override</c> column. Returns true when the item's
+    /// bitmap forbids equip on the given map kind.
+    ///
+    /// <para>The bit / map-kind matrix:</para>
+    /// <list type="bullet">
+    ///   <item>bit 1 (Normal) → map is NOT pvp/gvg/bg/woe.</item>
+    ///   <item>bit 2 (PVP)    → map has a PvP mapflag (we infer
+    ///         "PvP-enabled" as the absence of <see cref="MapFlag.NoPvp"/>
+    ///         on a non-GvG map — the catalog has no dedicated Pvp flag
+    ///         yet; this is a conservative read that matches the
+    ///         baseline behavior).</item>
+    ///   <item>bit 4 (GVG)    → <see cref="MapFlag.Gvg"/> on the map.</item>
+    ///   <item>bits 8 (BG) / 16 (WOE:TE) — flags not yet exposed by
+    ///         <see cref="IMapFlagService"/>; the gate is skipped
+    ///         silently (the corresponding bits never fire). The C# port
+    ///         picks up these branches once those flags surface.</item>
+    /// </list>
     /// </summary>
-    public bool IsNoEquip(int itemId, uint mapId) => false;
+    public bool IsNoEquip(int itemId, uint mapId)
+    {
+        var row = _catalog?.Get((uint)itemId);
+        var nouse = row?.NouseOverride ?? 0;
+        if (nouse == 0) return false; // most-common short-circuit
+        if (_mapFlags == null || _maps == null) return false;
+
+        var mapName = ResolveMapName(mapId);
+        if (string.IsNullOrEmpty(mapName)) return false;
+
+        bool gvg = _mapFlags.IsSet(mapName, MapFlag.Gvg);
+        // Pvp inferred as "not no-pvp and not gvg". rAthena evaluates
+        // the raw MF_PVP cell flag; we approximate via the available
+        // negative flag until MF_PVP lands on IMapFlagService.
+        bool pvp = !gvg && !_mapFlags.IsSet(mapName, MapFlag.NoPvp);
+        // Normal = none of pvp/gvg/bg/woe set on the map.
+        bool normal = !pvp && !gvg;
+
+        if ((nouse & 0x01) != 0 && normal) return true;
+        if ((nouse & 0x02) != 0 && pvp) return true;
+        if ((nouse & 0x04) != 0 && gvg) return true;
+        // Bits 0x08 (BG) / 0x10 (WOE:TE) — IMapFlagService doesn't surface
+        // these yet; the gate is skipped silently.
+        return false;
+    }
+
+    private string ResolveMapName(uint mapId)
+    {
+        if (_maps == null) return string.Empty;
+        foreach (var m in _maps.All)
+        {
+            if ((uint)m.Name.GetHashCode() == mapId) return m.Name;
+        }
+        return string.Empty;
+    }
 
     /// <summary>True if the item is equip-class (weapon/armor/headgear/etc.).</summary>
     public bool IsEquip2(int itemId)
@@ -128,6 +182,19 @@ public sealed class ItemDbService : IItemDbService
         var row = _catalog?.Get((uint)itemId);
         if (row == null) return true;
         return row.Type != "Weapon" && row.Type != "Armor" && row.Type != "Shadowgear";
+    }
+
+    /// <summary>
+    /// rAthena <c>item_data::inventorySlotNeeded</c>. Stackable items
+    /// (consumables / cards / aether / ammo) collapse to 1 slot
+    /// regardless of quantity; weapons / armor / pet eggs / shadow gear
+    /// each need their own row. <c>IsStackable2</c> handles the type
+    /// classification.
+    /// </summary>
+    public int InventorySlotNeeded(int itemId, int quantity)
+    {
+        if (quantity < 0) quantity = 0;
+        return IsStackable2(itemId) ? 1 : quantity;
     }
 
     public int SearchNameArray(string namePattern, IList<int> output, int max)

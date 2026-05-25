@@ -43,7 +43,7 @@ return permissive defaults so legacy paths keep working.
 |---|---|---|
 | `itemdb_isequip2` | ✅ | `IsEquip2` — catalog `Type == "Weapon" or "Armor"` |
 | `itemdb_isstackable2` | ✅ | `IsStackable2` — excludes Weapon/Armor/PetEgg/PetArmor/Shadowgear |
-| `itemdb_isNoEquip` | ⚠️ | `IsNoEquip` — returns false; `NouseOverride` + `NouseSitting` columns landed on `ItemEntity` ([ItemEntity.cs:118-119](/Core.Database/Entities/ItemEntity.cs)) but the per-item bitmap predicate isn't wired through the map-flag check yet |
+| `itemdb_isNoEquip` | ✅ | `IsNoEquip` ([ItemDbService.cs](/Map.Server/Items/Db/ItemDbService.cs)) — reads `ItemEntity.NouseOverride` bitmap (1=normal, 2=pvp, 4=gvg, 8=bg, 16=woe:te) and gates against `IMapFlagService.IsSet(MapFlag.Gvg / NoPvp)` after resolving map-name from `Entity.MapId` via `IMapWorldRegistry`. BG / WOE:TE bits skip silently until those flags surface on the service. |
 | `itemdb_ishatched_egg` | ✅ | `IsHatchedEgg` — catalog `Type == "PetEgg"` |
 | `itemdb_isidentified` | ✅ | `IsIdentified` — true for everything except Weapon/Armor/Shadowgear |
 
@@ -52,7 +52,7 @@ return permissive defaults so legacy paths keep working.
 | rAthena fn | Status | C# location / note |
 |---|---|---|
 | `itemdb_searchname_array` | ✅ | `SearchNameArray` — catalog scan with case-insensitive NameEnglish substring match |
-| `item_data::inventorySlotNeeded` | ⚠️ | Not in interface (calc by amount; PARITY-REMAINING.md §P2.2) |
+| `item_data::inventorySlotNeeded` | ✅ | `IItemDbService.InventorySlotNeeded(itemId, qty)` — returns 1 for stackable rows, `qty` for non-stackable (Weapon / Armor / PetEgg / PetArmor / Shadowgear). The `flag.guid` UniqueId-bound case isn't surfaced on `ItemEntity` yet (treated as stackable). |
 
 ### Combo database
 
@@ -154,17 +154,37 @@ catalogs seeded:
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
 | Trade gate predicates | 10 | 0 | 0 | 10 |
-| Type checks | 4 | 1 | 0 | 5 |
-| Lookup & calc | 1 | 1 | 0 | 2 |
+| Type checks | 5 | 0 | 0 | 5 |
+| Lookup & calc | 2 | 0 | 0 | 2 |
 | Combo / group / random-option YAML | 18 | 0 | 0 | 18 |
 | Enchant / reform / package YAML | 6 | 0 | 0 | 6 |
 | Lifecycle | 2 | 3 | 0 | 5 |
-| **Totals** | **41** | **5** | **0** | **46** |
+| **Totals** | **43** | **3** | **0** | **46** |
 
 The whole-file count (48) includes 2 internal sort/compare/cleanup
 helpers that don't need a C# entry point.
 
 ## History
+
+### 2026-05-25 — Wave 88: itemdb isNoEquip + inventorySlotNeeded (2 ⚠️ → ✅)
+
+`ItemDbService.IsNoEquip(itemId, mapId)` now threads the
+`ItemEntity.NouseOverride` bitmap through `IMapFlagService`:
+bit 1 = restrict on normal maps, bit 2 = PVP, bit 4 = GVG (BG / WOE:TE
+bits 8 / 16 skip silently until those flags surface on the service).
+The service resolves the numeric `Entity.MapId` back to a map name by
+hash-iterating `IMapWorldRegistry.All` — same trick `PartyService`
+uses for `PartyChangeMap`. Both deps are constructor-injected as
+optional so existing tests with stub ctors keep working.
+
+`IItemDbService.InventorySlotNeeded(itemId, qty)` lands on the
+interface and returns 1 for stackable rows (consumables / cards /
+ammo), `qty` for non-stackable (Weapon / Armor / PetEgg / PetArmor /
+Shadowgear). The rAthena `flag.guid` UniqueId-bound branch isn't
+surfaced on `ItemEntity` yet — those items are treated as stackable
+until the column lands.
+
+Coverage: **43 ✅ / 3 ⚠️ / 0 ❌** (was 41 / 5 / 0).
 
 ### 2026-05-25 — Wave 88: itemdb impl (6 ⚠️ → ✅ on random-option runtime)
 
