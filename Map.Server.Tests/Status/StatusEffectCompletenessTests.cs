@@ -257,6 +257,14 @@ public class StatusEffectCompletenessTests
             [StatusType.VacuumExtreme] = "SC_VACUUM_EXTREME — root marker; movement service blocks",
             [StatusType.Warmer] = "SC_WARMER — Val4 = tick countdown; OnPeriodic-style heal overlay",
             [StatusType.Weaponperfection] = "SC_WEAPONPERFECTION — Val3 = power increase %; combat path reads",
+
+            // ---- Wave 51: removed — the 33 entries originally drafted
+            // all turned out to have real OnStart bodies registered via
+            // the wave bespoke-formula methods upstream. The drift-detector
+            // test correctly flagged them and the entries were dropped.
+            // The corresponding SCs already pass the
+            // Every_CalcFlag_SC_has_a_real_stat_mod_handler gate via
+            // their existing real OnStart bodies.
         };
 
     [Fact]
