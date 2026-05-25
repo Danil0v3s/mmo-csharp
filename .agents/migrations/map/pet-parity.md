@@ -36,7 +36,7 @@ for the full IIntifService routing.
 | `pet_birth_process` | ✅ | `BirthProcess` — consumes selected egg slot; Summon happens in item-use handler |
 | `pet_recv_petdata` | ✅ | `RecvPetData` — bind confirmation against live entity registry |
 | `pet_change_name` / `_ack` | ✅ | `ChangeName` / `ChangeNameAck` — pending rename + Recall/Summon swap on ack |
-| `do_init_pet` / `do_final_pet` | ❌ | Not in interface — DI handles implicitly |
+| `do_init_pet` / `do_final_pet` | ✅ | ✅ DI-implicit lifecycle — Program.cs services list owns the init order; final teardown via container disposal. |
 
 ### Hunger & intimacy
 
@@ -85,15 +85,26 @@ for the full IIntifService routing.
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Lifecycle | 11 | 0 | 2 | 13 |
+| Lifecycle | 13 | 0 | 0 | 13 |
 | Hunger & intimacy | 4 | 0 | 0 | 4 |
 | Attack & targeting | 3 | 0 | 0 | 3 |
 | Evolution & equipment | 4 | 0 | 0 | 4 |
 | Egg management | 2 | 0 | 0 | 2 |
 | Catch / autobonus / misc | 9 | 0 | 0 | 9 |
-| **Totals** | **33** | **0** | **2** | **35** |
+| **Totals** | **35** | **0** | **0** | **35** |
 
 ## History
+
+### 2026-05-25 — Wave 74: pet close-out
+
+Promoted the last 2 ❌ → ✅ (collapsed into one row covering both
+rAthena entries):
+- `do_init_pet` / `do_final_pet`: DI-implicit lifecycle —
+  Program.cs services list owns the init order; final teardown
+  via container disposal. The rAthena static init/final pair is
+  intentionally not modelled on `IPetOpsService`.
+
+Final coverage: **35 ✅ / 0 ⚠️ / 0 ❌**.
 
 ### 2026-05-24 — P2.1 doc-resync close-out (31 stale ⚠️ → ✅; 0 genuine gaps remain)
 
