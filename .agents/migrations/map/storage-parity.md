@@ -45,8 +45,8 @@ Canonical entry points:
 | `storage_guild_delitem` | ✅ | `DelItem` |
 | `storage_guild_storageadd` | ✅ | `Add` (inventory→guild storage) |
 | `storage_guild_storageget` | ✅ | `Get` (guild storage→inventory) |
-| `storage_guild_storageaddfromcart` | ⚠️ | `IGuildStorageService.AddFromCart` present but stubbed ([GuildStorageService.cs:20](/Map.Server/Storage/Guild/GuildStorageService.cs)); cart data exists, body deferred. PARITY-REMAINING §P2.2.d. |
-| `storage_guild_storagegettocart` | ⚠️ | `IGuildStorageService.GetToCart` present but stubbed ([GuildStorageService.cs:22](/Map.Server/Storage/Guild/GuildStorageService.cs)). PARITY-REMAINING §P2.2.d. |
+| `storage_guild_storageaddfromcart` | ✅ | Wave 90 — `IGuildStorageService.AddFromCart`. Reads `session.Cart` via `ISessionManagerAccessor`, validates the source row + amount, merges into an existing guild-storage stack or appends a new one, decrements the cart row + compacts on empty. Honors the `TryGetOpenStorage` gate so calls without an active `Open` no-op. |
+| `storage_guild_storagegettocart` | ✅ | Wave 90 — `IGuildStorageService.GetToCart`. Reverse direction (guild storage → cart) sharing the same merge-or-append helper as `AddFromCart`; appends to `session.Cart` if absent, decrements storage row + compacts on empty. |
 | `storage_guild_storagesave` | ✅ | `StorageSave` (intif) |
 | `storage_guild_storagesaved` | ✅ | `StorageSaved` (intif ACK) |
 | `storage_guild_storageclose` | ✅ | `Close` |
@@ -56,7 +56,7 @@ Canonical entry points:
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `storage_premiumStorage_open` | ⚠️ | `IGuildStorageService.PremiumOpen` present but stubbed ([GuildStorageService.cs:32](/Map.Server/Storage/Guild/GuildStorageService.cs)); display data wire deferred. PARITY-REMAINING §P2.2.d. |
+| `storage_premiumStorage_open` | ✅ | Wave 90 — `IGuildStorageService.PremiumOpen` flips `IsOpen` on the live `_premium` cache entry for the calling char (rAthena `pc->premiumStorage`). The IPC fetch path drives `PremiumLoad` first, which seeds the entry; opening just promotes it to active. |
 | `storage_premiumStorage_load` | ✅ | `PremiumLoad` |
 | `storage_premiumStorage_save` | ✅ | `PremiumSave` |
 | `storage_premiumStorage_close` | ✅ | `PremiumClose` |
@@ -67,14 +67,36 @@ Canonical entry points:
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
 | Account storage | 13 | 3 | 1 | 17 |
-| Guild storage | 12 | 2 | 1 | 15 |
-| Premium storage | 4 | 1 | 0 | 5 |
-| **Totals** | **29** | **6** | **2** | **37** |
+| Guild storage | 14 | 0 | 1 | 15 |
+| Premium storage | 5 | 0 | 0 | 5 |
+| **Totals** | **32** | **3** | **2** | **37** |
 
 The ~6 functions not in the table are pure internals (storage
 comparator inline, etc.).
 
 ## History
+
+### 2026-05-25 — Wave 90: GuildStorage cart-interop + premium-open landed (3 ⚠️→✅; 3 ⚠️ + 2 ❌ remain)
+
+Real implementation of `GuildStorageService`:
+
+- `_byGuild` dictionary holds a live `StorageState` per guild_id; opener
+  latch in `_openHolder` enforces rAthena's single-opener-per-guild
+  rule (storage.cpp `storage_guild_storageopen`).
+- `_premium` dictionary holds `(charId, slotId) → StorageState` for
+  premium / rental storage (rAthena `storage_premiumStorage_*`).
+- `Open` / `Close` flip the IsOpen latch + manage the opener slot.
+- `Add` / `AddFromCart` / `Get` / `GetToCart` mirror the
+  inventory/cart cart-interop shape used by `StorageService.AddFromCart`
+  (Wave 86), routing the session lookup through `ISessionManagerAccessor`.
+- `AddItem` / `AddItem2` / `DelItem` operate by guild_id without
+  needing a player session — used by char-side gRPC fan-out paths.
+- `PremiumOpen` flips the IsOpen latch on the calling char's loaded
+  premium slot; pairs with the existing `PremiumLoad` IPC fetch.
+- `StorageSave` / `StorageSaved` signal dirty / cleared respectively
+  (caller invokes the IPC save path via `IIntifService.SaveGuildStorage`).
+
+**Coverage:** 29 ✅ / 6 ⚠️ / 2 ❌ → **32 ✅ / 3 ⚠️ / 2 ❌**.
 
 ### 2026-05-25 — Wave 82: storage-parity Pass-2 re-audit (0 ⚠️→✅, 0 ❌→✅; 6 ⚠️ + 2 ❌ gates still active)
 
