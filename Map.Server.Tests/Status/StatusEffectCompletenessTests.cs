@@ -74,8 +74,8 @@ public class StatusEffectCompletenessTests
         new Dictionary<StatusType, string>
         {
             // ---- DoT SCs: behavior is in OnPeriodic, not OnStart. ----
-            [StatusType.Poison]   = "DoT via OnPeriodic (1.5%/sec MaxHp) — status.cpp:11200",
-            [StatusType.Burning]  = "DoT via OnPeriodic (3%/3sec MaxHp) — status.cpp Fire mag",
+            // [StatusType.Poison] — Wave 56: removed; OnPeriodic tick body satisfies the gate
+            // [StatusType.Burning] — Wave 56: removed; OnPeriodic tick body satisfies the gate
 
             // ---- Combat-marker SCs (NS-3 wave 4a): val read by damage pipeline ----
             [StatusType.Defender] = "CR_DEFENDER — ranged dmg reduction (status.cpp:10953-10968)",
@@ -176,8 +176,8 @@ public class StatusEffectCompletenessTests
             // ---- NS-3 wave 5d — GC + SC + Genetic/Mechanic + WL + AB + WM + 4th-class ----
             // GC family — consumer Map.Server/Skills/SkillImpl/Thief/GuillotineCross*.cs
             [StatusType.HallucinationwalkPostdelay] = "GC_HALLUCINATIONWALK postdelay marker — SkillCastTimingService re-cast gate",
-            [StatusType.Venombleed]                = "GC_VENOMBLEED — DoT marker; combat damage path applies bleed tick",
-            [StatusType.Pyrexia]                   = "GC_PYREXIA — fever debuff; combat path applies miss-rate + DoT",
+            // [StatusType.Venombleed] — Wave 56: removed; OnPeriodic tick body satisfies the gate
+            // [StatusType.Pyrexia] — Wave 56: removed; OnPeriodic tick body satisfies the gate
             // SC (Shadow Chaser) family — consumer ShadowChaser*.cs
             [StatusType.Stripaccessory] = "SC__STRIPACCESSORY — equip-disable enforced by IEquipService",
             [StatusType.Bloodylust]     = "SC__BLOODYLUST — val2 dmg% boost read by Combat damage path",
@@ -185,7 +185,7 @@ public class StatusEffectCompletenessTests
             [StatusType.Madogear]   = "NC Madogear — Val1 type read by PlayerOptionService for sprite + skill gating",
             [StatusType.Pyroclastic] = "NC_PYROCLASTIC — Val2 atk+ele read by weapon element resolver",
             // Warlock family — consumer Map.Server/Skills/SkillImpl/Mage/Warlock*.cs
-            [StatusType.Teargas]    = "GC_TEARGAS — Val2 tick interval read by damage path tick",
+            // [StatusType.Teargas] — Wave 56: removed; OnPeriodic tick body satisfies the gate
             // Arch Bishop / extended Sura
             [StatusType.Rushwindmill] = "WM_RUSHWINDMILL — Val2 boost magnitude read by Combat damage path",
             // Wanderer / Minstrel
