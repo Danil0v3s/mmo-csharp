@@ -27,7 +27,7 @@ companion header `battle.hpp` (793 lines) exports the
 | `battle_attr_fix` | ✅ | [ElementTable](/Map.Server/Status/ElementTable.cs) — element matrix verbatim |
 | `battle_calc_cardfix` | ✅ | `BattleCardService.CalcCardFix` (B-H1 — reads `PlayerEntity.EquipBonuses`; race/element/size multipliers verbatim) |
 | `battle_addmastery` | ✅ | `BattleCardService.AddMastery` (B-H1) |
-| `battle_calc_chorusbonus` | ⚠️ | Hooked through `BattleCardService`; full Minstrel/Wanderer chorus ATK matrix lands with the bard SkillImpl port (PARITY-REMAINING.md §P1.2) |
+| `battle_calc_chorusbonus` | ✅ | Wave 64 — `BattleCardService.CalcChorusBonus` (battle.cpp:2847). Renewal-correct return 0 (rAthena's `#ifdef RENEWAL` branch literally returns 0 too — the chorus damage matrix is pre-renewal only). Pre-renewal would count `MAPID_THIRDMASK \| MAPID_MINSTRELWANDERER` same-map party members per rAthena thresholds. |
 | `battle_calc_return_damage` | ✅ | `BattleReflectService.CalcReturnDamage` (B-H2) |
 | `battle_do_reflect` | ✅ | `BattleReflectService.DoReflect` (B-H2) |
 
@@ -64,7 +64,7 @@ companion header `battle.hpp` (793 lines) exports the
 | `battle_getcurrentskill` | ✅ | `BattleTargetService.GetCurrentSkill` (B-H4) |
 | `battle_check_undead` | ✅ | `BattleElementService.CheckUndead` (B-M3) |
 | `battle_check_coma` | ⚠️ | `BattleTargetService.CheckComa` — returns false; coma proc reads `sd->bonus.coma_class` / `coma_race` arrays, gated on equip-bonus aggregator (PARITY-REMAINING.md §P2.2) |
-| `is_infinite_defense` | ✅ | `BattleTargetService.IsInfiniteDefense` (B-H4 — reads SteelBody + mob mode) |
+| `is_infinite_defense` | ✅ | Wave 64 — `BattleTargetService.IsInfiniteDefense` (battle.cpp:2878). Checks SC_INVINCIBLE universally + MobMode `IgnoreMagic`/`IgnoreMisc` per BF lane. MobMode `IgnoreMelee`/`IgnoreRanged` need attack-range disambiguation; caller-side BF_SHORT/BF_LONG overload pending. BL_SKILL plant-target branch (NPC_REVERBERATION / WM_POEMOFNETHERWORLD) skipped — skill units aren't damage targets in our model. |
 | `battle_can_hit_bg_target` | ✅ | `BattleZoneGateService.CanHitBgTarget` (B-L2) |
 | `battle_can_hit_gvg_target` | ✅ | `BattleZoneGateService.CanHitGvgTarget` (B-L2) |
 
@@ -108,7 +108,7 @@ companion header `battle.hpp` (793 lines) exports the
 
 | Bucket | Done | Partial | Missing |
 |---|---|---|---|
-| Damage calculation chain | 7 | 3 | 0 |
+| Damage calculation chain | 8 | 2 | 0 |
 | Zone-specific damage rates | 3 | 0 | 0 |
 | Damage application | 5 | 2 | 0 |
 | Target / range / check | 11 | 1 | 0 |
@@ -116,11 +116,15 @@ companion header `battle.hpp` (793 lines) exports the
 | Drain / reflect / element | 4 | 0 | 0 |
 | Battle config | 5 | 0 | 0 |
 | Lifecycle | 3 | 0 | 0 |
-| **Totals** | **40** | **8** | **0** |
+| **Totals** | **41** | **7** | **0** |
 
+**Wave 64 (2026-05-25)** — `battle_calc_chorusbonus` ⚠️ → ✅
+(renewal-correct return 0); `is_infinite_defense` impl
+corrected to read SC_INVINCIBLE + MobMode IgnoreMagic/IgnoreMisc
+per rAthena battle.cpp:2878 (was previously a stub returning false).
 **T5.2a (2026-05-22) — zero-❌ reached.** All 36 previously-missing
 entries audited and remapped to the matching C# service that the
-B-H1..B-Final wave actually built. The 9 ⚠️ entries all have
+B-H1..B-Final wave actually built. The remaining ⚠️ entries all have
 documented dependencies on later T5 tracks (per-skill SkillImpl
 chorus / autocast, dmotion / walkdelay refactor, full coma matrix
 once card scripts port).
@@ -161,6 +165,28 @@ side-system polish > admin knobs).
 10. **B-L2** — BG/GvG friendly-fire gates + AI exception list.
 
 ## History
+
+### 2026-05-25 — Wave 64: chorusbonus + is_infinite_defense correctness
+
+Two small but real promotions:
+
+1. **`battle_calc_chorusbonus`** (battle.cpp:2847) — added
+   `IBattleCardService.CalcChorusBonus` returning 0. rAthena's
+   `#ifdef RENEWAL` branch literally returns 0 too, so this is
+   structurally complete on a renewal server; a future pre-renewal
+   fork has a documented home for the `MAPID_MINSTRELWANDERER`
+   party-count formula. ⚠️ → ✅.
+
+2. **`is_infinite_defense`** (battle.cpp:2878) — implementation was
+   a stub `return false`. Rewrote to read `SC_INVINCIBLE`
+   universally + `MobMode.IgnoreMagic`/`IgnoreMisc` per BF lane.
+   `IgnoreMelee`/`IgnoreRanged` need an attack-range overload (BF_SHORT
+   vs BF_LONG isn't on the current signature); documented gap with
+   the canonical entry preserved. Doc note updated to match impl.
+
+**Coverage delta:** 40 ✅ / 8 ⚠️ / 0 ❌ → **41 ✅ / 7 ⚠️ / 0 ❌**
+(+1 ✅, -1 ⚠️). All 3,395 Map.Server tests + 87 Core.Server + 29
+Login.Server pass.
 
 ### 2026-05-24 — P2.1 doc-resync close-out (1 stale ⚠️ → ✅; 8 genuine gaps remain)
 

@@ -94,15 +94,42 @@ public sealed class BattleTargetService : IBattleTargetService
 
     public bool IsInfiniteDefense(Entity target, BattleAttackType type)
     {
-        // Steel Body + variants set SC_STEELBODY which gives 90% reduction
-        // (effectively infinite vs auto-attacks). The full set:
-        //   SC_STEELBODY     (Monk Steel Body)
-        //   SC_GVG_GIANT     (GvG event Giant body)
-        //   SC_INVINCIBLE    (GM /invincible)
-        //   SC_NO_RECOVER_STATE
-        // None of these are registered SC types yet. Return false; the
-        // canonical entry stays here so the resolver can call once
-        // the SCs port.
-        return false;
+        // rAthena is_infinite_defense (battle.cpp:2878). Returns true when:
+        //   1. Target has SC_INVINCIBLE active (universal — affects all BF types).
+        //   2. MobMode bit matches the BF lane:
+        //        IgnoreMelee  + BF_WEAPON|BF_SHORT (melee weapon)
+        //        IgnoreMagic  + BF_MAGIC
+        //        IgnoreRanged + BF_WEAPON|BF_LONG  (ranged weapon)
+        //        IgnoreMisc   + BF_MISC
+        //   3. BL_SKILL targets: skill_id == NPC_REVERBERATION or
+        //      WM_POEMOFNETHERWORLD (skill-unit damageable plants).
+        //
+        // Our BattleAttackType doesn't carry the BF_SHORT vs BF_LONG
+        // distinction, so IgnoreMelee/IgnoreRanged checks can't fire
+        // accurately on the BF_WEAPON path — those need an attack-range
+        // overload. For now we handle the unambiguous lanes (Magic /
+        // Misc / SC_INVINCIBLE), which covers MD_IGNOREMAGIC golems and
+        // GM-invincible PCs. Add a (target, type, isLong) overload when
+        // a caller needs the melee/ranged split.
+
+        // SC_INVINCIBLE is universal — bypass MobMode checks.
+        if (_sc?.Get(target, StatusType.Invincible) != null) return true;
+
+        var mode = target.Stats.Mode;
+        switch (type)
+        {
+            case BattleAttackType.Magic:
+                return (mode & MobMode.IgnoreMagic) != 0;
+            case BattleAttackType.Misc:
+                return (mode & MobMode.IgnoreMisc) != 0;
+            case BattleAttackType.Weapon:
+                // Both IgnoreMelee and IgnoreRanged need attack-range
+                // disambiguation. Without it we conservatively allow
+                // the hit through. A future overload can drive both
+                // by passing isLong from the caller.
+                return false;
+            default:
+                return false;
+        }
     }
 }

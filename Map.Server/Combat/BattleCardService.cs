@@ -160,6 +160,17 @@ public sealed class BattleCardService : IBattleCardService
 
     private static bool IsUndead(Status.BattleStats s)
         => s.Race == BattleRace.Undead || s.DefenseElement == BattleElement.Undead;
+
+    /// <summary>
+    /// rAthena <c>battle_calc_chorusbonus</c> (battle.cpp:2847).
+    /// Renewal path is hard <c>return 0</c> per the rAthena #ifdef
+    /// guard — the chorus damage matrix is pre-renewal only. Our
+    /// server is renewal, so this is structurally complete.
+    /// Pre-renewal branch would count same-map party members with
+    /// MAPID_THIRDMASK | MAPID_MINSTRELWANDERER and return 0 / (n-2) /
+    /// 5 based on the rAthena thresholds.
+    /// </summary>
+    public int CalcChorusBonus(PlayerEntity attacker) => 0;
 }
 
 /// <summary>

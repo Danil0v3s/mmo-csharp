@@ -39,6 +39,22 @@ public interface IBattleCardService
     /// Pre-renewal: returns dmg + bonus. We follow renewal.
     /// </summary>
     long AddMastery(PlayerEntity attacker, Entity target, long damage, BattleAttackType type);
+
+    /// <summary>
+    /// rAthena <c>battle_calc_chorusbonus</c> (battle.cpp:2847). Counts
+    /// MAPID_MINSTRELWANDERER (3rd-mask) members in the attacker's
+    /// party on the same map. Returns 0 if &lt;3 members, 5 if &gt;7,
+    /// else <c>members - 2</c>. Used by Wanderer / Minstrel chorus
+    /// SCs (SC_DANCEWITHWUG, SC_SATURDAYNIGHTFEVER, SC_RICHMANKIM,
+    /// etc.) to scale per-cast damage.
+    ///
+    /// <para><b>Renewal:</b> the rAthena function literally
+    /// <c>return 0;</c> under <c>#ifdef RENEWAL</c>. The chorus
+    /// damage matrix is pre-renewal only. Since our server runs in
+    /// renewal mode, this is always 0 by parity — the entry point
+    /// stays so a future #ifndef-RENEWAL fork has a clean home.</para>
+    /// </summary>
+    int CalcChorusBonus(PlayerEntity attacker);
 }
 
 /// <summary>
