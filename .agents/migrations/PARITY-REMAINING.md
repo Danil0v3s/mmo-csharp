@@ -491,6 +491,54 @@ any moment.
 
 ## History
 
+### 2026-05-25 — Waves 52–59: 1006-SC sweep, phase 3 — CalcFlag+allowlist migration
+
+The strict goal of "every CalcFlag SC has a real stat-mod OnStart
+without allowlist exception" is achieved. Eight waves moved every
+CalcFlag-listed SC out of the `_behaviorElsewhereAllowlist` into real
+`Register(StatusType.X, new StatusEffectHandler(OnStart: ..., OnEnd: ...))`
+bodies that mutate the listed CalcFlag fields.
+
+* **Wave 52** — Soul Linker (6): Soulshadow, Soulfalcon, Soulgolem,
+  Soulenergy, Soulfairy, Soulcold.
+* **Wave 53** — Weapon endow family (4): Fireweapon, Waterweapon,
+  Windweapon, Earthweapon (shared EndowHandler).
+* **Wave 54** — Strip family (4): Stripweapon, Stripshield,
+  Striparmor, Striphelm (-Val1 to listed CalcFlag stat).
+* **Wave 55** — Visibility + body markers (4): Hiding, Cloaking,
+  Steelbody, Saturdaynightfever.
+* **Wave 56** — Drop DoT SCs from allowlist (5): Poison, Burning,
+  Venombleed, Pyrexia, Teargas — `OnPeriodic != null` satisfies
+  the completeness gate without an allowlist entry.
+* **Wave 57** — CC + cast-time gates (5): Paralysis, Izayoi, Stone,
+  Freeze, HallucinationwalkPostdelay; plus MakeFreshMob fixture
+  bump (Def2/Mdef2/Flee2/AspdRate non-zero defaults).
+* **Wave 58** — Bulk migration (53): Defender, Providence, Edp,
+  Endure, Marionette, Marionette2, Nibelungen, Siegfried, Sunstance,
+  Starstance, Banding, Inspiration, ShieldspellAtk, Hovering,
+  TinderBreaker, TinderBreaker2, Suiton, Nen, all sphere options
+  (9), HeatBarrel, Stripaccessory, Bloodylust, Madogear, Pyroclastic,
+  Rushwindmill, Moonlitserenade, ShinkirouCall, Swingdance,
+  CircleOfFireOption, WaterBarrier, SolidSkinOption, StoneShieldOption,
+  PowerOfGaia, PyrotechnicOption, Eqc, ToxinOfMandara, TelekinesisIntense,
+  Flashcombo, Shrimp, SpSha, EmergencyMove, HolyS, etc.
+* **Wave 59** — Spirit (Soul Linker job-gate): +Val1 to all 6 base
+  stats per CalcFlag.
+
+**Final done-condition state**:
+- `grep -c "Register.*CombatMarkerHandler" StatusEffectRegistry.cs`: **0** ✅
+- `Every_CalcFlag_SC_has_a_real_stat_mod_handler` passes: ✅
+- Active allowlist entries with CalcFlag: **0** ✅ (was 84 at session start)
+- Build clean, 3,395 / 3,395 tests pass ✅
+- Bespoke OnStart bodies: ~291 of 997 SCs (29%)
+- Allowlist (presence-only consumer-side reads): 46 / 997 (4.6%)
+- Presence-only via generator default: ~660 / 997 (66.4%)
+
+The remaining 46 allowlist entries are all for SCs WITHOUT CalcFlag
+in status.yml — they're presence-only by rAthena's own design.
+Each entry cites the consumer that reads sc.Val* (combat damage
+path, regen overlay, per-skill plugin, etc.).
+
 ### 2026-05-25 — Waves 47–51: 1006-SC sweep, phase 2 (+39 ports + allowlist citations)
 
 Continuing the SC handler sweep:
