@@ -300,6 +300,13 @@ builder.Services.AddSingleton<Map.Server.Party.IPartyMapService, Map.Server.Part
 // behaviors that need the leader gate (Convenio) or the trigger-class
 // gate (TK_COUNTER / MO_COMBOFINISH / AM_TWILIGHT2-3).
 builder.Services.AddSingleton<Map.Server.Party.IPartyService, Map.Server.Party.PartyService>();
+// Wave 92 — wire-emit layer for party lifecycle packets. Port of the
+// rAthena clif_party_* family (clif_party_created / clif_party_member_info
+// / clif_party_invite / clif_party_invite_reply / clif_party_withdraw
+// / clif_party_option / clif_party_xy_remove). Distinct from
+// PartyService (the cache) and IntifService.Party* (the IPC dispatch);
+// this is the seam that turns lifecycle events into client packets.
+builder.Services.AddSingleton<Map.Server.Party.IPartyClientService, Map.Server.Party.PartyClientService>();
 // P0.1 — session lookup from PlayerEntity → MapSessionData. Wraps
 // SessionManager; lets gameplay services resolve the per-PC session
 // without pulling in the network API.
@@ -2163,6 +2170,10 @@ builder.Services.AddSingleton<Map.Server.Status.IMadoGearService, Map.Server.Sta
 // auto-application based on the current inventory weight vs max weight
 // ratio. Called from inventory mutation paths.
 builder.Services.AddSingleton<Map.Server.Status.IPlayerWeightStatusService, Map.Server.Status.PlayerWeightStatusService>();
+// Wave 94 — pc_scdata_received (pc.cpp:14747). Post-load chain that
+// re-applies persisted SCs returned by the char-server, ticks rental
+// expirations, and latches PlayerEntity.PcLoaded = true.
+builder.Services.AddSingleton<Map.Server.Status.IPlayerScDataReceivedService, Map.Server.Status.PlayerScDataReceivedService>();
 // DSL-3: V8-backed scripted bonus pipeline for dynamic item scripts
 // (conditionals, autobonus, autospell) that the regex extractor
 // can't decode. Dedicated V8 engine — separate from the NPC script

@@ -408,6 +408,12 @@ public sealed class PlayerEntity : Entity
     /// <summary>rAthena <c>sd-&gt;pd-&gt;bonus</c> — pet support bonus script entries.</summary>
     public List<(string Script, int Rate, int Duration, ushort Flag)> PetAutoBonus { get; } = new();
 
+    /// <summary>rAthena <c>sd-&gt;state.pc_loaded</c> latch. Set true after
+    /// <c>pc_scdata_received</c> completes (SC restore + rentals sweep);
+    /// gameplay code reads this to gate "is the player fully ready"
+    /// decisions (atcommand `@reload`, some script var loaders).</summary>
+    public bool PcLoaded { get; set; }
+
     public override EntityType Type => EntityType.Pc;
 
     public PlayerEntity(

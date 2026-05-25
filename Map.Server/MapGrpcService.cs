@@ -8,15 +8,24 @@ public class MapGrpcService : MapService.MapServiceBase
 {
     private readonly ICharServerIpcService _charServerIpc;
     private readonly IPlayerMapService _playerMapService;
+    private readonly Map.Server.Status.IPlayerScDataReceivedService? _scDataReceived;
+    private readonly Map.Server.Entities.IEntityRegistry? _entityRegistry;
+    private readonly Map.Server.Party.IPartyService? _partyService;
     private readonly ILogger<MapGrpcService> _logger;
 
     public MapGrpcService(
         ICharServerIpcService charServerIpc,
         IPlayerMapService playerMapService,
-        ILogger<MapGrpcService> logger)
+        ILogger<MapGrpcService> logger,
+        Map.Server.Status.IPlayerScDataReceivedService? scDataReceived = null,
+        Map.Server.Entities.IEntityRegistry? entityRegistry = null,
+        Map.Server.Party.IPartyService? partyService = null)
     {
         _charServerIpc = charServerIpc;
         _playerMapService = playerMapService;
+        _scDataReceived = scDataReceived;
+        _entityRegistry = entityRegistry;
+        _partyService = partyService;
         _logger = logger;
     }
 
@@ -28,6 +37,10 @@ public class MapGrpcService : MapService.MapServiceBase
         var posX = request.PositionX;
         var posY = request.PositionY;
         var posZ = request.PositionZ;
+        // Wave 92 — surface the char-side party_id (proto field 36) so
+        // we can drive IPartyService.HydrateAsync after AddPlayer (port
+        // of rAthena party_member_joined / party_request_info handshake).
+        int partyId = 0;
 
         if (request.AccountId > 0 && request.LoginId1 > 0 && request.LoginId2 > 0)
         {
@@ -64,6 +77,10 @@ public class MapGrpcService : MapService.MapServiceBase
                 posY = auth.CharacterData.PositionY;
                 posZ = auth.CharacterData.PositionZ;
             }
+            if (auth.CharacterData != null)
+            {
+                partyId = auth.CharacterData.PartyId;
+            }
         }
 
         // If caller did not provide a spawn/map, pull authoritative data from Char server.
@@ -86,6 +103,10 @@ public class MapGrpcService : MapService.MapServiceBase
             posX = characterData.PositionX;
             posY = characterData.PositionY;
             posZ = characterData.PositionZ;
+            if (partyId == 0)
+            {
+                partyId = characterData.PartyId;
+            }
         }
 
         // Hand off into the entity registry. The TCP-side spawn flow ([session.md])
@@ -99,6 +120,22 @@ public class MapGrpcService : MapService.MapServiceBase
             mapId: (uint)mapId,
             x: (short)posX,
             y: (short)posY);
+
+        // Wave 92 — propagate the char-side party_id onto the live
+        // PlayerEntity + drive the rAthena party_member_joined hydrate
+        // path (party.cpp:1095 → party_request_info → party_recv_info).
+        // Fire-and-forget so EnterMap stays snappy; the cache lands
+        // before the client can issue any party-gated action.
+        if (partyId > 0 && _entityRegistry != null)
+        {
+            var pcForParty = _entityRegistry.Get(new Map.Server.Entities.EntityId((int)request.CharacterId))
+                as Map.Server.Entities.PlayerEntity;
+            if (pcForParty != null)
+            {
+                pcForParty.PartyId = partyId;
+                _partyService?.Hydrate(partyId, pcForParty.CharacterId);
+            }
+        }
 
         // P6 post-auth wiring (rAthena chrif post-load equivalents): with the auth ticket
         // accepted, pull state owned by char server and mark online. Each call is best-effort
@@ -129,7 +166,19 @@ public class MapGrpcService : MapService.MapServiceBase
 
             try
             {
-                _ = await _charServerIpc.RequestStatusChangeDataAsync(request.CharacterId, context.CancellationToken);
+                var scResp = await _charServerIpc.RequestStatusChangeDataAsync(request.CharacterId, context.CancellationToken);
+                // Wave 94 — pc.cpp:14747 pc_scdata_received. Bridge the
+                // raw SC bytes returned by the char-server into the
+                // map-side SC engine + lifecycle latches.
+                if (scResp?.Success == true && _scDataReceived != null && _entityRegistry != null)
+                {
+                    var pc = _entityRegistry.Get(new Map.Server.Entities.EntityId((int)request.CharacterId))
+                        as Map.Server.Entities.PlayerEntity;
+                    if (pc != null)
+                    {
+                        _scDataReceived.OnReceived(pc, scResp.Data.ToByteArray());
+                    }
+                }
             }
             catch (Exception ex)
             {

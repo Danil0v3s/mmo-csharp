@@ -21,7 +21,7 @@ groups the function list by subsystem and tracks our C# coverage.
 | `pc_authfail` | ✅ | Session disconnect path + `IClifWireService.AuthFail` (PC-23) |
 | `pc_setnewpc` | ✅ | `MapSessionService` emits AID + PCB + initial spawn packets in the rAthena order (PC-23) |
 | `pc_reg_received` | ✅ | `IPlayerLifecycleHelpers.OnRegReceived` (PC-22 — wires `IPlayerVarService` load completion) |
-| `pc_scdata_received` | ⚠️ | `IStatusChangeService` re-applies persisted SCs at session enter; some 4th-class SCs still pending YAML. PARITY-REMAINING §P1.2 |
+| `pc_scdata_received` | ✅ | Wave 94 — `IPlayerScDataReceivedService.OnReceived` ([Status/PlayerScDataReceivedService.cs](/Map.Server/Status/PlayerScDataReceivedService.cs)). Decodes the `bytes data` payload from `StatusChangeDataResponse` via `ScDataCodec`, re-applies each persisted SC via `IStatusChangeService.Start` (skipping expired rows), ticks `IPlayerInventoryHelpers.InventoryRentalsTick`, and latches `PlayerEntity.PcLoaded = true`. Wired into `MapGrpcService.EnterMap` after the SC-data RPC returns. |
 | `pc_makesavestatus` | ✅ | `IPlayerLifecycleHelpers.MakeSaveStatus` (PC-22 — full mmo_charstatus snapshot) |
 | `pc_should_log_commands` | ✅ | `AtCommandLogger` gates on group LogCommands |
 
@@ -222,7 +222,7 @@ groups the function list by subsystem and tracks our C# coverage.
 
 | Bucket | Done | Partial | Missing |
 |---|---|---|---|
-| Lifecycle | 6 | 1 | 0 |
+| Lifecycle | 7 | 0 | 0 |
 | Position / warp / save | 7 | 0 | 0 |
 | Stat allocation | 7 | 0 | 0 |
 | EXP / level | 5 | 0 | 0 |
@@ -241,14 +241,14 @@ groups the function list by subsystem and tracks our C# coverage.
 | Script vars | 3 | 0 | 0 |
 | Macro detector | 1 | 0 | 0 |
 | Misc | 8 | 0 | 0 |
-| **Totals** | **118** | **2** | **0** |
+| **Totals** | **119** | **1** | **0** |
 
-**Wave 93 (2026-05-25)** — `pc_updateweightstatus` promoted to ✅:
-`IPlayerWeightStatusService` landed, wired into `InventoryService.GiveItem`.
-120 of 157 functions tracked here. Of those, 118 (98 %) are full
-parity, 2 (2 %) are ⚠️ with documented upstream dependencies (SCdata
-4th-class YAML, Crimson Marker auto-hook). The remaining ~37 functions
-are private helpers absorbed into call sites or thin wrappers.
+**Wave 94 (2026-05-25)** — `pc_scdata_received` promoted to ✅:
+`IPlayerScDataReceivedService` landed, wired into `MapGrpcService.EnterMap`.
+120 of 157 functions tracked here. Of those, 119 (99 %) are full
+parity, 1 (1 %) is ⚠️ with a documented upstream dependency (Crimson
+Marker auto-hook). The remaining ~37 functions are private helpers
+absorbed into call sites or thin wrappers.
 
 ## Implementation plan
 
