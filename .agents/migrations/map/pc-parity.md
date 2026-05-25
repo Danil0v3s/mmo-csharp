@@ -136,7 +136,7 @@ groups the function list by subsystem and tracks our C# coverage.
 | `pc_addservantball` / `pc_delservantball` | ✅ | `IPlayerOrbService.AddServant` / `DelServant` (PC-4 — cap 5) |
 | `pc_addabyssball` / `pc_delabyssball` | ✅ | `IPlayerOrbService.AddAbyss` / `DelAbyss` (PC-4 — cap 5) |
 | `pc_addspiritcharm` / `pc_delspiritcharm` | ✅ | `IPlayerOrbService.AddCharm` / `DelCharm` (PC-14 — Kagerou/Oboro, typed) |
-| `pc_crimson_marker_clear` | ⚠️ | `CrimsonMarker` SkillImpl landed (NS-3); per-player marker-list clear method still pending. PARITY-REMAINING §P1.2 |
+| `pc_crimson_marker_clear` | ✅ | Wave 87 — `CrimsonMarker.ClearForCaster(caster, entities, sc)` static helper (pc.cpp:14925). Walks the entity registry for SC_C_MARKER instances whose Val2 matches the caster id; ends each. Callable from pc_quit / death / weapon-unequip flows. |
 
 ### Bonuses & scripts
 
