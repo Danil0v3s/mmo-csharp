@@ -1092,29 +1092,36 @@ public sealed class StatusEffectRegistry
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // SC_MELTDOWN (WS_MELTDOWN) — rAthena status.cpp:11264-11267:
-        // val2 = 100*val1 weapon-break chance, val3 = 70*val1 armor-break
-        // chance. Both are combat-side procs read on hit; no direct
-        // stat-mod. Override as combat-marker (defeat any future generator
-        // synthesis).
-        Register(StatusType.Meltdown, CombatMarkerHandler(
-            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+        // val2 = 100*val1 weapon-break chance (per-myriad), val3 = 70*val1
+        // armor-break chance. Both are combat-side procs read on hit.
+        // Wave 31 — OnStart materialises Val2 / Val3 from Val1 so the
+        // per-hit equip-break roller sees the rAthena magnitudes.
+        Register(StatusType.Meltdown, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 100 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 70 * sc.Val1;
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // SC_REFLECTSHIELD (CR_REFLECTSHIELD) — rAthena status.cpp:
-        // 10587-10602: val2 = 10+val1*3 reflect %. Combat-side proc
-        // reads val2 on damage hit. No stat-mod. Earlier line 393
-        // registered NoOpHandler (shared _NoOp) — not in CalcFlagDefaults
-        // so safe from upgrade, but make explicit override defensible.
-        Register(StatusType.Reflectshield, CombatMarkerHandler(
-            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+        // 10587-10602: val2 = 10+val1*3 reflect %. Wave 31 materialises
+        // Val2 from Val1 on apply so DamageService.ApplyScPostResolve
+        // sees the rAthena reflect %.
+        Register(StatusType.Reflectshield, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 10 + sc.Val1 * 3; },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // SC_PROVIDENCE (CR_PROVIDENCE) — rAthena status.cpp:10584-10586
-        // (val2 = val1*5 race/ele resist) + 4788-4790 (status_calc_pc
-        // adds val2 to subele[HOLY] and subrace[DEMON]). Generator
-        // upgrades the earlier NoOp registration with +Val1 to all 6
-        // base stats (totally wrong — Providence doesn't touch stats).
-        // Override with combat-marker so the upgrade is defeated.
-        Register(StatusType.Providence, CombatMarkerHandler(
-            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+        // val2 = val1*5 (race/ele resist %). Wave 31 materialises Val2
+        // from Val1 on apply; DamageService reads Val2 if non-zero,
+        // falls back to 5*Val1 otherwise.
+        Register(StatusType.Providence, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = sc.Val1 * 5; },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // SC_HIDING (TF_HIDING) — visibility marker. Generator: +Val1
         // AspdRate (semi-OK proxy for the walk-speed change but
@@ -1131,12 +1138,18 @@ public sealed class StatusEffectRegistry
 
         // SC_EDP (ASC_EDP — Enchant Deadly Poison) — rAthena status.cpp:
         // 10522-10535: val2 = (val1+1)/2 + 2 poison chance %; val3 =
-        // 50*(val1+1) damage increase % (pre-renewal). Combat reads val3
-        // for the damage boost on poison-element hits. Generator emits
-        // +Val1 Batk (wrong field — it's a damage% mod, not a flat batk
-        // bump). Override.
-        Register(StatusType.Edp, CombatMarkerHandler(
-            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+        // 50*(val1+1) damage increase % (pre-renewal). Wave 31
+        // materialises Val2 / Val3 on apply so BattleCalculator's EDP
+        // damage bump (Wave 27) + per-hit poison-proc readers see the
+        // rAthena values.
+        Register(StatusType.Edp, new StatusEffectHandler(
+            OnStart: (_, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = (sc.Val1 + 1) / 2 + 2;
+                if (sc.Val3 == 0) sc.Val3 = 50 * (sc.Val1 + 1);
+            },
+            OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // SC_STEELBODY (MO_STEELBODY) — 90% damage reduction (phys+magic),
         // applied combat-side via DamageService SC presence check.
