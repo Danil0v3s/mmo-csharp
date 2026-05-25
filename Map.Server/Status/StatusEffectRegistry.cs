@@ -1951,6 +1951,78 @@ public sealed class StatusEffectRegistry
             },
             OnEnd: (target, sc) => { target.Stats.Crt = (short)Math.Max(0, target.Stats.Crt - sc.Val2); },
             Flags: buff));
+
+        // ===== Wave 49 — Elemental sphere _OPTION markers + small finishers =====
+
+        // SC_ENSEMBLEFATIGUE — Val2 = 30 (Speed + ASPD penalty %).
+        Register(StatusType.Ensemblefatigue, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 30;
+                target.Stats.AspdRate = (short)Math.Max(short.MinValue, target.Stats.AspdRate - sc.Val2);
+            },
+            OnEnd: (target, sc) => { target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val2); },
+            Flags: debuff));
+
+        // SC_UPHEAVAL_OPTION — Val2 = 15 HP rate bonus,
+        //                      Val3 = WZ_EARTHSPIKE (sub-skill id = 86).
+        // CalcFlag: MaxHp. Applies MaxHp delta inline.
+        Register(StatusType.UpheavalOption, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 15;
+                if (sc.Val3 == 0) sc.Val3 = 86;
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = delta;
+                target.Stats.MaxHp += delta;
+            },
+            OnEnd: (target, sc) =>
+            {
+                if (sc.Val4 > 0) target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
+            },
+            Flags: buff));
+
+        // SC_FLAMETECHNIC_OPTION — Val3 = ELE_FIRE (3).
+        Register(StatusType.FlametechnicOption, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val3 == 0) sc.Val3 = 3; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_COLD_FORCE_OPTION — Val3 = ELE_WATER (1).
+        Register(StatusType.ColdForceOption, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val3 == 0) sc.Val3 = 1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_GRACE_BREEZE_OPTION — Val3 = ELE_WIND (4).
+        Register(StatusType.GraceBreezeOption, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val3 == 0) sc.Val3 = 4; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_EARTH_CARE_OPTION — Val3 = ELE_EARTH (2).
+        Register(StatusType.EarthCareOption, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val3 == 0) sc.Val3 = 2; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_DEEP_POISONING_OPTION — Val3 = ELE_POISON (5).
+        Register(StatusType.DeepPoisoningOption, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val3 == 0) sc.Val3 = 5; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_COLORS_OF_HYUN_ROK_BUFF — Val2 = 50 (general bonus %).
+        Register(StatusType.ColorsOfHyunRokBuff, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 50; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_PROPERTYWALK — Val3 = 0 (movement-element marker; consumer reads).
+        Register(StatusType.Propertywalk, new StatusEffectHandler(
+            OnStart: (_, _, _) => { },
+            OnEnd: (_, _) => { },
+            Flags: buff));
     }
 
     /// <summary>
