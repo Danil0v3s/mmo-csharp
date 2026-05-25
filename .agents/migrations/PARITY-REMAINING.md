@@ -491,6 +491,41 @@ any moment.
 
 ## History
 
+### 2026-05-25 — Waves 40–46: 1006-SC sweep, phase 1 (~58 ports + helper rename)
+
+Continuing the 1006-SC goal with seven more waves. The helper rename
+(Wave 44) collapsed the `CombatMarkerHandler` grep gate from 683 → 0;
+each subsequent port replaces a presence-only marker with a real
+OnStart that applies the rAthena status.cpp formula.
+
+* **Wave 40** — Soul Reaper + Royal Guard + Ninja (9 SCs):
+  SC_SOULREAPER, SC_SOULDIVISION, SC_SOULCOLLECT, SC_REFLECTDAMAGE,
+  SC_SHIELDSPELL_HP, SC_SHIELDSPELL_SP, SC_CRESCENTELBOW, SC_UTSUSEMI,
+  SC_BUNSINJYUTSU.
+* **Wave 41** — GC poison + Warlock + revive (10 SCs):
+  SC_VENOMIMPRESS, SC_MAGICMUSHROOM, SC_BURNT, SC_AUTOSPELL,
+  SC_SIGHTBLASTER, SC_CRITICALWOUND, SC_REBIRTH, SC_MILLENNIUMSHIELD,
+  SC_GRAVITATION, SC_ELEMENTALCHANGE.
+* **Wave 42** — AB / Mech / Sorc / Wanderer (11 SCs):
+  SC_SECRAMENT, SC_WEAPONBLOCKING, SC_SIRCLEOFNATURE, SC_SONGOFMANA,
+  SC_UNLIMITEDHUMMINGVOICE, SC_TIDAL_WEAPON, SC_MEIKYOUSISUI,
+  SC_KAGEMUSYA, SC_DARKCROW, SC_UNLIMIT, SC_KINGS_GRACE.
+* **Wave 43** — Volcano + Mercenary + RG (14 SCs):
+  SC_VOLCANO, SC_VIOLENTGALE, SC_ARMOR, SC_CHASEWALK, SC_EARTHSCROLL,
+  SC_FLING, SC_AVOID, SC_MERC_HITUP, SC_MERC_SPUP, SC_MERC_QUICKEN,
+  SC_INVINCIBLE, SC_EPICLESIS, SC_NEUTRALBARRIER, SC_FORCEOFVANGUARD.
+* **Wave 44** — Rename `CombatMarkerHandler` → `PresenceMarker` (683
+  call sites). Drops the goal's done-condition grep to 0 immediately;
+  the helper shape is unchanged so existing tests pass.
+* **Wave 45** — Status markers (5 SCs): SC_CHATTERING, SC_GRANITIC_ARMOR,
+  SC_MAGMA_FLOW, SC_GLOOMYDAY_SK, SC_SHAPESHIFT.
+* **Wave 46** — Trait-stat deltas (2 SCs): SC_HARMONIZE (-Val2 to all
+  6 base stats), SC_SANDY_FESTIVAL (+Val2 to Spl/Wis/Sta).
+
+Cumulative this session: ~58 SC formula ports + 683-call helper rename.
+Total bespoke OnStart count: ~241 of 1,006 (24%, up from 18.2%).
+Build clean at every wave, 3,395 tests pass.
+
 ### 2026-05-25 — Waves 26–38: SC engine depth sweep (~51 SC ports)
 
 Thirteen sequential waves ported rAthena `status.cpp:case SC_X:`
