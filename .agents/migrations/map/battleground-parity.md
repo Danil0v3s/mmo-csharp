@@ -59,6 +59,26 @@ Canonical entry points: [IBattlegroundService](/Map.Server/BattleGround/IBattleg
 
 ## History
 
+### 2026-05-25 — Wave 82: battleground-parity Pass-2 re-audit (0 ⚠️→✅; 4 gates still active)
+
+Pass-2 honesty sweep. Re-checked all 4 ⚠️ rows:
+
+- `bg_queue_join_party` / `_guild` / `_multi` —
+  [Map.Server/Party/](/Map.Server/Party/) contains `IPartyMapService` +
+  `IPartyShareService` + `IPartyBookingService`, but no `IPartyService`
+  with a `GetMembers` returning a member roster. Party-side
+  `IntifService` party methods are still stubs (see party-parity Pass 2).
+  Fan-out gate confirmed real.
+- `bg_join_active` ([BattlegroundService.cs:276-279](/Map.Server/BattleGround/BattlegroundService.cs))
+  — late-joiner warp-in deferred; map-pool wire (§P2.2) still pending.
+- `bg_send_xy_timer_sub` ([BattlegroundService.cs:287-291](/Map.Server/BattleGround/BattlegroundService.cs))
+  — service seam present; `ZC_NOTIFY_POSITION_TO_GROUP_M` wire-broadcast
+  pending (clif layer).
+- `bg_send_dot_remove` ([BattlegroundService.cs:294-299](/Map.Server/BattleGround/BattlegroundService.cs))
+  — packet 0x0192 emit pending (clif layer).
+
+Coverage unchanged: **20 ✅ / 4 ⚠️ / 0 ❌**. No C# code touched.
+
 ### 2026-05-25 — Wave 76: battleground-parity re-audit (0 stale ⚠️ → ✅; 4 genuine gaps remain)
 
 Re-audited every ⚠️ row against
