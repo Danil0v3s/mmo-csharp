@@ -102,12 +102,12 @@ yet — the catalog data is ready, only the runtime caller is pending.
 | `RandomOptionDatabase::loadingFinished` | ✅ | Table populated at boot via SQL seeder; `option_id` is the PK. No post-load fixup needed. |
 | `RandomOptionGroupDatabase::parseBodyNode` | ✅ | YAML→SQL: importer → `seed_item_randomopt_group.sql` → `DatabaseSeeder`. Architectural difference, intentional. |
 | `RandomOptionGroupDatabase::loadingFinished` | ✅ | `item_randomopt_group_db` + `item_randomopt_group_option_db` populated at boot; group→slot→option rows are queryable. |
-| `RandomOptionDatabase::option_exists` | ⚠️ | `IItemDbService.RandomOptionExists` still returns false; catalog seeded, runtime lookup wire pending. |
-| `RandomOptionDatabase::option_get_id` | ⚠️ | `IItemDbService.RandomOptionGetId` returns 0; catalog seeded, runtime name→id resolver pending. |
-| `RandomOptionGroupDatabase::add_option` | ⚠️ | Group-builder runtime path not on interface; catalog seeded (group→option rows present). |
-| `RandomOptionGroupDatabase::option_exists` | ⚠️ | Not on interface; catalog seeded. |
-| `RandomOptionGroupDatabase::option_get_id` | ⚠️ | Not on interface; catalog seeded. |
-| `s_random_opt_group::apply` | ⚠️ | `IItemDbService.ApplyRandomOptionGroup` is a no-op; catalog seeded but per-equip random-opt rolling isn't called from any handler yet. |
+| `RandomOptionDatabase::option_exists` | ✅ | `RandomOptionService.OptionExists` ([RandomOptionService.cs](/Map.Server/Items/RandomOptionService.cs)) — `IItemDbService.RandomOptionExists` delegates here. |
+| `RandomOptionDatabase::option_get_id` | ✅ | `RandomOptionService.OptionGetId` — case-insensitive name→id lookup over the 249 cached options. |
+| `RandomOptionGroupDatabase::add_option` | ✅ | `RandomOptionService.Reload` ([RandomOptionService.cs:Reload](/Map.Server/Items/RandomOptionService.cs)) — builds group→slot→option index from `item_randomopt_group_option_db` rows, resolving option_name → option_id once at boot. |
+| `RandomOptionGroupDatabase::option_exists` | ✅ | `RandomOptionService.GroupExists` / `GroupExistsByName`. |
+| `RandomOptionGroupDatabase::option_get_id` | ✅ | `RandomOptionService.GroupGetId`. |
+| `s_random_opt_group::apply` | ✅ | `RandomOptionService.Apply` — mirrors C++ slot loop (3× retry chance pick → force-pick if no hit), compacts gaps so the client never sees a hole. `IItemDbService.ApplyRandomOptionGroup` delegates here. |
 
 ### Enchants & reforms
 
@@ -156,15 +156,55 @@ catalogs seeded:
 | Trade gate predicates | 10 | 0 | 0 | 10 |
 | Type checks | 4 | 1 | 0 | 5 |
 | Lookup & calc | 1 | 1 | 0 | 2 |
-| Combo / group / random-option YAML | 12 | 6 | 0 | 18 |
+| Combo / group / random-option YAML | 18 | 0 | 0 | 18 |
 | Enchant / reform / package YAML | 6 | 0 | 0 | 6 |
 | Lifecycle | 2 | 3 | 0 | 5 |
-| **Totals** | **35** | **11** | **0** | **46** |
+| **Totals** | **41** | **5** | **0** | **46** |
 
 The whole-file count (48) includes 2 internal sort/compare/cleanup
 helpers that don't need a C# entry point.
 
 ## History
+
+### 2026-05-25 — Wave 88: itemdb impl (6 ⚠️ → ✅ on random-option runtime)
+
+`RandomOptionService` lands as the runtime over the seeded
+`item_randomopt_db` (249 options) + `item_randomopt_group_db` +
+`item_randomopt_group_option_db` (106 groups) catalogs. Six rows
+flip ⚠️ → ✅:
+
+- `RandomOptionDatabase::option_exists` — `OptionExists(int id)`.
+- `RandomOptionDatabase::option_get_id` — `OptionGetId(string)`,
+  case-insensitive over the 249-name table.
+- `RandomOptionGroupDatabase::add_option` — `Reload()` builds the
+  group→slot→option index at boot, resolving option_name → option_id
+  through the cached options table.
+- `RandomOptionGroupDatabase::option_exists` — `GroupExists(int)` /
+  `GroupExistsByName(string)`.
+- `RandomOptionGroupDatabase::option_get_id` — `GroupGetId(string)`.
+- `s_random_opt_group::apply` — `Apply(int groupId, IList<...> output)`
+  ports the C++ slot loop (try N×3 random picks against each option's
+  `chance/10000`, force-pick if no hit fires) and the "compact gaps"
+  pass that keeps the 5-slot output contiguous (the client can't
+  handle a hole).
+
+`IItemDbService.{RandomOptionExists, RandomOptionGetId,
+ApplyRandomOptionGroup}` now delegate to `IRandomOptionService`.
+`Reload()` cascades through `IRandomOptionService.Reload()` so a GM
+`/reloaditemdb` refreshes both catalogs.
+
+DB plumbing:
+- New repo `IItemRandomOptDbRepository` (id table) + `GetAllOptionsAsync`
+  on `IItemRandomOptGroupDbRepository` (single-query bulk fetch for
+  the slot index).
+- `Core.Database/ServiceCollectionExtensions.cs` registers the new
+  repo alongside the group repo.
+
+DI: `RandomOptionService` is registered ahead of `IItemDbService` in
+`Map.Server/Program.cs:521` so the latter's constructor can resolve
+it as an optional dependency.
+
+Coverage: **41 ✅ / 5 ⚠️ / 0 ❌** (was 35 / 11 / 0).
 
 ### 2026-05-25 — Wave 82: itemdb-parity Pass-2 re-audit (0 ⚠️→✅; 11 gates still active, descriptions refreshed)
 

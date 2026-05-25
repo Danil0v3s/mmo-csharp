@@ -14,12 +14,17 @@ namespace Map.Server.Items.Db;
 public sealed class ItemDbService : IItemDbService
 {
     private readonly IItemCatalog? _catalog;
+    private readonly IRandomOptionService? _randomOpt;
     private readonly ILogger<ItemDbService> _logger;
 
-    public ItemDbService(ILogger<ItemDbService> logger, IItemCatalog? catalog = null)
+    public ItemDbService(
+        ILogger<ItemDbService> logger,
+        IItemCatalog? catalog = null,
+        IRandomOptionService? randomOpt = null)
     {
         _logger = logger;
         _catalog = catalog;
+        _randomOpt = randomOpt;
     }
 
     public bool CanTrade(int itemId, PlayerEntity pc)
@@ -147,13 +152,31 @@ public sealed class ItemDbService : IItemDbService
     /// SQL <c>item_db</c> snapshot. The catalog drives every per-item
     /// predicate above; reloading flushes the in-memory dictionary.
     /// </summary>
-    public void Reload() => _catalog?.Reload();
+    public void Reload()
+    {
+        _catalog?.Reload();
+        _randomOpt?.Reload();
+    }
 
     public void GenItemMoveInfo() { }
     public bool ParseRouletteDb() => false;
     public byte GetItemGroup(int groupId, PlayerEntity pc) => 0;
     public ushort FindComboId(IReadOnlyList<int> equippedItems) => 0;
-    public void ApplyRandomOptionGroup(int groupId, IList<(int id, int value, int param)> output) { }
-    public bool RandomOptionExists(int optionId) => false;
-    public int RandomOptionGetId(string optionName) => 0;
+
+    /// <summary>
+    /// rAthena <c>s_random_opt_group::apply</c> — delegates to
+    /// <see cref="IRandomOptionService.Apply"/>. The 5-slot result is
+    /// appended to <paramref name="output"/>; callers can copy directly
+    /// onto <c>InventoryItem.Options</c>.
+    /// </summary>
+    public void ApplyRandomOptionGroup(int groupId, IList<(int id, int value, int param)> output)
+        => _randomOpt?.Apply(groupId, output);
+
+    /// <summary>rAthena <c>RandomOptionDatabase::option_exists</c>.</summary>
+    public bool RandomOptionExists(int optionId)
+        => _randomOpt?.OptionExists(optionId) ?? false;
+
+    /// <summary>rAthena <c>RandomOptionDatabase::option_get_id</c>.</summary>
+    public int RandomOptionGetId(string optionName)
+        => _randomOpt?.OptionGetId(optionName) ?? 0;
 }

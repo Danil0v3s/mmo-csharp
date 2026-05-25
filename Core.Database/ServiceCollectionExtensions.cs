@@ -109,6 +109,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILaphineSynthesisDbRepository, LaphineSynthesisDbRepository>();
         services.AddScoped<ILaphineUpgradeDbRepository, LaphineUpgradeDbRepository>();
         services.AddScoped<IItemRandomOptGroupDbRepository, ItemRandomOptGroupDbRepository>();
+        services.AddScoped<IItemRandomOptDbRepository, ItemRandomOptDbRepository>();
         // DB-8h: refine + enchantgrade.
         services.AddScoped<IRefineDbRepository, RefineDbRepository>();
         services.AddScoped<IEnchantGradeDbRepository, EnchantGradeDbRepository>();

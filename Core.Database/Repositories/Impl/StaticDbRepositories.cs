@@ -378,6 +378,18 @@ internal sealed class ItemRandomOptGroupDbRepository(GameDbContext ctx) : IItemR
         => await ctx.ItemRandomOptGroupDb.AsNoTracking().FirstOrDefaultAsync(g => g.GroupName == groupName, ct);
     public async Task<IReadOnlyList<ItemRandomOptGroupOptionDbEntity>> GetOptionsAsync(int groupId, CancellationToken ct = default)
         => await ctx.ItemRandomOptGroupOptionDb.AsNoTracking().Where(o => o.GroupId == groupId).ToListAsync(ct);
+    public async Task<IReadOnlyList<ItemRandomOptGroupOptionDbEntity>> GetAllOptionsAsync(CancellationToken ct = default)
+        => await ctx.ItemRandomOptGroupOptionDb.AsNoTracking().ToListAsync(ct);
+}
+
+internal sealed class ItemRandomOptDbRepository(GameDbContext ctx) : IItemRandomOptDbRepository
+{
+    public async Task<IReadOnlyList<ItemRandomOptDbEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.ItemRandomOptDb.AsNoTracking().ToListAsync(ct);
+    public async Task<ItemRandomOptDbEntity?> GetByIdAsync(int optionId, CancellationToken ct = default)
+        => await ctx.ItemRandomOptDb.AsNoTracking().FirstOrDefaultAsync(o => o.OptionId == optionId, ct);
+    public async Task<ItemRandomOptDbEntity?> GetByNameAsync(string optionName, CancellationToken ct = default)
+        => await ctx.ItemRandomOptDb.AsNoTracking().FirstOrDefaultAsync(o => o.OptionName == optionName, ct);
 }
 
 // DB-8h — refine + enchantgrade repos

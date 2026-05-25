@@ -348,6 +348,18 @@ public interface IItemRandomOptGroupDbRepository
     Task<ItemRandomOptGroupDbEntity?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<ItemRandomOptGroupDbEntity?> GetByNameAsync(string groupName, CancellationToken ct = default);
     Task<IReadOnlyList<ItemRandomOptGroupOptionDbEntity>> GetOptionsAsync(int groupId, CancellationToken ct = default);
+    /// <summary>All group→slot→option rows in one query — used at boot to fill the in-memory roll cache.</summary>
+    Task<IReadOnlyList<ItemRandomOptGroupOptionDbEntity>> GetAllOptionsAsync(CancellationToken ct = default);
+}
+
+/// <summary>DB-8g: item random-opt definition table
+/// (rAthena <c>item_randomopt_db.yml</c>, 249 named options each
+/// referenced by id from <see cref="ItemRandomOptGroupOptionDbEntity"/>).</summary>
+public interface IItemRandomOptDbRepository
+{
+    Task<IReadOnlyList<ItemRandomOptDbEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<ItemRandomOptDbEntity?> GetByIdAsync(int optionId, CancellationToken ct = default);
+    Task<ItemRandomOptDbEntity?> GetByNameAsync(string optionName, CancellationToken ct = default);
 }
 
 // ============================================================================

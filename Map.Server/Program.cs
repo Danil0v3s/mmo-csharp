@@ -293,6 +293,13 @@ builder.Services.AddSingleton<Map.Server.Party.IPartyShareService, Map.Server.Pa
 // filtered by PartyId + MapId + Hp>0; consumed by every party-broadcast
 // skill (Angelus, Magnificat, Suffragium, Impositio, Renovatio, …).
 builder.Services.AddSingleton<Map.Server.Party.IPartyMapService, Map.Server.Party.PartyMapService>();
+// Wave 87 — map-side in-memory party cache (rAthena party_db) +
+// helpers (party_search / party_isleader / party_skill_check /
+// party_send_levelup / party_recv_info / party_recv_noinfo). Hydrate-
+// on-demand against the char-server PartyInfo RPC; consumed by skill
+// behaviors that need the leader gate (Convenio) or the trigger-class
+// gate (TK_COUNTER / MO_COMBOFINISH / AM_TWILIGHT2-3).
+builder.Services.AddSingleton<Map.Server.Party.IPartyService, Map.Server.Party.PartyService>();
 // P0.1 — session lookup from PlayerEntity → MapSessionData. Wraps
 // SessionManager; lets gameplay services resolve the per-PC session
 // without pulling in the network API.
@@ -511,6 +518,12 @@ builder.Services.AddSingleton<Map.Server.BattleGround.IBattlegroundService, Map.
 // map / guild / pet / itemdb / chrif / intif). Canonical rAthena-
 // name entry points; most ops forward to dedicated services or
 // document deferred per PARITY-REMAINING.md §P2.2.
+// Wave 88: random-option runtime catalog (249 options / 106 groups) —
+// resolves option name↔id and rolls group→slot→option per equip when a
+// `bonus3 bRandomOption*` script fires. Seeded from item_randomopt_db.sql
+// + item_randomopt_group.sql via DatabaseSeeder. Registered before
+// IItemDbService so its constructor can resolve us via DI.
+builder.Services.AddSingleton<Map.Server.Items.IRandomOptionService, Map.Server.Items.RandomOptionService>();
 builder.Services.AddSingleton<Map.Server.Items.Db.IItemDbService, Map.Server.Items.Db.ItemDbService>();
 // DBR-2b: typed item-group catalog (2722 groups / 30809 entries) — random
 // bag rolls for Bloody/Dead/RWC Branches, Old Card Album, gift boxes, etc.
@@ -2140,6 +2153,8 @@ builder.Services.AddSingleton<Map.Server.Status.IJobChangeService, Map.Server.St
 builder.Services.AddSingleton<Map.Server.Inventory.IPlayerEquipHelpers, Map.Server.Inventory.PlayerEquipHelpers>();
 builder.Services.AddSingleton<Map.Server.Inventory.IPlayerInventoryHelpers, Map.Server.Inventory.PlayerInventoryHelpers>();
 builder.Services.AddSingleton<Map.Server.Status.IPlayerBonusService, Map.Server.Status.PlayerBonusService>();
+// Wave 87c — Mado Gear overheat accumulator (pc.cpp:13082 pc_overheat).
+builder.Services.AddSingleton<Map.Server.Status.IMadoGearService, Map.Server.Status.MadoGearService>();
 // DSL-3: V8-backed scripted bonus pipeline for dynamic item scripts
 // (conditionals, autobonus, autospell) that the regex extractor
 // can't decode. Dedicated V8 engine — separate from the NPC script
