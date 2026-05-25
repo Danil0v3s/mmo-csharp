@@ -1615,6 +1615,48 @@ public sealed class StatusEffectRegistry
             },
             OnEnd: (_, _) => { },
             Flags: buff));
+
+        // SC_HARMONIZE — Val2 = 5+5*Val1 (all-stats decrease).
+        // status.yml CalcFlags: all 6 base stats. OnStart subtracts;
+        // OnEnd reverts.
+        Register(StatusType.Harmonize, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5 + 5 * sc.Val1;
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val2);
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val2);
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val2);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val2);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val2);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val2);
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val2);
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val2);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val2);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val2);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val2);
+            },
+            Flags: debuff));
+
+        // SC_SANDY_FESTIVAL — Val2 = 2*Val1 (trait stat bonuses: SPL/WIS/STA).
+        Register(StatusType.SandyFestival, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 2 * sc.Val1;
+                target.Stats.Spl = (short)Math.Min(short.MaxValue, target.Stats.Spl + sc.Val2);
+                target.Stats.Wis = (short)Math.Min(short.MaxValue, target.Stats.Wis + sc.Val2);
+                target.Stats.Sta = (short)Math.Min(short.MaxValue, target.Stats.Sta + sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Spl = (short)Math.Max(0, target.Stats.Spl - sc.Val2);
+                target.Stats.Wis = (short)Math.Max(0, target.Stats.Wis - sc.Val2);
+                target.Stats.Sta = (short)Math.Max(0, target.Stats.Sta - sc.Val2);
+            },
+            Flags: buff));
     }
 
     /// <summary>
