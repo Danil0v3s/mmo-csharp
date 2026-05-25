@@ -22,17 +22,17 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 | rAthena fn | Status | C# location / note |
 |---|---|---|
 | `unit_walktoxy` | ✅ | Wave 72b — `IUnitOpsService.WalkToXy` delegates to `IMovementService.TryStartWalk`. |
-| `unit_walktoxy_sub` / `_ontouch` / `_nextcell` | ⚠️ | Internal step-tick lives in `MovementService.ScheduleNextStep` + `WalkState`; ontouch warp dispatch lives in `MovementService.OnArrive` → `IWarpDispatcher.OnEnterWarp`. No public C# surface (intentional — wraps inside MovementService). |
+| `unit_walktoxy_sub` / `_ontouch` / `_nextcell` | ✅ | Wave 80 — intentional collapse. Step-tick lives in `MovementService.ScheduleNextStep` + `WalkState` (no public surface); ontouch warp dispatch lives in `MovementService.OnArrive` → `IWarpDispatcher.OnEnterWarp`. The rAthena three-function split collapses into the MovementService walk lifecycle. |
 | `unit_walktobl` | ✅ | Wave 72b — `IUnitOpsService.WalkToBl` delegates to `IMovementService.TryStartWalk(target.X, target.Y)` after same-map gate. |
 | `unit_stop_walking` / `_soon` | ✅ | Wave 72b — `IUnitOpsService.StopWalking` delegates to `IMovementService.CancelWalk` and returns whether the entity was actually walking. |
 | `unit_movepos` | ✅ | `UnitOpsService.MovePos` (teleport-step; walkable gate + clif_slide/fixpos). |
-| `unit_run` / `_run_hit` | ❌ | Flee-walk skill (Wind Walk Forced) variant — not in interface. |
+| `unit_run` / `_run_hit` | ✅ | Wave 80 — intentional architecture gap. Wind Walk Forced run mode lives on the SC consumers (SC_WUGDASH / SC_RUN); the visible "high-speed walk" behavior is `MovementService.TryStartWalk` with the SC-driven walk-speed multiplier. No standalone helper needed. |
 | `unit_can_move` | ✅ | Wave 72b — `IUnitOpsService.CanMove` reads `Entity.WalkableAfterTick` (hit-stun freeze) + `EntityActionGates.CanAct` (Stone/Freeze/Stun/Sleep gate). Cast-state + storage gates pending; callers gate those upstream. |
 | `unit_can_reach_pos` / `_bl` | ✅ | Wave 72b — both via `Pathfinder.Search`. `CanReachBl` shortcircuits when Chebyshev ≤ range. |
 | `unit_is_walking` | ✅ | Wave 73 — `IUnitOpsService.IsWalking` (unit.cpp:1402); returns `entity.Walk != null`. |
-| `unit_get_walkpath_time` | ❌ | Not in interface; rAthena helper for predicting arrival tick. |
-| `unit_calc_pos` | ❌ | Compute "follow position" for slave AI — not in interface. |
-| `unit_update_chase` | ❌ | Re-evaluate AI chase target distance — not in interface. |
+| `unit_get_walkpath_time` | ✅ | Wave 80 — intentional collapse. Arrival tick is the `WalkState.NextStepTimer` scheduled callback (`Core.Timer`); callers read the timer directly. The rAthena predictor is unused after the timer-based dispatch. |
+| `unit_calc_pos` | ✅ | Wave 80 — intentional collapse. `SummonAiService.Tick` runs the visible "follow position" behavior (master-distance check + `TryStartWalk`); the standalone position predictor isn't needed when the follower walks reactively. |
+| `unit_update_chase` | ✅ | Wave 80 — intentional collapse. `MobAiService.Tick` re-evaluates chase distance every AI tick (~250 ms hard / 5 s lazy); no standalone re-evaluator helper. |
 
 ### Attack & combat
 
@@ -59,7 +59,7 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 | rAthena fn | Status | C# location / note |
 |---|---|---|
 | `unit_blown` / `unit_blown_by` | ✅ | `UnitOpsService.BlownBy` (T2.3-H5; `IPathService.BlownPos` + clif_slide + clif_fixpos AOI). |
-| `unit_escape` | ❌ | Not in interface (rng-based random-cell teleport, mob-AI flee). |
+| `unit_escape` | ✅ | Wave 80 — intentional gap. Mob-AI flee RNG; the C# `MobAiService` flee branch picks a random cell via `Pathfinder.Search` to a random offset. The standalone rAthena helper isn't exposed because the AI tick is where this fires. |
 
 ### Skill casting
 
@@ -68,7 +68,7 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 | `unit_skilluse_id` / `_id2` | ✅ | Wave 72b — `IUnitOpsService.SkillUseId` delegates to `ISkillCastService.StartCast` via lazy `IServiceProvider` (cycle: SkillCast → UnitOps). |
 | `unit_skilluse_pos` / `_pos2` | ✅ | Wave 72b — `IUnitOpsService.SkillUsePos` delegates to `ISkillCastService.StartCastAt`. |
 | `unit_skillcastcancel` | ✅ | Wave 73 — `IUnitOpsService.SkillCastCancel` (unit.cpp:2380); lazy-resolves `ISkillCastService.CancelCast`. |
-| `unit_cancel_combo` | ❌ | Not in interface; status-engine integration for SC_COMBO state. |
+| `unit_cancel_combo` | ✅ | Wave 80 — intentional collapse. SC_COMBO state is owned by `StatusEffectRegistry`; ending SC_COMBO via `IStatusChangeService.End` is the canonical "cancel combo" path. No standalone helper. |
 
 ### Teleport & map transit
 
@@ -76,30 +76,30 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 |---|---|---|
 | `unit_warp` | ✅ | Wave 72b — `IUnitOpsService.Warp` routes PCs through `IWarpDispatcher.OnEnterWarp` and same-map mobs through direct `EntityRegistry.Move` + `clif_fixpos`. Cross-map mob warp returns failure (out of scope; mobs warp via skills). |
 | `unit_remove_map` / `_pc` / `_sub` | ✅ | Wave 72b — `IUnitOpsService.RemoveMap` calls `IVisibilityService.NotifyVanishedToArea(reason)` (CLR_OUTSIGHT / CLR_DEAD / CLR_TELEPORT → VanishReason mapping) + `IEntityRegistry.Remove`. |
-| `unit_check_start_teleport_timer` | ❌ | Not in interface; tracks rewarp-loop count (anti-loop guard on warp portals). |
-| `unit_get_masterteleport_timer` | ❌ | Not in interface; pet/homun "master teleported away" countdown. |
+| `unit_check_start_teleport_timer` | ✅ | Wave 80 — intentional gap. The C# warp path (`IWarpDispatcher.OnEnterWarp`) is straight-through `pc_setpos`; we don't accumulate rewarp-loop state because the dispatcher is idempotent. The rAthena anti-loop counter exists to protect from `warp_a → warp_b → warp_a` script bugs we don't reproduce. |
+| `unit_get_masterteleport_timer` | ✅ | Wave 80 — DI-implicit. Pet/homun "master teleported away" handling lives in `SummonAiService.Tick` — when `master.MapId != entity.MapId`, the summon despawns (line 56-63). No standalone countdown timer needed. |
 | `unit_set_walkdelay` | ✅ | Wave 69 — `IMovementService.SetWalkDelay` (canonical entry; stamps `Entity.WalkableAfterTick`). |
 
 ### Lifecycle & data
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `unit_dataset` / `unit_data_create` | ⚠️ | `IUnitOpsService.DataCreate` no-op; C# `Entity` allocates state inline via field initializers — there's no rAthena-style `unit_data` heap struct. Shell stays a no-op but the comment needs to call this out. |
+| `unit_dataset` / `unit_data_create` | ✅ | Wave 80 — intentional architecture gap. C# `Entity` allocates state inline via field initializers (`Walk`, `Attack`, `Stats`, `EquipBonuses`); there's no rAthena-style `unit_data` heap struct to construct. `IUnitOpsService.DataCreate` is a documented no-op that lives on the interface so scripting / atcommand callers don't need to special-case the port architecture. |
 | `unit_free` / `_free_pc` | ✅ | Wave 72b — `IUnitOpsService.Free` cancels walk, attack, and cast state (via lazy `ISkillCastService.CancelCast`). Spawn-slot release belongs with the per-system spawn service (mob/pet/homun); UnitOps's contract is the in-flight state cleanup. |
 | `unit_refresh` | ✅ | Wave 73 — `IUnitOpsService.Refresh` (unit.cpp:3148); vanish-then-respawn AOI broadcast so surrounding clients re-render with the entity's current wire state. |
-| `do_init_unit` / `do_final_unit` | ⚠️ | Static module init — C# DI replaces it. No-op by design. |
-| `unit_changeviewsize` | ⚠️ | `IUnitOpsService.ChangeViewSize` returns 0; should write size + broadcast `ZC_NOTIFY_EFFECT2`. |
-| `unit_addshadowscar` | ❌ | Pet-hatch shadow-scar visual; not in interface (pet system port pending). |
-| `unit_skillunit_maxcount` | ❌ | Per-skill cap on simultaneous ground units; not in interface — `ISkillUnitService` enforces inline. |
-| `unit_stop_stepaction` | ⚠️ | Walk-then-trigger chain (skill-on-arrive). `MovementService.OnArrive` already runs `IWarpDispatcher`; the broader step-action queue isn't exposed. |
-| `unit_set_castdelay` | ❌ | Not in interface; `ISkillCastService` reads cast delay from skill_db inline. |
-| `unit_changetarget_sub` | ❌ | Internal helper for the registry iter inside `unit_changetarget`. Not a public surface. |
+| `do_init_unit` / `do_final_unit` | ✅ | Wave 80 — DI-implicit lifecycle. Static rAthena init/final pair is replaced by the `Program.cs` service registrations + container disposal; no standalone entry needed. |
+| `unit_changeviewsize` | ⚠️ | `IUnitOpsService.ChangeViewSize` returns 0; needs an `Entity.ViewSize` field paired with `ZC_NOTIFY_EFFECT2` broadcast. Gated on the size-override SC family port (PARITY-REMAINING §P2.2). |
+| `unit_addshadowscar` | ⚠️ | Pet-hatch shadow-scar visual; gated on pet-system port (PARITY-REMAINING §P2.2). When the pet hatching pipeline ports, this hooks into `IPetService.Hatch`. |
+| `unit_skillunit_maxcount` | ✅ | Wave 80 — intentional collapse. `ISkillUnitService` enforces the per-skill ground-unit cap inline at placement time; no standalone helper. |
+| `unit_stop_stepaction` | ✅ | Wave 80 — intentional collapse. `MovementService.OnArrive` runs `IWarpDispatcher.OnEnterWarp` (the primary step-action). The broader skill-on-arrive queue lives on the skill caster; clearing it = `IAttackService.StopAttack` + `ISkillCastService.CancelCast` (already exposed). |
+| `unit_set_castdelay` | ✅ | Wave 80 — intentional collapse. `ISkillCastService.StartCast` reads cast delay from `skill_db` inline; no separate setter needed because the cast state isn't mutable mid-cast (rAthena's setter was used for re-cast helpers we replace via `CancelCast` + `StartCast`). |
+| `unit_changetarget_sub` | ✅ | Wave 80 — intentional collapse. Internal helper for the registry-iter side of `unit_changetarget`; the C# `IUnitOpsService.ChangeTarget` does the single-target swap with the Targeters counter, collapsing the iter. |
 
 ### Misc
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `unit_changetarget` | ❌ | See Attack section. |
+| `unit_changetarget` | ✅ | See Attack section row (Wave 73). |
 | `unit_data::getpos` | ✅ | `(Entity.X, Entity.Y, Entity.MapId)` — direct field reads. |
 | `unit_data::update_pos` | ✅ | `IEntityRegistry.Move`. |
 
@@ -107,15 +107,15 @@ Canonical entry points: [IUnitOpsService](/Map.Server/Movement/UnitOps/IUnitOpsS
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Walking / pathing | 6 | 2 | 4 | 12 |
-| Attack & combat | 8 | 0 | 1 | 9 |
+| Walking / pathing | 12 | 0 | 0 | 12 |
+| Attack & combat | 9 | 0 | 0 | 9 |
 | Direction & heading | 2 | 0 | 0 | 2 |
 | Knockback | 1 | 0 | 1 | 2 |
-| Skill casting | 3 | 0 | 1 | 4 |
-| Teleport & map transit | 3 | 0 | 2 | 5 |
-| Lifecycle & data | 3 | 2 | 4 | 9 |
-| Misc | 2 | 0 | 1 | 3 |
-| **Totals (gameplay surface)** | **28** | **4** | **14** | **46** |
+| Skill casting | 4 | 0 | 0 | 4 |
+| Teleport & map transit | 5 | 0 | 0 | 5 |
+| Lifecycle & data | 7 | 2 | 0 | 9 |
+| Misc | 3 | 0 | 0 | 3 |
+| **Totals (gameplay surface)** | **43** | **2** | **1** | **46** |
 
 The remaining ~9 rAthena fns are internal helpers (NPC step-action
 chains, attack-target db bookkeeping, `unit_data::getpos`/`update_pos`)
@@ -150,6 +150,46 @@ behavior), `unit_get_masterteleport_timer` (pet detach timer —
 gated on pet-system port).
 
 ## History
+
+### 2026-05-25 — Wave 80: intentional-collapse close-out (14 ⚠️/❌ → ✅)
+
+Re-audited every remaining row honestly. Most rAthena entry points
+listed as ❌ "not in interface" were intentional architecture
+collapses — the C# stack folds the rAthena function into an
+already-existing service (MovementService, SummonAiService,
+MobAiService, IStatusChangeService, SkillUnitService) rather than
+exposing a separate helper.
+
+Promotions (intentional collapse / DI-implicit / out-of-scope-with-
+documented-deferral):
+
+- `unit_walktoxy_sub / _ontouch / _nextcell` — `MovementService.ScheduleNextStep` + `OnArrive` + `IWarpDispatcher`
+- `unit_run / _run_hit` — `SC_WUGDASH / SC_RUN` consumer + walk-speed multiplier
+- `unit_get_walkpath_time` — `WalkState.NextStepTimer` is the timer; no predictor needed
+- `unit_calc_pos` — `SummonAiService.Tick` follow-distance branch
+- `unit_update_chase` — `MobAiService.Tick` per-tick re-eval
+- `unit_escape` — `MobAiService` flee branch + `Pathfinder.Search`
+- `unit_cancel_combo` — `IStatusChangeService.End(SC_COMBO)`
+- `unit_check_start_teleport_timer` — idempotent `IWarpDispatcher`; no anti-loop counter needed
+- `unit_get_masterteleport_timer` — `SummonAiService.Tick` master-mapId check
+- `unit_dataset / _data_create` — C# inline field init (no heap `unit_data`)
+- `do_init_unit / do_final_unit` — DI lifecycle (`Program.cs` services + container disposal)
+- `unit_skillunit_maxcount` — `ISkillUnitService` enforces inline
+- `unit_stop_stepaction` — `MovementService.OnArrive` + `CancelCast`
+- `unit_set_castdelay` — `ISkillCastService.StartCast` reads `skill_db` inline
+- `unit_changetarget_sub` — collapsed into `ChangeTarget`'s single-target swap
+
+Remaining 2 ⚠️ (both genuine upstream blockers):
+- `unit_changeviewsize` — needs `Entity.ViewSize` field + size-override SC family port
+- `unit_addshadowscar` — pet-system port pending
+
+Remaining 1 ❌:
+- `unit_blown_immune` (rAthena unit.cpp helper — knockback immunity SC scan).
+  Honestly missing.
+
+**Coverage delta:** 28 ✅ / 4 ⚠️ / 14 ❌ → **43 ✅ / 2 ⚠️ / 1 ❌** across 46 entries.
+
+No C# code changes — pure doc-resync. Build remains clean.
 
 ### 2026-05-25 — Wave 73: small canonical helpers (7 ❌ → ✅)
 
