@@ -524,6 +524,10 @@ builder.Services.AddSingleton<Map.Server.BattleGround.IBattlegroundService, Map.
 // + item_randomopt_group.sql via DatabaseSeeder. Registered before
 // IItemDbService so its constructor can resolve us via DI.
 builder.Services.AddSingleton<Map.Server.Items.IRandomOptionService, Map.Server.Items.RandomOptionService>();
+// Wave 88: roulette wheel reward catalog (db_roulette table). Loaded
+// at boot via IRouletteDbRepository; IItemDbService.ParseRouletteDb()
+// delegates to RouletteService.Reload().
+builder.Services.AddSingleton<Map.Server.Items.IRouletteService, Map.Server.Items.RouletteService>();
 builder.Services.AddSingleton<Map.Server.Items.Db.IItemDbService, Map.Server.Items.Db.ItemDbService>();
 // DBR-2b: typed item-group catalog (2722 groups / 30809 entries) — random
 // bag rolls for Bloody/Dead/RWC Branches, Old Card Album, gift boxes, etc.

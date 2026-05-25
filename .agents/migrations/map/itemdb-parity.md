@@ -143,11 +143,11 @@ catalogs seeded:
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `itemdb_reload` | ✅ | `Reload` — delegates to `IItemCatalog.Reload()` |
-| `itemdb_gen_itemmoveinfo` | ⚠️ | `GenItemMoveInfo` — no-op; move-restriction calc pending (PARITY-REMAINING.md §P2.2) |
-| `itemdb_parse_roulette_db` | ⚠️ | `ParseRouletteDb` — false. [DbRouletteEntity](/Core.Database/Entities/DbRouletteEntity.cs) exists but no repo / service; roulette.yml importer + runtime wire pending. |
+| `itemdb_reload` | ✅ | `Reload` — cascades through `IItemCatalog.Reload()` + `IRandomOptionService.Reload()` + `IRouletteService.Reload()`. |
+| `itemdb_gen_itemmoveinfo` | ✅ | `GenItemMoveInfo(string? path = null)` — writes `itemmoveinfov5.txt` with `[ItemId\tDrop\tVending\tStorage\tCart\tNpcSale\tMail\tAuction\tGuildStorage\t// name]` rows for every item whose trade-restriction bitmap is non-default. Mirrors rAthena `itemdb.cpp:4949`. |
+| `itemdb_parse_roulette_db` | ✅ | `ParseRouletteDb` delegates to `RouletteService.Reload()` ([RouletteService.cs](/Map.Server/Items/RouletteService.cs)). New `IRouletteDbRepository` reads `db_roulette` (seeded from `seed_roulette_default_data.sql`), groups rows by level, exposes `GetByLevel / GetRow` for the daily-spin UI. |
 | `do_init_itemdb` / `do_final_itemdb` | ✅ | DI lifecycle: services registered in [Program.cs](/Map.Server/Program.cs) own their own init (constructor-time `Reload()` for catalog services); no explicit do_init/do_final because DI scope handles shutdown. Architectural difference, intentional. |
-| `item_data::isStackable` | ⚠️ | Not on interface; inline stack check — covered functionally by `IsStackable2` but the per-instance `item_data` member helper hasn't surfaced. Low impact (callers use `IsStackable2`). |
+| `item_data::isStackable` | ✅ | `IItemDbService.IsStackable(itemId)` — same Weapon/Armor/PetEgg/PetArmor/Shadowgear exclusion as `IsStackable2`; separate entry point so direct ports keep their rAthena method name. |
 
 ## Coverage summary
 
@@ -158,13 +158,42 @@ catalogs seeded:
 | Lookup & calc | 2 | 0 | 0 | 2 |
 | Combo / group / random-option YAML | 18 | 0 | 0 | 18 |
 | Enchant / reform / package YAML | 6 | 0 | 0 | 6 |
-| Lifecycle | 2 | 3 | 0 | 5 |
-| **Totals** | **43** | **3** | **0** | **46** |
+| Lifecycle | 5 | 0 | 0 | 5 |
+| **Totals** | **46** | **0** | **0** | **46** |
 
 The whole-file count (48) includes 2 internal sort/compare/cleanup
 helpers that don't need a C# entry point.
 
 ## History
+
+### 2026-05-25 — Wave 88: itemdb roulette + itemmoveinfo + isStackable (3 ⚠️ → ✅; itemdb-parity ZERO)
+
+Closes the last three lifecycle / typecheck stragglers, taking
+itemdb-parity from 43 / 3 to 46 / 0:
+
+- `itemdb_parse_roulette_db` — new `IRouletteService`
+  ([RouletteService.cs](/Map.Server/Items/RouletteService.cs)) loads
+  `db_roulette` through `IRouletteDbRepository`, groups rows by level,
+  exposes `GetByLevel / GetRow` for the daily-spin UI. `ParseRouletteDb`
+  delegates to `RouletteService.Reload()` and returns true iff at
+  least one row loaded. Seeded from `seed_roulette_default_data.sql`.
+- `itemdb_gen_itemmoveinfo` — `GenItemMoveInfo(string? path = null)`
+  writes `generated/clientside/data/itemmoveinfov5.txt` (default path
+  matches rAthena's `./generated/clientside/data/...` layout) with
+  `[ItemId\tDrop\tVending\tStorage\tCart\tNpcSale\tMail\tAuction\tGuildStorage\t// name]`
+  rows for every item whose trade-restriction bitmap is non-default.
+  Mirrors the C++ loop in `itemdb.cpp:4949`; skips items with type ==
+  null and items whose every TradeNo* column is 0.
+- `item_data::isStackable` — `IItemDbService.IsStackable(itemId)`
+  lands as a separate entry point alongside `IsStackable2`, both
+  reading the same Weapon/Armor/PetEgg/PetArmor/Shadowgear exclusion.
+  Keeps direct rAthena ports able to use the original method name.
+
+`Reload()` now cascades through `IRouletteService` too, so a GM
+`/reloaditemdb` refreshes the roulette catalog alongside item_db and
+random-options.
+
+Coverage: **46 ✅ / 0 ⚠️ / 0 ❌** — itemdb-parity closes out.
 
 ### 2026-05-25 — Wave 88: itemdb isNoEquip + inventorySlotNeeded (2 ⚠️ → ✅)
 

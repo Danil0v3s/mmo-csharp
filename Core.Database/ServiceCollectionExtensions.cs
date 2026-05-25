@@ -110,6 +110,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILaphineUpgradeDbRepository, LaphineUpgradeDbRepository>();
         services.AddScoped<IItemRandomOptGroupDbRepository, ItemRandomOptGroupDbRepository>();
         services.AddScoped<IItemRandomOptDbRepository, ItemRandomOptDbRepository>();
+        // Wave 88: roulette wheel rewards (db_roulette table).
+        services.AddScoped<IRouletteDbRepository, RouletteDbRepository>();
         // DB-8h: refine + enchantgrade.
         services.AddScoped<IRefineDbRepository, RefineDbRepository>();
         services.AddScoped<IEnchantGradeDbRepository, EnchantGradeDbRepository>();

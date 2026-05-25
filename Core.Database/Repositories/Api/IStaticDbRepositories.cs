@@ -362,6 +362,18 @@ public interface IItemRandomOptDbRepository
     Task<ItemRandomOptDbEntity?> GetByNameAsync(string optionName, CancellationToken ct = default);
 }
 
+/// <summary>
+/// Wave 88: roulette wheel item table (rAthena
+/// <c>db/roulette.yml</c> + <c>itemdb_parse_roulette_db</c>). Each row
+/// is (level, index) → (itemId, amount, flag) — the daily roulette
+/// rewards split across 7 tiers × N positions.
+/// </summary>
+public interface IRouletteDbRepository
+{
+    Task<IReadOnlyList<DbRouletteEntity>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<DbRouletteEntity>> GetByLevelAsync(ushort level, CancellationToken ct = default);
+}
+
 // ============================================================================
 // DB-8h: refine + enchantgrade repos
 // ============================================================================

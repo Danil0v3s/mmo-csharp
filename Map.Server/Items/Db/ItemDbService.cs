@@ -16,6 +16,7 @@ public sealed class ItemDbService : IItemDbService
 {
     private readonly IItemCatalog? _catalog;
     private readonly IRandomOptionService? _randomOpt;
+    private readonly IRouletteService? _roulette;
     private readonly IMapFlagService? _mapFlags;
     private readonly IMapWorldRegistry? _maps;
     private readonly ILogger<ItemDbService> _logger;
@@ -25,13 +26,15 @@ public sealed class ItemDbService : IItemDbService
         IItemCatalog? catalog = null,
         IRandomOptionService? randomOpt = null,
         IMapFlagService? mapFlags = null,
-        IMapWorldRegistry? maps = null)
+        IMapWorldRegistry? maps = null,
+        IRouletteService? roulette = null)
     {
         _logger = logger;
         _catalog = catalog;
         _randomOpt = randomOpt;
         _mapFlags = mapFlags;
         _maps = maps;
+        _roulette = roulette;
     }
 
     public bool CanTrade(int itemId, PlayerEntity pc)
@@ -165,6 +168,12 @@ public sealed class ItemDbService : IItemDbService
             && row.Type != "Shadowgear";
     }
 
+    /// <summary>
+    /// rAthena <c>item_data::isStackable</c>. Same Weapon/Armor/PetEgg/
+    /// PetArmor/Shadowgear exclusion as <see cref="IsStackable2"/>.
+    /// </summary>
+    public bool IsStackable(int itemId) => IsStackable2(itemId);
+
     /// <summary>True if <paramref name="itemId"/> is a hatched pet egg item.</summary>
     public bool IsHatchedEgg(int itemId)
     {
@@ -223,10 +232,82 @@ public sealed class ItemDbService : IItemDbService
     {
         _catalog?.Reload();
         _randomOpt?.Reload();
+        _roulette?.Reload();
     }
 
-    public void GenItemMoveInfo() { }
-    public bool ParseRouletteDb() => false;
+    /// <summary>
+    /// rAthena <c>itemdb_gen_itemmoveinfo</c> (<c>itemdb.cpp:4949</c>) —
+    /// emits the <c>itemmoveinfov5.txt</c> client side-data dump:
+    /// one row per non-default-trade-restriction item with the eight
+    /// trade flags + a name comment. Used by /itemreset client tooling.
+    ///
+    /// <para>The output path mirrors rAthena's
+    /// <c>./generated/clientside/data/itemmoveinfov5.txt</c> relative to
+    /// the working directory; callers (GM command, boot dump option)
+    /// can override via <paramref name="outputPath"/>.</para>
+    /// </summary>
+    public void GenItemMoveInfo(string? outputPath = null)
+    {
+        if (_catalog == null) return;
+        var path = string.IsNullOrEmpty(outputPath)
+            ? System.IO.Path.Combine("generated", "clientside", "data", "itemmoveinfov5.txt")
+            : outputPath;
+        try
+        {
+            var dir = System.IO.Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir)) System.IO.Directory.CreateDirectory(dir);
+
+            using var w = new System.IO.StreamWriter(path, append: false);
+            w.WriteLine("// ItemID,\tDrop,\tVending,\tStorage,\tCart,\tNpc Sale,\tMail,\tAuction,\tGuildStorage");
+            w.WriteLine("// This format does not accept blank lines. Be careful.");
+
+            int written = 0;
+            foreach (var row in _catalog.All().OrderBy(r => r.Id))
+            {
+                if (row.Type == null) continue;
+                // rAthena: skip if every trade restriction is default 0.
+                var drop = row.TradeNodrop ?? 0;
+                var trade = row.TradeNotrade ?? 0;
+                var storage = row.TradeNostorage ?? 0;
+                var cart = row.TradeNocart ?? 0;
+                var sell = row.TradeNosell ?? 0;
+                var mail = row.TradeNomail ?? 0;
+                var auction = row.TradeNoauction ?? 0;
+                var guildStorage = row.TradeNoguildstorage ?? 0;
+                if ((drop | trade | storage | cart | sell | mail | auction | guildStorage) == 0) continue;
+
+                w.Write(row.Id);
+                w.Write('\t'); w.Write(drop);
+                w.Write('\t'); w.Write(trade);
+                w.Write('\t'); w.Write(storage);
+                w.Write('\t'); w.Write(cart);
+                w.Write('\t'); w.Write(sell);
+                w.Write('\t'); w.Write(mail);
+                w.Write('\t'); w.Write(auction);
+                w.Write('\t'); w.Write(guildStorage);
+                w.Write("\t// "); w.WriteLine(row.NameAegis);
+                written++;
+            }
+            _logger.LogInformation(
+                "itemdb_gen_itemmoveinfo: wrote {Rows} row(s) to {Path}",
+                written, path);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "itemdb_gen_itemmoveinfo failed for {Path}", path);
+        }
+    }
+
+    // Interface-shape overload: matches IItemDbService.GenItemMoveInfo().
+    void IItemDbService.GenItemMoveInfo() => GenItemMoveInfo(null);
+
+    /// <summary>
+    /// rAthena <c>itemdb_parse_roulette_db</c> — delegates to
+    /// <see cref="IRouletteService.Reload"/>. Returns true if at least
+    /// one row loaded. The seeded SQL lives in
+    /// <c>seed_roulette_default_data.sql</c>.
+    /// </summary>
+    public bool ParseRouletteDb() => _roulette?.Reload() ?? false;
     public byte GetItemGroup(int groupId, PlayerEntity pc) => 0;
     public ushort FindComboId(IReadOnlyList<int> equippedItems) => 0;
 

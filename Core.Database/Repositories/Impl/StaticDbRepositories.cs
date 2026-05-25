@@ -392,6 +392,15 @@ internal sealed class ItemRandomOptDbRepository(GameDbContext ctx) : IItemRandom
         => await ctx.ItemRandomOptDb.AsNoTracking().FirstOrDefaultAsync(o => o.OptionName == optionName, ct);
 }
 
+/// <summary>Wave 88 — roulette wheel rewards (rAthena db_roulette).</summary>
+internal sealed class RouletteDbRepository(GameDbContext ctx) : IRouletteDbRepository
+{
+    public async Task<IReadOnlyList<DbRouletteEntity>> GetAllAsync(CancellationToken ct = default)
+        => await ctx.RouletteItems.AsNoTracking().ToListAsync(ct);
+    public async Task<IReadOnlyList<DbRouletteEntity>> GetByLevelAsync(ushort level, CancellationToken ct = default)
+        => await ctx.RouletteItems.AsNoTracking().Where(r => r.Level == level).ToListAsync(ct);
+}
+
 // DB-8h — refine + enchantgrade repos
 
 internal sealed class RefineDbRepository(GameDbContext ctx) : IRefineDbRepository

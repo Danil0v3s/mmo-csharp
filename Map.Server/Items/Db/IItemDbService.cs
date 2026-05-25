@@ -54,6 +54,15 @@ public interface IItemDbService
     /// <summary>rAthena <c>itemdb_isstackable2</c>.</summary>
     bool IsStackable2(int itemId);
 
+    /// <summary>
+    /// rAthena <c>item_data::isStackable</c> (<c>itemdb.cpp:4932</c>) —
+    /// per-instance stack flag. Same semantics as <see cref="IsStackable2"/>
+    /// (false for Weapon / Armor / PetEgg / PetArmor / Shadowgear) and
+    /// kept as a separate entry point so callers porting from rAthena
+    /// can use the original method name.
+    /// </summary>
+    bool IsStackable(int itemId);
+
     /// <summary>rAthena <c>itemdb_ishatched_egg</c>.</summary>
     bool IsHatchedEgg(int itemId);
 
