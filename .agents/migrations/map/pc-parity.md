@@ -241,14 +241,13 @@ groups the function list by subsystem and tracks our C# coverage.
 | Script vars | 3 | 0 | 0 |
 | Macro detector | 1 | 0 | 0 |
 | Misc | 8 | 0 | 0 |
-| **Totals** | **119** | **1** | **0** |
+| **Totals** | **120** | **0** | **0** |
 
 **Wave 94 (2026-05-25)** — `pc_scdata_received` promoted to ✅:
 `IPlayerScDataReceivedService` landed, wired into `MapGrpcService.EnterMap`.
-120 of 157 functions tracked here. Of those, 119 (99 %) are full
-parity, 1 (1 %) is ⚠️ with a documented upstream dependency (Crimson
-Marker auto-hook). The remaining ~37 functions are private helpers
-absorbed into call sites or thin wrappers.
+120 of 157 functions tracked here, all full parity (100 %). The
+remaining ~37 functions are private helpers absorbed into call sites
+or thin wrappers — none required as canonical entry points.
 
 ## Implementation plan
 
