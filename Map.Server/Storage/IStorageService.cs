@@ -25,6 +25,26 @@ public interface IStorageService
     /// <summary>Move <paramref name="amount"/> from storage slot <paramref name="storIndex"/> back to inventory.</summary>
     StorageOpResult TakeToInventory(MapSessionData session, int storIndex, int amount);
 
+    /// <summary>
+    /// rAthena <c>storage_storageaddfromcart</c> (storage.cpp). Transfer
+    /// <paramref name="amount"/> from cart slot <paramref name="cartIndex"/>
+    /// into account storage. Same validation as
+    /// <see cref="AddFromInventory"/> but pulls source from the cart inventory.
+    /// </summary>
+    StorageOpResult AddFromCart(MapSessionData session, int cartIndex, int amount);
+
+    /// <summary>
+    /// rAthena <c>storage_storagegettocart</c>. Reverse direction: from
+    /// storage slot <paramref name="storIndex"/> into the cart.
+    /// </summary>
+    StorageOpResult TakeToCart(MapSessionData session, int storIndex, int amount);
+
+    /// <summary>
+    /// rAthena <c>storage_sortitem</c>. Item-id ascending compare used by
+    /// the in-memory storage sort callback (cards segregated by id range).
+    /// </summary>
+    int SortItem(int leftNameId, int rightNameId);
+
     /// <summary>Close storage. Saves via <c>AccountStorageSave</c> IPC if dirty.</summary>
     Task<StorageOpResult> CloseAsync(MapSessionData session, CancellationToken ct = default);
 }

@@ -22,12 +22,12 @@ Canonical entry points:
 | `storage_delitem` | ✅ | `StorageService.DelItem` |
 | `storage_storageadd` | ✅ | `StorageService.AddFromInventory` ([StorageService.cs:47](/Map.Server/Storage/StorageService.cs)) |
 | `storage_storageget` | ✅ | `StorageService.TakeToInventory` ([StorageService.cs:92](/Map.Server/Storage/StorageService.cs)) |
-| `storage_storageaddfromcart` | ⚠️ | Cart→storage transfer: cart surface lives in `PlayerInventoryHelpers` but `IStorageService` has no `AddFromCart` method yet. Tracked under PARITY-REMAINING §P2.2.d. |
-| `storage_storagegettocart` | ⚠️ | Storage→cart transfer: same — no `IStorageService.GetToCart`. PARITY-REMAINING §P2.2.d. |
+| `storage_storageaddfromcart` | ✅ | Wave 86 — `IStorageService.AddFromCart` (storage.cpp). Reads `session.Cart`, validates source slot + amount, merges/appends StorageItem, decrements cart row + compacts on empty. Mirrors `AddFromInventory` shape. |
+| `storage_storagegettocart` | ✅ | Wave 86 — `IStorageService.TakeToCart`. Reverse direction (storage → cart) with same merge-or-append pattern; appends to `session.Cart` if absent. |
 | `storage_storagesave` | ✅ | `StorageService.CloseAsync` ([StorageService.cs:135](/Map.Server/Storage/StorageService.cs)) |
 | `storage_storageclose` | ✅ | `StorageService.CloseAsync` ([StorageService.cs:135](/Map.Server/Storage/StorageService.cs)) |
 | `storage_storage_quit` | ✅ | Implicit on character quit |
-| `storage_sortitem` | ⚠️ | Sort wrapper not exposed; `CompareItem` available on `IGuildStorageService` ([GuildStorageService.cs:36](/Map.Server/Storage/Guild/GuildStorageService.cs)). PARITY-REMAINING §P2.2.d. |
+| `storage_sortitem` | ✅ | Wave 86 — `IStorageService.SortItem` (item-id ascending compare); wraps the rAthena sort callback applied on storage open. Pairs with `IGuildStorageService.CompareItem` for guild-storage. |
 | `compare_item` / `storage_comp_item` | ✅ | `GuildStorageService.CompareItem` ([GuildStorageService.cs:36](/Map.Server/Storage/Guild/GuildStorageService.cs)) — name-id comparator |
 | `do_init_storage` / `do_final_storage` | ✅ | DI-implicit via `Program.cs` (`AddSingleton<IStorageService, StorageService>` + `AddSingleton<IGuildStorageService, GuildStorageService>`) |
 | `do_reconnect_storage` | ❌ | Char-reconnect persistence flush not wired. rAthena's reconnect loop walks `guild_storage_db` flushing dirty closed entries; map↔char gRPC reconcile loop ([IpcClient.RunReconcileLoopAsync](/Core.Server/IPC/IpcClient.cs)) doesn't yet trigger a guild-storage flush on session restore. |
