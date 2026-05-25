@@ -1041,6 +1041,50 @@ public sealed class StatusEffectRegistry
             OnEnd: (_, _) => { },
             Flags: buff));
 
+        // SC_GT_ENERGYGAIN — Val2 = 10+5*Val1 (Spirit sphere gain chance %).
+        Register(StatusType.GtEnergygain, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 10 + 5 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: buff));
+
+        // SC_GT_CHANGE — Val2 = 8*Val1 ATK%, Val3 = Agi*Val1/60 ASPD%.
+        // CalcFlags: Batk + AspdRate. OnStart applies the Batk + AspdRate
+        // deltas inline; OnEnd reverts.
+        Register(StatusType.GtChange, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = sc.Val1 * 8;
+                if (sc.Val3 == 0) sc.Val3 = target.Stats.Agi * sc.Val1 / 60;
+                var batkDelta = target.Stats.Batk * sc.Val2 / 100;
+                sc.Val4 = batkDelta;
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + batkDelta);
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val3);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val3);
+                if (sc.Val4 > 0)
+                    target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val4);
+            },
+            Flags: buff));
+
+        // SC_GT_REVITALIZE — Val2 = 2*Val1 MaxHp %, Val3 = Val1*30+50
+        // natural HP recovery %.
+        Register(StatusType.GtRevitalize, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 2 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = sc.Val1 * 30 + 50;
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = delta;
+                target.Stats.MaxHp += delta;
+            },
+            OnEnd: (target, sc) =>
+            {
+                if (sc.Val4 > 0) target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
+            },
+            Flags: buff));
+
         // SC_FRIGG_SONG — Val2 = 5*Val1 MaxHp % bonus, Val3 = 80+20*Val1
         // healing (per tick). status.cpp:case SC_FRIGG_SONG. CalcFlag: MaxHp.
         Register(StatusType.FriggSong, new StatusEffectHandler(
