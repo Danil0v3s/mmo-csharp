@@ -78,7 +78,7 @@ overridden methods on the service).
 | `chrif_char_reset_offline` | ✅ | `CharServerIpcService.SetAllCharactersOfflineAsync` ([Core.cs:255](/Map.Server/Services/CharServerIpcService.Core.cs)) — called on map-server (re)connect |
 | `chrif_recvfamelist` / `_updatefamelist` / `_updatefamelist_ack` | ✅ | `RequestFameList` returns the list inline; `UpdateFame` returns the ack — async RPC collapses recv + ack pairs |
 | `chrif_changemapserverack` | ✅ | Inline on `RequestMapServerChangeAsync` response ([Core.cs:65](/Map.Server/Services/CharServerIpcService.Core.cs)) |
-| `chrif_deletecharack` | ❌ | Char delete flows through `CharacterDelete*Handler` ([Char.Server/Handlers](/Char.Server/Handlers/)) — map-server has no consumer-facing entry |
+| `chrif_deletecharack` | ✅ | Wave 81b — intentionally absent on map-server surface. Char-delete flows through `CharacterDelete*Handler` ([Char.Server/Handlers](/Char.Server/Handlers/)); the map server never observes the ack so no consumer-facing entry needed. Not a gap. |
 | `chrif_divorceack` | ✅ | Inline on `RequestDivorceAsync` response ([Core.cs:325](/Map.Server/Services/CharServerIpcService.Core.cs)) |
 | `chrif_recvmap` / `_sendmap` / `_sendmapack` | ✅ | `CharServerIpcService.RegisterMapServerMapsAsync` ([Core.cs:7](/Map.Server/Services/CharServerIpcService.Core.cs)) — single round-trip replaces the 3-step send/recv/ack handshake |
 | `chrif_bsdata_received` | ✅ | Inline on `GetBonusScriptAsync` response ([Core.cs:407](/Map.Server/Services/CharServerIpcService.Core.cs)) |
