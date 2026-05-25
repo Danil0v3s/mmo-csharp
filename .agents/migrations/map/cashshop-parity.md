@@ -33,10 +33,10 @@ Canonical entry points: [ICashShopService](/Map.Server/Shop/Cash/ICashShopServic
 | `sale_read_db_sql` | ✅ | Implicit (load sales from SQL) |
 | `sale_remove_item` | ✅ | `SaleRemoveItem` |
 | `sale_notify_login` | ✅ | `SaleNotifyLogin` |
-| `sale_add_item` | ❌ | GM-command add not wired |
-| `sale_find_item` | ❌ | Internal lookup helper not exposed |
-| `sale_end_timer` | ❌ | Timer: remove sale at end — not wired |
-| `sale_start_timer` | ❌ | Timer: activate sale at start — not wired |
+| `sale_add_item` | ✅ | `CashShopService.SaleAddItem` ([CashShopService.cs:47-67](/Map.Server/Shop/Cash/CashShopService.cs)) — stores in `_sales` registry with start/end timers; activates immediately when `startAt` is in the past |
+| `sale_find_item` | ✅ | `CashShopService.SaleFindItem` ([CashShopService.cs:70-71](/Map.Server/Shop/Cash/CashShopService.cs)) — returns true only when an active sale entry exists for the item id |
+| `sale_end_timer` | ✅ | Inline closure inside `SaleAddItem` ([CashShopService.cs:60-66](/Map.Server/Shop/Cash/CashShopService.cs)) — `Timer` fires at `endDelay`, flips `sale.Active=false` and drops the entry |
+| `sale_start_timer` | ✅ | Inline closure inside `SaleAddItem` ([CashShopService.cs:55-59](/Map.Server/Shop/Cash/CashShopService.cs)) — `Timer` fires at `startDelay`, flips `sale.Active=true` |
 
 ## Coverage summary
 
@@ -44,10 +44,33 @@ Canonical entry points: [ICashShopService](/Map.Server/Shop/Cash/ICashShopServic
 |---|---|---|---|---|
 | Item database | 6 | 0 | 0 | 6 |
 | Purchase flow | 1 | 0 | 0 | 1 |
-| Sale management | 4 | 0 | 4 | 8 |
-| **Totals** | **11** | **0** | **4** | **15** |
+| Sale management | 8 | 0 | 0 | 8 |
+| **Totals** | **15** | **0** | **0** | **15** |
 
 ## History
+
+### 2026-05-25 — Wave 76: cashshop-parity close-out (4 ❌ → ✅)
+
+Re-audited the four sale-timer entries against
+[CashShopService.cs](/Map.Server/Shop/Cash/CashShopService.cs). All four
+already have working bodies that landed during AT-D2 but the doc never
+reflected them:
+
+- `sale_add_item` → `SaleAddItem` (lines 47-67) — stores in the
+  `_sales` registry, schedules a start `Timer` at `startDelay` and an
+  end `Timer` at `endDelay`, activates immediately when `startAt` is
+  in the past.
+- `sale_find_item` → `SaleFindItem` (lines 70-71) — gated on
+  `sale.Active`, returns false when the entry is scheduled-but-not-yet-
+  active.
+- `sale_start_timer` → inline closure in `SaleAddItem` lines 55-59 —
+  one-shot `Timer` flips `sale.Active=true`.
+- `sale_end_timer` → inline closure in `SaleAddItem` lines 60-66 —
+  one-shot `Timer` flips `sale.Active=false` and removes the entry from
+  `_sales`. All timers tracked in `_activeTimers` for clean disposal.
+
+**Coverage:** 11 ✅ / 0 ⚠️ / 4 ❌ → **15 ✅ / 0 ⚠️ / 0 ❌**. Doc-resync
+only; no C# code touched.
 
 ### 2026-05-24 — P2.1 doc-resync close-out (0 stale ⚠️ → ✅; 0 genuine gaps remain)
 
