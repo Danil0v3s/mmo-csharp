@@ -151,6 +151,20 @@ gated on pet-system port).
 
 ## History
 
+### 2026-05-25 — Wave 82: unit-parity Pass-2 re-audit (0 ⚠️→✅; 1 gate still active)
+
+Pass-2 honesty sweep. One remaining ⚠️:
+
+- `unit_addshadowscar` ([unit-parity.md:92](#)) — Sura Shadow Scar
+  accumulator. `SC_SHADOW_SCAR` is presence-registered at
+  [StatusEffectRegistry.cs:5260](/Map.Server/Status/StatusEffectRegistry.cs)
+  but the per-unit `List<long>` shadow-scar timer vector + 30s cleanup
+  tick aren't wired on `Entity`. Consumer is Sura GT_HEATBARREL
+  damage-rate read; tracked under PARITY-REMAINING §P2.2 (Sura skill
+  family follow-up).
+
+Coverage unchanged: **45 ✅ / 1 ⚠️ / 0 ❌**.
+
 ### 2026-05-25 — Wave 80: intentional-collapse close-out (14 ⚠️/❌ → ✅)
 
 Re-audited every remaining row honestly. Most rAthena entry points
