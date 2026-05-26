@@ -38,7 +38,33 @@ For every row:
 
 ### Skills
 
-_(none yet — first wave focuses on SC fixes)_
+#### Wave 97-skills-novice (9 fixes, commit 25c58b1)
+
+| Skill | Verdict | Note |
+|---|---|---|
+| HellsDrive (HN_HELLS_DRIVE) | 🔧 | added HN_SELFSTUDY_SOCERY +4·lv mastery + 70% RULEBREAK boost |
+| GroundGravitation (HN_GROUND_GRAVITATION) | 🔧 | mastery +2·lv + 50% RULEBREAK |
+| JackFrostNova (HN_JACK_FROST_NOVA) | 🔧 | mastery +3·lv + 70% RULEBREAK |
+| JupitelThunderstorm (HN_JUPITEL_THUNDER_STORM) | 🔧 | mastery +3·lv + 70% RULEBREAK |
+| MeteorStormBuster (HN_METEOR_STORM_BUSTER) | 🔧 | mastery +5·lv + 50% RULEBREAK |
+| NapalmVulcanStrike (HN_NAPALM_VULCAN_STRIKE) | 🔧 | mastery +4·lv (amp×2) + 40% RULEBREAK |
+| DoubleBowlingBash (HN_DOUBLEBOWLINGBASH) | 🔧 | HN_SELFSTUDY_TATICS +3·lv (TATICS has no RULEBREAK path) |
+| MegaSonicBlow (HN_MEGA_SONIC_BLOW) | 🔧 | TATICS +5·lv (existing HP<50% ×2 retained) |
+| ShieldChainRush (HN_SHIELD_CHAIN_RUSH) | 🔧 | TATICS +3·lv |
+| SpiralPierceMax (HN_SPIRAL_PIERCE_MAX) | 🔧 | TATICS +3·lv + size multiplier ×1.5/1.3/1.2 |
+
+Remaining Novice 🚩 (FirstAid is the only ✓; HelpAngel still needs party splash).
+
+#### Wave 97-skills-summoner (4 fixes, commit 7d7aa49)
+
+| Skill | Verdict | Note |
+|---|---|---|
+| HyunrokCannon (SH_HYUN_ROK_CANNON) | 🔧 | mastery ×50 + Hyun Rok Commune (+400·lv + 25·mastery) |
+| HyunrokBreeze (SH_HYUN_ROKS_BREEZE) | 🔧 | mastery ×20 + Commune (+100 + 200·lv + 20·mastery) |
+| ChulhoSonicClaw (SH_CHUL_HO_SONIC_CLAW) | 🔧 | mastery ×50 + Chul Ho Commune (+400·lv + 50·mastery) |
+| HogogongStrike (SH_HOGOGONG_STRIKE) | 🔧 | mastery ×10 + Commune (+70 + 150·lv + 10·mastery) |
+
+Remaining Summoner 🚩: SU_SPIRITOFLIFE/LAND multipliers (need skill-tree query + SC integration), KisulWaterSpraying / KisulRampage (heal formula + AP enum gating), party splash on Hiss / MeowMeow / Purring / festival skills (party fan-out service shape).
 
 ## Queue
 
