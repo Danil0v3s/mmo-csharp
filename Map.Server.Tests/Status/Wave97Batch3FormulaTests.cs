@@ -114,6 +114,34 @@ public class Wave97Batch3FormulaTests
     }
 
     [Fact]
+    public void SC_IMPOSITIO_adds_val1_times_5_to_Watk_Matk_and_Batk()
+    {
+        // rAthena val2 = 5*val1 added to watk (status_calc_watk:7347-7348)
+        // and matk.  Wave 97-4 also keeps Batk bump for the C# CalcFlag gate.
+        var pc = MakePc();
+        pc.Stats.WatkMin = 20;
+        pc.Stats.WatkMax = 30;
+        pc.Stats.MatkMin = 10;
+        pc.Stats.MatkMax = 15;
+        pc.Stats.Batk = 50;
+        var h = new StatusEffectRegistry().Get(StatusType.Impositio)!;
+        var sc = new StatusChange { Type = StatusType.Impositio, Val1 = 5 };
+        h.OnStart(pc, sc, null);
+        Assert.Equal(25, sc.Val2);     // 5*5
+        Assert.Equal(45, pc.Stats.WatkMin);
+        Assert.Equal(55, pc.Stats.WatkMax);
+        Assert.Equal(35, pc.Stats.MatkMin);
+        Assert.Equal(40, pc.Stats.MatkMax);
+        Assert.Equal(75, pc.Stats.Batk);
+        h.OnEnd(pc, sc);
+        Assert.Equal(20, pc.Stats.WatkMin);
+        Assert.Equal(30, pc.Stats.WatkMax);
+        Assert.Equal(10, pc.Stats.MatkMin);
+        Assert.Equal(15, pc.Stats.MatkMax);
+        Assert.Equal(50, pc.Stats.Batk);
+    }
+
+    [Fact]
     public void SC_DEFENDER_applies_aspd_penalty()
     {
         // rAthena val4 = 250-50*val1 (Aspd slowdown).  Consumer subtracts

@@ -820,19 +820,29 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // SC_IMPOSITIO (PR_MAGNIFICAT branch — Impositio Manus). rAthena
-        // status.cpp:10368 sets val2 = atk bonus (5*level), consumed by
-        // status_calc_pc as Batk += val2. We materialize that here.
-        // Overrides the earlier presence-only Register(Impositio, NoOpHandler()).
+        // SC_IMPOSITIO (PR_IMPOSITIO MANUS) — rAthena status.cpp:11622-11623
+        // val2 = 5·val1 (WATK + MATK increase, flat).  Consumer
+        // status_calc_watk:7347-7348 adds val2 to watk.  Wave 97-4: applies
+        // the bonus to BOTH Watk (weapon attack — primary rAthena consumer)
+        // AND Batk (base atk — kept for the C# CalcFlagDefaults lookup
+        // which still lists Batk).  The Matk side is reached via the same
+        // val2 in the renewal status_calc_matk path.
         Register(StatusType.Impositio, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                var atk = (ushort)(sc.Val1 * 5);
-                sc.Val2 = atk;
-                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + atk);
+                if (sc.Val2 == 0) sc.Val2 = sc.Val1 * 5;
+                target.Stats.WatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMax + sc.Val2);
+                target.Stats.MatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMax + sc.Val2);
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2);
             },
             OnEnd: (target, sc) =>
             {
+                target.Stats.WatkMin = (ushort)Math.Max(0, target.Stats.WatkMin - sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Max(0, target.Stats.WatkMax - sc.Val2);
+                target.Stats.MatkMin = (ushort)Math.Max(0, target.Stats.MatkMin - sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Max(0, target.Stats.MatkMax - sc.Val2);
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
