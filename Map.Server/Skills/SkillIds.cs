@@ -1147,6 +1147,7 @@ public static class SkillIds
     public const ushort SP_SOULCOLLECT = 2609;
     public const ushort SP_SOULCURSE = 2601;
     public const ushort SP_SOULDIVISION = 2606;
+    public const ushort SP_SOULENERGY = 2611;
     public const ushort SP_SOULEXPLOSION = 2610;
     public const ushort SP_SOULFAIRY = 2599;
     public const ushort SP_SOULFALCON = 2598;
