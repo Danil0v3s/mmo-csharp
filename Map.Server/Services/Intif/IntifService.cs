@@ -30,6 +30,7 @@ public sealed class IntifService : IIntifService
     private readonly Map.Server.Elemental.IElementalService? _elemService;
     private readonly ICharServerIpcServiceParty? _partyIpc;
     private readonly Map.Server.Party.IPartyService? _partyService;
+    private readonly Map.Server.Party.IPartyClientService? _partyClient;
     private readonly Map.Server.World.IMapWorldRegistry? _world;
     public IntifService(ILogger<IntifService> logger,
         ICharServerIpcServiceMail? mailIpc = null,
@@ -49,6 +50,7 @@ public sealed class IntifService : IIntifService
         Map.Server.Mercenary.IMercenaryService? mercService = null,
         Map.Server.Elemental.IElementalService? elemService = null,
         Map.Server.Party.IPartyService? partyService = null,
+        Map.Server.Party.IPartyClientService? partyClient = null,
         Map.Server.World.IMapWorldRegistry? world = null)
     {
         _logger = logger;
@@ -69,6 +71,7 @@ public sealed class IntifService : IIntifService
         _mercService = mercService;
         _elemService = elemService;
         _partyService = partyService;
+        _partyClient = partyClient;
         _world = world;
     }
 
@@ -82,14 +85,35 @@ public sealed class IntifService : IIntifService
     public int SaveRegistry(PlayerEntity pc) => 0;
     public int RequestRegistry(PlayerEntity pc, byte flag) => 0;
 
-    /// <summary>Wave 87 — rAthena <c>intif_create_party</c>. Dispatches typed PartyCreate RPC.</summary>
+    /// <summary>Wave 87 — rAthena <c>intif_create_party</c>. Dispatches typed PartyCreate RPC.
+    /// Wave 92 — on success, drives the rAthena <c>party_created</c>
+    /// emit chain (ZC_ACK_MAKE_GROUP + ZC_ADD_MEMBER_TO_GROUP on the
+    /// founder's session) via <see cref="Map.Server.Party.IPartyClientService.NotifyPartyCreated"/>.</summary>
     public int CreateParty(PlayerEntity pc, string name, byte item, byte itemDiv)
     {
         if (_partyIpc == null) return 0;
-        _ = _partyIpc.PartyCreateAsync(name ?? string.Empty, item, itemDiv,
-            pc.AccountId, pc.CharacterId, pc.Name ?? string.Empty,
-            pc.ClassId, ResolveMapName(pc.MapId), (uint)pc.Level);
+        _ = DispatchPartyCreateAsync(pc, name ?? string.Empty, item, itemDiv);
         return 1;
+    }
+
+    private async Task DispatchPartyCreateAsync(PlayerEntity pc, string name, byte item, byte itemDiv)
+    {
+        try
+        {
+            var resp = await _partyIpc!.PartyCreateAsync(name, item, itemDiv,
+                pc.AccountId, pc.CharacterId, pc.Name ?? string.Empty,
+                pc.ClassId, ResolveMapName(pc.MapId), (uint)pc.Level);
+            if (resp is { Success: true } && resp.PartyId > 0)
+            {
+                pc.PartyId = resp.PartyId;
+                _partyClient?.NotifyPartyCreated(pc, resp.PartyId, name);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "PartyCreate dispatch failed for char {Char}", pc.CharacterId);
+        }
     }
 
     /// <summary>Wave 87 — rAthena <c>intif_request_partyinfo</c>. Async pull → hydrates map-side cache.</summary>
@@ -117,20 +141,81 @@ public sealed class IntifService : IIntifService
         return 1;
     }
 
-    /// <summary>Wave 87 — rAthena <c>intif_party_changeoption</c>.</summary>
+    /// <summary>Wave 87 — rAthena <c>intif_party_changeoption</c>.
+    /// Wave 92 — on success, drives the rAthena <c>party_optionchanged</c>
+    /// fan-out (ZC_GROUPINFO_CHANGE) via
+    /// <see cref="Map.Server.Party.IPartyClientService.NotifyOptionChanged"/>.</summary>
     public int PartyChangeOption(int partyId, int accountId, int exp, int item, int flag)
     {
         if (_partyIpc == null) return 0;
-        _ = _partyIpc.PartyChangeOptionAsync(partyId, accountId, exp, item);
+        _ = DispatchPartyChangeOptionAsync(partyId, accountId, exp, item);
         return 1;
     }
 
-    /// <summary>Wave 87 — rAthena <c>intif_party_leave</c>. Covers party_removemember / removemember2 / leave.</summary>
+    private async Task DispatchPartyChangeOptionAsync(int partyId, int accountId, int exp, int item)
+    {
+        try
+        {
+            var resp = await _partyIpc!.PartyChangeOptionAsync(partyId, accountId, exp, item);
+            if (resp is { Success: true } && _partyService != null && _partyClient != null)
+            {
+                var party = _partyService.Get(partyId);
+                if (party != null)
+                {
+                    byte pickup = (byte)((item & 1) != 0 ? 1 : 0);
+                    byte share = (byte)((item & 2) != 0 ? 1 : 0);
+                    _partyClient.NotifyOptionChanged(party, (uint)exp, pickup, share);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "PartyChangeOption dispatch failed for party {Party}", partyId);
+        }
+    }
+
+    /// <summary>Wave 87 — rAthena <c>intif_party_leave</c>. Covers party_removemember / removemember2 / leave.
+    /// Wave 92 — on success, drives the rAthena <c>party_member_withdraw</c>
+    /// fan-out (ZC_DELETE_MEMBER_FROM_GROUP) via
+    /// <see cref="Map.Server.Party.IPartyClientService.NotifyMemberWithdraw"/>.</summary>
     public int LeaveParty(int partyId, int accountId, int charId)
     {
         if (_partyIpc == null) return 0;
-        _ = _partyIpc.PartyLeaveAsync(partyId, accountId, charId, string.Empty, 0);
+        _ = DispatchPartyLeaveAsync(partyId, accountId, charId);
         return 1;
+    }
+
+    private async Task DispatchPartyLeaveAsync(int partyId, int accountId, int charId)
+    {
+        try
+        {
+            // Capture the member name BEFORE dispatch so the broadcast
+            // packet carries the right name field even after the cache
+            // row is removed.
+            string memberName = _partyService?.GetMember(partyId, charId)?.Name ?? string.Empty;
+            var resp = await _partyIpc!.PartyLeaveAsync(partyId, accountId, charId, string.Empty, 0);
+            if (resp is { Success: true } && _partyService != null && _partyClient != null)
+            {
+                var party = _partyService.Get(partyId);
+                if (party != null)
+                {
+                    // Drive dot-remove (rAthena clif_party_xy_remove)
+                    // BEFORE the member-list mutation in NotifyMemberWithdraw,
+                    // so the broadcast still walks the leaving member's
+                    // PartyId for the same-map cleanup.
+                    _partyClient.NotifyDotRemove(party, charId, accountId);
+                    // 0 = left voluntarily (rAthena e_party_member_withdraw).
+                    _partyClient.NotifyMemberWithdraw(party, accountId, memberName, reason: 0);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "PartyLeave dispatch failed for party {Party} char {Char}",
+                partyId, charId);
+        }
     }
 
     /// <summary>Wave 87 — rAthena <c>intif_party_changemap</c>. Updates cache then dispatches RPC.</summary>

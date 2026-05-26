@@ -4494,6 +4494,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             TraitPoint = character.TraitPoint,
             Ap = character.Ap,
             MaxAp = character.MaxAp,
+            PartyId = character.PartyId,
         };
     }
 

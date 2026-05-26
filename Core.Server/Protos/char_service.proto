@@ -214,6 +214,11 @@ message CharacterDataResponse {
   uint32 trait_point = 33;
   uint32 ap = 34;
   uint32 max_ap = 35;
+  // Wave 92 — party_id for the EnterMap hydrate hook. 0 = solo. The map
+  // server uses this to drive IPartyService.HydrateAsync at session
+  // enter so the cached MapPartyEntity is ready before the player can
+  // act (rAthena party_member_joined / party_request_info handshake).
+  int32 party_id = 36;
 }
 
 // rAthena parity for chmapif_parse_reqchangemapserv (0x2b05)

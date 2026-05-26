@@ -1,4 +1,4 @@
-# party.cpp parity · 2026-05-25 (Wave 87 — party-service impl)
+# party.cpp parity · 2026-05-25 (Wave 92 — party packet emit close-out)
 
 `src/map/party.cpp` (1 575 lines, 41 public functions).
 Map-side party lifecycle, member management, share rules, booking,
@@ -8,7 +8,9 @@ chat routing. The char-side authoritative state lives in
 the 10 char-side RPCs); this audit covers the **map** side.
 
 Canonical entry points: [`IIntifService`](/Map.Server/Services/Intif/IIntifService.cs)
-party block + [`IPartyShareService`](/Map.Server/Party/IPartyShareService.cs)
+party block + [`IPartyService`](/Map.Server/Party/IPartyService.cs)
++ [`IPartyClientService`](/Map.Server/Party/IPartyClientService.cs)
++ [`IPartyShareService`](/Map.Server/Party/IPartyShareService.cs)
 + [`IPartyBookingService`](/Map.Server/Party/Booking/IPartyBookingService.cs).
 
 ## Status legend
@@ -23,19 +25,19 @@ party block + [`IPartyShareService`](/Map.Server/Party/IPartyShareService.cs)
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `party_create` | ✅ | Wave 87: [`IntifService.CreateParty`](/Map.Server/Services/Intif/IntifService.cs#L85) dispatches `CharServerIpcService.PartyCreateAsync` — was stub-returning-0 before |
-| `party_created` | ⚠️ | Char-side `CreatePartyResponse` returned; map-side `OnCreated` handler ("Party created" announce + ZC_ADD_MEMBER_TO_GROUP broadcast) still TBD — gate: ZC_PARTY_CREATE_ACK / ZC_ADD_MEMBER_TO_GROUP wire packets not yet defined in Core.Server/Packets/Out/ZC. Cache hydrate via [`IPartyService.HydrateAsync`](/Map.Server/Party/IPartyService.cs) covers state side |
+| `party_create` | ✅ | Wave 87: [`IntifService.CreateParty`](/Map.Server/Services/Intif/IntifService.cs) dispatches `CharServerIpcService.PartyCreateAsync` — was stub-returning-0 before |
+| `party_created` | ✅ | Wave 92: [`PartyClientService.NotifyPartyCreated`](/Map.Server/Party/PartyClientService.cs) emits `ZC_ACK_MAKE_GROUP` + `ZC_ADD_MEMBER_TO_GROUP` on the founder's session; driven from `IntifService.DispatchPartyCreateAsync` when the char-side `PartyCreate` response lands. Sets `pc.PartyId` from the response so subsequent cache reads see the new affiliation |
 | `party_request_info` | ✅ | Wave 87: [`IntifService.RequestPartyInfo`](/Map.Server/Services/Intif/IntifService.cs) → [`PartyService.Hydrate`](/Map.Server/Party/PartyService.cs) (fire-and-forget) / `HydrateAsync` (awaitable) |
 | `party_recv_info` | ✅ | Wave 87: [`PartyService.ApplySnapshot`](/Map.Server/Party/PartyService.cs) populates [`MapPartyEntity`](/Map.Server/Party/MapPartyEntity.cs) — leader flag set on the matching member id; `party_check_state` (monk/sg/sn/tk bag) recomputed via `RecomputeClassState` |
-| `party_recv_noinfo` | ✅ | Wave 87: [`PartyService.HydrateAsync`](/Map.Server/Party/PartyService.cs) drops the cached entry via `Forget` when char-side returns `Success=false` (rAthena party.cpp:213 branch). Caller-side `pc.PartyId = 0` clear pending PT-H2 (needs PlayerEntity reach from the gRPC inbound thread) |
-| `party_invite` | ❌ | Map-side `ZC_PARTY_JOIN_REQ_ACK` emitter + inviter session-state tracking — gate: `ZC_PARTY_JOIN_REQ` (0x02C6) / `CZ_PARTY_JOIN_REQ_ACK` (0x02C7) wire packets not yet defined in Core.Server/Packets/Out/ZC and Core.Server/Packets/In; cache + leader gate exist (see `party_isleader`), invite-flow plumbing is the missing piece |
-| `party_reply_invite` | ❌ | Map-side `CZ_PARTY_JOIN_REQ_ACK` handler — gate: see `party_invite` (same packet pair); when handler lands it can call [`IntifService.AddPartyMember`](/Map.Server/Services/Intif/IntifService.cs) which is now real |
-| `party_join` | ❌ | `/joinparty` slash-command path; would call [`IntifService.AddPartyMember`](/Map.Server/Services/Intif/IntifService.cs) (now real). Gate: atcommand parser hook + party_search-by-name char-side RPC |
-| `party_member_joined` | ⚠️ | EnterMap path doesn't yet auto-pull party info; the canonical hydrate is wired but isn't called from [`MapGrpcService.EnterMap`](/Map.Server/MapGrpcService.cs) — gate: needs PlayerEntity.PartyId read on session-enter to drive `IPartyService.Hydrate(pc.PartyId, pc.CharacterId)` |
+| `party_recv_noinfo` | ✅ | Wave 87: [`PartyService.HydrateAsync`](/Map.Server/Party/PartyService.cs) drops the cached entry via `Forget` when char-side returns `Success=false` (rAthena party.cpp:213 branch) |
+| `party_invite` | ✅ | Wave 92: `ZC_PARTY_JOIN_REQ` (0x02c6) + `CZ_PARTY_JOIN_REQ_ACK` (0x02c7) defined; [`PartyClientService.NotifyJoinRequest`](/Map.Server/Party/PartyClientService.cs) emits the popup on the target session and stashes a pending-invite slot keyed by target char id (port of `sd->party_invite` per-PC state) |
+| `party_reply_invite` | ✅ | Wave 92: [`PartyJoinReqAckHandler`](/Map.Server/Handlers/Party/PartyJoinReqAckHandler.cs) drains the pending invite, dispatches `IntifService.AddPartyMember` on accept (flag=1) and notifies the inviter via `ZC_PARTY_JOIN_REQ_ACK` either way (PARTY_REPLY_ACCEPTED=2 on accept, PARTY_REPLY_REJECTED=1 on refuse) |
+| `party_join` | ⚠️ | `/joinparty` atcommand path; canonical entry [`IntifService.AddPartyMember`](/Map.Server/Services/Intif/IntifService.cs) is real (Wave 87). Gate: atcommand parser hook + a char-side `PartySearchByName` RPC. The invite-driven join flow is now ✅ (see `party_invite` / `party_reply_invite`); the atcommand variant defers until the GM command surface lands |
+| `party_member_joined` | ✅ | Wave 92: [`MapGrpcService.EnterMap`](/Map.Server/MapGrpcService.cs) now reads `party_id` from `CharacterDataResponse` (proto field 36, char-side populated from `CharEntity.PartyId`), assigns it to the live `PlayerEntity.PartyId`, and fires `IPartyService.Hydrate(pc.PartyId, pc.CharacterId)` fire-and-forget so the cache lands before any party-gated action |
 | `party_member_added` | ✅ | Wave 87: [`IntifService.AddPartyMember`](/Map.Server/Services/Intif/IntifService.cs) dispatches `CharServerIpcService.PartyAddMemberAsync` |
 | `party_removemember` / `party_removemember2` | ✅ | Wave 87: [`IntifService.LeaveParty`](/Map.Server/Services/Intif/IntifService.cs) dispatches `CharServerIpcService.PartyLeaveAsync` |
 | `party_leave` | ✅ | Same path as removemember |
-| `party_member_withdraw` | ⚠️ | Char-side broadcasts the withdraw via `PartyMessage`; map-side typed `OnMemberWithdraw` handler still TBD — gate: ZC_DELETE_MEMBER_FROM_GROUP wire packet emit + member-list edit on cached [`MapPartyEntity`](/Map.Server/Party/MapPartyEntity.cs). The cache mutation primitive (`MapPartyEntity.Members.Remove`) is in place |
+| `party_member_withdraw` | ✅ | Wave 92: [`PartyClientService.NotifyMemberWithdraw`](/Map.Server/Party/PartyClientService.cs) emits `ZC_DELETE_MEMBER_FROM_GROUP` (0x0105) to every locally-loaded party member and removes the row from cached [`MapPartyEntity.Members`](/Map.Server/Party/MapPartyEntity.cs); driven from `IntifService.DispatchPartyLeaveAsync` after the char-side `PartyLeave` response. Dot-remove fans out first (see `party_send_xy_clear`) |
 | `party_broken` | ✅ | Wave 87: [`IntifService.BreakParty`](/Map.Server/Services/Intif/IntifService.cs) calls [`PartyService.Forget`](/Map.Server/Party/PartyService.cs) + dispatches `CharServerIpcService.PartyBreakAsync` |
 
 ### Options / leader
@@ -44,7 +46,7 @@ party block + [`IPartyShareService`](/Map.Server/Party/IPartyShareService.cs)
 |---|---|---|
 | `party_changeoption` | ✅ | Wave 87: [`IntifService.PartyChangeOption`](/Map.Server/Services/Intif/IntifService.cs) dispatches `CharServerIpcService.PartyChangeOptionAsync` |
 | `party_setoption` | ✅ | Wave 87: [`MapPartyEntity.Exp`](/Map.Server/Party/MapPartyEntity.cs) / `MapPartyEntity.Item` hold the flags; [`PartyService.ApplySnapshot`](/Map.Server/Party/PartyService.cs) sets them on hydrate. `PartyShareService` reads `MapPartyEntity` (eligibility set already same-party) |
-| `party_optionchanged` | ⚠️ | Char-side `PartyChangeOptionResponse` returned; map-side broadcast to members still TBD — gate: ZC_GROUPINFO_CHANGE wire packet emit. The state mutation (`MapPartyEntity.Exp` / `MapPartyEntity.Item` direct write) is in place |
+| `party_optionchanged` | ✅ | Wave 92: [`PartyClientService.NotifyOptionChanged`](/Map.Server/Party/PartyClientService.cs) emits `ZC_GROUPINFO_CHANGE` (0x07d8 — V2 8-byte variant with item-pickup + item-share split) to every locally-loaded party member and mutates cached [`MapPartyEntity.Exp`](/Map.Server/Party/MapPartyEntity.cs) / `Item`; driven from `IntifService.DispatchPartyChangeOptionAsync` after the char-side response |
 | `party_changeleader` | ✅ | Wave 87: [`IntifService.ChangePartyLeader`](/Map.Server/Services/Intif/IntifService.cs) dispatches `CharServerIpcService.PartyLeaderChangeAsync` |
 | `party_isleader` | ✅ | Wave 87: [`IPartyService.IsLeader`](/Map.Server/Party/IPartyService.cs) — checks `MapPartyEntity.LeaderCharacterId == pc.CharacterId`. Consumed by [`Convenio.cs:40`](/Map.Server/Skills/Behaviors/Acolyte/Convenio.cs#L40) (the AB_CONVENIO leader gate); other ad-hoc callers can migrate at leisure |
 | `party_getmemberid` / `party_getavailablesd` | ✅ | Wave 87: [`IPartyService.GetMember(partyId, characterId)`](/Map.Server/Party/IPartyService.cs) returns the typed [`MapPartyMember`](/Map.Server/Party/MapPartyEntity.cs) (or null). The whole-member-set iterator is `MapPartyEntity.Members.Values` |
@@ -79,8 +81,8 @@ party block + [`IPartyShareService`](/Map.Server/Party/IPartyShareService.cs)
 
 | rAthena fn | Status | C# location / note |
 |---|---|---|
-| `party_send_xy_clear` | ❌ | Minimap dot-clear on logout — UI affordance. Gate: ZC_NOTIFY_PARTY_POSITION packet (rAthena `clif_party_xy_clear`) not yet defined in Core.Server/Packets/Out/ZC. Partially subsumed by ZC_NOTIFY_VANISH for in-range members |
-| `party_send_dot_remove` | ❌ | Same gate as `party_send_xy_clear` |
+| `party_send_xy_clear` | ✅ | Wave 92: `ZC_NOTIFY_POSITION_TO_GROUPM` (0x0107) defined with xy = -1 / -1 (rAthena clif.cpp:10153 `clif_party_xy_remove`). [`PartyClientService.NotifyDotRemove`](/Map.Server/Party/PartyClientService.cs) fans out to locally-loaded party members excluding the leaving member (PARTY_SAMEMAP_WOS scope) |
+| `party_send_dot_remove` | ✅ | Same wire packet as `party_send_xy_clear`; driven from `IntifService.DispatchPartyLeaveAsync` before the member-list mutation in `NotifyMemberWithdraw` so the broadcast still walks the leaving member's `PartyId` |
 
 ### Booking — **shipped** (party-booking-parity.md companion)
 
@@ -96,44 +98,133 @@ party block + [`IPartyShareService`](/Map.Server/Party/IPartyShareService.cs)
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Lifecycle | 8 | 3 | 3 | 14 |
-| Options / leader | 6 | 1 | 0 | 7 |
+| Lifecycle | 13 | 1 | 0 | 14 |
+| Options / leader | 7 | 0 | 0 | 7 |
 | Map-change tracking | 4 | 0 | 0 | 4 |
 | Chat | 2 | 0 | 0 | 2 |
 | Share rules | 5 | 0 | 0 | 5 |
-| Misc / UI | 0 | 0 | 2 | 2 |
+| Misc / UI | 2 | 0 | 0 | 2 |
 | Booking | 5 | 0 | 0 | 5 |
 | Helpers | 2 | 0 | 0 | 2 |
-| **Totals** | **32** | **4** | **5** | **41** |
+| **Totals** | **40** | **1** | **0** | **41** |
 
 ## Gaps in priority order
 
-**High** (player-facing, blocks gameplay):
-1. **Invite / Reply / Member-joined flow** — no map-side `ZC_PARTY_JOIN_REQ` ↔ `CZ_PARTY_JOIN_REQ_ACK` plumbing. Players can't add each other to a party from the client today; party membership only happens via direct intif calls (atcommand `@partyinvite` or GM tooling).
-2. **PartyEntity + member iterator** — no map-side in-memory model of the party (member list, current leader, options). The C# port relies on per-PC `PlayerEntity.PartyId` plus the char-side row, which means any party operation that needs "all members on this map" (AoE buffs, party HP bar broadcasts, member-dot updates) has nothing to walk.
-3. **`party_skill_check`** — party-only skills (Bragi / Assumptio / Hermode / Increase Recuperative Power) currently fire on any target; the party-membership gate is missing.
+Post-Wave 92 the cache + wire-emit layer is closed. The one
+remaining ⚠️ is the GM-tooling variant:
 
-**Medium** (correctness drift):
-4. `party_send_levelup` — minimap / HUD doesn't refresh for other party members on level-up.
-5. `party_optionchanged` broadcast — changing exp/item share mode silently for other members.
-6. `party_recv_info` hydrate on session-enter — character logs in solo even when they have a party row char-side.
-
-**Low** (cleanup):
-7. `party_send_xy_clear` / `party_send_dot_remove` — minimap-dot cleanup on logout.
-8. `party_isleader` helper — currently ad-hoc; cosmetic.
+**Low** (cleanup, deferred to atcommand wave):
+1. `party_join` — `/joinparty` atcommand parser hook. Canonical entry
+   [`IntifService.AddPartyMember`](/Map.Server/Services/Intif/IntifService.cs)
+   is real; the invite-driven join path is ✅. Adding the slash-command
+   variant needs a char-side `PartySearchByName` RPC + an atcommand
+   handler — both out of scope for the party wave proper.
 
 ## Implementation plan
 
-Tracked separately as the **PT (Party)** wave. Estimated 4 sub-waves:
+PT (Party) wave is **closed** as of Wave 92. The four sub-waves landed
+as:
 
-1. **PT-H1** — `PartyEntity` in-memory model + `IPartyService.Hydrate(pc)` on session-enter; populates the member iterator.
-2. **PT-H2** — Invite / Reply / Joined flow + the 3 client packets (`ZC_PARTY_JOIN_REQ`, `CZ_PARTY_JOIN_REQ_ACK`, `ZC_ADD_MEMBER_TO_GROUP`).
-3. **PT-M1** — `party_skill_check` map-side gate for party-only skills.
-4. **PT-M2** — Broadcast helpers: `party_send_levelup`, `party_optionchanged`, member-dot updates.
+1. **PT-H1** ✅ (Wave 87) — `MapPartyEntity` in-memory model + `IPartyService.Hydrate` cache.
+2. **PT-H2** ✅ (Wave 92) — Invite / Reply / Joined flow + wire packets.
+3. **PT-M1** ✅ (Wave 87) — `party_skill_check` map-side gate for trigger-class skills.
+4. **PT-M2** ✅ (Wave 92) — Broadcast helpers: `party_optionchanged`, `party_member_withdraw`, `party_xy_remove`, EnterMap hydrate.
 
 Booking subsystem stays in its own [party-booking-parity.md](party-booking-parity.md) doc.
 
 ## History
+
+### 2026-05-25 — Wave 92 — party packet emit close-out (4 ⚠️ → ✅, 4 ❌ → ✅, 1 ❌ → ⚠️)
+
+Wire-protocol layer on top of the Wave 87 cache + IntifService dispatch.
+Coverage **32 ✅ / 4 ⚠️ / 5 ❌ → 40 ✅ / 1 ⚠️ / 0 ❌**.
+
+**Wire packets shipped (`Core.Server/Packets/`):**
+
+- `ZC_ACK_MAKE_GROUP` (0x00fa) — clif_party_created (clif.cpp:7792). 3B, founder ACK on /organize.
+- `ZC_ADD_MEMBER_TO_GROUP` (0x0ae4, PACKETVER >= 20171207 variant with GID + class + level) — clif_party_member_info (clif.cpp:7812). 89B.
+- `ZC_PARTY_JOIN_REQ` (0x02c6) — clif_party_invite (clif.cpp:7927). 30B invite popup.
+- `ZC_PARTY_JOIN_REQ_ACK` (0x02c5) — clif_party_invite_reply (clif.cpp:7958). 30B inviter-side feedback with `e_party_invite_reply` codes.
+- `CZ_PARTY_JOIN_REQ_ACK` (0x02c7) — clif_parse_ReplyPartyInvite (clif.cpp:11860). 7B accept/refuse, drives `party_reply_invite`.
+- `ZC_DELETE_MEMBER_FROM_GROUP` (0x0105) — clif_party_withdraw (clif.cpp:8025). 31B leave/expel broadcast.
+- `ZC_GROUPINFO_CHANGE` (0x07d8, V2 variant) — clif_party_option (clif.cpp:7987). 8B EXP + item-pickup + item-share flags.
+- `ZC_NOTIFY_POSITION_TO_GROUPM` (0x0107) — clif_party_xy / clif_party_xy_remove (clif.cpp:8065, 10153). 10B minimap dot update; xy = -1 / -1 doubles as dot-remove.
+
+**Service layer ([`Map.Server/Party/`](/Map.Server/Party/)):**
+
+- **[`IPartyClientService`](/Map.Server/Party/IPartyClientService.cs) + [`PartyClientService`](/Map.Server/Party/PartyClientService.cs)** — wire-emit
+  façade. One method per `clif_party_*` entry point:
+  - `NotifyPartyCreated(pc, partyId, name)` → ZC_ACK_MAKE_GROUP + ZC_ADD_MEMBER_TO_GROUP on founder session.
+  - `NotifyJoinRequest(target, inviter, partyId, name)` → ZC_PARTY_JOIN_REQ on target + stash pending-invite slot.
+  - `NotifyInviteReply(inviter, name, result)` → ZC_PARTY_JOIN_REQ_ACK on inviter.
+  - `NotifyMemberJoined(party, newMember)` → ZC_ADD_MEMBER_TO_GROUP broadcast to PartyId-matching locally-loaded PCs.
+  - `NotifyMemberWithdraw(party, accountId, name, reason)` → ZC_DELETE_MEMBER_FROM_GROUP broadcast + `MapPartyEntity.Members.Remove`.
+  - `NotifyOptionChanged(party, expOption, pickup, share)` → ZC_GROUPINFO_CHANGE broadcast + cache mutation of `MapPartyEntity.Exp` / `Item`.
+  - `NotifyDotRemove(party, charId, accountId)` → ZC_NOTIFY_POSITION_TO_GROUPM with xy = -1 / -1, excluding self (PARTY_SAMEMAP_WOS).
+  - `StashPendingInvite` / `ConsumePendingInvite` — port of `sd->party_invite` per-PC state, keyed by target char id, drained by the CZ_PARTY_JOIN_REQ_ACK handler.
+
+**Handler ([`Map.Server/Handlers/Party/`](/Map.Server/Handlers/Party/)):**
+
+- **[`PartyJoinReqAckHandler`](/Map.Server/Handlers/Party/PartyJoinReqAckHandler.cs)** — `[PacketHandler(CZ_PARTY_JOIN_REQ_ACK)]`. Drains
+  the pending invite, gates the ack on a matching party id (port of
+  rAthena's `sd->party_invite` check), dispatches `IntifService.AddPartyMember`
+  on accept (flag=1) + notifies the inviter via PARTY_REPLY_ACCEPTED (2),
+  or notifies via PARTY_REPLY_REJECTED (1) on refuse.
+
+**IntifService dispatch wiring ([`IntifService.cs`](/Map.Server/Services/Intif/IntifService.cs)):**
+
+- `CreateParty` → now awaits the char-side response in
+  `DispatchPartyCreateAsync` so it can drive `NotifyPartyCreated` + set
+  `pc.PartyId` from the assigned id.
+- `PartyChangeOption` → `DispatchPartyChangeOptionAsync` awaits the
+  response then calls `NotifyOptionChanged` with the new flags.
+- `LeaveParty` → `DispatchPartyLeaveAsync` captures the member name
+  pre-dispatch, awaits, then drives `NotifyDotRemove` followed by
+  `NotifyMemberWithdraw` (order matters — dot fan-out needs the leaver
+  still in the member list).
+
+**EnterMap hydrate hook ([`MapGrpcService.cs`](/Map.Server/MapGrpcService.cs)):**
+
+- `CharacterDataResponse.party_id` proto field added (field 36); char-side
+  populates from `CharEntity.PartyId` in `ToCharacterDataResponse`. Map-side
+  `EnterMap` reads it off `auth.CharacterData` (or the fallback `GetCharacterData`
+  call), assigns it to the live `PlayerEntity.PartyId`, and fires
+  `IPartyService.Hydrate` fire-and-forget so the `MapPartyEntity` cache
+  lands before the client can issue any party-gated action. Mirrors rAthena
+  `party_member_joined` (party.cpp:1095) + `party_request_info` (party.cpp:178).
+
+**DI registration ([`Program.cs:303`](/Map.Server/Program.cs)):**
+
+- `services.AddSingleton<IPartyClientService, PartyClientService>()`.
+
+**Tests ([`Map.Server.Tests/Party/`](/Map.Server.Tests/Party/)):**
+
+- `PartyClientServiceTests` (8 tests) — wire-id assertions on the outbound
+  queue per emit method (Created / JoinRequest / InviteReply /
+  MemberJoined / MemberWithdraw / OptionChanged / DotRemove) plus
+  pending-invite stash/consume semantics and cache mutation on withdraw +
+  option-change.
+- `PartyJoinReqAckHandlerTests` (4 tests) — accept-dispatches-AddMember,
+  reject-notifies-inviter-without-dispatch, no-pending-invite no-op,
+  party-id mismatch drops the ack.
+
+**Promotions (4 ⚠️ → ✅):**
+`party_created`, `party_member_joined`, `party_member_withdraw`,
+`party_optionchanged`.
+
+**Promotions (4 ❌ → ✅):**
+`party_invite`, `party_reply_invite`, `party_send_xy_clear`,
+`party_send_dot_remove`.
+
+**Demoted (1 ❌ → ⚠️):** `party_join` — the canonical entry
+[`IntifService.AddPartyMember`](/Map.Server/Services/Intif/IntifService.cs)
+is real (Wave 87) and the invite-driven join path is now ✅; the
+`/joinparty` atcommand variant still defers until the GM command surface
++ char-side `PartySearchByName` RPC land.
+
+Build: `dotnet build Map.Server` — **0 Error(s)**.
+Tests: `dotnet test Map.Server.Tests --filter "FullyQualifiedName!~PacketReplayTests"`
+— **3 511 passing** (3 499 prior + 12 new party tests).
 
 ### 2026-05-25 — Wave 87: party impl (6 ⚠️ → ✅, 8 ❌ → ✅)
 

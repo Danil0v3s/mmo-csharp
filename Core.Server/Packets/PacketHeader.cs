@@ -168,6 +168,7 @@ public enum PacketHeader : short
     CZ_WHISPER = 0x0096,                   // <len>.W <nick>.24B <message>.?B. clif_parse_WisMessage.
     ZC_WHISPER = 0x09de,                   // <len>.W <senderGID>.L <sender>.24B <isAdmin>.B <message>.?B.
     CZ_REQUEST_CHAT_PARTY = 0x0108,        // <len>.W <text>.?B. clif_parse_PartyMessage.
+    CZ_PARTY_JOIN_REQ_ACK = 0x02c7,        // clif_parse_ReplyPartyInvite (clif.cpp:11860), 7B. <party_id>.L <flag>.B (0=refuse, 1=accept).
     ZC_NOTIFY_CHAT_PARTY = 0x0109,         // <len>.W <AID>.L <chatMsg>.?B.
     CZ_GUILD_CHAT = 0x017e,                // <len>.W <text>.?B. clif_parse_GuildMessage.
     ZC_GUILD_CHAT = 0x017f,                // <len>.W <message>.?B.
@@ -213,6 +214,14 @@ public enum PacketHeader : short
     ZC_COUPLESTATUS       = 0x0141,        // SP_STR..LUK / renewal stats — u32 statusType + base + plus
     ZC_SPRITE_CHANGE2     = 0x01d7,        // clif_changelook for PACKETVER ≥ 20181121, 15B
     ZC_PARTY_CONFIG       = 0x02c9,        // clif_partyinvitationstate, 3B
+    // --- Party lifecycle wire packets (clif.cpp:7792-8060, 10153) ---
+    ZC_ACK_MAKE_GROUP            = 0x00fa, // clif_party_created, 3B. Result of /organize. 0=ok, 1=name in use, 2=already in party.
+    ZC_ADD_MEMBER_TO_GROUP       = 0x0ae4, // clif_party_member_info (PACKETVER >= 20171207 / 0x0ae4 = partymemberinfo), 89B. Wire: AID.L GID.L leader.L class.W lv.W x.W y.W offline.B partyName.24B playerName.24B mapName.16B sharePickup.B shareLoot.B. Broadcast to existing party members on new join.
+    ZC_PARTY_JOIN_REQ            = 0x02c6, // clif_party_invite, 30B. Invite popup on target. <party id>.L <party name>.24B.
+    ZC_PARTY_JOIN_REQ_ACK        = 0x02c5, // clif_party_invite_reply, 30B. Inviter-side feedback. <nick>.24B <result>.L.
+    ZC_DELETE_MEMBER_FROM_GROUP  = 0x0105, // clif_party_withdraw, 31B. <AID>.L <name>.24B <result>.B (0=leave, 1=expel).
+    ZC_GROUPINFO_CHANGE          = 0x07d8, // clif_party_option PACKETVER>=20090603 (ZC_REQ_GROUPINFO_CHANGE_V2), 8B. <expOption>.L <pickRule>.B <shareRule>.B.
+    ZC_NOTIFY_POSITION_TO_GROUPM = 0x0107, // clif_party_xy / clif_party_xy_remove, 10B. <AID>.L <x>.W <y>.W. xy=-1 means dot-remove.
     ZC_CONFIG             = 0x02d9,        // clif_configuration / clif_equipcheckbox, 10B
     ZC_CONFIG_NOTIFY      = 0x02da,        // clif_equipcheckbox (PACKETVER ≥ 20070918), 3B
     ZC_ITEM_THROW_ACK     = 0x00af,        // legacy/unused in PACKETVER 20211103, 6B (header + index + count)
