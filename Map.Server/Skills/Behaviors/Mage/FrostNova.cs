@@ -8,10 +8,10 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// <c>rathena-fork/src/map/skills/mage/frostnova.cpp</c>.
 ///
 /// <para>Renewal: same MATK formula as Frost Diver (+<c>10*lv</c>).
-/// AOE around the caster; victims roll SC_FREEZE at
+/// AOE around the caster (7-cell splash); victims roll SC_FREEZE at
 /// <c>5*lv + 33 %</c> (player caster) or <c>3*lv + 35 %</c> (mob).
-/// Full splash dispatch (map_foreachinshootrange) is TODO — for now we
-/// land the freeze attempt on the named target.</para>
+/// LoS via <c>ctx.Paths.PathSearchLong</c> filters splash victims
+/// (rAthena's <c>map_foreachinshootrange</c>).</para>
 /// </summary>
 public sealed class FrostNova : SkillImpl
 {

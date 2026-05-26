@@ -7,10 +7,11 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// <c>rathena-fork/src/map/skills/mage/elementalshield.cpp</c>.
 ///
 /// <para>Drops Safety Wall (lv+5) and Pneuma (lv 1) on the target's
-/// tile. Consumes the bound elemental (rAthena calls
-/// <c>elemental_delete</c> when the skill state is
-/// <c>ST_ELEMENTALSPIRIT2</c>). Party-wide splash for parties of more
-/// than one player is TODO until <c>party_foreachsamemap</c> lands.</para>
+/// tile, then drops the same pair at every same-map partymate's
+/// current cell via <c>ctx.PartyMap.ForEachOnSameMap</c>. Consumes the
+/// bound elemental (rAthena calls <c>elemental_delete</c> when the
+/// skill state is <c>ST_ELEMENTALSPIRIT2</c>; the actual delete fires
+/// when the elemental subsystem ports).</para>
 /// </summary>
 public sealed class ElementalShield : SkillImpl
 {

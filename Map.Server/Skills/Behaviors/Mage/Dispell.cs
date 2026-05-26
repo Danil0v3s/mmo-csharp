@@ -9,10 +9,13 @@ namespace Map.Server.Skills.Behaviors.Mage;
 ///
 /// <para>Removes all dispellable status changes from the target.
 /// Success roll: <c>50 + 10*lv %</c>. Targets immune (Soul Linker class
-/// or SC_SPIRIT/SL_ROGUE buff) auto-fail. The full SCF_NODISPELL filter
-/// and song-area special cases are TODO until StatusEffectRegistry
-/// exposes a per-SC dispellability flag; until then we end any
-/// active SCs except an explicit exclude list.</para>
+/// or SC_SPIRIT/SL_ROGUE buff) auto-fail.</para>
+///
+/// <para>INFRA-DEFERRED: the full per-SC <c>SCF_NODISPELL</c> filter
+/// and the bard-song "must leave song area first" special case need
+/// <see cref="StatusEffectHandler"/> to surface a dispellability flag
+/// on the registry; today we end every SC except an explicit
+/// no-dispell exclude list.</para>
 /// </summary>
 public sealed class Dispell : SkillImpl
 {

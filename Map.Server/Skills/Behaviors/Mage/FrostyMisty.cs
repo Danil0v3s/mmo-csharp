@@ -11,8 +11,9 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// <para>Wall-piercing AOE Water magic. Ratio:
 /// <c>+(-100 + 200 + 100*lv)</c>. Splash victims roll
 /// <c>25 + 5*lv %</c> SC_FREEZING (passes through walls) and 100 %
-/// SC_MISTY_FROST. Damage hit additionally requires line of sight —
-/// wall_check is TODO until path_search is wired here.</para>
+/// SC_MISTY_FROST. Damage hit additionally requires line of sight
+/// via <c>ctx.Paths.PathSearchLong</c>; the SCs apply regardless of
+/// LoS.</para>
 /// </summary>
 public sealed class FrostyMisty : SkillImpl
 {
@@ -38,7 +39,9 @@ public sealed class FrostyMisty : SkillImpl
         if (_rng.Next(100) < 25 + 5 * skillLevel)
             ctx.Sc?.Start(target, StatusType.Freezing, val1: skillLevel, 0, 0, 0, durationMs: 8_000, src);
         ctx.Sc?.Start(target, StatusType.MistyFrost, val1: skillLevel, 0, 0, 0, durationMs: 8_000, src);
-        // Damage hit (LoS check TODO).
+        // Damage hit requires LoS (rAthena map_foreachinrange + wall_check).
+        if (ctx.Paths != null && !ctx.Paths.PathSearchLong(src.MapId, src.X, src.Y, target.X, target.Y))
+            return;
         _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
     }
 }
