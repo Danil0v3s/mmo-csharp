@@ -16,7 +16,7 @@ public sealed class FireBolt : SkillImpl
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        var perHit = MagicBoltHelper.PerHitDamage(src);
+        var perHit = MagicBoltHelper.PerHitDamage(src, ctx.Sc);
         for (var hit = 0; hit < skillLevel; hit++)
         {
             ctx.Damage.ApplyDamage(target, perHit, src);
