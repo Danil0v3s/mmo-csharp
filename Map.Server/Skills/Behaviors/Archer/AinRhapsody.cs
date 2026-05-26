@@ -7,10 +7,12 @@ namespace Map.Server.Skills.Behaviors.Archer;
 /// TR_AIN_RHAPSODY — Troubadour/Trouvere Ain Rhapsody. Manual port of
 /// <c>rathena-fork/src/map/skills/archer/ainrhapsody.cpp</c>.
 ///
-/// <para>Performer chorus debuff. Applies SC_AIN_RHAPSODY at 100 %
-/// across the splash. Pair-doubled (BCT_PARTY chorus partner) boosts
-/// the val2 flag — partner search isn't wired here. Splash via
-/// map_foreachinallrange is TODO; the named target gets the SC.</para>
+/// <para>Chorus debuff. The named target gets SC_AIN_RHAPSODY, then a
+/// splash via <see cref="IEntityRegistry.ForEachInRange"/> on the
+/// caster's coords applies the SC to every nearby enemy (BL_CHAR).
+/// A chorus-partner within AREA_SIZE doubles the val3 magnitude
+/// (rAthena <c>skill_check_pc_partner</c>) — partner detection rides
+/// on <see cref="Party.IPartyMapService.ForEachOnSameMapInRange"/>.</para>
 /// </summary>
 public sealed class AinRhapsody : SkillImpl
 {
@@ -18,14 +20,12 @@ public sealed class AinRhapsody : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // Chorus-partner detection: if any same-map party member is in
-        // splash range, val3 bit 1 doubles the SC magnitude (rAthena
-        // sc->val3 & 2 read in status.cpp:12529-12530).
-        var val3 = 0;
         const short splashRange = 7; // skill_db splash for TR_AIN_RHAPSODY
+
+        var val3 = 0;
         if (src is PlayerEntity pcSrc && pcSrc.PartyId > 0 && ctx.PartyMap != null)
         {
-            ctx.PartyMap.ForEachOnSameMapInRange(pcSrc, splashRange, m =>
+            ctx.PartyMap.ForEachOnSameMapInRange(pcSrc, 14, m =>
             {
                 if (m.Id.Value == pcSrc.Id.Value) return;
                 val3 |= 2;
@@ -35,12 +35,10 @@ public sealed class AinRhapsody : SkillImpl
         ctx.Client?.BroadcastSkillNoDamage(target, target, SkillId, skillLevel);
         ctx.Sc?.Start(target, StatusType.AinRhapsody, val1: skillLevel, val2: 0, val3: val3, val4: 0, durationMs: 30_000, src);
 
-        // rAthena map_foreachinallrange splash: every enemy in splashRange
-        // gets the debuff. We approximate with the entity registry +
-        // BCT_ENEMY filter (mobs only for now).
-        var nearby = ctx.Entities.ForEachInRange(src.MapId, target.X, target.Y, splashRange, Map.Server.Entities.EntityType.Mob);
+        var nearby = ctx.Entities.ForEachInRange(src.MapId, src.X, src.Y, splashRange, EntityType.Mob | EntityType.Pc);
         foreach (var bl in nearby)
         {
+            if (bl.Id.Value == src.Id.Value) continue;
             if (bl.Id.Value == target.Id.Value) continue;
             ctx.Sc?.Start(bl, StatusType.AinRhapsody, val1: skillLevel, val2: 0, val3: val3, val4: 0, durationMs: 30_000, src);
         }
