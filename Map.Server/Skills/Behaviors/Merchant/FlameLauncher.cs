@@ -8,7 +8,13 @@ namespace Map.Server.Skills.Behaviors.Merchant;
 /// NC_FLAMELAUNCHER — Mechanic Flame Launcher. Manual port of
 /// <c>rathena-fork/src/map/skills/merchant/flamelauncher.cpp</c>.
 /// Eight-path Fire splash. Ratio: <c>+(200 + 300*lv)</c>. SC_BURNING
-/// at <c>20 + 10*lv %</c>. Eight-path AoE TODO — primary hit lands.
+/// applies at <c>20 + 10*lv %</c>.
+///
+/// <para>Eight-path / cone AoE distribution (<c>map_foreachindir</c> /
+/// <c>map_foreachinpath</c>) — 🚩 INFRA-DEFERRED: the engine does not
+/// yet expose a directional-cone iterator. For now we land the primary
+/// hit + apply SC on the named target. Reroute when the path iterator
+/// arrives.</para>
 /// </summary>
 public sealed class FlameLauncher : SkillImpl
 {
