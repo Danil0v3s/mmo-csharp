@@ -36,6 +36,30 @@ For every row:
 |---|---|---|---|---|
 | `SC_MARIONETTE` / `SC_MARIONETTE2` | 🔧 | status.cpp:11376–11414, status_calc_str:6782 | StatusEffectRegistry.cs:2346, MarionetteControl.cs | Source +Val1 on every stat (wrong). Fix: pack source.stat/2 into Val3 (str<<16 \| agi<<8 \| vit) / Val4 (int<<16 \| dex<<8 \| luk). Source-side SC subtracts deltas, target-side SC adds deltas (capped at max_parameter - target.stat). Wave 96 commit. |
 
+## Wave 97 — SC depth audit (2026-05-26)
+
+### Batch 1 — High-impact PvP / stat-mod SCs (15 audited, 12 fixed, 3 verified)
+
+| SC | Verdict | rAthena | C# | Note |
+|---|---|---|---|---|
+| `SC_BLESSING` | 🔧 | status.cpp:11566–11571, status_calc_str:6776 / _int / _dex | StatusEffectRegistry.cs:3050 | Live handler added spurious `Hit += val1*2` (no rAthena consumer reads val2 for Hit). Now applies +val1 to STR/INT/DEX (val2=val1 default), or halves each stat when caller signals undead/demon via `Val4=1`. Deltas packed sign-extended into Val3 for OnEnd reversal. |
+| `SC_INCREASEAGI` | 🔧 | status.cpp:10844-10853 (val2=2+val1), status_calc_agi:6843 | StatusEffectRegistry.cs:142 | Was `Agi += Val1`; corrected to `Agi += 2+Val1` matching the val2 formula consumers read. |
+| `SC_DECREASEAGI` | 🔧 | status.cpp:10844-10853 (val2=2+val1), status_calc_agi:6847 | StatusEffectRegistry.cs:155 | Mirror fix: now subtracts `2+Val1` not `Val1`. |
+| `SC_PROVOKE` | ✓ | status.cpp:11660-11670, status_calc_batk + _def | StatusEffectRegistry.cs:3142 | Live wave-4a handler already correct: batk +(2+3·val1)%, def -(5+5·val1)%. Re-audited; matches. |
+| `SC_CONCENTRATE` | ✓ | status.cpp:11576-11583, status_calc_agi:6835-6836, _dex:7047 | StatusEffectRegistry.cs:3090 | Live wave-4a handler correct: agi/dex +(2+val1)% (approx — no card-bonus exclusion since pc cards not yet ported). |
+| `SC_CONCENTRATION` | ✓ | status.cpp:11608-11617, status_calc_batk/_hit/_def | StatusEffectRegistry.cs:3115 | Live wave-4a handler correct (RE branch): batk +(5+2·val1)%, hit +10·val1, def -(5+2·val1)%. |
+| `SC_ADRENALINE` | 🔧 | status.cpp:11589-11606 (val3=200/300), status_calc_hit:7587 | StatusEffectRegistry.cs:289 | Was `AspdRate += Val1`. Now: derives Val3=200 (self-cast default; 300 if Val2 set = BS-cast), applies AspdRate += Val3 + Hit += val1*3+5. |
+| `SC_TWOHANDQUICKEN` | 🔧 | status.cpp:11049-11054 (val2=300), status_calc_hit:7585, _critical:7519 | StatusEffectRegistry.cs:3964 | Was AspdQuickenHandler-only (Aspd bump). Now also adds +Val1·2 Hit and +(2+Val1)·10 Cri per the renewal status_calc_* consumers. |
+| `SC_HAWKEYES` | 🔧 | status_calc_dex:7053-7054 | StatusEffectRegistry.cs:487 | Was `Hit += val1*3` (wrong stat + wrong magnitude). Now `Dex += val1` to match the consumer (no Hit bonus). |
+| `SC_EXPLOSIONSPIRITS` | 🔧 | status.cpp:11126-11128, status_calc_critical:7508-7509 | StatusEffectRegistry.cs:3993 | Was `Cri += (75+25·val1) * 10` (10× over-application due to mistaken second scaling). Now `Cri += 75+25·val1` matching rAthena's already-×10-stored val2. |
+| `SC_QUAGMIRE` | 🔧 | status.cpp:11642-11644, status_calc_agi:6849, _dex:7057 | StatusEffectRegistry.cs:457 | Was `AspdRate += 50`. Now subtracts `5·val1` from both Agi and Dex (matches rAthena consumer; ASPD halving is an orthogonal gate in status_calc_aspd_rate handled by movement code). |
+| `SC_ANGELUS` | 🔧 | status.cpp:11620, status_calc_def2:7878-7880 (RE) | StatusEffectRegistry.cs:3027 | Was `Mdef2 += 5·val1` then later `Def += 5·val1` (wrong stat). Now renewal-correct: `Def2 += vit/2 · val2 / 100` where val2 = 5·val1. Delta snapshotted in Val3 for OnEnd. |
+| `SC_ASSUMPTIO` | 🔧 | status_calc_def:7776-7777 (RE) | StatusEffectRegistry.cs:351 | Was % both Def + Mdef (wrong stat target + wrong formula). Now: `Def += val1·50` flat (renewal). No Mdef effect. |
+| `SC_KYRIE` | 🔧 | status.cpp:10913-10921 | StatusEffectRegistry.cs:6373 | Was hardcoded `MaxHp * 12 / 100` (only correct at val1=1). Now `MaxHp * (val1·2+10) / 100`; hit count `val1/2+5` (Kyrie) or `6+val1` (Praefatio, Val4≠0). |
+| `SC_TRUESIGHT` | 🔧 | status.cpp:11629-11632, status_calc_critical:7512, _hit:7550 | StatusEffectRegistry.cs:3178 | Was `Cri += val1·100` (10× too high vs rAthena's internal stored crit scale). Now `Val2 = 10·val1` matching rAthena's val2 directly applied to stored Cri. |
+
+Tests: [Map.Server.Tests/Status/Wave97Batch1FormulaTests.cs](../../../Map.Server.Tests/Status/Wave97Batch1FormulaTests.cs) plus updated `StatusChangeServiceTests`, `StatusEffectsExpansionTests`, `StatusEffectGeneratorTests`, `SkillCastServiceTests` (pre-existing tests were locking the wrong behavior).
+
 ### Skills
 
 #### Wave 97-skills-novice (9 fixes, commit 25c58b1)

@@ -87,7 +87,8 @@ public class SkillCastServiceTests
 
         ctx.Skill.StartCast(caster, target.Id, SkillIds.AL_INCAGI, 5);
         Assert.NotNull(ctx.Sc.Get(target, StatusType.IncreaseAgi));
-        Assert.Equal(15, target.Stats.Agi); // 10 + lvl 5
+        // rAthena: val2 = 2+val1; at val1=5 → +7 Agi.
+        Assert.Equal(17, target.Stats.Agi);
     }
 
     [Fact]

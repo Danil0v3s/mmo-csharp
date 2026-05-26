@@ -66,7 +66,8 @@ public class StatusChangeServiceTests
         pc.Stats.Agi = 10;
 
         ctx.Service.Start(pc, StatusType.IncreaseAgi, val1: 5, 0, 0, 0, durationMs: 500, nowTick: 0);
-        Assert.Equal(15, pc.Stats.Agi);
+        // rAthena val2 = 2 + val1; +7 Agi at val1=5.
+        Assert.Equal(17, pc.Stats.Agi);
 
         // Before expiry — still applied.
         ctx.Service.Tick(nowTick: 100);
@@ -86,12 +87,12 @@ public class StatusChangeServiceTests
         pc.Stats.Agi = 10;
 
         ctx.Service.Start(pc, StatusType.IncreaseAgi, val1: 5, 0, 0, 0, durationMs: 10_000);
-        Assert.Equal(15, pc.Stats.Agi);
+        Assert.Equal(17, pc.Stats.Agi); // val2 = 2+5
 
         // Reapply with a different val1 — old must revert before new applies
         // (else stat mods would stack permanently).
         ctx.Service.Start(pc, StatusType.IncreaseAgi, val1: 8, 0, 0, 0, durationMs: 10_000);
-        Assert.Equal(18, pc.Stats.Agi);
+        Assert.Equal(20, pc.Stats.Agi); // val2 = 2+8
     }
 
     [Fact]

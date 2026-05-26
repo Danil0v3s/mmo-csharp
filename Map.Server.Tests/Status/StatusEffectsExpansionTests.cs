@@ -108,15 +108,21 @@ public class StatusEffectsExpansionTests
     [Fact]
     public void Adrenaline_AddsAspdRate_AndRevertsOnEnd()
     {
+        // rAthena status.cpp:11589-11606. val3 = 200 (self-cast) or 300 (BS-cast).
+        // Consumer hit += val1*3+5. Wave 97-1: handler now uses val3 (=200)
+        // for the ASPD bump and adds the Hit bonus.
         var ctx = Build();
         var pc = ctx.AddPlayer(1, 100, 100);
         pc.Stats.AspdRate = 0;
+        pc.Stats.Hit = 0;
 
-        ctx.Service.Start(pc, StatusType.Adrenaline, val1: 30, 0, 0, 0, durationMs: 10_000);
-        Assert.Equal(30, pc.Stats.AspdRate);
+        ctx.Service.Start(pc, StatusType.Adrenaline, val1: 1, 0, 0, 0, durationMs: 10_000);
+        Assert.Equal(200, pc.Stats.AspdRate);  // val3 = 200 self-cast
+        Assert.Equal(8, pc.Stats.Hit);          // 1*3+5
 
         Assert.True(ctx.Service.End(pc, StatusType.Adrenaline));
         Assert.Equal(0, pc.Stats.AspdRate);
+        Assert.Equal(0, pc.Stats.Hit);
     }
 
     [Fact]
@@ -187,33 +193,36 @@ public class StatusEffectsExpansionTests
     }
 
     [Fact]
-    public void Angelus_AddsDef_PerLevel()
+    public void Angelus_AddsDef2_PerLevel_VitScaled()
     {
-        // NS-3 wave 4a rAthena port: status.cpp:11258-11260
-        //   val2 = 5*val1 (Def increase, NOT Mdef2). status_calc_def adds val2.
+        // Wave 97-1 rAthena renewal port: status.cpp:11620 sets val2 = 5*val1.
+        // Consumer status_calc_def2:7878-7880: def2 += vit/2 * val2/100.
+        // val1=10, vit=80: delta = 40 * 50 / 100 = 20.
         var ctx = Build();
         var pc = ctx.AddPlayer(1, 100, 100);
-        pc.Stats.Def = 20;
+        pc.Stats.Def2 = 20;
+        pc.Stats.Vit = 80;
 
         ctx.Service.Start(pc, StatusType.Angelus, val1: 10, 0, 0, 0, durationMs: 10_000);
-        Assert.Equal(20 + 50, pc.Stats.Def);
+        Assert.Equal(40, pc.Stats.Def2); // 20 + 20
 
         ctx.Service.End(pc, StatusType.Angelus);
-        Assert.Equal(20, pc.Stats.Def);
+        Assert.Equal(20, pc.Stats.Def2);
     }
 
     [Fact]
-    public void Assumptio_AddsDefAndMdef_AndReverts()
+    public void Assumptio_AddsDef_FlatPerLevel_AndReverts()
     {
+        // Wave 97-1 rAthena renewal port: status_calc_def:7776-7777 def += val1*50.
+        // No Mdef bonus.  val1=5 → +250 Def.
         var ctx = Build();
         var pc = ctx.AddPlayer(1, 100, 100);
         pc.Stats.Def = 100;
         pc.Stats.Mdef = 50;
 
-        // val1=5 → +Def*5/5 = +Def itself = +100 → Def 200; Mdef +50 → 100.
         ctx.Service.Start(pc, StatusType.Assumptio, val1: 5, 0, 0, 0, durationMs: 10_000);
-        Assert.Equal(200, pc.Stats.Def);
-        Assert.Equal(100, pc.Stats.Mdef);
+        Assert.Equal(350, pc.Stats.Def); // 100 + 250
+        Assert.Equal(50, pc.Stats.Mdef);  // Mdef untouched
 
         ctx.Service.End(pc, StatusType.Assumptio);
         Assert.Equal(100, pc.Stats.Def);
