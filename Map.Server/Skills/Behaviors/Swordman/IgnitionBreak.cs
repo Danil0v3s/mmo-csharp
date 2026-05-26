@@ -5,8 +5,12 @@ namespace Map.Server.Skills.Behaviors.Swordman;
 /// <summary>
 /// RK_IGNITIONBREAK — Rune Knight Ignition Break. Manual port of
 /// <c>rathena-fork/src/map/skills/swordman/ignitionbreak.cpp</c>.
-/// Ratio <c>+(-100 + 450*lv)</c>. Splash dispatch is TODO; for now we
-/// land on the named target and animate.
+///
+/// <para>Ratio: <c>+(-100 + 450*lv)</c>. Splash dispatch rides on
+/// <see cref="RecursiveDamageSplashSkillImpl"/>, which walks victims
+/// via <see cref="IEntityRegistry.ForEachInRange"/> — matches the
+/// rAthena <c>map_foreachinrange(skill_area_sub, …, BCT_ENEMY | 1)</c>
+/// shape (BCT_ENEMY filter, friendly-fire excluded).</para>
 /// </summary>
 public sealed class IgnitionBreak : RecursiveDamageSplashSkillImpl
 {
