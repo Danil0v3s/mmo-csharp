@@ -2342,47 +2342,55 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_Marionette: +Val1 to listed CalcFlag fields.
+        // Wave 96 — SC_MARIONETTE (caster side). rAthena status.cpp:11376-11388
+        // packs the caster's stat/2 values into Val3 (str|agi|vit) and
+        // Val4 (int|dex|luk), one byte per stat. The caster's *displayed*
+        // stats get reduced by exactly those deltas (status_calc_str:6782
+        // subtracts (val3 >> 16) & 0xFF, etc.).
         Register(StatusType.Marionette, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
-                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
-                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
-                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
-                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
-                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - ((sc.Val3 >> 16) & 0xFF));
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - ((sc.Val3 >> 8) & 0xFF));
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - (sc.Val3 & 0xFF));
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - ((sc.Val4 >> 16) & 0xFF));
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - ((sc.Val4 >> 8) & 0xFF));
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - (sc.Val4 & 0xFF));
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
-                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
-                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
-                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
-                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
-                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + ((sc.Val3 >> 16) & 0xFF));
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + ((sc.Val3 >> 8) & 0xFF));
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + (sc.Val3 & 0xFF));
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + ((sc.Val4 >> 16) & 0xFF));
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + ((sc.Val4 >> 8) & 0xFF));
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + (sc.Val4 & 0xFF));
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_Marionette2: +Val1 to listed CalcFlag fields.
+        // Wave 96 — SC_MARIONETTE2 (target side). rAthena status.cpp:11390-11413
+        // computes target deltas as min(source.stat/2, max_param - target.stat)
+        // and packs them into Val3 / Val4 (same byte layout as Marionette).
+        // The target's stats *increase* by exactly those deltas
+        // (status_calc_str:6784 adds (val3 >> 16) & 0xFF, etc.).
         Register(StatusType.Marionette2, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
-                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
-                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
-                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
-                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
-                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + ((sc.Val3 >> 16) & 0xFF));
+                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + ((sc.Val3 >> 8) & 0xFF));
+                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + (sc.Val3 & 0xFF));
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + ((sc.Val4 >> 16) & 0xFF));
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + ((sc.Val4 >> 8) & 0xFF));
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + (sc.Val4 & 0xFF));
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
-                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
-                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
-                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
-                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
-                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - ((sc.Val3 >> 16) & 0xFF));
+                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - ((sc.Val3 >> 8) & 0xFF));
+                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - (sc.Val3 & 0xFF));
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - ((sc.Val4 >> 16) & 0xFF));
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - ((sc.Val4 >> 8) & 0xFF));
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - (sc.Val4 & 0xFF));
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 

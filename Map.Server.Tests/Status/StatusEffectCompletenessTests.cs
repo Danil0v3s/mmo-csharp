@@ -261,6 +261,16 @@ public class StatusEffectCompletenessTests
             // The corresponding SCs already pass the
             // Every_CalcFlag_SC_has_a_real_stat_mod_handler gate via
             // their existing real OnStart bodies.
+
+            // ---- Wave 96: Marionette pair reads packed-byte Val3/Val4
+            // deltas (str|agi|vit | int|dex|luk), NOT Val1 — the test
+            // probe with Val1=5 yields a no-op, but OnStart does mutate
+            // stats when the skill-caller (MarionetteControl) populates
+            // Val3/Val4. Formula verified in MarionetteFormulaTests.
+            // rAthena status.cpp:11376-11414 packed format; consumer
+            // reads at status.cpp:6782-6925.
+            [StatusType.Marionette] = "status.cpp:11376 — packs source.stat/2 into Val3/Val4; OnStart subtracts those deltas. Tested in MarionetteFormulaTests.",
+            [StatusType.Marionette2] = "status.cpp:11390 — packs (caster.stat/2 capped at max_param-target.stat) into Val3/Val4; OnStart adds those deltas. Tested in MarionetteFormulaTests.",
         };
 
     [Fact]
