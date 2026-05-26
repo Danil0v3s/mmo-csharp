@@ -9,9 +9,9 @@ namespace Map.Server.Skills.Behaviors.Archer;
 /// <c>rathena-fork/src/map/skills/archer/soundblend.cpp</c>.
 ///
 /// <para>Magic hit + SC_SOUNDBLEND application. Ratio:
-/// <c>+(-100 + 120*lv) + 5*SPL</c>, doubled when caster has
-/// SC_MYSTIC_SYMPHONY (caster SC readback TODO) with an additional
-/// 1.5× vs Fish/Demihuman races.</para>
+/// <c>+(-100 + 120*lv) + 5*SPL</c>. SC_MYSTIC_SYMPHONY on the caster
+/// doubles the running ratio with a further x1.5 vs Fish / Demihuman
+/// targets.</para>
 /// </summary>
 public sealed class SoundBlend : SkillImpl
 {
@@ -24,9 +24,16 @@ public sealed class SoundBlend : SkillImpl
         _skillAttack = skillAttack;
     }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx, int miscflag)
     {
-        return baseRatio + (-100 + 120 * skillLevel) + 5 * src.Stats.Spl;
+        var ratio = baseRatio + (-100 + 120 * skillLevel) + 5 * src.Stats.Spl;
+        if (ctx.Sc != null && ctx.Sc.Get(src, StatusType.MysticSymphony) != null)
+        {
+            ratio *= 2;
+            if (target.Stats.Race == BattleRace.Fish || target.Stats.Race == BattleRace.Demihuman)
+                ratio += ratio * 50 / 100;
+        }
+        return ratio;
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
