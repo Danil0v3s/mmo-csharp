@@ -32,7 +32,7 @@ party block + [`IPartyService`](/Map.Server/Party/IPartyService.cs)
 | `party_recv_noinfo` | ✅ | Wave 87: [`PartyService.HydrateAsync`](/Map.Server/Party/PartyService.cs) drops the cached entry via `Forget` when char-side returns `Success=false` (rAthena party.cpp:213 branch) |
 | `party_invite` | ✅ | Wave 92: `ZC_PARTY_JOIN_REQ` (0x02c6) + `CZ_PARTY_JOIN_REQ_ACK` (0x02c7) defined; [`PartyClientService.NotifyJoinRequest`](/Map.Server/Party/PartyClientService.cs) emits the popup on the target session and stashes a pending-invite slot keyed by target char id (port of `sd->party_invite` per-PC state) |
 | `party_reply_invite` | ✅ | Wave 92: [`PartyJoinReqAckHandler`](/Map.Server/Handlers/Party/PartyJoinReqAckHandler.cs) drains the pending invite, dispatches `IntifService.AddPartyMember` on accept (flag=1) and notifies the inviter via `ZC_PARTY_JOIN_REQ_ACK` either way (PARTY_REPLY_ACCEPTED=2 on accept, PARTY_REPLY_REJECTED=1 on refuse) |
-| `party_join` | ⚠️ | `/joinparty` atcommand path; canonical entry [`IntifService.AddPartyMember`](/Map.Server/Services/Intif/IntifService.cs) is real (Wave 87). Gate: atcommand parser hook + a char-side `PartySearchByName` RPC. The invite-driven join flow is now ✅ (see `party_invite` / `party_reply_invite`); the atcommand variant defers until the GM command surface lands |
+| `party_join` | ✅ | Wave 95 — rAthena's private join helper (party.cpp:498) is only called from the booking-reply handler (clif.cpp:25517). C# absorbs it into the canonical join chain: both [`PartyJoinReqAckHandler`](/Map.Server/Handlers/Party/PartyJoinReqAckHandler.cs) (CZ_PARTY_JOIN_REQ_ACK) and [`IPartyBookingService`](/Map.Server/Party/Booking/IPartyBookingService.cs) route through [`IntifService.AddPartyMember`](/Map.Server/Services/Intif/IntifService.cs) (Wave 87). The slot-availability + dup-account gates the rAthena helper enforced live in the booking + invite call sites on `MapPartyEntity.Members`. No separate 1:1 entry point needed. |
 | `party_member_joined` | ✅ | Wave 92: [`MapGrpcService.EnterMap`](/Map.Server/MapGrpcService.cs) now reads `party_id` from `CharacterDataResponse` (proto field 36, char-side populated from `CharEntity.PartyId`), assigns it to the live `PlayerEntity.PartyId`, and fires `IPartyService.Hydrate(pc.PartyId, pc.CharacterId)` fire-and-forget so the cache lands before any party-gated action |
 | `party_member_added` | ✅ | Wave 87: [`IntifService.AddPartyMember`](/Map.Server/Services/Intif/IntifService.cs) dispatches `CharServerIpcService.PartyAddMemberAsync` |
 | `party_removemember` / `party_removemember2` | ✅ | Wave 87: [`IntifService.LeaveParty`](/Map.Server/Services/Intif/IntifService.cs) dispatches `CharServerIpcService.PartyLeaveAsync` |
@@ -98,7 +98,7 @@ party block + [`IPartyService`](/Map.Server/Party/IPartyService.cs)
 
 | Bucket | ✅ | ⚠️ | ❌ | Total |
 |---|---|---|---|---|
-| Lifecycle | 13 | 1 | 0 | 14 |
+| Lifecycle | 14 | 0 | 0 | 14 |
 | Options / leader | 7 | 0 | 0 | 7 |
 | Map-change tracking | 4 | 0 | 0 | 4 |
 | Chat | 2 | 0 | 0 | 2 |
@@ -106,19 +106,12 @@ party block + [`IPartyService`](/Map.Server/Party/IPartyService.cs)
 | Misc / UI | 2 | 0 | 0 | 2 |
 | Booking | 5 | 0 | 0 | 5 |
 | Helpers | 2 | 0 | 0 | 2 |
-| **Totals** | **40** | **1** | **0** | **41** |
+| **Totals** | **41** | **0** | **0** | **41** |
 
 ## Gaps in priority order
 
-Post-Wave 92 the cache + wire-emit layer is closed. The one
-remaining ⚠️ is the GM-tooling variant:
-
-**Low** (cleanup, deferred to atcommand wave):
-1. `party_join` — `/joinparty` atcommand parser hook. Canonical entry
-   [`IntifService.AddPartyMember`](/Map.Server/Services/Intif/IntifService.cs)
-   is real; the invite-driven join path is ✅. Adding the slash-command
-   variant needs a char-side `PartySearchByName` RPC + an atcommand
-   handler — both out of scope for the party wave proper.
+Post-Wave 95 the party subsystem is fully closed. Every rAthena `party.cpp`
+public function has a canonical C# entry point with full parity.
 
 ## Implementation plan
 
@@ -133,6 +126,20 @@ as:
 Booking subsystem stays in its own [party-booking-parity.md](party-booking-parity.md) doc.
 
 ## History
+
+### 2026-05-26 — Wave 95 — party_join classified ✅ (1 ⚠️ → ✅; party-parity at 41/0/0)
+
+Re-audited `party_join` against rAthena: the function lives at
+party.cpp:498 and is called from exactly one site — clif.cpp:25517,
+inside the booking-reply accept branch. There is no rAthena `/joinparty`
+atcommand; the prior doc note was inaccurate. C# absorbs the function
+into the canonical join chain — both `PartyJoinReqAckHandler`
+(CZ_PARTY_JOIN_REQ_ACK) and `IPartyBookingService` route through
+`IntifService.AddPartyMember`. No separate 1:1 entry point is needed.
+
+**Coverage:** 40 ✅ / 1 ⚠️ / 0 ❌ → **41 ✅ / 0 ⚠️ / 0 ❌**.
+
+With this flip, **every map-side parity doc is at zero ⚠️/❌**.
 
 ### 2026-05-25 — Wave 92 — party packet emit close-out (4 ⚠️ → ✅, 4 ❌ → ✅, 1 ❌ → ⚠️)
 
