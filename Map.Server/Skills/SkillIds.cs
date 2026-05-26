@@ -176,9 +176,13 @@ public static class SkillIds
     public const ushort ABC_ABYSS_SQUARE = 5321;
     public const ushort ABC_ABYSS_STRIKE = 5319;
     public const ushort ABC_CHAIN_REACTION_SHOT = 5316;
+    /// <summary>Follow-up detonation that ABC_CHAIN_REACTION_SHOT casts on every splash victim ~200 ms after the initial hit.</summary>
+    public const ushort ABC_CHAIN_REACTION_SHOT_ATK = 5382;
     public const ushort ABC_DEFT_STAB = 5320;
     public const ushort ABC_FRENZY_SHOT = 5322;
     public const ushort ABC_FROM_THE_ABYSS = 5317;
+    /// <summary>Magic Sword Mastery — partner mastery boosting ABC_ABYSS_SQUARE ratio +40*lv per mastery level.</summary>
+    public const ushort ABC_MAGIC_SWORD_M = 5312;
     public const ushort ABC_STRIP_SHADOW = 5313;
     public const ushort ABC_UNLUCKY_RUSH = 5315;
     public const ushort ABR_BATTLE_BUSTER = 8601;
@@ -265,6 +269,10 @@ public static class SkillIds
     public const ushort AM_TWILIGHT2 = 497;
     public const ushort AM_TWILIGHT3 = 498;
     public const ushort ASC_CDP = 407;
+    /// <summary>Poison React — partner mastery boosting AS_SPLASHER ratio +20 per pc_checkskill(AS_POISONREACT) level.</summary>
+    public const ushort AS_POISONREACT = 139;
+    /// <summary>Sonic Acceleration — AS_SONICBLOW hit-rate booster (renewal +90%, pre-renewal +50%).</summary>
+    public const ushort AS_SONICACCEL = 1003;
     public const ushort AS_SPLASHER = 141;
     public const ushort AS_VENOMDUST = 140;
     public const ushort AS_VENOMKNIFE = 1004;
@@ -509,6 +517,7 @@ public static class SkillIds
     public const ushort HT_SHOCKWAVE = 118;
     public const ushort HT_SKIDTRAP = 115;
     public const ushort HT_SPRINGTRAP = 131;
+    public const ushort HT_STEELCROW = 128;
     public const ushort HT_TALKIEBOX = 125;
     public const ushort HVAN_CAPRICE = 8013;
     public const ushort HVAN_CHAOTIC = 8014;
@@ -1247,6 +1256,7 @@ public static class SkillIds
     public const ushort TR_ROKI_CAPRICCIO = 5359;
     public const ushort TR_ROSEBLOSSOM = 5353;
     public const ushort TR_SOUNDBLEND = 5357;
+    public const ushort TR_STAGE_MANNER = 5349;
     public const ushort WA_MOONLIT_SERENADE = 2352;
     public const ushort WA_SWING_DANCE = 2350;
     public const ushort WA_SYMPHONY_OF_LOVER = 2351;
@@ -1259,6 +1269,7 @@ public static class SkillIds
     public const ushort WE_FEMALE = 335;
     public const ushort WE_MALE = 334;
     public const ushort WE_ONEFOREVER = 5064;
+    public const ushort WH_ADVANCED_TRAP = 5323;
     public const ushort WH_CRESCIVE_BOLT = 5334;
     public const ushort WH_DEEPBLINDTRAP = 5331;
     public const ushort WH_FLAMETRAP = 5335;
@@ -1266,6 +1277,7 @@ public static class SkillIds
     public const ushort WH_HAWKBOOMERANG = 5329;
     public const ushort WH_HAWKRUSH = 5326;
     public const ushort WH_HAWK_M = 5327;
+    public const ushort WH_NATUREFRIENDLY = 5325;
     public const ushort WH_SOLIDTRAP = 5332;
     public const ushort WH_SWIFTTRAP = 5333;
     public const ushort WH_WILD_WALK = 6520;
@@ -1294,6 +1306,7 @@ public static class SkillIds
     public const ushort WM_FRIGG_SONG = 5007;
     public const ushort WM_GLOOMYDAY = 2425;
     public const ushort WM_GREAT_ECHO = 2426;
+    public const ushort WM_LESSON = 2412;
     public const ushort WM_LERADS_DEW = 2431;
     public const ushort WM_LULLABY_DEEPSLEEP = 2422;
     public const ushort WM_MELODYOFSINK = 2432;
