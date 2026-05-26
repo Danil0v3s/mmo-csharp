@@ -6,9 +6,10 @@ namespace Map.Server.Skills.Behaviors.Swordman;
 /// <summary>
 /// CR_HOLYCROSS — Crusader Holy Cross. Manual port of
 /// <c>rathena-fork/src/map/skills/swordman/holycross.cpp</c>.
-/// Renewal: ratio <c>+70*lv</c> with a 2H spear, <c>+35*lv</c> otherwise.
-/// 3*lv % chance to apply SC_BLIND. Weapon-type query is TODO; we use
-/// the lower-ratio default.
+///
+/// <para>Renewal: ratio <c>+70*lv</c> when wielding a two-handed spear
+/// (<c>PlayerEntity.WeaponType == W_2HSPEAR</c>), <c>+35*lv</c>
+/// otherwise. 3*lv % chance to apply SC_BLIND on hit.</para>
 /// </summary>
 public sealed class HolyCross : WeaponSkillImpl
 {
