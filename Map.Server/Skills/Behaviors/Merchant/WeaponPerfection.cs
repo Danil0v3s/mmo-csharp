@@ -6,9 +6,14 @@ namespace Map.Server.Skills.Behaviors.Merchant;
 /// <summary>
 /// BS_WEAPONPERFECT — Blacksmith Weapon Perfection. Manual port of
 /// <c>rathena-fork/src/map/skills/merchant/weaponperfection.cpp</c>.
-/// Solo cast applies SC_WEAPONPERFECTION to the target; with a party
-/// the splash version is broadcast to all party members. Weapon-type
-/// equip check + party splash are TODO.
+/// Solo cast applies SC_WEAPONPERFECTION to the target; partied caster
+/// also splashes the buff to every same-map party member via
+/// <see cref="Map.Server.Party.IPartyMapService"/>.
+///
+/// <para>Weapon-type gate (rAthena <c>skill_get_weapontype</c> +
+/// <c>pc_check_weapontype</c>) — 🚩 INFRA-DEFERRED until skill-db
+/// weapontype masks are surfaced on <c>SkillDefinition</c>. For now
+/// every weapon class is accepted.</para>
 /// </summary>
 public sealed class WeaponPerfection : SkillImpl
 {
