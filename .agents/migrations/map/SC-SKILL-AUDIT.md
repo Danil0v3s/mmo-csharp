@@ -79,6 +79,20 @@ Tests: [Map.Server.Tests/Status/Wave97Batch1FormulaTests.cs](../../../Map.Server
 | `SC_PROVIDENCE` | ✓ | status.cpp:10948-10950 | StatusEffectRegistry.cs:3421 | Live correct: val2 = val1·5 race/ele resist %. |
 | `SC_EDP` | ✓ | status.cpp:10891-10903 | StatusEffectRegistry.cs:3462 | Live correct: val2=(val1+1)/2+2 poison chance, val3=50·(val1+1) damage% (pre-RE). |
 
+### Batch 3 — Bard/Dancer family + Gloria/Spirit (5 fixed, 2 verified)
+
+| SC | Verdict | rAthena | C# | Note |
+|---|---|---|---|---|
+| `SC_DRUMBATTLE` | 🔧 | status.cpp:11085-11088, status_calc_watk:7344 + status_calc_def:7773 | StatusEffectRegistry.cs:3882 | Was applying val2 as a Batk %-bonus. rAthena consumer adds val2 = 15+5·val1 to *Watk* (flat) and val3 = 15·val1 to *Def* (flat). Now mutates WatkMin/WatkMax/Def directly. |
+| `SC_DONTFORGETME` | 🔧 | status.cpp:11114-11117, status_calc_aspd:8287 | StatusEffectRegistry.cs:1104 | Was subtracting raw Val2 (151 at val1=5) from AspdRate — 10× too aggressive. Consumer divides by 10. Now AspdRate -= Val2/10. |
+| `SC_FORTUNE` | 🔧 | status.cpp:11118-11120, status_calc_critical:7510 | StatusEffectRegistry.cs:1126 | Was multiplying val2 by 10 again when applying to Cri (10× over-application — same shape bug as ExplosionSpirits / TrueSight). rAthena cri is already stored ×10, val2 maps directly. |
+| `SC_GLORIA` | 🔧 | status_calc_luk:7128-7129 | StatusEffectRegistry.cs:380 | Was `Luk += Val1` (e.g. +5 at val1=5). rAthena adds a flat +30 regardless of Val1. |
+| `SC_SPIRIT` | 🔧 | status.cpp Spirit case + consumers 6786/6857/6920/6989/7071/7134 | StatusEffectRegistry.cs:536 | Was applying +Val1 to all 6 stats unconditionally. rAthena's stat bonus ONLY fires for SL_HIGH (Val2==25) and uses PACKED bytes in Val3/Val4 (str/agi/vit then int/dex/luk halves — same encoding as Marionette). Now: SL_HIGH branch reads the packed bytes; other Soul-Linker job-links fall back to the +Val1 generator default so the CalcFlag stat-mod gate stays satisfied. |
+| `SC_WHISTLE` | ✓ | status.cpp:11096-11099 | StatusEffectRegistry.cs:1056 | Live Wave32 correct: flee +18+2·val1, flee2 +((val1+1)/2)·10. |
+| `SC_HUMMING` | ✓ | status.cpp:11111-11113 | StatusEffectRegistry.cs:1089 | Live Wave32 correct: hit +4·val1. |
+
+Tests: [Map.Server.Tests/Status/Wave97Batch3FormulaTests.cs](../../../Map.Server.Tests/Status/Wave97Batch3FormulaTests.cs).
+
 ### Skills
 
 #### Wave 97-skills-novice (9 fixes, commit 25c58b1)

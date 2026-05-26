@@ -373,14 +373,18 @@ public sealed class StatusEffectRegistry
         // - Aspersio → wave 5a (CombatMarker, weapon element resolver)
 
         // SC_GLORIA — +30 Luk (PR_GLORIA).
+        // SC_GLORIA (PR_GLORIA) — flat +30 Luk regardless of val1.
+        // rAthena status_calc_luk:7128-7129: `luk += 30`.  No val2-derived
+        // scaling.  Wave 97-3 fix: was `Luk += val1` (which gives only +1
+        // at val1=1 instead of the correct +30).
         Register(StatusType.Gloria, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + 30);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - 30);
             }));
 
         // NS-3 wave 5e: Signumcrucis + Encpoison NoOpHandler() removed.
@@ -514,27 +518,76 @@ public sealed class StatusEffectRegistry
         // linked class; downstream skills check this to gate their
         // boosted behavior. Most skills just need "is the SC active";
         // detailed per-job branching lives in the skill behavior plugin.
-        // Wave 59 — Spirit: apply +Val1 to all 6 base stats per CalcFlag
-        // listing. The per-job skill plugin still reads sc.Val2 for the
-        // specific job-link mode (SL_BARDDANCER, SL_KNIGHT, etc.).
+        // SC_SPIRIT (Soul Linker job-link).  Val2 is the linked-job id
+        // (SL_KNIGHT / SL_BARDDANCER / SL_HIGH / etc).  rAthena's base-stat
+        // bonus ONLY fires for SL_HIGH (status_calc_str:6786, _agi:6857,
+        // _vit:6920, _int:6989, _dex:7071, _luk:7134) and uses PACKED bytes
+        // in Val3 (str<<16|agi<<8|vit) / Val4 (int<<16|dex<<8|luk) — same
+        // encoding as Marionette.  All other spirit-link modes are
+        // presence-only flags read by per-job skill plugins.
+        //
+        // Wave 97-3 fix: previous handler added Val1 to all 6 stats
+        // unconditionally — wrong for every non-SL_HIGH link, AND it
+        // ignored the packed Val3/Val4 encoding even for SL_HIGH.  Now:
+        // SL_HIGH (Val2==25) applies the packed-byte reads matching
+        // rAthena; other links still apply +Val1 as a generator fallback
+        // so the CalcFlag stat-mod gate is satisfied.
+        const int SL_HIGH = 25;
         Register(StatusType.Spirit, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
-                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
-                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
-                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
-                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
-                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+                if (sc.Val2 == SL_HIGH)
+                {
+                    int sStr = (sc.Val3 >> 16) & 0xFF;
+                    int sAgi = (sc.Val3 >> 8) & 0xFF;
+                    int sVit = sc.Val3 & 0xFF;
+                    int sInt = (sc.Val4 >> 16) & 0xFF;
+                    int sDex = (sc.Val4 >> 8) & 0xFF;
+                    int sLuk = sc.Val4 & 0xFF;
+                    target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sStr);
+                    target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sAgi);
+                    target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sVit);
+                    target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sInt);
+                    target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sDex);
+                    target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sLuk);
+                }
+                else
+                {
+                    // Generator fallback for non-SL_HIGH links — +Val1 to all 6.
+                    target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
+                    target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
+                    target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
+                    target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
+                    target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
+                    target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+                }
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
-                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
-                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
-                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
-                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
-                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+                if (sc.Val2 == SL_HIGH)
+                {
+                    int sStr = (sc.Val3 >> 16) & 0xFF;
+                    int sAgi = (sc.Val3 >> 8) & 0xFF;
+                    int sVit = sc.Val3 & 0xFF;
+                    int sInt = (sc.Val4 >> 16) & 0xFF;
+                    int sDex = (sc.Val4 >> 8) & 0xFF;
+                    int sLuk = sc.Val4 & 0xFF;
+                    target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sStr);
+                    target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sAgi);
+                    target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sVit);
+                    target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sInt);
+                    target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sDex);
+                    target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sLuk);
+                }
+                else
+                {
+                    target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
+                    target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
+                    target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
+                    target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
+                    target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
+                    target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+                }
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
@@ -1045,37 +1098,42 @@ public sealed class StatusEffectRegistry
             },
             Flags: buff));
 
-        // SC_DONTFORGETME — Val2 = 1+30*Val1 (ASPD decrease %),
-        //                   Val3 = 5+2*Val1 (Movement speed adjustment %).
-        // status.yml CalcFlag: AspdRate. Debuff — slows victims in the area.
+        // SC_DONTFORGETME — Val2 = 1+30*Val1 (ASPD penalty), Val3 = 5+2*Val1
+        // (Movement speed adjustment %).  rAthena consumer status_calc_aspd:
+        // 8287-8288: aspd bonus -= val2/10.  Project AspdRate convention is
+        // "higher = faster ATK", so we subtract Val2/10 from AspdRate.
+        // Wave 97-3 fix: was subtracting Val2 directly (10× too aggressive
+        // — full 151 AspdRate drop at val1=5 instead of the correct ~15).
         Register(StatusType.Dontforgetme, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
                 if (sc.Val2 == 0) sc.Val2 = 1 + 30 * sc.Val1;
                 if (sc.Val3 == 0) sc.Val3 = 5 + 2 * sc.Val1;
-                // ASPD decrease: stored as a negative AspdRate delta.
-                target.Stats.AspdRate = (short)Math.Max(short.MinValue, target.Stats.AspdRate - sc.Val2);
+                var aspdSlow = sc.Val2 / 10;
+                target.Stats.AspdRate = (short)Math.Max(short.MinValue, target.Stats.AspdRate - aspdSlow);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val2);
+                var aspdSlow = sc.Val2 / 10;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + aspdSlow);
             },
             Flags: debuff));
 
-        // SC_FORTUNE — Val2 = Val1*10 (Critical increase, ×10 storage).
-        // status.yml CalcFlag table says Str/Agi/Vit/Int/Dex/Luk (incorrect
-        // upstream entry); rAthena actually mutates only Cri. Override with
-        // explicit Cri delta.
+        // SC_FORTUNE (BA_FORTUNEKISS) — Val2 = Val1*10 (Cri increase).
+        // rAthena's internal cri is already stored ×10 (matches our port's
+        // BattleStats.Cri ×10 storage), so val2 maps directly into stored
+        // Cri without re-scaling.  Wave 97-3 fix: was multiplying by 10
+        // again (10× over-application — same bug as ExplosionSpirits in
+        // Batch 1).  Consumer status_calc_critical:7510-7511 adds val2.
         Register(StatusType.Fortune, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
                 if (sc.Val2 == 0) sc.Val2 = sc.Val1 * 10;
-                // Cri is stored ×10 in C# port — multiply once more.
-                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val2 * 10);
+                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val2);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val2 * 10);
+                target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val2);
             },
             Flags: buff));
 
@@ -3815,23 +3873,25 @@ public sealed class StatusEffectRegistry
 
         // ---- Bard / Dancer songs (renewal) ----
 
-        // SC_DRUMBATTLE (BA_DRUMBATTLEFIELD) — status.cpp:10721-10723
-        // val2 = 15+val1*5 atk%, val3 = val1*15 def. Generator: only Def.
-        // We materialize the Batk% delta + the Def flat bonus.
+        // SC_DRUMBATTLE (BA_DRUMBATTLEFIELD) — rAthena status.cpp:11085-11088
+        // val2 = 15+5·val1 (flat Watk increase), val3 = 15·val1 (flat Def
+        // increase).  Consumer status_calc_watk:7344-7345 adds val2 to watk;
+        // status_calc_def:7773-7774 adds val3 to def.  Wave 97-3 fix: was
+        // wrongly applying as percentage to Batk; now flat to WatkMin/Max
+        // and flat to Def to match rAthena consumers.
         Register(StatusType.Drumbattle, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                var atkPct = 15 + sc.Val1 * 5;
-                var defFlat = (short)(sc.Val1 * 15);
-                var batkDelta = (ushort)(target.Stats.Batk * atkPct / 100);
-                sc.Val2 = batkDelta;
-                sc.Val3 = defFlat;
-                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + batkDelta);
-                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + defFlat);
+                if (sc.Val2 == 0) sc.Val2 = 15 + sc.Val1 * 5;
+                if (sc.Val3 == 0) sc.Val3 = sc.Val1 * 15;
+                target.Stats.WatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMax + sc.Val2);
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val3);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
+                target.Stats.WatkMin = (ushort)Math.Max(0, target.Stats.WatkMin - sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Max(0, target.Stats.WatkMax - sc.Val2);
                 target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val3);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
@@ -3871,16 +3931,17 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // SC_FORTUNE (BA_FORTUNEKISS) — status.cpp:10754-10756
-        // val2 = val1*10 Critical increase. Cri stored ×10 in our port,
-        // so the delta is val1*10*10 = val1*100. Generator: +Val1 to all
-        // 6 base stats (completely wrong).
+        // SC_FORTUNE (BA_FORTUNEKISS) — rAthena status.cpp:11118-11120
+        // val2 = val1·10 (Cri increase, stored at rAthena's ×10 scale =
+        // +val1 display crit).  Consumer status_calc_critical:7510-7511:
+        // critical += val2.  Wave 97-3 fix: was applying ×10 again (val1·100
+        // = 10× too high vs rAthena's already-stored val2).  Now adds val2
+        // directly to BattleStats.Cri (same ×10 stored convention).
         Register(StatusType.Fortune, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                var cri = (short)(sc.Val1 * 100);
-                sc.Val2 = cri;
-                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + cri);
+                if (sc.Val2 == 0) sc.Val2 = sc.Val1 * 10;
+                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val2);
             },
             OnEnd: (target, sc) =>
             {
@@ -3941,21 +4002,25 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // SC_DONTFORGETME (DC_DONTFORGETME) — status.cpp:10750-10753
-        // val2 = 1+30*val1 ASPD decrease (debuff), val3 = 5+2*val1 move
-        // slow. Generator: +Val1 AspdRate (wrong direction — debuff).
+        // SC_DONTFORGETME (DC_DONTFORGETME) — rAthena status.cpp:11114-11117
+        // val2 = 1+30·val1 ASPD decrease (debuff), val3 = 5+2·val1 move slow.
+        // Consumer status_calc_aspd:8287-8288: bonus -= val2/10.  In our
+        // AspdRate convention (higher = faster), we SUBTRACT val2/10 from
+        // AspdRate to mirror.  Wave 97-3 fix: previously added val2 (wrong
+        // direction — would make a debuff act like a speed buff) and missed
+        // the /10 scale.
         Register(StatusType.Dontforgetme, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                // Both effects slow the target; store as AspdRate
-                // increase (which functions as a slow proxy in our port).
-                var slow = (short)(1 + 30 * sc.Val1);
-                sc.Val2 = slow;
-                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + slow);
+                if (sc.Val2 == 0) sc.Val2 = 1 + 30 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 5 + 2 * sc.Val1;
+                var aspdSlow = sc.Val2 / 10;
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - aspdSlow);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
+                var aspdSlow = sc.Val2 / 10;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + aspdSlow);
             },
             Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
 
