@@ -342,6 +342,7 @@ public static class SkillIds
     public const ushort CR_SHIELDBOOMERANG = 251;
     public const ushort CR_SHIELDCHARGE = 250;
     public const ushort CR_SLIMPITCHER = 478;
+    public const ushort CR_SPEARQUICKEN = 258;
     public const ushort DC_DONTFORGETME = 328;
     public const ushort DC_FORTUNEKISS = 329;
     public const ushort DC_HUMMING = 327;
@@ -531,7 +532,9 @@ public static class SkillIds
     public const ushort IG_JUDGEMENT_CROSS = 5264;
     public const ushort IG_OVERSLASH = 5266;
     public const ushort IG_RADIANT_SPEAR = 6503;
+    public const ushort IG_SHIELD_MASTERY = 5258;
     public const ushort IG_SHIELD_SHOOTING = 5265;
+    public const ushort IG_SPEAR_SWORD_M = 5259;
     public const ushort IG_ULTIMATE_SACRIFICE = 5261;
     public const ushort IQ_EXPOSION_BLASTER = 5244;
     public const ushort IQ_FIRST_BRAND = 5245;
