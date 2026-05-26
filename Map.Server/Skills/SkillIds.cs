@@ -481,6 +481,8 @@ public static class SkillIds
     public const ushort HLIF_AVOID = 8002;
     public const ushort HLIF_CHANGE = 8004;
     public const ushort HLIF_HEAL = 8001;
+    public const ushort HN_SELFSTUDY_TATICS = 5449;
+    public const ushort HN_SELFSTUDY_SOCERY = 5450;
     public const ushort HN_DOUBLEBOWLINGBASH = 5451;
     public const ushort HN_GROUND_GRAVITATION = 5459;
     public const ushort HN_HELLS_DRIVE = 5458;

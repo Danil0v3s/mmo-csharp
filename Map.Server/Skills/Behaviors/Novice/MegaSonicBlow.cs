@@ -19,9 +19,10 @@ public sealed class MegaSonicBlow : WeaponSkillImpl
     public MegaSonicBlow(Random? rng = null) : base(SkillIds.HN_MEGA_SONIC_BLOW)
         => _rng = rng ?? Random.Shared;
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         var ratio = baseRatio + (-100 + 900 + 750 * skillLevel) + 5 * src.Stats.Pow;
+        ratio = HyperNoviceFormulas.ApplyTaticsBoost(ratio, src, skillLevel, perLevel: 5, ctx);
         if (target.Stats.Hp < target.Stats.MaxHp / 2)
             ratio *= 2;
         return ratio;

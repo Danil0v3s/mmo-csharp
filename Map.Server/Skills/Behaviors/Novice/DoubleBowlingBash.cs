@@ -14,8 +14,11 @@ public sealed class DoubleBowlingBash : SkillImpl
 {
     public DoubleBowlingBash() : base(SkillIds.HN_DOUBLEBOWLINGBASH) { }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + (-100 + 250 + 400 * skillLevel) + 5 * src.Stats.Pow;
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        int ratio = baseRatio + (-100 + 250 + 400 * skillLevel) + 5 * src.Stats.Pow;
+        return HyperNoviceFormulas.ApplyTaticsBoost(ratio, src, skillLevel, perLevel: 3, ctx);
+    }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {

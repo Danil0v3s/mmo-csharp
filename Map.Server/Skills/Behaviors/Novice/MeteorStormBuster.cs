@@ -28,8 +28,13 @@ public sealed class MeteorStormBuster : SkillImpl
         _rng = rng ?? Random.Shared;
     }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + (-100 + 450 + 160 * skillLevel) + 3 * src.Stats.Spl;
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        int ratio = baseRatio + (-100 + 450 + 160 * skillLevel) + 3 * src.Stats.Spl;
+        ratio = HyperNoviceFormulas.ApplySoceryBoost(ratio, src, skillLevel, perLevel: 5, ctx);
+        ratio = HyperNoviceFormulas.ApplyRuleBreakBoost(ratio, src, pct: 50, ctx);
+        return ratio;
+    }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {

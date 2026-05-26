@@ -13,8 +13,11 @@ public sealed class ShieldChainRush : WeaponSkillImpl
 {
     public ShieldChainRush() : base(SkillIds.HN_SHIELD_CHAIN_RUSH) { }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + (-100 + 850 + 1050 * skillLevel) + 5 * src.Stats.Pow;
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        int ratio = baseRatio + (-100 + 850 + 1050 * skillLevel) + 5 * src.Stats.Pow;
+        return HyperNoviceFormulas.ApplyTaticsBoost(ratio, src, skillLevel, perLevel: 3, ctx);
+    }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {

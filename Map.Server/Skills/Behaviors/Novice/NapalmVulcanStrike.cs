@@ -18,8 +18,14 @@ public sealed class NapalmVulcanStrike : SkillImpl
     public NapalmVulcanStrike(Random? rng = null) : base(SkillIds.HN_NAPALM_VULCAN_STRIKE)
         => _rng = rng ?? Random.Shared;
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + (-100 + 350 + 650 * skillLevel) + 3 * src.Stats.Spl;
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        int ratio = baseRatio + (-100 + 350 + 650 * skillLevel) + 3 * src.Stats.Spl;
+        // rAthena uses a doubled SOCERY amplifier here (skillratio·2·SOCERY/100).
+        ratio = HyperNoviceFormulas.ApplySoceryBoost(ratio, src, skillLevel, perLevel: 4, ctx, ampMul: 2);
+        ratio = HyperNoviceFormulas.ApplyRuleBreakBoost(ratio, src, pct: 40, ctx);
+        return ratio;
+    }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {

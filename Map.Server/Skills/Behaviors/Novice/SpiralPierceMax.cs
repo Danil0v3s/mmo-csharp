@@ -14,8 +14,20 @@ public sealed class SpiralPierceMax : WeaponSkillImpl
 {
     public SpiralPierceMax() : base(SkillIds.HN_SPIRAL_PIERCE_MAX) { }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + (-100 + 1000 + 1500 * skillLevel) + 5 * src.Stats.Pow;
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        int ratio = baseRatio + (-100 + 1000 + 1500 * skillLevel) + 5 * src.Stats.Pow;
+        ratio = HyperNoviceFormulas.ApplyTaticsBoost(ratio, src, skillLevel, perLevel: 3, ctx);
+        // rAthena size multiplier: Small ×1.5, Medium ×1.3, Large ×1.2.
+        ratio = target.Stats.Size switch
+        {
+            BattleSize.Small => ratio * 150 / 100,
+            BattleSize.Medium => ratio * 130 / 100,
+            BattleSize.Large => ratio * 120 / 100,
+            _ => ratio,
+        };
+        return ratio;
+    }
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
