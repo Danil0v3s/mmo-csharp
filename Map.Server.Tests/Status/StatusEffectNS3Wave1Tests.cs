@@ -147,23 +147,37 @@ public class StatusEffectNS3Wave1Tests
     [Fact]
     public void Berserk_applies_full_buff_combo_and_reverts()
     {
+        // Wave 97-2 — rAthena consumer reads (status.cpp:3206-3207 +200% MaxHp;
+        // 7678-7679 -50% Flee; 7752/7865/7927/7989 Def/Def2/Mdef/Mdef2 → 0;
+        // aspd_rate -= 300).  Our port keeps the Batk +200 approximation (no
+        // skillratio SC hook).
         var mob = MakeTarget(flee: 100, batk: 100, maxHp: 1000);
         mob.Stats.Hp = 500;
+        mob.Stats.Def = 80; mob.Stats.Def2 = 40;
+        mob.Stats.Mdef = 30; mob.Stats.Mdef2 = 20;
         var sc = MakeSc();
         var aspdBefore = mob.Stats.AspdRate;
         H(StatusType.Berserk).OnStart(mob, sc, null);
-        Assert.Equal(300, mob.Stats.Batk);  // +200
-        Assert.Equal(200, mob.Stats.Flee);  // +100
+        Assert.Equal(300, mob.Stats.Batk);
+        Assert.Equal(50, mob.Stats.Flee);                 // halved
         Assert.Equal((short)(aspdBefore + 30), mob.Stats.AspdRate);
         Assert.Equal(3000, mob.Stats.MaxHp);
-        Assert.Equal(3000, mob.Stats.Hp);   // Berserk fills to full
-        Assert.Equal(2000, sc.Val2);        // delta = 2× old MaxHp
+        Assert.Equal(3000, mob.Stats.Hp);
+        Assert.Equal(2000, sc.Val2);
+        Assert.Equal(0, mob.Stats.Def);                   // zero'd
+        Assert.Equal(0, mob.Stats.Def2);
+        Assert.Equal(0, mob.Stats.Mdef);
+        Assert.Equal(0, mob.Stats.Mdef2);
         H(StatusType.Berserk).OnEnd(mob, sc);
         Assert.Equal(100, mob.Stats.Batk);
         Assert.Equal(100, mob.Stats.Flee);
         Assert.Equal(aspdBefore, mob.Stats.AspdRate);
         Assert.Equal(1000, mob.Stats.MaxHp);
-        Assert.Equal(1000, mob.Stats.Hp);   // clamped to new max
+        Assert.Equal(1000, mob.Stats.Hp);
+        Assert.Equal(80, mob.Stats.Def);                  // restored
+        Assert.Equal(40, mob.Stats.Def2);
+        Assert.Equal(30, mob.Stats.Mdef);
+        Assert.Equal(20, mob.Stats.Mdef2);
     }
 
     // ===== SC_LAUDAAGNUS =====

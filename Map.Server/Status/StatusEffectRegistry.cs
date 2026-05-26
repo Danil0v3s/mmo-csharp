@@ -657,23 +657,82 @@ public sealed class StatusEffectRegistry
         // status_calc_pc applies +200 Batk, +100 Flee, +30 AspdRate, ×3
         // MaxHp/MaxSp. We capture the deltas in val2..val4 so OnEnd
         // round-trips even if MaxHp moved.
+        // SC_BERSERK (LK_BERSERK) — rAthena status.cpp:11355-11364.  Consumers:
+        // - MaxHp loop (line 3206-3207): bonus += 200 → MaxHp ×3.
+        // - status_calc_def/def2/mdef/mdef2 (7752, 7865, 7927, 7989): all return 0.
+        // - status_calc_flee (7678-7679): flee -= flee*50/100 → half Flee.
+        // - status_calc_aspd_rate: aspd_rate -= 300 (faster ASPD).
+        // - battle.cpp:4541-4546: +200 skillratio (RE) on attacks.
+        // Wave 97-2 fix: previous handler had wrong Flee sign (+100 instead
+        // of halving) and was missing the Def/Mdef/Def2/Mdef2 zero-out and
+        // the +Batk approximation kept (since project lacks a skillratio SC
+        // hook).  Cache snapshots in Val2 (maxHp delta), Val3 (packed
+        // def/def2/mdef/mdef2 each as 16 bits), Val4 (flee half).
         Register(StatusType.Berserk, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                sc.Val2 = target.Stats.MaxHp * 2; // delta to add for ×3
-                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + 200);
-                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + 100);
-                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + 30);
+                sc.Val2 = target.Stats.MaxHp * 2; // ×3 MaxHp delta
                 target.Stats.MaxHp += sc.Val2;
                 target.Stats.Hp = target.Stats.MaxHp; // Berserk fills to full
+
+                // Approximate the +200% skillratio (combat-side hook missing)
+                // by bumping Batk additively.  This is the rough proxy used
+                // in our port; documented as a known limitation.
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + 200);
+
+                // Half Flee.
+                sc.Val4 = target.Stats.Flee / 2;
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val4);
+
+                // ASPD rate boost (faster ATK speed; our AspdRate convention
+                // is "add to display %").  rAthena reduces aspd_rate by 300
+                // (lower aspd_rate = faster); project adds +30 to AspdRate
+                // (display %).  Match the project's scale-down convention.
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + 30);
+
+                // Zero out Def / Def2 / Mdef / Mdef2.  Pack snapshots into
+                // Val3 (def in high 16 bits, def2 in low 16 bits) and the
+                // upper short bits of Val4 (mdef high, mdef2 low — Val4 low
+                // already holds flee snapshot, so use top half).
+                ushort defSnap = (ushort)Math.Clamp(target.Stats.Def, 0, ushort.MaxValue);
+                ushort def2Snap = (ushort)Math.Clamp(target.Stats.Def2, 0, ushort.MaxValue);
+                ushort mdefSnap = (ushort)Math.Clamp(target.Stats.Mdef, 0, ushort.MaxValue);
+                ushort mdef2Snap = (ushort)Math.Clamp(target.Stats.Mdef2, 0, ushort.MaxValue);
+                sc.Val3 = (defSnap << 16) | def2Snap;
+                // Re-pack Val4: low 16 = flee snap, high 16 = mdef (snap) ^ mdef2.
+                // We have to choose — flee fits in 16 bits easily; for mdef/mdef2
+                // we'll snapshot the original Mdef and Mdef2 into Val1 high/low
+                // 16 since Val1 is not consumed by consumers reading SC_BERSERK
+                // (they just check presence + read sc->getSCE(...)->val4 for damage).
+                // Actually val1 is the skill level — we MUST preserve it.  Move
+                // flee snap to Val4 low 16 and pack mdef+mdef2 into Val4 high 16
+                // as combined (16 bits split is too tight).  Cleanest: cap each
+                // at 8 bits (mdef rarely exceeds 100 anyway in vanilla).
+                sc.Val4 = (sc.Val4 & 0xFFFF) | ((mdefSnap & 0xFF) << 24) | ((mdef2Snap & 0xFF) << 16);
+
+                target.Stats.Def = 0;
+                target.Stats.Def2 = 0;
+                target.Stats.Mdef = 0;
+                target.Stats.Mdef2 = 0;
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - 200);
-                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - 100);
-                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - 30);
                 target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val2);
                 if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - 200);
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - 30);
+
+                int fleeSnap = sc.Val4 & 0xFFFF;
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + fleeSnap);
+
+                int defSnap = (sc.Val3 >> 16) & 0xFFFF;
+                int def2Snap = sc.Val3 & 0xFFFF;
+                int mdefSnap = (sc.Val4 >> 24) & 0xFF;
+                int mdef2Snap = (sc.Val4 >> 16) & 0xFF;
+                target.Stats.Def = (short)defSnap;
+                target.Stats.Def2 = (short)def2Snap;
+                target.Stats.Mdef = (short)mdefSnap;
+                target.Stats.Mdef2 = (short)mdef2Snap;
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 

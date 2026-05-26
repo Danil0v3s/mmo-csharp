@@ -60,6 +60,25 @@ For every row:
 
 Tests: [Map.Server.Tests/Status/Wave97Batch1FormulaTests.cs](../../../Map.Server.Tests/Status/Wave97Batch1FormulaTests.cs) plus updated `StatusChangeServiceTests`, `StatusEffectsExpansionTests`, `StatusEffectGeneratorTests`, `SkillCastServiceTests` (pre-existing tests were locking the wrong behavior).
 
+### Batch 2 — Berserk full rewrite + verified bespoke handlers
+
+| SC | Verdict | rAthena | C# | Note |
+|---|---|---|---|---|
+| `SC_BERSERK` | 🔧 | status.cpp:11355-11364, consumers at 3206 / 7678 / 7752 / 7865 / 7927 / 7989 / aspd_rate | StatusEffectRegistry.cs:660 | Was missing the Flee halving (was *adding* +100 — wrong sign), missing Def/Def2/Mdef/Mdef2 zero-out per rAthena consumers, and missing the Hp-100 auto-end gate. Now: MaxHp ×3, Flee halved, AspdRate +30 (project scale), Def/Def2/Mdef/Mdef2 zero'd with snapshot for OnEnd, Hp fills to new max. Batk +200 remains as approximation for the missing combat-side skillratio hook (battle.cpp:4541-4546). |
+| `SC_BLOODLUST` | ✓ | status.cpp:11686-11694, status_calc_batk | StatusEffectRegistry.cs:3210 | Live wave-4a handler correct: batk +(20+10·val1)%, val3/val4 store leech chance/rate for combat-side reads. |
+| `SC_FLEET` | ✓ | status.cpp:11695-11698, status_calc_aspd_rate + _batk | StatusEffectRegistry.cs:3225 | Live handler correct: aspd +30·val1, batk +(5+5·val1)%. |
+| `SC_MINDBREAKER` | ✓ | status.cpp:11699-11702, status_calc_smatk + _mdef2 | StatusEffectRegistry.cs:3254 | Live handler correct: smatk +20·val1 %, mdef2 -12·val1. |
+| `SC_GATLINGFEVER` | ✓ | status.cpp:11647-11651 | StatusEffectRegistry.cs:3277 | Live correct: aspd +20·val1, batk +20+10·val1, flee -5·val1. |
+| `SC_DEFENCE` | ✓ | status.cpp:11678-11685 (RE val2=5+5·val1) | StatusEffectRegistry.cs:3301 | Live correct: vit + def + 5+5·val1. |
+| `SC_CHANGE` | ✓ | status.cpp:11728-11731 | StatusEffectRegistry.cs:3319 | Live correct: vit +30·val1, int +20·val1. |
+| `SC_MAXOVERTHRUST` | ✓ | status.cpp:11584-11586 | StatusEffectRegistry.cs:3341 | Live correct: batk +20·val1 %. |
+| `SC_OVERTHRUST` | ✓ | status.cpp:11593-11606 (RE) | StatusEffectRegistry.cs:3362 | Live correct: RE %=val1>4?15:val1>2?10:5. |
+| `SC_MAGICPOWER` | ✓ | status.cpp:10922-10928, status_calc_smatk | StatusEffectRegistry.cs:3380 | Live correct: smatk +5·val1 %. |
+| `SC_MELTDOWN` | ✓ | status.cpp:11625-11628 | StatusEffectRegistry.cs:3399 | Live correct: val2=100·val1 weapon-break, val3=70·val1 armor-break (proc-only). |
+| `SC_REFLECTSHIELD` | ✓ | status.cpp:10951-10952 | StatusEffectRegistry.cs:3412 | Live correct: val2 = 10+val1·3 reflect %. |
+| `SC_PROVIDENCE` | ✓ | status.cpp:10948-10950 | StatusEffectRegistry.cs:3421 | Live correct: val2 = val1·5 race/ele resist %. |
+| `SC_EDP` | ✓ | status.cpp:10891-10903 | StatusEffectRegistry.cs:3462 | Live correct: val2=(val1+1)/2+2 poison chance, val3=50·(val1+1) damage% (pre-RE). |
+
 ### Skills
 
 #### Wave 97-skills-novice (9 fixes, commit 25c58b1)
