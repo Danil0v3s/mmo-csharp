@@ -1,4 +1,5 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
@@ -7,14 +8,17 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// <c>rathena-fork/src/map/skills/mage/rockdown.cpp</c>.
 ///
 /// <para>Earth splash. Ratio: <c>+(-100 + 1550*lv) + 5*SPL</c>; +<c>300*lv</c>
-/// when SC_CLIMAX is active on caster (SC readback TODO).</para>
+/// when SC_CLIMAX is active on caster.</para>
 /// </summary>
 public sealed class RockDown : RecursiveDamageSplashSkillImpl
 {
     public RockDown() : base(SkillIds.AG_ROCK_DOWN) { }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        return baseRatio + (-100 + 1550 * skillLevel) + 5 * src.Stats.Spl;
+        var ratio = baseRatio + (-100 + 1550 * skillLevel) + 5 * src.Stats.Spl;
+        if (ctx.Sc?.Get(src, StatusType.Climax) != null)
+            ratio += 300 * skillLevel;
+        return ratio;
     }
 }

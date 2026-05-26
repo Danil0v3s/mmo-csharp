@@ -9,9 +9,8 @@ namespace Map.Server.Skills.Behaviors.Mage;
 ///
 /// <para>Ground unit drop. Ratio: <c>+(-100 + 700 + 1100*lv) + 5*SPL</c>,
 /// with a +<c>200*lv + 2*SPL</c> bonus when SC_SUMMON_ELEMENTAL_ARDOR is
-/// active on the caster (SC read TODO — buff registry isn't wired here).
-/// Splash victims roll a 3 % chance per tick to receive
-/// SC_HANDICAPSTATE_CONFLAGRATION.</para>
+/// active on the caster. Splash victims roll a 3 % chance per tick to
+/// receive SC_HANDICAPSTATE_CONFLAGRATION.</para>
 /// </summary>
 public sealed class Conflagration : SkillImpl
 {
@@ -26,11 +25,13 @@ public sealed class Conflagration : SkillImpl
         _rng = rng ?? Random.Shared;
     }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
         // rAthena: skillratio += -100 + 700 + 1100*lv + 5*SPL; +200*lv +2*SPL if SC_SUMMON_ELEMENTAL_ARDOR.
-        // SC_SUMMON_ELEMENTAL_ARDOR read TODO — caster SC introspection not wired in this hook.
-        return baseRatio + (-100 + 700 + 1100 * skillLevel) + 5 * src.Stats.Spl;
+        var ratio = baseRatio + (-100 + 700 + 1100 * skillLevel) + 5 * src.Stats.Spl;
+        if (ctx.Sc?.Get(src, StatusType.SummonElementalArdor) != null)
+            ratio += 200 * skillLevel + 2 * src.Stats.Spl;
+        return ratio;
     }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)

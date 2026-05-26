@@ -9,7 +9,7 @@ namespace Map.Server.Skills.Behaviors.Mage;
 ///
 /// <para>Earth ground unit. Ratio: <c>+(-100 + 500 + 2400*lv) + 5*SPL</c>;
 /// +<c>7300 + 200*lv + 5*SPL</c> bonus when SC_SUMMON_ELEMENTAL_TERREMOTUS
-/// is active on caster (SC readback TODO). Splash victims roll 5 %
+/// is active on caster. Splash victims roll 5 %
 /// SC_HANDICAPSTATE_CRYSTALLIZATION.</para>
 /// </summary>
 public sealed class TerraDrive : SkillImpl
@@ -25,9 +25,12 @@ public sealed class TerraDrive : SkillImpl
         _rng = rng ?? Random.Shared;
     }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        return baseRatio + (-100 + 500 + 2400 * skillLevel) + 5 * src.Stats.Spl;
+        var ratio = baseRatio + (-100 + 500 + 2400 * skillLevel) + 5 * src.Stats.Spl;
+        if (ctx.Sc?.Get(src, StatusType.SummonElementalTerremotus) != null)
+            ratio += 7300 + 200 * skillLevel + 5 * src.Stats.Spl;
+        return ratio;
     }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)

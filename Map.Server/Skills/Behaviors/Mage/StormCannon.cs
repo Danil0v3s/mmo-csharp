@@ -1,5 +1,6 @@
 using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
@@ -8,9 +9,9 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// <c>rathena-fork/src/map/skills/mage/stormcannon.cpp</c>.
 ///
 /// <para>Eight-path Wind-magic line. Ratio: <c>+(-100 + 1550*lv) + 5*SPL</c>;
-/// +<c>300*lv</c> with SC_CLIMAX (caster SC TODO). Splash dispatch via
-/// <c>map_foreachindir</c> isn't wired here; we land the primary
-/// magic hit on the named target.</para>
+/// +<c>300*lv</c> when SC_CLIMAX is active on caster. INFRA-DEFERRED:
+/// the <c>map_foreachindir</c> path-AoE splash isn't wired here; we
+/// land the primary magic hit on the named target.</para>
 /// </summary>
 public sealed class StormCannon : SkillImpl
 {
@@ -23,9 +24,12 @@ public sealed class StormCannon : SkillImpl
         _skillAttack = skillAttack;
     }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        return baseRatio + (-100 + 1550 * skillLevel) + 5 * src.Stats.Spl;
+        var ratio = baseRatio + (-100 + 1550 * skillLevel) + 5 * src.Stats.Spl;
+        if (ctx.Sc?.Get(src, StatusType.Climax) != null)
+            ratio += 300 * skillLevel;
+        return ratio;
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)

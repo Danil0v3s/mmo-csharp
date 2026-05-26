@@ -9,8 +9,7 @@ namespace Map.Server.Skills.Behaviors.Mage;
 ///
 /// <para>Poison ground unit. Ratio: <c>+(-100 + 700 + 1100*lv) + 5*SPL</c>;
 /// +<c>200*lv + 2*SPL</c> when SC_SUMMON_ELEMENTAL_SERPENS is active
-/// on the caster (SC readback TODO). Splash victims roll 3 %
-/// SC_HANDICAPSTATE_DEADLYPOISON.</para>
+/// on the caster. Splash victims roll 3 % SC_HANDICAPSTATE_DEADLYPOISON.</para>
 /// </summary>
 public sealed class VenomSwamp : SkillImpl
 {
@@ -25,9 +24,12 @@ public sealed class VenomSwamp : SkillImpl
         _rng = rng ?? Random.Shared;
     }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        return baseRatio + (-100 + 700 + 1100 * skillLevel) + 5 * src.Stats.Spl;
+        var ratio = baseRatio + (-100 + 700 + 1100 * skillLevel) + 5 * src.Stats.Spl;
+        if (ctx.Sc?.Get(src, StatusType.SummonElementalSerpens) != null)
+            ratio += 200 * skillLevel + 2 * src.Stats.Spl;
+        return ratio;
     }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)

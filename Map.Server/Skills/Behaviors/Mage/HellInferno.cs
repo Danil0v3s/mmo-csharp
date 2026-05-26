@@ -9,9 +9,9 @@ namespace Map.Server.Skills.Behaviors.Mage;
 ///
 /// <para>Two-element hit: Fire on initial impact, Dark on a 300 ms
 /// follow-up. Ratio: <c>+(-100 + 400*lv)</c>, with +<c>200*lv</c> on
-/// the Dark sub-hit. Splash dispatch + per-element ratio flag are
-/// approximated — the second (Dark) attack is scheduled via the
-/// skill-timer service.</para>
+/// the Dark sub-hit (driven by <c>miscflag &amp; 2</c>, set when
+/// scheduling the Dark timer). The second (Dark) attack is scheduled
+/// via the skill-timer service.</para>
 /// </summary>
 public sealed class HellInferno : SkillImpl
 {
@@ -28,10 +28,13 @@ public sealed class HellInferno : SkillImpl
         _timers = timers;
     }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx, int miscflag)
     {
-        // Primary hit (Fire). Dark follow-up's +200*lv bonus is TODO — same hook can't see the flag.
-        return baseRatio + (-100 + 400 * skillLevel);
+        // rAthena: skillratio += -100 + 400*lv; +200*lv when miscflag & 2 (ELE_DARK follow-up).
+        var ratio = baseRatio + (-100 + 400 * skillLevel);
+        if ((miscflag & 2) != 0)
+            ratio += 200 * skillLevel;
+        return ratio;
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
