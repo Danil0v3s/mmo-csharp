@@ -5,9 +5,18 @@ namespace Map.Server.Skills.Behaviors.Merchant;
 /// <summary>
 /// GN_S_PHARMACY — Genetic Special Pharmacy. Manual port of
 /// <c>rathena-fork/src/map/skills/merchant/specialpharmacy.cpp</c>.
-/// Stashes skill_id_old / skill_lv_old and opens cooking list type 29
-/// (qty=1, page=6). The cooking dialog UI is not yet wired, so we
-/// broadcast the no-damage animation and TODO the cook list packet.
+/// Opens the Genetic Special Pharmacy panel via
+/// <see cref="ISkillClientService.BroadcastCookingList"/>
+/// (rAthena <c>clif_cooking_list(sd, 29, GN_S_PHARMACY, 1, 6)</c>).
+/// The craftable-row catalog is sent empty until per-recipe material
+/// checks land via <see cref="IProduceRecipeService"/>; the dialog
+/// still surfaces on the client.
+///
+/// <para>rAthena also stashes <c>sd-&gt;skill_id_old</c> /
+/// <c>skill_lv_old</c> for the subsequent produce_mix RPC. That state
+/// belongs on the session, not the entity — 🚩 INFRA-DEFERRED until
+/// <see cref="MapSessionData"/> carries the "last produce skill"
+/// pair.</para>
 /// </summary>
 public sealed class SpecialPharmacy : SkillImpl
 {
