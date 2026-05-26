@@ -90,6 +90,49 @@ Remaining Novice 🚩 (FirstAid is the only ✓; HelpAngel still needs party spl
 
 Remaining Summoner 🚩: SU_SPIRITOFLIFE/LAND multipliers (need skill-tree query + SC integration), KisulWaterSpraying / KisulRampage (heal formula + AP enum gating), party splash on Hiss / MeowMeow / Purring / festival skills (party fan-out service shape).
 
+#### Wave 97-skills-other (9 fixes, commit 1db689d)
+
+| Skill | Verdict | Note |
+|---|---|---|
+| ReturnToEldicastes | 🔧 | wired ctx.Setpos to dicastes01 (198,187) |
+| ReturnToThanatos | 🔧 | wired to thana_t01 (139,156) |
+| ReturnToEclage | 🔧 | wired to ecl_in01 (47,31) |
+| ReturnToGlastHeim | 🔧 | wired to glast_01 (200,268) |
+| ReturnToLighthalzen | 🔧 | wired to lighthalzen (307,307) |
+| PronteraRecall | 🔧 | wired lv1 / lv2 coords on prontera |
+| PartyBlessing | 🔧 | party fan-out via IPartyMapService.ForEachOnSameMap |
+| PartyAssumptio | 🔧 | party fan-out |
+| PartyIncreaseAgi | 🔧 | party fan-out |
+| PartyFlee | 🔧 | party fan-out |
+
+#### Wave 97-skills-acolyte (1 real fix + doc refresh, commit c69b93a)
+
+| Skill | Verdict | Note |
+|---|---|---|
+| Redemptio (PR_REDEMPTIO) | 🔧 | wired full party fan-out for the revive (was per-target only) |
+| Renovatio / ColuceoHeal | ✓ | doc refresh — fan-out was already implemented in an earlier wave |
+
+Remaining Acolyte 🚩: AsuraStrike (ZC_HIGHJUMP packet), GateOfHell / TigerCannon (SC_COMBO formula path), RagingThrust / OccultImpaction (SC bonus % reads), Teleport / WarpPortal / Resurrection (map-flag + save_point hydration), KiExplosion (BattleDamage blew_count field), RampageBlaster (SC_GT_CHANGE buff), Heal (MATK addition path).
+
+#### Wave 97-skills-gunslinger (3 fixes, commit c5e3d74)
+
+| Skill | Verdict | Note |
+|---|---|---|
+| RichsCoin (RL_RICHS_COIN) | 🔧 | grants 10 coin orbs via IPlayerOrbService.Add(OrbKind.Spirit) |
+| Fling (GS_FLING) | 🔧 | reads PlayerEntity.SpiritBall for SC_FLING.Val1 (was hardcoded 5) |
+| HammerOfGod (RL_HAMMER_OF_GOD) | 🔧 | coin scaling + SC_C_MARKER caster check for +400/+150 split |
+
+Remaining Gunslinger 🚩: BanishingBuster (SC gating), BasicGrenade (splash), FireDance (skill-tree bonus), FireRain (timer), GrenadeFragment (per-element dispel), GrenadesDropping (ground unit), HastyFireInTheHole (growing splash), MagazineForOne / OnlyOneBullet (revolver bonuses + weapon-type), MissionBombard / WildFire / SpiralShooting (splash + weapon-type), PiercingShot (rifle bonus), QuickDrawShot (SC_QD_SHOT_READY consumption), ShatterStorm (specific gap), TheVigilanteAtNight (weapon-type), HowlingMine (SC_BURNING follow-up).
+
+#### Wave 97-skills-mage (3 fixes, commit f4ed75d)
+
+| Skill | Verdict | Note |
+|---|---|---|
+| MagicBoltHelper | 🔧 | new SC_FLAMETECHNIC_OPTION ×5 + SC_SPELLFIST val3·100+val1·50−150% bonus paths |
+| FireBolt / ColdBolt / LightningBolt | 🔧 | call updated helper with ctx.Sc threaded through |
+
+Remaining Mage 🚩 (40+): SC readback on Conflagration / DiamondStorm / DiamondDust / EarthGrave / CrystalImpact / DestructiveHurricane / Arrullo / CloudKill / Dispell, splash dispatch on CrimsonArrow / EarthStrain / FrostNova / FrostyMisty / FirePillar (mostly miscflag fan-out infra), skill-tree lookups (SA_FROSTWEAPON / SC_FLAMETECHNIC / SC_COOLER_OPTION job-level), SC enum gaps (SC_ELECTRICWALK), party splash (ElementalShield).
+
 ## Queue
 
 Highest-impact SCs / skills to audit next, in rough priority:
