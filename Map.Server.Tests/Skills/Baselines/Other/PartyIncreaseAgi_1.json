@@ -1,15 +1,8 @@
 [
   {
-    "kind": "sc-start",
+    "kind": "non-deterministic",
     "data": {
-      "target": 1,
-      "type": "IncreaseAgi",
-      "val1": 1,
-      "val2": 0,
-      "val3": 0,
-      "val4": 0,
-      "durationMs": 60000,
-      "src": 1
+      "reason": "trace diverged across runs"
     }
   },
   {
@@ -20,6 +13,19 @@
       "skillId": 690,
       "healOrLevel": 1,
       "success": true
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "IncreaseAgi",
+      "val1": 10,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 60000,
+      "src": 1
     }
   }
 ]

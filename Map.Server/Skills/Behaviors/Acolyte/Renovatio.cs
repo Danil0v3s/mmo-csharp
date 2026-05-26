@@ -7,10 +7,9 @@ namespace Map.Server.Skills.Behaviors.Acolyte;
 /// AB_RENOVATIO — Arch Bishop Renovatio. Manual port of
 /// <c>rathena-fork/src/map/skills/acolyte/renovatio.cpp</c>.
 ///
-/// <para>Holy-element HoT buff. Single-target / no-party / inner
-/// recursion path applies <see cref="StatusType.Renovatio"/>; the
-/// partied caster path iterates same-map members and recursively
-/// applies (TODO — needs party iteration helper).</para>
+/// <para>Holy-element HoT buff. Single-target path applies
+/// <see cref="StatusType.Renovatio"/>; the partied caster path
+/// iterates same-map members via <see cref="IPartyMapService.ForEachOnSameMap"/>.</para>
 ///
 /// <para>Duration: <c>90000 ms</c> per <c>db/re/skill_db.yml</c>.</para>
 /// </summary>

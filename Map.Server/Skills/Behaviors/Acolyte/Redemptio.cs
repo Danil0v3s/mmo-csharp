@@ -18,9 +18,9 @@ namespace Map.Server.Skills.Behaviors.Acolyte;
 /// PvP ground). SC_HELLPOWER targets emit the cast frame but no
 /// revive. Caster's SP becomes 0 and HP becomes 1.</para>
 ///
-/// <para>Party iteration is TODO until the same-map party helper
-/// lands; this port handles the per-target revive branch faithfully
-/// + sets the caster's HP/SP to the cost.</para>
+/// <para>Iterates same-map party members via
+/// <see cref="IPartyMapService.ForEachOnSameMap"/>, reviving every
+/// dead member at 50 % HP. Caster pays HP→1 / SP→0.</para>
 /// </summary>
 public sealed class Redemptio : SkillImpl
 {
@@ -38,8 +38,6 @@ public sealed class Redemptio : SkillImpl
         if (src is not PlayerEntity caster) return;
 
         // Map-flag gating: WoE / GvG / NoSkill reject the revive entirely.
-        // (Battleground is a separate flag in rAthena's mapflag.yml and isn't
-        // modeled in our MapFlag enum yet — deferred per PARITY-REMAINING.md §P2.3.)
         if (ctx.MapFlags != null && ctx.World != null)
         {
             string? mapName = null;
@@ -56,24 +54,37 @@ public sealed class Redemptio : SkillImpl
             }
         }
 
-        // Per-victim path: must be dead, no SC_HELLPOWER.
-        if (target.Stats.Hp > 0) return;
+        // Per-victim path: handle the single explicit target (used when no party).
+        TryReviveOne(target, src, ctx);
 
-        if (ctx.Sc?.Get(target, StatusType.Hellpower) != null)
+        // Party fan-out — revive every dead same-map member.
+        if (caster.PartyId > 0 && ctx.PartyMap != null)
         {
-            ctx.Client?.BroadcastSkillNoDamage(src, target, SkillIds.ALL_RESURRECTION, skillLevel);
-            return;
+            ctx.PartyMap.ForEachOnSameMap(caster, m =>
+            {
+                if (m.Id.Value == target.Id.Value) return;
+                TryReviveOne(m, src, ctx);
+            }, includeSelf: false);
         }
 
-        // Redemptio always uses Resurrection lv 3 (50% HP).
-        var revived = _statusOps?.Revive(target, percentHp: 50, percentSp: 0) ?? 0;
-        if (revived > 0)
-        {
-            ctx.Client?.BroadcastSkillNoDamage(src, target, SkillIds.ALL_RESURRECTION, 3);
-        }
-
-        // Caster pays the cost: HP = 1 (renewal skips the EXP penalty).
+        // Caster pays the cost: HP = 1, SP = 0 (renewal skips the EXP penalty).
         caster.Hp = 1;
         caster.Sp = 0;
+    }
+
+    private void TryReviveOne(Entity bl, Entity src, SkillBehaviorContext ctx)
+    {
+        if (bl.Stats.Hp > 0) return;
+        if (ctx.Sc?.Get(bl, StatusType.Hellpower) != null)
+        {
+            ctx.Client?.BroadcastSkillNoDamage(src, bl, SkillIds.ALL_RESURRECTION, 3);
+            return;
+        }
+        // Redemptio always uses Resurrection lv 3 (50% HP).
+        var revived = _statusOps?.Revive(bl, percentHp: 50, percentSp: 0) ?? 0;
+        if (revived > 0)
+        {
+            ctx.Client?.BroadcastSkillNoDamage(src, bl, SkillIds.ALL_RESURRECTION, 3);
+        }
     }
 }

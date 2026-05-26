@@ -19,8 +19,8 @@ namespace Map.Server.Skills.Behaviors.Acolyte;
 ///
 /// <para>Undead-race / SC_BERSERK targets are skipped silently.</para>
 ///
-/// <para>Party-iteration TODO — single-target / no-party fallback
-/// matches the inner branch faithfully.</para>
+/// <para>Party iteration via <see cref="IPartyMapService.ForEachOnSameMap"/>;
+/// non-party callers fall through to single-target.</para>
 /// </summary>
 public sealed class ColuceoHeal : SkillImpl
 {
