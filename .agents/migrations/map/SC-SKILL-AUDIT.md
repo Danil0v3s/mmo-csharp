@@ -186,3 +186,30 @@ After SCs, queue first skill batch:
 
 Verification pass kickoff. Sets the pattern: one SC / one skill at a
 time, citation to rAthena line, fix + test if divergent, log here.
+
+### 2026-05-26 — Wave 97 in progress (SC agent + skill sweep)
+
+Comprehensive depth-audit pass dispatched as a single batch:
+- ONE parallel agent (aa7465d0ee6054fef) sweeps StatusEffectRegistry.cs
+  closing high-impact SC bespoke-math gaps. Committed wave 97-1
+  (b587e76) with 12 SC fixes + 3 verifications across PvP-relevant
+  stat-mod SCs. Continuing past batch 1 into Soul Linker, Wanderer,
+  Sura, GC, Warlock families.
+- I (main session) work skill families in series: Novice (10), Summoner
+  (4), Other (9), Acolyte (1+2 doc), Gunslinger (3), Mage (3),
+  ElementalNpc (4) = 34 skill fixes across 7 families, 8 commits.
+
+ElementalNpc family is **fully closed** (0 TODOs remaining).
+
+Remaining open families with TODOs (rough order):
+- Mage (~40), Archer (~44), Thief (~40), Merchant (~34), Swordman (~33),
+  Ninja (~28), Taekwon (~22), Npc (~21), Gunslinger (~17), Acolyte (~13)
+
+Most remaining TODOs require infrastructure not yet in place:
+- Splash dispatch via specific subskill ids (BL_SKILL iteration)
+- SC enums for 4th-class skills (need to coordinate with status agent)
+- Weapon-type plumbing (revolver/rifle/pistol gates)
+- Skill-tree query for passive lookups (SA_FROSTWEAPON etc.)
+- Party-fan-out where it's not already wired
+
+Build: clean. Tests: 3533 passing.
