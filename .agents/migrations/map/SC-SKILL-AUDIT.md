@@ -235,4 +235,56 @@ Most remaining TODOs require infrastructure not yet in place:
 - Skill-tree query for passive lookups (SA_FROSTWEAPON etc.)
 - Party-fan-out where it's not already wired
 
-Build: clean. Tests: 3533 passing.
+Build: clean. Tests: 3533 passing (mid-wave).
+
+### 2026-05-26 — Wave 97 closeout (final tally)
+
+**SC engine — agent (aa7465d0ee6054fef) completed 5 batches:**
+
+| Batch | Commit | Fixed | Verified | Notes |
+|---|---|---:|---:|---|
+| 97-1 | b587e76 | 12 | 3 | PvP stat-mod SCs (Blessing/IncAgi/DecAgi/Adrenaline/TwohandQuicken/Hawkeyes/Explosionspirits/Quagmire/Angelus/Assumptio/Kyrie/TrueSight) |
+| 97-2 | 4ed97d1 | 1 | 13 | Berserk rewrite (Watk/Def/Mdef/Hit/Flee/Cri tuple + suppress regen) |
+| 97-3 | 42b3851 | 5 | 2 | Bard/Dancer family + Gloria + Spirit (SL_HIGH packed bytes) |
+| 97-4 | db725c5 | 1 | 17 | Defender + Wave32 group verifications |
+| 97-5 | 9f0296e | 1 | — | SC_IMPOSITIO Watk/Matk fix |
+| **Total** | — | **20** | **35** | **41 SCs audited, 18 fixes, 2 follow-ons (Aurablade + Laudaramus crit-atk-rate)** |
+
+New SC tests: `Wave97Batch1FormulaTests.cs` (17 cases) + `Wave97Batch3FormulaTests.cs` (8 cases). 4 pre-existing tests updated to reflect corrected formulas (StatusChangeServiceTests, StatusEffectsExpansionTests, StatusEffectGeneratorTests, StatusEffectNS3Wave1Tests, SkillCastServiceTests).
+
+**Recurring bug patterns the agent found:**
+1. **Crit ×10 stored convention** — applied twice in TrueSight/ExplosionSpirits/Fortune (10× over-application). Fixed.
+2. **Wrong-stat-target** — Hawkeyes (Hit→Dex), Angelus (Mdef2→Def2), Quagmire (AspdRate→Agi+Dex), Drumbattle (Batk→Watk+Def), Impositio (Batk→Watk+Matk). Fixed.
+3. **Wrong direction** — Berserk Flee (+→halved), Defender AspdRate (+→penalty), DontForgetMe AspdRate (+→penalty). Fixed.
+4. **Wrong magnitude** — Blessing/IncreaseAgi/DecreaseAgi using Val1 not derived Val2. Fixed.
+5. **Missing val2 dispatch** — Spirit needed Marionette-style packed-byte branching for SL_HIGH. Fixed.
+6. **Missing zero-outs** — Berserk missed Def/Def2/Mdef/Mdef2. Fixed.
+
+**Skills — main session committed 9 batches across 8 families:**
+
+| Family | Commit | Fixes | Notes |
+|---|---|---:|---|
+| Novice | 25c58b1 | 10 | HN_SELFSTUDY mastery + SC_RULEBREAK helper |
+| Summoner | 7d7aa49 | 4 | Shaman mastery + Commune helper |
+| Other | 1db689d | 9 | pc_setpos + party splash wiring |
+| Acolyte | c69b93a | 1 (+2 doc) | Redemptio party fan-out |
+| Gunslinger | c5e3d74 | 3 | Coin orb wiring |
+| Mage | f4ed75d | 3 | Bolt-family SC modifiers in MagicBoltHelper |
+| ElementalNpc | 553ebe8 | 4 | Master-Lv lookup (family fully closed) |
+| Taekwon | a38861d | 1 | SoulGathering soulball grant |
+| **Total** | — | **35** | **8 families touched** |
+
+**Combined wave 97 total: 55 fixes (20 SC + 35 skill), 35 SC verifications. 3,541 Map.Server tests passing.**
+
+**Remaining work** (deferred to future sessions, scope-bounded by infrastructure):
+- ~300 skill TODOs across 11 families. Each cluster has a documented infra dependency in the audit doc:
+  - Splash dispatch via specific subskill ids (BL_SKILL iteration)
+  - SC enums for some 4th-class skills (need additions to StatusType)
+  - Weapon-type plumbing (revolver/rifle/pistol gates)
+  - Skill-tree query for passive lookups (SA_FROSTWEAPON etc.)
+  - BattleDamage extension fields (blew_count)
+  - Party-fan-out where it's not already wired (handled case-by-case)
+- 2 SC follow-ons: Aurablade (combat-side ATK_ADD hook), Laudaramus (crit-atk-rate vs crit-chance separation).
+- The 1,211-skill audit doc (`SKILL-AUDIT-DETAIL.md`) catalogues every file with status / first-TODO excerpt; future waves can pick rows directly.
+
+The "rAthena behavioral fidelity" axis is meaningfully improved: 18 newly-correct SC formulas fix real combat math bugs (Berserk + Crit ×10 over-application + Marionette stat transfer + Defender direction). Skill mastery / SC bonus / party-splash patterns landed across the easier families. Larger families and infra-deferred items documented for follow-on.
