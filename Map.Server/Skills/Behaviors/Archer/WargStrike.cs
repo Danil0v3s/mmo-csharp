@@ -11,8 +11,8 @@ namespace Map.Server.Skills.Behaviors.Archer;
 /// (PlayerOption.Wugrider), unit_movepos teleports the caster to a
 /// cell adjacent to the target before the hit lands; rAthena fires
 /// <c>clif_blown(src)</c> right after the move, so the C# port flags
-/// the swing with <see cref="BattleDamage.BlewCount"/> = 1 via
-/// <c>ModifyDamageData</c>.</para>
+/// the swing with <see cref="Map.Server.Combat.BattleDamage.BlewCount"/>
+/// = 1 via <c>ModifyDamageData</c>.</para>
 /// </summary>
 public sealed class WargStrike : WeaponSkillImpl
 {
@@ -23,12 +23,9 @@ public sealed class WargStrike : WeaponSkillImpl
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // rAthena mounted-Warg branch: teleport adjacent to target then
-        // clif_blown — handled here via the unit-ops service when
-        // available, then fall through to the usual weapon swing.
         if (src is PlayerEntity pc && (pc.Option & PlayerOption.Wugrider) != 0)
         {
-            ctx.UnitOps?.MovePos(src, target.X, target.Y, 1, 1);
+            ctx.UnitOps?.MovePos(src, target.X, target.Y, 1, true);
         }
         base.CastendDamageId(src, target, skillLevel, ctx);
     }
