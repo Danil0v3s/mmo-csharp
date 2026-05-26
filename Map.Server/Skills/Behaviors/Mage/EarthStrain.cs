@@ -11,9 +11,14 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// facing direction with 140 ms stagger between waves. Ratio:
 /// <c>+(-100 + 1000 + 600*lv)</c>. Per-wave casting uses
 /// <c>skill_addtimerskill</c>; the C# port schedules each wave on
-/// <see cref="ISkillTimerService"/> and lands the attack at the wave
-/// origin via the skill-attack service (precise XY positional cast
-/// chain is TODO until the engine surfaces it from this hook).</para>
+/// <see cref="ISkillTimerService"/> and lands the attack at the
+/// caster's position via the skill-attack service.</para>
+///
+/// <para>INFRA-DEFERRED: the precise XY positional cast chain
+/// (each wave should land one cell further in the caster's facing
+/// direction with the ground-position cast variant) needs a
+/// position-targeted timer overload that doesn't exist on
+/// <see cref="ISkillTimerService"/> today.</para>
 /// </summary>
 public sealed class EarthStrain : SkillImpl
 {

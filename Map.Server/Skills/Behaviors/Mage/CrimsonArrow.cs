@@ -8,9 +8,10 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// <c>rathena-fork/src/map/skills/mage/crimsonarrow.cpp</c>.
 ///
 /// <para>Single-target Fire magic. Ratio: <c>+(-100 + 400*lv) + 3*SPL</c>
-/// then RE_LVL_DMOD(100). The companion AOE skill
-/// (AG_CRIMSON_ARROW_ATK) splash on the eight-path is TODO until the
-/// map-foreach-in-path helper is wired.</para>
+/// then RE_LVL_DMOD(100). INFRA-DEFERRED: the companion AOE skill
+/// (AG_CRIMSON_ARROW_ATK = 5236) splash along the eight-path needs
+/// <c>map_foreachindir</c> / <c>map_foreachinpath</c> which aren't
+/// wired here yet. The primary hit lands on the named target.</para>
 /// </summary>
 public sealed class CrimsonArrow : SkillImpl
 {
@@ -31,8 +32,6 @@ public sealed class CrimsonArrow : SkillImpl
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // rAthena fires AG_CRIMSON_ARROW_ATK splash along the eight-path. Splash TODO;
-        // primary hit lands on the named target.
         _skillAttack?.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
     }
 }

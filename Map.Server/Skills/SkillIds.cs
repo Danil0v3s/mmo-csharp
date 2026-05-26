@@ -217,6 +217,8 @@ public static class SkillIds
     public const ushort AG_CRYSTAL_IMPACT = 5225;
     public const ushort AG_DEADLY_PROJECTION = 5214;
     public const ushort AG_DESTRUCTIVE_HURRICANE = 5215;
+    /// <summary>Follow-up hit from SC_CLIMAX val1==1 on AG_DESTRUCTIVE_HURRICANE — flat +12500 % ratio, no level scaling.</summary>
+    public const ushort AG_DESTRUCTIVE_HURRICANE_CLIMAX = 5306;
     public const ushort AG_FLORAL_FLARE_ROAD = 5229;
     public const ushort AG_FROZEN_SLASH = 5237;
     public const ushort AG_MYSTERY_ILLUSION = 5217;
