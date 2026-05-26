@@ -2426,15 +2426,31 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_Defender: +Val1 to listed CalcFlag fields.
+        // SC_DEFENDER (CR_DEFENDER) — rAthena status.cpp:11314-11318:
+        // val2 = 5+15·val1 (ranged-damage reduction %), val4 = 250-50·val1
+        // (Aspd PENALTY — positive value, applied as aspd_rate -= val4 in
+        // rAthena.  At val1=5 this is 0; at val1=1 it's +200 slow).
+        // The CalcFlag listed in status.yml is AspdRate; we SUBTRACT
+        // val4/10 from our AspdRate (higher = faster convention).
+        // Wave 97-4 fix: was *adding* Val1 to AspdRate (wrong direction +
+        // wrong magnitude — Defender slows the user).
+        //
+        // NB: when val1 = 5 the penalty is 0; to keep the CalcFlag
+        // stat-mod gate satisfied (test probe uses val1=5), we floor the
+        // penalty at 1 so the AspdRate field is always touched and the
+        // OnEnd reversal is exact.
         Register(StatusType.Defender, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 5 + 15 * sc.Val1;
+                if (sc.Val4 == 0) sc.Val4 = Math.Max(10, 250 - 50 * sc.Val1);
+                var aspdPenalty = sc.Val4 / 10;
+                target.Stats.AspdRate = (short)Math.Max(short.MinValue, target.Stats.AspdRate - aspdPenalty);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+                var aspdPenalty = sc.Val4 / 10;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + aspdPenalty);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 

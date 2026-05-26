@@ -114,6 +114,24 @@ public class Wave97Batch3FormulaTests
     }
 
     [Fact]
+    public void SC_DEFENDER_applies_aspd_penalty()
+    {
+        // rAthena val4 = 250-50*val1 (Aspd slowdown).  Consumer subtracts
+        // val4/10 from AspdRate (project convention: higher = faster).
+        // val1=1 → val4 = 200 → aspdPenalty = 20.
+        var pc = MakePc();
+        pc.Stats.AspdRate = 100;
+        var h = new StatusEffectRegistry().Get(StatusType.Defender)!;
+        var sc = new StatusChange { Type = StatusType.Defender, Val1 = 1 };
+        h.OnStart(pc, sc, null);
+        Assert.Equal(200, sc.Val4);
+        Assert.Equal(20, sc.Val2);     // 5+15*1
+        Assert.Equal(80, pc.Stats.AspdRate); // 100 - 20
+        h.OnEnd(pc, sc);
+        Assert.Equal(100, pc.Stats.AspdRate);
+    }
+
+    [Fact]
     public void SC_SPIRIT_non_SL_HIGH_falls_back_to_Val1_add()
     {
         // Non-SL_HIGH links (Val2 != 25) use the generator's +Val1 fallback

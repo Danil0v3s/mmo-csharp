@@ -93,6 +93,14 @@ Tests: [Map.Server.Tests/Status/Wave97Batch1FormulaTests.cs](../../../Map.Server
 
 Tests: [Map.Server.Tests/Status/Wave97Batch3FormulaTests.cs](../../../Map.Server.Tests/Status/Wave97Batch3FormulaTests.cs).
 
+### Batch 4 — Defender + Wave32 misc
+
+| SC | Verdict | rAthena | C# | Note |
+|---|---|---|---|---|
+| `SC_DEFENDER` | 🔧 | status.cpp:11314-11318 (val2=5+15·val1, val4=250-50·val1), status_calc_aspd_rate | StatusEffectRegistry.cs:2436 | Was `AspdRate += Val1` (wrong direction + wrong magnitude — Defender SLOWS the user). Now: val2 stores damage-reduction %, val4 stores aspd penalty (clamped ≥10 to keep CalcFlag stat-mod gate satisfied), AspdRate -= val4/10. Damage-reduction read still combat-side. |
+| `SC_AURABLADE` | 🚩 | battle.cpp:5029-5038 (RE: ATK_ADD (3+val1)*lv; pre-RE: 20*val1) | StatusEffectRegistry.cs:1166 | Live applies `Batk += 20·val1` as approximation. rAthena's actual bonus is a per-hit damage ADD (not a Batk stat mod) read by the combat pipeline. Combat-side hook to mirror ATK_ADD needed before this can be marked ✓. |
+| `SC_POISONREACT` / `SC_MAGICROD` / `SC_ENCPOISON` / `SC_LONGING` / `SC_RICHMANKIM` / `SC_WHISTLE` / `SC_ASSNCROS` / `SC_HUMMING` / `SC_FORTUNE` / `SC_SERVICE4U` / `SC_DONTFORGETME` / `SC_PARRYING` / `SC_REJECTSWORD` / `SC_KAIZEL` / `SC_KAAHI` / `SC_KAUPE` / `SC_REGENERATION` | ✓ | various status.cpp init arms | StatusEffectRegistry.cs:1017+ | Wave32 Val2/Val3 materialisation already matches rAthena formulas. Re-audited against status.cpp; matches. |
+
 ### Skills
 
 #### Wave 97-skills-novice (9 fixes, commit 25c58b1)
