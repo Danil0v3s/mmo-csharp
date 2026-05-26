@@ -1,4 +1,3 @@
-using Map.Server.Combat;
 using Map.Server.Entities;
 using Map.Server.Status;
 
