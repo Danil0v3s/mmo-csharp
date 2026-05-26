@@ -7,8 +7,17 @@ namespace Map.Server.Skills.Behaviors.Swordman;
 /// <summary>
 /// IG_JUDGEMENT_CROSS — Imperial Guard Judgement Cross. Manual port of
 /// <c>rathena-fork/src/map/skills/swordman/judgementcross.cpp</c>.
-/// Ratio <c>+(-100 + 1950*lv) + 10*SPL</c>; +150*lv vs Plant/Insect.
-/// Imperial-guard skilltree bonus is TODO.
+///
+/// <para>Ratio: <c>+(-100 + 1950*lv) + 10*SPL</c>; <c>+150*lv</c> vs
+/// Plant / Insect.</para>
+///
+/// <para>🚩 INFRA-DEFERRED — rAthena applies a final
+/// <c>ratio + ratio * pc_checkskill_imperial_guard(sd, 3) / 100</c>
+/// scale where <c>pc_checkskill_imperial_guard(sd, 3)</c> sums the
+/// caster's IG_GRAND_JUDGEMENT + IG_JUDGEMENT_CROSS + IG_OVERSLASH
+/// + IG_CROSS_RAIN + IG_HOLY_SHIELD levels. Wiring this needs a
+/// per-class composite checkskill helper on
+/// <see cref="IPlayerSkillService"/> which we haven't ported yet.</para>
 /// </summary>
 public sealed class JudgementCross : SkillImpl
 {
