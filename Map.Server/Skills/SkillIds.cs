@@ -155,6 +155,8 @@ public static class SkillIds
     public const ushort GC_DARKILLUSION = 2023;      // Guillotine Cross
     public const ushort AB_ADORAMUS = 2040;          // Arch Bishop
     public const ushort WL_CHAINLIGHTNING = 2214;    // Warlock
+    /// <summary>Per-bounce hit of WL_CHAINLIGHTNING (scheduled at tick+amotion). +400 + 100*lv ratio, +100*lv per chained bounce.</summary>
+    public const ushort WL_CHAINLIGHTNING_ATK = 2215;
     public const ushort RA_ARROWSTORM = 2233;        // Ranger
     public const ushort NC_AXEBOOMERANG = 2278;      // Mechanic
     public const ushort SC_TRIANGLESHOT = 2288;      // Shadow Chaser

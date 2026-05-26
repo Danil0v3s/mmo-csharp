@@ -4,8 +4,10 @@ namespace Map.Server.Skills.Behaviors.Mage;
 
 /// <summary>
 /// SA_DELUGE — Sage Deluge. Drops the Deluge element-field unit.
-/// Element-field replacement check (Volcano/Deluge/ViolentGale share
-/// a slot) is TODO — needs an ISkillUnitService.LocateElementField helper.
+/// INFRA-DEFERRED: the Volcano/Deluge/ViolentGale slot overlap (one
+/// field per caster, the new drop deletes the prior one) needs an
+/// <c>ISkillUnitService.LocateElementField</c> helper that doesn't
+/// exist today.
 /// </summary>
 public sealed class Deluge : SkillImpl
 {

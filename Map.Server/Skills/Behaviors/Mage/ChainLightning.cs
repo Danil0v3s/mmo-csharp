@@ -19,10 +19,11 @@ public sealed class ChainLightning : SkillImpl
     }
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // rAthena: schedules a WL_CHAINLIGHTNING_ATK follow-up hit. That id isn't on our
-        // SkillIds catalog yet, so the chained sub-skill bounce is TODO — the primary cast
-        // already landed via the magic resolver.
+        // rAthena: schedules a WL_CHAINLIGHTNING_ATK hit at tick + amotion.
+        // The chained-bounce ratio bump per hop is applied through the ATK
+        // skill's own ratio formula (driven by miscflag from the
+        // skill_addtimerskill data field).
         _timers?.Schedule(src, target, delayMs: src.Stats.Amotion, SkillId, skillLevel,
-            (s, t, lv) => _skillAttack?.SkillAttack(BattleAttackType.Magic, s, s, t, SkillIds.WL_CHAINLIGHTNING, lv));
+            (s, t, lv) => _skillAttack?.SkillAttack(BattleAttackType.Magic, s, s, t, SkillIds.WL_CHAINLIGHTNING_ATK, lv));
     }
 }

@@ -8,10 +8,13 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// <c>rathena-fork/src/map/skills/mage/firepillar.cpp</c>.
 ///
 /// <para>Drops the Fire Pillar ground unit. Per-tick MATK ratio:
-/// <c>+(-60 + 20*lv)</c>. Player casters split damage across hits
-/// (negative div_ on rAthena); this nuance is deferred until BattleDamage
-/// gains the signed-div field. Walk-delay slow on hit victims is also
-/// deferred.</para>
+/// <c>+(-60 + 20*lv)</c>.</para>
+///
+/// <para>INFRA-DEFERRED: player casters split MATK across hits via
+/// rAthena's <c>dmg.div_ *= -1</c> (a negative div_ tells the renderer
+/// to fan the total across visual hits). The C# <see cref="BattleDamage"/>
+/// uses an unsigned <c>Hits</c> field; the sign-encoded "split across
+/// hits" semantic needs a new field on the struct.</para>
 /// </summary>
 public sealed class FirePillar : SkillImpl
 {
@@ -32,9 +35,4 @@ public sealed class FirePillar : SkillImpl
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
         => _units?.Place(src, SkillId, skillLevel, x, y);
-
-    public override void ModifyDamageData(ref BattleDamage dmg, Entity src, Entity target, ushort skillLevel)
-    {
-        // rAthena: players split MATK across hits (dmg.div_ *= -1). Signed-div TODO.
-    }
 }

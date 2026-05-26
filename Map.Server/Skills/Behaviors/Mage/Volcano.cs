@@ -2,7 +2,11 @@ using Map.Server.Entities;
 
 namespace Map.Server.Skills.Behaviors.Mage;
 
-/// <summary>SA_VOLCANO — Sage Volcano. Element field (Fire ATK boost zone). Element-field overlap TODO.</summary>
+/// <summary>SA_VOLCANO — Sage Volcano. Element field (Fire ATK boost zone).
+/// INFRA-DEFERRED: the Volcano/Deluge/ViolentGale slot overlap (one
+/// field per caster, the new drop deletes the prior one) needs an
+/// <c>ISkillUnitService.LocateElementField</c> helper that doesn't
+/// exist today.</summary>
 public sealed class Volcano : SkillImpl
 {
     private readonly ISkillUnitService? _units;
