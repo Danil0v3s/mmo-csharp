@@ -1040,6 +1040,9 @@ public static class SkillIds
     public const ushort SH_BLESSING_OF_MYSTICAL_CREATURES = 5448;
     public const ushort SH_CHUL_HO_SONIC_CLAW = 5435;
     public const ushort SH_COLORS_OF_HYUN_ROK = 5444;
+    public const ushort SH_COMMUNE_WITH_CHUL_HO = 5434;
+    public const ushort SH_COMMUNE_WITH_HYUN_ROK = 5443;
+    public const ushort SH_COMMUNE_WITH_KI_SUL = 5438;
     public const ushort SH_HOGOGONG_STRIKE = 5437;
     public const ushort SH_HOWLING_OF_CHUL_HO = 5436;
     public const ushort SH_HYUN_ROKS_BREEZE = 5445;
@@ -1047,6 +1050,7 @@ public static class SkillIds
     public const ushort SH_KI_SUL_RAMPAGE = 5442;
     public const ushort SH_KI_SUL_WATER_SPRAYING = 5439;
     public const ushort SH_MARINE_FESTIVAL_OF_KI_SUL = 5440;
+    public const ushort SH_MYSTICAL_CREATURE_MASTERY = 5433;
     public const ushort SH_SANDY_FESTIVAL_OF_KI_SUL = 5441;
     public const ushort SJ_BOOKOFCREATINGSTAR = 2587;
     public const ushort SJ_DOCUMENT = 2588;

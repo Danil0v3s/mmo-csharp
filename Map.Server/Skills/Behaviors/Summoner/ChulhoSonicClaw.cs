@@ -12,8 +12,15 @@ public sealed class ChulhoSonicClaw : WeaponSkillImpl
 {
     public ChulhoSonicClaw() : base(SkillIds.SH_CHUL_HO_SONIC_CLAW) { }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + (-100 + 1100 + 2200 * skillLevel) + 5 * src.Stats.Pow;
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        int ratio = baseRatio + (-100 + 1100 + 2200 * skillLevel) + 5 * src.Stats.Pow;
+        ratio = ShamanFormulas.ApplyMasteryFlat(ratio, src, perLevel: 50, ctx);
+        ratio = ShamanFormulas.ApplyCommuneBoost(ratio, src, skillLevel,
+            ShamanFormulas.CommuneSpirit.ChulHo,
+            flatBase: 0, lvScale: 400, masteryExtra: 50, ctx);
+        return ratio;
+    }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {

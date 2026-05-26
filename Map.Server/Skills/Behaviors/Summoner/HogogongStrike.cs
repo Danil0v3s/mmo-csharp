@@ -13,8 +13,15 @@ public sealed class HogogongStrike : SkillImpl
 {
     public HogogongStrike() : base(SkillIds.SH_HOGOGONG_STRIKE) { }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + (-100 + 180 + 200 * skillLevel) + 5 * src.Stats.Pow;
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        int ratio = baseRatio + (-100 + 180 + 200 * skillLevel) + 5 * src.Stats.Pow;
+        ratio = ShamanFormulas.ApplyMasteryFlat(ratio, src, perLevel: 10, ctx);
+        ratio = ShamanFormulas.ApplyCommuneBoost(ratio, src, skillLevel,
+            ShamanFormulas.CommuneSpirit.ChulHo,
+            flatBase: 70, lvScale: 150, masteryExtra: 10, ctx);
+        return ratio;
+    }
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
         => ctx.Client?.BroadcastSkillNoDamage(src, target, SkillId, skillLevel);

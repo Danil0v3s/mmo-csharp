@@ -19,8 +19,15 @@ public sealed class HyunrokBreeze : SkillImpl
         _units = units;
     }
 
-    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
-        => baseRatio + (-100 + 650 + 750 * skillLevel) + 5 * src.Stats.Spl;
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    {
+        int ratio = baseRatio + (-100 + 650 + 750 * skillLevel) + 5 * src.Stats.Spl;
+        ratio = ShamanFormulas.ApplyMasteryFlat(ratio, src, perLevel: 20, ctx);
+        ratio = ShamanFormulas.ApplyCommuneBoost(ratio, src, skillLevel,
+            ShamanFormulas.CommuneSpirit.HyunRok,
+            flatBase: 100, lvScale: 200, masteryExtra: 20, ctx);
+        return ratio;
+    }
 
     public override void CastendPos2(Entity src, short x, short y, ushort skillLevel, SkillBehaviorContext ctx)
         => _units?.Place(src, SkillId, skillLevel, x, y);
