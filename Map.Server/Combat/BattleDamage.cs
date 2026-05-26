@@ -78,4 +78,13 @@ public sealed class BattleDamage
     /// this flag without re-deriving the lane from caller context.
     /// </summary>
     public BattleAttackType Lane = BattleAttackType.Weapon;
+
+    /// <summary>
+    /// rAthena <c>Damage.blewcount</c> — number of cells the target is
+    /// knocked back when the hit lands. 0 by default (no knockback).
+    /// Set by skill plugins (KI_EXPLOSION, DESTRUCTIVE_HURRICANE,
+    /// SR_SKYNETBLOW, RK_DRAGONBREATH, etc.) before the engine routes
+    /// the damage so the response packet carries the right blowcount.
+    /// </summary>
+    public int BlewCount;
 }
