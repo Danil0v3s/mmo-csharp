@@ -27,6 +27,7 @@ public class NotifyActorInitHandlerTests
             ctx.Registry, ctx.Visibility, new StatusBroadcaster(),
             new StatusCalcService(), new NoOpPcDeathService(),
             new NoOpInventoryService(), new NoOpItemCatalog(),
+            new NoOpItemHookDispatcher(), new NoOpComboDispatcher(),
             NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
@@ -55,6 +56,7 @@ public class NotifyActorInitHandlerTests
             ctx.Registry, ctx.Visibility, new StatusBroadcaster(),
             new StatusCalcService(), new NoOpPcDeathService(),
             new NoOpInventoryService(), new NoOpItemCatalog(),
+            new NoOpItemHookDispatcher(), new NoOpComboDispatcher(),
             NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
@@ -91,6 +93,7 @@ public class NotifyActorInitHandlerTests
             ctx.Registry, ctx.Visibility, new StatusBroadcaster(),
             new StatusCalcService(), new NoOpPcDeathService(),
             new NoOpInventoryService(), new NoOpItemCatalog(),
+            new NoOpItemHookDispatcher(), new NoOpComboDispatcher(),
             NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
@@ -170,6 +173,18 @@ public class NotifyActorInitHandlerTests
         public Core.Database.Entities.ItemEntity? GetByAegisName(string n) => null;
         public IEnumerable<Core.Database.Entities.ItemEntity> All() => Array.Empty<Core.Database.Entities.ItemEntity>();
         public void Reload() { }
+    }
+
+    private sealed class NoOpItemHookDispatcher : IItemHookDispatcher
+    {
+        public bool TryInvokeOnUse(MapSessionData session, PlayerEntity player, InventoryItem item) => false;
+        public bool TryInvokeOnEquip(InventoryItem item, EquipBonusBundle bundle, PlayerEntity player, IReadOnlyList<InventoryItem> equipped) => false;
+        public void TryInvokeOnUnequip(InventoryItem item, EquipBonusBundle bundle, PlayerEntity player, IReadOnlyList<InventoryItem> equipped) { }
+    }
+
+    private sealed class NoOpComboDispatcher : IComboDispatcher
+    {
+        public void ApplyActiveCombos(IReadOnlyList<InventoryItem> equipped, EquipBonusBundle bundle, PlayerEntity player) { }
     }
 
     private sealed class StubWorldRegistry : IMapWorldRegistry

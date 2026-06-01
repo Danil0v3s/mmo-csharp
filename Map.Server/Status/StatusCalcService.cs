@@ -79,6 +79,29 @@ public sealed class StatusCalcService : IStatusCalcService
 
         CalcMisc(s, inputs.BaseLevel, isPc: true);
 
+        // COMBAT-01: fold equip / card flat-derived bonuses on top of the
+        // freshly-recomputed misc stats. Read straight from the persisted
+        // bundle (rebuilt by EquipBonusAggregator on every equip change and
+        // on map enter) rather than threading them through PcBaseInputs, so
+        // EVERY recalc path (equip, level-up, SC, job-change, stat-alloc)
+        // re-applies them. This is idempotent because the derived fields are
+        // zeroed + recomputed above each call and are never read back as an
+        // input — unlike the primary param stats (bStr..bLuk), which need
+        // the base→final split tracked in COMBAT-10.
+        // rAthena status_calc_pc_ adds sd->bonus.{hit,flee,crit,batk,matk}
+        // and applies maxhp_rate / +maxhp the same way (status.cpp:4244+).
+        var eq = player.EquipBonuses;
+        if (eq != null)
+        {
+            s.Hit = (short)CapShort(s.Hit + eq.FlatHit, 1);
+            s.Flee = (short)CapShort(s.Flee + eq.FlatFlee, 1);
+            // bCritical is a display value (×1); s.Cri is the ×10 internal.
+            s.Cri = (short)CapShort(s.Cri + eq.FlatCritical * 10, 1);
+            s.Batk = (ushort)CapUShort(s.Batk + eq.FlatAtk);
+            s.MatkMin = (ushort)CapUShort(s.MatkMin + eq.FlatMatk);
+            s.MatkMax = (ushort)CapUShort(s.MatkMax + eq.FlatMatk);
+        }
+
         // MaxHp / MaxSp — DBR-1d: when IJobStatsCacheService is wired,
         // read the per-job per-level base from job_base_points_db (the
         // rAthena HP_SP_TABLES path) and scale by Vit/Int; otherwise
@@ -100,6 +123,15 @@ public sealed class StatusCalcService : IStatusCalcService
             maxHp = NoviceMaxHp(inputs.BaseLevel, inputs.Vit);
             maxSp = NoviceMaxSp(inputs.BaseLevel, inputs.Int);
         }
+        // COMBAT-01: equip MaxHP/MaxSP — additive percent (bMaxHPrate) then
+        // flat (bMaxHP). rAthena status_calc_maxhpsp_pc applies rate before
+        // the flat add. Floor at 1 so a pathological negative card can't
+        // produce a 0/negative pool.
+        if (eq != null)
+        {
+            maxHp = Math.Max(1, maxHp * (100 + eq.MaxHpRate) / 100 + eq.FlatMaxHp);
+            maxSp = Math.Max(1, maxSp * (100 + eq.MaxSpRate) / 100 + eq.FlatMaxSp);
+        }
         s.MaxHp = maxHp;
         s.MaxSp = maxSp;
         if (s.Hp <= 0 || s.Hp > maxHp) s.Hp = maxHp;
@@ -112,6 +144,13 @@ public sealed class StatusCalcService : IStatusCalcService
         // remains the fallback for tests + missing rows.
         s.Speed = 150;
         var baseAmotion = _jobAspd?.GetBaseAspdByJobId(inputs.JobId, inputs.WeaponType) ?? 590;
+        // COMBAT-01: equip ASPD — interim fold (the full AGI/DEX
+        // status_calc_aspd path is COMBAT-09). bAspdRate is a percent
+        // speed-up; bAspd a flat amotion reduction (×10 ms). Lower amotion
+        // = faster. Adelay below scales off the adjusted value so the
+        // attack-delay ratio is preserved.
+        if (eq != null && (eq.FlatAspdRate != 0 || eq.FlatAspd != 0))
+            baseAmotion = baseAmotion * (100 - eq.FlatAspdRate) / 100 - eq.FlatAspd * 10;
         s.Amotion = (ushort)Math.Clamp(baseAmotion, 1, ushort.MaxValue);
         s.ClientAmotion = s.Amotion;
         // rAthena status.cpp adelay = amotion * 2 - dmotion (renewal default

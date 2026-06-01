@@ -73,6 +73,26 @@ public sealed class EquipBonusBundle
     /// <summary>Critical damage % bonus (<c>bonus bCriticalAddRace</c> sums separately).</summary>
     public int CritAtkRate { get; set; }
 
+    // Primary + trait param bonuses (bStr..bLuk, bPow..bCrt). Mirror
+    // rAthena indexed_bonus.param_bonus[] (status.hpp). Populated by the
+    // extractor / script host; APPLIED to the final stat by the base→final
+    // stat layering in COMBAT-10 (CalcPc cannot fold these idempotently
+    // today because s.Str doubles as the base allocated stat read back by
+    // every recalc caller — see COMBAT-10). Captured here so the data path
+    // is ready and the extractor never silently drops a bStr card.
+    public int Str { get; set; }
+    public int Agi { get; set; }
+    public int Vit { get; set; }
+    public int IntStat { get; set; }
+    public int Dex { get; set; }
+    public int Luk { get; set; }
+    public int Pow { get; set; }
+    public int Sta { get; set; }
+    public int Wis { get; set; }
+    public int Spl { get; set; }
+    public int Con { get; set; }
+    public int Crt { get; set; }
+
     // Cast-time / delay knobs consumed by SkillCastTimingService.
     public int VarCastRate { get; set; }     // %
     public int FixCastRate { get; set; }     // %
@@ -117,6 +137,8 @@ public sealed class EquipBonusBundle
         FlatAspd = FlatAspdRate = 0;
         FlatMaxHp = FlatMaxSp = MaxHpRate = MaxSpRate = 0;
         LongAtkRate = ShortAtkRate = CritAtkRate = 0;
+        Str = Agi = Vit = IntStat = Dex = Luk = 0;
+        Pow = Sta = Wis = Spl = Con = Crt = 0;
         VarCastRate = FixCastRate = AddVarCastMs = AddFixCastMs = DelayRate = 0;
         DrainHpRate = DrainSpRate = 0;
     }

@@ -118,9 +118,25 @@ public static class BonusScriptExtractor
             case "variablecastrate": b.VarCastRate += v; break;
             case "fixedcastrate":  b.FixCastRate += v; break;
             case "delayrate":      b.DelayRate += v; break;
-            // Many other keys exist (bStr, bAgi, bVit, ...): they
-            // flow into the existing stat aggregator path, not here.
-            // Silently skip — not a wrong number, just out of scope.
+            // Primary + trait param bonuses (rAthena pc_bonus SP_STR..SP_LUK
+            // / SP_POW..SP_CRT). Captured into the bundle; the base→final
+            // stat layering that adds them to the displayed/derived stat
+            // lands in COMBAT-10 (cannot fold idempotently today — see the
+            // bundle field doc + COMBAT-10).
+            case "str":  b.Str += v; break;
+            case "agi":  b.Agi += v; break;
+            case "vit":  b.Vit += v; break;
+            case "int":  b.IntStat += v; break;
+            case "dex":  b.Dex += v; break;
+            case "luk":  b.Luk += v; break;
+            case "pow":  b.Pow += v; break;
+            case "sta":  b.Sta += v; break;
+            case "wis":  b.Wis += v; break;
+            case "spl":  b.Spl += v; break;
+            case "con":  b.Con += v; break;
+            case "crt":  b.Crt += v; break;
+            // bAllStats / bAgiVit / bAgiDexStr etc. (composite keys) and
+            // the remaining long tail land with COMBAT-06.
         }
     }
 

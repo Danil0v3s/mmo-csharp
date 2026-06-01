@@ -136,3 +136,4 @@ Phase 5         ▓▓▓▓▓▓              infra + mob AI      (14)
 Update this as columns shift (date · ticket · todo→inprogress / inprogress→done).
 
 - **2026-06-01** — Roadmap created (79 tickets, all in `todo/`). Build break fixed (`PlayerEntity.CanEquipTick` wired into `EquipItemHandler`). Baseline: 0 tickets in progress, 0 done.
+- **2026-06-01** — **COMBAT-01** inprogress→done. Equip/card **flat-derived** bonuses (Hit/Flee/Cri/Batk/Matk/MaxHp/MaxSp/Aspd) now reach `CalcPc` idempotently on all recalc paths + build on map enter. Param-stat half (`bStr..bLuk`) needed a base→final split → filed **COMBAT-10** (new, in `todo/combat/`; coupled with COMBAT-09). 3553/3553 Map.Server tests green.

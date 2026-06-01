@@ -1,7 +1,13 @@
 # COMBAT-01 — Equip / card flat-stat bonuses (bStr..bLuk + bMaxHP/bHit/bFlee/bCritical/bAspd)
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-01) · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** COMBAT-06 (shares the consumer wiring)
+>
+> **Split on implementation:** the **flat-derived** half (Hit/Flee/Cri/Batk/Matk/
+> MaxHp/MaxSp/Aspd) shipped here. The **param-stat** half (bStr..bLuk) turned out
+> to require a base→final stat separation (else it double-counts on recalc and
+> wipes SC stat mods) — moved to **COMBAT-10**. The bundle param fields +
+> extractor capture shipped here so COMBAT-10 only has to apply them.
 
 ## Problem
 
@@ -94,12 +100,11 @@ Canonical source is the monolithic `status.cpp` / `pc.cpp` switch arms (the
 
 ## Done criteria
 
-- A card/headgear with `bonus bStr,10;` raises the displayed STR by 10 and raises
-  `s.Batk` via the renewal `BaseAtk` formula (`StatusCalcService.cs:293-302`), measurably
-  increasing auto-attack damage.
-- `bonus bDex,10;` raises HIT by ~10 (renewal HIT includes `+ s.Dex`,
-  `StatusCalcService.cs:247`) and ATK via the dex term.
-- `bonus bHit,30;` adds exactly +30 to the HIT shown / used in `is_attack_hitting`.
+- ➡️ **Moved to COMBAT-10** (needs base→final split): `bonus bStr,10;` raises
+  displayed STR by 10 + `s.Batk`; `bonus bDex,10;` raises HIT ~10 + ATK. The
+  bundle now *captures* `bStr..bLuk` (extractor + `EquipBonusBundle.Str..Crt`);
+  COMBAT-10 applies them. Pinned by `CalcPc_doesNotYetApplyParamStats_boundaryForCombat10`.
+- ✅ `bonus bHit,30;` adds exactly +30 to the HIT shown / used in `is_attack_hitting`.
 - `bonus bMaxHPrate,10;` raises MaxHP by 10% of post-VIT base; `bonus bMaxHP,500;` adds 500.
 - `bonus bCritical,20;` raises crit-rate roll target by 200 (×10 internal) → +20 display.
 - `bonus bAspd,1;` / `bonus bAspdRate,5;` measurably lowers `s.Amotion`.
@@ -129,3 +134,19 @@ Canonical source is the monolithic `status.cpp` / `pc.cpp` switch arms (the
 - Trait stats (Pow/Sta/Wis/Spl/Con/Crt) feed `CalcMisc` Patk/Smatk/Res/Mres
   (`StatusCalcService.cs:259-264`); wiring them through is the same one-liner — do it now
   so 4th-job trait gear isn't a second pass.
+
+## History
+
+- **2026-06-01** — Done (flat-derived half). `EquipBonusBundle` gained `Str..Crt`
+  param fields + `Reset`; `BonusScriptExtractor.ApplyFlat` now captures
+  `bStr..bLuk`/`bPow..bCrt` (the "silently skip" comment is gone).
+  `StatusCalcService.CalcPc` folds the bundle's flat-derived bonuses
+  (FlatHit→Hit, FlatFlee→Flee, FlatCritical→Cri×10, FlatAtk→Batk, FlatMatk→Matk,
+  MaxHpRate+FlatMaxHp→MaxHp, MaxSpRate+FlatMaxSp→MaxSp, FlatAspdRate+FlatAspd→
+  Amotion) by reading `player.EquipBonuses` directly — idempotent, so all 8
+  recalc paths (equip/level/SC/job/alloc/enter) re-apply them.
+  `NotifyActorInitHandler` now builds the bundle on map enter (injected the hook +
+  combo dispatchers) so login-worn gear works, not just re-equips. Param-stat
+  application split out to **COMBAT-10** (base→final separation, coupled with
+  COMBAT-09). Tests: `Combat01EquipBonusTests` (12). Full Map.Server suite
+  3553/3553 green. Commits: start `4c98722`, finish `<this>`.

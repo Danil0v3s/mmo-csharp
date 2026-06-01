@@ -24,6 +24,8 @@ public class NotifyActorInitHandler(
     Map.Server.Combat.IPcDeathService pcDeath,
     Map.Server.Inventory.IInventoryService inventory,
     Map.Server.Items.IItemCatalog itemCatalog,
+    Map.Server.Inventory.IItemHookDispatcher hookDispatcher,
+    Map.Server.Inventory.IComboDispatcher comboDispatcher,
     ILogger<NotifyActorInitHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_NOTIFY_ACTORINIT>
 {
@@ -79,6 +81,23 @@ public class NotifyActorInitHandler(
                 .Aggregate(session.Inventory, itemCatalog);
             if (equip.WeaponAtkMin == 0) equip = equip with { WeaponAtkMin = 17, WeaponAtkMax = 17 };
             if (equip.EquipDef == 0) equip = equip with { EquipDef = 10 };
+
+            // COMBAT-01: build the equip script-bonus bundle from worn gear
+            // so card / flat bonuses (bHit, bCritical, bMaxHP, bAspd, ...)
+            // apply on login — not only after a re-equip action. Mirrors
+            // EquipService.TryRecalcStats' build; CalcPc below reads
+            // player.EquipBonuses for the flat-derived folds. With no
+            // bonus-script gear equipped the bundle stays empty (zero folds),
+            // so the replay baseline is unaffected.
+            Map.Server.Inventory.EquipBonusAggregator.BuildBundle(
+                session.Inventory, itemCatalog, player.EquipBonuses, player, hookDispatcher);
+            if (session.Inventory != null)
+            {
+                var equippedForCombo = new List<Map.Server.Inventory.InventoryItem>();
+                for (var i = 0; i < session.Inventory.Count; i++)
+                    if (session.Inventory[i].Equip != 0) equippedForCombo.Add(session.Inventory[i]);
+                comboDispatcher.ApplyActiveCombos(equippedForCombo, player.EquipBonuses, player);
+            }
 
             statusCalc.CalcPc(player, new PcBaseInputs(
                 BaseLevel: (int)ch.BaseLevel,

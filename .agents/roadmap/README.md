@@ -73,6 +73,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-07 | Renewal variable-cast `sqrt` formula + equip/card cast bonuses |
 | COMBAT-08 | Cast interrupt on damage + `clif_skillcastcancel` + Safety Wall/Pneuma/Land Protector |
 | COMBAT-09 | ASPD/amotion formula, job-bonus stats, SC stat-mod recalc ordering |
+| COMBAT-10 | Base→final stat layering (equip param `bStr..bLuk` + job bonus + SC mods) |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |
