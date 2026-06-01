@@ -46,7 +46,15 @@ public sealed class DamageService : IDamageService
     private readonly ILogger<DamageService> _logger;
     // T2.4b+: SC consumers (SteelBody / Kyrie / AutoGuard) — optional so
     // older tests that build DamageService without the SC engine still work.
-    private readonly IStatusChangeService? _sc;
+    // COMBAT-31: held lazily to break the DI cycle DamageService ↔
+    // StatusChangeService (StatusChangeService injects IDamageService for DoT
+    // periodic damage; DamageService reads SC state for reflect/Devotion/
+    // Kaahi/Deadly-Infect/etc.). Every SC read here is at damage time, never at
+    // construction, so deferring the resolve to first `.Value` makes the
+    // constructor graph acyclic. The `_sc` property keeps every call site
+    // below unchanged (the Lazy caches after the first resolve).
+    private readonly Lazy<IStatusChangeService>? _scLazy;
+    private IStatusChangeService? _sc => _scLazy?.Value;
     private readonly Random _rng;
 
     public DamageService(
@@ -61,7 +69,7 @@ public sealed class DamageService : IDamageService
         Map.Server.World.IMapFlagService? mapFlags = null,
         Map.Server.World.IMapWorldRegistry? maps = null,
         IServiceProvider? services = null,
-        IStatusChangeService? sc = null,
+        Lazy<IStatusChangeService>? sc = null,
         Random? rng = null)
     {
         _visibility = visibility;
@@ -74,7 +82,7 @@ public sealed class DamageService : IDamageService
         _mapFlags = mapFlags;
         _maps = maps;
         _services = services;
-        _sc = sc;
+        _scLazy = sc;
         _rng = rng ?? Random.Shared;
         _logger = logger;
     }

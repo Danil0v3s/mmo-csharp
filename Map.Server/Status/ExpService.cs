@@ -28,7 +28,13 @@ public sealed class ExpService : IExpService
     private readonly IStatusCalcService _statusCalc;
     private readonly ISessionManagerAccessor _sessions;
     private readonly ILevelPenaltyService? _levelPenalty;
-    private readonly IStatusChangeService? _sc;
+    // COMBAT-31: lazy to break the DI cycle DamageService → ExpService →
+    // StatusChangeService → DamageService. The only consumer (the Richmankim
+    // EXP read) runs at GainExp time, never at construction, so deferring the
+    // resolve to first .Value access makes the constructor graph acyclic
+    // (StatusChangeService is a singleton, fully built by the time the loop
+    // ever awards EXP).
+    private readonly Lazy<IStatusChangeService>? _sc;
     private readonly ILogger<ExpService> _logger;
 
     public ExpService(
@@ -36,7 +42,7 @@ public sealed class ExpService : IExpService
         ISessionManagerAccessor sessions,
         ILogger<ExpService> logger,
         ILevelPenaltyService? levelPenalty = null,
-        IStatusChangeService? sc = null)
+        Lazy<IStatusChangeService>? sc = null)
     {
         _statusCalc = statusCalc;
         _sessions = sessions;
@@ -72,7 +78,7 @@ public sealed class ExpService : IExpService
         // pc.cpp pc_gainexp adds Val2 % (10 + 10*lv) to mob-kill EXP for party
         // members in the song area. Gated on a known mob source (like the
         // level penalty) so quest/GM/scroll EXP is unaffected, matching rAthena.
-        if (mobLevel is int && _sc?.Get(player, StatusType.Richmankim) is { Val2: > 0 } rich)
+        if (mobLevel is int && _sc?.Value.Get(player, StatusType.Richmankim) is { Val2: > 0 } rich)
         {
             baseExp += baseExp * rich.Val2 / 100;
             jobExp += jobExp * rich.Val2 / 100;

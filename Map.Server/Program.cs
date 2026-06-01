@@ -440,6 +440,12 @@ builder.Services.AddSingleton<Map.Server.Status.StatusEffectRegistry>();
 // 4935 flag rows); StatusChangeService injects + consults on Start/End.
 builder.Services.AddSingleton<Map.Server.Status.IStatusDbFlagCache, Map.Server.Status.StatusDbFlagCache>();
 builder.Services.AddSingleton<Map.Server.Status.IStatusChangeService, Map.Server.Status.StatusChangeService>();
+// COMBAT-31: lazy accessor so ExpService can read SC state at runtime
+// without forming the construction cycle DamageService → ExpService →
+// StatusChangeService → DamageService. .Value resolves the (singleton)
+// StatusChangeService on first EXP award, by which point its graph is built.
+builder.Services.AddSingleton(sp => new Lazy<Map.Server.Status.IStatusChangeService>(
+    sp.GetRequiredService<Map.Server.Status.IStatusChangeService>));
 
 // Skill system (skill.cpp:skill_use_id + skill_castend_*). First slice:
 // hand-built starter catalog (Bash / Heal / Increase AGI / Blessing /
@@ -1810,6 +1816,11 @@ builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.
 builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillImpl, Map.Server.Skills.Behaviors.Thief.WeaponCrush>();
 
 builder.Services.AddSingleton<Map.Server.Skills.Behaviors.SkillBehaviorRegistry>();
+// COMBAT-31: lazy accessor so SkillAttackService can consult the behavior
+// registry at cast time without forming the cycle SkillBehaviorRegistry →
+// SkillImpl (HolyLight) → SkillAttackService → SkillBehaviorRegistry.
+builder.Services.AddSingleton(sp => new Lazy<Map.Server.Skills.Behaviors.SkillBehaviorRegistry>(
+    sp.GetRequiredService<Map.Server.Skills.Behaviors.SkillBehaviorRegistry>));
 
 // T2.3-H1/H2/H3 — central broadcaster for skill-result packets
 // (clif_skill_nodamage / clif_skill_damage / clif_skill_fail). Each

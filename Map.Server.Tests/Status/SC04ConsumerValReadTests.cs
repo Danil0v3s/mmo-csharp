@@ -148,9 +148,10 @@ public class SC04ConsumerValReadTests
         // The SC engine needs a back-reference so Get works through the same instance.
         var damageWithSc = new DamageService(visibility, mobSpawn, entities,
             new BattleCalculator(new Random(0)), NullLogger<DamageService>.Instance,
-            sc: sc, rng: new FixedRandom(roll));
+            sc: new Lazy<IStatusChangeService>(() => sc), rng: new FixedRandom(roll));
         var exp = new ExpService(new StatusCalcService(), new NoSessions(),
-            NullLogger<ExpService>.Instance, levelPenalty: null, sc: sc);
+            NullLogger<ExpService>.Instance, levelPenalty: null,
+            sc: new Lazy<IStatusChangeService>(() => sc));
         return new TestContext(damageWithSc, sc, exp, entities, ids, (uint)mapName.GetHashCode());
     }
 

@@ -200,7 +200,7 @@ public class DamageServiceScConsumerTests
         var sc = new StatusChangeService(fakeDamage, entities, new StatusEffectRegistry(), NullLogger<StatusChangeService>.Instance);
         var damage = new DamageService(visibility, mobSpawn, entities,
             new BattleCalculator(new Random(0)), NullLogger<DamageService>.Instance,
-            sc: sc, rng: new FixedRandom(blockRoll));
+            sc: new System.Lazy<IStatusChangeService>(() => sc), rng: new FixedRandom(blockRoll));
 
         return new TestContext(damage, sc, entities, ids, (uint)mapName.GetHashCode());
     }

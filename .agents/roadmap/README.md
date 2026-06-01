@@ -204,6 +204,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | INFRA-08 | Game-log SQL tables (pick/zeny/mvp/chat/branch/feeding/npc) |
 | INFRA-09 | `ScriptedBonusHost` residual host stubs (getskilllv/eaclass/countitem/Class/Zeny/bonus5) |
 | INFRA-10 | Navi list generator (deferral decision documented) |
+| INFRA-11 | PacketReplayTests Login/Char internal-ping readiness gate — split from COMBAT-31 |
 
 ### `mobai/` — mob AI gaps
 | Ticket | Title |

@@ -118,7 +118,8 @@ public class SkillRatioConsistencyTests
         var db = new SkillDb();
         var behaviors = new SkillBehaviorRegistry(plugin is null ? Array.Empty<SkillImpl>() : new SkillImpl[] { plugin });
         var skillAttack = new SkillAttackService(db, battle, damage, entities,
-            NullLogger<SkillAttackService>.Instance, sc: null, behaviors: behaviors);
+            NullLogger<SkillAttackService>.Instance, sc: null,
+            behaviors: new Lazy<SkillBehaviorRegistry>(() => behaviors));
         return new TestContext(skillAttack, behaviors, battle, damage, db, entities, ids, (uint)mapName.GetHashCode());
     }
 

@@ -145,7 +145,7 @@ public class SC08SpreadImmuneTests
             NullLogger<StatusChangeService>.Instance);
         var damageWithSc = new DamageService(visibility, mobSpawn, entities,
             new BattleCalculator(new Random(0)), NullLogger<DamageService>.Instance,
-            sc: sc, rng: new FixedRandom(roll));
+            sc: new Lazy<IStatusChangeService>(() => sc), rng: new FixedRandom(roll));
         return new TestContext(damageWithSc, sc, entities, ids);
     }
 

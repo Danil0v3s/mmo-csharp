@@ -20,7 +20,14 @@ public sealed class SkillAttackService : ISkillAttackService
     private readonly IDamageService _damage;
     private readonly IEntityRegistry _entities;
     private readonly IStatusChangeService? _sc;
-    private readonly Behaviors.SkillBehaviorRegistry? _behaviors;
+    // COMBAT-31: held lazily to break the DI cycle SkillBehaviorRegistry →
+    // SkillImpl (e.g. HolyLight) → SkillAttackService → SkillBehaviorRegistry.
+    // The registry is only consulted at skill-cast time (the WeaponSkillImpl
+    // plugin lookup), never at construction, so deferring the resolve to first
+    // `.Value` makes the constructor graph acyclic. The `_behaviors` property
+    // keeps the call site below unchanged.
+    private readonly Lazy<Behaviors.SkillBehaviorRegistry>? _behaviorsLazy;
+    private Behaviors.SkillBehaviorRegistry? _behaviors => _behaviorsLazy?.Value;
     private readonly ILogger<SkillAttackService> _logger;
 
     public SkillAttackService(
@@ -30,14 +37,14 @@ public sealed class SkillAttackService : ISkillAttackService
         IEntityRegistry entities,
         ILogger<SkillAttackService> logger,
         IStatusChangeService? sc = null,
-        Behaviors.SkillBehaviorRegistry? behaviors = null)
+        Lazy<Behaviors.SkillBehaviorRegistry>? behaviors = null)
     {
         _db = db;
         _battle = battle;
         _damage = damage;
         _entities = entities;
         _sc = sc;
-        _behaviors = behaviors;
+        _behaviorsLazy = behaviors;
         _logger = logger;
     }
 
