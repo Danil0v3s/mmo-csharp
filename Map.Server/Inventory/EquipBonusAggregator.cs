@@ -39,7 +39,8 @@ public static class EquipBonusAggregator
         int EquipDef,
         int EquipMdef,
         int AttackRange,
-        BattleElement WeaponElement)
+        BattleElement WeaponElement,
+        int WeaponLevel = 0)
     {
         public static EquipSummary Empty => new(0, 0, 0, 0, 1, BattleElement.Neutral);
     }
@@ -52,6 +53,7 @@ public static class EquipBonusAggregator
         int def = 0;
         int mdef = 0;
         int range = 1;
+        int weaponLevel = 0;
         var element = BattleElement.Neutral;
         // No weapon equipped → null; renewal status_base_atk_min/max
         // returns the catalog values for the equipped weapon row.
@@ -67,6 +69,9 @@ public static class EquipBonusAggregator
             {
                 watk += row.Attack ?? 0;
                 if (row.Range is > 0) range = row.Range.Value;
+                // rAthena PC atkmin = dex*(80+weaponLv*20)/100 — capture the
+                // right-hand weapon's level (1-5); bare-handed stays 0.
+                if (row.WeaponLevel is { } wl) weaponLevel = wl;
             }
             // Both hands can contribute defense, but most weapons report 0.
             def += row.Defense ?? 0;
@@ -83,7 +88,8 @@ public static class EquipBonusAggregator
             EquipDef: def,
             EquipMdef: mdef,
             AttackRange: range,
-            WeaponElement: element);
+            WeaponElement: element,
+            WeaponLevel: weaponLevel);
     }
 
     /// <summary>

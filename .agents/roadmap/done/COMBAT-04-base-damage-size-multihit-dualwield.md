@@ -1,7 +1,13 @@
 # COMBAT-04 — Base damage (DEX-derived atkmin), size-fix, multi-hit div, dual-wield
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** XL · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-01) · **Size:** XL · **Player-visible:** yes
 > **Depends on:** COMBAT-01 (weapon-type / equip data on the bundle) · **Blocks:** none
+>
+> **XL split on implementation:** axis 1 (PC DEX-derived atkmin) shipped here — the
+> dominant, self-contained, high-impact axis. The other three axes each need separate
+> data/infra and were filed as follow-ups: **size-fix table + bow** → COMBAT-16 (note:
+> renewal size penalties are tiny — only Knuckle/Whip vs Large), **multi-hit div** →
+> COMBAT-17, **dual-wield left-hand** → COMBAT-18.
 
 ## Problem
 
@@ -95,11 +101,10 @@ Canonical: `battle.cpp`.
 
 - A PC with DEX 50 and a level-4 weapon (atk 100): `atkmin = 50*(80+80)/100 = 80`, swings
   roll in `[80,100]` (not flat 100). Bare-handed PC: `atkmin = dex*(80+0)/100`.
-- Hitting a Large target with a weapon that has a large-size penalty (e.g. dagger 50%) deals
-  half the damage vs a Small target; bare-handed = no penalty (100/100/100).
-- Sonic Blow shows `Div = 8` in `ZC_NOTIFY_ACT3`; a double-attack auto-swing shows `Div = 2`.
-- A dual-wielding Assassin's auto-attack populates `Damage2 > 0` and the client renders both
-  numbers; single-weapon attacks keep `Damage2 = 0`.
+- ➡️ **COMBAT-16** — size-fix (renewal: only Knuckle/Whip × Large = 75%; the current
+  all-100 stub is correct for every other weapon).
+- ➡️ **COMBAT-17** — Sonic Blow `Div = 8`, double-attack `Div = 2` (multi-hit).
+- ➡️ **COMBAT-18** — dual-wield `Damage2 > 0`.
 
 ## Test plan
 
@@ -124,3 +129,16 @@ Canonical: `battle.cpp`.
   `Damage2` only flow through `PerformMeleeAttack` (`:81`) which has the full `BattleDamage`.
   Skills that call `ApplyDamage` directly will still emit `Div=1` — that's acceptable for
   single-hit skills but Sonic Blow must go through the `BattleDamage`-carrying path.
+
+## History
+
+- **2026-06-01** — Done (axis 1 — PC DEX-derived base-damage atkmin). Added
+  `BattleCalculator.ComputePcAtkMin` (rAthena battle.cpp:2453: `atkmin = DEX`, ×(80 +
+  weaponLv*20)/100 when a weapon is equipped, capped at atkmax; bare-handed keeps DEX)
+  and wired it into `CalcBaseDamage` (PC path; mobs keep rhw.atk). Plumbed the
+  right-hand weapon level end-to-end: `ItemEntity.WeaponLevel` → `EquipSummary` →
+  `PcBaseInputs.WeaponLevel` → `BattleStats.WeaponLevel` (via EquipService recalc + the
+  enter path). Tests: `Combat04BaseDamageTests` (11). Full Map.Server suite 3613/3613
+  green. Follow-ups (the XL ticket's other 3 axes): **COMBAT-16** (size-fix + bow),
+  **COMBAT-17** (multi-hit div), **COMBAT-18** (dual-wield). Commits: start `ab96009`,
+  finish `<this>`.

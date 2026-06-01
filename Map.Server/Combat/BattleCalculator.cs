@@ -75,7 +75,7 @@ public sealed class BattleCalculator : IBattleCalculator
         // (Whitesmith Maximize Power; rAthena status.cpp:11268). Pass the
         // SC presence through so CalcBaseDamage picks atkMax.
         var forceMaxRoll = _sc?.Get(source, StatusType.Maximizepower) != null;
-        long damage = CalcBaseDamage(s, isCritical, forceMaxRoll);
+        long damage = CalcBaseDamage(s, isCritical, forceMaxRoll, srcIsPc);
 
         // Mob/PC distinction: PCs would get size-mod via inventory atkmods.
         // Until equip is parsed, apply the default mob size-mod table.
@@ -255,10 +255,11 @@ public sealed class BattleCalculator : IBattleCalculator
     /// atk, rolls between them, adds <c>batk</c>, applies the +40% crit
     /// modifier from rAthena's <c>#ifdef RENEWAL</c> tail.
     /// </summary>
-    private long CalcBaseDamage(BattleStats s, bool isCritical, bool forceMaxRoll = false)
+    private long CalcBaseDamage(BattleStats s, bool isCritical, bool forceMaxRoll = false, bool isPc = false)
     {
-        int atkMin = s.WatkMin;
         int atkMax = s.WatkMax;
+        // PC: DEX-derived atkmin (battle.cpp:2453). Mob: rhw.atk straight.
+        int atkMin = isPc ? ComputePcAtkMin(s.Dex, s.WeaponLevel, atkMax) : s.WatkMin;
         if (atkMin > atkMax) atkMin = atkMax;
 
         // P0.3 — Maximize Power / critical hits use atkMax. The
@@ -273,6 +274,19 @@ public sealed class BattleCalculator : IBattleCalculator
         // Renewal crit bonus — battle.cpp:2566
         if (isCritical) dmg = dmg * 14 / 10;
         return dmg;
+    }
+
+    /// <summary>
+    /// rAthena <c>battle_calc_base_damage</c> PC <c>atkmin</c> (battle.cpp:2453):
+    /// starts at DEX; when a weapon is equipped (<paramref name="weaponLevel"/>
+    /// 1-5) it becomes <c>dex * (80 + weaponLv*20) / 100</c>; bare-handed
+    /// (level 0) keeps DEX. Capped at <paramref name="atkMax"/> (= rhw.atk).
+    /// </summary>
+    internal static int ComputePcAtkMin(int dex, int weaponLevel, int atkMax)
+    {
+        int atkMin = dex;
+        if (weaponLevel >= 1) atkMin = atkMin * (80 + weaponLevel * 20) / 100;
+        return atkMin > atkMax ? atkMax : atkMin;
     }
 
     /// <summary>

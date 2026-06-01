@@ -41,6 +41,8 @@ public sealed class BattleStats
     public ushort WatkMin;     // status_data.rhw.atk
     public ushort WatkMax;     // status_data.rhw.atk2
     public byte WeaponElement; // status_data.rhw.ele
+    public byte WeaponLevel;   // rhw weapon level (1-5); drives the renewal PC atkmin DEX floor
+
     public ushort MatkMin;
     public ushort MatkMax;
 

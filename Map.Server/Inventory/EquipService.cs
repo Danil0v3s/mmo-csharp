@@ -253,7 +253,8 @@ public sealed class EquipService : IEquipService
             EquipDef: summary.EquipDef,
             EquipMdef: summary.EquipMdef,
             AttackRange: summary.AttackRange,
-            WeaponElement: summary.WeaponElement));
+            WeaponElement: summary.WeaponElement,
+            WeaponLevel: summary.WeaponLevel));
     }
 
     /// <inheritdoc />

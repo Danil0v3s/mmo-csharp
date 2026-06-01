@@ -58,6 +58,7 @@ public sealed class StatusCalcService : IStatusCalcService
         s.WatkMin = (ushort)Math.Max(0, inputs.WeaponAtkMin);
         s.WatkMax = (ushort)Math.Max(0, inputs.WeaponAtkMax);
         s.WeaponElement = (byte)inputs.WeaponElement;
+        s.WeaponLevel = (byte)Math.Clamp(inputs.WeaponLevel, 0, 5);
         s.AttackRange = (short)Math.Max(1, inputs.AttackRange);
 
         // Hard def/mdef come from equipment; misc adds soft def2/mdef2.

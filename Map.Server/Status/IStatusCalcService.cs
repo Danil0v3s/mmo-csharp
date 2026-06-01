@@ -91,4 +91,7 @@ public readonly record struct PcBaseInputs(
     // bare-hand (rAthena enum weapon_type W_FIST). Both fall through to
     // the JobAspdCacheService.DefaultBaseAspdMs fallback when missing.
     int JobId = 0,
-    int WeaponType = 0);
+    int WeaponType = 0,
+    // COMBAT-04: right-hand weapon level (1-5; 0 = bare-handed) for the
+    // renewal PC base-atk DEX floor: atkmin = dex*(80+weaponLv*20)/100.
+    int WeaponLevel = 0);

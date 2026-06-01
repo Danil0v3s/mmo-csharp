@@ -77,6 +77,9 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-12 | Magic skill ratio + constant pipeline (plugin ratio for BF_MAGIC) |
 | COMBAT-13 | Asura Strike renewal ×2 when cast with >5 spirit spheres |
 | COMBAT-14 | RE_LVL_DMOD per-skill exceptions (INF2_DISABLELVDMG gate, 120/150 divisors, trap TMDMOD) |
+| COMBAT-16 | Weapon size-fix table (renewal Knuckle/Whip) + bow arrow_atk |
+| COMBAT-17 | Multi-hit div (battle_calc_multi_attack + ACT3 Div wire) |
+| COMBAT-18 | Dual-wield left-hand damage (Damage2 + left/right split) |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

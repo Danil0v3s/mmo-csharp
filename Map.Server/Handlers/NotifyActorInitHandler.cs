@@ -119,7 +119,8 @@ public class NotifyActorInitHandler(
                 EquipDef: equip.EquipDef,
                 EquipMdef: equip.EquipMdef,
                 AttackRange: equip.AttackRange,
-                WeaponElement: equip.WeaponElement));
+                WeaponElement: equip.WeaponElement,
+                WeaponLevel: equip.WeaponLevel));
             // Persisted current HP/SP from the snapshot wins over the calc-
             // derived max so partial-HP relog doesn't reset to full.
             player.Hp = (int)Math.Min(ch.Hp, (uint)player.MaxHp);
