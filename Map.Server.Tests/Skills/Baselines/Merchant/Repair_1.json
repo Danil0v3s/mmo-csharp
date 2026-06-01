@@ -2,25 +2,22 @@
   {
     "kind": "non-deterministic",
     "data": {
-      "reason": "trace diverged across runs"
+      "reason": "trace varies across runs",
+      "historical-kinds": [
+        "fail",
+        "heal",
+        "nodamage"
+      ]
     }
   },
   {
-    "kind": "heal",
+    "kind": "fail",
     "data": {
-      "bl": 1,
-      "hp": 400,
-      "sp": 0
-    }
-  },
-  {
-    "kind": "nodamage",
-    "data": {
-      "src": 1,
-      "target": 1,
+      "caster": 1,
       "skillId": 2275,
-      "healOrLevel": 1,
-      "success": true
+      "cause": "SkillFail",
+      "btype": 0,
+      "itemId": 0
     }
   }
 ]

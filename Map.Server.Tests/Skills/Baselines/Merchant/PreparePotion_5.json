@@ -1,5 +1,19 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "cooking-list",
+    "data": {
+      "caster": 1,
+      "produceType": 22,
+      "count": 0
+    }
+  },
+  {
     "kind": "nodamage",
     "data": {
       "src": 1,

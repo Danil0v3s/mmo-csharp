@@ -1,5 +1,11 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
     "kind": "unit-place",
     "data": {
       "caster": 1,
@@ -7,6 +13,37 @@
       "skillLevel": 5,
       "centerX": 105,
       "centerY": 105
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 2304,
+      "healOrLevel": 5,
+      "success": true
+    }
+  },
+  {
+    "kind": "blow",
+    "data": {
+      "bl": 1,
+      "dir": 0,
+      "count": 3
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "Feintbomb",
+      "val1": 5,
+      "val2": 0,
+      "val3": 0,
+      "val4": 0,
+      "durationMs": 5000,
+      "src": 1
     }
   }
 ]

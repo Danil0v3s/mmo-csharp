@@ -1,1 +1,31 @@
-[]
+[
+  {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "Splasher",
+      "val1": 5,
+      "val2": 141,
+      "val3": 1,
+      "val4": 1000,
+      "durationMs": 10000,
+      "src": 1
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1,
+      "skillId": 141,
+      "healOrLevel": 5,
+      "success": true
+    }
+  }
+]

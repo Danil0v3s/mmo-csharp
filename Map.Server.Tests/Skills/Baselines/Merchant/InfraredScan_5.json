@@ -1,5 +1,23 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "damage-broadcast",
+    "data": {
+      "src": 1,
+      "target": 1000,
+      "skillId": 2270,
+      "skillLevel": 5,
+      "damage": 0,
+      "hitCount": 1,
+      "action": "SkillDamage"
+    }
+  },
+  {
     "kind": "sc-end",
     "data": {
       "target": 1000,

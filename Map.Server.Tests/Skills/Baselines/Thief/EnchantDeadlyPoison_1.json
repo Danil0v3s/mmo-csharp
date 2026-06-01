@@ -1,1 +1,21 @@
-[]
+[
+  {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "sc-start",
+    "data": {
+      "target": 1,
+      "type": "SubWeaponproperty",
+      "val1": 5,
+      "val2": 25,
+      "val3": 378,
+      "val4": 0,
+      "durationMs": 90000,
+      "src": 1
+    }
+  }
+]

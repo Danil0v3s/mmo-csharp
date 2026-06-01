@@ -1,1 +1,41 @@
-[]
+[
+  {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Cloakingexceed"
+    }
+  },
+  {
+    "kind": "check-unit-movepos",
+    "data": {
+      "bl": 1,
+      "x": 102,
+      "y": 100
+    }
+  },
+  {
+    "kind": "move-pos",
+    "data": {
+      "bl": 1,
+      "x": 102,
+      "y": 100
+    }
+  },
+  {
+    "kind": "nodamage",
+    "data": {
+      "src": 1,
+      "target": 1000,
+      "skillId": 5287,
+      "healOrLevel": 1,
+      "success": true
+    }
+  }
+]

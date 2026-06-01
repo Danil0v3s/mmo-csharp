@@ -1,5 +1,11 @@
 [
   {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
     "kind": "unit-place",
     "data": {
       "caster": 1,
@@ -7,6 +13,14 @@
       "skillLevel": 5,
       "centerX": 105,
       "centerY": 105
+    }
+  },
+  {
+    "kind": "blow",
+    "data": {
+      "bl": 1,
+      "dir": 0,
+      "count": 7
     }
   },
   {

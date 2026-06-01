@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "damage",
+    "data": {
+      "target": 1000,
+      "source": 1,
+      "damage": 2000
+    }
+  }
+]

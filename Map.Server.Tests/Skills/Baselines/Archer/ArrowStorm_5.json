@@ -1,1 +1,15 @@
-[]
+[
+  {
+    "kind": "non-deterministic",
+    "data": {
+      "reason": "trace diverged across runs"
+    }
+  },
+  {
+    "kind": "sc-end",
+    "data": {
+      "target": 1,
+      "type": "Camouflage"
+    }
+  }
+]
