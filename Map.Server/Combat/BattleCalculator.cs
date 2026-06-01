@@ -77,6 +77,11 @@ public sealed class BattleCalculator : IBattleCalculator
         var forceMaxRoll = _sc?.Get(source, StatusType.Maximizepower) != null;
         long damage = CalcBaseDamage(s, isCritical, forceMaxRoll, srcIsPc);
 
+        // COMBAT-06: bAtkRate (SP_ATK_RATE) — renewal battle_get_atkpercent
+        // (battle.cpp:4604) scales base weapon damage BEFORE the skill ratio.
+        if (srcIsPc && (source as PlayerEntity)?.EquipBonuses is { AtkRate: var ar } && ar != 0)
+            damage = damage * (100 + ar) / 100;
+
         // Mob/PC distinction: PCs would get size-mod via inventory atkmods.
         // Until equip is parsed, apply the default mob size-mod table.
         // rAthena: when no map_session_data sd is present (mob attacker),
@@ -335,6 +340,10 @@ public sealed class BattleCalculator : IBattleCalculator
             if (mls != null && mls.Val2 > 0)
                 damage += damage * mls.Val2 / 100;
         }
+
+        // COMBAT-06: bMatkRate (SP_MATK_RATE) — % MATK scaling from equip/cards.
+        if ((source as PlayerEntity)?.EquipBonuses is { MatkRate: var mr } && mr != 0)
+            damage = damage * (100 + mr) / 100;
 
         // COMBAT-03: RE_LVL_MDMOD (config/const.hpp) — renewal base-level magic
         // scaling above level 99. The per-skill INF2_DISABLELVDMG opt-out needs

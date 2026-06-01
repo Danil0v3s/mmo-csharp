@@ -83,6 +83,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-19 | Per-skill element resolution (magic/misc + endow overrides) |
 | COMBAT-20 | Plant 1-damage + GvG/BG damage reductions |
 | COMBAT-21 | Advanced cardfix (debuff, ignore-def, magic/crit-add-race, per-category RE) |
+| COMBAT-22 | bonus2 per-skill + indexed tail (skillatk/skillheal/castrate/ignore-def/vanish) |
+| COMBAT-23 | pc_bonus single-value tail + 1-arg flag form (speed/healpower/nocastcancel) |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

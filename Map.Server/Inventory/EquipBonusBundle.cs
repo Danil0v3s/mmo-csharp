@@ -73,6 +73,20 @@ public sealed class EquipBonusBundle
     /// <summary>Critical damage % bonus (<c>bonus bCriticalAddRace</c> sums separately).</summary>
     public int CritAtkRate { get; set; }
 
+    // COMBAT-06 — damage / defense rate bonuses.
+    /// <summary>Weapon-damage percent (<c>bonus bAtkRate, N</c> / SP_ATK_RATE; pre-skill-ratio).</summary>
+    public int AtkRate { get; set; }
+    /// <summary>Magic-damage percent (<c>bonus bMatkRate, N</c> / SP_MATK_RATE).</summary>
+    public int MatkRate { get; set; }
+    /// <summary>Flat hard-DEF bonus (<c>bonus bDef, N</c> / SP_DEF).</summary>
+    public int FlatDef { get; set; }
+    /// <summary>Flat hard-MDEF bonus (<c>bonus bMdef, N</c> / SP_MDEF).</summary>
+    public int FlatMdef { get; set; }
+    /// <summary>Hard-DEF percent (<c>bonus bDefRate, N</c> / SP_DEF_RATE).</summary>
+    public int DefRate { get; set; }
+    /// <summary>Hard-MDEF percent (<c>bonus bMdefRate, N</c> / SP_MDEF_RATE).</summary>
+    public int MdefRate { get; set; }
+
     // Primary + trait param bonuses (bStr..bLuk, bPow..bCrt). Mirror
     // rAthena indexed_bonus.param_bonus[] (status.hpp). Populated by the
     // extractor / script host; APPLIED to the final stat by the base→final
@@ -137,6 +151,7 @@ public sealed class EquipBonusBundle
         FlatAspd = FlatAspdRate = 0;
         FlatMaxHp = FlatMaxSp = MaxHpRate = MaxSpRate = 0;
         LongAtkRate = ShortAtkRate = CritAtkRate = 0;
+        AtkRate = MatkRate = FlatDef = FlatMdef = DefRate = MdefRate = 0;
         Str = Agi = Vit = IntStat = Dex = Luk = 0;
         Pow = Sta = Wis = Spl = Con = Crt = 0;
         VarCastRate = FixCastRate = AddVarCastMs = AddFixCastMs = DelayRate = 0;

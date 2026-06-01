@@ -118,6 +118,13 @@ public static class BonusScriptExtractor
             case "variablecastrate": b.VarCastRate += v; break;
             case "fixedcastrate":  b.FixCastRate += v; break;
             case "delayrate":      b.DelayRate += v; break;
+            // COMBAT-06 — damage / defense rate bonuses.
+            case "atkrate":        b.AtkRate += v; break;
+            case "matkrate":       b.MatkRate += v; break;
+            case "def":            b.FlatDef += v; break;
+            case "mdef":           b.FlatMdef += v; break;
+            case "defrate":        b.DefRate += v; break;
+            case "mdefrate":       b.MdefRate += v; break;
             // Primary + trait param bonuses (rAthena pc_bonus SP_STR..SP_LUK
             // / SP_POW..SP_CRT). Captured into the bundle; the base→final
             // stat layering that adds them to the displayed/derived stat

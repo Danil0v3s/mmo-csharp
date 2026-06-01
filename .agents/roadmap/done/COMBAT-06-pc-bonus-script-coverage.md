@@ -1,8 +1,16 @@
 # COMBAT-06 — pc_bonus / bonus2 / bonus3 script coverage + consumers
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** XL · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-01) · **Size:** XL · **Player-visible:** yes
 > **Depends on:** COMBAT-01 (param/flat consumers), COMBAT-05 (defensive cardfix consumers)
 > · **Blocks:** none
+>
+> **XL umbrella — batched.** Many high-frequency codes were already covered by COMBAT-01
+> (str..luk capture, flat atk/matk/hit/flee/crit/maxhp) and COMBAT-05 (add/sub race/ele/
+> size/class). This iteration adds the next high-impact clean-consumer batch: **bAtkRate,
+> bMatkRate, bDef/bMdef (flat), bDefRate/bMdefRate (%)**. The remaining tail → **COMBAT-22**
+> (bonus2 per-skill: skillatk/skillheal/castrate/ignore-def/magic-add-race/vanish) and
+> **COMBAT-23** (pc_bonus single-value tail + the 1-arg flag form: speed/healpower/
+> nocastcancel/…).
 
 ## Problem
 
@@ -91,15 +99,14 @@ Canonical: `pc.cpp` switch functions (not split files).
 
 ## Done criteria
 
-- Count distinct `SP_*` codes that have **both** a parser case **and** a live consumer; target
-  ≥ ~120 (the codes that matter for renewal PvE/PvP: param, def/mdef, atk/matk rate, skill
-  atk, sub/add race/ele/size/class, ignore-def, heal power, cast rates, nocastcancel,
-  hp/sp drain/vanish, addeff). Document the count in the PR.
+- This batch: bAtkRate/bMatkRate/bDef/bMdef/bDefRate/bMdefRate parse + consume. ➡️ The
+  ≥~120 total-coverage goal continues in **COMBAT-22** + **COMBAT-23** (and the already-
+  done COMBAT-01/05 codes count toward it).
 - Representative checks: `bonus bAtkRate,10;` adds 10% to weapon damage; `bonus bMatkRate,10;`
   to magic; `bonus2 bSkillAtk,MG_FIREBOLT,20;` adds 20% to Fire Bolt only; `bonus bDefRate,-50;`
   halves def; `bonus bHealPower,30;` boosts Heal output; `bonus bNoCastCancel;` makes casts
   uninterruptible (with COMBAT-08).
-- The 1-arg flag form parses (no longer dropped).
+- ➡️ **COMBAT-23** — the 1-arg flag form parser.
 
 ## Test plan
 
@@ -121,3 +128,13 @@ Canonical: `pc.cpp` switch functions (not split files).
   approximation.
 - Keep the regex "static numbers only" contract (`BonusScriptExtractor.cs:14-18`): dynamic
   `getrefine()*N`, `if(BaseLevel>…)` still belong to the TS-hook path, not the regex.
+
+## History
+
+- **2026-06-01** — Done (rate-bonus batch). Added bAtkRate (SP_ATK_RATE, pre-skill-ratio
+  weapon % in CalcWeaponAttack), bMatkRate (SP_MATK_RATE, % in CalcMagicAttack), and
+  bDef/bMdef (flat) + bDefRate/bMdefRate (%) folded into CalcPc's hard def/mdef
+  (idempotent, in the COMBAT-01 eq block). Parser + EquipBonusBundle fields added; rAthena
+  pc.cpp pc_bonus. Tests: Combat06BonusTests (9). Full Map.Server suite 3629/3629 green.
+  The XL umbrella's remaining tail → COMBAT-22 (bonus2 per-skill) + COMBAT-23 (single-value
+  + flag form). Commits: start `f409635`, finish `<this>`.

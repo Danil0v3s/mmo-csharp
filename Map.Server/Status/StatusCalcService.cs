@@ -101,6 +101,12 @@ public sealed class StatusCalcService : IStatusCalcService
             s.Batk = (ushort)CapUShort(s.Batk + eq.FlatAtk);
             s.MatkMin = (ushort)CapUShort(s.MatkMin + eq.FlatMatk);
             s.MatkMax = (ushort)CapUShort(s.MatkMax + eq.FlatMatk);
+            // COMBAT-06: hard DEF/MDEF — flat (bDef/bMdef) then percent
+            // (bDefRate/bMdefRate). s.Def/s.Mdef hold the equip hard-def set
+            // above (CalcMisc only touches the soft Def2/Mdef2), so this is
+            // idempotent across recalcs.
+            s.Def = (short)CapShort((s.Def + eq.FlatDef) * (100 + eq.DefRate) / 100);
+            s.Mdef = (short)CapShort((s.Mdef + eq.FlatMdef) * (100 + eq.MdefRate) / 100);
         }
 
         // MaxHp / MaxSp — DBR-1d: when IJobStatsCacheService is wired,
