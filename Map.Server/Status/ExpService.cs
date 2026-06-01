@@ -28,17 +28,20 @@ public sealed class ExpService : IExpService
     private readonly IStatusCalcService _statusCalc;
     private readonly ISessionManagerAccessor _sessions;
     private readonly ILevelPenaltyService? _levelPenalty;
+    private readonly IStatusChangeService? _sc;
     private readonly ILogger<ExpService> _logger;
 
     public ExpService(
         IStatusCalcService statusCalc,
         ISessionManagerAccessor sessions,
         ILogger<ExpService> logger,
-        ILevelPenaltyService? levelPenalty = null)
+        ILevelPenaltyService? levelPenalty = null,
+        IStatusChangeService? sc = null)
     {
         _statusCalc = statusCalc;
         _sessions = sessions;
         _levelPenalty = levelPenalty;
+        _sc = sc;
         _logger = logger;
     }
 
@@ -63,6 +66,16 @@ public sealed class ExpService : IExpService
                 baseExp = baseExp * rate / 100;
                 jobExp = jobExp * rate / 100;
             }
+        }
+
+        // SC-04 — SC_RICHMANKIM (BD_RICHMANKIM "Mr. Kim a Rich Man"). rAthena
+        // pc.cpp pc_gainexp adds Val2 % (10 + 10*lv) to mob-kill EXP for party
+        // members in the song area. Gated on a known mob source (like the
+        // level penalty) so quest/GM/scroll EXP is unaffected, matching rAthena.
+        if (mobLevel is int && _sc?.Get(player, StatusType.Richmankim) is { Val2: > 0 } rich)
+        {
+            baseExp += baseExp * rich.Val2 / 100;
+            jobExp += jobExp * rich.Val2 / 100;
         }
 
         if (baseExp > 0)

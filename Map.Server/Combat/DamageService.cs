@@ -333,6 +333,21 @@ public sealed class DamageService : IDamageService
     {
         if (_sc == null || damage <= 0) return damage;
 
+        // ---- Kaupe (SL_KAAHI family dodge) -------------------------------
+        // SC-04 — rAthena battle.cpp:1555: roll Val2 % to FULLY block one
+        // incoming hit (skill or normal); Val3 is the remaining block count
+        // (decrement, end the SC at 0 — like a 1-charge Safety Wall).
+        // status.cpp:11152 stores Val2 = 33*lv (+1 at lv3 = 100%), Val3 = count.
+        // Checked first so a successful Kaupe pre-empts every other reduction.
+        var kaupe = _sc.Get(target, StatusType.Kaupe);
+        if (kaupe != null && kaupe.Val2 > 0 && _rng.Next(100) < kaupe.Val2)
+        {
+            kaupe.Val3 -= 1;
+            if (kaupe.Val3 <= 0) _sc.End(target, StatusType.Kaupe);
+            action = DamageActionType.Flee; // ZC renders the dodge anim.
+            return 0;
+        }
+
         // ---- AutoGuard ---------------------------------------------------
         // Val1 = block chance %. rAthena: 5+5*lv at start, scaled by AGI.
         // For the C# port we honor whatever the caster stored in Val1.
@@ -470,6 +485,24 @@ public sealed class DamageService : IDamageService
             var back = damageDealt * dbnd.Val2 / 1000; // ‰ scale (500 = 50 %)
             if (back > 0) ApplyDamage(source, back, target);
             _sc.End(target, StatusType.Deathbound);
+        }
+
+        // ---- Kaahi (Soul Linker heal-on-hit) ----------------------------
+        // SC-04 — rAthena battle.cpp:10544: when the Kaahi-bearer is struck
+        // and is below max HP, charge Val3 SP and restore up to Val2 HP.
+        // status.cpp:11201 stores Val2 = 200*lv (heal), Val3 = 5*lv (SP cost).
+        // No-op when SP is insufficient; gated on a LIVING target so a lethal
+        // hit can't be "healed" back to life (death resolves after this).
+        var kaahi = _sc.Get(target, StatusType.Kaahi);
+        if (kaahi != null && kaahi.Val2 > 0)
+        {
+            var (curHp, maxHp) = GetHp(target);
+            if (curHp > 0 && curHp < maxHp && target.Stats.Sp >= kaahi.Val3)
+            {
+                target.Stats.Sp -= kaahi.Val3;
+                var heal = Math.Min(maxHp - curHp, kaahi.Val2);
+                if (heal > 0) SetHp(target, curHp + heal);
+            }
         }
 
         // SC_SACRIFICE — devotion-link sibling takes damage instead.

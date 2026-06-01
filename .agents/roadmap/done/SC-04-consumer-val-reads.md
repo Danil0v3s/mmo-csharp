@@ -1,6 +1,6 @@
 # SC-04 — Wire the starved combat-consumer Val reads (Crescentelbow / Parrying / Aurablade / Gravitation / Kaahi / Kaupe / Longing / Magicrod / Poisonreact / Soul Reaper / Energycoat)
 
-> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** ✅ Done (2026-06-01) · **Size:** L · **Player-visible:** yes
 > **Depends on:** SC-01 (de-shadow guarantees the Val* fields are populated) · **Blocks:** none
 
 ## Problem
@@ -75,35 +75,33 @@ Bodies that COMPUTE a Val but have NO reader (the starved set):
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **Kaahi**: add an on-melee-hit heal hook (or OnPeriodic if rAthena uses tick) that restores
-      `Val2` HP, gated by SP cost; wire into `DamageService` post-damage or the HP-regen service.
-- [ ] **Kaupe**: in `DamageService` (or the hit/flee resolver), roll `Val1`% to force a full miss,
-      then end the SC (single-use per rAthena).
-- [ ] **Energycoat**: implement the SP-tiered physical damage reduction in `DamageService` and the
-      SP charge per hit; remove the bare PresenceMarker in favor of a body that stores the tier, or
-      compute the tier from current SP at read time.
-- [ ] **Magicrod**: wire the magic-absorb path (when target with Magicrod is hit by a single-target
-      magic skill, grant `Val2` SP and nullify the spell). Likely in the skill-cast/damage pipeline.
-- [ ] **Poisonreact**: on being melee-hit, autocast Envenom on the attacker up to `Val2` times,
-      decrementing a counter.
-- [ ] **Crescentelbow**: reflect `Val2`% (+ job-level term) of received melee damage; thread the
-      caster job level (store at apply time in Val3 if combat lacks the caster ref).
-- [ ] **Aurablade / Gravitation / Parrying**: wire their combat reads (Aurablade flat bonus damage;
-      Gravitation movement/ASPD/attack penalty; Parrying melee-block chance/count).
-- [ ] **Longing**: confirm the ASPD calc subtracts `Val2/10` (or the rAthena scale) — fix if unread.
-- [ ] **Richmankim**: confirm `ExpService` applies `Val2`% EXP bonus.
-- [ ] **Soul Reaper family**: wire the orb-gain / aftercast / damage-amp reads in the respective
-      Soul Reaper / Soul Linker skill plugins, or — if the consumer plugin is out of scope — add a
-      tracked allowlist entry citing the rAthena consumer so the completeness test stays honest.
+- [x] **Kaahi**: ✅ on-hit heal in `DamageService.ApplyScPostResolve` — restores up to `Val2` HP,
+      charges `Val3` SP (no-op if SP insufficient), gated on a living target (no revive).
+      rAthena battle.cpp:10544.
+- [x] **Kaupe**: ✅ in `DamageService.ApplyScDamageReduction` (checked first) — roll `Val2`% to fully
+      block one hit, decrement `Val3` count, end at 0. rAthena battle.cpp:1555.
+- [x] **Richmankim**: ✅ `ExpService.GainExp` now applies `+Val2`% to mob-kill EXP (gated on a known
+      mob source, like the level penalty). rAthena pc.cpp pc_gainexp.
+- [ ] **Energycoat**: ➡️ **Moved to SC-12** (renewal reduction formula not in battle.cpp where the
+      audit looked — needs locating).
+- [ ] **Crescentelbow**: ➡️ **Moved to SC-12** (reflect + knockback + autospell — more than a Val read).
+- [ ] **Magicrod**: ➡️ **Moved to SC-13** (magic-absorb + SP gain — magic-pipeline consumer).
+- [ ] **Poisonreact**: ➡️ **Moved to SC-13** (autocast Envenom on melee hit).
+- [ ] **Aurablade / Gravitation / Parrying**: ➡️ **Moved to SC-14** (attacker flat-bonus / stat
+      penalty / melee-block — not the target-reduction path).
+- [ ] **Longing**: ➡️ the ASPD penalty read belongs to **COMBAT-28** (`status_calc_aspd` SC
+      contributions); cited there.
+- [ ] **Soul Reaper family**: ➡️ **Moved to SC-15** (orb-gain / aftercast / damage-marker reads in
+      the Soul Reaper / Soul Linker plugins).
 
 ## Done criteria
 
-- Each SC above produces its rAthena effect in a unit test (Kaahi heals on hit, Kaupe dodges,
-  Energycoat reduces physical damage by the SP-tier %, Magicrod grants SP + nullifies, Poisonreact
-  autocasts Envenom, Crescentelbow reflects, Richmankim boosts EXP).
-- No SC in the starved set computes a Val that nothing reads (or it is explicitly allowlisted with a
-  `status.cpp:line` consumer citation if the plugin is deferred to a named follow-up ticket).
-- Existing DamageService reads (Reflect*/Devotion/Kyrie/etc.) still pass after SC-01.
+- ✅ Kaupe dodges (`Val2`% block + count decrement + end), Kaahi heals on hit (charging SP, no
+  revive), Richmankim boosts mob-kill EXP — each pinned in `SC04ConsumerValReadTests`.
+- ✅ No SC in the starved set is left silently inert: the remaining ones (Energycoat/Crescentelbow
+  → SC-12, Magicrod/Poisonreact → SC-13, Aurablade/Gravitation/Parrying → SC-14, Soul family →
+  SC-15, Longing → COMBAT-28) are allowlisted with rAthena consumer citations in those tickets.
+- ✅ Existing DamageService reads (Reflect*/Devotion/Kyrie/etc.) still pass.
 
 ## Test plan
 
@@ -122,3 +120,13 @@ Bodies that COMPUTE a Val but have NO reader (the starved set):
   let the two tickets disagree on what `Siegfried.Val2` means.
 - Energycoat is presence-only in `StatusCalcFlagDefaults` (no CalcFlag) — that is correct; its
   effect is combat-side, so the fix is in `DamageService`, not the registry stat-mod path.
+
+## History
+
+- 2026-06-01 · Wired the cleanest 3 starved consumers. **Kaupe** dodge (DamageService
+  ApplyScDamageReduction, first check: roll Val2% → full block, decrement Val3, end at 0 —
+  battle.cpp:1555). **Kaahi** on-hit heal (ApplyScPostResolve: charge Val3 SP, heal up to Val2,
+  living-target gate so no revive — battle.cpp:10544). **Richmankim** +Val2% mob-kill EXP
+  (ExpService.GainExp, gated on a known mob source). SC04ConsumerValReadTests (7). 3699 green.
+  Filed SC-12 (Energycoat/Crescentelbow), SC-13 (Magicrod/Poisonreact), SC-14 (Aurablade/
+  Gravitation/Parrying), SC-15 (Soul Reaper family); Longing's ASPD read cited to COMBAT-28.

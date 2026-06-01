@@ -106,6 +106,10 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | SC-08 | `status_change_spread`, `nostatus` mapflag, companion `calc_*`, `isimmune` matrix |
 | SC-10 | Triage remaining `CalcFlags: All` all-six-stat mis-mappings (~35 SCs) |
 | SC-11 | Complete element-endow SCs (Aspersio/Shadow/Ghost/Enchantarms + magic) |
+| SC-12 | Energycoat SP-tier reduction + Crescentelbow reflect — split from SC-04 |
+| SC-13 | Magicrod magic-absorb + Poisonreact autocast-Envenom — split from SC-04 |
+| SC-14 | Aurablade / Gravitation / Parrying combat reads — split from SC-04 |
+| SC-15 | Soul Reaper/Linker family consumers — split from SC-04 |
 
 ### `packets/` — client→map packet bridge (unlocks features)
 | Ticket | Title |
