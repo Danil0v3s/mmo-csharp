@@ -6,8 +6,10 @@ namespace Map.Server.Skills.Behaviors.Swordman;
 /// <summary>
 /// RK_ABUNDANCE — Rune Knight Abundance. Manual port of
 /// <c>rathena-fork/src/map/skills/swordman/abundance.cpp</c>.
-/// Requires RK_RUNEMASTERY ≥ 6 (skill-tree check is TODO). Applies
-/// SC_ABUNDANCE to the target on success or shows a skill-fail.
+///
+/// <para>Requires RK_RUNEMASTERY ≥ 6 (gated via
+/// <see cref="IPlayerSkillService.CheckSkill"/>). Applies SC_ABUNDANCE
+/// to the target on success.</para>
 /// </summary>
 public sealed class Abundance : SkillImpl
 {

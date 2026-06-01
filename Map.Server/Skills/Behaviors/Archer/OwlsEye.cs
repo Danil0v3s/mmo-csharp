@@ -6,8 +6,12 @@ namespace Map.Server.Skills.Behaviors.Archer;
 /// AC_OWL — Archer Owl's Eye. Mirrors
 /// <c>rathena-fork/src/map/skills/archer/owlseye.cpp</c>.
 ///
-/// Passive +lv DEX. Cast claims the slot — the stat bonus is
-/// folded into status_calc_pc at recalc time (passive port pending).
+/// <para>Pure passive (+lv DEX). rAthena's <c>owlseye.cpp</c> is an
+/// empty class shell — the DEX bump is folded into
+/// <c>status_calc_pc</c> at recalc time. No-op on cast is the
+/// canonical behavior; the stat fold lives in the C# port's
+/// <c>StatusCalcPc</c> equipment / passive pipeline rather than in a
+/// per-skill hook here.</para>
 /// </summary>
 public sealed class OwlsEye : SkillImpl
 {
@@ -15,6 +19,8 @@ public sealed class OwlsEye : SkillImpl
 
     public override void CastendNoDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // Passive — no SC; pc_skill bonus pass owns the stat fold.
+        // Passive — no SC; the +lv DEX bump is applied by status_calc_pc
+        // when the caster's stats are recomputed. No on-cast side effect
+        // (matches rAthena's empty owlseye.cpp body).
     }
 }

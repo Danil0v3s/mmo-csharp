@@ -1305,6 +1305,14 @@ public static class SkillIds
     public const ushort WL_SUMMONSTONE = 2229;
     public const ushort WL_SUMMONWB = 2224;
     public const ushort WL_TETRAVORTEX = 2217;
+    /// <summary>Fire sub-hit of WL_TETRAVORTEX (dispatched 200 ms after the master cast).</summary>
+    public const ushort WL_TETRAVORTEX_FIRE = 2218;
+    /// <summary>Water sub-hit of WL_TETRAVORTEX (dispatched 400 ms after the master cast).</summary>
+    public const ushort WL_TETRAVORTEX_WATER = 2219;
+    /// <summary>Wind sub-hit of WL_TETRAVORTEX (dispatched 600 ms after the master cast).</summary>
+    public const ushort WL_TETRAVORTEX_WIND = 2220;
+    /// <summary>Ground sub-hit of WL_TETRAVORTEX (dispatched 800 ms after the master cast).</summary>
+    public const ushort WL_TETRAVORTEX_GROUND = 2221;
     public const ushort WL_WHITEIMPRISON = 2201;
     public const ushort WM_BEYOND_OF_WARCRY = 2433;
     public const ushort WM_DANCE_WITH_WUG = 2428;

@@ -7,12 +7,15 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// WZ_METEOR — Wizard Meteor Storm. Manual port of
 /// <c>rathena-fork/src/map/skills/mage/meteorstorm.cpp</c>.
 ///
-/// <para>Drops a sequence of Meteor ground units inside a 3×3 splash
-/// around the cast XY, staggered by the unit interval. Renewal: +25 %
-/// MATK. Hit victims roll <c>3*lv %</c> SC_STUN. The per-meteor
-/// staggered placement requires the unit-interval read which isn't on
-/// our ISkillUnitService — we drop a single unit centered on the cast
-/// for now and leave the stagger as TODO.</para>
+/// <para>Drops <c>2 + lv</c> Meteor ground units at random offsets
+/// inside a 9×9 envelope around the cast XY. Renewal: +25 % MATK.
+/// Hit victims roll <c>3*lv %</c> SC_STUN.</para>
+///
+/// <para>INFRA-DEFERRED: rAthena staggers each meteor via
+/// <c>skill_addtimerskill</c> with a position-targeted timer; our
+/// <see cref="ISkillTimerService"/> only schedules entity-targeted
+/// callbacks. We drop all meteors in the same tick — the per-unit
+/// damage interval still applies via <c>skill_unit_db.Interval</c>.</para>
 /// </summary>
 public sealed class MeteorStorm : SkillImpl
 {

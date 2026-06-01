@@ -7,13 +7,15 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// SA_AUTOSPELL — Sage Hindsight (Autospell). Manual port of
 /// <c>rathena-fork/src/map/skills/mage/hindsight.cpp</c>.
 ///
-/// <para>For a player caster, rAthena opens the spell-selection dialog
-/// (clif_autospell) and lets the user pick which Mage spell to queue —
-/// the SC starts only after the pick. We have no autospell selection
-/// UI yet, so the player-side branch is TODO. The mob-side branch
-/// derives the spell + max level from skill level deterministically:
+/// <para>The deterministic spell + max level pick from skill level:
 /// lv 10 → Frost Diver, lv 8-9 → Fireball, lv 5-7 → Soul Strike,
 /// lv 2-4 → random (Cold/Fire/Lightning Bolt), lv 1 → Napalm Beat.</para>
+///
+/// <para>INFRA-DEFERRED: rAthena's player branch opens an autospell-list
+/// dialog (ZC_AUTOSPELLLIST) and waits for the user's pick before
+/// starting SC_AUTOSPELL; our wire surface doesn't carry that packet
+/// yet, so the player branch falls back to the same deterministic
+/// pick the mob branch uses.</para>
 /// </summary>
 public sealed class Hindsight : SkillImpl
 {

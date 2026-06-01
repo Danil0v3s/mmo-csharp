@@ -7,12 +7,11 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// SA_MONOCELL — Sage Monocell. Manual port of
 /// <c>rathena-fork/src/map/skills/mage/monocell.cpp</c>.
 ///
-/// <para>Transforms the target monster into a Poring (MOBID_PORING).
-/// Player caster fails on status-immune (boss) mobs. On success it
-/// also clears every common SC and a curated list of crowd-control
-/// SCs. <c>mob_class_change</c> isn't wired here yet — the
-/// transformation is left as TODO and we only land the broadcast +
-/// safety gate.</para>
+/// <para>Transforms the target monster into a Poring (MOBID_PORING
+/// = 1002) via <c>ctx.MobOps.SetClass</c>. Player caster fails on
+/// status-immune (boss) mobs. On success the curated CC SC list
+/// (freeze/stone/stun/sleep/silence/blind/poison/curse/bleeding) is
+/// cleared so it doesn't persist into the new sprite.</para>
 /// </summary>
 public sealed class Monocell : SkillImpl
 {

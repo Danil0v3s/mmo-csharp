@@ -6,7 +6,10 @@ namespace Map.Server.Skills.Behaviors.Swordman;
 /// <summary>
 /// RK_VITALITYACTIVATION — Rune Knight Vitality Activation. Manual
 /// port of <c>rathena-fork/src/map/skills/swordman/vitalityactivation.cpp</c>.
-/// Requires RK_RUNEMASTERY ≥ 2 (TODO). Applies SC_VITALITYACTIVATION.
+///
+/// <para>Requires RK_RUNEMASTERY ≥ 2 (gated via
+/// <see cref="IPlayerSkillService.CheckSkill"/>). Applies
+/// SC_VITALITYACTIVATION.</para>
 /// </summary>
 public sealed class VitalityActivation : SkillImpl
 {

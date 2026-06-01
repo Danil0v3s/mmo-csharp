@@ -9,7 +9,10 @@ namespace Map.Server.Skills.Behaviors.Mage;
 ///
 /// <para>Applies SC_MINDBREAKER at <c>55 + 5*lv %</c> rate. Fails on
 /// status-immune mobs (boss) and Undead-race/element targets. Cancels
-/// the target's ongoing cast on success. Mob aggro retarget is TODO.</para>
+/// the target's ongoing cast on success via <c>ctx.Cast.CancelCast</c>.
+/// INFRA-DEFERRED: rAthena also pushes the target mob's aggro at the
+/// caster (<c>unit_set_target</c> on the mob); that hook isn't surfaced
+/// on <see cref="IMobOpsService"/> today.</para>
 /// </summary>
 public sealed class MindBreaker : SkillImpl
 {

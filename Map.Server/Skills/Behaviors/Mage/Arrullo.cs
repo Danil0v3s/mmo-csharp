@@ -9,8 +9,9 @@ namespace Map.Server.Skills.Behaviors.Mage;
 ///
 /// <para>AOE deep-sleep. Per-victim rate:
 /// <c>(15 + 5*lv) + caster_INT/5 + job_level/5 - target_INT/6 - target_LUK/10</c>.
-/// Splash dispatch is TODO — the named target gets the roll.
-/// job_level read falls back to 50 until exposed on Entity.</para>
+/// 5×5 splash dispatch fans out via <c>ctx.Entities.ForEachInRange</c>
+/// on the cast XY; mob casters fall back to job_level=50 for the
+/// caster term.</para>
 /// </summary>
 public sealed class Arrullo : SkillImpl
 {

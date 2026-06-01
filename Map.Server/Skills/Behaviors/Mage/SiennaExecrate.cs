@@ -8,10 +8,9 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// <c>rathena-fork/src/map/skills/mage/siennaexecrate.cpp</c>.
 ///
 /// <para>Petrifies the primary target then chains the petrify across
-/// the splash (BCT_ENEMY). Success rate on the primary:
-/// <c>45 + 5*lv + job_level/4 %</c>. Status-immune targets auto-skip.
-/// Splash chain to other enemies is TODO until <c>map_foreachinrange</c>
-/// is plumbed into per-skill hooks.</para>
+/// the 3×3 splash (BCT_ENEMY) via <c>ctx.Entities.ForEachInRange</c>.
+/// Success rate on the primary: <c>45 + 5*lv + job_level/4 %</c>.
+/// Status-immune targets auto-skip.</para>
 /// </summary>
 public sealed class SiennaExecrate : SkillImpl
 {

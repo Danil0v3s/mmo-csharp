@@ -6,7 +6,9 @@ namespace Map.Server.Skills.Behaviors.Swordman;
 /// <summary>
 /// RK_CRUSHSTRIKE — Rune Knight Crush Strike. Manual port of
 /// <c>rathena-fork/src/map/skills/swordman/crushstrike.cpp</c>.
-/// Requires RK_RUNEMASTERY ≥ 7 (TODO). Applies SC_CRUSHSTRIKE.
+///
+/// <para>Requires RK_RUNEMASTERY ≥ 7 (gated via
+/// <see cref="IPlayerSkillService.CheckSkill"/>). Applies SC_CRUSHSTRIKE.</para>
 /// </summary>
 public sealed class CrushStrike : SkillImpl
 {

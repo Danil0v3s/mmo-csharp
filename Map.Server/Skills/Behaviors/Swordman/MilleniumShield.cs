@@ -6,7 +6,10 @@ namespace Map.Server.Skills.Behaviors.Swordman;
 /// <summary>
 /// RK_MILLENNIUMSHIELD — Rune Knight Millennium Shield. Manual port of
 /// <c>rathena-fork/src/map/skills/swordman/milleniumshield.cpp</c>.
-/// Requires RK_RUNEMASTERY ≥ 9 (TODO). Applies SC_MILLENNIUMSHIELD.
+///
+/// <para>Requires RK_RUNEMASTERY ≥ 9 (gated via
+/// <see cref="IPlayerSkillService.CheckSkill"/>). Applies
+/// SC_MILLENNIUMSHIELD.</para>
 /// </summary>
 public sealed class MilleniumShield : SkillImpl
 {

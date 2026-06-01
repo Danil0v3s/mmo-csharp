@@ -9,8 +9,8 @@ namespace Map.Server.Skills.Behaviors.Mage;
 /// <c>rathena-fork/src/map/skills/mage/sightrasher.cpp</c>.
 ///
 /// <para>Ends SC_SIGHT on the caster and fires a splash Wind-magic
-/// hit. Per-victim ratio: <c>+20*lv</c>. Splash dispatch is TODO; the
-/// primary target gets the magic hit.</para>
+/// hit around the caster (7-cell radius), gated by LoS via
+/// <c>ctx.Paths.PathSearchLong</c>. Per-victim ratio: <c>+20*lv</c>.</para>
 /// </summary>
 public sealed class SightRasher : SkillImpl
 {
