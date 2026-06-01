@@ -1,7 +1,22 @@
 # COMBAT-09 — ASPD formula, job-bonus stats, MaxHP trait, SC-safe recalc ordering
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-01) · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-01 (flat stat / aspd-rate fields land on PcBaseInputs) · **Blocks:** none
+>
+> **Shipped:** axis 3 (renewal `status_base_amotion_pc` ASPD formula — the AGI/DEX
+> `sqrt` curve replacing the broken `*540/590` heuristic, which was setting amotion ≈
+> the raw job-ASPD base when the cache was wired) + axis 4 (MaxHP/SP fold order fix:
+> flat-before-rate, matching `status_calc_maxhp_pc`).
+>
+> **Scope correction discovered during implementation** (see History): axes 1 (SC
+> stat re-fold) and 2 (job-bonus stats) **cannot** be done before COMBAT-10's
+> base/final param split — the recalc-input builders read back the *conflated*
+> `player.Stats.*`, so any additive job/SC fold double-counts on the next recalc.
+> COMBAT-10 already scopes both (its Scope lines 79-85). They are ➡️ **Moved to
+> COMBAT-10**. The SC/skill ASPD contributions (`status_calc_aspd`), the dual-wield/
+> shield ASPD base terms, and the transcendent MaxHP ×1.25 multiplier are filed as
+> COMBAT-28 / COMBAT-29 / COMBAT-30. (The ticket's "STA-based trait HP" premise is a
+> misread — rAthena `status_calc_maxhp_pc` has no STA term; STA → Res, already done.)
 
 ## Problem
 
@@ -68,43 +83,41 @@ Canonical: `status.cpp` (not split files).
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **SC-safe recalc.** Inject `IStatusChangeService?` into `StatusCalcService` (optional, to
-      keep test ctors working). After the base+job+equip stat build, re-fold every active SC
-      stat delta (the C# analogue of `status_calc_str/agi/...`): for each active stat-affecting
-      SC on the player, add its `Val`-derived stat bonus to `s.Str/Agi/...` **before**
-      `CalcMisc` derives Hit/Flee/etc. This makes a mid-buff recalc preserve buff deltas.
-      (If a `StatusChangeService.RecalcStatBonuses(player)` helper exists, call it; otherwise
-      iterate the active SC list and apply the documented stat deltas.)
-- [ ] **Job-bonus stats.** Add `int[] JobBonusStats` (PARAM order) to `PcBaseInputs`, loaded by
-      `IJobStatsCacheService` from `job_db` `job_bonus[jobLevel-1]`. Add a loader method
-      `GetJobBonusStats(jobAegis, jobLevel)`. In `CalcPc`, add them to `s.Str/Agi/...` right
-      after copying base inputs (before SC re-fold).
-- [ ] **ASPD formula.** Replace the `*540/590` heuristic (`StatusCalcService.cs:122`) with
-      `status_base_amotion_pc`: `temp = dex*dex/5.0 + agi*agi*0.5; temp = sqrt(temp)*0.25 + 196;`
-      combine with the `job_aspd` weapon base + dual-wield `+ secondWeaponBase/4`, apply
-      `aspd_rate`/`aspd_add` (`bundle.FlatAspdRate`/`FlatAspd` from COMBAT-01) and SC aspd
-      mods. Set `s.Amotion` from the result; `s.Adelay = 2*amotion - dmotion` (renewal default
-      `2*amotion`); keep the `IJobAspdCacheService` base row as the per-weapon `aspd_base`
-      source.
-- [ ] **MaxHP/SP fold.** Apply `MaxHpRate` (percent) + `FlatMaxHp` (flat) from the bundle
-      (COMBAT-01) and add the renewal STA-based trait HP for 4th jobs. Re-clamp current HP/SP.
-- [ ] **No DB migration** if `job_db` already carries `job_bonus` and `job_aspd` aspd_base per
-      weapon (verify `IJobStatsCacheService`/`IJobAspdCacheService` loaders expose them);
-      otherwise extend the loaders.
-- [ ] **Stat-window broadcast** already runs after `CalcPc` (no change), but confirm ASPD
-      change reaches the client (`ZC_ATTACK_RANGE`/`ZC_PAR_CHANGE` for aspd) — the recalc push
-      path must include the aspd parameter.
+- [ ] **SC-safe recalc.** ➡️ **Moved to COMBAT-10.** A correct re-fold needs the base/final
+      param split (else the conflated read-back already "preserves" param-stat SC deltas by
+      baking them into base, and derived-stat SC deltas are wiped by `CalcMisc`). COMBAT-10
+      owns the split + the SC re-application ordering (its Scope lines 82-85). *(The SC ASPD
+      contributions — Two-Hand Quicken etc. — are re-fold-safe without the split and are
+      tracked separately in **COMBAT-28**.)*
+- [ ] **Job-bonus stats.** ➡️ **Moved to COMBAT-10.** `IJobStatsCacheService.GetBonusSum`
+      already sums `job_bonus[1..jobLevel]`, but folding it into `s.Str/...` in `CalcPc`
+      double-counts because the recalc-input builders read back the conflated `player.Stats.*`
+      — it must be added to the *base* total, which only exists after COMBAT-10's split.
+- [x] **ASPD formula.** ✅ Replaced the `*540/590` heuristic with the renewal
+      `status_base_amotion_pc` (`RenewalPcAmotion`): `sqrt(dex²/divisor + agi²/2)·0.25 + 196`
+      (divisor 7 for ranged weapon types, else 5), minus `min(aspd_base, 200)`; the RE
+      %-modifier from `bAspdRate` (`aspd_rate2`); `2000 − aspd·10` conversion; `aspd_add`
+      (`bAspd`) flat; cap `[95, 4000]`. `Adelay = 2·amotion`; `Dmotion = cap(800 − 4·agi,
+      400, 800)`. `JobId`/`WeaponType` now threaded through the 3 `CalcPc` call sites.
+      *(SC/skill ASPD `val` terms + FREECAST + fix_aspd ➡️ **COMBAT-28**; dual-wield/shield
+      base term ➡️ **COMBAT-29**.)*
+- [x] **MaxHP/SP fold.** ✅ Fixed the fold ORDER to rAthena `status_calc_maxhp_pc`:
+      `(base + flat) · (100+rate)/100` (flat-before-rate; the prior COMBAT-01 order was
+      inverted). *(There is no "STA trait HP" — rAthena's MaxHP has no STA term. The real
+      missing multiplier is transcendent ×1.25 / taekwon ×3 ➡️ **COMBAT-30**.)*
+- [x] **No DB migration.** Confirmed `job_aspd_db` (raw per-weapon ASPD base) +
+      `IJobAspdCacheService` already expose what the formula needs.
+- [x] **Stat-window broadcast** — unchanged; the recalc push path already re-sends motion.
 
 ## Done criteria
 
-- Recalculating stats (e.g. on equip change) while AGI-Up is active does NOT drop the AGI-Up
-  bonus — `s.Agi` after recalc equals base + job + equip + SC, matching pre-recalc.
-- A job-level-50 character shows the correct `job_bonus` stat additions for its class
-  (compare to rAthena `job_db` for one class).
-- ASPD: a high-AGI character has measurably lower amotion than a low-AGI one, following the
-  `sqrt(dex²/5 + agi²/2)` curve; `bonus bAspdRate,10;` lowers it further; dual-wield raises
-  base amotion per the `/4` second-weapon term.
-- MaxHP reflects `bMaxHPrate` + flat + (4th job) STA trait HP.
+- ➡️ **Moved to COMBAT-10:** Recalc while AGI-Up active does NOT drop the bonus.
+- ➡️ **Moved to COMBAT-10:** A job-level-50 character shows correct `job_bonus` stat additions.
+- ✅ ASPD: a high-AGI character has measurably lower amotion than a low-AGI one, following the
+  `sqrt(dex²/5 + agi²/2)` curve; `bonus bAspdRate,10;` lowers it further. *(Dual-wield `/4`
+  second-weapon term ➡️ **COMBAT-29**.)*
+- ✅ MaxHP reflects `bMaxHPrate` + flat in the correct (flat-then-rate) order. *(Transcendent
+  ×1.25 / taekwon ×3 multiplier ➡️ **COMBAT-30**; rAthena MaxHP has no STA trait term.)*
 
 ## Test plan
 
@@ -133,3 +146,21 @@ Canonical: `status.cpp` (not split files).
   the captured Novice fallback intact.
 - `Adelay` renewal default is `2*amotion - dmotion` (commonly `2*amotion` with dmotion folded
   elsewhere); the current `*540/590` ratio is wrong — replace it, don't scale it.
+
+## History
+
+- 2026-06-01 · Shipped axes 3+4. **Axis 3 (ASPD):** replaced the `*540/590` heuristic with
+  the renewal `status_base_amotion_pc` formula (`StatusCalcService.RenewalPcAmotion` /
+  `RenewalPcDmotion`): AGI/DEX `sqrt` curve (divisor 7 ranged / 5 melee), `min(aspd_base,200)`,
+  RE %-modifier from `bAspdRate`, `2000−aspd·10` conversion, `bAspd` flat add, cap `[95,4000]`,
+  `adelay=2·amotion`, `dmotion=cap(800−4·agi,400,800)`. Threaded `JobId`/`WeaponType` into the
+  3 `CalcPc` call sites (`EquipService`, `StatusOpsService`, `NotifyActorInitHandler` — which
+  now also sets `player.ClassId`). Note: `job_aspd_db.base_delay_ms` actually stores the raw
+  per-weapon ASPD base (40-65), so the old `s.Amotion = base` set amotion≈40ms when the cache
+  was wired — this fixes that. **Axis 4 (MaxHP):** fixed the fold order to flat-before-rate
+  (`(base+flat)·(100+rate)/100`) per `status_calc_maxhp_pc`. **Discovered & corrected** that
+  axes 1 (SC re-fold) + 2 (job-bonus) require COMBAT-10's base/final split (read-back
+  conflation double-counts) → moved to COMBAT-10 (already scoped there). New `Combat09AspdTests`
+  (13) + updated 3 `Combat01EquipBonusTests` baselines. Suite 3656 green. Follow-ups filed:
+  COMBAT-28 (SC/skill ASPD terms), COMBAT-29 (dual-wield/shield base), COMBAT-30 (trans ×1.25
+  MaxHP). The original "STA trait HP" premise was a misread (rAthena MaxHP has no STA term).

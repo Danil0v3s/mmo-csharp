@@ -130,43 +130,46 @@ public sealed class StatusCalcService : IStatusCalcService
             maxHp = NoviceMaxHp(inputs.BaseLevel, inputs.Vit);
             maxSp = NoviceMaxSp(inputs.BaseLevel, inputs.Int);
         }
-        // COMBAT-01: equip MaxHP/MaxSP — additive percent (bMaxHPrate) then
-        // flat (bMaxHP). rAthena status_calc_maxhpsp_pc applies rate before
-        // the flat add. Floor at 1 so a pathological negative card can't
-        // produce a 0/negative pool.
+        // COMBAT-09: equip MaxHP/MaxSP — rAthena status_calc_maxhp_pc
+        // (status.cpp:3463) adds the FLAT bonus (STATUS_BONUS_FIX) FIRST, then
+        // applies the percent (STATUS_BONUS_RATE) to the flat-included total —
+        // i.e. (base + flat) * (100 + rate) / 100, NOT rate-then-flat. (The
+        // earlier COMBAT-01 ordering was inverted; with no gear both orders
+        // coincide so the replay baseline is unchanged.) Floor at 1 so a
+        // pathological negative card can't produce a 0/negative pool.
         if (eq != null)
         {
-            maxHp = Math.Max(1, maxHp * (100 + eq.MaxHpRate) / 100 + eq.FlatMaxHp);
-            maxSp = Math.Max(1, maxSp * (100 + eq.MaxSpRate) / 100 + eq.FlatMaxSp);
+            maxHp = Math.Max(1, (maxHp + eq.FlatMaxHp) * (100 + eq.MaxHpRate) / 100);
+            maxSp = Math.Max(1, (maxSp + eq.FlatMaxSp) * (100 + eq.MaxSpRate) / 100);
         }
         s.MaxHp = maxHp;
         s.MaxSp = maxSp;
         if (s.Hp <= 0 || s.Hp > maxHp) s.Hp = maxHp;
         if (s.Sp <= 0 || s.Sp > maxSp) s.Sp = maxSp;
 
-        // Speed / amotion / adelay — status.cpp:5990 status_calc_pc_ pulls
-        // amotion from the job_aspd table for the (job, weapon-type) pair.
-        // DBR-1c: when IJobAspdCacheService is wired (production DI), use
-        // the catalog row; the captured 590ms Novice / unarmed value
-        // remains the fallback for tests + missing rows.
+        // Speed / amotion / adelay — COMBAT-09: renewal status_base_amotion_pc
+        // (status.cpp:2310) + the PC conversion in status_calc_bl_main
+        // (status.cpp:6147-6175). The old `*540/590` heuristic is replaced by
+        // the real AGI/DEX sqrt curve. NOTE: job_aspd_db stores the RAW renewal
+        // ASPD base (e.g. Novice/Fist = 40), NOT a millisecond delay — feeding
+        // it straight into s.Amotion (the prior code) produced ~40ms amotion
+        // when the cache was wired. We now run it through the formula.
         s.Speed = 150;
-        var baseAmotion = _jobAspd?.GetBaseAspdByJobId(inputs.JobId, inputs.WeaponType) ?? 590;
-        // COMBAT-01: equip ASPD — interim fold (the full AGI/DEX
-        // status_calc_aspd path is COMBAT-09). bAspdRate is a percent
-        // speed-up; bAspd a flat amotion reduction (×10 ms). Lower amotion
-        // = faster. Adelay below scales off the adjusted value so the
-        // attack-delay ratio is preserved.
-        if (eq != null && (eq.FlatAspdRate != 0 || eq.FlatAspd != 0))
-            baseAmotion = baseAmotion * (100 - eq.FlatAspdRate) / 100 - eq.FlatAspd * 10;
-        s.Amotion = (ushort)Math.Clamp(baseAmotion, 1, ushort.MaxValue);
+        // job->aspd_base[weapon]; 40 (Novice/Fist) is the no-cache test default,
+        // and a cache MISS returns 2000 (the rAthena yml default) which the
+        // min(aspd,200) clamp turns into the slow "no row" fallback — faithful.
+        var aspdBase = _jobAspd?.GetBaseAspdByJobId(inputs.JobId, inputs.WeaponType) ?? DefaultAspdBase;
+        // aspd_rate2 ← bAspd**Rate** (RE %-modifier, status.cpp:6165);
+        // aspd_add  ← bAspd (flat: pc.cpp SP_ASPD does aspd_add -= 10*val).
+        var amotion = RenewalPcAmotion(
+            aspdBase, inputs.Dex, inputs.Agi, inputs.WeaponType,
+            aspdRate2: eq?.FlatAspdRate ?? 0, aspdAddVal: eq?.FlatAspd ?? 0);
+        s.Amotion = (ushort)amotion;
         s.ClientAmotion = s.Amotion;
-        // rAthena status.cpp adelay = amotion * 2 - dmotion (renewal default
-        // 2 * amotion - 480 for melee). The captured Novice value 540 with
-        // amotion 590 = ~0.91× factor; close enough for the early game until
-        // the full status_calc_pc aspd path lands. Keeping the 2×-ish form
-        // preserves the ratio when amotion comes from a job_aspd row.
-        s.Adelay = (ushort)Math.Clamp(baseAmotion * 540 / 590, 1, ushort.MaxValue);
-        s.Dmotion = 480;
+        // adelay = AMOTION_DIVIDER_PC * amotion (status.cpp:6175).
+        s.Adelay = (ushort)Math.Clamp(amotion * 2, 1, ushort.MaxValue);
+        // dmotion = cap(800 - 4*agi, 400, 800) (status.cpp:6593).
+        s.Dmotion = (ushort)RenewalPcDmotion(inputs.Agi);
 
         s.Race = BattleRace.PlayerHuman;
         s.Size = BattleSize.Medium;
@@ -346,6 +349,56 @@ public sealed class StatusCalcService : IStatusCalcService
             : s.Str + level;
         return Math.Max(0, str);
     }
+
+    /// <summary>Novice/Fist BaseASPD (db/re/job_aspd.yml) — the no-cache fallback.</summary>
+    private const int DefaultAspdBase = 40;
+
+    /// <summary>
+    /// COMBAT-09 — renewal PC base amotion. Mirrors
+    /// <c>status_base_amotion_pc</c> (status.cpp:2310, <c>RENEWAL_ASPD</c>) plus
+    /// the BL_PC conversion in <c>status_calc_bl_main</c> (status.cpp:6147-6175).
+    ///
+    /// <para>The job-ASPD base is the small raw per-weapon value (e.g. 40), NOT
+    /// a millisecond delay. The AGI/DEX curve is
+    /// <c>sqrt(dex²/divisor + agi²/2)·0.25 + 196</c> with <paramref name="weaponType"/>
+    /// selecting divisor 7 (ranged) or 5 (melee). The resulting "ASPD value" is
+    /// converted to amotion via <c>2000 − aspd·10</c>, then the flat <c>aspd_add</c>
+    /// (item <c>bAspd</c>) is subtracted and the result capped to
+    /// <c>[max_aspd/2 (=95), MIN_ASPD/2 (=4000)]</c>.</para>
+    ///
+    /// <para>The SC fixed/rate ASPD contributions (<c>status_calc_aspd</c>),
+    /// skill-based <c>val</c> terms (SA_ADVANCEDBOOK/SG_DEVIL/GS_SINGLEACTION/
+    /// riding), FREECAST, and <c>status_calc_fix_aspd</c> are COMBAT-28; the
+    /// dual-wield/shield base terms are COMBAT-29 — both zeroed here.</para>
+    /// </summary>
+    internal static int RenewalPcAmotion(int aspdBase, int dex, int agi, int weaponType, int aspdRate2, int aspdAddVal)
+    {
+        double divisor = IsRangedWeaponType(weaponType) ? 7.0 : 5.0;
+        double temp = dex * (double)dex / divisor + agi * (double)agi * 0.5;
+        temp = Math.Sqrt(temp) * 0.25 + 196.0;
+        // (status_calc_aspd(fixed)+val)*agi/200 → 0 (COMBAT-28). aspd_rate (1000)
+        // is a no-op for renewal PCs.
+        int aspd = (int)temp - Math.Min(aspdBase, 200);
+        // RE ASPD % modifier (status.cpp:6165): aspd_rate2 from item bAspdRate.
+        aspd += Math.Max(195 - aspd, 2) * aspdRate2 / 100;
+        // Convert ASPD value → amotion (AMOTION_ZERO_ASPD − aspd·AMOTION_INTERVAL).
+        int amotion = 2000 - aspd * 10;
+        // aspd_add (status.cpp:6170): pc.cpp SP_ASPD stores aspd_add -= 10*val.
+        amotion -= 10 * aspdAddVal;
+        // cap_value(amotion, pc_maxaspd/2 (190/2=95), MIN_ASPD/2 (8000/2=4000)).
+        return Math.Clamp(amotion, 95, 4000);
+    }
+
+    /// <summary>COMBAT-09 — renewal PC dmotion = cap(800 − 4·agi, 400, 800) (status.cpp:6593).</summary>
+    internal static int RenewalPcDmotion(int agi) => Math.Clamp(800 - 4 * agi, 400, 800);
+
+    /// <summary>
+    /// rAthena weapon_type set that uses the dex²/7 ASPD divisor
+    /// (status.cpp:2327-2340): Bow(11), Musical(13), Whip(14), Revolver(17),
+    /// Rifle(18), Gatling(19), Shotgun(20), Grenade(21). All others use /5.
+    /// </summary>
+    private static bool IsRangedWeaponType(int weaponType)
+        => weaponType is 11 or 13 or 14 or 17 or 18 or 19 or 20 or 21;
 
     private static int NoviceMaxHp(int level, int vit)
         => Math.Max(1, 35 + level * 5) * (100 + vit) / 100;

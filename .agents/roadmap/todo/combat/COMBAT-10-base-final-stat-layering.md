@@ -3,6 +3,15 @@
 > **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** COMBAT-01 param-stat criteria, COMBAT-09 (SC recalc ordering)
 > **Filed by:** COMBAT-01 on 2026-06-01 (see "Why this exists").
+>
+> **Absorbed from COMBAT-09 (2026-06-01):** COMBAT-09 shipped the ASPD formula + MaxHP
+> fold, but its axes 1 (SC stat re-fold ordering) and 2 (job-bonus stats) cannot be done
+> without this ticket's base/final param split — the recalc-input builders read back the
+> *conflated* `player.Stats.*`, so any additive job-bonus or SC fold double-counts on the
+> next recalc. Both are already in this ticket's Scope (the job-bonus loader
+> `IJobStatsCacheService.GetBonusSum` already exists — it just needs to be applied to the
+> *base* total, not the conflated read-back). **This ticket now owns COMBAT-09's Done
+> criteria 1 (AGI-Up survives recalc) and 2 (job-level-50 job-bonus stats).**
 
 ## Why this exists
 

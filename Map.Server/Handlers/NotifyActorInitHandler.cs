@@ -99,6 +99,11 @@ public class NotifyActorInitHandler(
                 comboDispatcher.ApplyActiveCombos(equippedForCombo, player.EquipBonuses, player);
             }
 
+            // COMBAT-09: persist the job class on the entity so the renewal
+            // ASPD formula (and any later job-keyed lookup) resolves the right
+            // job_aspd_db / job catalogs.
+            player.ClassId = (int)ch.ClassId;
+
             statusCalc.CalcPc(player, new PcBaseInputs(
                 BaseLevel: (int)ch.BaseLevel,
                 JobLevel: (int)ch.JobLevel,
@@ -120,6 +125,12 @@ public class NotifyActorInitHandler(
                 EquipMdef: equip.EquipMdef,
                 AttackRange: equip.AttackRange,
                 WeaponElement: equip.WeaponElement,
+                // COMBAT-09: job + weapon type drive the renewal ASPD formula's
+                // job_aspd_db base lookup. ClassId is set on the player just
+                // above; WeaponType is computed from worn gear by the equip
+                // helper (0 = bare-hand until first equip recalc).
+                JobId: (int)ch.ClassId,
+                WeaponType: player.WeaponType,
                 WeaponLevel: equip.WeaponLevel));
             // Persisted current HP/SP from the snapshot wins over the calc-
             // derived max so partial-HP relog doesn't reset to full.

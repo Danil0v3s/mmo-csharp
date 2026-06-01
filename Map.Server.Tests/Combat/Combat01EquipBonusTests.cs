@@ -98,31 +98,38 @@ public class Combat01EquipBonusTests
     }
 
     [Fact]
-    public void CalcPc_appliesMaxHpRateThenFlat()
+    public void CalcPc_appliesMaxHpFlatThenRate()
     {
+        // COMBAT-09: rAthena status_calc_maxhp_pc adds the FLAT bonus first,
+        // then applies the percent to the flat-included total — (base+flat)*rate.
         var calc = new StatusCalcService();
         var pc = NewPc();
-        pc.EquipBonuses.MaxHpRate = 10;   // +10 %
-        pc.EquipBonuses.FlatMaxHp = 500;  // +500 flat, applied AFTER rate
+        pc.EquipBonuses.MaxHpRate = 10;   // +10 %, applied AFTER flat
+        pc.EquipBonuses.FlatMaxHp = 500;  // +500 flat
 
         calc.CalcPc(pc, NoviceLv1());
-        // base 40 → *110/100 = 44 → +500 = 544 (rate before flat).
-        Assert.Equal(40 * 110 / 100 + 500, pc.Stats.MaxHp);
-        Assert.Equal(544, pc.Stats.MaxHp);
+        // base 40 → +500 = 540 → *110/100 = 594 (flat before rate).
+        Assert.Equal((40 + 500) * 110 / 100, pc.Stats.MaxHp);
+        Assert.Equal(594, pc.Stats.MaxHp);
     }
 
     [Fact]
     public void CalcPc_appliesAspdRateAndFlat_lowersAmotion()
     {
+        // COMBAT-09 renewal ASPD: NoviceLv1 (agi1/dex1, job/weapon Fist→base 40)
+        // baseline amotion is 440. bAspdRate (aspd_rate2) and bAspd (aspd_add)
+        // both speed it up.
         var calc = new StatusCalcService();
         var pc = NewPc();
-        pc.EquipBonuses.FlatAspdRate = 10; // -10 %
-        pc.EquipBonuses.FlatAspd = 2;      // -20 ms (×10)
+        pc.EquipBonuses.FlatAspdRate = 10; // aspd_rate2 = +10 (RE %-modifier)
+        pc.EquipBonuses.FlatAspd = 2;      // aspd_add: amotion -= 10*2
 
         calc.CalcPc(pc, NoviceLv1());
-        // base 590 → *90/100 = 531 → -20 = 511. Faster than the 590 base.
-        Assert.Equal(590 * 90 / 100 - 20, pc.Stats.Amotion);
-        Assert.True(pc.Stats.Amotion < 590);
+        // aspd = (int)(sqrt(1/5+1/2)*0.25+196) - min(40,200) = 196 - 40 = 156.
+        // RE%-mod: aspd += max(195-156,2)*10/100 = 39*10/100 = 3 → 159.
+        // amotion = 2000 - 159*10 = 410, then -10*2 = 390.
+        Assert.Equal(390, pc.Stats.Amotion);
+        Assert.True(pc.Stats.Amotion < 440);
     }
 
     [Fact]
@@ -173,6 +180,8 @@ public class Combat01EquipBonusTests
         Assert.Equal(13, pc.Stats.Cri);
         Assert.Equal(1, pc.Stats.Batk);
         Assert.Equal(40, pc.Stats.MaxHp);
-        Assert.Equal(590, pc.Stats.Amotion);
+        // COMBAT-09: renewal amotion for NoviceLv1 (agi1/dex1, Fist base 40) =
+        // 2000 - (196-40)*10 = 440 (replaces the old *540/590 heuristic's 590).
+        Assert.Equal(440, pc.Stats.Amotion);
     }
 }

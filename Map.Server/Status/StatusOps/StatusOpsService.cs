@@ -159,7 +159,9 @@ public sealed class StatusOpsService : IStatusOpsService
             WeaponAtkMin: pc.Stats.WatkMin, WeaponAtkMax: pc.Stats.WatkMax,
             EquipDef: pc.Stats.Def, EquipMdef: pc.Stats.Mdef,
             AttackRange: pc.Stats.AttackRange,
-            WeaponElement: (BattleElement)pc.Stats.WeaponElement);
+            WeaponElement: (BattleElement)pc.Stats.WeaponElement,
+            // COMBAT-09: job + weapon type for the renewal ASPD formula.
+            JobId: pc.ClassId, WeaponType: pc.WeaponType);
         _calc.CalcPc(pc, inputs);
     }
 

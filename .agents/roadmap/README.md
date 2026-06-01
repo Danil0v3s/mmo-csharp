@@ -89,6 +89,9 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-25 | Ground-unit damage intercept (Safety Wall/Pneuma/Land Protector) — split from COMBAT-08 |
 | COMBAT-26 | CastEndMap warp skills (Teleport/Warp Portal) — split from COMBAT-08 |
 | COMBAT-27 | SC-based no-cast-cancel states (Basilica/Free Cast) in interrupt gate — split from COMBAT-08 |
+| COMBAT-28 | ASPD SC + skill contributions (status_calc_aspd / fix_aspd / FREECAST) — split from COMBAT-09 |
+| COMBAT-29 | Dual-wield + shield ASPD base terms — split from COMBAT-09 |
+| COMBAT-30 | Transcendent ×1.25 / taekwon ×3 MaxHP/SP multiplier — split from COMBAT-09 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

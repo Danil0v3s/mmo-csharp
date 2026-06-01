@@ -254,6 +254,11 @@ public sealed class EquipService : IEquipService
             EquipMdef: summary.EquipMdef,
             AttackRange: summary.AttackRange,
             WeaponElement: summary.WeaponElement,
+            // COMBAT-09: thread job + weapon type so the renewal ASPD formula
+            // reads the right job_aspd_db base (the equip flow keeps
+            // player.WeaponType current via CalcWeaponType).
+            JobId: player.ClassId,
+            WeaponType: player.WeaponType,
             WeaponLevel: summary.WeaponLevel));
     }
 
