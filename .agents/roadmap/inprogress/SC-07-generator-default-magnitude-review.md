@@ -1,6 +1,6 @@
 # SC-07 — Audit the generator-default SCs for non-linear / bespoke magnitudes
 
-> **Epic:** Status parity hardening · **Status:** ❌ Not started · **Size:** XL · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** XL · **Player-visible:** yes
 > **Depends on:** SC-02 (CalcStatField extensions land first) · **Blocks:** none
 
 ## Problem
