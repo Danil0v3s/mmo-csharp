@@ -30,9 +30,15 @@ public interface IBattleCalculator
     ///   - vs element table (defense element + level)
     ///   - vs MDEF1 (flat) + MDEF2 (% bypass)
     ///   - card_fix with BattleAttackType.Magic
-    /// <paramref name="ratePerLevel"/> = skill_db DamageRate column.
+    /// <paramref name="ratePerLevel"/> = skill ratio: the plugin's
+    /// <c>CalculateSkillRatio(100,…)</c> when a magic plugin overrides it
+    /// (COMBAT-12), else the skill_db DamageRate column.
+    /// <paramref name="constantAddition"/> = rAthena ATK_ADD
+    /// (<c>battle_calc_skill_constant_addition</c>, battle.cpp:6606), added
+    /// after the ratio and before the element/MDEF fix (0 for almost all
+    /// renewal magic).
     /// </summary>
-    BattleDamage CalcMagicAttack(Entity source, Entity target, ushort skillId, ushort skillLevel, int ratePerLevel);
+    BattleDamage CalcMagicAttack(Entity source, Entity target, ushort skillId, ushort skillLevel, int ratePerLevel, long constantAddition = 0);
 
     /// <summary>
     /// Wave 67 / Track C — rAthena <c>battle_calc_misc_attack</c>

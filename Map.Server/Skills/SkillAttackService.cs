@@ -175,9 +175,44 @@ public sealed class SkillAttackService : ISkillAttackService
     {
         var def = _db.Get(skillId);
         if (def == null) return 0;
-        var ratePerLevel = def.DamageRate.Length > lvl ? def.DamageRate[lvl] : 100;
-        return _battle.CalcMagicAttack(source, target, skillId, lvl, ratePerLevel).Damage;
+
+        // COMBAT-12: rAthena battle_calc_attack_skill_ratio is keyed on skill_id
+        // and shared by BF_WEAPON *and* BF_MAGIC. When a magic plugin overrides
+        // CalculateSkillRatio (e.g. MG_SOULSTRIKE's +5*lv vs undead,
+        // AL_HOLYLIGHT's +25), that ratio is the authority and REPLACES the
+        // skill_db DamageRate column (applied exactly once — no double-count),
+        // plus its constant addition (ATK_ADD). Plugins that do NOT override the
+        // ratio keep the DamageRate fallback so the ~40 magic plugins relying on
+        // it are unaffected.
+        int rate;
+        long constant = 0;
+        var plugin = _behaviors?.Get(skillId);
+        if (plugin != null && OverridesMagicRatio(plugin))
+        {
+            rate = plugin.CalculateSkillRatio(100, source, target, lvl);
+            constant = plugin.CalculateSkillConstantAddition(source, target, lvl);
+        }
+        else
+        {
+            rate = def.DamageRate.Length > lvl ? def.DamageRate[lvl] : 100;
+        }
+        return _battle.CalcMagicAttack(source, target, skillId, lvl, rate, constant).Damage;
     }
+
+    // COMBAT-12: cache whether a plugin overrides the base (ctx-less)
+    // CalculateSkillRatio so CalcMagicDamage only treats a plugin as the ratio
+    // authority when it actually defines one — otherwise the DamageRate fallback
+    // stands. Reflection runs once per plugin Type.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, bool> _magicRatioOverride = new();
+
+    private static bool OverridesMagicRatio(Behaviors.SkillImpl plugin)
+        => _magicRatioOverride.GetOrAdd(plugin.GetType(), static t =>
+        {
+            var m = t.GetMethod(
+                nameof(Behaviors.SkillImpl.CalculateSkillRatio),
+                new[] { typeof(int), typeof(Entity), typeof(Entity), typeof(ushort) });
+            return m != null && m.DeclaringType != typeof(Behaviors.SkillImpl);
+        });
 
     private long CalcMiscDamage(Entity source, Entity target, ushort skillId, ushort lvl)
     {

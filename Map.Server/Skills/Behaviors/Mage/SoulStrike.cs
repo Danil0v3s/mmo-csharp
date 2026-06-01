@@ -1,3 +1,4 @@
+using Map.Server.Combat;
 using Map.Server.Entities;
 using Map.Server.Status;
 
@@ -28,12 +29,28 @@ public sealed class SoulStrike : SkillImpl
         // The fork resolves multi-hit via the skill_db Hit:Multi_Hit
         // field — skill_attack reads HitCount and emits N damage frames.
         // The C# port pre-dates that integration so we manually emit
-        // (lv+1)/2 magic bolts; net damage is the same.
+        // (lv+1)/2 magic bolts.
         var hitCount = (skillLevel + 1) / 2;
-        var perHit = MagicBoltHelper.PerHitDamage(src);
         for (var hit = 0; hit < hitCount; hit++)
         {
-            ctx.Damage.ApplyDamage(target, perHit, src);
+            // COMBAT-12: route each bolt through skill_attack(BF_MAGIC) so the
+            // full magic pipeline applies — including THIS plugin's
+            // CalculateSkillRatio (the +5*lv vs-undead bonus, previously a dead
+            // hook because the old path used a raw MATK midpoint) plus element /
+            // MDEF / cardfix. SkillAttackService.CalcMagicDamage reads our
+            // overridden ratio for MG_SOULSTRIKE.
+            if (ctx.SkillAttack != null)
+            {
+                ctx.SkillAttack.SkillAttack(BattleAttackType.Magic, src, src, target, SkillId, skillLevel);
+            }
+            else
+            {
+                // Fallback for rigs without the attack service: apply the ratio
+                // manually so the undead bonus still lands.
+                var matk = MagicBoltHelper.PerHitDamage(src);
+                var ratio = CalculateSkillRatio(100, src, target, skillLevel);
+                ctx.Damage.ApplyDamage(target, System.Math.Max(1, matk * ratio / 100), src);
+            }
         }
     }
 

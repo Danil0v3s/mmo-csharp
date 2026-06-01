@@ -22,7 +22,7 @@ public class Combat03ReLvlDmodTests
     private sealed class FixedSwingBattle : IBattleCalculator
     {
         public BattleDamage CalcWeaponAttack(Entity s, Entity t) => new() { Damage = Swing };
-        public BattleDamage CalcMagicAttack(Entity s, Entity t, ushort i, ushort l, int r) => new() { Damage = Swing };
+        public BattleDamage CalcMagicAttack(Entity s, Entity t, ushort i, ushort l, int r, long c = 0) => new() { Damage = Swing };
         public BattleDamage CalcMiscAttack(Entity s, Entity t, ushort i, ushort l, int r) => new() { Damage = Swing };
     }
 

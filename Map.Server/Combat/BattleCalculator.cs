@@ -314,7 +314,7 @@ public sealed class BattleCalculator : IBattleCalculator
     /// (MatkMin+MatkMax)/2 baseline → SC_MAGICPOWER / SC_MOONLITSERENADE
     /// caster bumps → element table → MDEF/MDEF2 reduction → cardfix.
     /// </summary>
-    public BattleDamage CalcMagicAttack(Entity source, Entity target, ushort skillId, ushort skillLevel, int ratePerLevel)
+    public BattleDamage CalcMagicAttack(Entity source, Entity target, ushort skillId, ushort skillLevel, int ratePerLevel, long constantAddition = 0)
     {
         var result = new BattleDamage { Hits = 1, Lane = BattleAttackType.Magic };
         var s = source.Stats;
@@ -350,6 +350,13 @@ public sealed class BattleCalculator : IBattleCalculator
         // skill_db Inf2 flags loaded (not yet wired) — tracked in COMBAT-14.
         if (source.Level > 99)
             damage = damage * source.Level / 100;
+
+        // COMBAT-12: ATK_ADD — the plugin's CalculateSkillConstantAddition
+        // (rAthena battle_calc_skill_constant_addition, battle.cpp:6606), added
+        // after the ratio and before the element/MDEF fix. 0 for nearly all
+        // renewal magic (the pre-renewal GS_MAGICALBULLET case is the exception).
+        if (constantAddition > 0)
+            damage += constantAddition;
 
         // Element table — magic uses the caster's atk element OR the skill's
         // declared element. The full per-skill element lookup lands later;

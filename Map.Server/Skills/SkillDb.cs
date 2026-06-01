@@ -301,6 +301,22 @@ public sealed class SkillDb : ISkillDb
             DamageRate = new[] {0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000},
             Element = BattleElement.Water,
         });
+
+        // --- MG_SOULSTRIKE — Ghost-element multi-hit magic, (lv+1)/2 bolts.
+        // rAthena base skillratio is 100 (the SoulStrike plugin adds +5*lv vs
+        // undead on top via CalculateSkillRatio — COMBAT-12). DamageRate here is
+        // the no-plugin fallback only; the plugin ratio is the live authority.
+        Add(new SkillDefinition
+        {
+            Id = SkillIds.MG_SOULSTRIKE, Name = "Soul Strike", MaxLevel = 10,
+            Target = SkillTargetMode.TargetEnemy, DamageKind = SkillDamageKind.Magic,
+            Range = 9,
+            SpCost     = new[] {0, 18, 14, 24, 20, 30, 26, 36, 32, 42, 38},
+            CastTimeMs = new[] {0, 400, 800, 1200, 1600, 2000, 2400, 2800, 3200, 3600, 4000},
+            CooldownMs = new int[11],
+            DamageRate = new[] {0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100},
+            Element = BattleElement.Ghost,
+        });
     }
 
     private void Add(SkillDefinition def) => _byId[def.Id] = def;

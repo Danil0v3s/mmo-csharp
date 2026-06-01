@@ -25,7 +25,7 @@ public class Combat02RatioTests
     {
         public BattleDamage CalcWeaponAttack(Entity source, Entity target)
             => new() { Damage = Swing };
-        public BattleDamage CalcMagicAttack(Entity s, Entity t, ushort id, ushort lv, int rate) => new() { Damage = Swing };
+        public BattleDamage CalcMagicAttack(Entity s, Entity t, ushort id, ushort lv, int rate, long constant = 0) => new() { Damage = Swing };
         public BattleDamage CalcMiscAttack(Entity s, Entity t, ushort id, ushort lv, int rate) => new() { Damage = Swing };
     }
 
