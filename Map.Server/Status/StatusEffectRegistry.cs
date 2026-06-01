@@ -6322,9 +6322,15 @@ public sealed class StatusEffectRegistry
     {
         var handler = Get(type);
         var explicitFlags = handler?.Flags ?? ScfFlag.None;
-        return explicitFlags == ScfFlag.None
-            ? StatusFlagDefaults.For(type)
-            : explicitFlags;
+        if (explicitFlags == ScfFlag.None)
+            return StatusFlagDefaults.For(type);
+        // SC-08: SpreadEffect is a status.yml classification the
+        // StatusFlagDefaults table owns (which SCs Deadly Infect propagates).
+        // Most spread-flagged DoTs (Poison/Curse/Toxin/…) have an explicit
+        // Register whose Flags historically omitted SpreadEffect, so OR just
+        // that bit from the table onto the explicit flags — the rest keep the
+        // explicit-wins behavior. Spread() is the only consumer of the bit.
+        return explicitFlags | (StatusFlagDefaults.For(type) & ScfFlag.SpreadEffect);
     }
 
     /// <summary>

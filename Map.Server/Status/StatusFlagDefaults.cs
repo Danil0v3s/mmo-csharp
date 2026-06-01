@@ -35,19 +35,38 @@ public static class StatusFlagDefaults
         d[StatusType.Freeze] = ccGate;
         d[StatusType.Stun] = ccGate;
         d[StatusType.Sleep] = ccGate | ScfFlag.RemoveOnDamaged;
-        d[StatusType.Curse] = ccGate;
-        d[StatusType.Silence] = ccGate;
-        d[StatusType.Confusion] = ccGate;
-        d[StatusType.Blind] = ccGate;
+        // SC-08: Curse/Silence/Confusion/Blind are also SCF_SPREADEFFECT.
+        d[StatusType.Curse] = ccGate | ScfFlag.SpreadEffect;
+        d[StatusType.Silence] = ccGate | ScfFlag.SpreadEffect;
+        d[StatusType.Confusion] = ccGate | ScfFlag.SpreadEffect;
+        d[StatusType.Blind] = ccGate | ScfFlag.SpreadEffect;
         d[StatusType.Provoke] = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh;
 
         // ===== DoT debuffs =====
-        // rAthena: Burning + Bleeding + Influenza are SCF_SPREADEFFECT.
-        // Poison + DeadlyPoison don't spread but do flag Debuff.
-        d[StatusType.Poison] = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh;
+        // SC-08 — rAthena db/re/status.yml flags exactly 18 SCs SCF_SPREADEFFECT
+        // (propagated by Shadow Chaser Deadly Infect via status_change_spread,
+        // NOT on their own tick). Full set: Poison, Curse, Silence, Confusion,
+        // Blind, Bleeding, Hallucination, Burning, Freezing, Toxin, Paralyse,
+        // Venombleed, Magicmushroom, Deathhurt, Pyrexia, Oblivioncurse,
+        // Leechesend, Bodypaint. (Influenza/MistyFrost are NOT flagged.)
+        // DeadlyPoison does NOT spread.
+        var spreadDot = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh | ScfFlag.SpreadEffect;
+        d[StatusType.Poison] = spreadDot;
         d[StatusType.DeadlyPoison] = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh;
-        d[StatusType.Bleeding] = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh | ScfFlag.SpreadEffect;
-        d[StatusType.Burning] = ScfFlag.Debuff | ScfFlag.RemoveOnRefresh | ScfFlag.SpreadEffect;
+        d[StatusType.Bleeding] = spreadDot;
+        d[StatusType.Burning] = spreadDot;
+        // (Curse/Silence/Confusion/Blind get SpreadEffect in the CC-debuff block above.)
+        d[StatusType.Hallucination] = spreadDot;
+        d[StatusType.Freezing] = spreadDot;
+        d[StatusType.Toxin] = spreadDot;
+        d[StatusType.Paralyse] = spreadDot;
+        d[StatusType.Venombleed] = spreadDot;
+        d[StatusType.Magicmushroom] = spreadDot;
+        d[StatusType.Deathhurt] = spreadDot;
+        d[StatusType.Pyrexia] = spreadDot;
+        d[StatusType.Oblivioncurse] = spreadDot;
+        d[StatusType.Leechesend] = spreadDot;
+        d[StatusType.Bodypaint] = spreadDot;
 
         // ===== Stat buffs (cleared by Dispell + drop on map change in some cases) =====
         // rAthena: most positive PC buffs flag Buff. Map-change clears

@@ -519,6 +519,25 @@ public sealed class DamageService : IDamageService
                 _sc.End(target, StatusType.Sacrifice);
             }
         }
+
+        // SC-08 — SC__DEADLYINFECT (Shadow Chaser Deadly Infect). rAthena
+        // battle.cpp:1903/1940: on a melee hit dealing damage, roll
+        // 30 + 10*val1 % to propagate the SCF_SPREADEFFECT DoTs in BOTH
+        // directions — the bearer's spread-flagged SCs jump to the other party.
+        // If the ATTACKER has it, spread attacker→target; if the TARGET has it,
+        // spread target→attacker. (Melee-only `BF_SHORT` gating isn't threaded
+        // into this post-resolve hook yet — same limitation as Defender/
+        // Deathbound; tracked in COMBAT-25's range-threading.)
+        if (source != target)
+        {
+            var srcInfect = _sc.Get(source, StatusType.Deadlyinfect);
+            if (srcInfect != null && _rng.Next(100) < 30 + 10 * srcInfect.Val1)
+                _sc.Spread(source, target);
+
+            var tgtInfect = _sc.Get(target, StatusType.Deadlyinfect);
+            if (tgtInfect != null && _rng.Next(100) < 30 + 10 * tgtInfect.Val1)
+                _sc.Spread(target, source);
+        }
     }
 
     private static (int Hp, int MaxHp) GetHp(Entity entity) => entity switch

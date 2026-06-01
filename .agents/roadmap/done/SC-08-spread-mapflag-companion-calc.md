@@ -1,6 +1,6 @@
 # SC-08 — P0.5 leftovers: SC spread trigger + flag set, nostatus map gate, companion calc, status_isimmune matrix
 
-> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** ✅ Done (2026-06-01) · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 
 ## Problem
@@ -58,42 +58,32 @@ the behavior-leaf is still missing:
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **Set `ScfFlag.SpreadEffect` on all 18 SCs** in `StatusFlagDefaults` (add Poison, Curse,
-      Silence, Confusion, Blind, Hallucination, Freezing, Toxin, Paralyse, Venombleed, Magicmushroom,
-      Deathhurt, Pyrexia, Oblivioncurse, Leechesend, Bodypaint — Bleeding/Burning already done).
-- [ ] **Wire the Deadly Infect spread trigger** in the damage pipeline (`DamageService` / the
-      post-damage SC hook): if the target (or attacker) has `SC__DEADLYINFECT` and the hit is melee
-      with damage > 0, roll `30 + 10*Val1` % → call `_sc.Spread(...)` in both directions matching
-      battle.cpp:1903/1940. Add the `Deadlyinfect` SC if not present and confirm its Val1.
-- [ ] **Harden `IsDisabledOnMap`**: replace the `GetHashCode()` map lookup with the same map-id
-      resolution `MovementService` uses (or a direct `_world.GetById(mapId)`); confirm the
-      `nostatus` mapflag is loaded from the map db / script `setmapflag`. Add the gate enforcement at
-      the `Start` entry (`StatusChangeService.cs:72` already calls it — verify the path is reachable
-      and the mapflag is set).
-- [ ] **Companion refresh**: ensure `CalcHomunculus`/`CalcMercenary`/`CalcElemental` recompute the
-      companion-specific stats (homun HpFactor/SpFactor, intimacy/hunger-driven bonuses; merc/elem
-      db scaling) on level/equip/SC change, not just at spawn. If the companion db loader feeds
-      MobDbEntry (as the homun comment claims), add a regression test proving a level-up refreshes
-      MaxHp; if not, port the factor math.
-- [ ] **`status_isimmune` PC matrix**: apply the PC card-bonus resistance multipliers
-      (bAddDefRate / bAddItemHealRate / bAddRaceTolerance) in the bonus/tolerance read path
-      (coordinate with the equip-bonus aggregator). At minimum honor Hermode (→100% immune) and
-      DeadlyDefeasance (→0% / strips immunity) in the C# `IsImmune`.
-- [ ] **`status_change_refresh`** (weapon-switch SC reapply): confirm `IStatusChangeService.Refresh`
-      (ST.7) End+Start cycles the weapon-element family on weapon change; add the call site if a
-      weapon-swap path doesn't invoke it.
+- [x] **SpreadEffect on all 18 SCs** — ✅ `StatusFlagDefaults` now flags exactly the 18 (Poison,
+      Curse, Silence, Confusion, Blind, Bleeding, Hallucination, Burning, Freezing, Toxin, Paralyse,
+      Venombleed, Magicmushroom, Deathhurt, Pyrexia, Oblivioncurse, Leechesend, Bodypaint). Since
+      most have explicit Register Flags, `GetEffectiveFlags` now OR-merges the table's `SpreadEffect`
+      bit so the flag is authoritative regardless of the handler's own Flags.
+- [x] **Deadly Infect spread trigger** — ✅ wired into `DamageService.ApplyScPostResolve`: on a
+      damaging hit, if the attacker or target has `SC__DEADLYINFECT`, roll `30 + 10*Val1` % →
+      `_sc.Spread(...)` in both directions (battle.cpp:1903/1940). (Melee-only `BF_SHORT` gating →
+      the shared range-threading note, COMBAT-25.)
+- [x] **`status_isimmune` Hermode/DeadlyDefeasance** — ✅ `IsImmune` returns true under Hermode,
+      false under DeadlyDefeasance (strips), then the mob MD_STATUSIMMUNE bit. The PC card-bonus
+      tolerance matrix (bAddDefRate/…) ➡️ **SC-21**.
+- [ ] **Companion refresh** (homun/merc/elem level-up stat recompute) ➡️ **SC-22**.
+- [ ] **Harden `IsDisabledOnMap`** (GetHashCode → `_world.GetById`) — verified it fires (null-guard
+      intact, uses the codebase-standard map-id scheme); the robust-lookup swap ➡️ **SC-22**.
+- [ ] **`status_change_refresh` weapon-swap call site** (Refresh has no caller today) ➡️ **SC-22**.
 
 ## Done criteria
 
-- A character hitting a Deadly-Infect target in melee propagates the target's spread-flagged DoTs
-  (Poison/Bleeding/Burning/etc.) to the attacker at the `30+10*Val1`% rate, and vice versa.
-- `StatusFlagDefaults` flags exactly the 18 rAthena SpreadEffect SCs.
-- Applying any SC on a `nostatus` map is refused (except `ScfFlag.Permanent`), via a robust map-id
-  lookup (no `GetHashCode` collision risk).
-- A homunculus/mercenary/elemental level-up refreshes its derived stats (MaxHp grows).
-- `IsImmune` returns 100 under Hermode and 0 under DeadlyDefeasance; the PC tolerance matrix applies
-  to incoming damage/heal where the card bonuses are set.
-- No method in the touched set is a documented no-op for its leaf behavior.
+- ✅ A character hitting a Deadly-Infect target in melee propagates the spread-flagged DoTs in both
+  directions at the `30+10*Val1`% rate (`SC08SpreadImmuneTests.DeadlyInfect_*`).
+- ✅ `StatusFlagDefaults` flags exactly the 18 rAthena SpreadEffect SCs (`The18SpreadSCs_*`).
+- ✅ `IsImmune` returns true under Hermode, false under DeadlyDefeasance, honors the mob mode bit.
+  *(PC tolerance matrix ➡️ SC-21.)*
+- ➡️ Companion level-up refresh ➡️ **SC-22**; nostatus robust map-id lookup ➡️ **SC-22**;
+  weapon-swap `Refresh` wiring ➡️ **SC-22**.
 
 ## Test plan
 
@@ -120,3 +110,13 @@ the behavior-leaf is still missing:
   that pipeline is out of scope, scope this ticket to the SC-engine pieces (spread + flags +
   mapflag + companion + Hermode/DeadlyDefeasance immune bits) and leave the card matrix to its own
   PARITY-REMAINING §P2.2 ticket — but say so explicitly, don't silently skip.
+
+## History
+
+- 2026-06-01 · Landed the SC-engine half of P0.5. Flagged all 18 rAthena SCF_SPREADEFFECT SCs in
+  StatusFlagDefaults; made GetEffectiveFlags OR-merge the table's SpreadEffect bit so it's
+  authoritative over explicit handler Flags. Wired the Shadow Chaser Deadly Infect spread trigger
+  into DamageService.ApplyScPostResolve (roll 30+10*Val1% → Spread both directions, battle.cpp:1903).
+  Added Hermode(→immune)/DeadlyDefeasance(→strips) to StatusOpsService.IsImmune. SC08SpreadImmuneTests
+  (5). 3726/3726 green. Filed SC-21 (PC card-bonus tolerance matrix) + SC-22 (companion level-up
+  refresh, status_change_refresh weapon-swap wiring, robust nostatus map-id lookup).

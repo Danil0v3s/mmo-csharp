@@ -115,6 +115,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | SC-18 | Convert linear-wrong-magnitude generator-default SCs (a+b·Val1) — split from SC-07 |
 | SC-19 | Bespoke/not-a-stat generator-default SCs (Jointbeat bitmask, tick drains, SC chains) — split from SC-07 |
 | SC-20 | Bulk-triage the remaining generator-default SCs — split from SC-07 |
+| SC-21 | status_isimmune PC card-bonus tolerance matrix — split from SC-08 |
+| SC-22 | Companion calc refresh + status_change_refresh wiring + robust nostatus map-id lookup — split from SC-08 |
 
 ### `packets/` — client→map packet bridge (unlocks features)
 | Ticket | Title |

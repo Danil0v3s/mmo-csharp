@@ -331,9 +331,14 @@ public sealed class StatusOpsService : IStatusOpsService
     /// <inheritdoc />
     public bool IsImmune(Entity bl)
     {
-        // rAthena: status_isimmune checks MD_STATUSIMMUNE on mob mode
-        // plus Emperium / Battlefield mob class. Our MobMode.StatusImmune
-        // covers the mode bit; per-class checks live in the calling skill.
+        // SC-08 — rAthena status_isimmune (status.cpp:9065): SC_HERMODE → 100%
+        // immune (checked first), SC_DEADLY_DEFEASANCE → 0 (strips the
+        // GTB-style immunity). Then the MD_STATUSIMMUNE mob-mode bit (Emperium /
+        // Battlefield per-class checks live in the calling skill). The PC
+        // card-bonus tolerance matrix (bAddDefRate / bAddRaceTolerance / …) is
+        // an equip-pipeline read, not the SC engine → SC-21.
+        if (_sc.Get(bl, StatusType.Hermode) != null) return true;
+        if (_sc.Get(bl, StatusType.DeadlyDefeasance) != null) return false;
         return bl is MobEntity m && (m.Stats.Mode & MobMode.StatusImmune) != 0;
     }
 
