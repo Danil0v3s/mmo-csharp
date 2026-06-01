@@ -1,6 +1,6 @@
 # COMBAT-07 — Renewal cast-time formula + item/card/skill cast bonuses
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-06 (per-skill cast-rate tables) · **Blocks:** none
 
 ## Problem
