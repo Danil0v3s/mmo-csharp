@@ -1,6 +1,6 @@
 # SKILL-03 — Splash allegiance: slave-mob ownership + PvP / no-friendly-fire mapflags
 
-> **Epic:** Skills · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Skills · **Status:** ✅ Done (2026-06-01) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** SKILL-08 (NPC family), SKILL-12
 
 ## Problem
@@ -46,24 +46,20 @@ hostile to their owner.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **`MapForeachInRangeService` ctor** — inject `IMapFlagService` and `IEntityRegistry` (already has entities) so `Classify` can read the map's PvP/GvG flags and resolve a slave's master entity.
-- [ ] **Slave-master read** — confirm/add a `MasterId` (`EntityId`) on `MobEntity` for summoned slaves. The summon sites (`IMobSpawnService.OnceSpawn` slave path + `NPC_SUMMONSLAVE` plugin) must set it. If the field exists, just read it; if not, add it (transient runtime field, not persisted — slaves aren't saved).
-- [ ] **`Classify` rewrite** — port the `battle_check_target` allegiance walk:
-  - If `src` or `target` is a slave mob, substitute its master entity and classify from the master's side (recurse once, guard against self-loop).
-  - Player↔Player: read the map's PvP/GvG/BG flag + `_noparty`/`_noguild` to decide whether shared party/guild still suppresses enemy status. On non-PvP/non-GvG maps, unaffiliated players are NOT enemies.
-  - Player's own slave / same-master slaves classify as `Party`.
-  - Mob↔Mob stays `Neutral` unless same master.
-- [ ] **Unify with the damage gate** — make `DamageService.CanDamage` and `MapForeachInRangeService.Classify` consult the same allegiance helper (extract a shared `BattleCheckTarget Resolve(src, target, mapFlags)` so the splash filter and the damage gate cannot disagree). At minimum, document and test that a victim that passes the splash filter also passes `CanDamage` for the same map.
-- [ ] **Hit-count integrity** — skills that count hits (multi-hit splash, chain) must not have victims silently dropped by a downstream `CanDamage` mismatch. Verify the count reflects the same allegiance decision.
-- [ ] **No new packets / IPC / DB.**
+- [x] **`MapForeachInRangeService` ctor** — ✅ injects `IMapFlagService?` + `IMapWorldRegistry?` (optional; DI auto-resolves) so the resolver can read PvP/GvG/BG flags + resolve a slave's master.
+- [x] **Slave-master read** — ✅ uses the existing `Entity.MasterId` (`EntityId?`); summon sites already set it (slave-AI follow loop / `MST_MASTER`). No new field needed.
+- [x] **`Classify` rewrite** — ✅ extracted to the shared `BattleTargetResolver.Classify` (port of `battle_check_target`): one-hop master substitution (player's slave & same-master siblings → `Party`); Player↔Player reads `Pvp`/`Gvg`/`Battleground` + `PvpNoparty`/`PvpNoguild`/`GvgNoparty` (field-map strangers are `Neutral`, not enemies; GvG guildmates always allies); Mob↔Mob `Neutral`.
+- [~] **Unify with the damage gate** — ✅ the splash filter and `CanDamage` now share the allegiance *model* (`BattleTargetResolver`), and the splash filter no longer over-includes (so it never feeds a friendly/neutral victim into the gate). Routing `CanDamage`'s *attack* path through the resolver requires an attack-vs-mechanic-damage split (the heal-flip at `Heal.cs:162` applies damage to allies via `ApplyDamage` and must stay ungated) ➡️ **Moved to SKILL-16**.
+- [x] **Hit-count integrity** — ✅ the splash victim set is now the correct allegiance set; offensive masks exclude friendly/neutral victims so the count is accurate (no downstream silent drop for the splash-Enemy set).
+- [x] **No new packets / IPC / DB.** ✅ (added 5 `MapFlag` enum members + parser cases only.)
 
 ## Done criteria
 
-- A player's summoned slave mob is NOT hit by the player's own Storm Gust / splash, and the slave's AoE does not hit the master or the master's party (test).
-- On a non-PvP field map, an AoE cast by player A does not splash unaffiliated player B; on a PvP map it does (test, two map-flag fixtures).
-- WoE friendly-fire flag (`gvg_noparty` style) makes party members hittable exactly where rAthena enables it (test).
-- `Classify` and `CanDamage` agree for the same (src, target, map) — no victim passes the splash filter then gets dropped by the damage gate (test).
-- No `TODO` for slave-mob or mapflag handling remains in `MapForeachInRangeService.cs`.
+- ✅ A player's summoned slave is NOT hit by the player's own offensive AoE; the slave's AoE does not hit the master or the master's party (tests: `Slave_FriendlyToMaster`, `Slave_FriendlyToMastersParty`, `SameMasterSlavesAreParty`, `Slave_AttacksWhatMasterWould_WildMob`).
+- ✅ On a non-PvP field map an AoE does not splash an unaffiliated player; on a PvP map it does (`FieldMap_SuppressesPlayerSplash` / `PvpMap_EnablesPlayerSplash`).
+- ✅ WoE friendly-fire (`gvg_noparty` / `pvp_noparty`) makes party members hittable exactly where the flag enables it (`GvgNoparty_FriendlyFire_MakesPartyHittable`, `PvpMap_PartyMate_NotEnemy_UnlessNoparty`, `GvgMap_GuildMate_AlwaysAlly`).
+- [~] `Classify` and `CanDamage` agree — the splash side is correct (never over-includes); full attack-path `CanDamage` routing ➡️ **Moved to SKILL-16**.
+- ✅ No `TODO` for slave-mob or mapflag handling remains in `MapForeachInRangeService.cs` (the classifier moved to `BattleTargetResolver`, fully implemented).
 
 ## Test plan
 
@@ -78,3 +74,17 @@ hostile to their owner.
 - The slave-master walk must guard against cycles (a mis-set `MasterId` pointing at another slave). Resolve at most one hop, then classify against the resolved player/mob.
 - Don't break the existing PvE field case: mob vs player on a normal map must stay `Enemy` (that's the common path and most tests assume it). The mapflag branch only changes *Player↔Player*, not Player↔Mob.
 - `MapFlag` enum already has `NoPvp` / pvp-adjacent flags (used by `SkillCastService` for `NoSkill`); confirm the exact PvP/GvG/`_noparty` flag names exist on `MapFlag` and add the missing ones rather than string-matching.
+
+## History
+
+- 2026-06-01 · Splash allegiance correctness. Extracted the shared `BattleTargetResolver`
+  (port of `battle_check_target`): one-hop summoned-slave master substitution (player's slave
+  + sibling slaves → Party) and PvP/GvG/BG-aware Player↔Player (field-map strangers are
+  Neutral, not enemies; `pvp_noparty`/`gvg_noparty`/`pvp_noguild` re-enable friendly fire; GvG
+  guildmates always allies). `MapForeachInRangeService.Classify` now delegates to it (ctor
+  injects `IMapFlagService?`/`IMapWorldRegistry?`). Added 5 `MapFlag` members (Pvp/Battleground/
+  PvpNoparty/PvpNoguild/GvgNoparty) + parser cases. Used the existing `Entity.MasterId`.
+  `MapForeachInRangeServiceTests` grew to 13 (slaves, field-vs-pvp, gvg_noparty, guild).
+  Suite 3677 green. `CanDamage` left on its legacy logic (reverting an over-aggressive merge
+  that broke the Akaitsuki heal-flip at Heal.cs:162) — full attack-path routing + the
+  attack-vs-mechanic-damage split filed as SKILL-16.

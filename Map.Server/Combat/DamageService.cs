@@ -138,6 +138,14 @@ public sealed class DamageService : IDamageService
             return false;
         }
 
+        // NOTE: this gate covers ATTACK damage. ApplyDamage is also the path
+        // for mechanic-damage that must NOT be allegiance-gated (Akaitsuki
+        // heal-flip → Heal.cs:162, reflect, DoT applied to allies/self), so we
+        // keep the permissive PC↔PC default here. Routing the *attack* path
+        // through the shared BattleTargetResolver (and splitting attack vs
+        // mechanic-damage so the latter bypasses it) is SKILL-16. The splash
+        // victim filter already uses BattleTargetResolver, so it never feeds a
+        // friendly/neutral victim into this gate.
         if (source is not PlayerEntity src || target is not PlayerEntity dst) return true;
         if (src.Id == dst.Id) return true;
 

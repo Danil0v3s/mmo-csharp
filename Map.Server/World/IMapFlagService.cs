@@ -54,4 +54,16 @@ public enum MapFlag
     Gvg,
     /// <summary>SC application refused (rAthena <c>nostatus</c> mapflag).</summary>
     NoStatus,
+    // SKILL-03 — PvP / friendly-fire allegiance flags. Appended (the flag-bit
+    // store keys off the enum ordinal, so new members must go at the end).
+    /// <summary>Player-vs-player enabled (rAthena <c>MF_PVP</c>). Unaffiliated PCs are mutually attackable.</summary>
+    Pvp,
+    /// <summary>Battleground map (rAthena <c>MF_BATTLEGROUND</c>) — team-based hostile zone.</summary>
+    Battleground,
+    /// <summary>PvP friendly-fire on party (rAthena <c>MF_PVP_NOPARTY</c>): party members ARE attackable.</summary>
+    PvpNoparty,
+    /// <summary>PvP friendly-fire on guild (rAthena <c>MF_PVP_NOGUILD</c>): guild members ARE attackable.</summary>
+    PvpNoguild,
+    /// <summary>GvG friendly-fire on party (rAthena <c>MF_GVG_NOPARTY</c>): party members ARE attackable.</summary>
+    GvgNoparty,
 }

@@ -28,19 +28,20 @@ public class MapForeachInRangeServiceTests
     [Fact]
     public void ForEachAllyInSplash_FindsPartyMember_NotEnemy()
     {
-        var ctx = Build();
+        // On a PvP map an unaffiliated player is a genuine BCT_ENEMY (excluded
+        // from the BCT_NOENEMY ally splash); a party mate stays an ally.
+        var ctx = Build(MapFlag.Pvp);
         var caster = ctx.AddPlayer(1, 100, 100);
         caster.PartyId = 42;
         var partyMate = ctx.AddPlayer(2, 102, 100);
         partyMate.PartyId = 42;
-        var enemy = ctx.AddPlayer(3, 103, 100);        // no party → enemy
+        var enemy = ctx.AddPlayer(3, 103, 100);        // no party, PvP map → enemy
 
         var hits = new List<Entity>();
         ctx.Splash.ForEachAllyInSplash(caster, 100, 100, range: 5, hits.Add);
 
-        // Self counts as ally (BCT_SELF in BCT_NOENEMY).
-        Assert.Contains(caster, hits);
-        Assert.Contains(partyMate, hits);
+        Assert.Contains(caster, hits);     // BCT_SELF
+        Assert.Contains(partyMate, hits);  // BCT_PARTY
         Assert.DoesNotContain(enemy, hits);
     }
 
@@ -65,13 +66,129 @@ public class MapForeachInRangeServiceTests
         Assert.True(ctx.Splash.MatchesMask(null, target, BattleCheckTarget.Enemy));
     }
 
-    private static TestContext Build()
+    // ---- SKILL-03: slave-mob ownership ----
+
+    [Fact]
+    public void Slave_FriendlyToMaster()
+    {
+        var ctx = Build();
+        var master = ctx.AddPlayer(1, 100, 100);
+        var slave = ctx.AddMob(101, 100, hp: 1000);
+        slave.MasterId = master.Id;
+
+        // Master's offensive AoE must NOT hit its own slave.
+        Assert.False(ctx.Splash.MatchesMask(master, slave, BattleCheckTarget.Enemy));
+        Assert.True(ctx.Splash.MatchesMask(master, slave, BattleCheckTarget.Party));
+        // ...and the slave's AoE must not hit the master.
+        Assert.False(ctx.Splash.MatchesMask(slave, master, BattleCheckTarget.Enemy));
+    }
+
+    [Fact]
+    public void Slave_AttacksWhatMasterWould_WildMob()
+    {
+        var ctx = Build();
+        var master = ctx.AddPlayer(1, 100, 100);
+        var slave = ctx.AddMob(101, 100, hp: 1000);
+        slave.MasterId = master.Id;
+        var wild = ctx.AddMob(102, 100, hp: 1000);
+
+        // The slave is hostile to a wild mob (as the player would be).
+        Assert.True(ctx.Splash.MatchesMask(slave, wild, BattleCheckTarget.Enemy));
+    }
+
+    [Fact]
+    public void SameMasterSlavesAreParty()
+    {
+        var ctx = Build();
+        var master = ctx.AddPlayer(1, 100, 100);
+        var a = ctx.AddMob(101, 100, hp: 1000); a.MasterId = master.Id;
+        var b = ctx.AddMob(102, 100, hp: 1000); b.MasterId = master.Id;
+
+        Assert.True(ctx.Splash.MatchesMask(a, b, BattleCheckTarget.Party));
+        Assert.False(ctx.Splash.MatchesMask(a, b, BattleCheckTarget.Enemy));
+    }
+
+    [Fact]
+    public void Slave_FriendlyToMastersParty()
+    {
+        var ctx = Build();
+        var master = ctx.AddPlayer(1, 100, 100); master.PartyId = 9;
+        var mate = ctx.AddPlayer(2, 101, 100); mate.PartyId = 9;
+        var slave = ctx.AddMob(102, 100, hp: 1000); slave.MasterId = master.Id;
+
+        Assert.True(ctx.Splash.MatchesMask(slave, mate, BattleCheckTarget.Party));
+        Assert.False(ctx.Splash.MatchesMask(slave, mate, BattleCheckTarget.Enemy));
+    }
+
+    // ---- SKILL-03: PvP / field / friendly-fire mapflags ----
+
+    [Fact]
+    public void FieldMap_SuppressesPlayerSplash()
+    {
+        var ctx = Build(); // no pvp/gvg flag
+        var a = ctx.AddPlayer(1, 100, 100);
+        var b = ctx.AddPlayer(2, 101, 100); // unaffiliated
+        // On a peaceful field map, an offensive AoE does NOT hit a stranger.
+        Assert.False(ctx.Splash.MatchesMask(a, b, BattleCheckTarget.Enemy));
+        Assert.True(ctx.Splash.MatchesMask(a, b, BattleCheckTarget.Neutral));
+    }
+
+    [Fact]
+    public void PvpMap_EnablesPlayerSplash()
+    {
+        var ctx = Build(MapFlag.Pvp);
+        var a = ctx.AddPlayer(1, 100, 100);
+        var b = ctx.AddPlayer(2, 101, 100);
+        Assert.True(ctx.Splash.MatchesMask(a, b, BattleCheckTarget.Enemy));
+    }
+
+    [Fact]
+    public void PvpMap_PartyMate_NotEnemy_UnlessNoparty()
+    {
+        var noff = Build(MapFlag.Pvp);
+        var a1 = noff.AddPlayer(1, 100, 100); a1.PartyId = 5;
+        var b1 = noff.AddPlayer(2, 101, 100); b1.PartyId = 5;
+        Assert.False(noff.Splash.MatchesMask(a1, b1, BattleCheckTarget.Enemy)); // protected
+
+        var ff = Build(MapFlag.Pvp, MapFlag.PvpNoparty);
+        var a2 = ff.AddPlayer(1, 100, 100); a2.PartyId = 5;
+        var b2 = ff.AddPlayer(2, 101, 100); b2.PartyId = 5;
+        Assert.True(ff.Splash.MatchesMask(a2, b2, BattleCheckTarget.Enemy)); // friendly-fire on
+    }
+
+    [Fact]
+    public void GvgNoparty_FriendlyFire_MakesPartyHittable()
+    {
+        var protectedCtx = Build(MapFlag.Gvg);
+        var a1 = protectedCtx.AddPlayer(1, 100, 100); a1.PartyId = 3;
+        var b1 = protectedCtx.AddPlayer(2, 101, 100); b1.PartyId = 3;
+        Assert.False(protectedCtx.Splash.MatchesMask(a1, b1, BattleCheckTarget.Enemy));
+
+        var woe = Build(MapFlag.Gvg, MapFlag.GvgNoparty);
+        var a2 = woe.AddPlayer(1, 100, 100); a2.PartyId = 3;
+        var b2 = woe.AddPlayer(2, 101, 100); b2.PartyId = 3;
+        Assert.True(woe.Splash.MatchesMask(a2, b2, BattleCheckTarget.Enemy));
+    }
+
+    [Fact]
+    public void GvgMap_GuildMate_AlwaysAlly()
+    {
+        var ctx = Build(MapFlag.Gvg, MapFlag.GvgNoparty);
+        var a = ctx.AddPlayer(1, 100, 100); a.GuildId = 11;
+        var b = ctx.AddPlayer(2, 101, 100); b.GuildId = 11;
+        // Guildmates are WoE allies even with gvg_noparty.
+        Assert.True(ctx.Splash.MatchesMask(a, b, BattleCheckTarget.Guild));
+        Assert.False(ctx.Splash.MatchesMask(a, b, BattleCheckTarget.Enemy));
+    }
+
+    private static TestContext Build(params MapFlag[] flags)
     {
         const string mapName = "test_map";
         var map = new MapData(mapName, 200, 200, new byte[200 * 200]);
         var world = new StubWorldRegistry(map);
         var entities = new EntityRegistry(world);
-        var splash = new MapForeachInRangeService(entities);
+        var mapFlags = new StubMapFlags(mapName, flags);
+        var splash = new MapForeachInRangeService(entities, mapFlags, world);
         return new TestContext(splash, entities, (uint)mapName.GetHashCode());
     }
 
@@ -98,6 +215,19 @@ public class MapForeachInRangeServiceTests
             Entities.Add(mob);
             return mob;
         }
+    }
+
+    private sealed class StubMapFlags : IMapFlagService
+    {
+        private readonly string _map;
+        private readonly HashSet<MapFlag> _flags;
+        public StubMapFlags(string map, IEnumerable<MapFlag> flags)
+        {
+            _map = map;
+            _flags = new HashSet<MapFlag>(flags);
+        }
+        public bool IsSet(string mapName, MapFlag flag)
+            => string.Equals(mapName, _map, StringComparison.OrdinalIgnoreCase) && _flags.Contains(flag);
     }
 
     private sealed class StubWorldRegistry : IMapWorldRegistry

@@ -95,6 +95,11 @@ public sealed class MapFlagService : IMapFlagService
             case "nobranch": flag = MapFlag.NoBranch; return true;
             case "nomemo": flag = MapFlag.NoMemo; return true;
             case "gvg": flag = MapFlag.Gvg; return true;
+            case "pvp": flag = MapFlag.Pvp; return true;
+            case "battleground": flag = MapFlag.Battleground; return true;
+            case "pvp_noparty": flag = MapFlag.PvpNoparty; return true;
+            case "pvp_noguild": flag = MapFlag.PvpNoguild; return true;
+            case "gvg_noparty": flag = MapFlag.GvgNoparty; return true;
             default: return false;
         }
     }
