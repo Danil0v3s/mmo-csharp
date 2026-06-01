@@ -1,6 +1,6 @@
 # COMBAT-03 — Renewal base-level damage modifier (RE_LVL_DMOD)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-02 (the ratio stage this modifier post-multiplies) · **Blocks:** none
 
 ## Problem
