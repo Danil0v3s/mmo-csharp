@@ -30,6 +30,19 @@ public sealed class DamageService : IDamageService
     private Map.Server.Mob.IMobAiService? _cachedMobAi;
     private Map.Server.Mob.IMobAiService? MobAi
         => _cachedMobAi ??= _services?.GetService<Map.Server.Mob.IMobAiService>();
+    // COMBAT-08 — damage-driven cast interrupt. The cast service /
+    // skill-result broadcaster / skill_db all sit downstream of the attack
+    // pipeline, so (like MobAi) resolve them lazily through IServiceProvider
+    // to avoid the construction-time DI cycle.
+    private Map.Server.Skills.ISkillCastService? _cachedCast;
+    private Map.Server.Skills.ISkillCastService? CastSvc
+        => _cachedCast ??= _services?.GetService<Map.Server.Skills.ISkillCastService>();
+    private Map.Server.Skills.ISkillClientService? _cachedSkillClient;
+    private Map.Server.Skills.ISkillClientService? SkillClientSvc
+        => _cachedSkillClient ??= _services?.GetService<Map.Server.Skills.ISkillClientService>();
+    private Map.Server.Skills.ISkillDb? _cachedSkillDb;
+    private Map.Server.Skills.ISkillDb? SkillDbSvc
+        => _cachedSkillDb ??= _services?.GetService<Map.Server.Skills.ISkillDb>();
     private readonly ILogger<DamageService> _logger;
     // T2.4b+: SC consumers (SteelBody / Kyrie / AutoGuard) — optional so
     // older tests that build DamageService without the SC engine still work.
@@ -244,16 +257,59 @@ public sealed class DamageService : IDamageService
                     return actual;
                 }
             }
+            // COMBAT-08 — rAthena status_damage on death calls
+            // unit_skillcastcancel(target,0): a dying caster's cast is
+            // dropped unconditionally (no CastCancel gate).
+            InterruptCastOnDamage(target, onDeath: true);
             HandleDeath(target, source);
         }
-        else if (target is MobEntity targetMob && source != null && MobAi is { } ai)
+        else
         {
-            // rAthena mob_damage (mob.cpp:1743): each surviving hit feeds
-            // the rude-attacked counter so unreachable attackers can't
-            // chip a mob indefinitely.
-            ai.NotifyAttacked(targetMob, source);
+            // COMBAT-08 — rAthena status_fix_damage survivor path calls
+            // unit_skillcastcancel(target,2): a cancellable-on-hit cast is
+            // interrupted when the target takes real damage.
+            if (actual > 0) InterruptCastOnDamage(target, onDeath: false);
+
+            if (target is MobEntity targetMob && source != null && MobAi is { } ai)
+            {
+                // rAthena mob_damage (mob.cpp:1743): each surviving hit feeds
+                // the rude-attacked counter so unreachable attackers can't
+                // chip a mob indefinitely.
+                ai.NotifyAttacked(targetMob, source);
+            }
         }
         return actual;
+    }
+
+    /// <summary>
+    /// COMBAT-08 — abort an in-progress cast when the caster takes damage.
+    /// Mirrors rAthena <c>unit_skillcastcancel(bl, type)</c> (unit.cpp:3107):
+    /// <list type="bullet">
+    /// <item><paramref name="onDeath"/> == false → the survivor "damage"
+    /// variant (<c>type&amp;2</c>): only skills flagged <c>CastCancel</c> are
+    /// interrupted, and a <c>bNoCastCancel</c> caster is exempt.</item>
+    /// <item><paramref name="onDeath"/> == true → the death variant
+    /// (<c>type==0</c>): the cast is dropped unconditionally.</item>
+    /// </list>
+    /// Resolves the cast / skill-result / skill_db services lazily (DI cycle).
+    /// </summary>
+    private void InterruptCastOnDamage(Entity target, bool onDeath)
+    {
+        var castSvc = CastSvc;
+        if (castSvc == null || target.Id.Value == 0) return;
+        if (!castSvc.IsCasting(target.Id)) return;
+
+        if (!onDeath)
+        {
+            // Damage-interrupt gate (unit_skillcastcancel type 2).
+            var (skillId, _) = castSvc.GetCurrentCast(target.Id);
+            if (SkillDbSvc is { } db && !db.GetCastCancel(skillId)) return; // not cancellable by damage
+            if (target is PlayerEntity pc && pc.EquipBonuses.NoCastCancel) return; // bNoCastCancel(2)
+            // SC-based no-cancel states (SC_BASILICA / Free Cast) → COMBAT-27.
+        }
+
+        if (castSvc.CancelCast(target.Id))
+            SkillClientSvc?.BroadcastSkillCastCancel(target);
     }
 
     /// <summary>

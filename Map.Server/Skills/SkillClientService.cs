@@ -87,11 +87,12 @@ public sealed class SkillClientService : ISkillClientService
 
     public void BroadcastSkillCastCancel(Entity caster)
     {
-        // T5.3a — rAthena clif_skillcastcancel (clif.cpp:5973). Wire
-        // packet PACKET_ZC_DISPEL (0x01b9) carries the cast-cancel to
-        // AOI; clients clear the casting bar. Same logging-only first
-        // slice until the wire emitter lands.
-        _logger.LogDebug("clif_skillcastcancel caster={Caster}", caster.Id);
+        // rAthena clif_skillcastcancel (clif.cpp:5973). Emits
+        // PACKET_ZC_DISPEL (0x01b9, <GID>.L) to the caster's AOI so every
+        // client showing the cast bar / progress wheel for this entity
+        // tears it down. rAthena scope is AREA on the caster's bl.
+        var packet = new ZC_SKILL_CAST_CANCEL { Gid = caster.Id.Value };
+        _visibility.SendToArea(caster, packet);
     }
 
     public void BroadcastSkillFail(PlayerEntity caster, ushort skillId, SkillFailCause cause,

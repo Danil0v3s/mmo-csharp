@@ -114,6 +114,13 @@ public sealed class EquipBonusBundle
     public int AddFixCastMs { get; set; }    // ms
     public int DelayRate { get; set; }       // %
 
+    // COMBAT-08 — bNoCastCancel / bNoCastCancel2. When set, an in-progress
+    // cast is NOT aborted on taking damage (DamageService cast-interrupt
+    // gate). rAthena: sd->state.no_castcancel (status.cpp bonus parse).
+    // The bonus parse that flips this lives in COMBAT-23 (skill-state flag
+    // batch); the consumer (the cancel gate) is wired here in COMBAT-08.
+    public bool NoCastCancel { get; set; }
+
     // Drain (renewal: hp/sp drained per hit).
     public int DrainHpRate { get; set; }     // % chance × 100
     public int DrainSpRate { get; set; }     // % chance × 100
@@ -155,6 +162,7 @@ public sealed class EquipBonusBundle
         Str = Agi = Vit = IntStat = Dex = Luk = 0;
         Pow = Sta = Wis = Spl = Con = Crt = 0;
         VarCastRate = FixCastRate = AddVarCastMs = AddFixCastMs = DelayRate = 0;
+        NoCastCancel = false;
         DrainHpRate = DrainSpRate = 0;
     }
 

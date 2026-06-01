@@ -86,6 +86,9 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-22 | bonus2 per-skill + indexed tail (skillatk/skillheal/castrate/ignore-def/vanish) |
 | COMBAT-23 | pc_bonus single-value tail + 1-arg flag form (speed/healpower/nocastcancel) |
 | COMBAT-24 | Per-skill cast/delay tables + SA_ABRACADABRA (deps COMBAT-22) |
+| COMBAT-25 | Ground-unit damage intercept (Safety Wall/Pneuma/Land Protector) — split from COMBAT-08 |
+| COMBAT-26 | CastEndMap warp skills (Teleport/Warp Portal) — split from COMBAT-08 |
+| COMBAT-27 | SC-based no-cast-cancel states (Basilica/Free Cast) in interrupt gate — split from COMBAT-08 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

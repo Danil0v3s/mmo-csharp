@@ -1,7 +1,14 @@
 # COMBAT-08 — Damage-driven cast interrupt + ground-unit damage intercept
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-01) · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-06 (bNoCastCancel flag) · **Blocks:** none
+>
+> **Shipped:** damage-driven cast interrupt (survivor + death) with the real
+> `ZC_SKILL_CAST_CANCEL` (0x01b9) packet + the `bNoCastCancel` consumer gate.
+> The other three Scope axes were split into follow-ups (see annotations):
+> ground-unit intercept ➡️ **COMBAT-25**, CastEndMap warp ➡️ **COMBAT-26**,
+> SC-based no-cancel states (Basilica) ➡️ **COMBAT-27**. The `bNoCastCancel`
+> bonus *parse* is owned by **COMBAT-23** (this ticket added the field + gate).
 
 ## Problem
 
@@ -60,7 +67,7 @@ Canonical: `status.cpp`, `unit.cpp`, `battle.cpp`, `skill.cpp` (not split files)
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **Cast-interrupt on damage.** In `DamageService.ApplyResolved`, after the surviving-hit
+- [x] **Cast-interrupt on damage.** In `DamageService.ApplyResolved`, after the surviving-hit
       branch (`:220` region, when `actual > 0` and target still alive): resolve
       `ISkillCastService` (via `_services` to avoid the DI cycle, like `MobAi` at
       `DamageService.cs:30-32`). If `castSvc.IsCasting(target.Id)`: get the current skill
@@ -69,14 +76,15 @@ Canonical: `status.cpp`, `unit.cpp`, `battle.cpp`, `skill.cpp` (not split files)
       `SC_*` like Basilica), call `castSvc.CancelCast(target.Id)` and
       `skillClient.BroadcastSkillCastCancel(target)`. On death (`HandleDeath`), also cancel
       unconditionally.
-- [ ] **Implement `BroadcastSkillCastCancel`** (`SkillClientService.cs:88`): emit the real
+- [x] **Implement `BroadcastSkillCastCancel`** (`SkillClientService.cs:88`): emit the real
       `ZC_DISPEL`/cast-cancel packet to the caster's AOI (replace the `LogDebug`). Add the
       packet definition under `Core.Server/Packets/Out/ZC` if absent (id `0x01b9`), and
       broadcast via the visibility service the way other ZC broadcasts do.
-- [ ] **No-cancel gate.** Add the `NoCastCancel` bool to `EquipBonusBundle` (COMBAT-06 parses
-      `bonus bNoCastCancel;`) and check it here; also check the relevant SCs (Basilica /
-      Free Cast / Steel Body-style) before cancelling.
-- [ ] **Ground-unit damage intercept.** In the melee/ranged apply path
+- [x] **No-cancel gate.** Added the `NoCastCancel` bool to `EquipBonusBundle` and check it
+      here. The bonus *parse* (`bonus bNoCastCancel;`) is owned by **COMBAT-23**. The SC-based
+      exemptions (Basilica / Free Cast) + the GvG-gated `bNoCastCancel` vs unconditional
+      `bNoCastCancel2` split ➡️ **Moved to COMBAT-27**.
+- [ ] **Ground-unit damage intercept.** ➡️ **Moved to COMBAT-25.** In the melee/ranged apply path
       (`DamageService.PerformMeleeAttack` / `BattleCalculator.CalcWeaponAttack`, and the
       ranged/skill paths), before committing damage query `ISkillUnitService.GetUnitsInArea(
       target.MapId, target.X, target.Y, 0)`:
@@ -88,21 +96,20 @@ Canonical: `status.cpp`, `unit.cpp`, `battle.cpp`, `skill.cpp` (not split files)
     consistent). Use the `skillId`-filtered overload (`ISkillUnitService.cs:94`).
   Thread the attack range/lane (`BF_SHORT`/`BF_LONG`) into the query — `BattleDamage` /
   `BattleAttackType` + `AttackRange` already distinguish melee vs ranged.
-- [ ] **`CastEndMap` warp** (`SkillCastEndService.cs:71`): implement Teleport / Greed / warp via
-      the player-warp service (`IPlayerWarpService` / `pc_setpos` analogue). Return true on
-      success. (If `IPlayerWarpService` doesn't exist yet, this sub-item may split to its own
-      ticket — but it must not stay `return false`.)
-- [ ] **No DB migration.** Packet addition (`ZC_DISPEl`/cast-cancel) is the only wire change.
+- [ ] **`CastEndMap` warp** (`SkillCastEndService.cs:71`): ➡️ **Moved to COMBAT-26.**
+- [x] **No DB migration.** Packet addition (`ZC_SKILL_CAST_CANCEL` = `0x01b9`) is the only wire
+      change — added under `Core.Server/Packets/Out/ZC/`.
 
 ## Done criteria
 
-- A casting wizard hit for >0 damage by a cancellable-on-hit skill has the cast aborted and the
-  client cast bar cleared (real packet emitted, not a log line). A `bNoCastCancel` caster (or
-  Basilica) is NOT interrupted.
-- A target standing on Safety Wall takes 0 from a melee swing (and the wall's hit pool
-  decrements; the wall vanishes when exhausted). Ranged hits pass through Safety Wall.
-- A target on Pneuma takes 0 from a ranged hit; melee passes through.
-- `CastEndMap` for Teleport relocates the caster (no longer `return false`).
+- ✅ A casting wizard hit for >0 damage by a cancellable-on-hit skill has the cast aborted and
+  the client cast bar cleared (real `ZC_SKILL_CAST_CANCEL` packet emitted, not a log line). A
+  `bNoCastCancel` caster is NOT interrupted. (The **Basilica** SC exemption ➡️ **COMBAT-27**.)
+- ➡️ **Moved to COMBAT-25:** A target standing on Safety Wall takes 0 from a melee swing (pool
+  decrements; wall vanishes when exhausted). Ranged hits pass through Safety Wall.
+- ➡️ **Moved to COMBAT-25:** A target on Pneuma takes 0 from a ranged hit; melee passes through.
+- ➡️ **Moved to COMBAT-26:** `CastEndMap` for Teleport relocates the caster (no longer
+  `return false`).
 
 ## Test plan
 
@@ -130,3 +137,16 @@ Canonical: `status.cpp`, `unit.cpp`, `battle.cpp`, `skill.cpp` (not split files)
   breaks after N blocks (rAthena: Safety Wall blocks `val2` hits).
 - Don't block PvE-friendly hits incorrectly — Land Protector affects ground-unit *skills*, not
   direct attacks; keep its scope to `SkillUnitService.Place`.
+
+## History
+
+- 2026-06-01 · Shipped axis 1 — damage-driven cast interrupt. `DamageService.ApplyResolved`
+  now calls `InterruptCastOnDamage` on the surviving-hit path (rAthena
+  `unit_skillcastcancel(target,2)`: gated on `SkillDb.GetCastCancel` + `EquipBonusBundle.
+  NoCastCancel`) and on death (`unit_skillcastcancel(target,0)`: unconditional). Cast/skill-
+  client/skill-db resolved lazily via `IServiceProvider` (DI cycle). Added the real
+  `ZC_SKILL_CAST_CANCEL` (0x01b9, `<GID>.L`) packet and rewrote `SkillClientService.
+  BroadcastSkillCastCancel` from a log stub to a real AOI emit. Added `EquipBonusBundle.
+  NoCastCancel`. 4 tests (Combat08CastInterruptTests); suite 3641 green. Follow-ups filed:
+  COMBAT-25 (ground-unit intercept), COMBAT-26 (CastEndMap warp), COMBAT-27 (SC no-cancel
+  states). `bNoCastCancel` parse owned by COMBAT-23.
