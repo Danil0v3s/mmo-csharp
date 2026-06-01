@@ -1,6 +1,6 @@
 # COMBAT-06 — pc_bonus / bonus2 / bonus3 script coverage + consumers
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** XL · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** XL · **Player-visible:** yes
 > **Depends on:** COMBAT-01 (param/flat consumers), COMBAT-05 (defensive cardfix consumers)
 > · **Blocks:** none
 
