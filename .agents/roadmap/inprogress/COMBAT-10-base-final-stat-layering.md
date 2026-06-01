@@ -1,6 +1,6 @@
 # COMBAT-10 — Base→final stat layering (equip param bonuses + job bonus + SC stat mods)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** COMBAT-01 param-stat criteria, COMBAT-09 (SC recalc ordering)
 > **Filed by:** COMBAT-01 on 2026-06-01 (see "Why this exists").
 >
