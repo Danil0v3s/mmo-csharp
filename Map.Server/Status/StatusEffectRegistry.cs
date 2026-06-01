@@ -4055,8 +4055,6 @@ public sealed class StatusEffectRegistry
         // SC_RICHMANKIM (BD_RICHMANKIM) — status.cpp:10718-10720
         // val2 = 10+10*val1 EXP bonus%. Combat-side read by EXP service.
         // Generator: not in defaults.
-        Register(StatusType.Richmankim, PresenceMarker(
-            ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // SC_NIBELUNGEN (BD_RINGNIBELUNGEN) — status.cpp:10725-10727
         // val2 = rnd() % RINGNBL_MAX (random elemental ring effect type).
@@ -4501,58 +4499,44 @@ public sealed class StatusEffectRegistry
                 target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val1);
             },
             Flags: ccDebuff));
-        Register(StatusType.Stun, PresenceMarker(ccDebuff));
-        Register(StatusType.Sleep, PresenceMarker(ccDebuff));
-        Register(StatusType.Silence, PresenceMarker(ccDebuff));
-        Register(StatusType.Confusion, PresenceMarker(ccDebuff));
-        Register(StatusType.Stonewait, PresenceMarker(ccDebuff));
 
         var combatBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
         // SC_MAGNIFICAT (AL_MAGNIFICAT) — +50% SP regen renewal.
         // Consumer: NaturalHealService reads SC_MAGNIFICAT for regen
         // overlay (Map.Server/Status/NaturalHealService.cs).
-        Register(StatusType.Magnificat, PresenceMarker(combatBuff));
 
         // SC_MAXIMIZEPOWER (BS_MAXIMIZE) — weapon max-roll.
         // Consumer: BattleCalculator reads SC presence to force
         // damage roll to max in weapon-attack path
         // (Map.Server/Combat/BattleCalculator.cs).
-        Register(StatusType.Maximizepower, PresenceMarker(combatBuff));
 
         // SC_TENSIONRELAX (LK_TENSIONRELAX) — HP regen overlay.
         // Consumer: NaturalHealService HP overlay reads SC presence.
-        Register(StatusType.Tensionrelax, PresenceMarker(combatBuff));
 
         // SC_AETERNA (PR_LEXAETERNA) — next-hit-doubled debuff.
         // Consumer: damage pipeline checks SC_AETERNA on hit;
         // doubles damage then ends the SC.
-        Register(StatusType.Aeterna, PresenceMarker(ccDebuff));
 
         // SC_ASPERSIO (PR_ASPERSIO) — holy weapon endow.
         // Consumer: weapon-element resolver reads SC presence to override
         // weapon element (Map.Server/Combat/IBattleEffectsService.cs).
-        Register(StatusType.Aspersio, PresenceMarker(combatBuff));
 
         // SC_ENCPOISON (AS_ENCHANTPOISON) — poison weapon endow.
         // Consumer: same as Aspersio — weapon-element resolver.
-        Register(StatusType.Encpoison, PresenceMarker(combatBuff));
 
         // SC_BITESCAR (4th-class Sura DoT marker) — ends on heal.
         // Consumer: heal pipeline + damage pipeline read SC_BITESCAR
         // for tick damage (per-skill plugin gap; presence carries the
         // duration flag until consumer ports).
-        Register(StatusType.Bitescar, PresenceMarker(ccDebuff));
 
         // SC_AKAITSUKI (Sura) — next heal flipped to damage of equal magnitude.
         // Consumer: heal pipeline reads SC_AKAITSUKI on AL_HEAL apply.
-        Register(StatusType.Akaitsuki, PresenceMarker(combatBuff));
 
         // SC_BASILICA_CELL — stepped-on-Basilica-cell marker.
         // Permanent classification — never auto-cleared, only removed
         // when the PC steps off the Basilica cell.
         // Consumer: PlayerPositionHelpers.IsBasilicaCell + Cure script
         // gates (Map.Server/Movement/PlayerPositionHelpers.cs).
-        Register(StatusType.BasilicaCell, PresenceMarker(ScfFlag.Permanent));
     }
 
     // ====================================================================
@@ -4597,23 +4581,19 @@ public sealed class StatusEffectRegistry
         // SC_SOULCOLLECT (SO_SOULCOLLECT) — soul-orb gather. Val1 = max
         // souls collected. Consumer: SoulReaperSoulCollectImpl reads
         // val1 when granting orb status (Sphere1..5 attach).
-        Register(StatusType.Soulcollect, PresenceMarker(soulBuff));
 
         // SC_SOULREAPER (Soul Reaper class spirit) — base spirit marker.
         // Already overridden in wave 4a; explicit re-register here to
         // group with family and document consumer chain.
         // Consumer: SoulReaperSoulCollect + soul-drain skill plugins.
-        Register(StatusType.Soulreaper, PresenceMarker(soulBuff));
 
         // SC_SOULUNITY (Soul Linker SL_SOULUNITY) — multi-target HP
         // share. Val1 = level. Consumer: SoulLinkerSoulUnityImpl reads
         // val2 = linked party member ids.
-        Register(StatusType.Soulunity, PresenceMarker(soulBuff));
 
         // SC_SOULDIVISION (Soul Linker SL_SOULDIVISION) — caster's
         // after-cast delay doubled debuff on target. Consumer: combat
         // delay path checks SC presence.
-        Register(StatusType.Souldivision, PresenceMarker(soulDebuff));
 
         // SC_SOULATTACK (Soul Reaper SOA_SOUL_ATTACK) — soul-attack
         // marker. Val1 = stored soul count. Consumer:
@@ -4625,7 +4605,6 @@ public sealed class StatusEffectRegistry
         // registered with debuff flags in ctor line 536; explicit
         // re-register here for family grouping.
         // Consumer: combat damage path applies curse magnitude.
-        Register(StatusType.Soulcurse, PresenceMarker(soulDebuff));
     }
 
     /// <summary>
@@ -4647,15 +4626,12 @@ public sealed class StatusEffectRegistry
         // Val1 = stance level dispatched to per-skill damage multiplier.
         // Consumer: Taekwon star-sphere skill plugins
         // (Map.Server/Skills/SkillImpl/Taekwon/StarEmperor*.cs).
-        Register(StatusType.Sunstance, PresenceMarker(seBuff));
-        Register(StatusType.Starstance, PresenceMarker(seBuff));
 
         // SC_LIGHTOFSUN / SC_LIGHTOFMOON / SC_LIGHTOFSTAR — Star Emperor
         // Light* damage markers. Val1 = stack count consumed per
         // attack. Consumer: damage pipeline checks SC + decrements.
         Register(StatusType.Lightofsun, PresenceMarker(seBuff));
         Register(StatusType.Lightofmoon, PresenceMarker(seBuff));
-        Register(StatusType.Lightofstar, PresenceMarker(seBuff));
 
         // SC_MOONSTAR — Star Emperor + Soul Linker moonstar marker.
         // Consumer: Moonstar combo skill plugin reads SC for proc.
@@ -4685,11 +4661,9 @@ public sealed class StatusEffectRegistry
         // SC_REFLECTDAMAGE (LG_REFLECTDAMAGE) — % damage reflected,
         // with HP cost per reflect. Val2 = reflect%. Consumer:
         // DamageService reflect path (LG_REFLECTDAMAGE plugin).
-        Register(StatusType.Reflectdamage, PresenceMarker(rgBuff));
 
         // SC_BANDING (LG_BANDING) — multi-RG party stat boost. Val2 =
         // band member count. Consumer: per-RG party-share aggregator.
-        Register(StatusType.Banding, PresenceMarker(rgBuff));
 
         // SC_BANDING_DEFENCE — banding-derived defense overlay.
         // Consumer: damage defense math (LG_BANDING plugin emits).
@@ -4704,19 +4678,14 @@ public sealed class StatusEffectRegistry
         // immunity to lvl up regen wipe. Has CalcFlags in status.yml
         // (generator gives +Val1 to base stats); explicit RG marker
         // here documents the per-skill consumer.
-        Register(StatusType.Inspiration, PresenceMarker(rgBuff));
 
         // SC_SHIELDSPELL_HP / SP / ATK (LG_SHIELDSPELL variants).
         // Val2 = HP/SP/ATK boost magnitude proc'd by Shield Spell.
         // Consumer: LG_SHIELDSPELL plugin reads val2 on attach.
-        Register(StatusType.ShieldspellHp, PresenceMarker(rgBuff));
-        Register(StatusType.ShieldspellSp, PresenceMarker(rgBuff));
-        Register(StatusType.ShieldspellAtk, PresenceMarker(rgBuff));
 
         // SC_HOVERING (NC_HOVERING — Mechanic, RG dispels via FAW).
         // Val1 = hover state. Consumer: Movement service reads SC to
         // disable terrain damage gates.
-        Register(StatusType.Hovering, PresenceMarker(rgBuff));
     }
 
     /// <summary>
@@ -4740,7 +4709,6 @@ public sealed class StatusEffectRegistry
 
         // SC_CRESCENTELBOW (SR_CRESCENTELBOW) — Sura combo proc.
         // Val1 = level. Consumer: SrCrescentElbow plugin reads SC.
-        Register(StatusType.Crescentelbow, PresenceMarker(suraBuff));
 
         // SC_FALLEN_ANGEL (SR_FALLENEMPIRE follow-up) — combo gate.
         // Val1 = combo depth. Consumer: SrFallenEmpire plugin.
@@ -4749,8 +4717,6 @@ public sealed class StatusEffectRegistry
         // SC_TINDER_BREAKER / TINDER_BREAKER2 (SR_TINDER_BREAKER chain).
         // Val1 = chain level. Consumer: SrTinderBreaker plugin reads
         // SC to dispatch combo damage.
-        Register(StatusType.TinderBreaker, PresenceMarker(suraBuff));
-        Register(StatusType.TinderBreaker2, PresenceMarker(suraBuff));
 
         // SC_LIGHT_OF_REGENE (AB_LIGHTOFREGENE — Sura/Arch Bishop revival).
         // Val1 = revival HP %. Consumer: PcDeathService checks SC on
@@ -4776,12 +4742,10 @@ public sealed class StatusEffectRegistry
         // SC_UTSUSEMI (NJ_UTSUSEMI) — block N attacks. Val2 = remaining
         // hits, Val3 = knockback amount. Consumer: damage pipeline
         // decrements Val2 on each hit + skips damage; knocks back on 0.
-        Register(StatusType.Utsusemi, PresenceMarker(ninjaBuff));
 
         // SC_BUNSINJYUTSU (NJ_BUNSINJYUTSU) — clone-block N attacks.
         // Val2 = remaining hits. Consumer: damage pipeline same as
         // Utsusemi but for magic.
-        Register(StatusType.Bunsinjyutsu, PresenceMarker(ninjaBuff));
 
         // SC_SUITON (NJ_SUITON) — water-floor cell marker. Val1 =
         // SC_SUITON (NJ_SUITON) — Ninja Hidden Water cell. rAthena
@@ -4807,14 +4771,12 @@ public sealed class StatusEffectRegistry
         // SC_NEN (NJ_NEN) — auto-revive on death (1× consume). Val1 =
         // level. Wave 30 — DamageService consume hook implemented;
         // SC presence triggers HP=1 restore on lethal hit + SC ends.
-        Register(StatusType.Nen, PresenceMarker(ninjaBuff));
 
         // SC_CURSEDCIRCLE_ATKER / TARGET (SR_CURSEDCIRCLE — Sura
         // cross-family). ATKER on caster, TARGET on each affected
         // entity. Val2 = circle id linking caster ↔ targets. Consumer:
         // combat path checks SC to enforce "must stand still" gate.
         Register(StatusType.CursedcircleAtker, PresenceMarker(ninjaBuff));
-        Register(StatusType.CursedcircleTarget, PresenceMarker(ninjaDebuff));
     }
 
     /// <summary>
@@ -4835,39 +4797,30 @@ public sealed class StatusEffectRegistry
         // attached to the elemental; HeaterOption is the buff applied
         // to the linked PC. Both presence-only.
         Register(StatusType.Heater, PresenceMarker(sorcBuff));
-        Register(StatusType.HeaterOption, PresenceMarker(sorcBuff));
 
         // Tropic family (Fire stronger).
         Register(StatusType.Tropic, PresenceMarker(sorcBuff));
-        Register(StatusType.TropicOption, PresenceMarker(sorcBuff));
 
         // Aquaplay family (Water).
         Register(StatusType.Aquaplay, PresenceMarker(sorcBuff));
-        Register(StatusType.AquaplayOption, PresenceMarker(sorcBuff));
 
         // Cooler family (Water stronger).
         Register(StatusType.Cooler, PresenceMarker(sorcBuff));
-        Register(StatusType.CoolerOption, PresenceMarker(sorcBuff));
 
         // ChillyAir family (Water cold).
         Register(StatusType.ChillyAir, PresenceMarker(sorcBuff));
-        Register(StatusType.ChillyAirOption, PresenceMarker(sorcBuff));
 
         // Blast family (Wind).
         Register(StatusType.Blast, PresenceMarker(sorcBuff));
-        Register(StatusType.BlastOption, PresenceMarker(sorcBuff));
 
         // WildStorm family (Wind stronger).
         Register(StatusType.WildStorm, PresenceMarker(sorcBuff));
-        Register(StatusType.WildStormOption, PresenceMarker(sorcBuff));
 
         // Petrology family (Earth).
         Register(StatusType.Petrology, PresenceMarker(sorcBuff));
-        Register(StatusType.PetrologyOption, PresenceMarker(sorcBuff));
 
         // CursedSoil family (Earth dark).
         Register(StatusType.CursedSoil, PresenceMarker(sorcBuff));
-        Register(StatusType.CursedSoilOption, PresenceMarker(sorcBuff));
     }
 
     /// <summary>
@@ -4914,7 +4867,6 @@ public sealed class StatusEffectRegistry
         // SC_HEAT_BARREL (RL_HEAT_BARREL) — Rebellion bullet boost.
         // Val2 = stacked bullet count consumed per attack. Consumer:
         // Rebellion damage path reads val2 + decrements.
-        Register(StatusType.HeatBarrel, PresenceMarker(gsBuff));
     }
 
     /// <summary>
@@ -4937,7 +4889,6 @@ public sealed class StatusEffectRegistry
         // SC_VENOMIMPRESS (GC_VENOMIMPRESS) — venom-element vuln.
         // Val2 = elemental damage % boost. Consumer: damage element
         // resolver reads val2 to amplify poison-element hits.
-        Register(StatusType.Venomimpress, PresenceMarker(gcDebuff));
 
         // GC New Poison family — each is a DoT/proc with rAthena-spec
         // tick interval + damage. Wave 29 — periodic-tick bodies wired
@@ -4968,7 +4919,6 @@ public sealed class StatusEffectRegistry
                 applyDamage(dmg);
             },
             Flags: gcDebuff));
-        Register(StatusType.Magicmushroom, PresenceMarker(gcDebuff));
         Register(StatusType.Deathhurt, PresenceMarker(gcDebuff));
         Register(StatusType.Pyrexia, new StatusEffectHandler(
             OnStart: (_, _, _) => { },
@@ -5014,7 +4964,6 @@ public sealed class StatusEffectRegistry
 
         // SC__BLOODYLUST — Shadow Chaser caster's damage % boost.
         // Val2 = damage %. Consumer: Combat damage path reads val2.
-        Register(StatusType.Bloodylust, PresenceMarker(scBuff));
 
         // SC__REPRODUCE — Shadow Chaser skill copy. Val2 = copied skill
         // id, val3 = level. Consumer: SkillCastService reads on cast.
@@ -5022,7 +4971,6 @@ public sealed class StatusEffectRegistry
 
         // SC__STRIPACCESSORY — Shadow Chaser strip accessory slot.
         // Equip-disable enforced by IEquipService while SC active.
-        Register(StatusType.Stripaccessory, PresenceMarker(scDebuff));
     }
 
     /// <summary>
@@ -5039,22 +4987,18 @@ public sealed class StatusEffectRegistry
 
         // SC_GRANITIC_ARMOR (GN_GRANITIC_ARMOR) — Genetic def buff.
         // Val2 = def boost. Consumer: damage defense math reads val2.
-        Register(StatusType.GraniticArmor, PresenceMarker(mgBuff));
 
         // SC_MAGMA_FLOW (NC_MAGMA_FLOW) — Mechanic ground unit cell
         // damage proc. Val2 = damage interval. Consumer:
         // SkillUnitTickRegistry tick + Combat damage path.
-        Register(StatusType.MagmaFlow, PresenceMarker(mgBuff));
 
         // SC_PYROCLASTIC (NC_PYROCLASTIC) — Mechanic fire weapon
         // endow + Atk boost. Val2 = atk + element. Consumer: weapon
         // element resolver + damage path.
-        Register(StatusType.Pyroclastic, PresenceMarker(mgBuff));
 
         // SC_MADOGEAR (NC_MADO mode) — Mechanic Madogear mode marker.
         // Val1 = Madogear type. Consumer: PlayerOptionService reads
         // SC for sprite + skill gating.
-        Register(StatusType.Madogear, PresenceMarker(mgBuff));
 
         // SC_HELLS_PLANT — Genetic ground unit. Val2 = plant id.
         // Consumer: SkillUnitTickRegistry tick + damage path.
@@ -5078,7 +5022,6 @@ public sealed class StatusEffectRegistry
         // SC_VACUUM_EXTREME (WL_VACUUM_EXTREME) — root debuff.
         // Val1 = level, val2 = stored x, val3 = stored y. Consumer:
         // Movement service checks SC to block walk away from cell.
-        Register(StatusType.VacuumExtreme, PresenceMarker(wlDebuff));
 
         // SC_VACUUM_EXTREME_POSTDELAY — post-cast cooldown marker.
         // Consumer: SkillCastTimingService checks for re-cast gate.
@@ -5106,7 +5049,6 @@ public sealed class StatusEffectRegistry
 
         // SC_BURNT — Mage burnt debuff marker (post-Fire DoT).
         // Consumer: damage path applies fire weakness.
-        Register(StatusType.Burnt, PresenceMarker(wlDebuff));
     }
 
     /// <summary>
@@ -5124,7 +5066,6 @@ public sealed class StatusEffectRegistry
         // SC_RUSHWINDMILL (WM_RUSHWINDMILL) — Wanderer/Minstrel
         // Atk boost song; also overlaps with extended Acolyte buffs.
         // Val2 = boost magnitude. Consumer: Combat damage path.
-        Register(StatusType.Rushwindmill, PresenceMarker(abBuff));
 
         // SC_SEVENWIND (BS_SEVENWIND? actually weapon-element endow).
         // Val2 = element id. Consumer: weapon element resolver.
@@ -5146,11 +5087,9 @@ public sealed class StatusEffectRegistry
 
         // SC_MOONLITSERENADE (WM_MOONLITSERENADE) — Wanderer Matk song.
         // Val2 = Matk % boost. Consumer: Combat damage Matk path.
-        Register(StatusType.Moonlitserenade, PresenceMarker(wmBuff));
 
         // SC_LERADSDEW (WM_LERADSDEW) — Wanderer MaxHp boost song.
         // Val2 = MaxHp % boost. Consumer: status_calc_pc Hp path.
-        Register(StatusType.Leradsdew, PresenceMarker(wmBuff));
 
         // SC_LIGHTNINGWALK (WM_LIGHTNINGWALK) — Wanderer self-buff
         // teleport-on-attack. Val2 = trigger %. Consumer: Combat
@@ -5160,9 +5099,7 @@ public sealed class StatusEffectRegistry
         // Elemental option / curtain buffs — paired with elemental
         // spheres. Consumer: ElementalNpc skill plugins.
         Register(StatusType.WindStep, PresenceMarker(wmBuff));
-        Register(StatusType.WindStepOption, PresenceMarker(wmBuff));
         Register(StatusType.WindCurtain, PresenceMarker(wmBuff));
-        Register(StatusType.WindCurtainOption, PresenceMarker(wmBuff));
     }
 
     /// <summary>
@@ -5187,11 +5124,9 @@ public sealed class StatusEffectRegistry
         // Consumer: SkyEmperor*.cs plugins read SC for stance dispatch.
         Register(StatusType.MidnightMoon, PresenceMarker(f4Buff));
         Register(StatusType.SkyEnchant, PresenceMarker(f4Buff));
-        Register(StatusType.ShinkirouCall, PresenceMarker(f4Buff));
 
         // SC_WINDSIGN (Wind Hawk 4th class) — wind-element wind sphere.
         // Val1 = stored sphere. Consumer: WindHawk*.cs plugin.
-        Register(StatusType.Windsign, PresenceMarker(f4Buff));
 
         // SC_NIGHTMARE / NIGHT family — Night Watch 4th class.
         // Val1 = stored marker. Consumer: NightWatch*.cs plugin.
@@ -5219,10 +5154,8 @@ public sealed class StatusEffectRegistry
     {
         var defaultBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
 
-        Register(StatusType.Poisonreact, PresenceMarker(StatusFlagDefaults.For(StatusType.Poisonreact) is var f0 && f0 != ScfFlag.None ? f0 : defaultBuff));  // SC_POISONREACT: presence-only per rAthena db/re/status.yml:396
         Register(StatusType.Slowpoison, PresenceMarker(StatusFlagDefaults.For(StatusType.Slowpoison) is var f1 && f1 != ScfFlag.None ? f1 : defaultBuff));  // SC_SLOWPOISON: presence-only per rAthena db/re/status.yml:505
         Register(StatusType.Benedictio, PresenceMarker(StatusFlagDefaults.For(StatusType.Benedictio) is var f2 && f2 != ScfFlag.None ? f2 : defaultBuff));  // SC_BENEDICTIO: presence-only per rAthena db/re/status.yml:545
-        Register(StatusType.Weaponperfection, PresenceMarker(StatusFlagDefaults.For(StatusType.Weaponperfection) is var f3 && f3 != ScfFlag.None ? f3 : defaultBuff));  // SC_WEAPONPERFECTION: presence-only per rAthena db/re/status.yml:603
         Register(StatusType.Trickdead, PresenceMarker(StatusFlagDefaults.For(StatusType.Trickdead) is var f4 && f4 != ScfFlag.None ? f4 : defaultBuff));  // SC_TRICKDEAD: presence-only per rAthena db/re/status.yml:627
         Register(StatusType.Energycoat, PresenceMarker(StatusFlagDefaults.For(StatusType.Energycoat) is var f5 && f5 != ScfFlag.None ? f5 : defaultBuff));  // SC_ENERGYCOAT: presence-only per rAthena db/re/status.yml:658
         Register(StatusType.Brokenarmor, PresenceMarker(StatusFlagDefaults.For(StatusType.Brokenarmor) is var f6 && f6 != ScfFlag.None ? f6 : defaultBuff));  // SC_BROKENARMOR: presence-only per rAthena db/re/status.yml:665
@@ -5239,9 +5172,7 @@ public sealed class StatusEffectRegistry
         Register(StatusType.CpArmor, PresenceMarker(StatusFlagDefaults.For(StatusType.CpArmor) is var f17 && f17 != ScfFlag.None ? f17 : defaultBuff));  // SC_CP_ARMOR: presence-only per rAthena db/re/status.yml:884
         Register(StatusType.CpHelm, PresenceMarker(StatusFlagDefaults.For(StatusType.CpHelm) is var f18 && f18 != ScfFlag.None ? f18 : defaultBuff));  // SC_CP_HELM: presence-only per rAthena db/re/status.yml:894
         Register(StatusType.Splasher, PresenceMarker(StatusFlagDefaults.For(StatusType.Splasher) is var f19 && f19 != ScfFlag.None ? f19 : defaultBuff));  // SC_SPLASHER: presence-only per rAthena db/re/status.yml:920
-        Register(StatusType.Magicrod, PresenceMarker(StatusFlagDefaults.For(StatusType.Magicrod) is var f20 && f20 != ScfFlag.None ? f20 : defaultBuff));  // SC_MAGICROD: presence-only per rAthena db/re/status.yml:940
         Register(StatusType.Spellbreaker, PresenceMarker(StatusFlagDefaults.For(StatusType.Spellbreaker) is var f21 && f21 != ScfFlag.None ? f21 : defaultBuff));  // SC_SPELLBREAKER: presence-only per rAthena db/re/status.yml:946
-        Register(StatusType.Autospell, PresenceMarker(StatusFlagDefaults.For(StatusType.Autospell) is var f22 && f22 != ScfFlag.None ? f22 : defaultBuff));  // SC_AUTOSPELL: presence-only per rAthena db/re/status.yml:949
         Register(StatusType.Sighttrasher, PresenceMarker(StatusFlagDefaults.For(StatusType.Sighttrasher) is var f23 && f23 != ScfFlag.None ? f23 : defaultBuff));  // SC_SIGHTTRASHER: presence-only per rAthena db/re/status.yml:957
         Register(StatusType.Autoberserk, PresenceMarker(StatusFlagDefaults.For(StatusType.Autoberserk) is var f24 && f24 != ScfFlag.None ? f24 : defaultBuff));  // SC_AUTOBERSERK: presence-only per rAthena db/re/status.yml:960
         Register(StatusType.Autocounter, PresenceMarker(StatusFlagDefaults.For(StatusType.Autocounter) is var f25 && f25 != ScfFlag.None ? f25 : defaultBuff));  // SC_AUTOCOUNTER: presence-only per rAthena db/re/status.yml:982
@@ -5251,16 +5182,12 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Extremityfist, PresenceMarker(StatusFlagDefaults.For(StatusType.Extremityfist) is var f29 && f29 != ScfFlag.None ? f29 : defaultBuff));  // SC_EXTREMITYFIST: presence-only per rAthena db/re/status.yml:1012
         Register(StatusType.Combo, PresenceMarker(StatusFlagDefaults.For(StatusType.Combo) is var f30 && f30 != ScfFlag.None ? f30 : defaultBuff));  // SC_COMBO: presence-only per rAthena db/re/status.yml:1036
         Register(StatusType.BladestopWait, PresenceMarker(StatusFlagDefaults.For(StatusType.BladestopWait) is var f31 && f31 != ScfFlag.None ? f31 : defaultBuff));  // SC_BLADESTOP_WAIT: presence-only per rAthena db/re/status.yml:1043
-        Register(StatusType.Bladestop, PresenceMarker(StatusFlagDefaults.For(StatusType.Bladestop) is var f32 && f32 != ScfFlag.None ? f32 : defaultBuff));  // SC_BLADESTOP: presence-only per rAthena db/re/status.yml:1049
         Register(StatusType.WatkElement, PresenceMarker(StatusFlagDefaults.For(StatusType.WatkElement) is var f33 && f33 != ScfFlag.None ? f33 : defaultBuff));  // SC_WATK_ELEMENT: presence-only per rAthena db/re/status.yml:1154
         Register(StatusType.ArmorElementWater, PresenceMarker(StatusFlagDefaults.For(StatusType.ArmorElementWater) is var f34 && f34 != ScfFlag.None ? f34 : defaultBuff));  // SC_ARMOR_ELEMENT_WATER: presence-only per rAthena db/re/status.yml:1164
         Register(StatusType.Nochat, PresenceMarker(StatusFlagDefaults.For(StatusType.Nochat) is var f35 && f35 != ScfFlag.None ? f35 : defaultBuff));  // SC_NOCHAT: presence-only per rAthena db/re/status.yml:1174
         Register(StatusType.Protectexp, PresenceMarker(StatusFlagDefaults.For(StatusType.Protectexp) is var f36 && f36 != ScfFlag.None ? f36 : defaultBuff));  // SC_PROTECTEXP: presence-only per rAthena db/re/status.yml:1193
-        Register(StatusType.Aurablade, PresenceMarker(StatusFlagDefaults.For(StatusType.Aurablade) is var f37 && f37 != ScfFlag.None ? f37 : defaultBuff));  // SC_AURABLADE: presence-only per rAthena db/re/status.yml:1198
-        Register(StatusType.Parrying, PresenceMarker(StatusFlagDefaults.For(StatusType.Parrying) is var f38 && f38 != ScfFlag.None ? f38 : defaultBuff));  // SC_PARRYING: presence-only per rAthena db/re/status.yml:1207
         Register(StatusType.Fury, PresenceMarker(StatusFlagDefaults.For(StatusType.Fury) is var f39 && f39 != ScfFlag.None ? f39 : defaultBuff));  // SC_FURY: presence-only per rAthena db/re/status.yml:1253
         Register(StatusType.Guildaura, PresenceMarker(StatusFlagDefaults.For(StatusType.Guildaura) is var f40 && f40 != ScfFlag.None ? f40 : defaultBuff));  // SC_GUILDAURA: presence-only per rAthena db/re/status.yml:1290
-        Register(StatusType.Rejectsword, PresenceMarker(StatusFlagDefaults.For(StatusType.Rejectsword) is var f41 && f41 != ScfFlag.None ? f41 : defaultBuff));  // SC_REJECTSWORD: presence-only per rAthena db/re/status.yml:1388
         Register(StatusType.Changeundead, PresenceMarker(StatusFlagDefaults.For(StatusType.Changeundead) is var f42 && f42 != ScfFlag.None ? f42 : defaultBuff));  // SC_CHANGEUNDEAD: presence-only per rAthena db/re/status.yml:1423
         Register(StatusType.Fogwall, PresenceMarker(StatusFlagDefaults.For(StatusType.Fogwall) is var f43 && f43 != ScfFlag.None ? f43 : defaultBuff));  // SC_FOGWALL: presence-only per rAthena db/re/status.yml:1470
         Register(StatusType.Devotion, PresenceMarker(StatusFlagDefaults.For(StatusType.Devotion) is var f44 && f44 != ScfFlag.None ? f44 : defaultBuff));  // SC_DEVOTION: presence-only per rAthena db/re/status.yml:1493
@@ -5272,19 +5199,9 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Dodge, PresenceMarker(StatusFlagDefaults.For(StatusType.Dodge) is var f50 && f50 != ScfFlag.None ? f50 : defaultBuff));  // SC_DODGE: presence-only per rAthena db/re/status.yml:1568
         Register(StatusType.Shadowweapon, PresenceMarker(StatusFlagDefaults.For(StatusType.Shadowweapon) is var f51 && f51 != ScfFlag.None ? f51 : defaultBuff));  // SC_SHADOWWEAPON: presence-only per rAthena db/re/status.yml:1588
         Register(StatusType.Ghostweapon, PresenceMarker(StatusFlagDefaults.For(StatusType.Ghostweapon) is var f52 && f52 != ScfFlag.None ? f52 : defaultBuff));  // SC_GHOSTWEAPON: presence-only per rAthena db/re/status.yml:1618
-        Register(StatusType.Kaizel, PresenceMarker(StatusFlagDefaults.For(StatusType.Kaizel) is var f53 && f53 != ScfFlag.None ? f53 : defaultBuff));  // SC_KAIZEL: presence-only per rAthena db/re/status.yml:1635
-        Register(StatusType.Kaahi, PresenceMarker(StatusFlagDefaults.For(StatusType.Kaahi) is var f54 && f54 != ScfFlag.None ? f54 : defaultBuff));  // SC_KAAHI: presence-only per rAthena db/re/status.yml:1638
-        Register(StatusType.Kaupe, PresenceMarker(StatusFlagDefaults.For(StatusType.Kaupe) is var f55 && f55 != ScfFlag.None ? f55 : defaultBuff));  // SC_KAUPE: presence-only per rAthena db/re/status.yml:1647
         Register(StatusType.Preserve, PresenceMarker(StatusFlagDefaults.For(StatusType.Preserve) is var f56 && f56 != ScfFlag.None ? f56 : defaultBuff));  // SC_PRESERVE: presence-only per rAthena db/re/status.yml:1673
-        Register(StatusType.Regeneration, PresenceMarker(StatusFlagDefaults.For(StatusType.Regeneration) is var f57 && f57 != ScfFlag.None ? f57 : defaultBuff));  // SC_REGENERATION: presence-only per rAthena db/re/status.yml:1686
-        Register(StatusType.Gravitation, PresenceMarker(StatusFlagDefaults.For(StatusType.Gravitation) is var f58 && f58 != ScfFlag.None ? f58 : defaultBuff));  // SC_GRAVITATION: presence-only per rAthena db/re/status.yml (no row — C# port-only sentinel)
-        Register(StatusType.Longing, PresenceMarker(StatusFlagDefaults.For(StatusType.Longing) is var f59 && f59 != ScfFlag.None ? f59 : defaultBuff));  // SC_LONGING: presence-only per rAthena db/re/status.yml (no row — C# port-only sentinel)
-        Register(StatusType.Hermode, PresenceMarker(StatusFlagDefaults.For(StatusType.Hermode) is var f60 && f60 != ScfFlag.None ? f60 : defaultBuff));  // SC_HERMODE: presence-only per rAthena db/re/status.yml:1715
         Register(StatusType.Shrink, PresenceMarker(StatusFlagDefaults.For(StatusType.Shrink) is var f61 && f61 != ScfFlag.None ? f61 : defaultBuff));  // SC_SHRINK: presence-only per rAthena db/re/status.yml:1718
-        Register(StatusType.Sightblaster, PresenceMarker(StatusFlagDefaults.For(StatusType.Sightblaster) is var f62 && f62 != ScfFlag.None ? f62 : defaultBuff));  // SC_SIGHTBLASTER: presence-only per rAthena db/re/status.yml:1726
         Register(StatusType.Winkcharm, PresenceMarker(StatusFlagDefaults.For(StatusType.Winkcharm) is var f63 && f63 != ScfFlag.None ? f63 : defaultBuff));  // SC_WINKCHARM: presence-only per rAthena db/re/status.yml:1735
-        Register(StatusType.Closeconfine2, PresenceMarker(StatusFlagDefaults.For(StatusType.Closeconfine2) is var f64 && f64 != ScfFlag.None ? f64 : defaultBuff));  // SC_CLOSECONFINE2: presence-only per rAthena db/re/status.yml:1757
-        Register(StatusType.Elementalchange, PresenceMarker(StatusFlagDefaults.For(StatusType.Elementalchange) is var f65 && f65 != ScfFlag.None ? f65 : defaultBuff));  // SC_ELEMENTALCHANGE: presence-only per rAthena db/re/status.yml:1792
         Register(StatusType.Rokisweil, PresenceMarker(StatusFlagDefaults.For(StatusType.Rokisweil) is var f66 && f66 != ScfFlag.None ? f66 : defaultBuff));  // SC_ROKISWEIL: presence-only per rAthena db/re/status.yml:1870
         Register(StatusType.Intoabyss, PresenceMarker(StatusFlagDefaults.For(StatusType.Intoabyss) is var f67 && f67 != ScfFlag.None ? f67 : defaultBuff));  // SC_INTOABYSS: presence-only per rAthena db/re/status.yml:1888
         Register(StatusType.Modechange, PresenceMarker(StatusFlagDefaults.For(StatusType.Modechange) is var f68 && f68 != ScfFlag.None ? f68 : defaultBuff));  // SC_MODECHANGE: presence-only per rAthena db/re/status.yml:1982
@@ -5318,12 +5235,10 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Incflee2, PresenceMarker(StatusFlagDefaults.For(StatusType.Incflee2) is var f96 && f96 != ScfFlag.None ? f96 : defaultBuff));  // SC_INCFLEE2: presence-only per rAthena db/re/status.yml:2646
         Register(StatusType.Jailed, PresenceMarker(StatusFlagDefaults.For(StatusType.Jailed) is var f97 && f97 != ScfFlag.None ? f97 : defaultBuff));  // SC_JAILED: presence-only per rAthena db/re/status.yml:2656
         Register(StatusType.Enchantarms, PresenceMarker(StatusFlagDefaults.For(StatusType.Enchantarms) is var f98 && f98 != ScfFlag.None ? f98 : defaultBuff));  // SC_ENCHANTARMS: presence-only per rAthena db/re/status.yml:2665
-        Register(StatusType.Criticalwound, PresenceMarker(StatusFlagDefaults.For(StatusType.Criticalwound) is var f99 && f99 != ScfFlag.None ? f99 : defaultBuff));  // SC_CRITICALWOUND: presence-only per rAthena db/re/status.yml:2687
         Register(StatusType.Magicmirror, PresenceMarker(StatusFlagDefaults.For(StatusType.Magicmirror) is var f100 && f100 != ScfFlag.None ? f100 : defaultBuff));  // SC_MAGICMIRROR: presence-only per rAthena db/re/status.yml:2695
         Register(StatusType.Summer, PresenceMarker(StatusFlagDefaults.For(StatusType.Summer) is var f101 && f101 != ScfFlag.None ? f101 : defaultBuff));  // SC_SUMMER: presence-only per rAthena db/re/status.yml:2707
         Register(StatusType.Expboost, PresenceMarker(StatusFlagDefaults.For(StatusType.Expboost) is var f102 && f102 != ScfFlag.None ? f102 : defaultBuff));  // SC_EXPBOOST: presence-only per rAthena db/re/status.yml:2720
         Register(StatusType.Itemboost, PresenceMarker(StatusFlagDefaults.For(StatusType.Itemboost) is var f103 && f103 != ScfFlag.None ? f103 : defaultBuff));  // SC_ITEMBOOST: presence-only per rAthena db/re/status.yml:2729
-        Register(StatusType.Bossmapinfo, PresenceMarker(StatusFlagDefaults.For(StatusType.Bossmapinfo) is var f104 && f104 != ScfFlag.None ? f104 : defaultBuff));  // SC_BOSSMAPINFO: presence-only per rAthena db/re/status.yml:2738
         Register(StatusType.Lifeinsurance, PresenceMarker(StatusFlagDefaults.For(StatusType.Lifeinsurance) is var f105 && f105 != ScfFlag.None ? f105 : defaultBuff));  // SC_LIFEINSURANCE: presence-only per rAthena db/re/status.yml:2748
         Register(StatusType.Inccri, PresenceMarker(StatusFlagDefaults.For(StatusType.Inccri) is var f106 && f106 != ScfFlag.None ? f106 : defaultBuff));  // SC_INCCRI: presence-only per rAthena db/re/status.yml:2757
         Register(StatusType.Pneuma, PresenceMarker(StatusFlagDefaults.For(StatusType.Pneuma) is var f107 && f107 != ScfFlag.None ? f107 : defaultBuff));  // SC_PNEUMA: presence-only per rAthena db/re/status.yml:2788
@@ -5333,7 +5248,6 @@ public sealed class StatusEffectRegistry
         Register(StatusType.SpcostRate, PresenceMarker(StatusFlagDefaults.For(StatusType.SpcostRate) is var f111 && f111 != ScfFlag.None ? f111 : defaultBuff));  // SC_SPCOST_RATE: presence-only per rAthena db/re/status.yml:2814
         Register(StatusType.CommonscResist, PresenceMarker(StatusFlagDefaults.For(StatusType.CommonscResist) is var f112 && f112 != ScfFlag.None ? f112 : defaultBuff));  // SC_COMMONSC_RESIST: presence-only per rAthena db/re/status.yml:2822
         Register(StatusType.DefRate, PresenceMarker(StatusFlagDefaults.For(StatusType.DefRate) is var f113 && f113 != ScfFlag.None ? f113 : defaultBuff));  // SC_DEF_RATE: presence-only per rAthena db/re/status.yml:2847
-        Register(StatusType.Rebirth, PresenceMarker(StatusFlagDefaults.For(StatusType.Rebirth) is var f114 && f114 != ScfFlag.None ? f114 : defaultBuff));  // SC_REBIRTH: presence-only per rAthena db/re/status.yml:2916
         Register(StatusType.SLifepotion, PresenceMarker(StatusFlagDefaults.For(StatusType.SLifepotion) is var f115 && f115 != ScfFlag.None ? f115 : defaultBuff));  // SC_S_LIFEPOTION: presence-only per rAthena db/re/status.yml:2929
         Register(StatusType.LLifepotion, PresenceMarker(StatusFlagDefaults.For(StatusType.LLifepotion) is var f116 && f116 != ScfFlag.None ? f116 : defaultBuff));  // SC_L_LIFEPOTION: presence-only per rAthena db/re/status.yml:2941
         Register(StatusType.Jexpboost, PresenceMarker(StatusFlagDefaults.For(StatusType.Jexpboost) is var f117 && f117 != ScfFlag.None ? f117 : defaultBuff));  // SC_JEXPBOOST: presence-only per rAthena db/re/status.yml:2953
@@ -5349,7 +5263,6 @@ public sealed class StatusEffectRegistry
         Register(StatusType.FoodIntCash, PresenceMarker(StatusFlagDefaults.For(StatusType.FoodIntCash) is var f127 && f127 != ScfFlag.None ? f127 : defaultBuff));  // SC_FOOD_INT_CASH: presence-only per rAthena db/re/status.yml:3083
         Register(StatusType.FoodLukCash, PresenceMarker(StatusFlagDefaults.For(StatusType.FoodLukCash) is var f128 && f128 != ScfFlag.None ? f128 : defaultBuff));  // SC_FOOD_LUK_CASH: presence-only per rAthena db/re/status.yml:3095
         Register(StatusType.Enchantblade, PresenceMarker(StatusFlagDefaults.For(StatusType.Enchantblade) is var f129 && f129 != ScfFlag.None ? f129 : defaultBuff));  // SC_ENCHANTBLADE: presence-only per rAthena db/re/status.yml:3164
-        Register(StatusType.Millenniumshield, PresenceMarker(StatusFlagDefaults.For(StatusType.Millenniumshield) is var f130 && f130 != ScfFlag.None ? f130 : defaultBuff));  // SC_MILLENNIUMSHIELD: presence-only per rAthena db/re/status.yml:3177
         Register(StatusType.Crushstrike, PresenceMarker(StatusFlagDefaults.For(StatusType.Crushstrike) is var f131 && f131 != ScfFlag.None ? f131 : defaultBuff));  // SC_CRUSHSTRIKE: presence-only per rAthena db/re/status.yml:3185
         Register(StatusType.Refresh, PresenceMarker(StatusFlagDefaults.For(StatusType.Refresh) is var f132 && f132 != ScfFlag.None ? f132 : defaultBuff));  // SC_REFRESH: presence-only per rAthena db/re/status.yml:3191
         Register(StatusType.ReuseRefresh, PresenceMarker(StatusFlagDefaults.For(StatusType.ReuseRefresh) is var f133 && f133 != ScfFlag.None ? f133 : defaultBuff));  // SC_REUSE_REFRESH: presence-only per rAthena db/re/status.yml:3199
@@ -5360,7 +5273,6 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Renovatio, PresenceMarker(StatusFlagDefaults.For(StatusType.Renovatio) is var f138 && f138 != ScfFlag.None ? f138 : defaultBuff));  // SC_RENOVATIO: presence-only per rAthena db/re/status.yml:3315
         Register(StatusType.Expiatio, PresenceMarker(StatusFlagDefaults.For(StatusType.Expiatio) is var f139 && f139 != ScfFlag.None ? f139 : defaultBuff));  // SC_EXPIATIO: presence-only per rAthena db/re/status.yml:3323
         Register(StatusType.Duplelight, PresenceMarker(StatusFlagDefaults.For(StatusType.Duplelight) is var f140 && f140 != ScfFlag.None ? f140 : defaultBuff));  // SC_DUPLELIGHT: presence-only per rAthena db/re/status.yml:3329
-        Register(StatusType.Secrament, PresenceMarker(StatusFlagDefaults.For(StatusType.Secrament) is var f141 && f141 != ScfFlag.None ? f141 : defaultBuff));  // SC_SECRAMENT: presence-only per rAthena db/re/status.yml:3336
         Register(StatusType.Whiteimprison, PresenceMarker(StatusFlagDefaults.For(StatusType.Whiteimprison) is var f142 && f142 != ScfFlag.None ? f142 : defaultBuff));  // SC_WHITEIMPRISON: presence-only per rAthena db/re/status.yml:3342
         Register(StatusType.Stasis, PresenceMarker(StatusFlagDefaults.For(StatusType.Stasis) is var f143 && f143 != ScfFlag.None ? f143 : defaultBuff));  // SC_STASIS: presence-only per rAthena db/re/status.yml:3390
         Register(StatusType.ReadingSb, PresenceMarker(StatusFlagDefaults.For(StatusType.ReadingSb) is var f144 && f144 != ScfFlag.None ? f144 : defaultBuff));  // SC_READING_SB: presence-only per rAthena db/re/status.yml:3424
@@ -5368,29 +5280,18 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Fearbreeze, PresenceMarker(StatusFlagDefaults.For(StatusType.Fearbreeze) is var f146 && f146 != ScfFlag.None ? f146 : defaultBuff));  // SC_FEARBREEZE: presence-only per rAthena db/re/status.yml:3431
         Register(StatusType.Electricshocker, PresenceMarker(StatusFlagDefaults.For(StatusType.Electricshocker) is var f147 && f147 != ScfFlag.None ? f147 : defaultBuff));  // SC_ELECTRICSHOCKER: presence-only per rAthena db/re/status.yml:3439
         Register(StatusType.Bite, PresenceMarker(StatusFlagDefaults.For(StatusType.Bite) is var f148 && f148 != ScfFlag.None ? f148 : defaultBuff));  // SC_BITE: presence-only per rAthena db/re/status.yml:3464
-        Register(StatusType.Shapeshift, PresenceMarker(StatusFlagDefaults.For(StatusType.Shapeshift) is var f149 && f149 != ScfFlag.None ? f149 : defaultBuff));  // SC_SHAPESHIFT: presence-only per rAthena db/re/status.yml:3516
         Register(StatusType.Magneticfield, PresenceMarker(StatusFlagDefaults.For(StatusType.Magneticfield) is var f150 && f150 != ScfFlag.None ? f150 : defaultBuff));  // SC_MAGNETICFIELD: presence-only per rAthena db/re/status.yml:3547
         Register(StatusType.NeutralbarrierMaster, PresenceMarker(StatusFlagDefaults.For(StatusType.NeutralbarrierMaster) is var f151 && f151 != ScfFlag.None ? f151 : defaultBuff));  // SC_NEUTRALBARRIER_MASTER: presence-only per rAthena db/re/status.yml:3574
         Register(StatusType.Overheat, PresenceMarker(StatusFlagDefaults.For(StatusType.Overheat) is var f152 && f152 != ScfFlag.None ? f152 : defaultBuff));  // SC_OVERHEAT: presence-only per rAthena db/re/status.yml:3607
-        Register(StatusType.OverheatLimitpoint, PresenceMarker(StatusFlagDefaults.For(StatusType.OverheatLimitpoint) is var f153 && f153 != ScfFlag.None ? f153 : defaultBuff));  // SC_OVERHEAT_LIMITPOINT: presence-only per rAthena db/re/status.yml:3615
         Register(StatusType.Poisoningweapon, PresenceMarker(StatusFlagDefaults.For(StatusType.Poisoningweapon) is var f154 && f154 != ScfFlag.None ? f154 : defaultBuff));  // SC_POISONINGWEAPON: presence-only per rAthena db/re/status.yml:3632
-        Register(StatusType.Weaponblocking, PresenceMarker(StatusFlagDefaults.For(StatusType.Weaponblocking) is var f155 && f155 != ScfFlag.None ? f155 : defaultBuff));  // SC_WEAPONBLOCKING: presence-only per rAthena db/re/status.yml:3640
         Register(StatusType.Rollingcutter, PresenceMarker(StatusFlagDefaults.For(StatusType.Rollingcutter) is var f156 && f156 != ScfFlag.None ? f156 : defaultBuff));  // SC_ROLLINGCUTTER: presence-only per rAthena db/re/status.yml:3697
         Register(StatusType.Leechesend, PresenceMarker(StatusFlagDefaults.For(StatusType.Leechesend) is var f157 && f157 != ScfFlag.None ? f157 : defaultBuff));  // SC_LEECHESEND: presence-only per rAthena db/re/status.yml:3862
-        Register(StatusType.Exeedbreak, PresenceMarker(StatusFlagDefaults.For(StatusType.Exeedbreak) is var f158 && f158 != ScfFlag.None ? f158 : defaultBuff));  // SC_EXEEDBREAK: presence-only per rAthena db/re/status.yml:3924
         Register(StatusType.Spellfist, PresenceMarker(StatusFlagDefaults.For(StatusType.Spellfist) is var f159 && f159 != ScfFlag.None ? f159 : defaultBuff));  // SC_SPELLFIST: presence-only per rAthena db/re/status.yml:3984
         Register(StatusType.Crystalize, PresenceMarker(StatusFlagDefaults.For(StatusType.Crystalize) is var f160 && f160 != ScfFlag.None ? f160 : defaultBuff));  // SC_CRYSTALIZE: presence-only per rAthena db/re/status.yml:3989
-        Register(StatusType.Warmer, PresenceMarker(StatusFlagDefaults.For(StatusType.Warmer) is var f161 && f161 != ScfFlag.None ? f161 : defaultBuff));  // SC_WARMER: presence-only per rAthena db/re/status.yml:4023
-        Register(StatusType.Propertywalk, PresenceMarker(StatusFlagDefaults.For(StatusType.Propertywalk) is var f162 && f162 != ScfFlag.None ? f162 : defaultBuff));  // SC_PROPERTYWALK: presence-only per rAthena db/re/status.yml:4054
         Register(StatusType.Voiceofsiren, PresenceMarker(StatusFlagDefaults.For(StatusType.Voiceofsiren) is var f163 && f163 != ScfFlag.None ? f163 : defaultBuff));  // SC_VOICEOFSIREN: presence-only per rAthena db/re/status.yml:4154
         Register(StatusType.Deepsleep, PresenceMarker(StatusFlagDefaults.For(StatusType.Deepsleep) is var f164 && f164 != ScfFlag.None ? f164 : defaultBuff));  // SC_DEEPSLEEP: presence-only per rAthena db/re/status.yml:4174
-        Register(StatusType.Sircleofnature, PresenceMarker(StatusFlagDefaults.For(StatusType.Sircleofnature) is var f165 && f165 != ScfFlag.None ? f165 : defaultBuff));  // SC_SIRCLEOFNATURE: presence-only per rAthena db/re/status.yml:4215
-        Register(StatusType.GloomydaySk, PresenceMarker(StatusFlagDefaults.For(StatusType.GloomydaySk) is var f166 && f166 != ScfFlag.None ? f166 : defaultBuff));  // SC_GLOOMYDAY_SK: presence-only per rAthena db/re/status.yml:4249
-        Register(StatusType.Songofmana, PresenceMarker(StatusFlagDefaults.For(StatusType.Songofmana) is var f167 && f167 != ScfFlag.None ? f167 : defaultBuff));  // SC_SONGOFMANA: presence-only per rAthena db/re/status.yml:4251
-        Register(StatusType.Unlimitedhummingvoice, PresenceMarker(StatusFlagDefaults.For(StatusType.Unlimitedhummingvoice) is var f168 && f168 != ScfFlag.None ? f168 : defaultBuff));  // SC_UNLIMITEDHUMMINGVOICE: presence-only per rAthena db/re/status.yml:4382
         Register(StatusType.SitdownForce, PresenceMarker(StatusFlagDefaults.For(StatusType.SitdownForce) is var f169 && f169 != ScfFlag.None ? f169 : defaultBuff));  // SC_SITDOWN_FORCE: presence-only per rAthena db/re/status.yml:4401
         Register(StatusType.Netherworld, PresenceMarker(StatusFlagDefaults.For(StatusType.Netherworld) is var f170 && f170 != ScfFlag.None ? f170 : defaultBuff));  // SC_NETHERWORLD: presence-only per rAthena db/re/status.yml:4406
-        Register(StatusType.GtEnergygain, PresenceMarker(StatusFlagDefaults.For(StatusType.GtEnergygain) is var f171 && f171 != ScfFlag.None ? f171 : defaultBuff));  // SC_GT_ENERGYGAIN: presence-only per rAthena db/re/status.yml:4482
         Register(StatusType.Thornstrap, PresenceMarker(StatusFlagDefaults.For(StatusType.Thornstrap) is var f172 && f172 != ScfFlag.None ? f172 : defaultBuff));  // SC_THORNSTRAP: presence-only per rAthena db/re/status.yml:4527
         Register(StatusType.Bloodsucker, PresenceMarker(StatusFlagDefaults.For(StatusType.Bloodsucker) is var f173 && f173 != ScfFlag.None ? f173 : defaultBuff));  // SC_BLOODSUCKER: presence-only per rAthena db/re/status.yml:4538
         Register(StatusType.MysteriousPowder, PresenceMarker(StatusFlagDefaults.For(StatusType.MysteriousPowder) is var f174 && f174 != ScfFlag.None ? f174 : defaultBuff));  // SC_MYSTERIOUS_POWDER: presence-only per rAthena db/re/status.yml:4598
@@ -5420,7 +5321,6 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Pyrotechnic, PresenceMarker(StatusFlagDefaults.For(StatusType.Pyrotechnic) is var f198 && f198 != ScfFlag.None ? f198 : defaultBuff));  // SC_PYROTECHNIC: presence-only per rAthena db/re/status.yml:5076
         Register(StatusType.Gust, PresenceMarker(StatusFlagDefaults.For(StatusType.Gust) is var f199 && f199 != ScfFlag.None ? f199 : defaultBuff));  // SC_GUST: presence-only per rAthena db/re/status.yml:5195
         Register(StatusType.Upheaval, PresenceMarker(StatusFlagDefaults.For(StatusType.Upheaval) is var f200 && f200 != ScfFlag.None ? f200 : defaultBuff));  // SC_UPHEAVAL: presence-only per rAthena db/re/status.yml:5295
-        Register(StatusType.TidalWeapon, PresenceMarker(StatusFlagDefaults.For(StatusType.TidalWeapon) is var f201 && f201 != ScfFlag.None ? f201 : defaultBuff));  // SC_TIDAL_WEAPON: presence-only per rAthena db/re/status.yml:5315
         Register(StatusType.Raid, PresenceMarker(StatusFlagDefaults.For(StatusType.Raid) is var f202 && f202 != ScfFlag.None ? f202 : defaultBuff));  // SC_RAID: presence-only per rAthena db/re/status.yml:5400
         Register(StatusType.Spellbook1, PresenceMarker(StatusFlagDefaults.For(StatusType.Spellbook1) is var f203 && f203 != ScfFlag.None ? f203 : defaultBuff));  // SC_SPELLBOOK1: presence-only per rAthena db/re/status.yml:5478
         Register(StatusType.Spellbook2, PresenceMarker(StatusFlagDefaults.For(StatusType.Spellbook2) is var f204 && f204 != ScfFlag.None ? f204 : defaultBuff));  // SC_SPELLBOOK2: presence-only per rAthena db/re/status.yml:5482
@@ -5430,26 +5330,17 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Spellbook6, PresenceMarker(StatusFlagDefaults.For(StatusType.Spellbook6) is var f208 && f208 != ScfFlag.None ? f208 : defaultBuff));  // SC_SPELLBOOK6: presence-only per rAthena db/re/status.yml:5498
         Register(StatusType.Maxspellbook, PresenceMarker(StatusFlagDefaults.For(StatusType.Maxspellbook) is var f209 && f209 != ScfFlag.None ? f209 : defaultBuff));  // SC_MAXSPELLBOOK: presence-only per rAthena db/re/status.yml:5502
         Register(StatusType.Partyflee, PresenceMarker(StatusFlagDefaults.For(StatusType.Partyflee) is var f210 && f210 != ScfFlag.None ? f210 : defaultBuff));  // SC_PARTYFLEE: presence-only per rAthena db/re/status.yml:5522
-        Register(StatusType.Meikyousisui, PresenceMarker(StatusFlagDefaults.For(StatusType.Meikyousisui) is var f211 && f211 != ScfFlag.None ? f211 : defaultBuff));  // SC_MEIKYOUSISUI: presence-only per rAthena db/re/status.yml:5528
         Register(StatusType.Jyumonjikiri, PresenceMarker(StatusFlagDefaults.For(StatusType.Jyumonjikiri) is var f212 && f212 != ScfFlag.None ? f212 : defaultBuff));  // SC_JYUMONJIKIRI: presence-only per rAthena db/re/status.yml:5538
         Register(StatusType.Zenkai, PresenceMarker(StatusFlagDefaults.For(StatusType.Zenkai) is var f213 && f213 != ScfFlag.None ? f213 : defaultBuff));  // SC_ZENKAI: presence-only per rAthena db/re/status.yml:5567
         Register(StatusType.Kagehumi, PresenceMarker(StatusFlagDefaults.For(StatusType.Kagehumi) is var f214 && f214 != ScfFlag.None ? f214 : defaultBuff));  // SC_KAGEHUMI: presence-only per rAthena db/re/status.yml:5570
         Register(StatusType.Kyomu, PresenceMarker(StatusFlagDefaults.For(StatusType.Kyomu) is var f215 && f215 != ScfFlag.None ? f215 : defaultBuff));  // SC_KYOMU: presence-only per rAthena db/re/status.yml:5576
-        Register(StatusType.Kagemusya, PresenceMarker(StatusFlagDefaults.For(StatusType.Kagemusya) is var f216 && f216 != ScfFlag.None ? f216 : defaultBuff));  // SC_KAGEMUSYA: presence-only per rAthena db/re/status.yml:5579
         Register(StatusType.StyleChange, PresenceMarker(StatusFlagDefaults.For(StatusType.StyleChange) is var f217 && f217 != ScfFlag.None ? f217 : defaultBuff));  // SC_STYLE_CHANGE: presence-only per rAthena db/re/status.yml:5598
         Register(StatusType.PainKiller, PresenceMarker(StatusFlagDefaults.For(StatusType.PainKiller) is var f218 && f218 != ScfFlag.None ? f218 : defaultBuff));  // SC_PAIN_KILLER: presence-only per rAthena db/re/status.yml:5724
         Register(StatusType.Hanbok, PresenceMarker(StatusFlagDefaults.For(StatusType.Hanbok) is var f219 && f219 != ScfFlag.None ? f219 : defaultBuff));  // SC_HANBOK: presence-only per rAthena db/re/status.yml:5732
-        Register(StatusType.Darkcrow, PresenceMarker(StatusFlagDefaults.For(StatusType.Darkcrow) is var f220 && f220 != ScfFlag.None ? f220 : defaultBuff));  // SC_DARKCROW: presence-only per rAthena db/re/status.yml:5757
-        Register(StatusType.Unlimit, PresenceMarker(StatusFlagDefaults.For(StatusType.Unlimit) is var f221 && f221 != ScfFlag.None ? f221 : defaultBuff));  // SC_UNLIMIT: presence-only per rAthena db/re/status.yml:5787
-        Register(StatusType.KingsGrace, PresenceMarker(StatusFlagDefaults.For(StatusType.KingsGrace) is var f222 && f222 != ScfFlag.None ? f222 : defaultBuff));  // SC_KINGS_GRACE: presence-only per rAthena db/re/status.yml:5794
-        Register(StatusType.Offertorium, PresenceMarker(StatusFlagDefaults.For(StatusType.Offertorium) is var f223 && f223 != ScfFlag.None ? f223 : defaultBuff));  // SC_OFFERTORIUM: presence-only per rAthena db/re/status.yml:5837
         Register(StatusType.MonsterTransform, PresenceMarker(StatusFlagDefaults.For(StatusType.MonsterTransform) is var f224 && f224 != ScfFlag.None ? f224 : defaultBuff));  // SC_MONSTER_TRANSFORM: presence-only per rAthena db/re/status.yml:5867
         Register(StatusType.AngelProtect, PresenceMarker(StatusFlagDefaults.For(StatusType.AngelProtect) is var f225 && f225 != ScfFlag.None ? f225 : defaultBuff));  // SC_ANGEL_PROTECT: presence-only per rAthena db/re/status.yml:5876
         Register(StatusType.SuperStar, PresenceMarker(StatusFlagDefaults.For(StatusType.SuperStar) is var f226 && f226 != ScfFlag.None ? f226 : defaultBuff));  // SC_SUPER_STAR: presence-only per rAthena db/re/status.yml:5906
         Register(StatusType.Magicalbullet, PresenceMarker(StatusFlagDefaults.For(StatusType.Magicalbullet) is var f227 && f227 != ScfFlag.None ? f227 : defaultBuff));  // SC_MAGICALBULLET: presence-only per rAthena db/re/status.yml:5932
-        Register(StatusType.PAlter, PresenceMarker(StatusFlagDefaults.For(StatusType.PAlter) is var f228 && f228 != ScfFlag.None ? f228 : defaultBuff));  // SC_P_ALTER: presence-only per rAthena db/re/status.yml:5935
-        Register(StatusType.EChain, PresenceMarker(StatusFlagDefaults.For(StatusType.EChain) is var f229 && f229 != ScfFlag.None ? f229 : defaultBuff));  // SC_E_CHAIN: presence-only per rAthena db/re/status.yml:5946
-        Register(StatusType.AntiMBlast, PresenceMarker(StatusFlagDefaults.For(StatusType.AntiMBlast) is var f230 && f230 != ScfFlag.None ? f230 : defaultBuff));  // SC_ANTI_M_BLAST: presence-only per rAthena db/re/status.yml:5966
         Register(StatusType.HMine, PresenceMarker(StatusFlagDefaults.For(StatusType.HMine) is var f231 && f231 != ScfFlag.None ? f231 : defaultBuff));  // SC_H_MINE: presence-only per rAthena db/re/status.yml:5986
         Register(StatusType.QdShotReady, PresenceMarker(StatusFlagDefaults.For(StatusType.QdShotReady) is var f232 && f232 != ScfFlag.None ? f232 : defaultBuff));  // SC_QD_SHOT_READY: presence-only per rAthena db/re/status.yml:5994
         Register(StatusType.MtfAspd, PresenceMarker(StatusFlagDefaults.For(StatusType.MtfAspd) is var f233 && f233 != ScfFlag.None ? f233 : defaultBuff));  // SC_MTF_ASPD: presence-only per rAthena db/re/status.yml:5998
@@ -5496,7 +5387,6 @@ public sealed class StatusEffectRegistry
         Register(StatusType.SuStoop, PresenceMarker(StatusFlagDefaults.For(StatusType.SuStoop) is var f274 && f274 != ScfFlag.None ? f274 : defaultBuff));  // SC_SU_STOOP: presence-only per rAthena db/re/status.yml:6516
         Register(StatusType.Spritemable, PresenceMarker(StatusFlagDefaults.For(StatusType.Spritemable) is var f275 && f275 != ScfFlag.None ? f275 : defaultBuff));  // SC_SPRITEMABLE: presence-only per rAthena db/re/status.yml:6519
         Register(StatusType.SvRoottwist, PresenceMarker(StatusFlagDefaults.For(StatusType.SvRoottwist) is var f276 && f276 != ScfFlag.None ? f276 : defaultBuff));  // SC_SV_ROOTTWIST: presence-only per rAthena db/re/status.yml:6536
-        Register(StatusType.Tunaparty, PresenceMarker(StatusFlagDefaults.For(StatusType.Tunaparty) is var f277 && f277 != ScfFlag.None ? f277 : defaultBuff));  // SC_TUNAPARTY: presence-only per rAthena db/re/status.yml:6561
         Register(StatusType.Freshshrimp, PresenceMarker(StatusFlagDefaults.For(StatusType.Freshshrimp) is var f278 && f278 != ScfFlag.None ? f278 : defaultBuff));  // SC_FRESHSHRIMP: presence-only per rAthena db/re/status.yml:6571
         Register(StatusType.ActiveMonsterTransform, PresenceMarker(StatusFlagDefaults.For(StatusType.ActiveMonsterTransform) is var f279 && f279 != ScfFlag.None ? f279 : defaultBuff));  // SC_ACTIVE_MONSTER_TRANSFORM: presence-only per rAthena db/re/status.yml:6576
         Register(StatusType.CloudKill, PresenceMarker(StatusFlagDefaults.For(StatusType.CloudKill) is var f280 && f280 != ScfFlag.None ? f280 : defaultBuff));  // SC_CLOUD_KILL: presence-only per rAthena db/re/status.yml (no row — C# port-only sentinel)
@@ -5518,7 +5408,6 @@ public sealed class StatusEffectRegistry
         Register(StatusType.GvgCurse, PresenceMarker(StatusFlagDefaults.For(StatusType.GvgCurse) is var f296 && f296 != ScfFlag.None ? f296 : defaultBuff));  // SC_GVG_CURSE: presence-only per rAthena db/re/status.yml:6707
         Register(StatusType.GvgSilence, PresenceMarker(StatusFlagDefaults.For(StatusType.GvgSilence) is var f297 && f297 != ScfFlag.None ? f297 : defaultBuff));  // SC_GVG_SILENCE: presence-only per rAthena db/re/status.yml:6711
         Register(StatusType.GvgBlind, PresenceMarker(StatusFlagDefaults.For(StatusType.GvgBlind) is var f298 && f298 != ScfFlag.None ? f298 : defaultBuff));  // SC_GVG_BLIND: presence-only per rAthena db/re/status.yml:6715
-        Register(StatusType.ClanInfo, PresenceMarker(StatusFlagDefaults.For(StatusType.ClanInfo) is var f299 && f299 != ScfFlag.None ? f299 : defaultBuff));  // SC_CLAN_INFO: presence-only per rAthena db/re/status.yml:6719
         Register(StatusType.Tarotcard, PresenceMarker(StatusFlagDefaults.For(StatusType.Tarotcard) is var f300 && f300 != ScfFlag.None ? f300 : defaultBuff));  // SC_TAROTCARD: presence-only per rAthena db/re/status.yml:6812
         Register(StatusType.GeffenMagic1, PresenceMarker(StatusFlagDefaults.For(StatusType.GeffenMagic1) is var f301 && f301 != ScfFlag.None ? f301 : defaultBuff));  // SC_GEFFEN_MAGIC1: presence-only per rAthena db/re/status.yml:6815
         Register(StatusType.GeffenMagic2, PresenceMarker(StatusFlagDefaults.For(StatusType.GeffenMagic2) is var f302 && f302 != ScfFlag.None ? f302 : defaultBuff));  // SC_GEFFEN_MAGIC2: presence-only per rAthena db/re/status.yml:6825
@@ -5544,7 +5433,6 @@ public sealed class StatusEffectRegistry
         Register(StatusType.LhzDunN2, PresenceMarker(StatusFlagDefaults.For(StatusType.LhzDunN2) is var f322 && f322 != ScfFlag.None ? f322 : defaultBuff));  // SC_LHZ_DUN_N2: presence-only per rAthena db/re/status.yml:7069
         Register(StatusType.LhzDunN3, PresenceMarker(StatusFlagDefaults.For(StatusType.LhzDunN3) is var f323 && f323 != ScfFlag.None ? f323 : defaultBuff));  // SC_LHZ_DUN_N3: presence-only per rAthena db/re/status.yml:7084
         Register(StatusType.LhzDunN4, PresenceMarker(StatusFlagDefaults.For(StatusType.LhzDunN4) is var f324 && f324 != ScfFlag.None ? f324 : defaultBuff));  // SC_LHZ_DUN_N4: presence-only per rAthena db/re/status.yml:7099
-        Register(StatusType.Ancilla, PresenceMarker(StatusFlagDefaults.For(StatusType.Ancilla) is var f325 && f325 != ScfFlag.None ? f325 : defaultBuff));  // SC_ANCILLA: presence-only per rAthena db/re/status.yml:7114
         Register(StatusType.Earthshaker, PresenceMarker(StatusFlagDefaults.For(StatusType.Earthshaker) is var f326 && f326 != ScfFlag.None ? f326 : defaultBuff));  // SC_EARTHSHAKER: presence-only per rAthena db/re/status.yml:7120
         Register(StatusType.WeaponblockOn, PresenceMarker(StatusFlagDefaults.For(StatusType.WeaponblockOn) is var f327 && f327 != ScfFlag.None ? f327 : defaultBuff));  // SC_WEAPONBLOCK_ON: presence-only per rAthena db/re/status.yml:7125
         Register(StatusType.SporeExplosion, PresenceMarker(StatusFlagDefaults.For(StatusType.SporeExplosion) is var f328 && f328 != ScfFlag.None ? f328 : defaultBuff));  // SC_SPORE_EXPLOSION: presence-only per rAthena db/re/status.yml:7134
@@ -5556,7 +5444,6 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Dimension, PresenceMarker(StatusFlagDefaults.For(StatusType.Dimension) is var f334 && f334 != ScfFlag.None ? f334 : defaultBuff));  // SC_DIMENSION: presence-only per rAthena db/re/status.yml:7271
         Register(StatusType.Dimension1, PresenceMarker(StatusFlagDefaults.For(StatusType.Dimension1) is var f335 && f335 != ScfFlag.None ? f335 : defaultBuff));  // SC_DIMENSION1: presence-only per rAthena db/re/status.yml:7276
         Register(StatusType.Dimension2, PresenceMarker(StatusFlagDefaults.For(StatusType.Dimension2) is var f336 && f336 != ScfFlag.None ? f336 : defaultBuff));  // SC_DIMENSION2: presence-only per rAthena db/re/status.yml:7279
-        Register(StatusType.Fallingstar, PresenceMarker(StatusFlagDefaults.For(StatusType.Fallingstar) is var f337 && f337 != ScfFlag.None ? f337 : defaultBuff));  // SC_FALLINGSTAR: presence-only per rAthena db/re/status.yml:7291
         Register(StatusType.Novaexplosing, PresenceMarker(StatusFlagDefaults.For(StatusType.Novaexplosing) is var f338 && f338 != ScfFlag.None ? f338 : defaultBuff));  // SC_NOVAEXPLOSING: presence-only per rAthena db/re/status.yml:7294
         Register(StatusType.Gravitycontrol, PresenceMarker(StatusFlagDefaults.For(StatusType.Gravitycontrol) is var f339 && f339 != ScfFlag.None ? f339 : defaultBuff));  // SC_GRAVITYCONTROL: presence-only per rAthena db/re/status.yml:7301
         Register(StatusType.UseSkillSpSpa, PresenceMarker(StatusFlagDefaults.For(StatusType.UseSkillSpSpa) is var f340 && f340 != ScfFlag.None ? f340 : defaultBuff));  // SC_USE_SKILL_SP_SPA: presence-only per rAthena db/re/status.yml:7404
@@ -5570,7 +5457,6 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Soundofdestruction, PresenceMarker(StatusFlagDefaults.For(StatusType.Soundofdestruction) is var f348 && f348 != ScfFlag.None ? f348 : defaultBuff));  // SC_SOUNDOFDESTRUCTION: presence-only per rAthena db/re/status.yml:7457
         Register(StatusType.ReuseLimitLuxanima, PresenceMarker(StatusFlagDefaults.For(StatusType.ReuseLimitLuxanima) is var f349 && f349 != ScfFlag.None ? f349 : defaultBuff));  // SC_REUSE_LIMIT_LUXANIMA: presence-only per rAthena db/re/status.yml:7470
         Register(StatusType.MistyFrost, PresenceMarker(StatusFlagDefaults.For(StatusType.MistyFrost) is var f350 && f350 != ScfFlag.None ? f350 : defaultBuff));  // SC_MISTY_FROST: presence-only per rAthena db/re/status.yml:7487
-        Register(StatusType.MagicPoison, PresenceMarker(StatusFlagDefaults.For(StatusType.MagicPoison) is var f351 && f351 != ScfFlag.None ? f351 : defaultBuff));  // SC_MAGIC_POISON: presence-only per rAthena db/re/status.yml:7492
         Register(StatusType.Ep162BuffSs, PresenceMarker(StatusFlagDefaults.For(StatusType.Ep162BuffSs) is var f352 && f352 != ScfFlag.None ? f352 : defaultBuff));  // SC_EP16_2_BUFF_SS: presence-only per rAthena db/re/status.yml:7498
         Register(StatusType.Ep162BuffSc, PresenceMarker(StatusFlagDefaults.For(StatusType.Ep162BuffSc) is var f353 && f353 != ScfFlag.None ? f353 : defaultBuff));  // SC_EP16_2_BUFF_SC: presence-only per rAthena db/re/status.yml:7507
         Register(StatusType.Ep162BuffAc, PresenceMarker(StatusFlagDefaults.For(StatusType.Ep162BuffAc) is var f354 && f354 != ScfFlag.None ? f354 : defaultBuff));  // SC_EP16_2_BUFF_AC: presence-only per rAthena db/re/status.yml:7516
@@ -5601,7 +5487,6 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Calamitygale, PresenceMarker(StatusFlagDefaults.For(StatusType.Calamitygale) is var f379 && f379 != ScfFlag.None ? f379 : defaultBuff));  // SC_CALAMITYGALE: presence-only per rAthena db/re/status.yml:7905
         Register(StatusType.Mediale, PresenceMarker(StatusFlagDefaults.For(StatusType.Mediale) is var f380 && f380 != ScfFlag.None ? f380 : defaultBuff));  // SC_MEDIALE: presence-only per rAthena db/re/status.yml:7911
         Register(StatusType.AVita, PresenceMarker(StatusFlagDefaults.For(StatusType.AVita) is var f381 && f381 != ScfFlag.None ? f381 : defaultBuff));  // SC_A_VITA: presence-only per rAthena db/re/status.yml:7917
-        Register(StatusType.ATelum, PresenceMarker(StatusFlagDefaults.For(StatusType.ATelum) is var f382 && f382 != ScfFlag.None ? f382 : defaultBuff));  // SC_A_TELUM: presence-only per rAthena db/re/status.yml:7920
         Register(StatusType.AxeStomp, PresenceMarker(StatusFlagDefaults.For(StatusType.AxeStomp) is var f383 && f383 != ScfFlag.None ? f383 : defaultBuff));  // SC_AXE_STOMP: presence-only per rAthena db/re/status.yml:7964
         Register(StatusType.AMachine, PresenceMarker(StatusFlagDefaults.For(StatusType.AMachine) is var f384 && f384 != ScfFlag.None ? f384 : defaultBuff));  // SC_A_MACHINE: presence-only per rAthena db/re/status.yml:7967
         Register(StatusType.AbrBattleWarior, PresenceMarker(StatusFlagDefaults.For(StatusType.AbrBattleWarior) is var f385 && f385 != ScfFlag.None ? f385 : defaultBuff));  // SC_ABR_BATTLE_WARIOR: presence-only per rAthena db/re/status.yml:7982
@@ -5610,12 +5495,9 @@ public sealed class StatusEffectRegistry
         Register(StatusType.AbrInfinity, PresenceMarker(StatusFlagDefaults.For(StatusType.AbrInfinity) is var f388 && f388 != ScfFlag.None ? f388 : defaultBuff));  // SC_ABR_INFINITY: presence-only per rAthena db/re/status.yml:7991
         Register(StatusType.ShadowExceed, PresenceMarker(StatusFlagDefaults.For(StatusType.ShadowExceed) is var f389 && f389 != ScfFlag.None ? f389 : defaultBuff));  // SC_SHADOW_EXCEED: presence-only per rAthena db/re/status.yml:7994
         Register(StatusType.DancingKnife, PresenceMarker(StatusFlagDefaults.For(StatusType.DancingKnife) is var f390 && f390 != ScfFlag.None ? f390 : defaultBuff));  // SC_DANCING_KNIFE: presence-only per rAthena db/re/status.yml:8000
-        Register(StatusType.PotentVenom, PresenceMarker(StatusFlagDefaults.For(StatusType.PotentVenom) is var f391 && f391 != ScfFlag.None ? f391 : defaultBuff));  // SC_POTENT_VENOM: presence-only per rAthena db/re/status.yml:8007
         Register(StatusType.ShadowScar, PresenceMarker(StatusFlagDefaults.For(StatusType.ShadowScar) is var f392 && f392 != ScfFlag.None ? f392 : defaultBuff));  // SC_SHADOW_SCAR: presence-only per rAthena db/re/status.yml:8010
         Register(StatusType.ESlashCount, PresenceMarker(StatusFlagDefaults.For(StatusType.ESlashCount) is var f393 && f393 != ScfFlag.None ? f393 : defaultBuff));  // SC_E_SLASH_COUNT: presence-only per rAthena db/re/status.yml:8012
         Register(StatusType.ShadowWeapon, PresenceMarker(StatusFlagDefaults.For(StatusType.ShadowWeapon) is var f394 && f394 != ScfFlag.None ? f394 : defaultBuff));  // SC_SHADOW_WEAPON: presence-only per rAthena db/re/status.yml:8021
-        Register(StatusType.GuardianS, PresenceMarker(StatusFlagDefaults.For(StatusType.GuardianS) is var f395 && f395 != ScfFlag.None ? f395 : defaultBuff));  // SC_GUARDIAN_S: presence-only per rAthena db/re/status.yml:8052
-        Register(StatusType.ReboundS, PresenceMarker(StatusFlagDefaults.For(StatusType.ReboundS) is var f396 && f396 != ScfFlag.None ? f396 : defaultBuff));  // SC_REBOUND_S: presence-only per rAthena db/re/status.yml:8055
         Register(StatusType.UltimateS, PresenceMarker(StatusFlagDefaults.For(StatusType.UltimateS) is var f397 && f397 != ScfFlag.None ? f397 : defaultBuff));  // SC_ULTIMATE_S: presence-only per rAthena db/re/status.yml:8069
         Register(StatusType.SpearScar, PresenceMarker(StatusFlagDefaults.For(StatusType.SpearScar) is var f398 && f398 != ScfFlag.None ? f398 : defaultBuff));  // SC_SPEAR_SCAR: presence-only per rAthena db/re/status.yml:8072
         Register(StatusType.ShieldPower, PresenceMarker(StatusFlagDefaults.For(StatusType.ShieldPower) is var f399 && f399 != ScfFlag.None ? f399 : defaultBuff));  // SC_SHIELD_POWER: presence-only per rAthena db/re/status.yml:8078
@@ -5646,20 +5528,14 @@ public sealed class StatusEffectRegistry
         Register(StatusType.AbyssDagger, PresenceMarker(StatusFlagDefaults.For(StatusType.AbyssDagger) is var f424 && f424 != ScfFlag.None ? f424 : defaultBuff));  // SC_ABYSS_DAGGER: presence-only per rAthena db/re/status.yml:8281
         Register(StatusType.Abyssforceweapon, PresenceMarker(StatusFlagDefaults.For(StatusType.Abyssforceweapon) is var f425 && f425 != ScfFlag.None ? f425 : defaultBuff));  // SC_ABYSSFORCEWEAPON: presence-only per rAthena db/re/status.yml:8284
         Register(StatusType.Flametechnic, PresenceMarker(StatusFlagDefaults.For(StatusType.Flametechnic) is var f426 && f426 != ScfFlag.None ? f426 : defaultBuff));  // SC_FLAMETECHNIC: presence-only per rAthena db/re/status.yml:8301
-        Register(StatusType.FlametechnicOption, PresenceMarker(StatusFlagDefaults.For(StatusType.FlametechnicOption) is var f427 && f427 != ScfFlag.None ? f427 : defaultBuff));  // SC_FLAMETECHNIC_OPTION: presence-only per rAthena db/re/status.yml:8305
         Register(StatusType.Flamearmor, PresenceMarker(StatusFlagDefaults.For(StatusType.Flamearmor) is var f428 && f428 != ScfFlag.None ? f428 : defaultBuff));  // SC_FLAMEARMOR: presence-only per rAthena db/re/status.yml:8310
         Register(StatusType.ColdForce, PresenceMarker(StatusFlagDefaults.For(StatusType.ColdForce) is var f429 && f429 != ScfFlag.None ? f429 : defaultBuff));  // SC_COLD_FORCE: presence-only per rAthena db/re/status.yml:8321
-        Register(StatusType.ColdForceOption, PresenceMarker(StatusFlagDefaults.For(StatusType.ColdForceOption) is var f430 && f430 != ScfFlag.None ? f430 : defaultBuff));  // SC_COLD_FORCE_OPTION: presence-only per rAthena db/re/status.yml:8325
         Register(StatusType.CrystalArmor, PresenceMarker(StatusFlagDefaults.For(StatusType.CrystalArmor) is var f431 && f431 != ScfFlag.None ? f431 : defaultBuff));  // SC_CRYSTAL_ARMOR: presence-only per rAthena db/re/status.yml:8330
         Register(StatusType.GraceBreeze, PresenceMarker(StatusFlagDefaults.For(StatusType.GraceBreeze) is var f432 && f432 != ScfFlag.None ? f432 : defaultBuff));  // SC_GRACE_BREEZE: presence-only per rAthena db/re/status.yml:8341
-        Register(StatusType.GraceBreezeOption, PresenceMarker(StatusFlagDefaults.For(StatusType.GraceBreezeOption) is var f433 && f433 != ScfFlag.None ? f433 : defaultBuff));  // SC_GRACE_BREEZE_OPTION: presence-only per rAthena db/re/status.yml:8345
         Register(StatusType.EyesOfStorm, PresenceMarker(StatusFlagDefaults.For(StatusType.EyesOfStorm) is var f434 && f434 != ScfFlag.None ? f434 : defaultBuff));  // SC_EYES_OF_STORM: presence-only per rAthena db/re/status.yml:8350
-        Register(StatusType.EarthCareOption, PresenceMarker(StatusFlagDefaults.For(StatusType.EarthCareOption) is var f435 && f435 != ScfFlag.None ? f435 : defaultBuff));  // SC_EARTH_CARE_OPTION: presence-only per rAthena db/re/status.yml:8365
         Register(StatusType.StrongProtection, PresenceMarker(StatusFlagDefaults.For(StatusType.StrongProtection) is var f436 && f436 != ScfFlag.None ? f436 : defaultBuff));  // SC_STRONG_PROTECTION: presence-only per rAthena db/re/status.yml:8370
         Register(StatusType.DeepPoisoning, PresenceMarker(StatusFlagDefaults.For(StatusType.DeepPoisoning) is var f437 && f437 != ScfFlag.None ? f437 : defaultBuff));  // SC_DEEP_POISONING: presence-only per rAthena db/re/status.yml:8381
-        Register(StatusType.DeepPoisoningOption, PresenceMarker(StatusFlagDefaults.For(StatusType.DeepPoisoningOption) is var f438 && f438 != ScfFlag.None ? f438 : defaultBuff));  // SC_DEEP_POISONING_OPTION: presence-only per rAthena db/re/status.yml:8385
         Register(StatusType.PoisonShield, PresenceMarker(StatusFlagDefaults.For(StatusType.PoisonShield) is var f439 && f439 != ScfFlag.None ? f439 : defaultBuff));  // SC_POISON_SHIELD: presence-only per rAthena db/re/status.yml:8390
-        Register(StatusType.SubWeaponproperty, PresenceMarker(StatusFlagDefaults.For(StatusType.SubWeaponproperty) is var f440 && f440 != ScfFlag.None ? f440 : defaultBuff));  // SC_SUB_WEAPONPROPERTY: presence-only per rAthena db/re/status.yml:8425
         Register(StatusType.MLifepotion, PresenceMarker(StatusFlagDefaults.For(StatusType.MLifepotion) is var f441 && f441 != ScfFlag.None ? f441 : defaultBuff));  // SC_M_LIFEPOTION: presence-only per rAthena db/re/status.yml:8401
         Register(StatusType.SManapotion, PresenceMarker(StatusFlagDefaults.For(StatusType.SManapotion) is var f442 && f442 != ScfFlag.None ? f442 : defaultBuff));  // SC_S_MANAPOTION: presence-only per rAthena db/re/status.yml:8413
         Register(StatusType.Almighty, PresenceMarker(StatusFlagDefaults.For(StatusType.Almighty) is var f443 && f443 != ScfFlag.None ? f443 : defaultBuff));  // SC_ALMIGHTY: presence-only per rAthena db/re/status.yml:8434
@@ -5683,10 +5559,8 @@ public sealed class StatusEffectRegistry
         Register(StatusType.SkfCast, PresenceMarker(StatusFlagDefaults.For(StatusType.SkfCast) is var f461 && f461 != ScfFlag.None ? f461 : defaultBuff));  // SC_SKF_CAST: presence-only per rAthena db/re/status.yml:8664
         Register(StatusType.BeefRibStew, PresenceMarker(StatusFlagDefaults.For(StatusType.BeefRibStew) is var f462 && f462 != ScfFlag.None ? f462 : defaultBuff));  // SC_BEEF_RIB_STEW: presence-only per rAthena db/re/status.yml:8674
         Register(StatusType.PorkRibStew, PresenceMarker(StatusFlagDefaults.For(StatusType.PorkRibStew) is var f463 && f463 != ScfFlag.None ? f463 : defaultBuff));  // SC_PORK_RIB_STEW: presence-only per rAthena db/re/status.yml:8685
-        Register(StatusType.Weaponbreaker, PresenceMarker(StatusFlagDefaults.For(StatusType.Weaponbreaker) is var f464 && f464 != ScfFlag.None ? f464 : defaultBuff));  // SC_WEAPONBREAKER: presence-only per rAthena db/re/status.yml:8696
         Register(StatusType.GradualGravity, PresenceMarker(StatusFlagDefaults.For(StatusType.GradualGravity) is var f465 && f465 != ScfFlag.None ? f465 : defaultBuff));  // SC_GRADUAL_GRAVITY: presence-only per rAthena db/re/status.yml:8716
         Register(StatusType.KillingAura, PresenceMarker(StatusFlagDefaults.For(StatusType.KillingAura) is var f466 && f466 != ScfFlag.None ? f466 : defaultBuff));  // SC_KILLING_AURA: presence-only per rAthena db/re/status.yml:8737
-        Register(StatusType.DamageHeal, PresenceMarker(StatusFlagDefaults.For(StatusType.DamageHeal) is var f467 && f467 != ScfFlag.None ? f467 : defaultBuff));  // SC_DAMAGE_HEAL: presence-only per rAthena db/re/status.yml:8746
         Register(StatusType.ImmunePropertyNothing, PresenceMarker(StatusFlagDefaults.For(StatusType.ImmunePropertyNothing) is var f468 && f468 != ScfFlag.None ? f468 : defaultBuff));  // SC_IMMUNE_PROPERTY_NOTHING: presence-only per rAthena db/re/status.yml:8751
         Register(StatusType.ImmunePropertyWater, PresenceMarker(StatusFlagDefaults.For(StatusType.ImmunePropertyWater) is var f469 && f469 != ScfFlag.None ? f469 : defaultBuff));  // SC_IMMUNE_PROPERTY_WATER: presence-only per rAthena db/re/status.yml:8767
         Register(StatusType.ImmunePropertyGround, PresenceMarker(StatusFlagDefaults.For(StatusType.ImmunePropertyGround) is var f470 && f470 != ScfFlag.None ? f470 : defaultBuff));  // SC_IMMUNE_PROPERTY_GROUND: presence-only per rAthena db/re/status.yml:8783
@@ -5697,7 +5571,6 @@ public sealed class StatusEffectRegistry
         Register(StatusType.ImmunePropertyDarkness, PresenceMarker(StatusFlagDefaults.For(StatusType.ImmunePropertyDarkness) is var f475 && f475 != ScfFlag.None ? f475 : defaultBuff));  // SC_IMMUNE_PROPERTY_DARKNESS: presence-only per rAthena db/re/status.yml:8863
         Register(StatusType.ImmunePropertyTelekinesis, PresenceMarker(StatusFlagDefaults.For(StatusType.ImmunePropertyTelekinesis) is var f476 && f476 != ScfFlag.None ? f476 : defaultBuff));  // SC_IMMUNE_PROPERTY_TELEKINESIS: presence-only per rAthena db/re/status.yml:8879
         Register(StatusType.ImmunePropertyUndead, PresenceMarker(StatusFlagDefaults.For(StatusType.ImmunePropertyUndead) is var f477 && f477 != ScfFlag.None ? f477 : defaultBuff));  // SC_IMMUNE_PROPERTY_UNDEAD: presence-only per rAthena db/re/status.yml:8895
-        Register(StatusType.RelieveOn, PresenceMarker(StatusFlagDefaults.For(StatusType.RelieveOn) is var f478 && f478 != ScfFlag.None ? f478 : defaultBuff));  // SC_RELIEVE_ON: presence-only per rAthena db/re/status.yml:8911
         Register(StatusType.RelieveOff, PresenceMarker(StatusFlagDefaults.For(StatusType.RelieveOff) is var f479 && f479 != ScfFlag.None ? f479 : defaultBuff));  // SC_RELIEVE_OFF: presence-only per rAthena db/re/status.yml:8922
         Register(StatusType.RushQuake1, PresenceMarker(StatusFlagDefaults.For(StatusType.RushQuake1) is var f480 && f480 != ScfFlag.None ? f480 : defaultBuff));  // SC_RUSH_QUAKE1: presence-only per rAthena db/re/status.yml:8930
         Register(StatusType.GLifepotion, PresenceMarker(StatusFlagDefaults.For(StatusType.GLifepotion) is var f481 && f481 != ScfFlag.None ? f481 : defaultBuff));  // SC_G_LIFEPOTION: presence-only per rAthena db/re/status.yml:8945
@@ -5740,7 +5613,6 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Contents31, PresenceMarker(StatusFlagDefaults.For(StatusType.Contents31) is var f518 && f518 != ScfFlag.None ? f518 : defaultBuff));  // SC_CONTENTS_31: presence-only per rAthena db/re/status.yml:9398
         Register(StatusType.Contents32, PresenceMarker(StatusFlagDefaults.For(StatusType.Contents32) is var f519 && f519 != ScfFlag.None ? f519 : defaultBuff));  // SC_CONTENTS_32: presence-only per rAthena db/re/status.yml:9411
         Register(StatusType.Contents33, PresenceMarker(StatusFlagDefaults.For(StatusType.Contents33) is var f520 && f520 != ScfFlag.None ? f520 : defaultBuff));  // SC_CONTENTS_33: presence-only per rAthena db/re/status.yml:9425
-        Register(StatusType.TalismanOfProtection, PresenceMarker(StatusFlagDefaults.For(StatusType.TalismanOfProtection) is var f521 && f521 != ScfFlag.None ? f521 : defaultBuff));  // SC_TALISMAN_OF_PROTECTION: presence-only per rAthena db/re/status.yml:9437
         Register(StatusType.TFirstGod, PresenceMarker(StatusFlagDefaults.For(StatusType.TFirstGod) is var f522 && f522 != ScfFlag.None ? f522 : defaultBuff));  // SC_T_FIRST_GOD: presence-only per rAthena db/re/status.yml:9475
         Register(StatusType.TSecondGod, PresenceMarker(StatusFlagDefaults.For(StatusType.TSecondGod) is var f523 && f523 != ScfFlag.None ? f523 : defaultBuff));  // SC_T_SECOND_GOD: presence-only per rAthena db/re/status.yml:9483
         Register(StatusType.TThirdGod, PresenceMarker(StatusFlagDefaults.For(StatusType.TThirdGod) is var f524 && f524 != ScfFlag.None ? f524 : defaultBuff));  // SC_T_THIRD_GOD: presence-only per rAthena db/re/status.yml:9490
@@ -5762,7 +5634,6 @@ public sealed class StatusEffectRegistry
         Register(StatusType.ColorsOfHyunRok4, PresenceMarker(StatusFlagDefaults.For(StatusType.ColorsOfHyunRok4) is var f540 && f540 != ScfFlag.None ? f540 : defaultBuff));  // SC_COLORS_OF_HYUN_ROK_4: presence-only per rAthena db/re/status.yml:9648
         Register(StatusType.ColorsOfHyunRok5, PresenceMarker(StatusFlagDefaults.For(StatusType.ColorsOfHyunRok5) is var f541 && f541 != ScfFlag.None ? f541 : defaultBuff));  // SC_COLORS_OF_HYUN_ROK_5: presence-only per rAthena db/re/status.yml:9657
         Register(StatusType.ColorsOfHyunRok6, PresenceMarker(StatusFlagDefaults.For(StatusType.ColorsOfHyunRok6) is var f542 && f542 != ScfFlag.None ? f542 : defaultBuff));  // SC_COLORS_OF_HYUN_ROK_6: presence-only per rAthena db/re/status.yml:9666
-        Register(StatusType.ColorsOfHyunRokBuff, PresenceMarker(StatusFlagDefaults.For(StatusType.ColorsOfHyunRokBuff) is var f543 && f543 != ScfFlag.None ? f543 : defaultBuff));  // SC_COLORS_OF_HYUN_ROK_BUFF: presence-only per rAthena db/re/status.yml:9618
         Register(StatusType.BlessingOfMCDebuff, PresenceMarker(StatusFlagDefaults.For(StatusType.BlessingOfMCDebuff) is var f544 && f544 != ScfFlag.None ? f544 : defaultBuff));  // SC_BLESSING_OF_M_C_DEBUFF: presence-only per rAthena db/re/status.yml:9682
         Register(StatusType.RisingSun, PresenceMarker(StatusFlagDefaults.For(StatusType.RisingSun) is var f545 && f545 != ScfFlag.None ? f545 : defaultBuff));  // SC_RISING_SUN: presence-only per rAthena db/re/status.yml:9690
         Register(StatusType.NoonSun, PresenceMarker(StatusFlagDefaults.For(StatusType.NoonSun) is var f546 && f546 != ScfFlag.None ? f546 : defaultBuff));  // SC_NOON_SUN: presence-only per rAthena db/re/status.yml:9699
@@ -5772,17 +5643,17 @@ public sealed class StatusEffectRegistry
     }
 
     /// <summary>
-    /// Wave 4a helper — combat/regen/cast presence-only marker.
-    /// Uses fresh non-`_NoOp` lambdas so the NoOp-upgrade check in
-    /// <see cref="RegisterDefaultsForMissingTypes"/> (reference-equality
-    /// against the shared `_NoOp` delegate) skips synthesis. ScfFlag
-    /// classification is preserved so lifecycle sweeps still route.
+    /// Combat/regen/cast presence-only marker for an SC whose behavior lives
+    /// on a downstream consumer (it reads <c>sc.Val1/Val2/Val3</c>). SC-01:
+    /// reuses the shared <see cref="_NoOp"/>/<see cref="_NoOpEnd"/> delegates
+    /// (reference-equal) so (a) <see cref="Register"/>'s overwrite guard can
+    /// detect a marker and refuse to let it clobber a real OnStart body, and
+    /// (b) <see cref="RegisterDefaultsForMissingTypes"/> can upgrade a
+    /// presence marker to the CalcFlag generator body when the SC has
+    /// CalcFlags. ScfFlag classification is preserved for lifecycle sweeps.
     /// </summary>
     private static StatusEffectHandler PresenceMarker(ScfFlag flags) =>
-        new StatusEffectHandler(
-            OnStart: (_, _, _) => { /* combat-side reader does work */ },
-            OnEnd:   (_, _) => { },
-            Flags: flags);
+        new StatusEffectHandler(OnStart: _NoOp, OnEnd: _NoOpEnd, Flags: flags);
 
     /// <summary>
     /// P0.2 helper — apply <paramref name="delta"/> to every base stat
@@ -6446,7 +6317,25 @@ public sealed class StatusEffectRegistry
     /// </summary>
     private static StatusEffectHandler NoOpHandler() => new(_NoOp, _NoOpEnd);
 
-    public void Register(StatusType type, StatusEffectHandler handler) => _handlers[type] = handler;
+    public void Register(StatusType type, StatusEffectHandler handler)
+    {
+        // SC-01: the registry is built across many wave-methods in ctor-call
+        // order. A presence-only marker (OnStart == shared _NoOp) must NEVER
+        // overwrite a real OnStart body — regardless of which registers first.
+        // If a downgrade is attempted, keep the real body and OR-merge the
+        // marker's ScfFlag classification onto it. This removes the brittle
+        // ordering dependency that previously let a re-order silently zero a
+        // real effect. (Real-over-real, real-over-marker, and marker-over-
+        // marker all proceed normally.)
+        if (_handlers.TryGetValue(type, out var existing)
+            && !ReferenceEquals(existing.OnStart, _NoOp)
+            && ReferenceEquals(handler.OnStart, _NoOp))
+        {
+            _handlers[type] = existing with { Flags = existing.Flags | handler.Flags };
+            return;
+        }
+        _handlers[type] = handler;
+    }
 
     public StatusEffectHandler? Get(StatusType type) => _handlers.GetValueOrDefault(type);
 

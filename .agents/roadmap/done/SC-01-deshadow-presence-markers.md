@@ -1,6 +1,6 @@
 # SC-01 — De-shadow the PresenceMarker re-registrations + harden the overwrite guard
 
-> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** ✅ Done (2026-06-01) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** SC-04
 
 ## Problem
@@ -158,3 +158,20 @@ WandererMinstrel / FourthClass** (4929-5202): `Hallucination` 4935, `Venomimpres
   reflect would silently do nothing.
 - Do NOT just delete the PresenceMarker calls without adding the guard — the guard is what makes
   the table order-independent and prevents recurrence.
+
+## History
+
+- **2026-06-01** — Done. `PresenceMarker` now returns the shared `_NoOp`/`_NoOpEnd`
+  delegates (was fresh lambdas). `Register` gained an overwrite guard: a presence
+  marker (`OnStart == _NoOp`) can never replace a real `OnStart` body — it OR-merges
+  its `ScfFlag` onto the existing handler instead, making the table order-independent.
+  Removed **128** dead duplicate `PresenceMarker` re-registrations (the ticket
+  estimated ~90; a programmatic marker-vs-body scan found 128, all with a real body
+  elsewhere). Marionette/Marionette2 left untouched per the ticket (allowlisted; real
+  Val3/Val4-decode bodies at L2634/2660 win regardless). New
+  `StatusEffectShadowGuardTests` (16): pins `PresenceMarker == _NoOp`, real-body
+  survival across both registration orders, flag-merge, marker-over-marker, and a
+  12-type parametrized check that formerly-shadowed CalcFlag SCs still mutate.
+  `StatusEffectCompletenessTests` 4/4 + `MarionetteFormulaTests` green; full
+  Map.Server suite **3569/3569**. No follow-ups required (the 62 non-CF Val2/Val3
+  consumer reads were already SC-04's scope). Commits: start `51274d7`, finish `<this>`.
