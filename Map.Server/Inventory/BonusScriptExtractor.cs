@@ -118,6 +118,10 @@ public static class BonusScriptExtractor
             case "variablecastrate": b.VarCastRate += v; break;
             case "fixedcastrate":  b.FixCastRate += v; break;
             case "delayrate":      b.DelayRate += v; break;
+            // COMBAT-07 — flat ms cast adds (positive = faster; rAthena
+            // skill_vfcastfix subtracts add_varcast/add_fixcast).
+            case "variablecast":   b.AddVarCastMs += v; break;
+            case "fixedcast":      b.AddFixCastMs += v; break;
             // COMBAT-06 — damage / defense rate bonuses.
             case "atkrate":        b.AtkRate += v; break;
             case "matkrate":       b.MatkRate += v; break;

@@ -1,5 +1,6 @@
 using Map.Server.Combat;
 using Map.Server.Entities;
+using Map.Server.Inventory;
 using Map.Server.Status;
 
 namespace Map.Server.Skills;
@@ -9,13 +10,14 @@ namespace Map.Server.Skills;
 /// <c>skill_castfix</c> / <c>skill_castfix_sc</c> / <c>skill_vfcastfix</c>
 /// / <c>skill_delayfix</c> (skill.cpp:20193 — 20565).
 ///
-/// Item / card bonus inputs (<c>sd-&gt;bonus.add_varcast</c>,
-/// <c>sd-&gt;bonus.varcastrate</c>, <c>sd-&gt;skillcastrate</c>, …)
-/// are documented as deferred per PARITY-REMAINING.md §P2.2 — they flow through when the
-/// equip-bonus aggregator surfaces them on
-/// <see cref="PlayerEntity"/>. The DEX/AGI / config-rate paths are
-/// real today; T2.4b wires SC overlays (Suffragium / Memorize /
-/// Slowcast / Paralysis / Izayoi / Bragi) into <see cref="CastFixSc"/>.
+/// COMBAT-07 wired the renewal DEX/INT variable-cast sqrt reduction and the
+/// global equip/card cast bonuses (<c>varcastrate</c>/<c>fixcastrate</c>/
+/// <c>add_varcast</c>/<c>add_fixcast</c>/<c>delayrate</c>) from
+/// <see cref="PlayerEntity.EquipBonuses"/>. SC overlays (Suffragium / Memorize /
+/// Slowcast / Paralysis / Izayoi / Bragi) live in <see cref="CastFixSc"/>. The
+/// PER-SKILL cast tables (<c>sd-&gt;skillcastrate/skillvarcast/skillfixcast/
+/// skilldelay</c>) need the bonus2 per-skill maps from COMBAT-22 → COMBAT-24;
+/// SA_ABRACADABRA's abra_db is also COMBAT-24.
 /// </summary>
 public sealed class SkillCastTimingService : ISkillCastTimingService
 {
@@ -143,18 +145,61 @@ public sealed class SkillCastTimingService : ISkillCastTimingService
             }
         }
 
-        // sd-&gt;bonus.add_varcast / add_fixcast / varcastrate / fixcastrate
-        // and the per-skill skillvarcast/skillfixcast/skillcastrate tables
-        // are deferred per PARITY-REMAINING.md §P2.2 — equip-bonus aggregator still pending.
+        // COMBAT-07: renewal DEX/INT variable-cast reduction + equip/card cast
+        // bonuses (extracted to testable helpers below).
+        var scale = _cfg.GetValue("vcast_stat_scale");
+        var dexBypass = (_db.GetCastNoDex(skillId) & 1) != 0;
+        var bundle = (caster as PlayerEntity)?.EquipBonuses;
+        variableTime = ApplyVariableCast(variableTime, caster.Stats.Dex, caster.Stats.IntStat, scale, dexBypass, bundle);
+        fixedTime = ApplyFixedCast(fixedTime, bundle);
 
         return Math.Max(0, variableTime + fixedTime);
     }
 
+    /// <summary>
+    /// COMBAT-07 — renewal variable-cast reduction. rAthena skill_vfcastfix
+    /// (skill.cpp:20444): <c>time *= 1 - sqrt((dex*2+int)/vcast_stat_scale)</c>
+    /// when DEX isn't bypassed, then the equip/card bonuses. Values are stored
+    /// raw from the item script — a NEGATIVE bVariableCastrate is the common
+    /// "faster cast" card, and bVariableCast (flat ms) is SUBTRACTED. Fixed
+    /// cast is handled separately (it is NOT DEX/INT-reduced).
+    /// </summary>
+    internal static int ApplyVariableCast(int variableTime, int dex, int intStat, int vcastStatScale, bool dexBypass, EquipBonusBundle? b)
+    {
+        if (vcastStatScale > 0 && !dexBypass)
+        {
+            var reduce = Math.Sqrt((double)(dex * 2 + intStat) / vcastStatScale);
+            if (reduce > 1) reduce = 1;
+            variableTime = (int)(variableTime * (1 - reduce));
+        }
+        if (b != null)
+        {
+            variableTime -= b.AddVarCastMs;
+            variableTime = variableTime * (100 + b.VarCastRate) / 100;
+        }
+        return variableTime < 0 ? 0 : variableTime;
+    }
+
+    /// <summary>COMBAT-07 — fixed-cast equip/card bonuses (no DEX/INT reduction).</summary>
+    internal static int ApplyFixedCast(int fixedTime, EquipBonusBundle? b)
+    {
+        if (b != null)
+        {
+            fixedTime -= b.AddFixCastMs;
+            fixedTime = fixedTime * (100 + b.FixCastRate) / 100;
+        }
+        return fixedTime < 0 ? 0 : fixedTime;
+    }
+
+    /// <summary>COMBAT-07 — after-cast delay equip/card reduction (bDelayrate, raw).</summary>
+    internal static int ApplyDelayBonus(int time, EquipBonusBundle? b)
+        => b == null ? time : Math.Max(0, time * (100 + b.DelayRate) / 100);
+
     // ----- skill_delayfix (after-cast delay) -------------------------
     public int DelayFix(Entity caster, ushort skillId, ushort skillLevel)
     {
-        // SA_ABRACADABRA explicitly returns 0 — handled by deferred per PARITY-REMAINING.md §P2.2
-        // gate once the dummy-skill id table imports.
+        // SA_ABRACADABRA's 0-delay special case + the abra_db random-skill
+        // table are out of scope here — tracked in COMBAT-24.
 
         // BL-type no-skill-delay bypass — rAthena returns the floor immediately.
         if (caster is MobEntity)
@@ -182,6 +227,8 @@ public sealed class SkillCastTimingService : ISkillCastTimingService
 
         var rate = _cfg.GetValue("delay_rate");
         if (rate != 100) time = time * rate / 100;
-        return Math.Max(0, (int)time);
+
+        // COMBAT-07: equip/card after-cast delay reduction (bDelayrate).
+        return ApplyDelayBonus(Math.Max(0, (int)time), (caster as PlayerEntity)?.EquipBonuses);
     }
 }

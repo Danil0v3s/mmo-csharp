@@ -1,7 +1,11 @@
 # COMBAT-07 — Renewal cast-time formula + item/card/skill cast bonuses
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-01) · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-06 (per-skill cast-rate tables) · **Blocks:** none
+>
+> **Scope note:** the renewal DEX/INT sqrt + the GLOBAL equip/card cast bonuses
+> (varcastrate/fixcastrate/add_varcast/add_fixcast/delayrate) shipped here. The PER-SKILL
+> cast/delay tables + SA_ABRACADABRA → **COMBAT-24** (needs COMBAT-22's bonus2 per-skill maps).
 
 ## Problem
 
@@ -92,10 +96,9 @@ Canonical: `skill.cpp` (not split files).
   fixed). Matches rAthena within integer floor.
 - Equipping a `bonus bVariableCastrate,-30;` (−30% var cast → faster) reduces the variable
   portion by 30% on top of the DEX/INT reduction.
-- `bonus2 bVariableCastTime,WZ_STORMGUST,-50;`-style per-skill reduction affects only that
-  skill.
+- ➡️ **COMBAT-24** — per-skill `bVariableCastTime` reduction.
 - `bonus bDelayrate,-20;` reduces after-cast delay 20%.
-- SA_ABRACADABRA has 0 cast delay.
+- ➡️ **COMBAT-24** — SA_ABRACADABRA 0 cast delay.
 
 ## Test plan
 
@@ -118,3 +121,16 @@ Canonical: `skill.cpp` (not split files).
   mob/NPC (they already early-return at `:129`).
 - The SC overlays in `CastFixSc` already consume Suffragium/Memorize charges; don't
   double-apply them in `VfCastFix`.
+
+## History
+
+- **2026-06-01** — Done (renewal sqrt + global cast bonuses). VfCastFix now applies the
+  renewal DEX/INT variable-cast reduction `time *= 1 - sqrt((dex*2+int)/vcast_stat_scale)`
+  (scale 530, added to BattleConfigService) on the variable portion only, then the
+  equip/card bonuses (VarCastRate/FixCastRate raw `(100+rate)/100`, AddVarCastMs/
+  AddFixCastMs flat-subtract); DelayFix applies bDelayrate. The math is extracted to
+  testable `ApplyVariableCast`/`ApplyFixedCast`/`ApplyDelayBonus` helpers. Added
+  bVariableCast/bFixedCast extractor keys. rAthena skill_vfcastfix (skill.cpp:20444).
+  Tests: Combat07CastTimingTests (8). Full Map.Server suite 3637/3637 green. Follow-up:
+  COMBAT-24 (per-skill cast/delay tables + SA_ABRACADABRA; deps COMBAT-22). Commits:
+  start `691bd2a`, finish `<this>`.

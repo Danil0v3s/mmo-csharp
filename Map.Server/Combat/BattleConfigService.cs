@@ -121,6 +121,8 @@ public sealed class BattleConfigService : IBattleConfigService
         _knobs["min_skill_delay_limit"] = 100;
         _knobs["no_skill_delay"] = 2;
         _knobs["default_fixed_castrate"] = 20;
+        // COMBAT-07: renewal variable-cast DEX/INT sqrt reduction divisor.
+        _knobs["vcast_stat_scale"] = 530;
     }
 
     public int GetValue(string knob)
