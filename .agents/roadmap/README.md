@@ -74,6 +74,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-08 | Cast interrupt on damage + `clif_skillcastcancel` + Safety Wall/Pneuma/Land Protector |
 | COMBAT-09 | ASPD/amotion formula, job-bonus stats, SC stat-mod recalc ordering |
 | COMBAT-10 | Base→final stat layering (equip param `bStr..bLuk` + job bonus + SC mods) |
+| COMBAT-12 | Magic skill ratio + constant pipeline (plugin ratio for BF_MAGIC) |
+| COMBAT-13 | Asura Strike renewal ×2 when cast with >5 spirit spheres |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

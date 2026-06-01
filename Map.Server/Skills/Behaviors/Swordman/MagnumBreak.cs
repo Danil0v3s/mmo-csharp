@@ -22,7 +22,12 @@ public sealed class MagnumBreak : RecursiveDamageSplashSkillImpl
 
     public override long SplashDamage(Entity src, Entity victim, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        var rate = 120 + 20 * skillLevel;
+        // rAthena SM_MAGNUM (battle.cpp:4644): splash is centred on the
+        // caster; the inner 3×3 (Chebyshev distance ≤ 1, rAthena miscflag==1)
+        // takes 100 + 20*lv, the outer 5×5 ring takes 100 + 10*lv. The old
+        // flat 120 + 20*lv used the wrong base and ignored the inner/outer split.
+        var dist = Math.Max(Math.Abs(src.X - victim.X), Math.Abs(src.Y - victim.Y));
+        var rate = dist <= 1 ? 100 + 20 * skillLevel : 100 + 10 * skillLevel;
         var swing = ctx.Battle.CalcWeaponAttack(src, victim);
         return swing.Total * rate / 100;
     }

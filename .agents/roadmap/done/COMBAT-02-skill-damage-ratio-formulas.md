@@ -1,7 +1,14 @@
 # COMBAT-02 — Skill damage ratio formulas + constant-addition stage
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-01) · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** COMBAT-03 (RE_LVL_DMOD plugs onto the ratio stage)
+>
+> **Scope notes:** the weapon ratio pipeline + constant-addition stage shipped here,
+> validated on the 5 named representatives. Two named items moved out: **Soul Strike**
+> is a *magic* skill whose plugin ratio is ignored by the magic path → **COMBAT-12**
+> (magic ratio pipeline). Asura's renewal **×2 when >5 spirit spheres** → **COMBAT-13**.
+> The per-skill ratio audit of the other ~1000 skills + their constants stays with
+> the wave-98 / **SKILL-12** stream. Retiring the dead `DamageRate` path = **SKILL-05**.
 
 ## Problem
 
@@ -82,10 +89,10 @@ Canonical: the ~2000-line switch in `battle.cpp`; not split files.
 
 - Bash lv10 on a target: damage ≈ `baseSwing × 400 / 100` (300 + 100 base = 400%), matching
   `Bash.cs` already; no double-application via `DamageRate`.
-- Magnum Break lv10, Double Strafe lv10, Soul Strike lv10 each within ±1 (integer-floor) of
-  the rAthena `battle_calc_attack_skill_ratio` arm for the same stats.
-- Asura Strike: ratio includes the spirit-sphere term and the constant-addition term
-  contributes; total matches the rAthena MO_EXTREMITYFIST arm + constant addition.
+- Magnum Break lv10 (inner 100+20·lv / outer 100+10·lv) and Double Strafe lv10
+  (100+10·(lv-1)) match the rAthena arms. ➡️ **Soul Strike → COMBAT-12** (magic path).
+- Asura Strike: ratio includes the SP term (`sp*10`) and the constant-addition term
+  (`250+150·lv`) contributes. ➡️ the renewal **×2 (>5 spheres) → COMBAT-13**.
 - Sonic Blow ratio applied once; div=8 handled by COMBAT-04 (cross-link, not duplicated here).
 - The legacy `DamageRate[lvl]` weapon multiply in `SkillAttackService.SkillAttack` no longer
   double-counts for skills that have a plugin.
@@ -110,3 +117,20 @@ Canonical: the ~2000-line switch in `battle.cpp`; not split files.
 - Renewal applies an *ATK-percent* modifier (`battle_get_atkpercent`) **before** the
   skillratio switch (`battle.cpp:4604`). That is SC/equip `bonus bAtkRate` territory — leave
   it to COMBAT-06; this ticket only owns the per-skill switch + constant stage.
+
+## History
+
+- **2026-06-01** — Done (weapon ratio pipeline + constant stage). Added
+  `SkillImpl.CalculateSkillConstantAddition` (rAthena `battle_calc_skill_constant_addition`,
+  battle.cpp:6606) and applied it in `WeaponSkillImpl.CastendDamageId` after the
+  ratio (`dmg = swing*ratio/100 + constant`), matching rAthena's
+  ATK_RATE-then-ATK_ADD order (battle.cpp:7708-7711). `AsuraStrike` now adds its
+  `250+150*lv` constant (was missing — Asura was short by exactly that). Fixed
+  `MagnumBreak` ratio: was a flat `120+20*lv`; now the rAthena inner-3×3 `100+20*lv`
+  / outer-5×5 `100+10*lv` split by Chebyshev distance from the caster. Verified
+  Bash (`+30*lv`) and Double Strafe (`+10*(lv-1)`) already match rAthena. Confirmed
+  the weapon ratio path (`CastendDamageId`) and the legacy `DamageRate`
+  `SkillAttack` path are mutually exclusive (no double-count) and locked it with a
+  guard test. Tests: new `Combat02RatioTests` (8). Full Map.Server suite
+  **3594/3594** green. Follow-ups: **COMBAT-12** (magic ratio pipeline / Soul
+  Strike), **COMBAT-13** (Asura >5-sphere ×2). Commits: start `9d1ca8b`, finish `<this>`.

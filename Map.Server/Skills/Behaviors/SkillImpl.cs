@@ -94,6 +94,17 @@ public abstract class SkillImpl
         => CalculateSkillRatio(baseRatio, src, target, skillLevel, ctx);
 
     /// <summary>
+    /// rAthena <c>battle_calc_skill_constant_addition</c> (battle.cpp:6606).
+    /// A FLAT additive (not a percent) applied <b>after</b> the skill ratio
+    /// and before cardfix/defense — rAthena <c>ATK_ADD(... constant ...)</c>
+    /// at battle.cpp:7711, right after <c>ATK_RATE(... skillratio ...)</c>.
+    /// Default 0. Examples: MO_EXTREMITYFIST <c>250 + 150*lv</c>,
+    /// PA_SHIELDCHAIN's shield-weight bonus. Plugins override to add it.
+    /// </summary>
+    public virtual long CalculateSkillConstantAddition(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+        => 0;
+
+    /// <summary>
     /// rAthena <c>SKILL_ALTDMG_FLAG</c> — set on the secondary path-AoE
     /// hit pass when a skill re-fires through <c>skill_attack_area</c>.
     /// Plugins consult this on the miscflag-aware ratio overload to
@@ -157,8 +168,13 @@ public abstract class WeaponSkillImpl : SkillImpl
         // SS_REIKETSUHOU's SC_WATER_CHARM_POWER) or alt-dmg branches
         // (SS_FUUMAKOUCHIKU) can hook them. The default chains down to
         // the simpler signatures so legacy plugins keep their behavior.
+        // rAthena order (battle.cpp:7708-7711): ATK_RATE(skillratio) then
+        // ATK_ADD(constant). Ratio is a percent of the swing; the constant
+        // is a flat add layered on top.
         var ratio = CalculateSkillRatio(100, src, target, skillLevel, ctx, miscflag);
-        var dmg = (int)Math.Clamp(swing.Total * ratio / 100, 0, int.MaxValue);
+        var raw = swing.Total * ratio / 100
+                  + CalculateSkillConstantAddition(src, target, skillLevel, ctx);
+        var dmg = (int)Math.Clamp(raw, 0, int.MaxValue);
         ctx.Damage.ApplyDamage(target, dmg, src);
         ApplyAdditionalEffects(src, target, skillLevel, ctx);
     }

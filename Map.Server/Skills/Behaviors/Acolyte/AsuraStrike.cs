@@ -76,4 +76,13 @@ public sealed class AsuraStrike : WeaponSkillImpl
         if (ratio > 500_000) ratio = 500_000;
         return ratio;
     }
+
+    /// <summary>
+    /// rAthena <c>battle_calc_skill_constant_addition</c> MO_EXTREMITYFIST arm
+    /// (battle.cpp:6616): a flat <c>250 + 150*skill_lv</c> added after the
+    /// ratio. Previously missing — Asura damage was short by exactly this term.
+    /// (The renewal ×2-when-&gt;5-spirit-spheres ratio bump is COMBAT-13.)
+    /// </summary>
+    public override long CalculateSkillConstantAddition(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+        => 250 + 150 * skillLevel;
 }
