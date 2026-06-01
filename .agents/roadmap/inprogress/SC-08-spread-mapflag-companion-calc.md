@@ -1,6 +1,6 @@
 # SC-08 — P0.5 leftovers: SC spread trigger + flag set, nostatus map gate, companion calc, status_isimmune matrix
 
-> **Epic:** Status parity hardening · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 
 ## Problem
