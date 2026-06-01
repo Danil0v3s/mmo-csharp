@@ -1,6 +1,6 @@
 # COMBAT-01 — Equip / card flat-stat bonuses (bStr..bLuk + bMaxHP/bHit/bFlee/bCritical/bAspd)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** COMBAT-06 (shares the consumer wiring)
 
 ## Problem
