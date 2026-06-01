@@ -1,6 +1,6 @@
 # COMBAT-05 — Defensive cardfix, element resolution, plant/GvG/BG reductions
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** XL · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** XL · **Player-visible:** yes
 > **Depends on:** COMBAT-01 (defender's bundle must be populated) · **Blocks:** none
 
 ## Problem
