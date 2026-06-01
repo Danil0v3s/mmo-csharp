@@ -1,6 +1,6 @@
 # COMBAT-02 — Skill damage ratio formulas + constant-addition stage
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** COMBAT-03 (RE_LVL_DMOD plugs onto the ratio stage)
 
 ## Problem
