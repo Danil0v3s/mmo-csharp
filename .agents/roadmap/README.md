@@ -150,6 +150,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | SKILL-10 | Family: Gunslinger (coin/ammo/chain) |
 | SKILL-11 | Family: Homunculus / Summoner / Novice shells |
 | SKILL-12 | Family polish: Mage/Archer/Thief/Swordman/Merchant/Acolyte (depth) |
+| SKILL-13 | Parity-sweep snapshots must fail, not silently rewrite (test integrity) |
 
 ### `infra/` — leaf wiring & persistence
 | Ticket | Title |

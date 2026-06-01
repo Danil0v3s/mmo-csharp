@@ -33,12 +33,23 @@ source of truth is `/Volumes/1TB/Projetos/rathena/src/map/` — the monolithic
    genuinely-separate gap that is *out of this ticket's scope*, you **create a new
    ticket** in `todo/<epic>/` (using `TEMPLATE.md`) and note it — you never just
    leave the work undone or write a placeholder.
-3. **Parity-first.** Match rAthena's validation gates, state transitions, formulas,
+3. **Every caveat becomes a ticket — no exceptions.** If, when you finish, there is
+   *anything* you could not do 100% — a Done-criterion you couldn't fully meet, a
+   formula approximated, a numeric tolerance, behavior verified for some cases but
+   not all, a known limitation, an "interim" implementation, a TODO you'd otherwise
+   write in your report, or an "honest caveat" you'd otherwise just mention — you
+   **MUST first capture it as a follow-up ticket in `todo/<epic>/`** (via
+   `TEMPLATE.md`) before you report it. The rule of thumb: **if it would appear under
+   an "Honest caveats / leftovers" heading in your summary, it must already exist as
+   a `todo/` file.** A caveat without a matching ticket is a process failure. Each
+   reported caveat must cite its ticket id. This is how COMBAT-01 spawned COMBAT-10.
+4. **Parity-first.** Match rAthena's validation gates, state transitions, formulas,
    and failure modes exactly — not "what makes sense in C#". Read the cited source.
-4. **Done means done.** Every line in the ticket's **Done criteria** must literally
-   hold, with the **Test plan** tests added and the suite green, before the card
-   moves to `done/`.
-5. **One ticket per invocation.** Finish it completely. Don't start a second.
+5. **Done means done.** Every line in the ticket's **Done criteria** must literally
+   hold (or be explicitly moved to a follow-up ticket per rule 3), with the
+   **Test plan** tests added and the suite green, before the card moves to `done/`.
+6. **One ticket per invocation.** Finish it completely. Don't start a second
+   (filing follow-up tickets per rules 2–3 does not count as "starting" them).
 
 ## The loop
 
@@ -99,7 +110,24 @@ implement it. If you discover an adjacent but separate gap, file a new `todo/` t
   → must be empty for your changes. Confirm each **Done criteria** bullet literally
   holds (compute the numbers where the ticket gives rAthena-exact values).
 
-### 6. Update the docs + advance the lane
+### 6. Capture every leftover as a follow-up ticket (rule 3)
+
+Before you touch the docs, write down — for yourself — the list of anything that is
+not 100%: unmet/partial Done-criteria, approximations, numeric tolerances, "interim"
+code, cases you didn't verify, known limitations, anything you'd put under an
+"Honest caveats" heading. **For each one, create a `todo/<epic>/<NEW-ID>.md` from
+`TEMPLATE.md`** with the real scope (rAthena ref, C# locations, done-criteria,
+tests). Then:
+
+- In the finishing ticket, annotate the moved/partial Done-criteria with `➡️ Moved
+  to <NEW-ID>` so the boundary is explicit.
+- Add the new ticket(s) to the `README.md` index table and (if relevant) the
+  `TIMELINE.md` dependency notes.
+
+If your leftover list is empty, the card is genuinely 100% — proceed. If it is not
+empty and you have not filed the tickets, you are not done.
+
+### 7. Update the docs + advance the lane
 
 - In the ticket file: Status header → `✅ Done (<YYYY-MM-DD>)`; append a one-line
   `## History` entry (date + what landed + commit will be added).
@@ -108,9 +136,10 @@ implement it. If you discover an adjacent but separate gap, file a new `todo/` t
 - Move the card:
   `git mv .agents/roadmap/inprogress/<TICKET>.md .agents/roadmap/done/<TICKET>.md`.
 
-### 7. Commit
+### 8. Commit
 
-Stage the production code + tests + the ticket file + `TIMELINE.md`, and commit with a
+Stage the production code + tests + the ticket file(s) + `TIMELINE.md` (including any
+follow-up tickets filed in step 6), and commit with a
 message that names the ticket and what shipped, e.g.:
 
 ```
@@ -128,9 +157,12 @@ follow the project's established convention (it commits waves directly to `main`
 ## Reporting back
 
 Tell the user: which ticket you took (and why it was next), the Scope items you
-implemented, the tests added + green status, build status, any new ticket you filed,
-and the two commit hashes (start + finish). Be honest if a Done-criteria couldn't be
-fully verified and say exactly why — never claim parity you didn't confirm.
+implemented, the tests added + green status, build status, the commit hashes (start +
+finish), and a **"Follow-ups filed"** list. Be honest about anything not 100% — but
+per rule 3, **every such caveat must already be a filed `todo/` ticket, and you cite
+its id when you mention it.** Never write an "Honest caveats" line that does not point
+at a ticket; never claim parity you didn't confirm. If you found yourself wanting to
+say "this part isn't fully done" without a ticket, go back to step 6 and file it.
 
 ## Notes
 
