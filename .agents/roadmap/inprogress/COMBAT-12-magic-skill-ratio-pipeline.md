@@ -1,6 +1,6 @@
 # COMBAT-12 — Magic skill ratio + constant pipeline (plugin `CalculateSkillRatio` for BF_MAGIC)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Filed by:** COMBAT-02 on 2026-06-01 (the magic-side analog it scoped out).
 
