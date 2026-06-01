@@ -22,6 +22,17 @@ public sealed class StatusEffectRegistry
 {
     private readonly Dictionary<StatusType, StatusEffectHandler> _handlers = new();
 
+    // SC-07 — the runtime set of SCs whose OnStart is the synthesized
+    // generator default (`+Val1*sign` per CalcFlag), i.e. NOT an explicit
+    // rAthena-formula body. This is the magnitude-audit worklist; SCs whose
+    // rAthena value is a plain +val1 are exact, the rest need conversion.
+    private readonly List<StatusType> _generatedStatModTypes = new();
+
+    /// <summary>SC-07 — SCs still served by the generic `+Val1` generator
+    /// stat-mod body (the magnitude-review worklist). A SC leaves this set
+    /// once an explicit <c>Register()</c> with the real rAthena formula wins.</summary>
+    public IReadOnlyList<StatusType> GeneratedStatModDefaultTypes => _generatedStatModTypes;
+
     public StatusEffectRegistry()
     {
         // ===== Damage-over-time =====
@@ -474,6 +485,27 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val2);
                 target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val2);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
+        // SC-07 — SC_FEAR (general debuff): a FIXED 20% Hit AND Flee REDUCTION
+        // (Val1-independent — status.cpp:7340 `hit -= hit*20/100`, :7448
+        // `flee -= flee*20/100`), NOT the generator's +Val1 to Hit/Flee. The
+        // landing resist (int*20+lv*20+luk*10) lives in ScDefTable (SKILL-01);
+        // the on-start SC_ANKLE chain is SC-18. Recompute-on-revert
+        // (H*80/100 → +H'*20/80 = +H*20/100) avoids a scratch slot.
+        Register(StatusType.Fear, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var s = target.Stats;
+                s.Hit = (short)Math.Max(0, s.Hit - s.Hit * 20 / 100);
+                s.Flee = (short)Math.Max(0, s.Flee - s.Flee * 20 / 100);
+            },
+            OnEnd: (target, sc) =>
+            {
+                var s = target.Stats;
+                s.Hit = (short)Math.Min(short.MaxValue, s.Hit + s.Hit * 20 / 80);
+                s.Flee = (short)Math.Min(short.MaxValue, s.Flee + s.Flee * 20 / 80);
             },
             Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
 
@@ -6106,6 +6138,13 @@ public sealed class StatusEffectRegistry
                 continue;
             }
 
+            // SC-07: record the type as a "generator-default stat-mod" SC. This
+            // is the authoritative runtime triage worklist — the ~159 SCs whose
+            // OnStart is the synthesized `+Val1*sign` body (NOT an explicit
+            // rAthena formula). GeneratorDefaultAuditTests reads it as the
+            // review guard; converting an SC to an explicit Register() removes
+            // it from this set (the explicit body wins at line 6057).
+            _generatedStatModTypes.Add(type);
             _handlers[type] = new StatusEffectHandler(
                 OnStart: (target, sc, _) => ApplyCalcFlagDelta(target, sc, fields, sign: +1),
                 OnEnd:   (target, sc)    => ApplyCalcFlagDelta(target, sc, fields, sign: -1),

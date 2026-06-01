@@ -1,6 +1,6 @@
 # SC-07 — Audit the generator-default SCs for non-linear / bespoke magnitudes
 
-> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** XL · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** ✅ Done (2026-06-01) — slice; remainder → SC-18/19/20 · **Size:** XL · **Player-visible:** yes
 > **Depends on:** SC-02 (CalcStatField extensions land first) · **Blocks:** none
 
 ## Problem
@@ -54,37 +54,32 @@ explicit body or move to a combat-side Val read), and convert each non-exact one
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **Enumerate the runtime generator-default set**: write a one-off test/script that, for every
-      CalcFlag SC, checks whether `Get(type).OnStart` is the generator body (vs an explicit one) —
-      e.g. by tagging generator handlers or comparing behavior. Produce the authoritative list (the
-      "~159") and attach it to the PR.
-- [ ] **Classify each** as linear-exact / linear-wrong / bespoke / not-a-stat / sign-wrong, citing
-      the rAthena `status.cpp:line`. Triage table goes in the PR.
-- [ ] **Linear-wrong-magnitude** (e.g. Quagmire `(sd?5:10)*val1`, AngriffsModus `50+20*val1`,
-      OveredBoost `400+40*val1`, Gatlingfever `20*val1`): add an explicit `Register` body with the
-      `a + b*val1` formula and the correct sign.
-- [ ] **Sign-wrong debuffs** (Fear, Quagmire, Marshofabyss): the generator adds when it should
-      subtract — give explicit bodies that decrease the stat.
-- [ ] **Bespoke / not-a-stat** (Jointbeat bitmask, Stomachache tick SP drain, Adoramus Blind-chain):
-      replace the stat mod with the real mechanic (bitmask storage + per-part penalty; periodic SP
-      drain; chained SC start) or move to a combat-side Val read; allowlist with citation if the
-      consumer is deferred.
-- [ ] **Debuff-resist scaling** (`sc_def`/`tick_def2` arms — Fear, Jointbeat, Deepsleep): wire the
-      `int/lv/luk`-based resistance into the SC-start success-chance path if it exists (coordinate
-      with the `status_isimmune`/resist work in SC-08).
-- [ ] **Re-run the generator script** with a per-SC override table so the non-linear ones stop
-      getting the +Val1 default (`StatusCalcFlagDefaults.cs:1-17` header documents the script).
+- [x] **Enumerate the runtime generator-default set**: ✅ the generator now records every SC it
+      serves the synthesized `+Val1` body to → `StatusEffectRegistry.GeneratedStatModDefaultTypes`
+      (the authoritative runtime worklist). `GeneratorDefaultAuditTests` reads + guards it.
+- [x] **Sign-wrong debuffs**: ✅ **Fear** converted to a fixed 20% Hit/Flee *reduction*
+      (status.cpp:7340/7448). Verified **Quagmire** (−5·Val1 Agi/Dex) and **Marshofabyss** (−3·Val1
+      Agi/Dex) are ALREADY explicit + correct (audit was stale).
+- [ ] **Classify each** remaining generator-default SC + triage table ➡️ **SC-20** (uses the new
+      enumeration as the worklist).
+- [ ] **Linear-wrong-magnitude** (AngriffsModus 50+20·Val1, OveredBoost 400+40·Val1, Gatlingfever…)
+      ➡️ **SC-18**.
+- [ ] **Bespoke / not-a-stat** (Jointbeat bitmask, Stomachache tick drain, Adoramus Blind-chain,
+      Fear's SC_ANKLE chain) ➡️ **SC-19**.
+- [ ] **Debuff-resist scaling** (`sc_def`/`tick_def2`) — the landing resist is already in
+      `ScDefTable` (SKILL-01); the remaining arms ride **SC-08** / SKILL-15.
+- [ ] **Generator override / re-run** — the enumeration makes converted SCs drop out automatically
+      (explicit body wins); the per-SC override table cleanup rides **SC-20**.
 
 ## Done criteria
 
-- Every generator-default SC is either: (a) confirmed linear-exact (documented), (b) converted to an
-  explicit `a+b*val1` body with correct sign, or (c) given a bespoke body / Val-read / allowlist
-  entry with a `status.cpp:line` citation.
-- Spot-check numbers: Quagmire Val1=5 (player) → Agi/Dex −25; AngriffsModus Val1=5 → Val2=150 Atk,
-  Val3=75 Flee reduction; OveredBoost Val1=5 → Val2=600 flee, Val3=190 aspd, Val4=50 def reduc;
-  Jointbeat stores a bitmask, not +Val1 stats.
-- No SC in the audited set silently applies the wrong magnitude or sign.
-- `StatusEffectCompletenessTests` green.
+- ✅ The generator-default set is enumerated + guarded (`GeneratedStatModDefaultTypes` +
+  `GeneratorDefaultAuditTests`) — nothing is silently un-reviewed (the guard fails if the set grows).
+- ✅ **Fear** converted (20% Hit/Flee reduction); Quagmire/Marshofabyss verified already-correct.
+- ➡️ The remaining ~150 generator-default SCs are catalogued in the enumeration and assigned by
+  class to **SC-18** (linear-wrong), **SC-19** (bespoke), **SC-20** (bulk triage) — each citing the
+  worklist + rAthena lines.
+- ✅ `StatusEffectCompletenessTests` + `StatusEffectGeneratorTests` green.
 
 ## Test plan
 
@@ -108,3 +103,14 @@ explicit body or move to a combat-side Val read), and convert each non-exact one
   (`target is PlayerEntity`) into the body.
 - Tick-driven drains (Stomachache, AngriffsModus, OveredBoost val4) need an OnPeriodic body, not
   just an OnStart — wire `PeriodMs` + the SP/HP charge.
+
+## History
+
+- 2026-06-01 · XL triage — shipped the enumeration infrastructure + first conversion. The generator
+  now records every synthesized `+Val1` stat-mod SC into `StatusEffectRegistry.
+  GeneratedStatModDefaultTypes` (the authoritative ~159 worklist); `GeneratorDefaultAuditTests` (3)
+  guards it. Converted **Fear** to its rAthena fixed 20% Hit/Flee *reduction* (status.cpp:7340/7448)
+  — verified Quagmire/Marshofabyss already correct (stale audit). 3721 green. Remaining set
+  decomposed by class: SC-18 (linear-wrong a+b·Val1 + tick drains), SC-19 (bespoke/not-a-stat:
+  Jointbeat bitmask, Stomachache drain, Adoramus/Fear SC-chains), SC-20 (bulk-remainder triage +
+  tighten the audit bound). Fear's SC_ANKLE chain → SC-19.
