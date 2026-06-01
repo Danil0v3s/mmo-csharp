@@ -1,6 +1,6 @@
 # SKILL-01 — Status-change procs must run the apply-rate / sc_def mechanism
 
-> **Epic:** Skills · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Skills · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** SKILL-07, SKILL-08, SKILL-09, SKILL-12
 
 ## Problem
