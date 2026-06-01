@@ -37,13 +37,20 @@ EF Core setup, migration commands, repository injection pattern:
 
 ## rAthena parity status
 
-Living migration tracking lives in [.agents/migrations/](.agents/migrations/), organized by server. Start with the [README](.agents/migrations/README.md) for the overall status table. When you finish a migration unit, append a History entry to the relevant doc in the same commit.
+**The active worklist is [.agents/roadmap/](.agents/roadmap/README.md)** — one
+self-contained development ticket per work item, re-baselined 2026-06-01 from a
+full code-vs-rAthena scan. Read the roadmap README's "Honest ground truth" table
+first: prior "100% parity" claims measured per-function code presence, not working
+features. Real remaining surface includes the client→map packet bridge (only ~39
+`CZ_*` handlers), gameplay-subsystem behavior + persistence wiring, combat formula
+depth (cards/skill-ratios/`RE_LVL_DMOD`), the SC-engine magnitude gaps, and the
+NPC scripting runtime (~3% of builtins live). When you finish a ticket, flip its
+Status header and append a History line.
 
-- [.agents/migrations/README.md](.agents/migrations/README.md) — index + status at a glance
-- [.agents/migrations/char/](.agents/migrations/char/) — client packets, gRPC server, connect flow
-- [.agents/migrations/login/](.agents/migrations/login/) — login server feature inventory
-- [.agents/migrations/map/](.agents/migrations/map/) — map-side IPC integration (largest open surface)
-- [.agents/migrations/inter/](.agents/migrations/inter/) — `inter.cpp` base + `int_*.cpp` modules
+- [.agents/roadmap/README.md](.agents/roadmap/README.md) — **canonical** ticket index + ground truth
+- [.agents/migrations/](.agents/migrations/README.md) — **archive/reference only** (rAthena citations + history; status columns are NOT authoritative)
+  - `char/` client packets + gRPC + connect flow (this layer is solid)
+  - `login/` login feature inventory · `inter/` `int_*.cpp` routing · `map/*-parity.md` per-`.cpp` function refs
 
 ## Conventions
 

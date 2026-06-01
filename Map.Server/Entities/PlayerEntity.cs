@@ -268,6 +268,15 @@ public sealed class PlayerEntity : Entity
     public long CanActUntilTick { get; set; }
 
     /// <summary>
+    /// rAthena <c>sd-&gt;canequip_tick</c> (pc.cpp) — absolute tick
+    /// (<see cref="Environment.TickCount64"/>) until which the PC may not
+    /// change equipment. Set by channelled skills that lock the weapon for
+    /// their duration (e.g. WM_SEVERE_RAINSTORM). 0 = unlocked. Enforced in
+    /// <c>EquipItemHandler</c>.
+    /// </summary>
+    public long CanEquipTick { get; set; }
+
+    /// <summary>
     /// rAthena <c>fame</c> on mmo_charstatus — drives smith / alchemist
     /// / taekwon rankings. Mutated by <c>IPlayerFameService.AddFame</c>;
     /// persisted alongside the rest of the character row on autosave.

@@ -31,6 +31,15 @@ public class EquipItemHandler(
             return Task.CompletedTask;
         }
 
+        // rAthena pc_equipitem: a channelled skill (e.g. WM_SEVERE_RAINSTORM)
+        // can lock equipment swaps for its duration via sd->canequip_tick.
+        if (player.CanEquipTick > Environment.TickCount64)
+        {
+            session.EnqueuePacket(EquipNotifier.BuildWearAck(
+                packet.ClientIndex, 0, 0, EquipOpResult.Fail));
+            return Task.CompletedTask;
+        }
+
         // server_index = client_index − 2 (rAthena server_index()).
         var serverIndex = packet.ClientIndex - 2;
         var result = equip.Equip(session, serverIndex, packet.Position, out var appliedPos);
