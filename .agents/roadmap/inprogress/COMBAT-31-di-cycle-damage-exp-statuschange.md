@@ -1,6 +1,6 @@
 # COMBAT-31 — Break the DamageService↔ExpService↔StatusChangeService DI cycle (Map.Server won't boot)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes (server can't start)
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes (server can't start)
 > **Depends on:** none · **Blocks:** PacketReplayTests integration harness, live Map.Server boot
 > **Filed by:** COMBAT-10 on 2026-06-01 (discovered while running the replay regression guard).
 
