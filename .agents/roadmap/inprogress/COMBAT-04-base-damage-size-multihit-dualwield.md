@@ -1,6 +1,6 @@
 # COMBAT-04 — Base damage (DEX-derived atkmin), size-fix, multi-hit div, dual-wield
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** XL · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** XL · **Player-visible:** yes
 > **Depends on:** COMBAT-01 (weapon-type / equip data on the bundle) · **Blocks:** none
 
 ## Problem
