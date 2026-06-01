@@ -21,8 +21,10 @@ namespace Map.Server.Skills.Behaviors;
 ///
 /// <para><b>Subclasses</b>:</para>
 /// <list type="bullet">
-///   <item><see cref="WeaponSkillImpl"/> — single-target weapon hit
-///         with skill_db DamageRate + per-skill ratio bump.</item>
+///   <item><see cref="WeaponSkillImpl"/> — single-target weapon hit whose
+///         per-skill ratio comes from <see cref="CalculateSkillRatio"/> (the
+///         single ratio authority); <c>skill_db</c> <c>DamageRate</c> is the
+///         no-plugin fallback only, never combined with the plugin ratio.</item>
 ///   <item><see cref="StatusSkillImpl"/> — no-damage cast that applies
 ///         (or ends) an SC on the target.</item>
 ///   <item><see cref="RecursiveDamageSplashSkillImpl"/> — splash hits
@@ -102,6 +104,15 @@ public abstract class SkillImpl
     /// PA_SHIELDCHAIN's shield-weight bonus. Plugins override to add it.
     /// </summary>
     public virtual long CalculateSkillConstantAddition(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+        => CalculateSkillConstantAddition(src, target, skillLevel);
+
+    /// <summary>
+    /// SKILL-05 — ctx-free constant-addition (no plugin reads <c>ctx</c> for the
+    /// flat add today). The ctx overload forwards here, so both the
+    /// ResolveSkill→<see cref="WeaponSkillImpl.CastendDamageId"/> path and the
+    /// ctx-less <c>SkillAttackService</c>/resolver funnel get the same value.
+    /// </summary>
+    public virtual long CalculateSkillConstantAddition(Entity src, Entity target, ushort skillLevel)
         => 0;
 
     /// <summary>
@@ -181,24 +192,39 @@ public abstract class WeaponSkillImpl : SkillImpl
     public virtual void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx, int miscflag)
     {
         var swing = ctx.Battle.CalcWeaponAttack(src, target);
-        // Route through the miscflag-aware overload so plugins that need
-        // SC reads (DK_DRAGONIC_BREATH, LG_CANNONSPEAR's SC_SPEAR_SCAR,
-        // SS_REIKETSUHOU's SC_WATER_CHARM_POWER) or alt-dmg branches
-        // (SS_FUUMAKOUCHIKU) can hook them. The default chains down to
-        // the simpler signatures so legacy plugins keep their behavior.
-        // rAthena order (battle.cpp:7708-7711): ATK_RATE(skillratio) then
-        // ATK_ADD(constant). Ratio is a percent of the swing; the constant
-        // is a flat add layered on top.
-        var ratio = CalculateSkillRatio(100, src, target, skillLevel, ctx, miscflag);
-        // COMBAT-03: renewal base-level damage modifier — rAthena applies
-        // RE_LVL_DMOD inside the ratio switch, so it multiplies the ratio
-        // before ATK_RATE. Above base level 99 only; ReLvlDivisor=0 disables.
-        ratio = ApplyReLvlDmod(ratio, src, ReLvlDivisor);
-        var raw = swing.Total * ratio / 100
-                  + CalculateSkillConstantAddition(src, target, skillLevel, ctx);
-        var dmg = (int)Math.Clamp(raw, 0, int.MaxValue);
+        // SKILL-05: the ratio→ReLvlDmod→constant computation is the SINGLE
+        // entry point ComputeSkillDamage, shared with SkillAttackService /
+        // WeaponSkillResolver so a plugin skill can never get two different
+        // ratios depending on which dispatch path it takes.
+        var dmg = ComputeSkillDamage(swing, src, target, skillLevel, ctx, miscflag);
         ctx.Damage.ApplyDamage(target, dmg, src);
         ApplyAdditionalEffects(src, target, skillLevel, ctx);
+    }
+
+    /// <summary>
+    /// SKILL-05 — the canonical per-skill weapon-damage formula, used by both
+    /// <see cref="CastendDamageId"/> (plugin dispatch, with <paramref name="ctx"/>)
+    /// and the ctx-less <c>SkillAttackService</c> / <c>WeaponSkillResolver</c>
+    /// funnels. rAthena order (battle.cpp:7708-7711): <c>ATK_RATE(skillratio)</c>
+    /// then <c>ATK_ADD(constant)</c>; the renewal <c>RE_LVL_DMOD</c> multiplies
+    /// the ratio first (COMBAT-03). This is the ONLY skill-ratio authority for a
+    /// plugin skill — <see cref="SkillDefinition.DamageRate"/> is the no-plugin
+    /// fallback only. When <paramref name="ctx"/> is null (the funnel has no
+    /// <see cref="SkillBehaviorContext"/>) the ctx-free ratio/constant overloads
+    /// are used; ctx-reading ratio overrides are honored only on the plugin path
+    /// (SKILL-17).
+    /// </summary>
+    public int ComputeSkillDamage(
+        Map.Server.Combat.BattleDamage swing, Entity src, Entity target,
+        ushort skillLevel, SkillBehaviorContext? ctx = null, int miscflag = 0)
+    {
+        var ratio = ctx != null
+            ? CalculateSkillRatio(100, src, target, skillLevel, ctx, miscflag)
+            : CalculateSkillRatio(100, src, target, skillLevel);
+        ratio = ApplyReLvlDmod(ratio, src, ReLvlDivisor);
+        var raw = swing.Total * ratio / 100
+                  + CalculateSkillConstantAddition(src, target, skillLevel);
+        return (int)Math.Clamp(raw, 0, int.MaxValue);
     }
 }
 

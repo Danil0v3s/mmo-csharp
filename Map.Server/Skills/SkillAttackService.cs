@@ -20,6 +20,7 @@ public sealed class SkillAttackService : ISkillAttackService
     private readonly IDamageService _damage;
     private readonly IEntityRegistry _entities;
     private readonly IStatusChangeService? _sc;
+    private readonly Behaviors.SkillBehaviorRegistry? _behaviors;
     private readonly ILogger<SkillAttackService> _logger;
 
     public SkillAttackService(
@@ -28,13 +29,15 @@ public sealed class SkillAttackService : ISkillAttackService
         IDamageService damage,
         IEntityRegistry entities,
         ILogger<SkillAttackService> logger,
-        IStatusChangeService? sc = null)
+        IStatusChangeService? sc = null,
+        Behaviors.SkillBehaviorRegistry? behaviors = null)
     {
         _db = db;
         _battle = battle;
         _damage = damage;
         _entities = entities;
         _sc = sc;
+        _behaviors = behaviors;
         _logger = logger;
     }
 
@@ -43,22 +46,10 @@ public sealed class SkillAttackService : ISkillAttackService
     {
         if (!IsAlive(target)) return 0;
 
-        // BattleCalculator covers weapon damage today; magic / misc
-        // paths use simpler heuristics in their resolvers but the
-        // central entry stays here so the next port iteration plugs
-        // them all into the same path.
-        // For weapon swings we hit the renewal battle path; skills
-        // amplify the result by the skill_db DamageRate column. The
-        // dedicated `battle_calc_weapon_attack(skill_id, skill_lv)`
-        // overload from rAthena is on the porting backlog — when it
-        // lands the multiplier moves there.
         var def = _db.Get(skillId);
-        var ratePerLevel = def != null && def.DamageRate.Length > skillLevel
-            ? def.DamageRate[skillLevel]
-            : 100;
         long damage = attackType switch
         {
-            BattleAttackType.Weapon => _battle.CalcWeaponAttack(source, target).Damage * ratePerLevel / 100,
+            BattleAttackType.Weapon => WeaponDamage(source, target, skillId, skillLevel, def, flag),
             BattleAttackType.Magic  => CalcMagicDamage(source, target, skillId, skillLevel),
             BattleAttackType.Misc   => CalcMiscDamage(source, target, skillId, skillLevel),
             _ => 0,
@@ -155,6 +146,23 @@ public sealed class SkillAttackService : ISkillAttackService
     // pull the per-level rate from the skill_db and delegate. Keeping
     // the methods here as named entry points avoids touching every
     // call site in SkillAttack above.
+
+    /// <summary>
+    /// SKILL-05 — weapon damage for the funnel. When a skill has a registered
+    /// <see cref="Behaviors.WeaponSkillImpl"/> plugin, its
+    /// <see cref="Behaviors.WeaponSkillImpl.ComputeSkillDamage"/> is the single
+    /// ratio authority (same number this skill produces via
+    /// ResolveSkill→CastendDamageId) — the <see cref="SkillDefinition.DamageRate"/>
+    /// column is consulted ONLY for skills with no plugin.
+    /// </summary>
+    private long WeaponDamage(Entity source, Entity target, ushort skillId, ushort skillLevel, SkillDefinition? def, byte flag)
+    {
+        var swing = _battle.CalcWeaponAttack(source, target);
+        if (_behaviors?.Get(skillId) is Behaviors.WeaponSkillImpl plugin)
+            return plugin.ComputeSkillDamage(swing, source, target, skillLevel, ctx: null, miscflag: flag);
+        var ratePerLevel = def != null && def.DamageRate.Length > skillLevel ? def.DamageRate[skillLevel] : 100;
+        return swing.Total * ratePerLevel / 100;
+    }
 
     private long CalcMagicDamage(Entity source, Entity target, ushort skillId, ushort lvl)
     {

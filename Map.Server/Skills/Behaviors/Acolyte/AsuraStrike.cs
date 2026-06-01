@@ -83,6 +83,6 @@ public sealed class AsuraStrike : WeaponSkillImpl
     /// ratio. Previously missing — Asura damage was short by exactly this term.
     /// (The renewal ×2-when-&gt;5-spirit-spheres ratio bump is COMBAT-13.)
     /// </summary>
-    public override long CalculateSkillConstantAddition(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
+    public override long CalculateSkillConstantAddition(Entity src, Entity target, ushort skillLevel)
         => 250 + 150 * skillLevel;
 }

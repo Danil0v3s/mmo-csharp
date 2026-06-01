@@ -174,6 +174,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | SKILL-14 | Bulk-migrate the remaining ~163 plugin SC-proc rolls onto the apply-rate engine — split from SKILL-01 |
 | SKILL-15 | ScDefTable depth: bespoke-formula SCs + min_rate/min_duration + resist-buff adds — split from SKILL-01 |
 | SKILL-16 | Route CanDamage through BattleTargetResolver + attack-vs-mechanic-damage split + BG teams — split from SKILL-03 |
+| SKILL-17 | Thread SkillBehaviorContext through the SkillAttack funnel for ctx-aware ratios — split from SKILL-05 |
+| SKILL-18 | Dash/knockback slide broadcast (ZC_HIGHJUMP) on UnitOps.MovePos — split from SKILL-05 |
 
 ### `infra/` — leaf wiring & persistence
 | Ticket | Title |

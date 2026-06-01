@@ -222,6 +222,9 @@ public sealed class SkillDb : ISkillDb
             SpCost     = new[] {0,  8,  8,  8,  8,  8, 15, 15, 15, 15, 15},
             CastTimeMs = new int[11],     // instant
             CooldownMs = new int[11],
+            // SKILL-05: fallback-only — Bash HAS a plugin whose CalculateSkillRatio
+            // (baseRatio + 30*lv) is the live ratio authority; this column is
+            // ignored for Bash and kept only as the no-plugin seed shape.
             DamageRate = new[] {0, 130, 160, 190, 220, 250, 280, 310, 340, 370, 400}, // +30% per level
         });
 
@@ -278,6 +281,9 @@ public sealed class SkillDb : ISkillDb
             SpCost     = new[] {0, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30},
             CastTimeMs = new[] {0, 600, 1200, 1800, 2400, 3000, 3600, 4200, 4800, 5400, 6000},
             CooldownMs = new int[11],
+            // SKILL-05: fallback-only — Fire Bolt has a plugin that owns its
+            // cast; this ratio column is the no-plugin seed and isn't the live
+            // authority for the plugin path.
             DamageRate = new[] {0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000}, // 100% per level (renewal)
             Element = BattleElement.Fire,
         });
@@ -291,6 +297,7 @@ public sealed class SkillDb : ISkillDb
             SpCost     = new[] {0, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30},
             CastTimeMs = new[] {0, 600, 1200, 1800, 2400, 3000, 3600, 4200, 4800, 5400, 6000},
             CooldownMs = new int[11],
+            // SKILL-05: fallback-only — Cold Bolt's plugin owns its cast (see Fire Bolt).
             DamageRate = new[] {0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000},
             Element = BattleElement.Water,
         });
