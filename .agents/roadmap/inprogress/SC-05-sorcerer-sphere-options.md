@@ -1,6 +1,6 @@
 # SC-05 — Sorcerer elemental-sphere `*_OPTION` SCs: fixed Eatk/Matk + element change (not +Val1 stat)
 
-> **Epic:** Status parity hardening · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** SC-01 (de-shadow), SC-02 (CalcStatField extensions) · **Blocks:** none
 
 ## Problem
