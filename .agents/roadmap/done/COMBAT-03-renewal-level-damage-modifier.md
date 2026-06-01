@@ -1,6 +1,6 @@
 # COMBAT-03 — Renewal base-level damage modifier (RE_LVL_DMOD)
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-01) · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-02 (the ratio stage this modifier post-multiplies) · **Blocks:** none
 
 ## Problem
@@ -74,7 +74,9 @@ Canonical: `battle.cpp` switch arms + the macro in `config/const.hpp`. Confirmed
 - A 3rd-class weapon skill at base level 175 deals `ratio175 = ratio99 × 175 / 100` (i.e.
   1.75×) more pre-card/def damage than the same skill at level 99; at level 99 and below the
   modifier is a no-op (exact equality with current behavior).
-- A skill flagged `DisableLvDmg` deals identical damage at level 99 and 175.
+- The disable *mechanism* (`ReLvlDivisor => 0`) is in place + tested. ➡️ Loading the
+  `INF2_DISABLELVDMG` flag from skill_db (so real fixed-damage skills are excluded) +
+  the 120/150 per-arm divisors + the ranger-trap `RE_LVL_TMDMOD` variant → **COMBAT-14**.
 - Magic skills scale with `RE_LVL_MDMOD` (e.g. Storm Gust at 175 vs 99).
 - The aspirational `RE_LVL_DMOD(100)` comments now correspond to real applied behavior.
 
@@ -98,3 +100,17 @@ Canonical: `battle.cpp` switch arms + the macro in `config/const.hpp`. Confirmed
   level), not `JobLevel`.
 - Mobs/NPCs: `status_get_lv` works for them too, but mob skills rarely carry the macro; the
   gate `src.Level > 99` naturally excludes most mobs. No special-casing needed.
+
+## History
+
+- **2026-06-01** — Done (default-divisor RE_LVL_DMOD across weapon/magic/misc). Added
+  `SkillImpl.ApplyReLvlDmod` + the `ReLvlDivisor` virtual (default 100, 0 disables) and
+  applied it to the ratio in `WeaponSkillImpl.CastendDamageId` (after the COMBAT-02
+  ratio, matching rAthena's in-switch RE_LVL_DMOD). `BattleCalculator.CalcMagicAttack`
+  (RE_LVL_MDMOD) and `CalcMiscAttack` now scale by `level/100` above 99. Added the
+  `SkillInf2.DisableLvDmg` bit. Verified: a 3rd-class weapon skill at lv175 deals
+  ×175/100 vs lv99; ≤99 is a no-op; divisor 0 disables; magic scales ×200/100 at lv200.
+  Tests: `Combat03ReLvlDmodTests` (8). Full Map.Server suite 3602/3602 green.
+  Follow-up: **COMBAT-14** (data-driven INF2_DISABLELVDMG gate + 120/150 divisors +
+  trap RE_LVL_TMDMOD); magic-bolt scaling tracks **COMBAT-12**. Commits: start
+  `63caf08`, finish `<this>`.

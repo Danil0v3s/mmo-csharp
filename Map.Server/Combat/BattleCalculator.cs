@@ -322,6 +322,12 @@ public sealed class BattleCalculator : IBattleCalculator
                 damage += damage * mls.Val2 / 100;
         }
 
+        // COMBAT-03: RE_LVL_MDMOD (config/const.hpp) — renewal base-level magic
+        // scaling above level 99. The per-skill INF2_DISABLELVDMG opt-out needs
+        // skill_db Inf2 flags loaded (not yet wired) — tracked in COMBAT-14.
+        if (source.Level > 99)
+            damage = damage * source.Level / 100;
+
         // Element table — magic uses the caster's atk element OR the skill's
         // declared element. The full per-skill element lookup lands later;
         // for now we use the caster's weapon element (same as weapon path).
@@ -364,6 +370,13 @@ public sealed class BattleCalculator : IBattleCalculator
 
         long baseDmg = source.Level + s.IntStat;
         long damage = Math.Max(1, baseDmg * Math.Max(1, ratePerLevel) / 100);
+
+        // COMBAT-03: RE_LVL_DMOD (standard misc variant) — base-level scaling
+        // above 99. Ranger-trap skills use the RE_LVL_TMDMOD variant
+        // (damage*150/100 + damage*lv/100) + the INF2_DISABLELVDMG opt-out —
+        // both tracked in COMBAT-14.
+        if (source.Level > 99)
+            damage = damage * source.Level / 100;
 
         var atkEle = s.WeaponElement == 0 ? BattleElement.Neutral : (BattleElement)s.WeaponElement;
         damage = damage * ElementTable.GetRate(atkEle, t.DefenseElement, t.ElementLevel) / 100;

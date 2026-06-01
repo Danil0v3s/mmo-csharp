@@ -47,6 +47,7 @@ public enum SkillInf2 : ulong
     ShowSkillScale    = 1UL << 13,
     AllowReproduce    = 1UL << 14,
     AllowPlagiarize   = 1UL << 15,
+    DisableLvDmg      = 1UL << 16, // INF2_DISABLELVDMG — skip the renewal RE_LVL_DMOD base-level scaling
 }
 
 /// <summary>

@@ -105,6 +105,24 @@ public abstract class SkillImpl
         => 0;
 
     /// <summary>
+    /// rAthena <c>RE_LVL_DMOD(val)</c> divisor for this skill (config/const.hpp:94).
+    /// Renewal scales the skill ratio by <c>baseLevel / divisor</c> when the
+    /// caster's base level &gt; 99. Most <c>battle_calc_attack_skill_ratio</c>
+    /// arms use <c>RE_LVL_DMOD(100)</c> (the default here); a few use 120/150,
+    /// and fixed-damage skills omit the macro entirely — those override this to
+    /// return <c>0</c> (disable, mirroring rAthena's <c>val &gt; 0</c> guard).
+    /// </summary>
+    protected virtual int ReLvlDivisor => 100;
+
+    /// <summary>
+    /// Apply <c>RE_LVL_DMOD(divisor)</c> to a skill ratio: above base level 99,
+    /// <c>ratio * baseLevel / divisor</c>; at/below 99 (or divisor 0) unchanged.
+    /// rAthena config/const.hpp:94.
+    /// </summary>
+    protected static int ApplyReLvlDmod(int ratio, Entity src, int divisor)
+        => (src.Level > 99 && divisor > 0) ? (int)((long)ratio * src.Level / divisor) : ratio;
+
+    /// <summary>
     /// rAthena <c>SKILL_ALTDMG_FLAG</c> — set on the secondary path-AoE
     /// hit pass when a skill re-fires through <c>skill_attack_area</c>.
     /// Plugins consult this on the miscflag-aware ratio overload to
@@ -172,6 +190,10 @@ public abstract class WeaponSkillImpl : SkillImpl
         // ATK_ADD(constant). Ratio is a percent of the swing; the constant
         // is a flat add layered on top.
         var ratio = CalculateSkillRatio(100, src, target, skillLevel, ctx, miscflag);
+        // COMBAT-03: renewal base-level damage modifier — rAthena applies
+        // RE_LVL_DMOD inside the ratio switch, so it multiplies the ratio
+        // before ATK_RATE. Above base level 99 only; ReLvlDivisor=0 disables.
+        ratio = ApplyReLvlDmod(ratio, src, ReLvlDivisor);
         var raw = swing.Total * ratio / 100
                   + CalculateSkillConstantAddition(src, target, skillLevel, ctx);
         var dmg = (int)Math.Clamp(raw, 0, int.MaxValue);
