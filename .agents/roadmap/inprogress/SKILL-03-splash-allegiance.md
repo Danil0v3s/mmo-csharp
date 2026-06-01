@@ -1,6 +1,6 @@
 # SKILL-03 — Splash allegiance: slave-mob ownership + PvP / no-friendly-fire mapflags
 
-> **Epic:** Skills · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Skills · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** SKILL-08 (NPC family), SKILL-12
 
 ## Problem
