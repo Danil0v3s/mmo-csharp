@@ -1,6 +1,6 @@
 # COMBAT-08 — Damage-driven cast interrupt + ground-unit damage intercept
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-06 (bNoCastCancel flag) · **Blocks:** none
 
 ## Problem
