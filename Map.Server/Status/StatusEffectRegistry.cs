@@ -2016,11 +2016,6 @@ public sealed class StatusEffectRegistry
             Flags: debuff));
 
         // SC_PYROTECHNIC_OPTION — Val2 = 60 (Fire eATK boost).
-        Register(StatusType.PyrotechnicOption, new StatusEffectHandler(
-            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 60; },
-            OnEnd: (_, _) => { },
-            Flags: buff));
-
         // SC_SOLID_SKIN_OPTION — Val2 = 33 (% Def increase).
         Register(StatusType.SolidSkinOption, new StatusEffectHandler(
             OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 33; },
@@ -2339,15 +2334,20 @@ public sealed class StatusEffectRegistry
             OnEnd: (_, _) => { },
             Flags: buff));
 
-        // Wave 58 — SC_AquaplayOption: +Val1 to listed CalcFlag fields.
+        // SC-05 — SC_AQUAPLAY_OPTION: fixed Val2 = 40 MATK (status.cpp init arm),
+        // NOT +Val1 Batk. Applied flat to MatkMin/Max (rAthena feeds val2 into
+        // the matk calc). Val1-independent.
         Register(StatusType.AquaplayOption, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 40;
+                target.Stats.MatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMax + sc.Val2);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+                target.Stats.MatkMin = (ushort)Math.Max(0, target.Stats.MatkMin - sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Max(0, target.Stats.MatkMax - sc.Val2);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
@@ -2363,15 +2363,19 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_BlastOption: +Val1 to listed CalcFlag fields.
+        // SC-05 — SC_BLAST_OPTION: fixed Val2 = 20 MATK, NOT +Val1 AspdRate.
+        // The weapon→Wind element change (Val3 = ELE_WIND) is SC-16.
         Register(StatusType.BlastOption, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 20;
+                target.Stats.MatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMax + sc.Val2);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+                target.Stats.MatkMin = (ushort)Math.Max(0, target.Stats.MatkMin - sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Max(0, target.Stats.MatkMax - sc.Val2);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
@@ -2391,15 +2395,19 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_ChillyAirOption: +Val1 to listed CalcFlag fields.
+        // SC-05 — SC_CHILLY_AIR_OPTION: fixed Val2 = 120 MATK, NOT +Val1 Batk.
+        // Val3 = MG_COLDBOLT autocast-on-attack is SC-16.
         Register(StatusType.ChillyAirOption, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 120;
+                target.Stats.MatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMax + sc.Val2);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+                target.Stats.MatkMin = (ushort)Math.Max(0, target.Stats.MatkMin - sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Max(0, target.Stats.MatkMax - sc.Val2);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
@@ -2425,27 +2433,40 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_CoolerOption: +Val1 to listed CalcFlag fields.
+        // SC-05 — SC_COOLER_OPTION: fixed Val2 = 80 MATK, NOT +Val1 Batk.
+        // The weapon→Water element change (Val3 = ELE_WATER) is SC-16.
         Register(StatusType.CoolerOption, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 80;
+                target.Stats.MatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMax + sc.Val2);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+                target.Stats.MatkMin = (ushort)Math.Max(0, target.Stats.MatkMin - sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Max(0, target.Stats.MatkMax - sc.Val2);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_CursedSoilOption: +Val1 to listed CalcFlag fields.
+        // SC-05 — SC_CURSED_SOIL_OPTION: fixed Val2 = 10 (% MaxHP rate), NOT
+        // +Val1 flat MaxHp. The weapon→Earth element change (Val3 = ELE_EARTH)
+        // is SC-16. Val4 stores the absolute delta so OnEnd reverts exactly.
         Register(StatusType.CursedSoilOption, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 10;
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = delta;
+                target.Stats.MaxHp += delta;
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.MaxHp = (int)Math.Max(0, target.Stats.MaxHp - sc.Val1);
+                if (sc.Val4 > 0)
+                {
+                    target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
+                    if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
+                }
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
@@ -2553,15 +2574,20 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_HeaterOption: +Val1 to listed CalcFlag fields.
+        // SC-05 — SC_HEATER_OPTION: fixed Val2 = 120 equip-Atk (status.cpp:7160
+        // watk += val2), NOT +Val1 Batk. Applied flat to WatkMin/Max. The
+        // weapon→Fire element change (Val3 = ELE_FIRE) is SC-16.
         Register(StatusType.HeaterOption, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 120;
+                target.Stats.WatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMax + sc.Val2);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+                target.Stats.WatkMin = (ushort)Math.Max(0, target.Stats.WatkMin - sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Max(0, target.Stats.WatkMax - sc.Val2);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
@@ -2722,15 +2748,24 @@ public sealed class StatusEffectRegistry
         // later in this ctor (rolls Val2); the Wave 58 all-stat body was a
         // `CalcFlags: All` mis-port and is removed here.
 
-        // Wave 58 — SC_PetrologyOption: +Val1 to listed CalcFlag fields.
+        // SC-05 — SC_PETROLOGY_OPTION: fixed Val2 = 5 (% MaxHP rate), NOT
+        // +Val1 flat MaxHp. Val4 = absolute delta scratch. The Val3 = 50 DEF
+        // term is SC-16.
         Register(StatusType.PetrologyOption, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 5;
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = delta;
+                target.Stats.MaxHp += delta;
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.MaxHp = (int)Math.Max(0, target.Stats.MaxHp - sc.Val1);
+                if (sc.Val4 > 0)
+                {
+                    target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
+                    if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
+                }
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
@@ -2784,15 +2819,20 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_PyrotechnicOption: +Val1 to listed CalcFlag fields.
+        // SC-05 — SC_PYROTECHNIC_OPTION: fixed Val2 = 60 equip-Atk, NOT +Val1
+        // Batk. Applied flat to WatkMin/Max. (The earlier Val2-only stub
+        // registration was removed — this is the single live body.)
         Register(StatusType.PyrotechnicOption, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 60;
+                target.Stats.WatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMax + sc.Val2);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+                target.Stats.WatkMin = (ushort)Math.Max(0, target.Stats.WatkMin - sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Max(0, target.Stats.WatkMax - sc.Val2);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
@@ -3027,15 +3067,19 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
 
-        // Wave 58 — SC_TropicOption: +Val1 to listed CalcFlag fields.
+        // SC-05 — SC_TROPIC_OPTION: fixed Val2 = 180 equip-Atk, NOT +Val1 Batk.
+        // Val3 = MG_FIREBOLT autocast-on-attack is SC-16.
         Register(StatusType.TropicOption, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 180;
+                target.Stats.WatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMax + sc.Val2);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+                target.Stats.WatkMin = (ushort)Math.Max(0, target.Stats.WatkMin - sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Max(0, target.Stats.WatkMax - sc.Val2);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
@@ -3053,52 +3097,28 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_WildStormOption: +Val1 to listed CalcFlag fields.
+        // SC-05 — SC_WILD_STORM_OPTION: Val2 = MG_LIGHTNINGBOLT (the bolt skill
+        // autocast on attack), NOT +Val1 AspdRate. No stat delta; the autocast
+        // wiring is SC-16. Store the skill id so the autocast consumer can read it.
         Register(StatusType.WildStormOption, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
-            {
-                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
-            },
-            OnEnd: (target, sc) =>
-            {
-                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
-            },
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = Map.Server.Skills.SkillIds.MG_LIGHTNINGBOLT; },
+            OnEnd: (_, _) => { },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_WindCurtainOption: +Val1 to listed CalcFlag fields.
+        // SC-05 — SC_WIND_CURTAIN_OPTION: Val2 = 100 (elemental-damage modifier %),
+        // NOT +Val1 to six base stats. The elemental-modifier combat consumer is
+        // SC-16; here we only store the correct Val2 (no phantom stat buff).
         Register(StatusType.WindCurtainOption, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
-            {
-                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
-                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
-                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
-                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
-                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
-                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
-            },
-            OnEnd: (target, sc) =>
-            {
-                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
-                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
-                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
-                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
-                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
-                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
-            },
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 100; },
+            OnEnd: (_, _) => { },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_WindStepOption: +Val1 to listed CalcFlag fields.
+        // SC-05 — SC_WIND_STEP_OPTION: Val2 = 50 (% movement-speed + flee), NOT
+        // +Val1 AspdRate/Flee. The %-speed + flee consumer is SC-16; here we
+        // only store the correct Val2 (no phantom stat buff).
         Register(StatusType.WindStepOption, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
-            {
-                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
-                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val1);
-            },
-            OnEnd: (target, sc) =>
-            {
-                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
-                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val1);
-            },
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 50; },
+            OnEnd: (_, _) => { },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
     }

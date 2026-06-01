@@ -63,9 +63,11 @@ public class StatusEffectGeneratorTests
         // status.yml has 1001 SC entries; 356 had a CalcFlags mapping.
         // SC-02 reclassified 7 mis-mapped `CalcFlags: All` SCs (the 4 weapon
         // endows + Siegfried + Nibelungen + Incmatkrate) out of the generator
-        // table into bespoke bodies, leaving 349. Bound at 345 to allow drift.
-        Assert.True(StatusCalcFlagDefaults.Count >= 345,
-            $"Generator produced only {StatusCalcFlagDefaults.Count} SC entries; expected ≥345");
+        // table, leaving 349. SC-05 reclassified the 12 Sorcerer *_OPTION SCs
+        // (fixed Eatk/Matk/HP-rate, not +Val1) out too, leaving 337. Bound at
+        // 330 to allow drift.
+        Assert.True(StatusCalcFlagDefaults.Count >= 330,
+            $"Generator produced only {StatusCalcFlagDefaults.Count} SC entries; expected ≥330");
     }
 
     // ===== Generator handler examples =====
