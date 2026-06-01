@@ -283,6 +283,7 @@ public static class SkillIds
     public const ushort BA_APPLEIDUN = 322;
     public const ushort BA_ASSASSINCROSS = 320;
     public const ushort BA_DISSONANCE = 317;
+    public const ushort BA_MUSICALLESSON = 315;
     public const ushort BA_MUSICALSTRIKE = 316;
     public const ushort BA_PANGVOICE = 1010;
     public const ushort BA_POEMBRAGI = 321;

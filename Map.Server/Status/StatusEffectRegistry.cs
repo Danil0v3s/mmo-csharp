@@ -1059,15 +1059,16 @@ public sealed class StatusEffectRegistry
             OnEnd: (_, _) => { },
             Flags: buff));
 
-        // SC_WHISTLE — Val2 = 18+2*Val1 (Flee increase),
-        //              Val3 = ((Val1+1)/2)*10 (Perfect Dodge increase).
-        // status.yml CalcFlags: Flee + Flee2; OnStart applies the delta
-        // inline so the test sees real stat mutation.
+        // SC_WHISTLE — Val2 = 18+2*Val1 (Flee), Val3 = (Val1+1)/2 (Perfect
+        // Dodge / Flee2). rAthena status.cpp:10732-10735. status.yml CalcFlags:
+        // Flee + Flee2; OnStart applies the delta inline so the test sees real
+        // stat mutation. SC-03 fix: Val3 was ×10 (Flee2 is NOT ×10-scaled like
+        // Cri — it is a flat perfect-dodge count).
         Register(StatusType.Whistle, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
                 if (sc.Val2 == 0) sc.Val2 = 18 + 2 * sc.Val1;
-                if (sc.Val3 == 0) sc.Val3 = ((sc.Val1 + 1) / 2) * 10;
+                if (sc.Val3 == 0) sc.Val3 = (sc.Val1 + 1) / 2;
                 target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
                 target.Stats.Flee2 = (short)Math.Min(short.MaxValue, target.Stats.Flee2 + sc.Val3);
             },
@@ -1078,14 +1079,13 @@ public sealed class StatusEffectRegistry
             },
             Flags: buff));
 
-        // SC_ASSNCROS — Soul Linker ASPD song. Val2 = caster-Agi-based
-        // ASPD bonus per rAthena status.cpp; without a caster ref here we
-        // approximate as 5+5*Val1 (matches the renewal default).
-        // status.yml CalcFlag: AspdRate.
+        // SC_ASSNCROS (BA_ASSASSINCROSS) — ASPD song. rAthena status.cpp:10736:
+        // val2 = val1 < 10 ? val1*2 - 1 : 20 (AspdRate +Val2). status.yml
+        // CalcFlag: AspdRate. SC-03 fix: was the approximate 5+5*Val1.
         Register(StatusType.Assncros, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                if (sc.Val2 == 0) sc.Val2 = 5 + 5 * sc.Val1;
+                if (sc.Val2 == 0) sc.Val2 = sc.Val1 < 10 ? sc.Val1 * 2 - 1 : 20;
                 target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val2);
             },
             OnEnd: (target, sc) =>
@@ -1405,18 +1405,30 @@ public sealed class StatusEffectRegistry
             },
             Flags: buff));
 
-        // SC_APPLEIDUN — Val2 = 5+2*Val1 (HP recovery %), Val3 = 25+25*Val1
-        // (MaxHp bonus). status.yml CalcFlag: MaxHp; we apply the MaxHp
-        // delta inline (Val3 stored as % of base; mob MaxHp 1000 ⇒
-        // +250..+375 absolute on Val1=5, matching the rAthena range).
+        // SC_APPLEIDUN (BA_APPLEIDUN) — renewal MaxHP-rate buff. rAthena
+        // status.cpp:12136 (renewal arm):
+        //   val2 = (5 + 2*val1) + (status_get_vit(caster)/10);
+        //   if (caster is PC) val2 += pc_checkskill(caster, BA_MUSICALLESSON)/2;
+        // consumed as an HP-rate % (status.cpp:3154 hpbonus += val2). SC-03 fix:
+        // was a Val3 = 5+5*Val1 MaxHp% that dropped the caster VIT + Musical
+        // Lesson terms. The caster context arrives via `source`; if it isn't the
+        // caster PC (e.g. a re-apply with no source), a pre-filled Val2 is
+        // respected (the `Val2 == 0` guard) so the apply-side can pass the exact
+        // value computed with full context.
         Register(StatusType.Appleidun, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
+            OnStart: (target, sc, source) =>
             {
-                if (sc.Val2 == 0) sc.Val2 = 5 + 2 * sc.Val1;
-                if (sc.Val3 == 0) sc.Val3 = 5 + 5 * sc.Val1;
-                // Apply MaxHp % delta. Store the actual delta in a
-                // scratch field so OnEnd reverts cleanly.
-                var maxHpDelta = target.Stats.MaxHp * sc.Val3 / 100;
+                if (sc.Val2 == 0)
+                {
+                    var casterVit = source is PlayerEntity cp ? cp.Stats.Vit : 0;
+                    var lesson = source is PlayerEntity lp
+                        ? lp.LearnedSkills.GetValueOrDefault(Map.Server.Skills.SkillIds.BA_MUSICALLESSON)
+                        : (byte)0;
+                    sc.Val2 = (5 + 2 * sc.Val1) + (casterVit / 10) + (lesson / 2);
+                }
+                // Apply the MaxHp % delta; store the absolute amount so OnEnd
+                // reverts cleanly even if MaxHp changes meanwhile.
+                var maxHpDelta = target.Stats.MaxHp * sc.Val2 / 100;
                 sc.Val4 = maxHpDelta;
                 target.Stats.MaxHp += maxHpDelta;
             },
@@ -1425,6 +1437,7 @@ public sealed class StatusEffectRegistry
                 if (sc.Val4 > 0)
                 {
                     target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
+                    if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
                 }
             },
             Flags: buff));
@@ -3887,134 +3900,6 @@ public sealed class StatusEffectRegistry
                 target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val3);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
-
-        // SC_WHISTLE (BA_WHISTLE) — status.cpp:10732-10735
-        // val2 = 18+2*val1 Flee, val3 = (val1+1)/2 Perfect dodge (Flee2).
-        // Generator: +Val1 to Flee+Flee2 (too small).
-        Register(StatusType.Whistle, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
-            {
-                var flee = (short)(18 + 2 * sc.Val1);
-                var flee2 = (short)((sc.Val1 + 1) / 2);
-                sc.Val2 = flee;
-                sc.Val3 = flee2;
-                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + flee);
-                target.Stats.Flee2 = (short)Math.Min(short.MaxValue, target.Stats.Flee2 + flee2);
-            },
-            OnEnd: (target, sc) =>
-            {
-                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2);
-                target.Stats.Flee2 = (short)Math.Max(0, target.Stats.Flee2 - sc.Val3);
-            },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
-
-        // SC_HUMMING (BA_HUMMING / DC_HUMMING) — status.cpp:10747-10749
-        // val2 = 4*val1 Hit. Generator: +Val1 Hit (too small).
-        Register(StatusType.Humming, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
-            {
-                var hit = (short)(4 * sc.Val1);
-                sc.Val2 = hit;
-                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + hit);
-            },
-            OnEnd: (target, sc) =>
-            {
-                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val2);
-            },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
-
-        // SC_FORTUNE (BA_FORTUNEKISS) — rAthena status.cpp:11118-11120
-        // val2 = val1·10 (Cri increase, stored at rAthena's ×10 scale =
-        // +val1 display crit).  Consumer status_calc_critical:7510-7511:
-        // critical += val2.  Wave 97-3 fix: was applying ×10 again (val1·100
-        // = 10× too high vs rAthena's already-stored val2).  Now adds val2
-        // directly to BattleStats.Cri (same ×10 stored convention).
-        Register(StatusType.Fortune, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
-            {
-                if (sc.Val2 == 0) sc.Val2 = sc.Val1 * 10;
-                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val2);
-            },
-            OnEnd: (target, sc) =>
-            {
-                target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val2);
-            },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
-
-        // SC_SERVICE4U (BA_SERVICEFORYOU) — status.cpp:10757-10760
-        // val2 = val1<10 ? 9+val1 : 20 MaxSP%, val3 = 5+val1 SP cost%.
-        // Generator: +Val1 to all 6 base stats (wrong field — should be
-        // MaxSp and SP cost reduction).
-        Register(StatusType.Service4u, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
-            {
-                var maxSpPct = sc.Val1 < 10 ? 9 + sc.Val1 : 20;
-                var maxSpDelta = target.Stats.MaxSp * maxSpPct / 100;
-                sc.Val2 = maxSpDelta;
-                target.Stats.MaxSp = Math.Max(1, target.Stats.MaxSp + maxSpDelta);
-            },
-            OnEnd: (target, sc) =>
-            {
-                target.Stats.MaxSp = Math.Max(1, target.Stats.MaxSp - sc.Val2);
-                if (target.Stats.Sp > target.Stats.MaxSp) target.Stats.Sp = target.Stats.MaxSp;
-            },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
-
-        // SC_ASSNCROS (BA_ASSASSINCROSS) — status.cpp:10736-10738
-        // val2 = val1<10 ? val1*2-1 : 20 ASPD%. Generator: +Val1 AspdRate.
-        // Closer match: val1*2-1 (cap 20).
-        Register(StatusType.Assncros, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
-            {
-                var aspd = (short)(sc.Val1 < 10 ? sc.Val1 * 2 - 1 : 20);
-                sc.Val2 = aspd;
-                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + aspd);
-            },
-            OnEnd: (target, sc) =>
-            {
-                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
-            },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
-
-        // SC_APPLEIDUN (BA_APPLEIDUN) — status.cpp:10743-10746
-        // val2 = val1<10 ? 9+val1 : 20 MaxHp%, val3 = 2*val1 potion
-        // recovery rate. Generator: +Val1 MaxHp (wrong — should be %).
-        Register(StatusType.Appleidun, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
-            {
-                var pct = sc.Val1 < 10 ? 9 + sc.Val1 : 20;
-                var maxHpDelta = target.Stats.MaxHp * pct / 100;
-                sc.Val2 = maxHpDelta;
-                target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp + maxHpDelta);
-            },
-            OnEnd: (target, sc) =>
-            {
-                target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val2);
-                if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
-            },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
-
-        // SC_DONTFORGETME (DC_DONTFORGETME) — rAthena status.cpp:11114-11117
-        // val2 = 1+30·val1 ASPD decrease (debuff), val3 = 5+2·val1 move slow.
-        // Consumer status_calc_aspd:8287-8288: bonus -= val2/10.  In our
-        // AspdRate convention (higher = faster), we SUBTRACT val2/10 from
-        // AspdRate to mirror.  Wave 97-3 fix: previously added val2 (wrong
-        // direction — would make a debuff act like a speed buff) and missed
-        // the /10 scale.
-        Register(StatusType.Dontforgetme, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
-            {
-                if (sc.Val2 == 0) sc.Val2 = 1 + 30 * sc.Val1;
-                if (sc.Val3 == 0) sc.Val3 = 5 + 2 * sc.Val1;
-                var aspdSlow = sc.Val2 / 10;
-                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - aspdSlow);
-            },
-            OnEnd: (target, sc) =>
-            {
-                var aspdSlow = sc.Val2 / 10;
-                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + aspdSlow);
-            },
-            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
 
         // ---- Festival / Bard non-stat songs (combat-side reads) ----
 

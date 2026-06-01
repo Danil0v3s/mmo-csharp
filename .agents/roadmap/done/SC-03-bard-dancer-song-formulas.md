@@ -1,7 +1,12 @@
 # SC-03 — Correct Bard/Dancer song formulas + collapse duplicate registrations
 
-> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** ✅ Done (2026-06-01) · **Size:** M · **Player-visible:** yes
 > **Depends on:** SC-01 (overwrite guard makes the dup-registration safe to collapse) · **Blocks:** none
+>
+> **Done:** Assncros / Whistle-Val3 / Appleidun magnitudes fixed; the 7 shadowed Wave4a
+> song duplicates deleted (one body per song; Drumbattle's single copy kept). All Done
+> criteria met and tested — no follow-ups (the Service4u/Dontforgetme Val3 *consumer*
+> reads — SP-cost / move-slow — are SC-04's "consumer val reads" scope, not a formula gap).
 
 ## Problem
 
@@ -69,18 +74,18 @@ NOTE the earlier Whistle Val3 confusion: the Wave32 Whistle (1066) computes
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **Delete the duplicate registrations**: keep ONE body per song SC (preferably consolidate
+- [x] **Delete the duplicate registrations**: keep ONE body per song SC (preferably consolidate
       into `RegisterWave32Val2Val3Formulas` since it wins; move Drumbattle there too). After SC-01's
       guard lands, the dup is a no-op, but it MUST be removed for clarity.
-- [ ] **Fix Assncros** to `Val2 = Val1 < 10 ? Val1*2 - 1 : 20` (AspdRate += Val2).
-- [ ] **Fix Whistle Val3** to `(Val1+1)/2` (remove the `*10`).
-- [ ] **Fix Appleidun** to renewal HP-rate: `Val2 = (5 + 2*Val1) + (casterVit/10) + (musicalLesson/2)`.
+- [x] **Fix Assncros** to `Val2 = Val1 < 10 ? Val1*2 - 1 : 20` (AspdRate += Val2).
+- [x] **Fix Whistle Val3** to `(Val1+1)/2` (remove the `*10`).
+- [x] **Fix Appleidun** to renewal HP-rate: `Val2 = (5 + 2*Val1) + (casterVit/10) + (musicalLesson/2)`.
       Thread caster VIT + BA_MUSICALLESSON level: if `source` is the caster `PlayerEntity`, read its
       VIT and skill level; otherwise the apply-side caller must pre-fill Val2 and OnStart respects a
       non-zero Val2 (`if (sc.Val2 == 0) ...`).
-- [ ] **Verify Service4u and Dontforgetme** winning copies match rAthena (table above) and fix if
+- [x] **Verify Service4u and Dontforgetme** winning copies match rAthena (table above) and fix if
       not; the doc-comments at 1111-1116 / 1154 should match the live formula.
-- [ ] **Ensure Drumbattle survives** (move to the winning method or rely on SC-01 guard) and applies
+- [x] **Ensure Drumbattle survives** (move to the winning method or rely on SC-01 guard) and applies
       both Atk (Val2 to WatkMin/WatkMax) and Def (Val3) — the generator's `Def`-only map is wrong.
 
 ## Done criteria
@@ -109,3 +114,14 @@ NOTE the earlier Whistle Val3 confusion: the Wave32 Whistle (1066) computes
   Dontforgetme is a *penalty* (subtract), Assncros a *bonus* (add).
 - After SC-01, removing the shadowed copies is mechanical; do it in the same PR to avoid leaving
   two now-identical bodies.
+
+## History
+
+- 2026-06-01 · Fixed the winning (Wave32) song bodies and collapsed the duplicates.
+  Assncros Val2 → `val1<10 ? val1*2-1 : 20` (was 5+5·v1); Whistle Val3 → `(val1+1)/2`
+  (dropped the erroneous ×10); Appleidun → renewal HP-rate `Val2 = (5+2·v1) + casterVit/10
+  + BA_MUSICALLESSON/2` read from the `source` caster (pre-filled Val2 respected), applied as
+  a MaxHP %. Deleted the 7 shadowed Wave4a copies (Whistle/Humming/Fortune/Service4u/Assncros/
+  Appleidun/Dontforgetme) — one body per song; Drumbattle's single (correct) copy kept.
+  Added `SkillIds.BA_MUSICALLESSON = 315`. New `BardDancerSongFormulaTests` (12); completeness
+  + full suite 3692 green. No follow-ups (Service4u/Dontforgetme Val3 consumer reads → SC-04).
