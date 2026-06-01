@@ -69,7 +69,7 @@ public class SkillImplBehaviorTests
         pc.Stats.Batk = 100; pc.Stats.WatkMin = 100; pc.Stats.WatkMax = 100; pc.Stats.Hit = 200;
         var mob = ctx.AddMob(51, 51);
         mob.Hp = 9999; mob.Stats.MaxHp = 9999;
-        var bash = new Map.Server.Skills.Behaviors.Swordman.Bash(new FixedRandom(99));
+        var bash = new Map.Server.Skills.Behaviors.Swordman.Bash();
         bash.CastendDamageId(pc, mob, 5, ctx.Behavior);
         Assert.True(mob.Hp < 9999);
     }

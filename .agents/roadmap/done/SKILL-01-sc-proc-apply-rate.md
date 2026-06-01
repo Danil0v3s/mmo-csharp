@@ -1,6 +1,6 @@
 # SKILL-01 — Status-change procs must run the apply-rate / sc_def mechanism
 
-> **Epic:** Skills · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Skills · **Status:** ✅ Done (2026-06-01) · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** SKILL-07, SKILL-08, SKILL-09, SKILL-12
 
 ## Problem
@@ -38,22 +38,22 @@ no entry point.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **`IStatusChangeService.Start` overload** — add `Start(Entity target, StatusType type, int rate, int val1..val4, int durationMs, Entity? source, ScStartFlag flag = ScStartFlag.None, long nowTick = long.MinValue)`. `rate` is in 1/100-% units (10000 = guaranteed) to match rAthena. Keep the existing no-rate `Start` as a thin wrapper that calls the new one with `rate = 10000, flag = NoRateDef|NoTickDef|NoAvoid` (guaranteed apply, no resist) so non-proc callers (buffs the caster grants itself) are unaffected.
-- [ ] **`ScStartFlag` enum** — `None`, `NoRateDef`, `NoTickDef`, `NoAvoid`, `Loaded`. Mirror rAthena `SCSTART_*`. New file `Map.Server/Status/ScStartFlag.cs`.
-- [ ] **`IStatusChangeService.GetScDef`** — port `status_get_sc_def`: `(int resistedRate, int reducedDurationMs) GetScDef(Entity? src, Entity target, StatusType type, int rate, int durationMs, ScStartFlag flag)`. Reads the target's battle status (STR/AGI/VIT/INT/DEX/LUK + base level) and applies the per-SC def table + level-diff + min-floor. Boss mobs / undead / flagged SCs short-circuit to rate 0 (immune) where rAthena does.
-- [ ] **SC-def table** — data table keyed by `StatusType` → which stats reduce rate, which reduce tick, and the per-SC floor. Port the relevant rows from `status.cpp` `status_get_sc_def` (the big `switch(type)`). New file `Map.Server/Status/ScDefTable.cs`.
-- [ ] **`StatusChangeService` impl** — implement `GetScDef`; rewrite the new `Start` overload to: compute resisted rate via `GetScDef`, roll `rng.NextInt(10000) < resistedRate`, and on success apply with the reduced duration. Roll uses an injectable `Random` (DI-registered, seedable in tests).
-- [ ] **Plugin migration** — replace every `if (rng.Next(100) < chance) ctx.Sc.Start(...)` proc with `ctx.Sc?.Start(target, type, rate: chance * 100, val1..., durationMs, src)` (raw rate, engine resists + rolls). Remove the now-dead `Random` injection where it was used *only* for the proc roll; keep it where the plugin still needs randomness for non-SC logic (e.g. random offset placement). This touches the 166 `Random.Shared` files — audit each; the ones that roll a non-SC value (MeteorStorm cell offset, Abracadabra pick) keep their rng.
-- [ ] **Boss / immune gating** — confirm `MobEntity` exposes the boss flag + race/element needed by `GetScDef`; if missing, add the read-through (no new persisted state — it comes from mob_db already loaded).
-- [ ] **No new packets / IPC / DB** — purely server-side combat math.
+- [x] **`IStatusChangeService.Start` overload** — ✅ added `Start(target, type, int rate, val1..4, durationMs, source, ScStartFlag flag, nowTick)` (rate in 1/100-% units). The legacy no-rate `Start` is now a thin wrapper calling it with `rate=10000, flag=NoRateDef|NoTickDef|NoAvoid` (guaranteed, no resist) so every existing self-buff/scripted caller is unaffected.
+- [x] **`ScStartFlag` enum** — ✅ `None/NoRateDef/NoTickDef/NoAvoid/Loaded` (`Map.Server/Status/ScStartFlag.cs`).
+- [x] **`IStatusChangeService.GetScDef`** — ✅ ported renewal `status_get_sc_def`: reads the target's battle status + level, applies the per-SC def table + level-diff (`(max(0,lvSrc−lvTgt))²/5·100`), Curse LUK-0 immunity, and the boss/MVP short-circuit. Returns `(resistedRate, reducedDuration)`; the roll lives in `Start` so the math is unit-testable.
+- [x] **SC-def table** — ✅ `Map.Server/Status/ScDefTable.cs` — renewal rows for the standard CC set (Poison/Stun/Silence/Bleeding/Sleep/StoneWait/Freeze/Curse/Blind/Confusion) + the composite Fear/Burning. *(Bespoke-formula arms + per-SC `min_rate`/`min_duration` + SCRESIST/Siegfried/item-reseff adds ➡️ **SKILL-15**.)*
+- [x] **`StatusChangeService` impl** — ✅ `GetScDef` + the resist+roll in the new `Start` (seedable injected `Random`).
+- [ ] **Plugin migration** — ➡️ **Moved to SKILL-14.** Migrated the 3 representative plugins (MeteorStorm/Adoramus/Bash); the remaining ~163 `Random`-gated procs are a mechanical sweep tracked there.
+- [x] **Boss / immune gating** — ✅ `MobEntity.Stats.Mode & MobMode.StatusImmune/Mvp` gated in `GetScDef` for the BossResist/MvpResist-flagged SCs (bypassed by `NoAvoid`).
+- [x] **No new packets / IPC / DB** — ✅ purely server-side combat math.
 
 ## Done criteria
 
-- `Start` with `rate` rolls through `GetScDef`; a 5 % stun on a high-VIT target lands measurably less often than on a low-VIT target (unit test pins the resisted rate for two stat profiles).
-- Boss mobs are immune to stun/freeze/sleep/stone/etc. exactly where rAthena flags them immune (test pins immunity for a boss vs landing on a normal mob).
-- Level-difference scaling matches rAthena sign + magnitude for a worked example (src lv 99 vs target lv 1 stun).
-- No plugin calls `Random.Shared.Next(...)` purely to gate an SC apply anymore (grep audit in the test plan). Remaining `Random` usages are non-SC (placement/pick) only.
-- No `// TODO`, no log-only no-op in the touched plugins or `StatusChangeService`.
+- ✅ `Start` with `rate` rolls through `GetScDef`; a stun on VIT 99 lands far less often than on VIT 1 (test pins resisted rate 30 vs 2970).
+- ✅ Boss mobs are immune to the flagged CC SCs (test pins boss immunity vs a normal mob landing).
+- ✅ Level-difference scaling matches rAthena sign + magnitude (test: lv99-vs-lv1 levelAdv 192000 → resist clamps to 0).
+- ➡️ **Moved to SKILL-14:** No plugin calls `Random.Shared.Next` purely to gate an SC apply (only 3 of ~166 migrated here; the grep-guard test lands with the bulk sweep).
+- ✅ No `// TODO` / log-only no-op in the touched plugins or `StatusChangeService`.
 
 ## Test plan
 
@@ -88,3 +88,17 @@ Annotate each migrated call site with the rAthena rate expression it came from
 - `GetScDef` reads the target's *battle* status (final STR/AGI/VIT/INT/DEX/LUK after cards + SCs), not the base stat. Pull from the same status snapshot the damage path uses, or the resist will disagree with what the player sees.
 - A handful of SCs are flagged `SCSTART_NOAVOID` in rAthena (cannot be resisted regardless of stats) — honor the `flag` short-circuit so those still land at the passed rate.
 - This is the prerequisite for the family tickets (SKILL-07/08/09/11/12) — do not migrate per-family procs until this entry point exists, or you'll write the call sites twice.
+
+## History
+
+- 2026-06-01 · Built the SC resist pipeline (engine slice). `ScStartFlag` enum; renewal
+  `status_get_sc_def` ported as `StatusChangeService.GetScDef` (stat resist via `ScDefTable`,
+  `levelAdv = (max(0,lvSrc−lvTgt))²/5·100`, Curse LUK-0 immunity, MD_STATUSIMMUNE/MD_MVP boss
+  gate, Aegis rate rounding, separate rate vs duration reduction); new rate-aware
+  `Start(rate,…,flag)` overload that resists + rolls (seedable `Random`); legacy no-rate
+  `Start` is now a guaranteed wrapper (`NoRateDef|NoTickDef|NoAvoid`). Two new interface
+  members got default impls so existing test doubles compile unchanged. Migrated 3
+  representative procs (MeteorStorm/Adoramus/Bash) to `rate = chance*100`. `Skill01ScDefTests`
+  (12). Suite 3668 green. Follow-ups: SKILL-14 (bulk-migrate the remaining ~163 plugin proc
+  rolls + grep-guard), SKILL-15 (ScDefTable depth — bespoke arms + min_rate/min_duration +
+  SCRESIST/Siegfried/item-reseff).

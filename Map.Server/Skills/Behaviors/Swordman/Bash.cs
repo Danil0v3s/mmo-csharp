@@ -19,12 +19,8 @@ namespace Map.Server.Skills.Behaviors.Swordman;
 public sealed class Bash : WeaponSkillImpl
 {
     private const int StunDurationMs = 5_000;
-    private readonly Random _rng;
 
-    public Bash(Random? rng = null) : base(SkillIds.SM_BASH)
-    {
-        _rng = rng ?? Random.Shared;
-    }
+    public Bash() : base(SkillIds.SM_BASH) { }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
         => baseRatio + 30 * skillLevel;
@@ -36,9 +32,9 @@ public sealed class Bash : WeaponSkillImpl
     {
         if (skillLevel < 6 || ctx.Sc == null) return;
         var stunChance = 5 + 5 * (skillLevel - 5); // lv6=10% .. lv10=30%
-        if (_rng.Next(100) < stunChance)
-        {
-            ctx.Sc.Start(target, StatusType.Stun, val1: 1, 0, 0, 0, StunDurationMs, src);
-        }
+        // SKILL-01: raw rate (stunChance% → *100); the SC engine runs
+        // status_get_sc_def (VIT resist + level-diff + boss immunity) + rolls.
+        ctx.Sc.Start(target, StatusType.Stun, rate: stunChance * 100,
+            val1: 1, 0, 0, 0, StunDurationMs, source: src);
     }
 }

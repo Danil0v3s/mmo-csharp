@@ -28,14 +28,11 @@ public sealed class Adoramus : RecursiveDamageSplashSkillImpl
 
         // Duration: skill_db.yml Duration2 for AB_ADORAMUS — 6000 + 4000*lv ms.
         var duration = (6 + 4 * skillLevel) * 1000;
-        // Roll using ctx — RecursiveDamageSplashSkillImpl doesn't expose
-        // an RNG, so re-read off StatusChange's apply-rate mechanism: pass
-        // chance through SC handlers when they understand it; for now,
-        // probabilistic gate using Random.Shared.
-        if (Random.Shared.Next(100) < chance)
-        {
-            ctx.Sc?.Start(target, StatusType.Adoramus, val1: skillLevel, 0, 0, 0, duration, src);
-        }
+        // SKILL-01: pass the raw rate (chance% → *100); the SC engine rolls
+        // (Adoramus isn't a stat-resisted CC, so it lands at the rolled rate,
+        // matching rAthena's default sc_start path for non-resisted SCs).
+        ctx.Sc?.Start(target, StatusType.Adoramus, rate: chance * 100,
+            val1: skillLevel, 0, 0, 0, duration, source: src);
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)

@@ -36,6 +36,48 @@ public interface IStatusChangeService
         Entity? source = null,
         long nowTick = long.MinValue);
 
+    /// <summary>
+    /// SKILL-01 — rate-aware apply. Mirrors rAthena <c>status_change_start</c>:
+    /// the caller passes the RAW skill chance in <paramref name="rate"/>
+    /// (1/100-% units, 10000 = guaranteed), and the engine runs it through
+    /// <see cref="GetScDef"/> (stat resist + level-diff + boss/MVP immunity),
+    /// rolls the (possibly reduced) chance, and on success applies the SC with
+    /// the (possibly reduced) duration. Returns null when resisted/rolled-out.
+    /// Use <paramref name="flag"/> (<see cref="ScStartFlag.NoRateDef"/> /
+    /// <see cref="ScStartFlag.NoTickDef"/> / <see cref="ScStartFlag.NoAvoid"/>)
+    /// to bypass resistance for guaranteed (self-buff) applies.
+    /// </summary>
+    StatusChange? Start(
+        Entity target,
+        StatusType type,
+        int rate,
+        int val1,
+        int val2,
+        int val3,
+        int val4,
+        int durationMs,
+        Entity? source = null,
+        ScStartFlag flag = ScStartFlag.None,
+        long nowTick = long.MinValue)
+        // Default for non-engine implementations (test doubles / recorders):
+        // apply guaranteed via the no-rate path. The real StatusChangeService
+        // overrides this with the full resist + roll pipeline.
+        => Start(target, type, val1, val2, val3, val4, durationMs, source, nowTick);
+
+    /// <summary>
+    /// SKILL-01 — port of rAthena <c>status_get_sc_def</c> (status.cpp:9350,
+    /// renewal branch). Returns the resisted landing <c>rate</c> (1/100-%)
+    /// and the reduced <c>durationMs</c> for <paramref name="type"/> against
+    /// <paramref name="target"/>'s battle stats, given the raw
+    /// <paramref name="rate"/>/<paramref name="durationMs"/>. A resisted rate
+    /// of 0 means the SC cannot land (immune). Does NOT roll — the caller
+    /// (<see cref="Start"/>) rolls so the math is unit-testable.
+    /// </summary>
+    (int resistedRate, int reducedDurationMs) GetScDef(
+        Entity? src, Entity target, StatusType type, int rate, int durationMs, ScStartFlag flag)
+        // Default: no resistance (test doubles). Real engine overrides.
+        => (rate, durationMs);
+
     /// <summary>Remove an active SC. No-op if not present.</summary>
     bool End(Entity target, StatusType type);
 

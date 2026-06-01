@@ -54,7 +54,11 @@ public sealed class MeteorStorm : SkillImpl
 
     public override void ApplyAdditionalEffects(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        if (_rng.Next(100) < 3 * skillLevel)
-            ctx.Sc?.Start(target, StatusType.Stun, val1: skillLevel, 0, 0, 0, durationMs: 3000, src);
+        // skill.cpp WZ_METEOR arm: 3*lv% stun → rate 3*lv*100 (1/100-% units).
+        // SKILL-01: pass the raw rate; the SC engine runs status_get_sc_def
+        // (VIT resist + level-diff + boss immunity) and rolls. (_rng stays —
+        // it still places the meteor cells in CastendPos2.)
+        ctx.Sc?.Start(target, StatusType.Stun, rate: 3 * skillLevel * 100,
+            val1: skillLevel, 0, 0, 0, durationMs: 3000, source: src);
     }
 }

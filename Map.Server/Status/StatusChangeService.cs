@@ -22,6 +22,7 @@ public sealed class StatusChangeService : IStatusChangeService
     private readonly Map.Server.Handlers.ClifWire.IClifWireService? _clif;
     private readonly Map.Server.World.IMapFlagService? _mapFlags;
     private readonly Map.Server.World.IMapWorldRegistry? _world;
+    private readonly Random _rng;
     private readonly ILogger<StatusChangeService> _logger;
 
     /// <summary>
@@ -38,7 +39,8 @@ public sealed class StatusChangeService : IStatusChangeService
         IStatusDbFlagCache? flagCache = null,
         Map.Server.Handlers.ClifWire.IClifWireService? clif = null,
         Map.Server.World.IMapFlagService? mapFlags = null,
-        Map.Server.World.IMapWorldRegistry? world = null)
+        Map.Server.World.IMapWorldRegistry? world = null,
+        Random? rng = null)
     {
         _damage = damage;
         _entities = entities;
@@ -47,9 +49,14 @@ public sealed class StatusChangeService : IStatusChangeService
         _clif = clif;
         _mapFlags = mapFlags;
         _world = world;
+        _rng = rng ?? Random.Shared;
         _logger = logger;
     }
 
+    // SKILL-01 — the legacy no-rate entry point is now a thin wrapper that
+    // applies guaranteed (no stat resist, no duration reduction, no roll), so
+    // every existing self-buff / scripted apply is unaffected. New proc call
+    // sites pass the raw skill chance through the rate-aware overload below.
     public StatusChange? Start(
         Entity target,
         StatusType type,
@@ -57,12 +64,45 @@ public sealed class StatusChangeService : IStatusChangeService
         int durationMs,
         Entity? source = null,
         long nowTick = long.MinValue)
+        => Start(target, type, rate: 10000, val1, val2, val3, val4, durationMs, source,
+                 flag: ScStartFlag.NoRateDef | ScStartFlag.NoTickDef | ScStartFlag.NoAvoid, nowTick);
+
+    public StatusChange? Start(
+        Entity target,
+        StatusType type,
+        int rate,
+        int val1, int val2, int val3, int val4,
+        int durationMs,
+        Entity? source = null,
+        ScStartFlag flag = ScStartFlag.None,
+        long nowTick = long.MinValue)
     {
         var handler = _effects.Get(type);
         if (handler == null)
         {
             _logger.LogDebug("StatusChange.Start: no handler registered for {Type}", type);
             return null;
+        }
+
+        // SKILL-01 — rAthena status_change_start resist pipeline. Run the raw
+        // chance through status_get_sc_def (stat resist + level-diff + boss/MVP
+        // immunity), then roll. rate >= 10000 with the guaranteed flags (the
+        // wrapper above) skips the roll entirely. Done before the refresh
+        // End() so a resisted proc never disturbs an existing instance.
+        if (!(flag.HasFlag(ScStartFlag.Loaded)))
+        {
+            var (resistedRate, reducedDuration) = GetScDef(source, target, type, rate, durationMs, flag);
+            if (resistedRate <= 0)
+            {
+                _logger.LogDebug("StatusChange.Start: {Type} on {Target} fully resisted", type, target.Id);
+                return null;
+            }
+            if (resistedRate < 10000 && _rng.Next(10000) >= resistedRate)
+            {
+                _logger.LogDebug("StatusChange.Start: {Type} on {Target} rolled out (rate {Rate})", type, target.Id, resistedRate);
+                return null;
+            }
+            durationMs = reducedDuration;
         }
 
         // P0.5 — rAthena status_change_isDisabledOnMap gate. The map's
@@ -150,6 +190,69 @@ public sealed class StatusChangeService : IStatusChangeService
             val1, val2, val3);
 
         return sc;
+    }
+
+    // SKILL-01 — renewal status_get_sc_def (status.cpp:9350). Returns the
+    // resisted landing rate (1/100-%) + reduced duration; does NOT roll.
+    public (int resistedRate, int reducedDurationMs) GetScDef(
+        Entity? src, Entity target, StatusType type, int rate, int durationMs, ScStartFlag flag)
+    {
+        int tick = durationMs;
+        // rAthena: src == null short-circuits (no resist).
+        if (src == null) return (rate, tick);
+
+        var entry = ScDefTable.For(type);
+        if (entry == null)
+            return (rate, tick); // buff / non-stat-resistible: caller still rolls `rate`.
+
+        var e = entry.Value;
+        var status = target.Stats;
+
+        // Curse special: 100% immune when target LUK == 0.
+        if (e.CurseLukImmune && status.Luk == 0) return (0, tick);
+
+        // Boss / MVP resist (status_change_start:9897). MD_STATUSIMMUNE / MD_MVP
+        // mobs are immune to the flagged CC SCs unless NoAvoid is set.
+        if ((flag & ScStartFlag.NoAvoid) == 0 && target is MobEntity mob)
+        {
+            var mode = mob.Stats.Mode;
+            if (e.BossResist && (mode & MobMode.StatusImmune) != 0) return (0, tick);
+            if (e.MvpResist && (mode & MobMode.Mvp) != 0) return (0, tick);
+        }
+
+        // levelAdv = (max(0, lvSrc - lvTgt))^2 / 5 * 100  (renewal).
+        int diff = src.Level - target.Level;
+        int levelAdv = diff > 0 ? (diff * diff / 5) * 100 : 0;
+
+        int scDef = ScDefTable.StatValue(status, e.Stat) * e.StatMul
+                  + target.Level * e.LevelMul
+                  + status.Luk * e.LukMul
+                  - (e.UseLevelAdv ? levelAdv : 0);
+
+        // battle_config pc/mob_sc_def_rate default 100 (no-op); cap at
+        // pc/mob_max_sc_def*100 = 10000 (renewal cap_value 0..max).
+        // (SC_SCRESIST / Siegfried resist-buff adds are SKILL-14.)
+        scDef = Math.Clamp(scDef, 0, 10000);
+        int tickDef = scDef; // tick_def == -1 → use sc_def.
+        int tickDef2 = e.TickDef2Ms;
+
+        // Natural rate resistance.
+        if ((flag & ScStartFlag.NoRateDef) == 0)
+        {
+            rate -= rate * scDef / 10000;
+            // Aegis accuracy rounding (round up to the next multiple of 10).
+            if (rate > 0 && rate % 10 != 0) rate += 10 - rate % 10;
+        }
+        if (rate < 0) rate = 0; // (per-SC status.yml min_rate floor → SKILL-14)
+
+        // Duration resistance (separate from rate).
+        if ((flag & ScStartFlag.NoTickDef) == 0)
+        {
+            tick -= tick * tickDef / 10000;
+            tick -= tickDef2; // negative tickDef2 lengthens — faithful to rAthena.
+        }
+        if (tick < 1) tick = 1; // status.yml min_duration floor (default).
+        return (rate, tick);
     }
 
     public bool End(Entity target, StatusType type)

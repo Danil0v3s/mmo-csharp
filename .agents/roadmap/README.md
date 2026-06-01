@@ -171,6 +171,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | SKILL-11 | Family: Homunculus / Summoner / Novice shells |
 | SKILL-12 | Family polish: Mage/Archer/Thief/Swordman/Merchant/Acolyte (depth) |
 | SKILL-13 | Parity-sweep snapshots must fail, not silently rewrite (test integrity) |
+| SKILL-14 | Bulk-migrate the remaining ~163 plugin SC-proc rolls onto the apply-rate engine — split from SKILL-01 |
+| SKILL-15 | ScDefTable depth: bespoke-formula SCs + min_rate/min_duration + resist-buff adds — split from SKILL-01 |
 
 ### `infra/` — leaf wiring & persistence
 | Ticket | Title |
