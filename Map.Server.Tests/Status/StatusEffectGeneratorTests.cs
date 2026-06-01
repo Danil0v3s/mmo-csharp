@@ -60,10 +60,12 @@ public class StatusEffectGeneratorTests
     [Fact]
     public void Generator_registered_at_least_350_SCs()
     {
-        // status.yml has 1001 SC entries; 356 have CalcFlags. Test
-        // bounds at 350 to allow for status.yml drift +/-.
-        Assert.True(StatusCalcFlagDefaults.Count >= 350,
-            $"Generator produced only {StatusCalcFlagDefaults.Count} SC entries; expected ≥350");
+        // status.yml has 1001 SC entries; 356 had a CalcFlags mapping.
+        // SC-02 reclassified 7 mis-mapped `CalcFlags: All` SCs (the 4 weapon
+        // endows + Siegfried + Nibelungen + Incmatkrate) out of the generator
+        // table into bespoke bodies, leaving 349. Bound at 345 to allow drift.
+        Assert.True(StatusCalcFlagDefaults.Count >= 345,
+            $"Generator produced only {StatusCalcFlagDefaults.Count} SC entries; expected ≥345");
     }
 
     // ===== Generator handler examples =====

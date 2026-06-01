@@ -130,7 +130,7 @@ public static class StatusCalcFlagDefaults
         [StatusType.Drumbattle] = new[] { CalcStatField.Def },
         [StatusType.EarthInsignia] = new[] { CalcStatField.Mdef, CalcStatField.Def, CalcStatField.MaxHp, CalcStatField.MaxSp, CalcStatField.Batk },
         [StatusType.Earthscroll] = new[] { CalcStatField.Def, CalcStatField.Mdef, CalcStatField.AspdRate },
-        [StatusType.Earthweapon] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
+        // Earthweapon: reclassified by SC-02 — weapon-element endow, not an all-six-stat buff (bespoke body in StatusEffectRegistry).
         [StatusType.Echosong] = new[] { CalcStatField.Def },
         [StatusType.Edp] = new[] { CalcStatField.Batk },
         [StatusType.EmergencyMove] = new[] { CalcStatField.AspdRate },
@@ -147,7 +147,7 @@ public static class StatusCalcFlagDefaults
         [StatusType.Fightingspirit] = new[] { CalcStatField.Batk, CalcStatField.AspdRate },
         [StatusType.FireCloakOption] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
         [StatusType.FireInsignia] = new[] { CalcStatField.Batk },
-        [StatusType.Fireweapon] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
+        // Fireweapon: reclassified by SC-02 — weapon-element endow, not an all-six-stat buff (bespoke body in StatusEffectRegistry).
         [StatusType.FirmFaith] = new[] { CalcStatField.MaxHp, CalcStatField.Res },
         [StatusType.FlamearmorOption] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
         [StatusType.Flashcombo] = new[] { CalcStatField.Batk },
@@ -208,7 +208,7 @@ public static class StatusCalcFlagDefaults
         [StatusType.Incfleerate] = new[] { CalcStatField.Flee },
         [StatusType.Inchit] = new[] { CalcStatField.Hit },
         [StatusType.Inchitrate] = new[] { CalcStatField.Hit },
-        [StatusType.Incmatkrate] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
+        // Incmatkrate: reclassified by SC-02 — MATK% (SP_MATK_RATE), not an all-six-stat buff (bespoke body in StatusEffectRegistry).
         [StatusType.Incmhp] = new[] { CalcStatField.MaxHp },
         [StatusType.Incmhprate] = new[] { CalcStatField.MaxHp },
         [StatusType.Incmsp] = new[] { CalcStatField.MaxSp },
@@ -262,7 +262,7 @@ public static class StatusCalcFlagDefaults
         [StatusType.MusicalInterlude] = new[] { CalcStatField.Res },
         [StatusType.Nen] = new[] { CalcStatField.Str, CalcStatField.IntStat },
         [StatusType.Neutralbarrier] = new[] { CalcStatField.Def, CalcStatField.Mdef },
-        [StatusType.Nibelungen] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
+        // Nibelungen: reclassified by SC-02 — random ring effect (Val2), not an all-six-stat buff (bespoke body in StatusEffectRegistry).
         [StatusType.NpcHallucinationwalk] = new[] { CalcStatField.Flee },
         [StatusType.Nyanggrass] = new[] { CalcStatField.Def, CalcStatField.Mdef },
         [StatusType.OdinsPower] = new[] { CalcStatField.Batk, CalcStatField.Mdef, CalcStatField.Def },
@@ -306,7 +306,7 @@ public static class StatusCalcFlagDefaults
         [StatusType.ShieldspellAtk] = new[] { CalcStatField.Batk },
         [StatusType.ShinkirouCall] = new[] { CalcStatField.AspdRate },
         [StatusType.Shrimp] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
-        [StatusType.Siegfried] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
+        // Siegfried: reclassified by SC-02 — elemental/status resist (Val2/Val3), not an all-six-stat buff (bespoke body in StatusEffectRegistry).
         [StatusType.Signumcrucis] = new[] { CalcStatField.Def },
         [StatusType.SincereFaith] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
         [StatusType.Ska] = new[] { CalcStatField.Def2, CalcStatField.Mdef2 },
@@ -378,7 +378,7 @@ public static class StatusCalcFlagDefaults
         [StatusType.WaterDropOption] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
         [StatusType.WaterInsignia] = new[] { CalcStatField.Batk },
         [StatusType.WaterScreenOption] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
-        [StatusType.Waterweapon] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
+        // Waterweapon: reclassified by SC-02 — weapon-element endow, not an all-six-stat buff (bespoke body in StatusEffectRegistry).
         [StatusType.Watkfood] = new[] { CalcStatField.Batk },
         [StatusType.Weakness] = new[] { CalcStatField.MaxHp },
         [StatusType.Wedding] = new[] { CalcStatField.AspdRate },
@@ -390,7 +390,7 @@ public static class StatusCalcFlagDefaults
         [StatusType.WindInsignia] = new[] { CalcStatField.Batk, CalcStatField.AspdRate },
         [StatusType.WindStepOption] = new[] { CalcStatField.AspdRate, CalcStatField.Flee },
         [StatusType.Windwalk] = new[] { CalcStatField.Flee, CalcStatField.AspdRate },
-        [StatusType.Windweapon] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
+        // Windweapon: reclassified by SC-02 — weapon-element endow, not an all-six-stat buff (bespoke body in StatusEffectRegistry).
         [StatusType.Wugdash] = new[] { CalcStatField.AspdRate },
         [StatusType.Zangetsu] = new[] { CalcStatField.Batk },
         [StatusType.Zephyr] = new[] { CalcStatField.Flee },

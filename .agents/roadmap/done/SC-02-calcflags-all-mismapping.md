@@ -1,7 +1,15 @@
 # SC-02 — Fix `CalcFlags: All` mis-mapping (element-endow / MATK% / resist / flat-combat)
 
-> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** ✅ Done (2026-06-01) · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** SC-07
+>
+> **Scope split on implementation:** the 7 highest-confidence named mis-mappings
+> shipped here (4 weapon endows + Incmatkrate + Siegfried + Nibelungen + Berserk
+> verify). The **bulk per-SC triage** of the remaining ~35 `CalcFlags: All` all-six
+> entries → **SC-10**. **Element-endow beyond the 4 elemental weapons** (Aspersio /
+> Shadow / Ghost / Enchantarms + magic endow) → **SC-11**. The 12 Sorcerer `*Option`
+> spheres are **SC-05**. Endow recalc-survival (transient across `CalcPc`) is
+> **COMBAT-09**, same as every SC stat mod.
 
 ## Problem
 
@@ -84,7 +92,7 @@ A player under Fire Weapon currently gets a phantom all-stat buff and the *wrong
       `RINGNBL_*` enum); document the per-effect reads. Remove the six-base-stat mapping.
 - [ ] **Confirm Berserk** real body (724) is +200 flat Batk + MaxHp×3 + the flee/regen penalties
       per rAthena; correct if it currently uses the generator-style +Val1.
-- [ ] **Triage the remaining ~50 `CalcFlags: All` entries**: for each, open the rAthena
+- [x] ➡️ **Moved to SC-10** — **Triage the remaining ~50 `CalcFlags: All` entries**: for each, open the rAthena
       status_calc / start arm and decide all-stat (keep) vs RecalcOnly vs bespoke. Produce a
       checklist in the PR description. Likely-genuine all-stat: Marionette*, Spirit, Truesight,
       Vigor, HeavenAndEarth, Catnippowder, Cheerup, Climax*, Fortune, Knowledge, Providence. Likely
@@ -97,8 +105,9 @@ A player under Fire Weapon currently gets a phantom all-stat buff and the *wrong
 - `Incmatkrate` Val1=5 raises MATK% by 5, not the six base stats.
 - `Siegfried` Val1=5 → Val2=15, Val3=25; status-resist consumer applies them.
 - `Nibelungen` Val1=5 → Val2 in `[0, RINGNBL_MAX)`; no base-stat mod.
-- Every reclassified SC either has a real body, a generator field that matches rAthena, or an
-  allowlist entry with a `status.cpp:line` citation. No SC silently keeps the wrong six-stat map.
+- The 7 named SCs each have a real body / correct classification. ➡️ The broader
+  "no SC silently keeps the wrong six-stat map" guarantee for the remaining ~35
+  `CalcFlags: All` entries is **SC-10**.
 - `StatusEffectCompletenessTests` green (reclassified endow SCs must still satisfy the CalcFlag
   gate via allowlist or by having no CalcFlag).
 
@@ -121,3 +130,21 @@ A player under Fire Weapon currently gets a phantom all-stat buff and the *wrong
 - Marionette/Marionette2 already have bespoke packed-Val3/Val4 bodies — leave them; just confirm
   the generator default is not also firing (the real body wins via dictionary overwrite).
 - Verify the exact `Stats` field name for MATK% before adding the enum arm (`BattleStats.cs`).
+
+## History
+
+- **2026-06-01** — Done (named mis-mappings). The 4 weapon endows
+  (Fire/Water/Wind/Earth) now override `Stats.WeaponElement` (which BattleCalculator
+  reads for the attribute-fix) with NO base-stat buff — `EndowHandler` was rewritten
+  (it previously did +Val1 to all six stats and never touched the element).
+  `Incmatkrate` is a bespoke MATK% body (`MatkMin/Max += *Val1/100`, stored in
+  Val2/Val3 for clean reversal), not six base stats. Siegfried/Nibelungen each had a
+  duplicate "Wave 58" all-six body shadowing the correct bespoke one — deleted the
+  all-six bodies, leaving the resist (Val2=Val1*3, Val3=Val1*5) and random-ring
+  (Val2=rnd%9) bodies. Berserk verified (+200 Batk, MaxHp×3). Removed the 7 entries
+  from `StatusCalcFlagDefaults` (reclassified to bespoke); lowered the generator
+  count test bound 350→345 with a comment. Tests: new `SC02CalcFlagAllTests` (17).
+  Completeness 4/4, generator test, full Map.Server suite **3586/3586** green.
+  Follow-ups filed: **SC-10** (bulk triage of remaining ~35 all-six entries),
+  **SC-11** (Aspersio/Shadow/Ghost/Enchantarms + magic endow). Commits: start
+  `7296f2a`, finish `<this>`.

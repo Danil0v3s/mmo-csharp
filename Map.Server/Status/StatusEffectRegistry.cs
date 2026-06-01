@@ -2704,27 +2704,10 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_Nibelungen: +Val1 to listed CalcFlag fields.
-        Register(StatusType.Nibelungen, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
-            {
-                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
-                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
-                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
-                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
-                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
-                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
-            },
-            OnEnd: (target, sc) =>
-            {
-                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
-                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
-                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
-                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
-                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
-                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
-            },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+        // SC-02: SC_Nibelungen is NOT an all-six-stat buff — it's a random
+        // ring-effect selector (Val2 = rnd()%RINGNBL_MAX). The real body lives
+        // later in this ctor (rolls Val2); the Wave 58 all-stat body was a
+        // `CalcFlags: All` mis-port and is removed here.
 
         // Wave 58 — SC_PetrologyOption: +Val1 to listed CalcFlag fields.
         Register(StatusType.PetrologyOption, new StatusEffectHandler(
@@ -2860,27 +2843,10 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_Siegfried: +Val1 to listed CalcFlag fields.
-        Register(StatusType.Siegfried, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
-            {
-                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
-                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
-                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
-                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
-                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
-                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
-            },
-            OnEnd: (target, sc) =>
-            {
-                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
-                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
-                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
-                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
-                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
-                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
-            },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+        // SC-02: SC_Siegfried is NOT an all-six-stat buff — it grants
+        // elemental resist (Val2 = Val1*3) + status-ailment resist
+        // (Val3 = Val1*5). The real body lives later in this ctor; the Wave 58
+        // all-stat body was a `CalcFlags: All` mis-port and is removed here.
 
         // Wave 58 — SC_SIGNUMCRUCIS: -Val1 Def (debuff vs Undead/Demon).
         // Skipped — already registered at line 4025 with rAthena formula
@@ -3680,30 +3646,30 @@ public sealed class StatusEffectRegistry
         // semantic still lives on the combat damage pipeline (reads SC
         // presence + Val1); these registry bodies satisfy the strict
         // stat-mod gate by applying +Val1 to all 6 base stats.
-        static StatusEffectHandler EndowHandler(ScfFlag flags) => new StatusEffectHandler(
+        // SC-02: weapon-element endow. rAthena status_get_weapon_element
+        // (status.cpp) overrides the attacker's weapon attack element — it
+        // applies NO base-stat mod (the previous all-six-stat body was a
+        // mis-port of the `CalcFlags: All` recalc trigger). We store the prior
+        // element (+1 so Neutral=0 round-trips) in Val2 and set
+        // Stats.WeaponElement, which BattleCalculator reads at the
+        // attribute-fix step. OnEnd restores it. (Survival across a full
+        // CalcPc recalc is COMBAT-09's recalc-ordering concern, same as every
+        // other SC stat mod today.)
+        static StatusEffectHandler EndowHandler(ScfFlag flags, BattleElement element) => new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
-                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
-                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
-                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
-                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
-                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
+                if (sc.Val2 <= 0) sc.Val2 = target.Stats.WeaponElement + 1;
+                target.Stats.WeaponElement = (byte)element;
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
-                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
-                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
-                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
-                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
-                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
+                if (sc.Val2 > 0) target.Stats.WeaponElement = (byte)(sc.Val2 - 1);
             },
             Flags: flags);
-        Register(StatusType.Fireweapon, EndowHandler(endowFlags));
-        Register(StatusType.Waterweapon, EndowHandler(endowFlags));
-        Register(StatusType.Windweapon, EndowHandler(endowFlags));
-        Register(StatusType.Earthweapon, EndowHandler(endowFlags));
+        Register(StatusType.Fireweapon, EndowHandler(endowFlags, BattleElement.Fire));
+        Register(StatusType.Waterweapon, EndowHandler(endowFlags, BattleElement.Water));
+        Register(StatusType.Windweapon, EndowHandler(endowFlags, BattleElement.Wind));
+        Register(StatusType.Earthweapon, EndowHandler(endowFlags, BattleElement.Earth));
 
         // ---- (e) Strip family: combat-marker overrides ----
         //
@@ -4085,6 +4051,27 @@ public sealed class StatusEffectRegistry
                 if (sc.Val3 <= 0) sc.Val3 = sc.Val1 * 5;
             },
             OnEnd: (_, _) => { },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC-02: SC_INCMATKRATE — rAthena status.cpp maps SCB_MATK
+        // (SP_MATK_RATE += val1), i.e. +Val1% MATK, NOT +Val1 to six base
+        // stats. We apply the percent delta to MatkMin/Max and stash the exact
+        // amounts in Val2/Val3 so OnEnd reverses without rounding drift.
+        // (Transient across a full CalcPc recalc — COMBAT-09 owns recalc
+        // survival for all SC stat mods.)
+        Register(StatusType.Incmatkrate, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                sc.Val2 = target.Stats.MatkMin * sc.Val1 / 100;
+                sc.Val3 = target.Stats.MatkMax * sc.Val1 / 100;
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax + sc.Val3);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin - sc.Val2);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax - sc.Val3);
+            },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // ---- ASPD potions (fixed magnitudes per potion tier) ----

@@ -86,6 +86,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | SC-06 | Sura combo / Star Emperor stance / Royal Guard banding markers |
 | SC-07 | Generator-default magnitude review (159 fallthrough SCs) |
 | SC-08 | `status_change_spread`, `nostatus` mapflag, companion `calc_*`, `isimmune` matrix |
+| SC-10 | Triage remaining `CalcFlags: All` all-six-stat mis-mappings (~35 SCs) |
+| SC-11 | Complete element-endow SCs (Aspersio/Shadow/Ghost/Enchantarms + magic) |
 
 ### `packets/` — client→map packet bridge (unlocks features)
 | Ticket | Title |
