@@ -1,6 +1,6 @@
 # SC-03 — Correct Bard/Dancer song formulas + collapse duplicate registrations
 
-> **Epic:** Status parity hardening · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** SC-01 (overwrite guard makes the dup-registration safe to collapse) · **Blocks:** none
 
 ## Problem
