@@ -1,6 +1,6 @@
 # SC-06 — Star Emperor stances, Royal Guard Banding/Inspiration, and combo markers: real formulas
 
-> **Epic:** Status parity hardening · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** SC-01 (de-shadow) · **Blocks:** none
 
 ## Problem
