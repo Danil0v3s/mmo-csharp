@@ -1,7 +1,13 @@
 # COMBAT-05 — Defensive cardfix, element resolution, plant/GvG/BG reductions
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** XL · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-01) · **Size:** XL · **Player-visible:** yes
 > **Depends on:** COMBAT-01 (defender's bundle must be populated) · **Blocks:** none
+>
+> **XL split:** axis 1 (defender-side cardfix — mob→PC + PvP `bSubRace/bSubEle/bSubSize/
+> bSubClass`) shipped here, the headline fix. Follow-ups: per-skill element resolution
+> → **COMBAT-19**; plant 1-damage + GvG/BG → **COMBAT-20**; per-element debuff +
+> ignore-def/magic-add-race/critical-add-race + per-category `APPLY_CARDFIX_RE` →
+> **COMBAT-21** (deps COMBAT-06 for the bonus2 fields).
 
 ## Problem
 
@@ -95,10 +101,9 @@ Canonical: `battle.cpp`.
 - A player wearing `bonus2 bSubRace,RC_Brute,30;` takes 30% less from a brute mob (mob→PC
   path now applies defender cards).
 - `bonus2 bSubEle,Ele_Fire,50;` halves incoming fire damage regardless of attacker type.
-- A Fire Bolt resolves as Fire element from the skill_db, not the caster's weapon element;
-  hitting a Fire-armor mob deals reduced/absorbed damage per `ElementTable`.
-- Hitting a plant-type mob with a non-ignoring skill deals exactly 1.
-- On a GvG map, a skill deals `battle_config.gvg_damage_rate%` of its non-GvG value.
+- ➡️ **COMBAT-19** — Fire Bolt resolves as Fire from skill_db (per-skill element).
+- ➡️ **COMBAT-20** — plant 1-damage.
+- ➡️ **COMBAT-20** — GvG/BG rate.
 
 ## Test plan
 
@@ -121,3 +126,17 @@ Canonical: `battle.cpp`.
   attacker stats from `src.Stats` inside the method rather than widening every call site.
 - Critical hits ignore some defender cards in rAthena (`NK_` / crit-ignore-def). Thread the
   `isCritical` flag if you implement crit-ignore-def here.
+
+## History
+
+- **2026-06-01** — Done (axis 1 — defender-side cardfix). `BattleCardService.CalcCardFix`
+  was restructured: the `src is not PC → return` early-out is gone; it now applies the
+  attacker's offensive Add* (when src is a PC, indexed by the target's race/ele/size/class)
+  AND the defender's defensive Sub* (when target is a PC, indexed by the ATTACKER's
+  race/ele/size/class, subtracting) — so a player's bSubRace/bSubEle/bSubSize/bSubClass
+  resist cards finally work, including against mob attackers (the old early-out skipped
+  the whole mob→PC path). rAthena battle.cpp:711. Tests: Combat05DefenderCardfixTests (7).
+  Full Map.Server suite 3620/3620 green. Follow-ups (XL ticket's other axes): COMBAT-19
+  (per-skill element), COMBAT-20 (plant 1-dmg + GvG/BG), COMBAT-21 (advanced cardfix:
+  debuff + ignore-def + magic/crit-add-race + per-category APPLY_CARDFIX_RE; deps
+  COMBAT-06). Commits: start `8a3ca76`, finish `<this>`.

@@ -80,6 +80,9 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-16 | Weapon size-fix table (renewal Knuckle/Whip) + bow arrow_atk |
 | COMBAT-17 | Multi-hit div (battle_calc_multi_attack + ACT3 Div wire) |
 | COMBAT-18 | Dual-wield left-hand damage (Damage2 + left/right split) |
+| COMBAT-19 | Per-skill element resolution (magic/misc + endow overrides) |
+| COMBAT-20 | Plant 1-damage + GvG/BG damage reductions |
+| COMBAT-21 | Advanced cardfix (debuff, ignore-def, magic/crit-add-race, per-category RE) |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

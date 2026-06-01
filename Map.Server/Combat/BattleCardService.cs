@@ -42,47 +42,67 @@ public sealed class BattleCardService : IBattleCardService
     {
         if (damage == 0) return 0;
 
-        // Card-fix only applies when the source is a player (mobs don't
-        // wear cards). The bundle is recomputed by
-        // EquipBonusAggregator.BuildBundle on every equip change.
-        if (src is not PlayerEntity pc) return damage;
-
-        var bundle = pc.EquipBonuses;
-        if (bundle == null) return damage;
-
+        // rAthena battle_calc_cardfix (battle.cpp:711) folds BOTH the
+        // attacker's offensive cards (Add*) AND the defender's defensive
+        // cards (Sub*). Renewal adds onto a single percent multiplier; we
+        // mirror that additive form. (The strict per-category multiplicative
+        // APPLY_CARDFIX_RE grouping is COMBAT-21.)
+        var ss = src.Stats;
         var ts = target.Stats;
-        // Renewal MULT base = 100 (%); each bonus column adds onto
-        // the multiplier additively, then we apply once.
         long mult = 100;
 
-        // Race attack bonus (indexed by target race + RC_All slot).
-        var raceIdx = (int)ts.Race;
-        if (raceIdx >= 0 && raceIdx < bundle.AddRace.Length) mult += bundle.AddRace[raceIdx];
-        mult += bundle.AddRace[(int)BattleRace.All];
+        // --- Attacker offensive cardfix (only a PC wears cards). Indexed by
+        //     the TARGET's race / element / size / class. ---
+        if (src is PlayerEntity pc && pc.EquipBonuses is { } ab)
+        {
+            var raceIdx = (int)ts.Race;
+            if (raceIdx >= 0 && raceIdx < ab.AddRace.Length) mult += ab.AddRace[raceIdx];
+            mult += ab.AddRace[(int)BattleRace.All];
 
-        // Element attack bonus (indexed by target defense element).
-        var eleIdx = (int)ts.DefenseElement;
-        if (eleIdx >= 0 && eleIdx < bundle.AddEle.Length) mult += bundle.AddEle[eleIdx];
-        mult += bundle.AddEle[(int)BattleElement.All];
+            var eleIdx = (int)ts.DefenseElement;
+            if (eleIdx >= 0 && eleIdx < ab.AddEle.Length) mult += ab.AddEle[eleIdx];
+            mult += ab.AddEle[(int)BattleElement.All];
 
-        // Size attack bonus (indexed by target size).
-        var sizeIdx = (int)ts.Size;
-        if (sizeIdx >= 0 && sizeIdx < bundle.AddSize.Length) mult += bundle.AddSize[sizeIdx];
-        mult += bundle.AddSize[(int)BattleSize.All];
+            var sizeIdx = (int)ts.Size;
+            if (sizeIdx >= 0 && sizeIdx < ab.AddSize.Length) mult += ab.AddSize[sizeIdx];
+            mult += ab.AddSize[(int)BattleSize.All];
 
-        // Class attack bonus — rAthena maps MD_MVP → CLASS_BOSS;
-        // everything else CLASS_NORMAL. CLASS_GUARDIAN exists on
-        // rAthena but our MobMode flags don't carry the guardian
-        // bit yet, so guardians collapse to Normal (a future patch
-        // adds the bit when GvG castles port).
-        var classIdx = (int)Inventory.BattleClassFlag.Normal;
-        if ((ts.Mode & MobMode.Mvp) != 0) classIdx = (int)Inventory.BattleClassFlag.Boss;
-        if (classIdx >= 0 && classIdx < bundle.AddClass.Length) mult += bundle.AddClass[classIdx];
-        mult += bundle.AddClass[(int)Inventory.BattleClassFlag.All];
+            // rAthena maps MD_MVP → CLASS_BOSS, else CLASS_NORMAL (guardian
+            // bit not modelled until GvG castles port).
+            var tClass = (ts.Mode & MobMode.Mvp) != 0
+                ? (int)Inventory.BattleClassFlag.Boss : (int)Inventory.BattleClassFlag.Normal;
+            if (tClass >= 0 && tClass < ab.AddClass.Length) mult += ab.AddClass[tClass];
+            mult += ab.AddClass[(int)Inventory.BattleClassFlag.All];
 
-        // Attack-range bonus — short = melee (range ≤ 2), long = ranged.
-        if (pc.Stats.AttackRange > 2) mult += bundle.LongAtkRate;
-        else mult += bundle.ShortAtkRate;
+            // Range bonus — short = melee (range ≤ 2), long = ranged.
+            mult += pc.Stats.AttackRange > 2 ? ab.LongAtkRate : ab.ShortAtkRate;
+        }
+
+        // --- Defender defensive cardfix (only a PC wears cards). Indexed by
+        //     the ATTACKER's race / element / size / class; SUBTRACTS. This is
+        //     what makes a player's bSubRace / bSubEle / bSubSize / bSubClass
+        //     resist cards work — including against mob attackers, which the
+        //     old `src is not PC → return` early-out skipped entirely. ---
+        if (target is PlayerEntity tpc && tpc.EquipBonuses is { } db)
+        {
+            var aRace = (int)ss.Race;
+            if (aRace >= 0 && aRace < db.SubRace.Length) mult -= db.SubRace[aRace];
+            mult -= db.SubRace[(int)BattleRace.All];
+
+            // Attacker's attack element = rh weapon element (rh_ele). The
+            // proper per-skill magic/misc element lands in COMBAT-19.
+            var aEle = (int)ss.WeaponElement;
+            if (aEle >= 0 && aEle < db.SubEle.Length) mult -= db.SubEle[aEle];
+            mult -= db.SubEle[(int)BattleElement.All];
+
+            var aSize = (int)ss.Size;
+            if (aSize >= 0 && aSize < db.SubSize.Length) mult -= db.SubSize[aSize];
+
+            var aClass = (ss.Mode & MobMode.Mvp) != 0
+                ? (int)Inventory.BattleClassFlag.Boss : (int)Inventory.BattleClassFlag.Normal;
+            if (aClass >= 0 && aClass < db.SubClass.Length) mult -= db.SubClass[aClass];
+            mult -= db.SubClass[(int)Inventory.BattleClassFlag.All];
+        }
 
         // Apply the % multiplier with floor-at-1.
         return Math.Max(1, damage * mult / 100);
