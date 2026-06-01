@@ -2351,16 +2351,15 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_Banding: +Val1 to listed CalcFlag fields.
+        // SC-06 — SC_BANDING (Royal Guard): Val2 = banded RG party-member count
+        // (rAthena skill_banding_count, status.cpp:11798); the Def/Atk aggregate
+        // scales with that count on a 5 s tick — NOT +Val1 Def. The C# RG
+        // banding party aggregator isn't ported, so store a best-effort count
+        // (1 = the RG itself) and defer the exact count + Def/Atk aggregate to
+        // SC-17 (no faked +Val1 Def in the meantime).
         Register(StatusType.Banding, new StatusEffectHandler(
-            OnStart: (target, sc, _) =>
-            {
-                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
-            },
-            OnEnd: (target, sc) =>
-            {
-                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
-            },
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 1; },
+            OnEnd: (_, _) => { },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // SC-05 — SC_BLAST_OPTION: fixed Val2 = 20 MATK, NOT +Val1 AspdRate.
@@ -2625,31 +2624,44 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_Inspiration: +Val1 to listed CalcFlag fields.
+        // SC-06 — SC_INSPIRATION (Royal Guard): rAthena status.cpp:11806
+        // val2 = 40*Val1 (ATK + MATK), val3 = 6*Val1 (flat all-stat),
+        // val4 = tick/5000 (HP/SP drain tick). Consumers: batk/watk/matk +=
+        // val2; str/agi/.../luk += val3 (status.cpp:6558+); MaxHp += 4*Val1
+        // (status.cpp:3170). NOT +Val1 everywhere. The on-start
+        // status_change_clear_buffs(SCCB_DEBUFFS) + the 5 s drain tick are SC-17
+        // (they need a StatusChangeService callback the OnStart hook lacks).
         Register(StatusType.Inspiration, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
-                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + sc.Val1);
-                target.Stats.Agi = (short)Math.Min(short.MaxValue, target.Stats.Agi + sc.Val1);
-                target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1);
-                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + sc.Val1);
-                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + sc.Val1);
-                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val1);
-                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val1);
-                target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 40 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 6 * sc.Val1;
+                var s = target.Stats;
+                s.Batk = (ushort)Math.Min(ushort.MaxValue, s.Batk + sc.Val2);
+                s.MatkMin = (ushort)Math.Min(ushort.MaxValue, s.MatkMin + sc.Val2);
+                s.MatkMax = (ushort)Math.Min(ushort.MaxValue, s.MatkMax + sc.Val2);
+                s.Str = (short)Math.Min(short.MaxValue, s.Str + sc.Val3);
+                s.Agi = (short)Math.Min(short.MaxValue, s.Agi + sc.Val3);
+                s.Vit = (short)Math.Min(short.MaxValue, s.Vit + sc.Val3);
+                s.IntStat = (short)Math.Min(short.MaxValue, s.IntStat + sc.Val3);
+                s.Dex = (short)Math.Min(short.MaxValue, s.Dex + sc.Val3);
+                s.Luk = (short)Math.Min(short.MaxValue, s.Luk + sc.Val3);
+                s.MaxHp = Math.Min(int.MaxValue, s.MaxHp + 4 * sc.Val1);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
-                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - sc.Val1);
-                target.Stats.Agi = (short)Math.Max(0, target.Stats.Agi - sc.Val1);
-                target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1);
-                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - sc.Val1);
-                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - sc.Val1);
-                target.Stats.Luk = (short)Math.Max(0, target.Stats.Luk - sc.Val1);
-                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val1);
-                target.Stats.MaxHp = (int)Math.Max(0, target.Stats.MaxHp - sc.Val1);
+                var s = target.Stats;
+                s.Batk = (ushort)Math.Max(0, s.Batk - sc.Val2);
+                s.MatkMin = (ushort)Math.Max(0, s.MatkMin - sc.Val2);
+                s.MatkMax = (ushort)Math.Max(0, s.MatkMax - sc.Val2);
+                s.Str = (short)Math.Max(0, s.Str - sc.Val3);
+                s.Agi = (short)Math.Max(0, s.Agi - sc.Val3);
+                s.Vit = (short)Math.Max(0, s.Vit - sc.Val3);
+                s.IntStat = (short)Math.Max(0, s.IntStat - sc.Val3);
+                s.Dex = (short)Math.Max(0, s.Dex - sc.Val3);
+                s.Luk = (short)Math.Max(0, s.Luk - sc.Val3);
+                s.MaxHp = Math.Max(1, s.MaxHp - 4 * sc.Val1);
+                if (s.Hp > s.MaxHp) s.Hp = s.MaxHp;
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
@@ -2931,15 +2943,19 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
 
-        // Wave 58 — SC_Starstance: +Val1 to listed CalcFlag fields.
+        // SC-06 — SC_STARSTANCE (Star Emperor): Val2 = 4 + 2*Val1 = ASPD increase
+        // (status.cpp:8304 `aspd_rate -= 10*val2` — faster). In the C# AspdRate
+        // "higher = faster" convention we ADD Val2 (ASPD points, same as the
+        // ASPD potions / Two-Hand Quicken). NOT +Val1. INFINITE_TICK.
         Register(StatusType.Starstance, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 4 + 2 * sc.Val1;
+                target.Stats.AspdRate = (short)Math.Min(short.MaxValue, target.Stats.AspdRate + sc.Val2);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
+                target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
@@ -2995,15 +3011,26 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
-        // Wave 58 — SC_Sunstance: +Val1 to listed CalcFlag fields.
+        // SC-06 — SC_SUNSTANCE (Star Emperor): Val2 = 2 + Val1 = ATK% increase
+        // (status.cpp:7089 `batk += batk*val2/100`, :7177 `watk += watk*val2/100`),
+        // NOT +Val1 flat Batk. Applied as a percent of Batk + WatkMin/Max; the
+        // recompute-on-revert form (B*(100+v)/100 → −B'*v/(100+v) = −B*v/100)
+        // avoids a scratch slot. INFINITE_TICK (toggled by the player).
         Register(StatusType.Sunstance, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 2 + sc.Val1;
+                var s = target.Stats;
+                s.Batk = (ushort)Math.Min(ushort.MaxValue, s.Batk + s.Batk * sc.Val2 / 100);
+                s.WatkMin = (ushort)Math.Min(ushort.MaxValue, s.WatkMin + s.WatkMin * sc.Val2 / 100);
+                s.WatkMax = (ushort)Math.Min(ushort.MaxValue, s.WatkMax + s.WatkMax * sc.Val2 / 100);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+                var s = target.Stats;
+                s.Batk = (ushort)Math.Max(0, s.Batk - s.Batk * sc.Val2 / (100 + sc.Val2));
+                s.WatkMin = (ushort)Math.Max(0, s.WatkMin - s.WatkMin * sc.Val2 / (100 + sc.Val2));
+                s.WatkMax = (ushort)Math.Max(0, s.WatkMax - s.WatkMax * sc.Val2 / (100 + sc.Val2));
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 

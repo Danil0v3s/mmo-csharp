@@ -68,7 +68,6 @@ public static class StatusCalcFlagDefaults
         [StatusType.Avoid] = new[] { CalcStatField.AspdRate },
         [StatusType.BTrap] = new[] { CalcStatField.AspdRate },
         [StatusType.BananaBomb] = new[] { CalcStatField.Luk },
-        [StatusType.Banding] = new[] { CalcStatField.Def },
         [StatusType.Barrier] = new[] { CalcStatField.Mdef, CalcStatField.Def },
         [StatusType.Basilica] = new[] { CalcStatField.Str, CalcStatField.Agi, CalcStatField.Vit, CalcStatField.IntStat, CalcStatField.Dex, CalcStatField.Luk },
         [StatusType.Battleorders] = new[] { CalcStatField.Str, CalcStatField.IntStat, CalcStatField.Dex },

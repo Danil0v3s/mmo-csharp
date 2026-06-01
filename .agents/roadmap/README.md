@@ -111,6 +111,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | SC-14 | Aurablade / Gravitation / Parrying combat reads — split from SC-04 |
 | SC-15 | Soul Reaper/Linker family consumers — split from SC-04 |
 | SC-16 | Sorcerer *_OPTION secondary effects: element change + bolt-autocast + Wind/Petrology mods — split from SC-05 |
+| SC-17 | Inspiration debuff-clear + drain tick; Banding real party-count + Def/Atk aggregate — split from SC-06 |
 
 ### `packets/` — client→map packet bridge (unlocks features)
 | Ticket | Title |

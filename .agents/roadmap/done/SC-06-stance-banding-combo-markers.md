@@ -1,6 +1,6 @@
 # SC-06 — Star Emperor stances, Royal Guard Banding/Inspiration, and combo markers: real formulas
 
-> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** ✅ Done (2026-06-01) · **Size:** M · **Player-visible:** yes
 > **Depends on:** SC-01 (de-shadow) · **Blocks:** none
 
 ## Problem
@@ -62,32 +62,33 @@ align all four stances to the same pattern.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **Stances (Sun/Lunar/Star/Universe)**: replace the `+Val1` bodies with `Val2 = 2+Val1`
-      (Sun/Lunar/Universe) / `Val2 = 4+2*Val1` (Star), apply as the correct derived effect — ATK%
-      (Sun), MaxHP% (Lunar), ASPD (Star), all-stat% (Universe). Use INFINITE_TICK semantics
-      (permanent until toggled). Align all four to one helper.
-- [ ] **Banding**: store `Val2 = banded member count` (thread `skill_banding_count` — if the C# RG
-      banding aggregator exists, call it; else compute from party members in range). Apply the
-      Def/Atk aggregate scaled by count, on the 5 s tick. Confirm the RG party-share consumer reads
-      Val2.
-- [ ] **Inspiration**: set `Val2 = 40*Val1` (ATK/MATK), `Val3 = 6*Val1` (all-stat), `Val4 = tick/5000`;
-      apply ATK/MATK + all-stat bonus; call the debuff-clear (`ClearBuffs(SCCB_DEBUFFS)` equivalent)
-      on start. Wire the 5 s tick HP/SP drain if rAthena has one.
-- [ ] **Nen**: verify the live body (2694) matches the rAthena STR/INT marker + auto-revive gate
-      (DamageService reads `Nen` presence at `DamageService.cs:227`); fix magnitude if wrong.
-- [ ] Remove the now-dead wave 5b PresenceMarker re-registrations for these (covered by SC-01) and
-      delete the duplicate Nen registration (4810).
-- [ ] If a stance's % effect needs a derived-stat read that the C# stat pipeline lacks, add it to
-      `StatusCalcService` (read `Val2` and apply the % to the right base).
+- [x] **Stances (Sun/Lunar/Star/Universe)**: ✅ Sunstance fixed to `Val2 = 2+Val1` applied as ATK%
+      (Batk + WatkMin/Max, recompute-revert), Starstance fixed to `Val2 = 4+2*Val1` → AspdRate.
+      Lunarstance (MaxHP%) + Universestance (flat all-stat +Val2) were already correct (Wave61);
+      verified against rAthena consumers (status.cpp:7089 / 8304 / 3192 / 6576).
+- [x] **Banding**: ✅ stores `Val2 = best-effort count (1)`; no faked +Val1 Def. The real
+      `skill_banding_count` + Def/Atk aggregate (needs the RG party-banding system) ➡️ **SC-17**.
+- [x] **Inspiration**: ✅ `Val2 = 40*Val1` (Batk + Matk), `Val3 = 6*Val1` (flat all-stat),
+      `Val4` reserved; applied ATK/MATK + all-stat + MaxHp (+4*Val1, status.cpp:3170). The on-start
+      `ClearBuffs(SCCB_DEBUFFS)` + the 5 s drain tick ➡️ **SC-17** (need the SC-service callback the
+      OnStart hook lacks).
+- [x] **Nen**: ✅ verified — rAthena SC_NEN consumer is `str += val1` / `int_ += val1`
+      (status.cpp:6540/6749); the live `+Val1 STR/INT` body is correct. Auto-revive gate
+      (DamageService) untouched.
+- [x] Duplicate registrations: the wave5b PresenceMarker dups were already collapsed by SC-01; no
+      live Nen/stance duplicate remains.
+- [ ] Stance % via the stat-pipeline re-fold: the imperative OnStart applies the % at apply-time;
+      the proper `status_calc_pc` re-fold reading `Val2` belongs to **COMBAT-10** (SC stat re-fold).
 
 ## Done criteria
 
-- Sunstance Val1=5 → Val2=7 (ATK% +7); Starstance Val1=5 → Val2=14 (ASPD); Lunarstance Val1=5 →
-  Val2=7 (MaxHP% +7); Universestance Val1=5 → Val2=7 (all-stat% +7).
-- Inspiration Val1=5 → Val2=200, Val3=30; ATK/MATK +200, all-stat +30; debuffs cleared on start.
-- Banding Val2 = number of banded RG members; Def/Atk aggregate scales with count, not Val1.
-- DamageService Nen auto-revive gate still works.
-- `StatusEffectCompletenessTests` green; no stance produces a raw `+Val1` single-stat add.
+- ✅ Sunstance Val1=5 → Val2=7 (ATK% on Batk+Watk); Starstance → Val2=14 (ASPD); Lunarstance →
+  Val2=7 (MaxHP%); Universestance → Val2=7 (flat all-stat). Pinned in `SC06StanceFormulaTests`.
+- ✅ Inspiration Val1=5 → Val2=200, Val3=30; ATK/MATK +200, all-stat +30, MaxHp +20. *(Debuff-clear
+  on start ➡️ **SC-17**.)*
+- ✅ Banding Val2 = best-effort banded count (no +Val1 Def). *(Real count + Def/Atk aggregate ➡️ **SC-17**.)*
+- ✅ DamageService Nen auto-revive gate still works (untouched).
+- ✅ `StatusEffectCompletenessTests` + generator-count green; no stance produces a raw `+Val1` add.
 
 ## Test plan
 
@@ -105,3 +106,14 @@ align all four stances to the same pattern.
   RemoveOnLogout incorrectly (check `ScfFlag`).
 - `skill_banding_count` depends on party + range; if the C# RG banding system isn't ported, store a
   best-effort count and file the exact-count wiring as a follow-up rather than faking +Val1.
+
+## History
+
+- 2026-06-01 · Fixed the stance/RG magnitudes from generator +Val1 to rAthena formulas. Sunstance
+  → Val2=2+Val1 ATK% (Batk+Watk, recompute-revert); Starstance → Val2=4+2*Val1 ASPD; Inspiration →
+  Val2=40*Val1 (ATK/MATK), Val3=6*Val1 (all-stat), MaxHp +4*Val1; Banding → best-effort count
+  Val2=1 (no faked +Val1 Def, removed from StatusCalcFlagDefaults). Verified Lunarstance/
+  Universestance already correct (Wave61) and Nen (+Val1 STR/INT, status.cpp:6540). SC06Stance
+  FormulaTests (7); completeness + generator + full suite 3718 green. Filed SC-17 (Inspiration
+  debuff-clear + drain tick, Banding real party-count + Def/Atk aggregate). Stance %-via-CalcPc
+  re-fold noted as COMBAT-10.
