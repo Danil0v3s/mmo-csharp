@@ -1,6 +1,6 @@
 # SC-02 — Fix `CalcFlags: All` mis-mapping (element-endow / MATK% / resist / flat-combat)
 
-> **Epic:** Status parity hardening · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** SC-07
 
 ## Problem
