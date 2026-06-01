@@ -240,14 +240,16 @@ public sealed class EquipService : IEquipService
                 if (session.Inventory[i].Equip != 0) equipped.Add(session.Inventory[i]);
             _comboDispatcher.ApplyActiveCombos(equipped, player.EquipBonuses, player);
         }
-        var stats = player.Stats;
+        // COMBAT-10: base params from BaseParams (CalcPc re-layers the equip
+        // param bonus from EquipBonuses on top), weapon/def from the summary.
+        var bp = player.BaseParams;
         _statusCalc.CalcPc(player, new PcBaseInputs(
             BaseLevel: player.Level,
             JobLevel: player.JobLevel,
-            Str: stats.Str, Agi: stats.Agi, Vit: stats.Vit,
-            Int: stats.IntStat, Dex: stats.Dex, Luk: stats.Luk,
-            Pow: stats.Pow, Sta: stats.Sta, Wis: stats.Wis,
-            Spl: stats.Spl, Con: stats.Con, Crt: stats.Crt,
+            Str: bp.Str, Agi: bp.Agi, Vit: bp.Vit,
+            Int: bp.IntStat, Dex: bp.Dex, Luk: bp.Luk,
+            Pow: bp.Pow, Sta: bp.Sta, Wis: bp.Wis,
+            Spl: bp.Spl, Con: bp.Con, Crt: bp.Crt,
             WeaponAtkMin: summary.WeaponAtkMin,
             WeaponAtkMax: summary.WeaponAtkMax,
             EquipDef: summary.EquipDef,

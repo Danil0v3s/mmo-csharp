@@ -92,6 +92,9 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-28 | ASPD SC + skill contributions (status_calc_aspd / fix_aspd / FREECAST) — split from COMBAT-09 |
 | COMBAT-29 | Dual-wield + shield ASPD base terms — split from COMBAT-09 |
 | COMBAT-30 | Transcendent ×1.25 / taekwon ×3 MaxHP/SP multiplier — split from COMBAT-09 |
+| COMBAT-31 | Break DamageService↔ExpService↔StatusChangeService DI cycle (Map.Server boot) — split from COMBAT-10 |
+| COMBAT-32 | Passive-skill absolute base-stat addends + Super Novice all-stat +10 — split from COMBAT-10 |
+| COMBAT-33 | Derived-stat SC re-fold on recalc (Angelus Def2 / Provoke Batk%) — split from COMBAT-10 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

@@ -40,18 +40,68 @@ public sealed class StatusCalcService : IStatusCalcService
         var s = player.Stats;
         player.Level = inputs.BaseLevel;
 
-        s.Str = (short)inputs.Str;
-        s.Agi = (short)inputs.Agi;
-        s.Vit = (short)inputs.Vit;
-        s.IntStat = (short)inputs.Int;
-        s.Dex = (short)inputs.Dex;
-        s.Luk = (short)inputs.Luk;
-        s.Pow = (short)inputs.Pow;
-        s.Sta = (short)inputs.Sta;
-        s.Wis = (short)inputs.Wis;
-        s.Spl = (short)inputs.Spl;
-        s.Con = (short)inputs.Con;
-        s.Crt = (short)inputs.Crt;
+        // COMBAT-10 — base→final primary/trait stat layering.
+        // rAthena status_calc_pc_ (status.cpp:4205-4266):
+        //   final = base(+job_bonus) + status.X(allocated) + param_bonus(card)
+        //           + param_equip(equip)
+        // Here the input X is the PERSISTED BASE (the recalc-input builders now
+        // read PlayerEntity.BaseParams, not the conflated final). We add the
+        // equip param bonus (EquipBonusBundle, captured by COMBAT-01) + the
+        // per-job per-job-level bonus (job_bonus_stats_db via
+        // IJobStatsCacheService.GetBonusSum).
+        //
+        // SC stat mods (Blessing +STR, AGI-Up +AGI, …) still mutate Stats.X
+        // imperatively in their OnStart/OnEnd. To keep them alive across a
+        // recalc we apply only the DELTA of the (base+equip+job) param-base
+        // versus the snapshot last folded (player.AppliedParamBase); the SC
+        // contribution layered on top of that base is left untouched. With no
+        // gear / job bonus / SC the totals equal the old `s.X = inputs.X`, so
+        // the replay baseline + StatusCalcServiceTests stay green.
+        var eq = player.EquipBonuses;
+        var jb = default(JobBonusStatsSum);
+        if (_jobStats != null)
+        {
+            var aegisForBonus = JobAegisMapper.AegisByJobId(inputs.JobId);
+            if (aegisForBonus != null) jb = _jobStats.GetBonusSum(aegisForBonus, inputs.JobLevel);
+        }
+
+        Span<int> paramBase = stackalloc int[PcBaseParams.Count];
+        paramBase[0] = inputs.Str + (eq?.Str ?? 0) + jb.Str;
+        paramBase[1] = inputs.Agi + (eq?.Agi ?? 0) + jb.Agi;
+        paramBase[2] = inputs.Vit + (eq?.Vit ?? 0) + jb.Vit;
+        paramBase[3] = inputs.Int + (eq?.IntStat ?? 0) + jb.Int;
+        paramBase[4] = inputs.Dex + (eq?.Dex ?? 0) + jb.Dex;
+        paramBase[5] = inputs.Luk + (eq?.Luk ?? 0) + jb.Luk;
+        paramBase[6] = inputs.Pow + (eq?.Pow ?? 0) + jb.Pow;
+        paramBase[7] = inputs.Sta + (eq?.Sta ?? 0) + jb.Sta;
+        paramBase[8] = inputs.Wis + (eq?.Wis ?? 0) + jb.Wis;
+        paramBase[9] = inputs.Spl + (eq?.Spl ?? 0) + jb.Spl;
+        paramBase[10] = inputs.Con + (eq?.Con ?? 0) + jb.Con;
+        paramBase[11] = inputs.Crt + (eq?.Crt ?? 0) + jb.Crt;
+
+        var applied = player.AppliedParamBase;
+        if (applied == null)
+        {
+            // First calc for this entity: set the final param stat absolutely
+            // (there is no SC contribution yet) and record the snapshot.
+            applied = new int[PcBaseParams.Count];
+            for (var i = 0; i < PcBaseParams.Count; i++)
+            {
+                s[i] = (short)CapShort(paramBase[i]);
+                applied[i] = paramBase[i];
+            }
+            player.AppliedParamBase = applied;
+        }
+        else
+        {
+            // Later calc: shift the final stat by the change in the param base
+            // only, preserving any SC delta already layered on top.
+            for (var i = 0; i < PcBaseParams.Count; i++)
+            {
+                s[i] = (short)CapShort(s[i] + paramBase[i] - applied[i]);
+                applied[i] = paramBase[i];
+            }
+        }
 
         // Weapon ATK rightside is the rhw {atk, atk2} pair. For PCs the
         // values come from the equipped weapon — status.cpp:2486.
@@ -91,7 +141,7 @@ public sealed class StatusCalcService : IStatusCalcService
         // the base→final split tracked in COMBAT-10.
         // rAthena status_calc_pc_ adds sd->bonus.{hit,flee,crit,batk,matk}
         // and applies maxhp_rate / +maxhp the same way (status.cpp:4244+).
-        var eq = player.EquipBonuses;
+        // `eq` is the EquipBonusBundle resolved above for the param layering.
         if (eq != null)
         {
             s.Hit = (short)CapShort(s.Hit + eq.FlatHit, 1);
@@ -120,15 +170,19 @@ public sealed class StatusCalcService : IStatusCalcService
             // rAthena status.cpp:status_calc_maxhpsp_pc:
             //   hp = base * (100 + vit) / 100
             //   sp = base * (100 + int) / 100
+            // COMBAT-10: scale by the FINAL Vit/Int (s.Vit/s.IntStat = base +
+            // equip + job_bonus + SC), matching rAthena's use of
+            // battle_status.vit — so a +VIT card / job-bonus VIT grows MaxHP.
+            // With no gear/SC/job the final equals the base, baseline-safe.
             var baseHp = _jobStats.GetBaseHp(jobAegis, inputs.BaseLevel);
             var baseSp = _jobStats.GetBaseSp(jobAegis, inputs.BaseLevel);
-            maxHp = baseHp > 0 ? baseHp * (100 + inputs.Vit) / 100 : NoviceMaxHp(inputs.BaseLevel, inputs.Vit);
-            maxSp = baseSp > 0 ? baseSp * (100 + inputs.Int) / 100 : NoviceMaxSp(inputs.BaseLevel, inputs.Int);
+            maxHp = baseHp > 0 ? baseHp * (100 + s.Vit) / 100 : NoviceMaxHp(inputs.BaseLevel, s.Vit);
+            maxSp = baseSp > 0 ? baseSp * (100 + s.IntStat) / 100 : NoviceMaxSp(inputs.BaseLevel, s.IntStat);
         }
         else
         {
-            maxHp = NoviceMaxHp(inputs.BaseLevel, inputs.Vit);
-            maxSp = NoviceMaxSp(inputs.BaseLevel, inputs.Int);
+            maxHp = NoviceMaxHp(inputs.BaseLevel, s.Vit);
+            maxSp = NoviceMaxSp(inputs.BaseLevel, s.IntStat);
         }
         // COMBAT-09: equip MaxHP/MaxSP — rAthena status_calc_maxhp_pc
         // (status.cpp:3463) adds the FLAT bonus (STATUS_BONUS_FIX) FIRST, then
@@ -161,15 +215,19 @@ public sealed class StatusCalcService : IStatusCalcService
         var aspdBase = _jobAspd?.GetBaseAspdByJobId(inputs.JobId, inputs.WeaponType) ?? DefaultAspdBase;
         // aspd_rate2 ← bAspd**Rate** (RE %-modifier, status.cpp:6165);
         // aspd_add  ← bAspd (flat: pc.cpp SP_ASPD does aspd_add -= 10*val).
+        // COMBAT-10: feed the FINAL Agi/Dex (s.Agi/s.Dex = base + equip +
+        // job_bonus + SC) so AGI-Up / +AGI gear speed up attacks, matching
+        // rAthena status_base_amotion_pc reading battle_status. Baseline-safe
+        // (no gear/SC/job → final == base).
         var amotion = RenewalPcAmotion(
-            aspdBase, inputs.Dex, inputs.Agi, inputs.WeaponType,
+            aspdBase, s.Dex, s.Agi, inputs.WeaponType,
             aspdRate2: eq?.FlatAspdRate ?? 0, aspdAddVal: eq?.FlatAspd ?? 0);
         s.Amotion = (ushort)amotion;
         s.ClientAmotion = s.Amotion;
         // adelay = AMOTION_DIVIDER_PC * amotion (status.cpp:6175).
         s.Adelay = (ushort)Math.Clamp(amotion * 2, 1, ushort.MaxValue);
         // dmotion = cap(800 - 4*agi, 400, 800) (status.cpp:6593).
-        s.Dmotion = (ushort)RenewalPcDmotion(inputs.Agi);
+        s.Dmotion = (ushort)RenewalPcDmotion(s.Agi);
 
         s.Race = BattleRace.PlayerHuman;
         s.Size = BattleSize.Medium;

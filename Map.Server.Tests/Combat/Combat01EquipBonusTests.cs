@@ -156,17 +156,16 @@ public class Combat01EquipBonusTests
     }
 
     [Fact]
-    public void CalcPc_doesNotYetApplyParamStats_boundaryForCombat10()
+    public void CalcPc_appliesEquipParamStats_combat10()
     {
-        // Param stats (bStr..bLuk) need the base→final split (COMBAT-10) to
-        // apply without double-counting / wiping SC stat mods. CalcPc must
-        // leave the primary stat at the base value for now.
+        // COMBAT-10: equip param bonus (bStr) now lands on the final stat:
+        // final = base(1) + equip(10) + job(0) = 11.
         var calc = new StatusCalcService();
         var pc = NewPc();
         pc.EquipBonuses.Str = 10;
 
         calc.CalcPc(pc, NoviceLv1());
-        Assert.Equal(1, pc.Stats.Str); // base only; +10 lands with COMBAT-10
+        Assert.Equal(11, pc.Stats.Str); // base 1 + equip 10
     }
 
     [Fact]

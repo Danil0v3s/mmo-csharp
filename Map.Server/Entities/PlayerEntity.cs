@@ -97,6 +97,48 @@ public sealed class PlayerEntity : Entity
     public int SkillPoints { get; set; }
 
     /// <summary>
+    /// COMBAT-10 — persisted <b>base</b> allocated primary + trait stats
+    /// (rAthena <c>sd-&gt;status.str</c>..<c>crt</c>). Distinct from
+    /// <see cref="Entity.Stats"/>'s Str..Crt, which hold the <b>final</b>
+    /// battle stat (base + card + equip + job_bonus + SC). Every recalc-input
+    /// builder reads this; <c>IStatusCalcService.CalcPc</c> layers equip
+    /// param + job bonus on top. Hydrated from the char payload at session
+    /// enter; mutated by stat / trait allocation and GM setstat.
+    /// </summary>
+    public PcBaseParams BaseParams { get; } = new();
+
+    /// <summary>
+    /// COMBAT-10 — snapshot of <c>(base + equip param + job bonus)</c> last
+    /// folded into <see cref="Entity.Stats"/> by <c>CalcPc</c>. <c>null</c>
+    /// until the first calc. On every later calc only the <i>delta</i> from
+    /// this snapshot is applied to the final stat, so SC stat mods sitting on
+    /// top of the param base (Blessing +STR, AGI-Up +AGI, …) survive a recalc
+    /// instead of being wiped. CalcPc-owned; mutate only via
+    /// <see cref="ShiftFinalParam"/> when base changes outside a calc.
+    /// </summary>
+    internal int[]? AppliedParamBase;
+
+    /// <summary>
+    /// COMBAT-10 — adjust a base param outside a <c>CalcPc</c> (GM setstat /
+    /// trait-up, which don't run a full recalc) while keeping the
+    /// base / final / snapshot invariant intact: the final
+    /// <see cref="Entity.Stats"/> value and the
+    /// <see cref="AppliedParamBase"/> snapshot shift by the same delta as the
+    /// base, so any SC contribution layered on top is preserved and the next
+    /// <c>CalcPc</c> sees a zero param-base delta (no double count).
+    /// </summary>
+    /// <param name="idx">Param index (0=Str … 11=Crt; <see cref="PcBaseParams"/> order).</param>
+    /// <param name="delta">Signed change to apply to the base param.</param>
+    public void ShiftFinalParam(int idx, int delta)
+    {
+        if (delta == 0) return;
+        BaseParams[idx] = (short)Math.Clamp(BaseParams[idx] + delta, 0, short.MaxValue);
+        var final = Math.Clamp(Stats[idx] + delta, 0, short.MaxValue);
+        Stats[idx] = (short)final;
+        if (AppliedParamBase != null) AppliedParamBase[idx] += delta;
+    }
+
+    /// <summary>
     /// rAthena <c>trait_point</c> on mmo_charstatus — renewal POW/STA/
     /// WIS/SPL/CON/CRT allocation pool, separate from <see cref="StatusPoints"/>.
     /// Mutated by <c>pc_traitstatusup</c>.

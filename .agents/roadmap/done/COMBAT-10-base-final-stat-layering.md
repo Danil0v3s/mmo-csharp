@@ -1,6 +1,6 @@
 # COMBAT-10 — Base→final stat layering (equip param bonuses + job bonus + SC stat mods)
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-01) · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** COMBAT-01 param-stat criteria, COMBAT-09 (SC recalc ordering)
 > **Filed by:** COMBAT-01 on 2026-06-01 (see "Why this exists").
 >
@@ -69,42 +69,52 @@ rAthena keeps these separate: `sd->status.str` (persisted base) vs
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **Introduce a base-stat store.** Add base allocated stats to
-      `PlayerEntity` (e.g. `BaseStr..BaseCrt`, mirroring rAthena `status.str`),
-      OR make `PcBaseInputs` the sole base source and have callers read base.
-- [ ] **Populate base** at enter (`NotifyActorInitHandler` from `ch.*`), on stat
-      allocation (`StatusChangeHandler` increments **base**), and on GM/script
-      `setstat` (`PlayerLifecycleHelpers.SetParam` writes **base**).
-- [ ] **Route all recalc-input builders to read base**, not `player.Stats`:
-      `ExpService.PcInputsFromCurrent`, `StatusChangeHandler.BuildInputs`,
-      `StatusOpsService.CalcPc`, `JobChangeService.BuildInputs`,
-      `LevelCommand`, `JobLevelCommand`.
-- [ ] **`CalcPc` layering**: `s.Str = base + equipParam(bundle.Str) +
-      jobBonus(class,jobLv) [+ SC, via COMBAT-09]`, for all 12 stats, then
-      derive misc/atk/matk from the totals.
-- [ ] **Apply `EquipBonusBundle.Str..Crt`** (already captured by COMBAT-01) in
-      that layering — removes the COMBAT-01 boundary test
-      `CalcPc_doesNotYetApplyParamStats_boundaryForCombat10`.
-- [ ] **Job-bonus stats**: read the per-job per-joblevel stat bonus table
-      (`JobStats` catalog / `job_stats` seed) and add into the totals (overlaps
-      COMBAT-09's "no job bonus stats").
-- [ ] **SC re-application ordering**: coordinate with COMBAT-09 so SC stat mods
-      (Blessing/AGI-Up/Provoke±) layer on the final without being wiped — likely
-      CalcPc re-applies active SCF_* SCs at the end, and the SC start/end no
-      longer mutate `Stats.<stat>` directly.
-- [ ] **Client stat window**: confirm `ZC_STATUS`/`ZC_PAR_CHANGE` still send the
-      base stat (+ the bonus shown separately) the way the client expects.
+- [x] **Base-stat store** — ✅ new `PcBaseParams` (12 base allocated/trait stats,
+      rAthena `status.str`..`crt`) + `PlayerEntity.BaseParams`; plus an internal
+      `PlayerEntity.AppliedParamBase` snapshot + `ShiftFinalParam` helper.
+- [x] **Populate base** — ✅ `NotifyActorInitHandler` hydrates `BaseParams` from
+      `ch.*` at enter; `StatusChangeHandler` allocates into `BaseParams`;
+      `PlayerLifecycleHelpers.SetParam` (GM setstat) + `TraitStatusUp` write base
+      via `ShiftFinalParam`.
+- [x] **Recalc-input builders read base** — ✅ `ExpService.PcInputsFromCurrent`,
+      `StatusChangeHandler.BuildInputs`, `StatusOpsService.CalcPc` (also fixed its
+      latent Pow..Crt=0 bug), `JobChangeService.BuildInputs`, `LevelCommand`,
+      `JobLevelCommand`, `EquipService` all read `BaseParams` + thread JobId/WeaponType.
+- [x] **`CalcPc` layering** — ✅ `s[i] = base + equipParam(bundle) + jobBonus(class,jobLv)`
+      for all 12 stats via a delta-vs-snapshot fold; misc/atk/matk/maxhp/aspd then
+      derive from the final (post-fold) stats (status.cpp:4205-4266).
+- [x] **Apply `EquipBonusBundle.Str..Crt`** — ✅ folded in the layering; COMBAT-01
+      boundary test now asserts STR == base + equip.
+- [x] **Job-bonus stats** — ✅ `IJobStatsCacheService.GetBonusSum(aegis, jobLevel)`
+      added per stat (job_bonus_stats_db).
+- [x] **SC re-application (primary)** — ✅ the param-base delta snapshot preserves
+      primary-stat SC mods (Blessing/AGI-Up) across recalc with no SC-handler
+      change. Derived-stat SC re-fold (Angelus Def2, Provoke Batk%) ➡️ **COMBAT-33**.
+- [x] **Client stat window** — ✅ stat-alloc `ZC_PAR_CHANGE` now sends the BASE
+      value; `ReadParam(SP_STR..LUK)` returns base (rAthena `pc_readparam`).
 
 ## Done criteria
 
-- `bonus bStr,10;` raises displayed STR by 10 and raises `s.Batk` via the renewal
-  BaseAtk formula; `bonus bDex,10;` raises HIT by ~10 and ATK by the dex term.
-- A level-up / SC apply / job-change after equipping a STR card does **not**
-  double-count (STR stays base+10, not base+20).
-- Blessing (+STR/INT/DEX) applied, then any recalc → the buff is **preserved**.
-- Job-bonus stats apply per job + job level.
-- COMBAT-01's `CalcPc_doesNotYetApplyParamStats_boundaryForCombat10` is updated
-  to assert STR == base + equip.
+- ✅ `bonus bStr,10;` → STR base+10 + `s.Batk` rises (renewal BaseAtk); `bonus bDex,10;`
+  → HIT +10 + ATK dex term (`Combat10BaseFinalLayeringTests.EquipParam_*`).
+- ✅ Level-up / SC / job-change / card-swap after a STR card does **not** double-count
+  (`EquipParam_isIdempotent_*`, `_changingCard_appliesDeltaNotSum`).
+- ✅ Blessing-style (+STR) applied, then any recalc → buff preserved, coexists with
+  equip param, reverts cleanly (`ScStatMod_survivesRecalc`).
+- ✅ Job-bonus stats apply per job + job level (`JobBonus_appliesPerJobAndLevel`).
+- ✅ COMBAT-01 boundary test updated → STR == base + equip (`CalcPc_appliesEquipParamStats_combat10`).
+- ✅ Novice-Lv1 no-gear baseline unchanged (`StatusCalcServiceTests.CalcPc_NoviceLv1_MatchesCaptureBaseline`).
+
+### Out of scope (filed as follow-ups)
+
+- ➡️ **COMBAT-32** — passive-skill absolute base addends (HILTBINDING/OWL/DRAGONOLOGY/
+  RESEARCHTRAP/POWEROFLAND) + Super Novice all-stat +10 (status.cpp:4221-4242).
+- ➡️ **COMBAT-33** — derived-stat SC re-fold on recalc (Angelus Def2, Provoke Batk%);
+  primary-stat SCs already preserved here.
+- ➡️ **COMBAT-31** — pre-existing DI cycle (DamageService↔ExpService↔StatusChangeService)
+  blocks Map.Server boot + the `PacketReplayTests` integration harness; reproduces on a
+  clean tree (SC-04 edge), unrelated to this ticket. The Novice-baseline regression is
+  independently guarded by the passing `StatusCalcServiceTests` unit test.
 
 ## Test plan
 
@@ -122,3 +132,17 @@ rAthena keeps these separate: `sd->status.str` (persisted base) vs
   ports.
 - With no gear/SC the totals must equal today's values so the replay baseline +
   `StatusCalcServiceTests` stay green.
+
+## History
+
+- 2026-06-01 · Ported the rAthena base→final param layering (status.cpp:4205-4266).
+  New PcBaseParams (persisted base allocated/trait stats) on PlayerEntity; CalcPc now
+  folds `base + equip param (EquipBonusBundle) + job bonus (GetBonusSum)` into the 12
+  primary/trait stats via a delta-vs-snapshot (AppliedParamBase) so it's idempotent
+  AND primary-stat SC mods (Blessing/AGI-Up) survive recalc; misc/atk/matk/maxhp/aspd
+  now derive from the final (post-fold) stats. All 7 recalc-input builders read
+  BaseParams (fixing StatusOpsService's Pow..Crt=0 wipe); enter/alloc/setstat/trait-up
+  write base; ZC_PAR_CHANGE + ReadParam return base. Combat10BaseFinalLayeringTests (7)
+  + updated COMBAT-01 boundary test; unit suite 3732 green (replay integration harness
+  blocked by the pre-existing COMBAT-31 DI cycle, unrelated). Filed COMBAT-31 (DI cycle),
+  COMBAT-32 (passive-skill base addends + SuperNovice +10), COMBAT-33 (derived-stat SC re-fold).

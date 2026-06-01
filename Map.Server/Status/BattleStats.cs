@@ -36,6 +36,41 @@ public sealed class BattleStats
     public short Con;
     public short Crt;
 
+    /// <summary>
+    /// COMBAT-10 — indexed access to the 12 primary + trait stats in rAthena
+    /// <c>PARAM_*</c> order (0=Str 1=Agi 2=Vit 3=Int 4=Dex 5=Luk 6=Pow 7=Sta
+    /// 8=Wis 9=Spl 10=Con 11=Crt). Used by the base→final param layering so
+    /// <c>CalcPc</c> and <c>PlayerEntity.ShiftFinalParam</c> can loop the
+    /// stats without a 12-way switch at every call site.
+    /// </summary>
+    public short this[int i]
+    {
+        get => i switch
+        {
+            0 => Str, 1 => Agi, 2 => Vit, 3 => IntStat, 4 => Dex, 5 => Luk,
+            6 => Pow, 7 => Sta, 8 => Wis, 9 => Spl, 10 => Con, 11 => Crt,
+            _ => 0,
+        };
+        set
+        {
+            switch (i)
+            {
+                case 0: Str = value; break;
+                case 1: Agi = value; break;
+                case 2: Vit = value; break;
+                case 3: IntStat = value; break;
+                case 4: Dex = value; break;
+                case 5: Luk = value; break;
+                case 6: Pow = value; break;
+                case 7: Sta = value; break;
+                case 8: Wis = value; break;
+                case 9: Spl = value; break;
+                case 10: Con = value; break;
+                case 11: Crt = value; break;
+            }
+        }
+    }
+
     // --- Weapon ATK (renewal: status_data.watk + watk2 split is in WeaponAtk) ---
     public ushort Batk;
     public ushort WatkMin;     // status_data.rhw.atk

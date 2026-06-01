@@ -70,12 +70,16 @@ public sealed class PlayerStatHelpers : IPlayerStatHelpers
     {
         switch (spId)
         {
-            case Core.Server.Packets.SpId.SP_STR: pc.Stats.Str = (short)Math.Clamp(value, 0, short.MaxValue); return true;
-            case Core.Server.Packets.SpId.SP_AGI: pc.Stats.Agi = (short)Math.Clamp(value, 0, short.MaxValue); return true;
-            case Core.Server.Packets.SpId.SP_VIT: pc.Stats.Vit = (short)Math.Clamp(value, 0, short.MaxValue); return true;
-            case Core.Server.Packets.SpId.SP_INT: pc.Stats.IntStat = (short)Math.Clamp(value, 0, short.MaxValue); return true;
-            case Core.Server.Packets.SpId.SP_DEX: pc.Stats.Dex = (short)Math.Clamp(value, 0, short.MaxValue); return true;
-            case Core.Server.Packets.SpId.SP_LUK: pc.Stats.Luk = (short)Math.Clamp(value, 0, short.MaxValue); return true;
+            // COMBAT-10: GM setstat writes the persisted BASE (rAthena
+            // sd->status.str). ShiftFinalParam moves the final Stats value +
+            // the CalcPc param-base snapshot by the same delta so any SC on
+            // top survives and the next recalc sees a zero param-base delta.
+            case Core.Server.Packets.SpId.SP_STR: SetBase(pc, 0, value); return true;
+            case Core.Server.Packets.SpId.SP_AGI: SetBase(pc, 1, value); return true;
+            case Core.Server.Packets.SpId.SP_VIT: SetBase(pc, 2, value); return true;
+            case Core.Server.Packets.SpId.SP_INT: SetBase(pc, 3, value); return true;
+            case Core.Server.Packets.SpId.SP_DEX: SetBase(pc, 4, value); return true;
+            case Core.Server.Packets.SpId.SP_LUK: SetBase(pc, 5, value); return true;
             case Core.Server.Packets.SpId.SP_HP: pc.Hp = (int)Math.Clamp(value, 0, pc.MaxHp); return true;
             case Core.Server.Packets.SpId.SP_SP: pc.Sp = (int)Math.Clamp(value, 0, pc.MaxSp); return true;
             case Core.Server.Packets.SpId.SP_BASELEVEL: pc.Level = (int)Math.Clamp(value, 1, MaxBaseLevel(pc)); return true;
@@ -97,14 +101,16 @@ public sealed class PlayerStatHelpers : IPlayerStatHelpers
         }
     }
 
+    // COMBAT-10: rAthena pc_readparam(SP_STR..SP_LUK) returns the BASE
+    // allocated stat (sd->status.str), not the buffed final — match it.
     public long ReadParam(PlayerEntity pc, ushort spId) => spId switch
     {
-        Core.Server.Packets.SpId.SP_STR => pc.Stats.Str,
-        Core.Server.Packets.SpId.SP_AGI => pc.Stats.Agi,
-        Core.Server.Packets.SpId.SP_VIT => pc.Stats.Vit,
-        Core.Server.Packets.SpId.SP_INT => pc.Stats.IntStat,
-        Core.Server.Packets.SpId.SP_DEX => pc.Stats.Dex,
-        Core.Server.Packets.SpId.SP_LUK => pc.Stats.Luk,
+        Core.Server.Packets.SpId.SP_STR => pc.BaseParams.Str,
+        Core.Server.Packets.SpId.SP_AGI => pc.BaseParams.Agi,
+        Core.Server.Packets.SpId.SP_VIT => pc.BaseParams.Vit,
+        Core.Server.Packets.SpId.SP_INT => pc.BaseParams.IntStat,
+        Core.Server.Packets.SpId.SP_DEX => pc.BaseParams.Dex,
+        Core.Server.Packets.SpId.SP_LUK => pc.BaseParams.Luk,
         Core.Server.Packets.SpId.SP_HP => pc.Hp,
         Core.Server.Packets.SpId.SP_MAXHP => pc.MaxHp,
         Core.Server.Packets.SpId.SP_SP => pc.Sp,
@@ -125,18 +131,29 @@ public sealed class PlayerStatHelpers : IPlayerStatHelpers
         // diminishing-cost regular stats). rAthena SP_POW=219, SP_STA=220,
         // SP_WIS=221, SP_SPL=222, SP_CON=223, SP_CRT=224.
         if (pc.TraitPoints <= 0) return false;
-        switch (traitId)
+        // COMBAT-10: trait-up raises the persisted BASE trait stat (rAthena
+        // pc_traitstatusup writes sd->status.pow..). ShiftFinalParam moves the
+        // final Stats value + the param-base snapshot in lockstep (cap 100).
+        int idx = traitId switch
         {
-            case 219: pc.Stats.Pow = (short)Math.Min(pc.Stats.Pow + 1, 100); break;
-            case 220: pc.Stats.Sta = (short)Math.Min(pc.Stats.Sta + 1, 100); break;
-            case 221: pc.Stats.Wis = (short)Math.Min(pc.Stats.Wis + 1, 100); break;
-            case 222: pc.Stats.Spl = (short)Math.Min(pc.Stats.Spl + 1, 100); break;
-            case 223: pc.Stats.Con = (short)Math.Min(pc.Stats.Con + 1, 100); break;
-            case 224: pc.Stats.Crt = (short)Math.Min(pc.Stats.Crt + 1, 100); break;
-            default: return false;
-        }
+            219 => 6, 220 => 7, 221 => 8, 222 => 9, 223 => 10, 224 => 11, _ => -1,
+        };
+        if (idx < 0) return false;
+        if (pc.BaseParams[idx] >= 100) return false;
+        pc.ShiftFinalParam(idx, 1);
         pc.TraitPoints--;
         return true;
+    }
+
+    /// <summary>
+    /// COMBAT-10 — GM setstat helper: set a BASE primary stat to an absolute
+    /// value and shift the final Stats value + the CalcPc param-base snapshot
+    /// by the same delta (preserving any SC contribution layered on top).
+    /// </summary>
+    private static void SetBase(PlayerEntity pc, int idx, long value)
+    {
+        var target = (int)Math.Clamp(value, 0, short.MaxValue);
+        pc.ShiftFinalParam(idx, target - pc.BaseParams[idx]);
     }
 
     public int MaxParameter(PlayerEntity pc, ushort spId)

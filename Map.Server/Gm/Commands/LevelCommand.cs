@@ -55,14 +55,17 @@ public sealed class LevelCommand(
         return Task.CompletedTask;
     }
 
+    // COMBAT-10: base params from BaseParams; weapon/def from Stats;
+    // JobId/WeaponType threaded for consistent job-bonus + ASPD folding.
     private static PcBaseInputs BuildInputs(PlayerEntity p) => new(
         BaseLevel: p.Level,
         JobLevel: p.JobLevel,
-        Str: p.Stats.Str, Agi: p.Stats.Agi, Vit: p.Stats.Vit,
-        Int: p.Stats.IntStat, Dex: p.Stats.Dex, Luk: p.Stats.Luk,
-        Pow: p.Stats.Pow, Sta: p.Stats.Sta, Wis: p.Stats.Wis,
-        Spl: p.Stats.Spl, Con: p.Stats.Con, Crt: p.Stats.Crt,
+        Str: p.BaseParams.Str, Agi: p.BaseParams.Agi, Vit: p.BaseParams.Vit,
+        Int: p.BaseParams.IntStat, Dex: p.BaseParams.Dex, Luk: p.BaseParams.Luk,
+        Pow: p.BaseParams.Pow, Sta: p.BaseParams.Sta, Wis: p.BaseParams.Wis,
+        Spl: p.BaseParams.Spl, Con: p.BaseParams.Con, Crt: p.BaseParams.Crt,
         WeaponAtkMin: p.Stats.WatkMin, WeaponAtkMax: p.Stats.WatkMax,
         EquipDef: p.Stats.Def, EquipMdef: p.Stats.Mdef,
-        AttackRange: p.Stats.AttackRange);
+        AttackRange: p.Stats.AttackRange,
+        JobId: p.ClassId, WeaponType: p.WeaponType);
 }

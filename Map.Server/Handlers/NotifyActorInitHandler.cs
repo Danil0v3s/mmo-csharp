@@ -104,6 +104,22 @@ public class NotifyActorInitHandler(
             // job_aspd_db / job catalogs.
             player.ClassId = (int)ch.ClassId;
 
+            // COMBAT-10: hydrate the persisted BASE allocated stats from the
+            // char payload. These are the source for every later recalc-input
+            // builder; CalcPc layers equip param + job bonus on top of them.
+            player.BaseParams.Str = (short)ch.Str;
+            player.BaseParams.Agi = (short)ch.Agi;
+            player.BaseParams.Vit = (short)ch.Vit;
+            player.BaseParams.IntStat = (short)ch.IntStat;
+            player.BaseParams.Dex = (short)ch.Dex;
+            player.BaseParams.Luk = (short)ch.Luk;
+            player.BaseParams.Pow = (short)ch.Pow;
+            player.BaseParams.Sta = (short)ch.Sta;
+            player.BaseParams.Wis = (short)ch.Wis;
+            player.BaseParams.Spl = (short)ch.Spl;
+            player.BaseParams.Con = (short)ch.Con;
+            player.BaseParams.Crt = (short)ch.Crt;
+
             statusCalc.CalcPc(player, new PcBaseInputs(
                 BaseLevel: (int)ch.BaseLevel,
                 JobLevel: (int)ch.JobLevel,

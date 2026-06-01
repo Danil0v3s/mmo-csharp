@@ -35,8 +35,10 @@ public class StatusChangeHandler(
             return Task.CompletedTask;
         }
 
-        // Map SP_* id (13..18) to a setter on Stats.
-        ref short field = ref Map(player.Stats, packet.StatusId);
+        // COMBAT-10: allocate into the persisted BASE stat (rAthena
+        // sd->status.str), not the final battle stat. CalcPc re-layers
+        // equip + job bonus on top from BaseParams.
+        ref short field = ref Map(player.BaseParams, packet.StatusId);
         // ref-return on a non-existent slot returns the dummy; check id.
         if (!IsValidStatId(packet.StatusId))
         {
@@ -91,11 +93,11 @@ public class StatusChangeHandler(
         => id >= SpId.SP_STR && id <= SpId.SP_LUK;
 
     /// <summary>
-    /// Resolve the writable stat slot on <see cref="BattleStats"/>.
+    /// Resolve the writable BASE stat slot on <see cref="PcBaseParams"/>.
     /// Returns a ref to a throwaway field for unknown ids so the
     /// branch above can validate without crashing.
     /// </summary>
-    private static ref short Map(BattleStats s, ushort id)
+    private static ref short Map(PcBaseParams s, ushort id)
     {
         switch (id)
         {
@@ -110,14 +112,18 @@ public class StatusChangeHandler(
     }
     private static short _unused;
 
+    // COMBAT-10: base params from BaseParams; weapon/def from Stats; JobId/
+    // WeaponType threaded so the calc folds the same job bonus as every other
+    // recalc path (else the param-base snapshot would strip it next recalc).
     private static PcBaseInputs BuildInputs(PlayerEntity p)
         => new(
             BaseLevel: p.Level, JobLevel: p.JobLevel,
-            Str: p.Stats.Str, Agi: p.Stats.Agi, Vit: p.Stats.Vit,
-            Int: p.Stats.IntStat, Dex: p.Stats.Dex, Luk: p.Stats.Luk,
-            Pow: p.Stats.Pow, Sta: p.Stats.Sta, Wis: p.Stats.Wis,
-            Spl: p.Stats.Spl, Con: p.Stats.Con, Crt: p.Stats.Crt,
+            Str: p.BaseParams.Str, Agi: p.BaseParams.Agi, Vit: p.BaseParams.Vit,
+            Int: p.BaseParams.IntStat, Dex: p.BaseParams.Dex, Luk: p.BaseParams.Luk,
+            Pow: p.BaseParams.Pow, Sta: p.BaseParams.Sta, Wis: p.BaseParams.Wis,
+            Spl: p.BaseParams.Spl, Con: p.BaseParams.Con, Crt: p.BaseParams.Crt,
             WeaponAtkMin: p.Stats.WatkMin, WeaponAtkMax: p.Stats.WatkMax,
             EquipDef: p.Stats.Def, EquipMdef: p.Stats.Mdef,
-            AttackRange: p.Stats.AttackRange);
+            AttackRange: p.Stats.AttackRange,
+            JobId: p.ClassId, WeaponType: p.WeaponType);
 }

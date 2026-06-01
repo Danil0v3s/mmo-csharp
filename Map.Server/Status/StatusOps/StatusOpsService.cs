@@ -151,11 +151,16 @@ public sealed class StatusOpsService : IStatusOpsService
         // callers that need a full equip-aware rebuild route through
         // IPlayerLifecycleHelpers or IEquipService.
         if (_calc == null) return;
+        // COMBAT-10: read the persisted BASE params (BaseParams), not the
+        // conflated final Stats — the prior code both read back the final
+        // (double-counting equip/job/SC on recalc) AND zeroed Pow..Crt
+        // (silently wiping trait stats on any StatusOps-driven recalc).
+        var bp = pc.BaseParams;
         var inputs = new PcBaseInputs(
             BaseLevel: pc.Level, JobLevel: pc.JobLevel,
-            Str: pc.Stats.Str, Agi: pc.Stats.Agi, Vit: pc.Stats.Vit,
-            Int: pc.Stats.IntStat, Dex: pc.Stats.Dex, Luk: pc.Stats.Luk,
-            Pow: 0, Sta: 0, Wis: 0, Spl: 0, Con: 0, Crt: 0,
+            Str: bp.Str, Agi: bp.Agi, Vit: bp.Vit,
+            Int: bp.IntStat, Dex: bp.Dex, Luk: bp.Luk,
+            Pow: bp.Pow, Sta: bp.Sta, Wis: bp.Wis, Spl: bp.Spl, Con: bp.Con, Crt: bp.Crt,
             WeaponAtkMin: pc.Stats.WatkMin, WeaponAtkMax: pc.Stats.WatkMax,
             EquipDef: pc.Stats.Def, EquipMdef: pc.Stats.Mdef,
             AttackRange: pc.Stats.AttackRange,
