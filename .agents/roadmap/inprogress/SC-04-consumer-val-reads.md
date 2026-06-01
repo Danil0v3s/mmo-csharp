@@ -1,6 +1,6 @@
 # SC-04 — Wire the starved combat-consumer Val reads (Crescentelbow / Parrying / Aurablade / Gravitation / Kaahi / Kaupe / Longing / Magicrod / Poisonreact / Soul Reaper / Energycoat)
 
-> **Epic:** Status parity hardening · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** SC-01 (de-shadow guarantees the Val* fields are populated) · **Blocks:** none
 
 ## Problem
