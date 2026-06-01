@@ -1,6 +1,6 @@
 # SC-01 — De-shadow the PresenceMarker re-registrations + harden the overwrite guard
 
-> **Epic:** Status parity hardening · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Status parity hardening · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** SC-04
 
 ## Problem
