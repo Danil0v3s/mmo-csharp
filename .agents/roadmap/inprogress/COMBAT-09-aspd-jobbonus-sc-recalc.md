@@ -1,6 +1,6 @@
 # COMBAT-09 — ASPD formula, job-bonus stats, MaxHP trait, SC-safe recalc ordering
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-01 (flat stat / aspd-rate fields land on PcBaseInputs) · **Blocks:** none
 
 ## Problem
