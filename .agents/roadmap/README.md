@@ -112,6 +112,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-49 | Basilica caster protection (SC_BASILICA cell invulnerability) — split from COMBAT-27 |
 | COMBAT-50 | ASPD skill-val terms + FREECAST + exotic fix_aspd SCs — split from COMBAT-28 |
 | COMBAT-51 | Transcendent 3rd/4th JOBL_UPPER table + Taekwon-ranker fame population — split from COMBAT-30 |
+| COMBAT-52 | die_counter persistence + death-increment wiring (Super Novice +10 gate) — split from COMBAT-32 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

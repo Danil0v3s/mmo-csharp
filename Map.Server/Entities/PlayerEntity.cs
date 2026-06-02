@@ -88,6 +88,15 @@ public sealed class PlayerEntity : Entity
     public bool IsTaekwonRanker { get; set; }
 
     /// <summary>
+    /// rAthena <c>sd-&gt;die_counter</c> — the number of times this character has
+    /// died. Gates the Super Novice all-stat +10 bonus (status.cpp:4222 requires
+    /// <c>die_counter == 0</c> — "never died"). Defaults 0 (a freshly-loaded
+    /// character is treated as never-died until the death/persistence wiring
+    /// populates it → COMBAT-52).
+    /// </summary>
+    public int DieCounter { get; set; }
+
+    /// <summary>
     /// rAthena <c>sd-&gt;class_</c> = MAPID_* bitmask reduction of
     /// <see cref="ClassId"/>. Combines the base class
     /// (<see cref="MapidClass.FirstMask"/>) with promotion tier

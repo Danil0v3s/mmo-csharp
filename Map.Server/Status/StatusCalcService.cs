@@ -1,5 +1,6 @@
 using Map.Server.Entities;
 using Map.Server.Mob;
+using Map.Server.Skills;
 
 namespace Map.Server.Status;
 
@@ -86,6 +87,15 @@ public sealed class StatusCalcService : IStatusCalcService
         paramBase[9] = inputs.Spl + (eq?.Spl ?? 0) + jb.Spl;
         paramBase[10] = inputs.Con + (eq?.Con ?? 0) + jb.Con;
         paramBase[11] = inputs.Crt + (eq?.Crt ?? 0) + jb.Crt;
+
+        // COMBAT-32 — absolute base-stat addends from passive skills + Super
+        // Novice. rAthena status_calc_pc_ (status.cpp:4221-4241) adds these to
+        // base_status alongside the job_bonus, before the allocated/card/equip
+        // fold — so they flow into the final stat AND its derived hit/atk/matk.
+        // Folding them into paramBase[] here means they ride the same COMBAT-10
+        // delta snapshot (recomputed each CalcPc from the live skill levels), so
+        // the layering stays idempotent across recalcs.
+        ApplyPassiveBaseStatAddends(paramBase, player, inputs);
 
         var applied = player.AppliedParamBase;
         if (applied == null)
@@ -380,6 +390,61 @@ public sealed class StatusCalcService : IStatusCalcService
         // The check below mirrors rAthena: status_calc_npc only does
         // work when the NPC is flagged as battle-ready.
     }
+
+    /// <summary>
+    /// COMBAT-32 — absolute base-stat addends from passive skills + Super Novice
+    /// (rAthena status_calc_pc_, status.cpp:4221-4241). Mutates the param-base
+    /// span in place so the addends layer like the job/equip bonus (and ride the
+    /// COMBAT-10 idempotent delta-fold). Indices: 0=STR 1=AGI 2=VIT 3=INT 4=DEX
+    /// 5=LUK (the PcBaseParams ordering).
+    /// </summary>
+    private static void ApplyPassiveBaseStatAddends(Span<int> paramBase, PlayerEntity player, in PcBaseInputs inputs)
+    {
+        var skills = player.LearnedSkills;
+
+        // Super Novice (incl. baby / expanded variants), never died, joblv >= 70
+        // → all six base stats +10. rAthena gates on
+        // `(class_ & MAPID_UPPERMASK) == MAPID_SUPER_NOVICE && (job_level >= 70
+        // || class_ & JOBL_THIRD) && die_counter == 0` — no 3rd super-novice
+        // class exists, so the joblv branch is the operative one. status.cpp:4222.
+        if (IsSuperNovice(inputs.JobId) && inputs.JobLevel >= 70 && player.DieCounter == 0)
+        {
+            paramBase[0] += 10; // STR
+            paramBase[1] += 10; // AGI
+            paramBase[2] += 10; // VIT
+            paramBase[3] += 10; // INT
+            paramBase[4] += 10; // DEX
+            paramBase[5] += 10; // LUK
+        }
+
+        // Absolute passive-skill modifiers (status.cpp:4232-4241).
+        if (SkillLv(skills, SkillIds.BS_HILTBINDING) > 0)
+            paramBase[0] += 1;                          // +1 STR
+        var dragon = SkillLv(skills, SkillIds.SA_DRAGONOLOGY);
+        if (dragon > 0)
+            paramBase[3] += (dragon + 1) / 2;           // +1 INT / 2 lv
+        var owl = SkillLv(skills, SkillIds.AC_OWL);
+        if (owl > 0)
+            paramBase[4] += owl;                        // +lv DEX
+        var research = SkillLv(skills, SkillIds.RA_RESEARCHTRAP);
+        if (research > 0)
+            paramBase[3] += research;                   // +lv INT
+        if (SkillLv(skills, SkillIds.SU_POWEROFLAND) > 0)
+            paramBase[3] += 20;                         // +20 INT
+    }
+
+    private static int SkillLv(Dictionary<ushort, byte> skills, ushort id)
+        => skills != null && skills.TryGetValue(id, out var lv) ? lv : 0;
+
+    /// <summary>
+    /// rAthena <c>(class_ &amp; MAPID_UPPERMASK) == MAPID_SUPER_NOVICE</c>. The C#
+    /// <see cref="MapidClass"/> overloads its Upper bit (so a mask test is
+    /// unreliable, as in COMBAT-30), so detect by the super-novice Aegis job-id
+    /// set: <c>JOB_SUPER_NOVICE</c> (23), <c>JOB_SUPER_BABY</c> (4045),
+    /// <c>JOB_SUPER_NOVICE_E</c> (4190), <c>JOB_SUPER_BABY_E</c> (4191).
+    /// </summary>
+    private static bool IsSuperNovice(int jobId)
+        => jobId is 23 or 4045 or 4190 or 4191;
 
     /// <summary>
     /// Port of rAthena <c>status_calc_misc</c> (status.cpp:2552) renewal

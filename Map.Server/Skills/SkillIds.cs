@@ -318,6 +318,7 @@ public static class SkillIds
     public const ushort BO_WOODEN_FAIRY = 5345;
     public const ushort BS_ADRENALINE2 = 459;
     public const ushort BS_GREED = 1013;
+    public const ushort BS_HILTBINDING = 105;   // COMBAT-32 passive +1 STR
     public const ushort BS_REPAIRWEAPON = 108;
     public const ushort BS_WEAPONPERFECT = 112;
     public const ushort CASH_ASSUMPTIO = 691;
@@ -935,6 +936,7 @@ public static class SkillIds
     public const ushort RA_ICEBOUNDTRAP = 2254;
     public const ushort RA_MAGENTATRAP = 2249;
     public const ushort RA_MAIZETRAP = 2251;
+    public const ushort RA_RESEARCHTRAP = 2248;   // COMBAT-32 passive +lv INT
     public const ushort RA_SENSITIVEKEEN = 2246;
     public const ushort RA_VERDURETRAP = 2252;
     public const ushort RA_WUGBITE = 2244;
@@ -1008,6 +1010,7 @@ public static class SkillIds
     public const ushort SA_DEATH = 295;
     public const ushort SA_DELUGE = 286;
     public const ushort SA_DISPELL = 289;
+    public const ushort SA_DRAGONOLOGY = 284;   // COMBAT-32 passive +(lv+1)/2 INT
     public const ushort SA_ELEMENTFIRE = 1018;
     public const ushort SA_ELEMENTGROUND = 1017;
     public const ushort SA_ELEMENTWATER = 1008;
@@ -1235,6 +1238,7 @@ public static class SkillIds
     public const ushort SU_NYANGGRASS = 5048;
     public const ushort SU_PICKYPECK = 5033;
     public const ushort SU_POWEROFFLOCK = 5045;
+    public const ushort SU_POWEROFLAND = 5025;   // COMBAT-32 passive +20 INT
     public const ushort SU_PURRING = 5050;
     public const ushort SU_SCAROFTAROU = 5032;
     public const ushort SU_SCRATCH = 5021;
