@@ -219,6 +219,11 @@ public sealed class EquipService : IEquipService
         if (_entities.Get(eid) is not PlayerEntity player) return;
 
         var summary = EquipBonusAggregator.Aggregate(session.Inventory, _catalog);
+        // COMBAT-16: keep the canonical right-hand weapon type current from the
+        // resolved item_db SubType (the prior CalcWeaponType never ran AND
+        // int-parsed a string name, so WeaponType was stuck at 0/Fist). Drives
+        // the size-fix penalty + the renewal ASPD job_aspd lookup below.
+        player.WeaponType = summary.WeaponType;
 
         // CONV-4: per-item onEquip hooks accumulate into player.EquipBonuses
         // via IItemHookDispatcher. The aggregator dispatches one hook per

@@ -45,8 +45,11 @@ public sealed class PlayerEquipHelpers : IPlayerEquipHelpers
             if (row.Equip == 0) continue;
             var def = _catalog.Get(row.NameId);
             if (def == null) continue;
-            if ((row.Equip & EquipBits.HandR) != 0 && int.TryParse(def.Subtype, out var rh)) rhSubtype = rh;
-            if ((row.Equip & EquipBits.HandL) != 0 && int.TryParse(def.Subtype, out var lh)) lhSubtype = lh;
+            // COMBAT-16: item_db SubType is a NAME ("Knuckle"/"Bow"/…), not an
+            // int — resolve via WeaponTypeCodes (the old int.TryParse silently
+            // left every weapon at 0/Fist).
+            if ((row.Equip & EquipBits.HandR) != 0) rhSubtype = WeaponTypeCodes.FromSubtype(def.Subtype);
+            if ((row.Equip & EquipBits.HandL) != 0) lhSubtype = WeaponTypeCodes.FromSubtype(def.Subtype);
         }
         // Store on PlayerEntity for skill plugins that branch on weapon kind.
         // Mirrors rAthena `sd->status.weapon` (the persistable right-hand)

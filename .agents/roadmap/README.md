@@ -96,6 +96,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-32 | Passive-skill absolute base-stat addends + Super Novice all-stat +10 — split from COMBAT-10 |
 | COMBAT-33 | Derived-stat SC re-fold on recalc (Angelus Def2 / Provoke Batk%) — split from COMBAT-10 |
 | COMBAT-35 | RE_LVL_DMOD per-arm completeness (remaining 120/150 + trap TMDMOD + macro-omitting disable) — split from COMBAT-14 |
+| COMBAT-36 | Ammo consumption + no-ammo gate on ranged attacks — split from COMBAT-16 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

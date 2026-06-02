@@ -104,6 +104,11 @@ public class NotifyActorInitHandler(
             // job_aspd_db / job catalogs.
             player.ClassId = (int)ch.ClassId;
 
+            // COMBAT-16: resolve the right-hand weapon type from worn gear so the
+            // size-fix penalty + renewal ASPD lookup are correct at login (not
+            // stuck at 0/Fist).
+            player.WeaponType = equip.WeaponType;
+
             // COMBAT-10: hydrate the persisted BASE allocated stats from the
             // char payload. These are the source for every later recalc-input
             // builder; CalcPc layers equip param + job bonus on top of them.

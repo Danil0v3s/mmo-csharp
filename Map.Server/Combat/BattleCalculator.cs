@@ -88,7 +88,8 @@ public sealed class BattleCalculator : IBattleCalculator
         // the path skips the sizefix lookup entirely (battle.cpp:2514).
         if (srcIsPc)
         {
-            damage = damage * SizeMod(t.Size) / 100;
+            var wtype = (source as PlayerEntity)?.WeaponType ?? 0;
+            damage = damage * SizeMod(wtype, t.Size) / 100;
         }
 
         // --- Step 4: element fix  (battle.cpp:453 battle_attr_fix) ---
@@ -295,18 +296,16 @@ public sealed class BattleCalculator : IBattleCalculator
     }
 
     /// <summary>
-    /// Default rAthena <c>size_fix</c> table (item_db default atkmods when
-    /// no weapon equipped). 100 / 75 / 50 — used when a PC attacks and the
-    /// equip path isn't ported yet. Mob attackers skip this entirely (per
-    /// battle.cpp:2514), matching the rAthena code path.
+    /// COMBAT-16 — renewal <c>db/re/size_fix.yml</c> weapon size penalty
+    /// (<c>atkmods[t_size]</c>, battle.cpp:2453). In renewal the ONLY non-100
+    /// entries are Knuckle and Whip, each 75% vs a Large target; every other
+    /// weapon/size (and bare hand) is 100%. Mob attackers skip the lookup
+    /// entirely (battle.cpp:2514) — this is only reached on the PC path.
     /// </summary>
-    private static int SizeMod(BattleSize targetSize) => targetSize switch
-    {
-        BattleSize.Small => 100,
-        BattleSize.Medium => 100,
-        BattleSize.Large => 100,
-        _ => 100,
-    };
+    internal static int SizeMod(int weaponType, BattleSize targetSize)
+        => (targetSize == BattleSize.Large && Map.Server.Inventory.WeaponTypeCodes.IsKnuckleOrWhip(weaponType))
+            ? 75
+            : 100;
 
     /// <summary>
     /// Wave 67 / Track C — rAthena <c>battle_calc_magic_attack</c>

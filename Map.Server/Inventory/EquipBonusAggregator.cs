@@ -33,6 +33,9 @@ public static class EquipBonusAggregator
     public const uint EquipAccessoryR = 0x008;
     public const uint EquipAccessoryL = 0x080;
 
+    /// <summary>Ammo bit in <see cref="InventoryItem.Equip"/> (rAthena EQP_AMMO = 0x8000).</summary>
+    public const uint EquipAmmo = 0x008000;
+
     public readonly record struct EquipSummary(
         int WeaponAtkMin,
         int WeaponAtkMax,
@@ -40,7 +43,11 @@ public static class EquipBonusAggregator
         int EquipMdef,
         int AttackRange,
         BattleElement WeaponElement,
-        int WeaponLevel = 0)
+        int WeaponLevel = 0,
+        // COMBAT-16: the right-hand weapon's W_* type (0 = bare/fist), resolved
+        // from the item_db SubType name. Drives the renewal size-fix penalty and
+        // the renewal ASPD job_aspd lookup.
+        int WeaponType = 0)
     {
         public static EquipSummary Empty => new(0, 0, 0, 0, 1, BattleElement.Neutral);
     }
@@ -54,6 +61,8 @@ public static class EquipBonusAggregator
         int mdef = 0;
         int range = 1;
         int weaponLevel = 0;
+        int weaponType = WeaponTypeCodes.Fist;
+        int ammoAtk = 0;
         var element = BattleElement.Neutral;
         // No weapon equipped → null; renewal status_base_atk_min/max
         // returns the catalog values for the equipped weapon row.
@@ -72,6 +81,17 @@ public static class EquipBonusAggregator
                 // rAthena PC atkmin = dex*(80+weaponLv*20)/100 — capture the
                 // right-hand weapon's level (1-5); bare-handed stays 0.
                 if (row.WeaponLevel is { } wl) weaponLevel = wl;
+                // COMBAT-16: resolve the W_* weapon type from the item_db
+                // SubType NAME (the DB stores e.g. "Knuckle"/"Bow", not an int).
+                weaponType = WeaponTypeCodes.FromSubtype(row.Subtype);
+            }
+            // COMBAT-16: equipped ammo (arrow / bullet) ATK — added to the
+            // weapon ATK below only for ammo-using ranged weapons (battle.cpp
+            // arrow_atk). Captured regardless of weapon so a mismatched ammo is
+            // simply ignored.
+            if ((item.Equip & EquipAmmo) != 0)
+            {
+                ammoAtk += row.Attack ?? 0;
             }
             // Both hands can contribute defense, but most weapons report 0.
             def += row.Defense ?? 0;
@@ -82,6 +102,12 @@ public static class EquipBonusAggregator
             _ = element;
         }
 
+        // COMBAT-16: arrow_atk — fold the equipped ammo's ATK into the bow/gun
+        // swing (rAthena battle_calc_base_damage bow path). Non-ammo weapons
+        // (incl. Musical/Whip) ignore equipped ammo.
+        if (WeaponTypeCodes.UsesAmmo(weaponType))
+            watk += ammoAtk;
+
         return new EquipSummary(
             WeaponAtkMin: watk,
             WeaponAtkMax: watk, // rAthena uses ATK ± weapon variance; first slice flattens
@@ -89,7 +115,8 @@ public static class EquipBonusAggregator
             EquipMdef: mdef,
             AttackRange: range,
             WeaponElement: element,
-            WeaponLevel: weaponLevel);
+            WeaponLevel: weaponLevel,
+            WeaponType: weaponType);
     }
 
     /// <summary>
