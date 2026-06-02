@@ -1,6 +1,6 @@
 # COMBAT-59 — Wire IStatusChangeService into BattleCalculator (break the cycle) so SC combat reads activate in production
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** the live behavior of every SC-gated combat read
 > **Filed by:** COMBAT-37 — Fear Breeze / Eternal Chain read `_sc`, which is null in
 > the production `BattleCalculator` (same as COMBAT-17's Kagemusya).
