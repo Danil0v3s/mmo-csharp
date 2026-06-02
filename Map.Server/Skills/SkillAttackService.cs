@@ -82,13 +82,18 @@ public sealed class SkillAttackService : ISkillAttackService
                 // int.MaxValue — overflows in this slice mean something
                 // upstream is wrong, not a real number.
                 var clamped = damage > int.MaxValue ? int.MaxValue : (int)damage;
-                // COMBAT-17 — carry the skill's display hit count so a skill
+                // COMBAT-17/38 — carry the skill's display hit count so a skill
                 // routed through this funnel (rather than the plugin's
                 // CastendDamageId) still renders div correctly. Weapon plugins
-                // expose it via GetMultiHitCount (Sonic Blow → 8).
-                var hits = _behaviors?.Get(skillId) is Behaviors.WeaponSkillImpl wsi
-                    ? wsi.GetMultiHitCount(skillLevel)
-                    : 1;
+                // expose the base count via GetMultiHitCount (Sonic Blow → 8) and
+                // the per-skill `div_` arm via ModifyDamageData (KN_PIERCE → size+1).
+                var hits = 1;
+                if (_behaviors?.Get(skillId) is Behaviors.WeaponSkillImpl wsi)
+                {
+                    var bd = new BattleDamage { Damage = clamped, Hits = wsi.GetMultiHitCount(skillLevel) };
+                    wsi.ModifyDamageData(ref bd, source, target, skillLevel);
+                    hits = Math.Abs(bd.Hits);
+                }
                 _damage.ApplyDamage(target, clamped, source, hits);
             }
         }

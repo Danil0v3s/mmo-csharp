@@ -197,11 +197,18 @@ public abstract class WeaponSkillImpl : SkillImpl
         // WeaponSkillResolver so a plugin skill can never get two different
         // ratios depending on which dispatch path it takes.
         var dmg = ComputeSkillDamage(swing, src, target, skillLevel, ctx, miscflag);
-        // COMBAT-17 — render the skill's hit count (rAthena skill_get_num /
-        // skill_db `num`). The ratio above already produced the full
-        // multi-hit total (rAthena's negative-div "single damage shown as N
-        // hits"), so we only set the display div — no extra multiplication.
-        ctx.Damage.ApplyDamage(target, dmg, src, hits: GetMultiHitCount(skillLevel));
+        // COMBAT-17/38 — render the skill's hit count. Start at the skill's base
+        // div (rAthena skill_get_num / skill_db `num`, via GetMultiHitCount), then
+        // let the plugin's ModifyDamageData apply the per-skill `div_` switch arm
+        // (weapon-type / target-size — rAthena battle_calc_weapon/multi_attack
+        // switch): KN_PIERCE → size+1, RK_WINDCUTTER 2HSword → 2, etc. The ratio
+        // above already carries the full multi-hit total (negative-div "single
+        // damage shown as N hits"), so this is display-only — the positive-div
+        // per-hit multiply (Pierce per-hit-full) + the splash/SkillImpl + miscflag
+        // arms are COMBAT-60.
+        var bd = new Map.Server.Combat.BattleDamage { Damage = dmg, Hits = GetMultiHitCount(skillLevel) };
+        ModifyDamageData(ref bd, src, target, skillLevel);
+        ctx.Damage.ApplyDamage(target, dmg, src, hits: System.Math.Abs(bd.Hits));
         ApplyAdditionalEffects(src, target, skillLevel, ctx);
     }
 
