@@ -1,6 +1,6 @@
 # COMBAT-20 — Plant 1-damage + GvG/BG damage reductions
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Filed by:** COMBAT-05 (axis 5).
 
