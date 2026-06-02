@@ -1,6 +1,6 @@
 # COMBAT-17 — Multi-hit div (battle_calc_multi_attack + ACT3 wire)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-04 · **Blocks:** none
 > **Filed by:** COMBAT-04 (axis 3).
 
