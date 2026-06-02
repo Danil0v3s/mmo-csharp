@@ -1,6 +1,6 @@
 # COMBAT-50 — ASPD skill-val terms + FREECAST + exotic fix_aspd SCs
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-28 (the SC ASPD terms + the ComputeScAspd seam)
 > **Blocks:** none
 > **Filed by:** COMBAT-28 — the skill-based `val` terms + FREECAST it deferred.
