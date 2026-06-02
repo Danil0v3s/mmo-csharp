@@ -183,6 +183,17 @@ public sealed class StatusCalcService : IStatusCalcService
             s.Mdef = (short)CapShort((s.Mdef + eq.FlatMdef) * (100 + eq.MdefRate) / 100);
         }
 
+        // COMBAT-33 — re-fold active SCs' DERIVED-stat contributions now that
+        // CalcMisc + the equip fold have rebuilt the derived fields (Hit/Flee/
+        // Cri/Def/Def2/Mdef/Mdef2/Batk/…). rAthena re-applies every SCB_*
+        // contribution each status_calc_pc_; the C# SC handlers mutate
+        // BattleStats directly in OnStart, so without this re-fold Angelus
+        // (+Def2), Provoke (Batk%/Def%) and the generated SCB_* set are wiped by
+        // any recalc. Primary-stat SC mods survive via the COMBAT-10 param-base
+        // delta (so OnRecalc deliberately skips them — no double-count). Runs
+        // before the MaxHp/ASPD blocks below, which read only primary stats.
+        _sc?.ReapplyDerivedStatMods(player);
+
         // MaxHp / MaxSp — DBR-1d: when IJobStatsCacheService is wired,
         // read the per-job per-level base from job_base_points_db (the
         // rAthena HP_SP_TABLES path) and scale by Vit/Int; otherwise

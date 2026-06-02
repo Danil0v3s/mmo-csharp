@@ -286,6 +286,22 @@ public sealed class StatusChangeService : IStatusChangeService
         return perEntity.GetValueOrDefault(type);
     }
 
+    /// <summary>
+    /// COMBAT-33 — re-apply every active SC's derived-stat contribution after a
+    /// recalc rebuilt the derived fields. Iterates the entity's active SCs and
+    /// invokes each handler's <see cref="StatusEffectHandler.OnRecalc"/> (null
+    /// for presence-only SCs and bespoke handlers still on the COMBAT-53 list).
+    /// OnRecalc only mutates <c>BattleStats</c>, but we snapshot the SC list
+    /// first to stay safe if a handler ever ends an SC.
+    /// </summary>
+    public void ReapplyDerivedStatMods(Entity target)
+    {
+        if (!_active.TryGetValue(target.Id, out var perEntity) || perEntity.Count == 0) return;
+        var snapshot = new List<StatusChange>(perEntity.Values);
+        foreach (var sc in snapshot)
+            _effects.Get(sc.Type)?.OnRecalc?.Invoke(target, sc);
+    }
+
     public void Tick(long nowTick)
     {
         if (_active.Count == 0) return;

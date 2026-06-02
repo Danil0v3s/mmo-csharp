@@ -3238,7 +3238,10 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Def2 = (short)Math.Max(0, target.Stats.Def2 - sc.Val3);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-33 — re-add the snapshot Def2 delta after CalcMisc rebuilds Def2.
+            OnRecalc: (target, sc) =>
+                target.Stats.Def2 = (short)Math.Min(short.MaxValue, target.Stats.Def2 + sc.Val3)));
 
         // SC_BLESSING (AL_BLESSING) — rAthena status.cpp:11566-11571 sets
         // val2 = val1 for normal targets, val2 = 0 for undead/demon (half-
@@ -3332,7 +3335,15 @@ public sealed class StatusEffectRegistry
                 target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - hitFlat);
                 target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val3);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-33 — re-add the snapshot Batk/Hit deltas and re-subtract the
+            // snapshot Def drop after a recalc rebuilds those fields.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2);
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val1 * 10);
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val3);
+            }));
 
         // SC_PROVOKE (SM_PROVOKE) — rAthena status.cpp:11299-11303:
         // val2 = 2+3*val1 (ATK%), val3 = 5+5*val1 (DEF% reduction).
@@ -3355,7 +3366,14 @@ public sealed class StatusEffectRegistry
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
                 target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val3);
             },
-            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh,
+            // COMBAT-33 — re-add the snapshot Batk boost and re-subtract the
+            // snapshot Def drop after a recalc rebuilds those fields.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2);
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val3);
+            }));
 
         // ---- (b) Bespoke stat-mod scalings — generator default mismatches ----
 
@@ -6148,7 +6166,12 @@ public sealed class StatusEffectRegistry
             _handlers[type] = new StatusEffectHandler(
                 OnStart: (target, sc, _) => ApplyCalcFlagDelta(target, sc, fields, sign: +1),
                 OnEnd:   (target, sc)    => ApplyCalcFlagDelta(target, sc, fields, sign: -1),
-                Flags: defaultFlags);
+                Flags: defaultFlags,
+                // COMBAT-33 — re-apply the derived-stat half of this generated
+                // SCB_* mod after a recalc wipes it (primary stats survive via
+                // the COMBAT-10 delta, so derivedOnly skips them to avoid a
+                // double-count). Covers the bulk SCB_BATK/DEF2/HIT/FLEE/CRI set.
+                OnRecalc: (target, sc)   => ApplyCalcFlagDelta(target, sc, fields, sign: +1, derivedOnly: true));
         }
     }
 
@@ -6176,12 +6199,19 @@ public sealed class StatusEffectRegistry
     /// </list>
     /// </summary>
     private static void ApplyCalcFlagDelta(
-        Entity target, StatusChange sc, IReadOnlyList<CalcStatField> fields, int sign)
+        Entity target, StatusChange sc, IReadOnlyList<CalcStatField> fields, int sign,
+        bool derivedOnly = false)
     {
         var delta = sc.Val1 * sign;
         if (delta == 0) return;
         foreach (var field in fields)
         {
+            // COMBAT-33: the recalc re-application pass (derivedOnly) must touch
+            // ONLY the fields that status_calc_pc_ zeroes + rebuilds. Primary
+            // stats survive via the COMBAT-10 param-base delta, and AspdRate /
+            // MaxHp / MaxSp are handled elsewhere (or not reset) — re-adding
+            // them here would double-count.
+            if (derivedOnly && !IsRecalcReappliedField(field)) continue;
             switch (field)
             {
                 case CalcStatField.Str:
@@ -6254,6 +6284,24 @@ public sealed class StatusEffectRegistry
             }
         }
     }
+
+    /// <summary>
+    /// COMBAT-33 — is this a derived combat field that <c>status_calc_pc_</c>
+    /// zeroes/rebuilds on every recalc (and that <see cref="ApplyCalcFlagDelta"/>
+    /// knows how to write), so an active SC's contribution must be re-applied
+    /// after CalcMisc? Excludes the 12 primary stats (preserved by the COMBAT-10
+    /// param-base delta), <c>AspdRate</c> (not reset by CalcPc), and
+    /// <c>MaxHp/MaxSp</c> (recomputed with HP/SP clamping — re-fold tracked in
+    /// COMBAT-53).
+    /// </summary>
+    internal static bool IsRecalcReappliedField(CalcStatField field) => field switch
+    {
+        CalcStatField.Hit or CalcStatField.Flee or CalcStatField.Flee2 or CalcStatField.Cri
+            or CalcStatField.Def or CalcStatField.Def2 or CalcStatField.Mdef or CalcStatField.Mdef2
+            or CalcStatField.Batk or CalcStatField.Patk or CalcStatField.Smatk
+            or CalcStatField.Res or CalcStatField.Mres or CalcStatField.Hplus or CalcStatField.Crate => true,
+        _ => false,
+    };
 
     private static short ClampShort(int value) =>
         (short)System.Math.Clamp(value, short.MinValue, short.MaxValue);
@@ -7061,4 +7109,16 @@ public sealed record StatusEffectHandler(
     int PeriodMs = 0,
     Action<Entity, StatusChange, Action<int>>? OnPeriodic = null,
     ScfFlag Flags = ScfFlag.None,
-    int MaxStacks = 1);
+    int MaxStacks = 1,
+    // COMBAT-33 — re-apply this SC's DERIVED-stat contribution after a stat
+    // recalc (status_calc_pc_) zeroes + rebuilds the derived fields. rAthena
+    // re-folds every active SC's SCB_* contribution every recalc; the C# port
+    // mutates BattleStats directly in OnStart, so derived-stat mods (Def2/Batk/
+    // Hit/…) are otherwise wiped by CalcMisc. OnRecalc re-adds the SAME
+    // magnitude OnStart applied (snapshot / Val1), onto the freshly-rebuilt
+    // stat — so the buff survives equip/level/stat-alloc recalcs idempotently.
+    // It must NOT touch primary stats (those survive via the COMBAT-10 param-
+    // base delta) — see IsRecalcReappliedField. Null = no re-application
+    // (presence-only SCs, and bespoke derived-stat handlers still on the
+    // COMBAT-53 migration list).
+    Action<Entity, StatusChange>? OnRecalc = null);

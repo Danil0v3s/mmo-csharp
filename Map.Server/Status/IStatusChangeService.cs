@@ -85,6 +85,18 @@ public interface IStatusChangeService
     StatusChange? Get(Entity target, StatusType type);
 
     /// <summary>
+    /// COMBAT-33 — re-apply every active SC's DERIVED-stat contribution onto
+    /// <paramref name="target"/>'s freshly-rebuilt <c>BattleStats</c>. Called by
+    /// <c>StatusCalcService.CalcPc</c> after <c>CalcMisc</c> + the equip fold
+    /// zero/recompute the derived fields, so SC mods like Angelus (+Def2),
+    /// Provoke (Batk%/Def%) and the generated SCB_* set survive a recalc instead
+    /// of being wiped. Mirrors rAthena re-folding every SCB_* contribution in
+    /// <c>status_calc_pc_</c>. Default no-op so presence-only test doubles need
+    /// no change; the real <c>StatusChangeService</c> overrides it.
+    /// </summary>
+    void ReapplyDerivedStatMods(Entity target) { }
+
+    /// <summary>
     /// Tick all active SCs across all entities — expires elapsed ones,
     /// fires periodic effects (Poison DoT etc.) per their PeriodMs.
     /// Pumped from the map game loop.
