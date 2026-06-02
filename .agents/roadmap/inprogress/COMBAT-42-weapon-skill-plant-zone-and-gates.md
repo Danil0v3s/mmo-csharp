@@ -1,6 +1,6 @@
 # COMBAT-42 — Weapon-skill plant/zone + GvG gates (Emperium / INF2-ignore / PK)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-20 (plant + zone base), SKILL-05 (ComputeSkillDamage funnel)
 > **Blocks:** none
 > **Filed by:** COMBAT-20 — the post-ratio weapon-skill path + the GvG can-hit/ignore gates it deferred.
