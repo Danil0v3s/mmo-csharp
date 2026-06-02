@@ -48,6 +48,13 @@ public sealed class EquipBonusBundle
     /// <summary>Offensive magic per-race damage % (<c>bonus2 bMagicAddRace, r, n</c> /
     /// SP_MAGIC_ADDRACE). Folded multiplicatively in the BF_MAGIC cardfix branch.</summary>
     public int[] MagicAddRace { get; } = new int[RaceSize];
+    /// <summary>COMBAT-63 — offensive magic per-element/size/class damage % (<c>bonus2
+    /// bMagicAddEle/bMagicAddSize/bMagicAddClass</c>; SP_MAGIC_ADDELE/ADDSIZE/ADDCLASS).
+    /// rAthena keeps these distinct from the weapon <c>addele</c>/<c>addsize</c>/
+    /// <c>addclass</c> arrays — the BF_MAGIC cardfix branch reads these instead.</summary>
+    public int[] MagicAddEle   { get; } = new int[ElementSize];
+    public int[] MagicAddSize  { get; } = new int[SizeArrSize];
+    public int[] MagicAddClass { get; } = new int[ClassSize];
     /// <summary>Per-race critical-rate bonus, stored ×10 like <c>cri</c>
     /// (<c>bonus2 bCriticalAddRace, r, n</c> → <c>n*10</c>; SP_CRITICAL_ADDRACE).
     /// Added to the crit roll in <c>is_attack_critical</c>.</summary>
@@ -255,6 +262,7 @@ public sealed class EquipBonusBundle
         Array.Clear(AddSize); Array.Clear(SubSize);
         Array.Clear(AddClass); Array.Clear(SubClass);
         Array.Clear(MagicAddRace); Array.Clear(CritAddRace);
+        Array.Clear(MagicAddEle); Array.Clear(MagicAddSize); Array.Clear(MagicAddClass);
         IgnoreDefRace = IgnoreDefClass = 0;
         SkillAtk.Clear(); SkillHeal.Clear(); SkillVarCastrate.Clear(); SkillFixCastrate.Clear();
         HpVanishRate = HpVanishPer = SpVanishRate = SpVanishPer = 0;

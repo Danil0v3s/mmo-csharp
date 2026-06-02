@@ -292,6 +292,11 @@ public static class BonusScriptExtractor
             // per-race critical-rate bonus (rAthena stores cri ×10, so ×10 here).
             case "magicaddrace":    Add(b.MagicAddRace, ParseRace(idxToken), v); break;
             case "criticaladdrace": Add(b.CritAddRace,  ParseRace(idxToken), v * 10); break;
+            // COMBAT-63 — distinct offensive magic ele/size/class arrays (rAthena keeps
+            // these separate from the weapon addele/addsize/addclass).
+            case "magicaddele":     Add(b.MagicAddEle,   ParseElement(idxToken), v); break;
+            case "magicaddsize":    Add(b.MagicAddSize,  ParseSize(idxToken),    v); break;
+            case "magicaddclass":   Add(b.MagicAddClass, ParseClass(idxToken),   v); break;
             // COMBAT-22 — per-skill bonus2 maps (index is a skill name / id).
             case "skillatk":         AddSkillMap(b.SkillAtk, idxToken, v); break;
             // COMBAT-44 — per-skill heal-output % (bonus2 bSkillHeal, sk, n).

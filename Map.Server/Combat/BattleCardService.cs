@@ -52,7 +52,19 @@ public sealed class BattleCardService : IBattleCardService
     private const ushort GN_TRAINING_SWORD = 2474;
 
     private readonly ILogger<BattleCardService> _logger;
-    public BattleCardService(ILogger<BattleCardService> logger) => _logger = logger;
+
+    // COMBAT-63 — lazy IStatusChangeService seam for battle_calc_cardfix_debuff. The SC
+    // service depends on IDamageService → IBattleCalculator → IBattleCardService, so a
+    // direct injection would form a construction cycle; the Lazy defers resolution to the
+    // first combat SC read (same pattern as COMBAT-59 on BattleCalculator).
+    private readonly Lazy<IStatusChangeService>? _scLazy;
+    private IStatusChangeService? Sc => _scLazy?.Value;
+
+    public BattleCardService(ILogger<BattleCardService> logger, Lazy<IStatusChangeService>? scLazy = null)
+    {
+        _logger = logger;
+        _scLazy = scLazy;
+    }
 
     public long CalcCardFix(BattleAttackType attackType, Entity src, Entity target, long damage, bool leftHand,
         BattleElement? attackElement = null)
@@ -81,19 +93,29 @@ public sealed class BattleCardService : IBattleCardService
         if (src is PlayerEntity pc && pc.EquipBonuses is { } ab)
         {
             int cardfix = 1000;
-            // Race: magic uses magic_addrace (COMBAT-21); weapon/misc use addrace.
+            // COMBAT-21/63 — magic reads its own per-category arrays (magic_addrace/
+            // magic_addele/magic_addsize/magic_addclass); weapon/misc use the weapon
+            // addrace/addele/addsize/addclass. rAthena keeps the two sets distinct.
             int raceAdd = isMagic
                 ? IdxAll(ab.MagicAddRace, tRace, (int)BattleRace.All)
                 : IdxAll(ab.AddRace, tRace, (int)BattleRace.All);
             cardfix = cardfix * (100 + raceAdd) / 100;
-            cardfix = cardfix * (100 + IdxAll(ab.AddEle, tEle, (int)BattleElement.All)) / 100;
-            cardfix = cardfix * (100 + IdxAll(ab.AddSize, tSize, (int)BattleSize.All)) / 100;
-            cardfix = cardfix * (100 + IdxAll(ab.AddClass, tClass, (int)Inventory.BattleClassFlag.All)) / 100;
+            cardfix = cardfix * (100 + IdxAll(isMagic ? ab.MagicAddEle : ab.AddEle, tEle, (int)BattleElement.All)) / 100;
+            cardfix = cardfix * (100 + IdxAll(isMagic ? ab.MagicAddSize : ab.AddSize, tSize, (int)BattleSize.All)) / 100;
+            cardfix = cardfix * (100 + IdxAll(isMagic ? ab.MagicAddClass : ab.AddClass, tClass, (int)Inventory.BattleClassFlag.All)) / 100;
             if (!isMagic)
             {
                 // Short = melee (range ≤ 2), long = ranged.
                 int rangeRate = pc.Stats.AttackRange > 2 ? ab.LongAtkRate : ab.ShortAtkRate;
                 cardfix = cardfix * (100 + rangeRate) / 100;
+            }
+            else
+            {
+                // COMBAT-63 — battle_calc_cardfix_debuff (battle.cpp:667): the target's
+                // element-debuff SCs raise the magic damage it takes. rh_ele here is the
+                // resolved magic skill element (COMBAT-19).
+                int debuff = MagicCardfixDebuff(target, attackElement ?? (BattleElement)ss.WeaponElement);
+                if (debuff != 0) cardfix = cardfix * (100 + debuff) / 100;
             }
             damage = ApplyCardfix(damage, cardfix);
         }
@@ -137,6 +159,38 @@ public sealed class BattleCardService : IBattleCardService
     /// </summary>
     private static long ApplyCardfix(long damage, int cardfix)
         => damage - damage * (1000 - Math.Max(0, cardfix)) / 1000;
+
+    /// <summary>
+    /// rAthena <c>battle_calc_cardfix_debuff</c> (battle.cpp:667): the target's
+    /// element-related debuff SCs add a flat % to the attacker's element-fix. SC_MAGIC_POISON
+    /// is element-agnostic (+50); the Climax/Misty/Cloud SCs gate on the attack element.
+    /// Returns 0 when no SC service is wired or no debuff is active.
+    /// </summary>
+    private int MagicCardfixDebuff(Entity target, BattleElement attackElement)
+    {
+        var sc = Sc;
+        if (sc == null) return 0;
+
+        int eleFix = 0;
+        if (sc.Get(target, StatusType.MagicPoison) != null) eleFix += 50;
+        switch (attackElement)
+        {
+            case BattleElement.Fire:
+                if (sc.Get(target, StatusType.ClimaxBloom) != null) eleFix += 100;
+                break;
+            case BattleElement.Earth:
+                if (sc.Get(target, StatusType.ClimaxEarth) != null) eleFix += 100;
+                break;
+            case BattleElement.Water:
+                if (sc.Get(target, StatusType.Mistyfrost) != null) eleFix += 15;
+                break;
+            case BattleElement.Poison:
+                var cp = sc.Get(target, StatusType.CloudPoison);
+                if (cp != null) eleFix += 5 * cp.Val1;
+                break;
+        }
+        return eleFix;
+    }
 
     public long AddMastery(PlayerEntity attacker, Entity target, long damage, BattleAttackType type, int weaponType)
     {

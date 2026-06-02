@@ -269,7 +269,14 @@ builder.Services.AddSingleton<Map.Server.Items.IMapDropService, Map.Server.Items
 // owns the renewal damage formula (battle.cpp:7635 battle_calc_weapon_attack
 // trimmed first slice); DamageService is the calc-then-apply façade that
 // the auto-attack loop, GM commands, and skill handlers funnel through.
-builder.Services.AddSingleton<Map.Server.Combat.IBattleCardService, Map.Server.Combat.BattleCardService>();
+// COMBAT-63 — BattleCardService needs IStatusChangeService for battle_calc_cardfix_debuff;
+// inject it via the same Lazy seam as BattleCalculator (COMBAT-59) to avoid the
+// IStatusChangeService → IDamageService → IBattleCalculator → IBattleCardService cycle.
+builder.Services.AddSingleton<Map.Server.Combat.IBattleCardService>(sp =>
+    new Map.Server.Combat.BattleCardService(
+        sp.GetRequiredService<ILogger<Map.Server.Combat.BattleCardService>>(),
+        scLazy: new Lazy<Map.Server.Status.IStatusChangeService>(
+            sp.GetRequiredService<Map.Server.Status.IStatusChangeService>)));
 builder.Services.AddSingleton<Map.Server.Combat.IBattleReflectService, Map.Server.Combat.BattleReflectService>();
 builder.Services.AddSingleton<Map.Server.Combat.IZoneDamageService, Map.Server.Combat.ZoneDamageService>();
 builder.Services.AddSingleton<Map.Server.Combat.IBattleTargetService, Map.Server.Combat.BattleTargetService>();

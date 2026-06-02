@@ -141,6 +141,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-78 | Skill-crit crit_atk_rate ÷200 variant on the skill-damage path — split from COMBAT-61 |
 | COMBAT-79 | Literal per-accumulator split + DEF-at-end reorder (full battle_calc_weapon_attack fidelity) — split from COMBAT-61 |
 | COMBAT-80 | can-hit GvG/BG gate (guardian/Emperium/immune) + Emperium GvG branch — split from COMBAT-62 (WoE-gated, coordinate FEATURE-15) |
+| COMBAT-81 | Cardfix race2 (bAddRace2/bSubRace2) + status_get_race2 classifier + mob RaceGroups data — split from COMBAT-63 |
+| COMBAT-82 | Cardfix remainder: SubDefEle + magic_subsize + flag-matched subele2/subrace3 + arrow arrays — split from COMBAT-63 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |
