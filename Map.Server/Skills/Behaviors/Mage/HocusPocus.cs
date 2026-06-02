@@ -36,7 +36,10 @@ public sealed class HocusPocus : SkillImpl
         if (abra == null || abra.Count == 0) return;
 
         var picked = abra.PickRandom(Random.Shared);
-        if (picked == null || picked.Value == 0) return;
+        // COMBAT-46 — re-entrancy guard (rAthena skill.cpp:14208
+        // `ud->skill_id != SA_ABRACADABRA`): never dispatch Abracadabra itself, so a
+        // pool that ever contained it can't recurse. The renewal abra_db excludes it.
+        if (picked == null || picked.Value == 0 || picked.Value == SkillIds.SA_ABRACADABRA) return;
         var pickedId = picked.Value;
 
         // PC casters: rAthena sets sd->skillitem so the next skill use
