@@ -1,6 +1,6 @@
 # COMBAT-46 — SA_ABRACADABRA abra_db random-skill selection
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-24 (the 0-cast/0-delay timing is already in place)
 > **Blocks:** none
 > **Filed by:** COMBAT-24 — the random-skill behavior it deferred (timing was the cast-service half).
