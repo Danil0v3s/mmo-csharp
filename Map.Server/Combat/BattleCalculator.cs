@@ -120,6 +120,18 @@ public sealed class BattleCalculator : IBattleCalculator
                 weaponType: s.LeftWeaponType, weaponElement: s.LeftWeaponElement, leftHand: true);
         }
 
+        // COMBAT-61 — bonus bCritAtkRate (battle.cpp:7787). On a critical the
+        // per-hand damage gains +crit_atk_rate %. This is the normal-attack
+        // branch (skill_id == 0 → divisor 100); the skill-crit variant uses
+        // /200 and lives on the skill-damage path (➡️ COMBAT-78). Applied per
+        // hand, PC sources only, and commutes through the left/right split.
+        if (isCritical && srcIsPc
+            && (source as PlayerEntity)?.EquipBonuses is { CritAtkRate: var car } && car != 0)
+        {
+            damage += damage * car / 100;
+            if (damage2 > 0) damage2 += damage2 * car / 100;
+        }
+
         // COMBAT-18 — battle_calc_attack_left_right_hands (battle.cpp:7150):
         // katar off-hand fraction + the thief / kagerou right/left masteries.
         ApplyLeftRightSplit(source, rightWeaponType, ref damage, ref damage2);
@@ -377,6 +389,14 @@ public sealed class BattleCalculator : IBattleCalculator
         if (def1 == -400) def1 = -399; // div-by-zero guard from rAthena
         damage = damage * (4000L + def1) / (4000L + 10L * def1) - vitDef;
 
+        // COMBAT-61 — P.ATK trait stat (battle.cpp:7775). rAthena applies
+        // `wd.damage = floor(wd.damage * (100 + patk) / 100)` per hand to the
+        // accumulator sum *before* the mastery add, PC sources only (the whole
+        // patk/crit block is under `if (sd)`). Off-hand uses the same source
+        // patk. Integer math mirrors rAthena's `(int64)floor` over int64.
+        if (srcIsPc && s.Patk != 0)
+            damage = damage * (100 + s.Patk) / 100;
+
         // Weapon mastery (battle.cpp:2215 battle_addmastery — bonus only).
         // COMBAT-40: pass the per-hand weapon type so the dual-wield off-hand
         // resolves its mastery from the LEFT weapon (rAthena weapontype2).
@@ -415,6 +435,15 @@ public sealed class BattleCalculator : IBattleCalculator
             var pyro = _sc.Get(source, Map.Server.Status.StatusType.Pyroclastic);
             if (pyro != null && pyro.Val2 > 0) damage += pyro.Val2;
         }
+
+        // COMBAT-61 — Res trait-stat physical reduction (battle.cpp:7845):
+        // `damage = damage * (5000 + res) / (5000 + 10*res)`, applied per hand
+        // when the target's Res > 0. Unlike patk/crit this sits OUTSIDE the
+        // `if (sd)` block in rAthena, so it reduces mob attacks too (no
+        // srcIsPc gate). The ignore_res refinement (bIgnoreRes by race,
+        // SC_A_TELUM/SC_POTENT_VENOM) is not yet modeled — ➡️ COMBAT-77.
+        if (t.Res > 0 && damage > 0)
+            damage = damage * (5000L + t.Res) / (5000L + 10L * t.Res);
 
         // Floor to 1 (battle_min_damage).
         if (damage < 1) damage = 1;

@@ -137,6 +137,9 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-74 | Ranger trap detonation: splash AoE + consume + on-hit SC — split from COMBAT-55 |
 | COMBAT-75 | SC_KAGEMUSYA ratio bonus across the Ninja/Kagerou arms — split from COMBAT-57 |
 | COMBAT-76 | skill_db ammo columns (per-skill ammotype/qty) + clif_arrow_fail — split from COMBAT-58 |
+| COMBAT-77 | Res-ignore (by race + SC_A_TELUM/SC_POTENT_VENOM) on the physical Res reduction — split from COMBAT-61 |
+| COMBAT-78 | Skill-crit crit_atk_rate ÷200 variant on the skill-damage path — split from COMBAT-61 |
+| COMBAT-79 | Literal per-accumulator split + DEF-at-end reorder (full battle_calc_weapon_attack fidelity) — split from COMBAT-61 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |
