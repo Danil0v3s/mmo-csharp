@@ -1,6 +1,6 @@
 # COMBAT-61 — Full per-hand renewal weapon-attack accumulator split
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-40 (per-hand mastery/element)
 > **Blocks:** none
 > **Filed by:** COMBAT-40 — its scope item 3 (the full accumulator split) is a separate
