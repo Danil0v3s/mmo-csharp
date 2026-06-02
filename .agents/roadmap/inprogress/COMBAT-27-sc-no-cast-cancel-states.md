@@ -1,6 +1,6 @@
 # COMBAT-27 — SC-based no-cast-cancel states in the damage-interrupt gate
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-08 (done) · **Blocks:** none
 
 ## Problem
