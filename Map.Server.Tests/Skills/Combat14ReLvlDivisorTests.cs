@@ -74,8 +74,10 @@ public class Combat14ReLvlDivisorTests
     [Fact]
     public void DefaultDivisor100_scales_3x_at_level_300()
     {
-        var d99 = Damage(new Bash(), 99, 10);
-        var d300 = Damage(new Bash(), 300, 10);
+        // COMBAT-56 — Bash omits RE_LVL_DMOD; use RK_SONICWAVE (macro-using, default
+        // divisor 100) to exercise the default-divisor scaling.
+        var d99 = Damage(new SonicWave(), 99, 5);
+        var d300 = Damage(new SonicWave(), 300, 5);
         Assert.True(d99 > 0);
         Assert.Equal(d99 * 3, d300);            // 300/100 = 3 (default divisor)
     }

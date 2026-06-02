@@ -251,7 +251,10 @@ public abstract class WeaponSkillImpl : SkillImpl
         var ratio = ctx != null
             ? CalculateSkillRatio(100, src, target, skillLevel, ctx, miscflag)
             : CalculateSkillRatio(100, src, target, skillLevel);
-        ratio = ApplyReLvlDmod(ratio, src, ReLvlDivisor);
+        // COMBAT-56 — a skill whose rAthena ratio arm OMITS RE_LVL_DMOD does not
+        // scale above level 99; force divisor 0 for those (disjoint from the 120/150
+        // per-arm divisor overrides, which ARE skills that use the macro).
+        ratio = ApplyReLvlDmod(ratio, src, ReLvlDmodOmit.OmitsRatioScaling(SkillId) ? 0 : ReLvlDivisor);
         var raw = swing.Total * ratio / 100
                   + CalculateSkillConstantAddition(src, target, skillLevel);
         // COMBAT-22 — bonus2 bSkillAtk: per-skill % damage applied after the

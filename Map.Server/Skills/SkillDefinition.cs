@@ -47,7 +47,9 @@ public enum SkillInf2 : ulong
     ShowSkillScale    = 1UL << 13,
     AllowReproduce    = 1UL << 14,
     AllowPlagiarize   = 1UL << 15,
-    DisableLvDmg      = 1UL << 16, // INF2_DISABLELVDMG — skip the renewal RE_LVL_DMOD base-level scaling
+    // COMBAT-56: the speculative INF2_DISABLELVDMG flag is dropped — it has no rAthena
+    // data source in this checkout. The per-arm RE_LVL_DMOD omit is encoded as data in
+    // Map.Server.Skills.ReLvlDmodOmit (the ticket's "internal omit marker").
 }
 
 /// <summary>

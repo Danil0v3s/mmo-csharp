@@ -661,10 +661,10 @@ public sealed class BattleCalculator : IBattleCalculator
         if ((source as PlayerEntity)?.EquipBonuses is { MatkRate: var mr } && mr != 0)
             damage = damage * (100 + mr) / 100;
 
-        // COMBAT-03: RE_LVL_MDMOD (config/const.hpp) — renewal base-level magic
-        // scaling above level 99. The per-skill INF2_DISABLELVDMG opt-out needs
-        // skill_db Inf2 flags loaded (not yet wired) — tracked in COMBAT-14.
-        if (source.Level > 99)
+        // COMBAT-03/56: RE_LVL_DMOD (config/const.hpp) — renewal base-level magic
+        // scaling above level 99, but ONLY for arms that use the macro. A magic skill
+        // whose battle_calc_attack_skill_ratio arm omits it (ReLvlDmodOmit) stays flat.
+        if (source.Level > 99 && !Map.Server.Skills.ReLvlDmodOmit.OmitsRatioScaling(skillId))
             damage = damage * source.Level / 100;
 
         // COMBAT-12: ATK_ADD — the plugin's CalculateSkillConstantAddition
@@ -730,11 +730,11 @@ public sealed class BattleCalculator : IBattleCalculator
         long baseDmg = source.Level + s.IntStat;
         long damage = Math.Max(1, baseDmg * Math.Max(1, ratePerLevel) / 100);
 
-        // COMBAT-03: RE_LVL_DMOD (standard misc variant) — base-level scaling
-        // above 99. Ranger-trap skills use the RE_LVL_TMDMOD variant
-        // (damage*150/100 + damage*lv/100) + the INF2_DISABLELVDMG opt-out —
-        // both tracked in COMBAT-14.
-        if (source.Level > 99)
+        // COMBAT-03/56: RE_LVL_MDMOD (standard misc variant) — base-level scaling
+        // above 99, but ONLY for arms that use the macro. A misc skill whose
+        // battle_calc_misc_attack arm omits it (ReLvlDmodOmit.OmitsMiscScaling) stays
+        // flat. Ranger traps use the RE_LVL_TMDMOD variant in TrapDamage (COMBAT-55).
+        if (source.Level > 99 && !Map.Server.Skills.ReLvlDmodOmit.OmitsMiscScaling(skillId))
             damage = damage * source.Level / 100;
 
         // COMBAT-19 — element from the skill (battle_get_misc_element,

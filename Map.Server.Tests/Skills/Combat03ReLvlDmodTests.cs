@@ -26,11 +26,13 @@ public class Combat03ReLvlDmodTests
         public BattleDamage CalcMiscAttack(Entity s, Entity t, ushort i, ushort l, int r) => new() { Damage = Swing };
     }
 
-    /// <summary>Fixed 200% ratio + configurable RE_LVL divisor, for isolating the modifier.</summary>
+    /// <summary>Fixed 200% ratio + configurable RE_LVL divisor, for isolating the modifier.
+    /// Uses RK_SONICWAVE — a skill whose rAthena arm USES RE_LVL_DMOD (not in the
+    /// COMBAT-56 omit set), so the divisor scaling is observable.</summary>
     private sealed class FixedRatioSkill : WeaponSkillImpl
     {
         private readonly int _div;
-        public FixedRatioSkill(int div) : base(SkillIds.SM_BASH) => _div = div;
+        public FixedRatioSkill(int div) : base(SkillIds.RK_SONICWAVE) => _div = div;
         public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort lv) => 200;
         protected override int ReLvlDivisor => _div;
     }
@@ -61,16 +63,30 @@ public class Combat03ReLvlDmodTests
     }
 
     [Fact]
-    public void Bash_real_plugin_scales_at_level_175()
+    public void Bash_omits_relvldmod_and_stays_flat_above_99()
     {
-        // Bash lv10 ratio = 400%. At lv99: 1000×400% = 4000. At lv175: ×175/100 → 7000.
+        // COMBAT-56 — SM_BASH's rAthena arm OMITS RE_LVL_DMOD, so Bash does NOT scale
+        // above level 99. Bash lv10 ratio = 400% → 1000×400% = 4000 at every level.
         var (ex99, ctx99) = Fixed(); ex99.Caster.Level = 99;
         new Bash().CastendDamageId(ex99.Caster, ex99.Target, 10, ctx99);
         Assert.Equal(4000, LastDamage(ex99));
 
         var (ex175, ctx175) = Fixed(); ex175.Caster.Level = 175;
         new Bash().CastendDamageId(ex175.Caster, ex175.Target, 10, ctx175);
-        Assert.Equal(4000L * 175 / 100, LastDamage(ex175)); // 7000
+        Assert.Equal(4000, LastDamage(ex175)); // flat — no >99 scaling
+    }
+
+    [Fact]
+    public void Non_omit_plugin_still_scales_above_99()
+    {
+        // RK_SONICWAVE uses the macro (default divisor 100) → scales by lv/100.
+        var (ex99, ctx99) = Fixed(); ex99.Caster.Level = 99;
+        new Map.Server.Skills.Behaviors.Swordman.SonicWave().CastendDamageId(ex99.Caster, ex99.Target, 5, ctx99);
+        var d99 = LastDamage(ex99);
+
+        var (ex175, ctx175) = Fixed(); ex175.Caster.Level = 175;
+        new Map.Server.Skills.Behaviors.Swordman.SonicWave().CastendDamageId(ex175.Caster, ex175.Target, 5, ctx175);
+        Assert.Equal(d99 * 175 / 100, LastDamage(ex175));
     }
 
     [Fact]

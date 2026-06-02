@@ -1,6 +1,6 @@
 # COMBAT-56 — Per-arm RE_LVL_DMOD audit: disable scaling on macro-omitting arms
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-02) · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-35, COMBAT-12 (magic-pipeline unification)
 > **Blocks:** none
 > **Filed by:** COMBAT-35 — the blanket weapon default-100 + unconditional magic/misc
@@ -36,21 +36,33 @@ from a flag.
 
 ## Scope
 
-- [ ] Audit `battle_calc_attack_skill_ratio` (weapon + magic) + `battle_calc_misc_attack`
-      for the arms that OMIT `RE_LVL_DMOD`/`RE_LVL_MDMOD`; for each, disable scaling
-      (`ReLvlDivisor => 0` on the weapon plugin; a per-skill opt-out the magic/misc
-      paths honor).
-- [ ] Replace the unconditional magic/misc `×lv/100` with per-arm application (couple
-      with COMBAT-12's magic-pipeline unification so magic plugins carry per-arm
-      `RE_LVL_DMOD`).
-- [ ] Repurpose or drop `SkillInf2.DisableLvDmg` (it has no rAthena data source — use
-      it as the internal "this arm omits RE_LVL_DMOD" marker, or remove it).
-- [ ] Update the COMBAT-03 blanket-scaling tests to the per-arm expectations.
+- [x] Audited `battle_calc_attack_skill_ratio` (weapon + magic) + `battle_calc_misc_attack`
+      for the arms that OMIT the macro (scan of battle.cpp: 159 weapon/magic + 4 misc skills
+      resolvable to C# `SkillIds`). Encoded as the data-driven `ReLvlDmodOmit` set (the
+      ticket's "internal omit marker"); `SkillImpl.ComputeSkillDamage` forces divisor 0 for
+      `OmitsRatioScaling(SkillId)`.
+- [x] Replaced the unconditional magic/misc `×lv/100` with the per-arm gate:
+      `CalcMagicAttack` skips it for `OmitsRatioScaling`, `CalcMiscAttack` for `OmitsMiscScaling`.
+- [x] Dropped `SkillInf2.DisableLvDmg` (no rAthena data source; superseded by `ReLvlDmodOmit`).
+- [x] Updated the COMBAT-03/14 blanket-scaling tests to per-arm expectations (Bash/SM_BASH
+      omits → flat; RK_SONICWAVE macro-using → scales).
 
 ## Done criteria
 
 - ➡️ from COMBAT-35: a weapon/magic/misc skill whose rAthena arm omits the macro
-  deals identical damage at level 99 and 175.
+  deals identical damage at level 99 and 175. ✅ — Bash flat 99↔175; the omit-set membership
+  + magic/misc gates verified; non-omit (SonicWave) still scales.
+
+## History
+
+- 2026-06-02 — Per-arm RE_LVL_DMOD: replaced the blanket weapon default-100 + unconditional
+  magic/misc `×lv/100` with the data-driven `ReLvlDmodOmit` set (159 weapon/magic + 4 misc skills
+  scanned from battle.cpp, resolved to `SkillIds`). Wired into `SkillImpl.ComputeSkillDamage`
+  (divisor→0 for omit skills) + `BattleCalculator.CalcMagicAttack`/`CalcMiscAttack` (gate the
+  >99 scaling). Dropped the dead `SkillInf2.DisableLvDmg`. Updated Combat03/Combat14 tests
+  (Bash now correctly flat); new `Combat56ReLvlDmodOmitTests` (10). Full suite 4019 pass
+  (1 fail = pre-existing INFRA-11 replay gate). No follow-ups (the 15 unresolvable rAthena
+  labels have no C# port → never reach the scaling path).
 
 ## Test plan
 
