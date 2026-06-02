@@ -1,6 +1,6 @@
 # COMBAT-48 — AL_WARP destination resolution + CZ_SELECT_WARPPOINT wiring
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-26 (CastEndMap AL_TELEPORT + the warp-service seam)
 > **Blocks:** none
 > **Filed by:** COMBAT-26 — the AL_WARP + packet-flow parts it deferred.
