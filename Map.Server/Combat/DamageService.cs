@@ -120,7 +120,8 @@ public sealed class DamageService : IDamageService
         // COMBAT-25 — defensive ground-unit intercept. A landed swing on a
         // Safety Wall cell (melee) or Pneuma cell (ranged) is fully blocked.
         if (damage.DidHit && damage.Total > 0
-            && TryGroundUnitBlock(target, BattleCalculator.IsShortRange(source)))
+            && (TryGroundUnitBlock(target, BattleCalculator.IsShortRange(source))
+                || IsBasilicaImmune(target, source)))
         {
             damage.Damage = 0;
             damage.Damage2 = 0;
@@ -682,6 +683,20 @@ public sealed class DamageService : IDamageService
                 return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// COMBAT-49 — rAthena <c>battle_calc_damage</c> (RENEWAL): a target with
+    /// <c>SC_BASILICA_CELL</c> takes no damage from an attack, unless the attacker
+    /// has <c>MD_STATUSIMMUNE</c> mode (boss/MVP). The <c>SP_SOULEXPLOSION</c>
+    /// skill exemption is the caller's responsibility (only the skill funnel knows
+    /// the skill id).
+    /// </summary>
+    public bool IsBasilicaImmune(Entity target, Entity source)
+    {
+        if (_sc == null) return false;
+        if (_sc.Get(target, Map.Server.Status.StatusType.BasilicaCell) == null) return false;
+        return (source.Stats.Mode & Map.Server.Status.MobMode.StatusImmune) == 0;
     }
 
     private void BroadcastAct(Entity target, Entity? source, int damage, DamageActionType action, int hits = 1, int damage2 = 0)

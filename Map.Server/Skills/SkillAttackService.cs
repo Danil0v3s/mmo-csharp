@@ -68,6 +68,12 @@ public sealed class SkillAttackService : ISkillAttackService
         if (attackType == BattleAttackType.Weapon && _damage.TryGroundUnitBlock(target, weaponShort))
             return 0;
 
+        // COMBAT-49 — SC_BASILICA_CELL sanctuary blocks all attack damage
+        // (weapon / magic / misc), unless the skill is SP_SOULEXPLOSION. rAthena
+        // battle_calc_damage RENEWAL branch.
+        if (skillId != SkillIds.SP_SOULEXPLOSION && _damage.IsBasilicaImmune(target, source))
+            return 0;
+
         // COMBAT-42 — weapon-skill plant/zone is computed post-ratio inside this
         // funnel too (CalcMagic/MiscDamage already ran their own plant/zone stage).
         if (attackType == BattleAttackType.Weapon && damage > 0)

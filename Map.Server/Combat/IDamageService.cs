@@ -45,4 +45,13 @@ public interface IDamageService
     /// blocked. Default false for test doubles that don't model ground units.
     /// </summary>
     bool TryGroundUnitBlock(Entity target, bool isShortRange) => false;
+
+    /// <summary>
+    /// COMBAT-49 — rAthena <c>battle_calc_damage</c> (RENEWAL): a target carrying
+    /// <c>SC_BASILICA_CELL</c> takes no damage from any attack (the sanctuary cell),
+    /// unless the attacker is in <c>MD_STATUSIMMUNE</c> mode (boss / MVP). The
+    /// <c>SP_SOULEXPLOSION</c> skill exemption is applied by the skill-funnel caller.
+    /// Returns true when the hit should be blocked. Default false for test doubles.
+    /// </summary>
+    bool IsBasilicaImmune(Entity target, Entity source) => false;
 }
