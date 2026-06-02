@@ -1,6 +1,6 @@
 # COMBAT-47 — Land Protector place-gate + skill-path ground-unit intercept
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-25 (Safety Wall/Pneuma block + the SkillUnitGroup pool)
 > **Blocks:** none
 > **Filed by:** COMBAT-25 — the Land Protector gate (needs UF_NOLP) + the skill-attack intercept.
