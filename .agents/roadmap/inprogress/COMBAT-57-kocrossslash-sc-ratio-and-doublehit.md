@@ -1,6 +1,6 @@
 # COMBAT-57 — KO_JYUMONJIKIRI SC_JYUMONJIKIRI ratio bonus + position-shift/double-hit
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-35
 > **Blocks:** none
 > **Filed by:** COMBAT-35 — KoCrossSlash's pre-existing unfinished behavior (cleared its
