@@ -1,6 +1,6 @@
 # COMBAT-21 — Advanced cardfix (debuff, ignore-def, magic/critical-add-race, per-category RE)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-06 (the bonus2 parse for the new fields) · **Blocks:** none
 > **Filed by:** COMBAT-05 (axes 2 + 3 + the per-category refinement).
 
