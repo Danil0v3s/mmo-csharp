@@ -1,6 +1,6 @@
 # COMBAT-35 — RE_LVL_DMOD per-arm completeness (remaining divisors + trap TMDMOD + macro-omitting disable)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-03 · **Blocks:** none
 > **Filed by:** COMBAT-14 on 2026-06-02 (the parts beyond the clean ComputeSkillDamage subset).
 
