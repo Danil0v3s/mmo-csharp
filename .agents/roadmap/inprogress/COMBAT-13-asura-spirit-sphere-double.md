@@ -1,6 +1,6 @@
 # COMBAT-13 — Asura Strike renewal ×2 when cast with >5 spirit spheres
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Filed by:** COMBAT-02 on 2026-06-01 (ratio + constant landed; this bump did not).
 
