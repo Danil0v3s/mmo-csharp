@@ -101,6 +101,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-38 | Per-skill div_ switch arms (Pierce/Backstab/Windcutter/Bowling Bash …) — split from COMBAT-17 |
 | COMBAT-39 | Multi-hit plugin GetMultiHitCount sweep (Double Strafe/Triple Attack …) — split from COMBAT-17 |
 | COMBAT-40 | Left-hand renewal accumulator fidelity (per-hand mastery/element) — split from COMBAT-18 |
+| COMBAT-41 | Bespoke per-skill magic/misc element overrides (Psychic Wave/Adoramus/Hell Inferno …) — split from COMBAT-19 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

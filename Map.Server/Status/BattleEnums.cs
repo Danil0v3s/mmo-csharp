@@ -44,6 +44,13 @@ public enum BattleElement : sbyte
     Undead,
     All,
     Max,
+    // COMBAT-19 — skill-element sentinels (rAthena e_element ELE_WEAPON=12,
+    // ELE_ENDOWED=13, ELE_RANDOM=14, map.hpp:394). These are NOT real elements
+    // and must never index an element array (size = Max); they are resolved to
+    // a concrete element per cast by BattleElementService before use.
+    Weapon,   // skill takes the attacker's weapon element
+    Endowed,  // skill takes the attacker's endow-SC element
+    Random,   // skill rolls a random element each cast
 }
 
 /// <summary>

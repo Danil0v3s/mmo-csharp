@@ -77,6 +77,11 @@ public static class SkillDbLoader
         "Dark" => BattleElement.Dark,
         "Ghost" => BattleElement.Ghost,
         "Undead" => BattleElement.Undead,
+        // COMBAT-19 — skill-element sentinels resolved per cast at runtime.
+        "All" => BattleElement.All,
+        "Weapon" => BattleElement.Weapon,
+        "Endowed" => BattleElement.Endowed,
+        "Random" => BattleElement.Random,
         _ => BattleElement.Neutral,
     };
 

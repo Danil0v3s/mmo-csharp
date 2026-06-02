@@ -1,4 +1,5 @@
 using Map.Server.Entities;
+using Map.Server.Status;
 
 namespace Map.Server.Combat;
 
@@ -29,8 +30,13 @@ public interface IBattleCardService
     /// percent modifiers (race, element, size, class) to
     /// <paramref name="damage"/>. <paramref name="attackType"/>
     /// is the rAthena BF_WEAPON / BF_MAGIC / BF_MISC flag.
+    /// <para>COMBAT-19: <paramref name="attackElement"/> overrides the
+    /// attacker's element for the defender <c>bSubEle</c> lookup — magic/misc
+    /// pass the resolved skill element; null falls back to the rh weapon
+    /// element (correct for weapon attacks).</para>
     /// </summary>
-    long CalcCardFix(BattleAttackType attackType, Entity src, Entity target, long damage, bool leftHand);
+    long CalcCardFix(BattleAttackType attackType, Entity src, Entity target, long damage, bool leftHand,
+        BattleElement? attackElement = null);
 
     /// <summary>
     /// rAthena <c>battle_addmastery</c>. Add the attacker's

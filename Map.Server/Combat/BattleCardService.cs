@@ -38,7 +38,8 @@ public sealed class BattleCardService : IBattleCardService
     private readonly ILogger<BattleCardService> _logger;
     public BattleCardService(ILogger<BattleCardService> logger) => _logger = logger;
 
-    public long CalcCardFix(BattleAttackType attackType, Entity src, Entity target, long damage, bool leftHand)
+    public long CalcCardFix(BattleAttackType attackType, Entity src, Entity target, long damage, bool leftHand,
+        BattleElement? attackElement = null)
     {
         if (damage == 0) return 0;
 
@@ -89,9 +90,10 @@ public sealed class BattleCardService : IBattleCardService
             if (aRace >= 0 && aRace < db.SubRace.Length) mult -= db.SubRace[aRace];
             mult -= db.SubRace[(int)BattleRace.All];
 
-            // Attacker's attack element = rh weapon element (rh_ele). The
-            // proper per-skill magic/misc element lands in COMBAT-19.
-            var aEle = (int)ss.WeaponElement;
+            // Attacker's attack element. COMBAT-19: magic/misc pass the resolved
+            // skill element via attackElement; weapon attacks (null) use the rh
+            // weapon element (rh_ele).
+            var aEle = (int)(attackElement ?? (BattleElement)ss.WeaponElement);
             if (aEle >= 0 && aEle < db.SubEle.Length) mult -= db.SubEle[aEle];
             mult -= db.SubEle[(int)BattleElement.All];
 

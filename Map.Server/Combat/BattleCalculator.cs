@@ -25,13 +25,19 @@ public sealed class BattleCalculator : IBattleCalculator
     private readonly IBattleCardService? _cards;
     private readonly IStatusChangeService? _sc;
     private readonly IMadoGearService? _mado;
+    // COMBAT-19 — per-skill element resolver (battle_get_magic/misc_element).
+    // Optional: when null, magic/misc fall back to the caster's weapon element
+    // (the legacy behavior), so existing call sites/tests are unaffected.
+    private readonly IBattleElementService? _elements;
 
-    public BattleCalculator(Random? rng = null, IBattleCardService? cards = null, IStatusChangeService? sc = null, IMadoGearService? mado = null)
+    public BattleCalculator(Random? rng = null, IBattleCardService? cards = null, IStatusChangeService? sc = null,
+        IMadoGearService? mado = null, IBattleElementService? elements = null)
     {
         _rng = rng ?? Random.Shared;
         _cards = cards;
         _sc = sc;
         _mado = mado;
+        _elements = elements;
     }
 
     public BattleDamage CalcWeaponAttack(Entity source, Entity target)
@@ -478,10 +484,12 @@ public sealed class BattleCalculator : IBattleCalculator
         if (constantAddition > 0)
             damage += constantAddition;
 
-        // Element table — magic uses the caster's atk element OR the skill's
-        // declared element. The full per-skill element lookup lands later;
-        // for now we use the caster's weapon element (same as weapon path).
-        var atkEle = s.WeaponElement == 0 ? BattleElement.Neutral : (BattleElement)s.WeaponElement;
+        // COMBAT-19 — element from the skill (battle_get_magic_element,
+        // battle.cpp:3582): skill_db element, with ELE_WEAPON → weapon element,
+        // ELE_ENDOWED → endow, ELE_RANDOM → random. Falls back to the caster's
+        // weapon element when no resolver is wired.
+        var atkEle = _elements?.GetMagicElement(source, skillId, skillLevel)
+            ?? (s.WeaponElement == 0 ? BattleElement.Neutral : (BattleElement)s.WeaponElement);
         damage = damage * ElementTable.GetRate(atkEle, t.DefenseElement, t.ElementLevel) / 100;
         if (damage < 0) damage = 0;
 
@@ -495,9 +503,11 @@ public sealed class BattleCalculator : IBattleCalculator
             damage -= mdef2;
         }
 
-        // Card fix (per-target race/element/size/class additions).
+        // Card fix (per-target race/element/size/class additions). COMBAT-19:
+        // pass the resolved skill element so the defender's bSubEle lookup uses
+        // the magic element, not the caster's weapon element.
         if (_cards != null)
-            damage = _cards.CalcCardFix(BattleAttackType.Magic, source, target, damage, leftHand: false);
+            damage = _cards.CalcCardFix(BattleAttackType.Magic, source, target, damage, leftHand: false, attackElement: atkEle);
 
         if (damage < 1) damage = 1;
         result.Damage = damage;
@@ -528,12 +538,16 @@ public sealed class BattleCalculator : IBattleCalculator
         if (source.Level > 99)
             damage = damage * source.Level / 100;
 
-        var atkEle = s.WeaponElement == 0 ? BattleElement.Neutral : (BattleElement)s.WeaponElement;
+        // COMBAT-19 — element from the skill (battle_get_misc_element,
+        // battle.cpp:3675): skill_db element, with ELE_WEAPON / ELE_ENDOWED →
+        // Neutral and ELE_RANDOM → random.
+        var atkEle = _elements?.GetMiscElement(source, skillId, skillLevel)
+            ?? (s.WeaponElement == 0 ? BattleElement.Neutral : (BattleElement)s.WeaponElement);
         damage = damage * ElementTable.GetRate(atkEle, t.DefenseElement, t.ElementLevel) / 100;
         if (damage < 0) damage = 0;
 
         if (_cards != null)
-            damage = _cards.CalcCardFix(BattleAttackType.Misc, source, target, damage, leftHand: false);
+            damage = _cards.CalcCardFix(BattleAttackType.Misc, source, target, damage, leftHand: false, attackElement: atkEle);
 
         if (damage < 1) damage = 1;
         result.Damage = damage;

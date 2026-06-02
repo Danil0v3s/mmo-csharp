@@ -267,11 +267,16 @@ builder.Services.AddSingleton<Map.Server.Combat.IZoneDamageService, Map.Server.C
 builder.Services.AddSingleton<Map.Server.Combat.IBattleTargetService, Map.Server.Combat.BattleTargetService>();
 builder.Services.AddSingleton<Map.Server.Combat.IDelayedDamageService, Map.Server.Combat.DelayedDamageService>();
 builder.Services.AddSingleton<Map.Server.Combat.IBattleEffectsService, Map.Server.Combat.BattleEffectsService>();
-builder.Services.AddSingleton<Map.Server.Combat.IBattleElementService, Map.Server.Combat.BattleElementService>();
+// COMBAT-19 — BattleElementService resolves per-skill magic/misc element from
+// skill_db, so it needs ISkillDb (registered below; resolution is lazy at use).
+builder.Services.AddSingleton<Map.Server.Combat.IBattleElementService>(sp =>
+    new Map.Server.Combat.BattleElementService(sp.GetRequiredService<Map.Server.Skills.ISkillDb>()));
 builder.Services.AddSingleton<Map.Server.Combat.IBattleConfigService, Map.Server.Combat.BattleConfigService>();
 builder.Services.AddSingleton<Map.Server.Combat.IBattleZoneGateService, Map.Server.Combat.BattleZoneGateService>();
 builder.Services.AddSingleton<IBattleCalculator>(sp =>
-    new BattleCalculator(rng: null, cards: sp.GetRequiredService<Map.Server.Combat.IBattleCardService>()));
+    new BattleCalculator(rng: null, cards: sp.GetRequiredService<Map.Server.Combat.IBattleCardService>(),
+        // COMBAT-19 — resolve per-skill magic/misc element from skill_db.
+        elements: sp.GetRequiredService<Map.Server.Combat.IBattleElementService>()));
 builder.Services.AddSingleton<IDamageService, DamageService>();
 
 // PC death + respawn (pc.cpp:9633 pc_dead + pc.cpp:9515 pc_respawn).
