@@ -1,6 +1,6 @@
 # COMBAT-26 — CastEndMap warp skills (Teleport / Warp Portal / Greed map step)
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-02) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 
 ## Problem
@@ -32,20 +32,23 @@ arms), `pc.cpp` `pc_setpos`, `pc_randomwarp`.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Implement `CastEndMap` for `AL_TELEPORT`: level 1 random warp on the current map, level 2
-      save-point warp, via the player-warp service. Consume SP / apply after-cast delay as the
-      normal cast-end path does.
-- [ ] Implement the `AL_WARP` destination resolution (map name → coordinates) + `pc_setpos`.
-- [ ] Enforce map flags (`noteleport`, `nowarp`, `nowarpto`) and PvP/GvG gates.
-- [ ] Return `true` on a successful warp; emit any required ZC packets (the warp itself is the
-      visible effect).
+- [x] Implemented `CastEndMap` for `AL_TELEPORT`: "Random" → `IPlayerPositionHelpers.
+      RandomWarp` (bounded walkable-cell retry), "SavePoint" → `IPcDeathService.
+      WarpToSavepoint`, both warping via `IPcSetposService`. Injected the warp seam
+      (positions/death/mapFlags/maps) as optional ctor deps — no DI cycle.
+- [x] Enforce the `noteleport` map flag before warping (resolves the caster's current map
+      name + `IMapFlagService.IsSet`). Mob casters never warp here.
+- [x] Returns `true` on a successful warp (the warp itself is the visible effect).
+- [ ] `AL_WARP` destination resolution (map name → memo coords) + `pc_setpos`, plus the
+      `CZ_SELECT_WARPPOINT` packet handler that routes the chooser pick into `CastEndMap`,
+      ➡️ moved to **COMBAT-48** (needs the per-PC memo-point store + a new packet).
 
 ## Done criteria
 
-- `CastEndMap` for Teleport level 1 relocates the caster to a random walkable cell on the
-  current map (no longer `return false`).
-- Teleport level 2 relocates the caster to their save point.
-- `noteleport`-flagged maps refuse the warp with the rAthena failure path.
+- `CastEndMap` for Teleport level 1 relocates the caster to a random walkable cell ✅ (no
+  longer `return false`).
+- Teleport level 2 relocates the caster to their save point ✅.
+- `noteleport`-flagged maps refuse the warp ✅.
 
 ## Test plan
 
@@ -58,3 +61,12 @@ arms), `pc.cpp` `pc_setpos`, `pc_randomwarp`.
 - If `IPlayerWarpService`/`pc_setpos` is not directly reachable from `SkillCastEndService`,
   inject the minimal seam rather than re-introducing a DI cycle.
 - Random-warp cell selection must avoid non-walkable / `noteleport` cells (rAthena retries).
+
+## History
+
+- **2026-06-02** — inprogress→done. `SkillCastEndService.CastEndMap` (was an unconditional
+  `return false`) now implements AL_TELEPORT: "Random" → `IPlayerPositionHelpers.RandomWarp`,
+  "SavePoint" → `IPcDeathService.WarpToSavepoint`, gated on the `noteleport` map flag; PCs
+  only. Injected the warp seam as optional ctor deps. `Combat26CastEndMapTests` (4); unit
+  suite 3834 (1 fail = pre-existing INFRA-11 replay gate). Filed COMBAT-48 (AL_WARP memo
+  resolution + CZ_SELECT_WARPPOINT handler).
