@@ -1,6 +1,6 @@
 # COMBAT-24 — Per-skill cast/delay tables + SA_ABRACADABRA
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-22 (the bonus2 per-skill maps) · **Blocks:** none
 > **Filed by:** COMBAT-07 (the per-skill + abra parts it scoped but didn't reach).
 
