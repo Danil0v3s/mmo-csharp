@@ -32,9 +32,13 @@ public sealed class BattleCalculator : IBattleCalculator
     // COMBAT-20 — GvG/BG zone damage scaling (battle_calc_attack_gvg_bg).
     // Optional: null on a non-zone-aware build → no scaling.
     private readonly IZoneDamageService? _zone;
+    // COMBAT-37 — live equipped-ammo count for the Fear Breeze div cap.
+    // Optional: null → Fear Breeze (which requires ammo > 1) can't trigger.
+    private readonly Map.Server.Inventory.IAmmoService? _ammo;
 
     public BattleCalculator(Random? rng = null, IBattleCardService? cards = null, IStatusChangeService? sc = null,
-        IMadoGearService? mado = null, IBattleElementService? elements = null, IZoneDamageService? zone = null)
+        IMadoGearService? mado = null, IBattleElementService? elements = null, IZoneDamageService? zone = null,
+        Map.Server.Inventory.IAmmoService? ammo = null)
     {
         _rng = rng ?? Random.Shared;
         _cards = cards;
@@ -42,6 +46,7 @@ public sealed class BattleCalculator : IBattleCalculator
         _mado = mado;
         _elements = elements;
         _zone = zone;
+        _ammo = ammo;
     }
 
     public BattleDamage CalcWeaponAttack(Entity source, Entity target)
@@ -126,7 +131,7 @@ public sealed class BattleCalculator : IBattleCalculator
         // = 2 and DAMAGE_DIV_FIX multiplies the per-hit damage by the count
         // (battle.cpp:4365). DAMAGE_DIV_FIX only multiplies wd.damage (the
         // right hand), so Damage2 is untouched here.
-        CalcMultiAttack(source, result);
+        CalcMultiAttack(source, target, result);
 
         // Wave 66 / Track B — populate Damage.dmotion + Damage.walkdelay.
         // rAthena: Damage struct's dmotion is the target's Amotion (capped
@@ -191,7 +196,7 @@ public sealed class BattleCalculator : IBattleCalculator
     /// is doubled (positive-div <c>DAMAGE_DIV_FIX</c>). A critical double-swing
     /// keeps the critical animation but still renders 2 hits.
     /// </summary>
-    private void CalcMultiAttack(Entity source, BattleDamage result)
+    private void CalcMultiAttack(Entity source, Entity target, BattleDamage result)
     {
         // sd && !skill_id — auto-attack, PC only. Mob double-attack is
         // handled by mob skill data, not this branch.
@@ -202,6 +207,51 @@ public sealed class BattleCalculator : IBattleCalculator
         if (!result.DidHit || result.Total <= 0) return;
 
         int weapon = sd.WeaponType;
+
+        // rAthena battle_calc_multi_attack runs the branches in order, each
+        // gated on div_ == 1 (no stacking): Fear Breeze → double-attack →
+        // Chain Action (battle.cpp:4400-4467).
+        if (result.Hits == 1) TryFearBreeze(sd, weapon, result);
+        if (result.Hits == 1) TryDoubleAttack(sd, weapon, result);
+        if (result.Hits == 1) TryChainAction(sd, target, weapon, result);
+    }
+
+    /// <summary>
+    /// SC_FEARBREEZE auto-attack multi-hit (battle.cpp:4403): bow + equipped ammo
+    /// &gt; 1. A single <c>rnd()%100</c> roll picks the hit count via the val1
+    /// tier ladder (val5 ≤4%→5, ≤7%→4, ≤10%→3, ≤13%→2; lower val1 starts further
+    /// down the ladder), then caps div by the ammo amount.
+    /// </summary>
+    private void TryFearBreeze(PlayerEntity sd, int weapon, BattleDamage result)
+    {
+        if (weapon != Map.Server.Inventory.WeaponTypeCodes.Bow) return;
+        var fb = _sc?.Get(sd, StatusType.Fearbreeze);
+        if (fb == null) return;
+        int ammo = _ammo?.GetEquippedAmmoAmount(sd) ?? 0;
+        if (ammo <= 1) return;
+
+        int chance = _rng.Next(100);
+        int div = 1;
+        // Tier ladder with fall-through (rAthena's switch fallthrough): a higher
+        // val1 first tries its own tier, then the lower tiers' wider windows.
+        if (fb.Val1 >= 5 && chance < 4) div = 5;
+        else if (fb.Val1 >= 4 && chance < 7) div = 4;
+        else if (fb.Val1 >= 3 && chance < 10) div = 3;
+        else if (fb.Val1 >= 1 && chance < 13) div = 2;
+        if (div <= 1) return;
+
+        div = Math.Min(div, ammo);          // div_ = min(div_, ammo amount)
+        fb.Val4 = div - 1;                  // rAthena stores val4 = div_-1
+        if (div <= 1) return;
+        ApplyMultiHit(result, div);
+    }
+
+    /// <summary>
+    /// TF_DOUBLE / <c>bonus.double_rate</c> / SC_KAGEMUSYA double-attack
+    /// (battle.cpp:4437, COMBAT-17). skill_get_num(TF_DOUBLE) = 2.
+    /// </summary>
+    private void TryDoubleAttack(PlayerEntity sd, int weapon, BattleDamage result)
+    {
         bool isFist = Map.Server.Inventory.WeaponTypeCodes.IsFist(weapon);
         int tfDoubleLv = sd.LearnedSkills.TryGetValue(Map.Server.Skills.SkillIds.TF_DOUBLE, out var lv) ? lv : 0;
         var kagemusya = _sc?.Get(sd, StatusType.Kagemusya);
@@ -219,13 +269,41 @@ public sealed class BattleCalculator : IBattleCalculator
             : Math.Max(7 * tfDoubleLv, doubleRate); // RENEWAL
 
         if (_rng.Next(100) >= maxRate) return;
+        ApplyMultiHit(result, 2);
+    }
 
-        // skill_get_num(TF_DOUBLE) = 2; positive div → multiply damage.
-        result.Hits = 2;
-        result.Damage *= 2;
-        // DMG_MULTI_HIT type, preserving the critical animation when the
-        // swing crit (rAthena sets type=DMG_MULTI_HIT in multi_attack but
-        // is_attack_critical later promotes it to DMG_CRITICAL).
+    /// <summary>
+    /// Gunslinger Chain Action (battle.cpp:4459): revolver + GS_CHAINACTION, or
+    /// SC_E_CHAIN (Eternal Chain) val1. <c>rnd()%100 &lt; 5*lv</c> →
+    /// div_ = skill_get_num(GS_CHAINACTION) = 2, and starts SC_QD_SHOT_READY for
+    /// skill_get_time(RL_QD_SHOT,1) = 1500 ms (val1 = target id).
+    /// </summary>
+    private void TryChainAction(PlayerEntity sd, Entity target, int weapon, BattleDamage result)
+    {
+        int skillLv = 0;
+        if (weapon == Map.Server.Inventory.WeaponTypeCodes.Revolver
+            && sd.LearnedSkills.TryGetValue(Map.Server.Skills.SkillIds.GS_CHAINACTION, out var ca) && ca > 0)
+            skillLv = ca;
+        else if (_sc?.Get(sd, StatusType.EChain) is { Val1: > 0 } echain)
+            skillLv = echain.Val1;
+        if (skillLv <= 0) return;
+
+        if (_rng.Next(100) >= 5 * skillLv) return;
+
+        ApplyMultiHit(result, 2);            // skill_get_num(GS_CHAINACTION) = 2
+        // sc_start(src, src, SC_QD_SHOT_READY, 100, target->id, skill_get_time(RL_QD_SHOT,1)).
+        _sc?.Start(sd, StatusType.QdShotReady, val1: (int)target.Id, 0, 0, 0, durationMs: 1500, sd);
+    }
+
+    /// <summary>
+    /// DAMAGE_DIV_FIX (battle.cpp:4365): a positive div multiplies the per-hit
+    /// damage by the count and flags DMG_MULTI_HIT, preserving the critical
+    /// animation when the swing crit.
+    /// </summary>
+    private static void ApplyMultiHit(BattleDamage result, int div)
+    {
+        result.Hits = div;
+        result.Damage *= div;
         result.Type = result.IsCritical
             ? Core.Server.Packets.Out.ZC.DamageActionType.MultiHitCrit
             : Core.Server.Packets.Out.ZC.DamageActionType.MultiHit;

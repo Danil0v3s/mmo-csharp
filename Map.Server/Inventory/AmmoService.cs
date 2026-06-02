@@ -27,6 +27,14 @@ public interface IAmmoService
     /// (rAthena <c>pc_delitem</c>); returns true when a round was consumed.
     /// </summary>
     bool ConsumeAmmo(PlayerEntity pc);
+
+    /// <summary>
+    /// COMBAT-37 — the live <c>Amount</c> of the equipped (type-valid) ammo, or 0
+    /// when none is equipped. Mirrors rAthena reading
+    /// <c>sd-&gt;inventory.u.items_inventory[EQI_AMMO].amount</c> (the Fear Breeze
+    /// div cap reads it each swing).
+    /// </summary>
+    int GetEquippedAmmoAmount(PlayerEntity pc);
 }
 
 /// <inheritdoc cref="IAmmoService"/>
@@ -69,6 +77,9 @@ public sealed class AmmoService : IAmmoService
         }
         return true;
     }
+
+    public int GetEquippedAmmoAmount(PlayerEntity pc)
+        => (int)(FindEquippedAmmo(pc).ammo?.Amount ?? 0);
 
     /// <summary>
     /// Locate the equipped ammo whose subtype matches the weapon (Arrow↔Bow,

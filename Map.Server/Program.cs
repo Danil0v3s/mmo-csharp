@@ -286,7 +286,9 @@ builder.Services.AddSingleton<IBattleCalculator>(sp =>
         // COMBAT-19 — resolve per-skill magic/misc element from skill_db.
         elements: sp.GetRequiredService<Map.Server.Combat.IBattleElementService>(),
         // COMBAT-20 — GvG/BG magic+misc zone scaling.
-        zone: sp.GetRequiredService<Map.Server.Combat.IZoneDamageService>()));
+        zone: sp.GetRequiredService<Map.Server.Combat.IZoneDamageService>(),
+        // COMBAT-37 — live equipped-ammo count for the Fear Breeze div cap.
+        ammo: sp.GetRequiredService<Map.Server.Inventory.IAmmoService>()));
 builder.Services.AddSingleton<IDamageService, DamageService>();
 
 // PC death + respawn (pc.cpp:9633 pc_dead + pc.cpp:9515 pc_respawn).

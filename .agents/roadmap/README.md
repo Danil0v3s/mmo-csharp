@@ -119,6 +119,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-56 | Macro-omitting RE_LVL_DMOD audit (disable scaling per-arm) — split from COMBAT-35 |
 | COMBAT-57 | KO_JYUMONJIKIRI SC_JYUMONJIKIRI ratio bonus + double-hit/position-shift — split from COMBAT-35 |
 | COMBAT-58 | Ammo consumption on ammo-using skills + out-of-ammo client feedback — split from COMBAT-36 |
+| COMBAT-59 | Wire IStatusChangeService into BattleCalculator (break cycle) — SC combat reads live — split from COMBAT-37 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |
