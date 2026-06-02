@@ -140,6 +140,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-77 | Res-ignore (by race + SC_A_TELUM/SC_POTENT_VENOM) on the physical Res reduction — split from COMBAT-61 |
 | COMBAT-78 | Skill-crit crit_atk_rate ÷200 variant on the skill-damage path — split from COMBAT-61 |
 | COMBAT-79 | Literal per-accumulator split + DEF-at-end reorder (full battle_calc_weapon_attack fidelity) — split from COMBAT-61 |
+| COMBAT-80 | can-hit GvG/BG gate (guardian/Emperium/immune) + Emperium GvG branch — split from COMBAT-62 (WoE-gated, coordinate FEATURE-15) |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

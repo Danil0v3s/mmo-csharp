@@ -464,6 +464,7 @@ public static class SkillIds
     public const ushort GN_CRAZYWEED = 2483;
     public const ushort GN_DEMONIC_FIRE = 2485;
     public const ushort GN_FIRE_EXPANSION = 2486;
+    public const ushort GN_FIRE_EXPANSION_ACID = 2489;
     public const ushort GN_HELLS_PLANT = 2490;
     public const ushort GN_ILLUSIONDOPING = 5003;
     public const ushort GN_MAKEBOMB = 2496;

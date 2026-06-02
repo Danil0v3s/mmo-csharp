@@ -222,7 +222,7 @@ public abstract class WeaponSkillImpl : SkillImpl
         // SC_INVINCIBLE (rAthena battle_calc_weapon_attack post-ratio). Weapon skills
         // default to melee/short-range here (ctx carries no skill range); a Bash on a
         // Flora (MD_IGNOREMELEE) now deals 1, a weapon skill in WoE is GvG-scaled.
-        dmg = (int)ctx.Battle.ApplyWeaponSkillPlantZone(src, target, dmg, isShortRange: true);
+        dmg = (int)ctx.Battle.ApplyWeaponSkillPlantZone(src, target, dmg, isShortRange: true, skillId: SkillId);
         ctx.Damage.ApplyDamage(target, dmg, src, hits: System.Math.Abs(bd.Hits));
         ApplyAdditionalEffects(src, target, skillLevel, ctx);
     }

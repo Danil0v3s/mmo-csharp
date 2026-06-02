@@ -416,9 +416,31 @@ public sealed class SkillDb : ISkillDb
     // skill_db that overshoots a sensible cap shows up at boot.
     private const int MaxSkillSoftCap = 8192;
 
+    /// <summary>
+    /// COMBAT-62 — curated <see cref="SkillInf2"/> overlay. The skill_db SQL loader does
+    /// not yet surface the rAthena <c>Flags</c> block, so the <c>IgnoreGvgReduction</c> /
+    /// <c>IgnoreBgReduction</c> flags (battle.cpp:2060/2150 zone-reduction bypass) are
+    /// applied here from a curated set scanned from <c>db/re/skill_db.yml</c> — only two
+    /// skills carry them in renewal. When a full Inf2 loader lands (COMBAT-66 surfaces
+    /// other Inf2 flags) this overlay can fold into it.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<ushort, SkillInf2> CuratedInf2 =
+        new Dictionary<ushort, SkillInf2>
+        {
+            [SkillIds.NJ_ZENYNAGE] = SkillInf2.IgnoreGvgReduction | SkillInf2.IgnoreBgReduction,
+            [SkillIds.GN_FIRE_EXPANSION_ACID] = SkillInf2.IgnoreGvgReduction | SkillInf2.IgnoreBgReduction,
+        };
+
     /// <inheritdoc />
     public void LoadingFinished()
     {
+        // COMBAT-62 — fold the curated Inf2 flags into any loaded def (OR-merge, idempotent).
+        foreach (var (id, flags) in CuratedInf2)
+        {
+            if (_byId.TryGetValue(id, out var def) && (def.Inf2 & flags) != flags)
+                _byId[id] = def with { Inf2 = def.Inf2 | flags };
+        }
+
         if (_byId.Count > MaxSkillSoftCap)
         {
             _logger?.LogError(

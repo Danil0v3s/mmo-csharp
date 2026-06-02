@@ -23,12 +23,15 @@ namespace Map.Server.Combat;
 public interface IZoneDamageService
 {
     /// <summary>
-    /// Scale <paramref name="damage"/> for the source map's GvG/BG flag.
-    /// <paramref name="lane"/> selects weapon/magic/misc; <paramref name="isSkill"/>
-    /// chooses the per-lane rate (true) vs the short/long range rate (false);
-    /// <paramref name="isShortRange"/> picks short vs long for normal attacks.
-    /// Returns the damage unchanged on a non-zone map; never drops a positive
-    /// hit below 1.
+    /// Scale <paramref name="damage"/> for the source map's GvG/BG flag, then apply the
+    /// PK rate (COMBAT-62). <paramref name="lane"/> selects weapon/magic/misc;
+    /// <paramref name="isSkill"/> chooses the per-lane rate (true) vs the short/long range
+    /// rate (false); <paramref name="isShortRange"/> picks short vs long for normal attacks.
+    /// <paramref name="skillId"/> drives the <c>INF2_IGNOREGVGREDUCTION</c>/
+    /// <c>INF2_IGNOREBGREDUCTION</c> bypass (0 for auto-attacks). <paramref name="target"/>
+    /// is needed for the PC↔PC PK gate. Returns the damage unchanged on a non-zone map
+    /// with PK off; never drops a positive hit below 1.
     /// </summary>
-    long Scale(BattleAttackType lane, Entity src, long damage, bool isSkill, bool isShortRange);
+    long Scale(BattleAttackType lane, Entity src, Entity target, long damage,
+        bool isSkill, bool isShortRange, ushort skillId);
 }

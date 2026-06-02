@@ -86,7 +86,8 @@ public class Combat42WeaponSkillPlantZoneTests
     {
         private readonly int _rate;
         public StubZone(int rate) => _rate = rate;
-        public long Scale(BattleAttackType lane, Entity src, long damage, bool isSkill, bool isShortRange)
+        public long Scale(BattleAttackType lane, Entity src, Entity target, long damage,
+            bool isSkill, bool isShortRange, ushort skillId)
             => damage * _rate / 100;
     }
 }

@@ -77,7 +77,7 @@ public sealed class SkillAttackService : ISkillAttackService
         // COMBAT-42 — weapon-skill plant/zone is computed post-ratio inside this
         // funnel too (CalcMagic/MiscDamage already ran their own plant/zone stage).
         if (attackType == BattleAttackType.Weapon && damage > 0)
-            damage = _battle.ApplyWeaponSkillPlantZone(source, target, damage, isShortRange: weaponShort);
+            damage = _battle.ApplyWeaponSkillPlantZone(source, target, damage, isShortRange: weaponShort, skillId: skillId);
 
         if (damage > 0)
         {

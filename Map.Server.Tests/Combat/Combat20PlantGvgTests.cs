@@ -94,9 +94,9 @@ public class Combat20PlantGvgTests
         var src = NewMage(matk: 0);
         src.MapId = (uint)"woe".GetHashCode();
         // Magic skill on a GvG map → gvg_magic_damage_rate default 60%.
-        Assert.Equal(60, zone.Scale(BattleAttackType.Magic, src, 100, isSkill: true, isShortRange: false));
+        Assert.Equal(60, zone.Scale(BattleAttackType.Magic, src, src, 100, isSkill: true, isShortRange: false, skillId: 0));
         // Weapon skill → gvg_weapon 60%.
-        Assert.Equal(60, zone.Scale(BattleAttackType.Weapon, src, 100, isSkill: true, isShortRange: false));
+        Assert.Equal(60, zone.Scale(BattleAttackType.Weapon, src, src, 100, isSkill: true, isShortRange: false, skillId: 0));
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public class Combat20PlantGvgTests
         var src = NewSwinger(swing: 0);
         src.MapId = (uint)"woe".GetHashCode();
         // Normal melee (short) on GvG → gvg_short 80%.
-        Assert.Equal(80, zone.Scale(BattleAttackType.Weapon, src, 100, isSkill: false, isShortRange: true));
+        Assert.Equal(80, zone.Scale(BattleAttackType.Weapon, src, src, 100, isSkill: false, isShortRange: true, skillId: 0));
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public class Combat20PlantGvgTests
         var zone = NewZone(gvg: false);
         var src = NewSwinger(swing: 0);
         src.MapId = (uint)"prontera".GetHashCode();
-        Assert.Equal(100, zone.Scale(BattleAttackType.Weapon, src, 100, isSkill: true, isShortRange: false));
+        Assert.Equal(100, zone.Scale(BattleAttackType.Weapon, src, src, 100, isSkill: true, isShortRange: false, skillId: 0));
     }
 
     [Fact]

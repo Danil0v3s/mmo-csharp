@@ -61,5 +61,5 @@ public interface IBattleCalculator
     /// </summary>
     /// <para>Default identity so fixed-swing test doubles need no change; the real
     /// <c>BattleCalculator</c> overrides it.</para>
-    long ApplyWeaponSkillPlantZone(Entity src, Entity target, long damage, bool isShortRange) => damage;
+    long ApplyWeaponSkillPlantZone(Entity src, Entity target, long damage, bool isShortRange, ushort skillId = 0) => damage;
 }

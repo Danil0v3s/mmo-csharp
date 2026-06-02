@@ -609,7 +609,7 @@ public sealed class BattleCalculator : IBattleCalculator
     /// </summary>
     internal static void ApplyPlantAndZone(
         BattleDamage wd, Entity src, Entity target, bool isShortRange, bool isSkill, IZoneDamageService? zone,
-        IStatusChangeService? sc = null)
+        IStatusChangeService? sc = null, ushort skillId = 0)
     {
         if (IsInfiniteDefense(target, wd.Lane, isShortRange, sc))
         {
@@ -627,9 +627,9 @@ public sealed class BattleCalculator : IBattleCalculator
 
         if (zone != null)
         {
-            wd.Damage = zone.Scale(wd.Lane, src, wd.Damage, isSkill, isShortRange);
+            wd.Damage = zone.Scale(wd.Lane, src, target, wd.Damage, isSkill, isShortRange, skillId);
             if (wd.Damage2 > 0)
-                wd.Damage2 = zone.Scale(wd.Lane, src, wd.Damage2, isSkill, isShortRange);
+                wd.Damage2 = zone.Scale(wd.Lane, src, target, wd.Damage2, isSkill, isShortRange, skillId);
         }
     }
 
@@ -652,11 +652,11 @@ public sealed class BattleCalculator : IBattleCalculator
             : (int)Map.Server.Inventory.BattleClassFlag.Normal;
 
     /// <inheritdoc cref="IBattleCalculator.ApplyWeaponSkillPlantZone"/>
-    public long ApplyWeaponSkillPlantZone(Entity src, Entity target, long damage, bool isShortRange)
+    public long ApplyWeaponSkillPlantZone(Entity src, Entity target, long damage, bool isShortRange, ushort skillId = 0)
     {
         if (damage <= 0) return damage;
         var wd = new BattleDamage { Lane = BattleAttackType.Weapon, Damage = damage };
-        ApplyPlantAndZone(wd, src, target, isShortRange, isSkill: true, _zone, _sc);
+        ApplyPlantAndZone(wd, src, target, isShortRange, isSkill: true, _zone, _sc, skillId);
         return wd.Damage;
     }
 
@@ -745,7 +745,7 @@ public sealed class BattleCalculator : IBattleCalculator
         result.Damage = damage;
         // COMBAT-20 — plant clamp (MD_IGNOREMAGIC → 1) + GvG/BG magic rate. Magic
         // is always a skill (BF_SKILL) so the per-lane gvg/bg_magic rate applies.
-        ApplyPlantAndZone(result, source, target, isShortRange: false, isSkill: true, _zone, _sc);
+        ApplyPlantAndZone(result, source, target, isShortRange: false, isSkill: true, _zone, _sc, skillId);
         PopulateMotionFields(result, t);
         return result;
     }
@@ -787,7 +787,7 @@ public sealed class BattleCalculator : IBattleCalculator
         if (damage < 1) damage = 1;
         result.Damage = damage;
         // COMBAT-20 — plant clamp (MD_IGNOREMISC → 1) + GvG/BG misc rate.
-        ApplyPlantAndZone(result, source, target, isShortRange: false, isSkill: true, _zone, _sc);
+        ApplyPlantAndZone(result, source, target, isShortRange: false, isSkill: true, _zone, _sc, skillId);
         PopulateMotionFields(result, t);
         return result;
     }
