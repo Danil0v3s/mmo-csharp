@@ -23,7 +23,13 @@ public sealed class BattleCalculator : IBattleCalculator
 {
     private readonly Random _rng;
     private readonly IBattleCardService? _cards;
-    private readonly IStatusChangeService? _sc;
+    // COMBAT-59 — explicit SC (tests inject `sc:`) OR a lazy seam that breaks the
+    // production cycle IStatusChangeService → IDamageService → IBattleCalculator.
+    // The `_sc` accessor prefers the explicit value, then resolves the lazy one on
+    // first combat read (well after startup), so live SC-gated combat reads activate.
+    private readonly IStatusChangeService? _scExplicit;
+    private readonly Lazy<IStatusChangeService>? _scLazy;
+    private IStatusChangeService? _sc => _scExplicit ?? _scLazy?.Value;
     private readonly IMadoGearService? _mado;
     // COMBAT-19 — per-skill element resolver (battle_get_magic/misc_element).
     // Optional: when null, magic/misc fall back to the caster's weapon element
@@ -38,11 +44,12 @@ public sealed class BattleCalculator : IBattleCalculator
 
     public BattleCalculator(Random? rng = null, IBattleCardService? cards = null, IStatusChangeService? sc = null,
         IMadoGearService? mado = null, IBattleElementService? elements = null, IZoneDamageService? zone = null,
-        Map.Server.Inventory.IAmmoService? ammo = null)
+        Map.Server.Inventory.IAmmoService? ammo = null, Lazy<IStatusChangeService>? scLazy = null)
     {
         _rng = rng ?? Random.Shared;
         _cards = cards;
-        _sc = sc;
+        _scExplicit = sc;
+        _scLazy = scLazy;
         _mado = mado;
         _elements = elements;
         _zone = zone;

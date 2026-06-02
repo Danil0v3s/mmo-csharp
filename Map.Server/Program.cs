@@ -288,7 +288,12 @@ builder.Services.AddSingleton<IBattleCalculator>(sp =>
         // COMBAT-20 — GvG/BG magic+misc zone scaling.
         zone: sp.GetRequiredService<Map.Server.Combat.IZoneDamageService>(),
         // COMBAT-37 — live equipped-ammo count for the Fear Breeze div cap.
-        ammo: sp.GetRequiredService<Map.Server.Inventory.IAmmoService>()));
+        ammo: sp.GetRequiredService<Map.Server.Inventory.IAmmoService>(),
+        // COMBAT-59 — lazy SC seam: defers resolving IStatusChangeService (which
+        // depends on IDamageService → IBattleCalculator) until the first combat SC
+        // read, breaking the construction cycle so SC-gated combat reads go live.
+        scLazy: new Lazy<Map.Server.Status.IStatusChangeService>(
+            sp.GetRequiredService<Map.Server.Status.IStatusChangeService>)));
 builder.Services.AddSingleton<IDamageService, DamageService>();
 
 // PC death + respawn (pc.cpp:9633 pc_dead + pc.cpp:9515 pc_respawn).
