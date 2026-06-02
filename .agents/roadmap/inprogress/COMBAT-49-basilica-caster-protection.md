@@ -1,6 +1,6 @@
 # COMBAT-49 — Basilica caster protection (SC_BASILICA cell invulnerability)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** none
 > **Blocks:** none
 > **Filed by:** COMBAT-27 — the Basilica done-criterion it found to be a different mechanism.
