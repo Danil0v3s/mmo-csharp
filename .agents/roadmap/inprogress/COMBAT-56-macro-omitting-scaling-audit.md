@@ -1,6 +1,6 @@
 # COMBAT-56 — Per-arm RE_LVL_DMOD audit: disable scaling on macro-omitting arms
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-35, COMBAT-12 (magic-pipeline unification)
 > **Blocks:** none
 > **Filed by:** COMBAT-35 — the blanket weapon default-100 + unconditional magic/misc
