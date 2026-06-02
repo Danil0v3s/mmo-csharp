@@ -1,6 +1,6 @@
 # COMBAT-25 — Ground-unit damage intercept (Safety Wall / Pneuma / Land Protector)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 
 ## Problem
