@@ -64,10 +64,12 @@ public sealed class SkillUnitService : ISkillUnitService
             return null;
         }
 
-        // COMBAT-47 — Land Protector place-gate (rAthena skill_unitsetting): a ground
+        // COMBAT-47/66 — Land Protector place-gate (rAthena skill.cpp:22267): a ground
         // unit cannot be placed on an SA_LANDPROTECTOR cell unless the skill carries
-        // UF_NOLP. Refuse (return null) — the cast caller handles the SP/item refund.
-        if (!(_db?.GetUnitFlag(skillId, SkillUnitFlag.NoLandProtector) ?? false)
+        // INF2_IGNORELANDPROTECTOR. (rAthena also exempts INF2_ISSONG/ISTRAP; those flags
+        // aren't seeded yet — ➡️ COMBAT-85.) The skill fizzles (return null); the cast
+        // pipeline already consumed SP, matching rAthena (no refund on an LP-blocked cast).
+        if (!(_db?.GetInf2(skillId, SkillInf2.IgnoreLandProtector) ?? false)
             && CellHasLandProtector(caster.MapId, centerX, centerY))
         {
             _logger.LogDebug("SkillUnitService.Place: skill {Skill} refused on a Land Protector cell", skillId);

@@ -49,6 +49,7 @@ public enum SkillInf2 : ulong
     AllowPlagiarize   = 1UL << 15,
     IgnoreBgReduction  = 1UL << 16, // INF2_IGNOREBGREDUCTION — skill exempt from BG zone reduction
     IgnoreGvgReduction = 1UL << 17, // INF2_IGNOREGVGREDUCTION — skill exempt from GvG zone reduction
+    IgnoreLandProtector = 1UL << 18, // INF2_IGNORELANDPROTECTOR — skill may be placed/act on an LP cell (COMBAT-66)
     // COMBAT-56: the speculative INF2_DISABLELVDMG flag is dropped — it has no rAthena
     // data source in this checkout. The per-arm RE_LVL_DMOD omit is encoded as data in
     // Map.Server.Skills.ReLvlDmodOmit (the ticket's "internal omit marker").

@@ -429,6 +429,20 @@ public sealed class SkillDb : ISkillDb
         {
             [SkillIds.NJ_ZENYNAGE] = SkillInf2.IgnoreGvgReduction | SkillInf2.IgnoreBgReduction,
             [SkillIds.GN_FIRE_EXPANSION_ACID] = SkillInf2.IgnoreGvgReduction | SkillInf2.IgnoreBgReduction,
+            // COMBAT-66 — INF2_IGNORELANDPROTECTOR (db/re/skill_db.yml `IgnoreLandProtector: true`):
+            // these skills may be cast/placed on an SA_LANDPROTECTOR cell. (GN_CRAZYWEED_ATK is the
+            // only flagged skill not yet in SkillIds.)
+            [SkillIds.AC_SHOWER] = SkillInf2.IgnoreLandProtector,
+            [SkillIds.MA_SHOWER] = SkillInf2.IgnoreLandProtector,
+            [SkillIds.SG_SUN_WARM] = SkillInf2.IgnoreLandProtector,
+            [SkillIds.SG_MOON_WARM] = SkillInf2.IgnoreLandProtector,
+            [SkillIds.SG_STAR_WARM] = SkillInf2.IgnoreLandProtector,
+            [SkillIds.CG_HERMODE] = SkillInf2.IgnoreLandProtector,
+            [SkillIds.GN_CRAZYWEED] = SkillInf2.IgnoreLandProtector,
+            [SkillIds.NPC_EARTHQUAKE] = SkillInf2.IgnoreLandProtector,
+            [SkillIds.NPC_VENOMFOG] = SkillInf2.IgnoreLandProtector,
+            [SkillIds.NPC_FLAMECROSS] = SkillInf2.IgnoreLandProtector,
+            [SkillIds.NPC_HELLBURNING] = SkillInf2.IgnoreLandProtector,
         };
 
     /// <inheritdoc />

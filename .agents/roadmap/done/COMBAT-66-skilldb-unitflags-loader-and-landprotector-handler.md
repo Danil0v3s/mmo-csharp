@@ -1,6 +1,6 @@
 # COMBAT-66 — skill_db UnitFlags loader + production Land Protector unit handler
 
-> **Epic:** combat · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** combat · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-47 (Land Protector place-gate + UF_NOLP enum) · **Blocks:** none
 > **Filed by:** COMBAT-47 — the LP place-gate is wired but dormant in production: the
 > `UF_NOLP` exemption never fires (UnitFlags aren't loaded from skill_db) and Land Protector
@@ -44,26 +44,40 @@ production (it is fully exercised in tests via stubs, but never triggers on a li
   it only blocks placement/ticks). Canonical source is the `skill.cpp` monolithic switch (the
   `rathena-fork/src/map/skills/...` split paths do not exist in this checkout).
 
+## ⚠️ Premise correction (discovered during implementation)
+
+The ticket assumed "ignore Land Protector" is a **unit flag** (`UF_NOLP`) loadable from the
+skill_db `Unit.Flag` column. **It is not.** rAthena has no `UF_NOLP`; the exemption is
+`INF2_IGNORELANDPROTECTOR` (an **INF2** flag — skill.cpp:22267 `!skill->inf2[INF2_IGNORELANDPROTECTOR]`).
+COMBAT-47's `SkillUnitFlag.NoLandProtector` was a placeholder. Since COMBAT-62 made INF2 loadable
+(the curated overlay + `GetInf2`), the faithful fix is to migrate the gate to INF2 and seed the
+real `IgnoreLandProtector` skills — which also makes the gate fire live (the whole point). The
+generic `Unit.Flag` loader is therefore **not needed for the LP gate** (it had no other consumer)
+and is split to COMBAT-85.
+
 ## Scope — every sub-system that must be touched
 
-- [ ] Model the remaining `UF_*` members on `SkillUnitFlag` that the importer/skill_db carry
-      (at minimum the ones present in the seeded `skill_db` rows).
-- [ ] `Tools.RathenaImporter` + `Core.Database/Seeds` — import the skill_db unit-flag column so
-      it lands in the SQL `skill_db` table (add the column to the entity/migration if missing).
-- [ ] `SkillDbLoader.FromEntity` — decode the unit-flag bitmask into `SkillDefinition.UnitFlags`.
-- [ ] New `LandProtectorUnit : ISkillUnitTickHandler` in `Map.Server/Skills/Units/Handlers/`
-      (`SkillId => SA_LANDPROTECTOR`, `DurationMs = skill_get_time`, radius from
-      `skill_get_unit_range`, no-damage OnTick) so LP is placeable in production. Register it in
-      the DI handler set alongside the existing ground-unit handlers.
-- [ ] Confirm the LP cast caller refunds SP/items when `Place` returns null (gate refusal).
+- [x] Migrated the LP gate to the correct mechanism: added `SkillInf2.IgnoreLandProtector`, seeded
+      the 11 `IgnoreLandProtector` skills present in `SkillIds` via the curated overlay
+      (`SkillDb.LoadingFinished`), and changed `SkillUnitService.Place` to gate on
+      `GetInf2(IgnoreLandProtector)`.
+- [x] New `LandProtectorUnit : ISkillUnitTickHandler` (`SA_LANDPROTECTOR`, Duration
+      `120000+45000*lv`, radius 1/1/2/2/3 = 3×3/5×5/7×7, no-damage/no-SC) + DI registration, so LP
+      is placeable in production and `CellHasLandProtector` returns true on a live server.
+- [x] Confirmed the LP cast caller (`MagneticEarth.CastendPos2`) does **not** refund on `Place`
+      null — faithful to rAthena (the cast pipeline consumes SP before placement; a ground skill
+      blocked by LP fizzles without refund).
+- [ ] Generic `Unit.Flag` column loader (`SkillDbEntity` column + importer + migration +
+      `FromEntity` decode + `SkillUnitFlag` bit-order fix). ➡️ Moved to COMBAT-85 — no live consumer
+      now that the LP gate uses INF2; would be dead data.
 
 ## Done criteria
 
-- Loading skill_db yields `GetUnitFlag(skill, UF_NOLP) == true` for skills flagged UF_NOLP in the
-  rAthena data, `false` otherwise (verify against ≥2 known skills).
-- A live cast of `SA_LANDPROTECTOR` places a ground-unit group; a subsequent hostile ground skill
-  (e.g. WZ_STORMGUST) on a covered cell is refused, while a UF_NOLP skill places.
-- No `// TODO` / `data-pending` / log-only no-op in the touched files.
+- Loading skill_db yields `GetInf2(skill, IgnoreLandProtector) == true` for the seeded skills,
+  `false` otherwise ✅ (AC_SHOWER/SG_SUN_WARM vs WZ_STORMGUST).
+- A cast of `SA_LANDPROTECTOR` places a ground-unit group via the real handler; WZ_STORMGUST on a
+  covered cell is refused (incl. the 7×7 edge), while an `IgnoreLandProtector` skill places ✅.
+- No `// TODO` / `data-pending` / log-only no-op in the touched files ✅.
 
 ## Test plan
 
@@ -78,3 +92,15 @@ production (it is fully exercised in tests via stubs, but never triggers on a li
 - COMBAT-47 already proved the gate + exemption logic with stub handler/db; this ticket only
   supplies the live data (UnitFlags) and the placeable LP unit. Keep the `1u << 17` bit value for
   `NoLandProtector` so the COMBAT-47 enum stays stable.
+
+## History
+
+- 2026-06-03 · Made the COMBAT-47 Land Protector gate fire in production — but via the
+  *correct* mechanism: discovered "ignore LP" is `INF2_IGNORELANDPROTECTOR`, not the fictional
+  `UF_NOLP`. Added `SkillInf2.IgnoreLandProtector`, seeded the 11 flagged skills via the curated
+  overlay, migrated `SkillUnitService.Place` to `GetInf2`, and shipped the placeable
+  `LandProtectorUnit` (Duration 120000+45000*lv, radius 1/1/2/2/3) + DI registration. Updated the
+  COMBAT-47 exemption test to INF2. Combat66LandProtectorLoaderTests (4) + Combat47 (5); skills+
+  combat suite 3107 green, full suite 4075 pass (1 fail = pre-existing INFRA-11 replay gate).
+  Filed COMBAT-85 (generic Unit.Flag column loader + SkillUnitFlag bit-order fix — dormant infra
+  with no live consumer now that the LP gate uses INF2).

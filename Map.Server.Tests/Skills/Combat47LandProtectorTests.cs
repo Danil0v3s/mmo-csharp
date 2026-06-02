@@ -49,9 +49,10 @@ public class Combat47LandProtectorTests
     }
 
     [Fact]
-    public void UF_NOLP_skill_places_on_a_LandProtector_cell()
+    public void IgnoreLandProtector_skill_places_on_a_LandProtector_cell()
     {
-        // A skill_db carrying UF_NOLP for Storm Gust exempts it from the gate.
+        // COMBAT-66 — the exemption is INF2_IGNORELANDPROTECTOR (not a unit flag); a skill_db
+        // carrying it for Storm Gust exempts it from the gate.
         var db = new SkillDb();
         db.Register(new SkillDefinition
         {
@@ -60,14 +61,14 @@ public class Combat47LandProtectorTests
             MaxLevel = 10,
             Target = SkillTargetMode.Ground,
             DamageKind = SkillDamageKind.Magic,
-            UnitFlags = SkillUnitFlag.NoLandProtector,
+            Inf2 = SkillInf2.IgnoreLandProtector,
         });
 
         var ctx = Build(db);
         var caster = ctx.AddPlayer(1, 100, 100);
         Assert.NotNull(ctx.Units.Place(caster, SkillIds.SA_LANDPROTECTOR, 5, 110, 110));
 
-        // UF_NOLP → placement succeeds despite the Land Protector underneath.
+        // INF2_IGNORELANDPROTECTOR → placement succeeds despite the Land Protector underneath.
         Assert.NotNull(ctx.Units.Place(caster, SkillIds.WZ_STORMGUST, 5, 110, 110));
     }
 

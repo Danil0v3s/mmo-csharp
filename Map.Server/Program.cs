@@ -1890,6 +1890,9 @@ builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.SafetyWallUnit>();
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.SanctuaryUnit>();
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.ViolentQuakeAtkUnit>();
+// COMBAT-66 — Land Protector placeable ground unit (no-damage; its presence drives the
+// CellHasLandProtector place-gate in SkillUnitService.Place).
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.LandProtectorUnit>();
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.AllBloomAtkUnit>();
 // COMBAT-55 — Ranger trap damage units.
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.ClusterBombUnit>();
