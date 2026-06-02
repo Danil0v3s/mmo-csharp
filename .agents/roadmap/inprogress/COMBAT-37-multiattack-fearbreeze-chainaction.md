@@ -1,6 +1,6 @@
 # COMBAT-37 — Auto-attack multi_attack: FearBreeze bow + Chain Action revolver
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-17 (CalcMultiAttack + div wire), COMBAT-36 (ammo consumption — FearBreeze reads ammo count)
 > **Blocks:** none
 > **Filed by:** COMBAT-17 — the two auto-attack `battle_calc_multi_attack` branches it deferred.
