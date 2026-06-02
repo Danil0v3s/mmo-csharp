@@ -44,6 +44,21 @@ public sealed class EquipBonusBundle
     public int[] AddClass { get; } = new int[ClassSize];
     public int[] SubClass { get; } = new int[ClassSize];
 
+    // COMBAT-21 — advanced cardfix tables.
+    /// <summary>Offensive magic per-race damage % (<c>bonus2 bMagicAddRace, r, n</c> /
+    /// SP_MAGIC_ADDRACE). Folded multiplicatively in the BF_MAGIC cardfix branch.</summary>
+    public int[] MagicAddRace { get; } = new int[RaceSize];
+    /// <summary>Per-race critical-rate bonus, stored ×10 like <c>cri</c>
+    /// (<c>bonus2 bCriticalAddRace, r, n</c> → <c>n*10</c>; SP_CRITICAL_ADDRACE).
+    /// Added to the crit roll in <c>is_attack_critical</c>.</summary>
+    public int[] CritAddRace { get; } = new int[RaceSize];
+    /// <summary>Bitmask of races whose hard+soft DEF is ignored
+    /// (<c>bonus bIgnoreDefRace, r</c> / SP_IGNORE_DEF_RACE → <c>1&lt;&lt;race</c>).</summary>
+    public int IgnoreDefRace { get; set; }
+    /// <summary>Bitmask of classes whose DEF is ignored
+    /// (<c>bonus bIgnoreDefClass, c</c> / SP_IGNORE_DEF_CLASS → <c>1&lt;&lt;class</c>).</summary>
+    public int IgnoreDefClass { get; set; }
+
     /// <summary>Catch-all flat-ATK additive bonus (<c>bonus bAtk, N</c>).</summary>
     public int FlatAtk { get; set; }
     /// <summary>Catch-all flat-MATK additive bonus (<c>bonus bMatk, N</c>).</summary>
@@ -160,6 +175,8 @@ public sealed class EquipBonusBundle
         Array.Clear(AddEle); Array.Clear(SubEle);
         Array.Clear(AddSize); Array.Clear(SubSize);
         Array.Clear(AddClass); Array.Clear(SubClass);
+        Array.Clear(MagicAddRace); Array.Clear(CritAddRace);
+        IgnoreDefRace = IgnoreDefClass = 0;
         Array.Clear(ComaClass); Array.Clear(ComaRace);
         AddEffOnAttack.Clear(); AddEffWhenHit.Clear();
         FlatAtk = FlatMatk = FlatCritical = FlatHit = FlatFlee = 0;

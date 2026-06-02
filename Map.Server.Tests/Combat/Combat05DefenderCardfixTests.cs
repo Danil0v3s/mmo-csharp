@@ -56,8 +56,9 @@ public class Combat05DefenderCardfixTests
         var pc = Pc();
         pc.EquipBonuses.SubSize[(int)BattleSize.Medium] = 20;
         pc.EquipBonuses.SubClass[(int)Map.Server.Inventory.BattleClassFlag.Boss] = 25;
-        // 1000 × (100 - 20 - 25)/100 = 550
-        Assert.Equal(550, Cards.CalcCardFix(BattleAttackType.Weapon, mob, pc, 1000, false));
+        // COMBAT-21 — per-category multiplicative: 1000 × 0.80 × 0.75 = 600
+        // (the old additive form gave 550).
+        Assert.Equal(600, Cards.CalcCardFix(BattleAttackType.Weapon, mob, pc, 1000, false));
     }
 
     [Fact]
@@ -97,7 +98,8 @@ public class Combat05DefenderCardfixTests
         atk.EquipBonuses.AddRace[(int)BattleRace.PlayerHuman] = 20; // +20% vs humans
         var def = Pc();
         def.EquipBonuses.SubRace[(int)BattleRace.PlayerHuman] = 10; // -10% from humans
-        // 1000 × (100 + 20 - 10)/100 = 1100
-        Assert.Equal(1100, Cards.CalcCardFix(BattleAttackType.Weapon, atk, def, 1000, false));
+        // COMBAT-21 — attacker (×1.20) then defender (×0.90) apply as separate
+        // APPLY_CARDFIX passes: 1000 × 1.20 × 0.90 = 1080 (old additive: 1100).
+        Assert.Equal(1080, Cards.CalcCardFix(BattleAttackType.Weapon, atk, def, 1000, false));
     }
 }

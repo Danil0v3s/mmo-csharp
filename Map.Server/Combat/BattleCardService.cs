@@ -43,72 +43,84 @@ public sealed class BattleCardService : IBattleCardService
     {
         if (damage == 0) return 0;
 
-        // rAthena battle_calc_cardfix (battle.cpp:711) folds BOTH the
-        // attacker's offensive cards (Add*) AND the defender's defensive
-        // cards (Sub*). Renewal adds onto a single percent multiplier; we
-        // mirror that additive form. (The strict per-category multiplicative
-        // APPLY_CARDFIX_RE grouping is COMBAT-21.)
+        // COMBAT-21 — rAthena battle_calc_cardfix (battle.cpp:711) is per-category
+        // MULTIPLICATIVE: it accumulates `cardfix` (base 1000) by
+        // `cardfix = cardfix * (100 ± fix) / 100` for each category, then applies
+        // it once via APPLY_CARDFIX(damage, cardfix). The attacker (offensive)
+        // and defender (defensive) sections accumulate + apply independently. This
+        // replaces the earlier single additive `mult`, which drifted when multiple
+        // categories stacked (e.g. +20% race + +20% size = ×1.44, not ×1.40).
         var ss = src.Stats;
         var ts = target.Stats;
-        long mult = 100;
+        bool isMagic = attackType == BattleAttackType.Magic;
 
-        // --- Attacker offensive cardfix (only a PC wears cards). Indexed by
-        //     the TARGET's race / element / size / class. ---
+        int tRace = (int)ts.Race;
+        int tEle = (int)ts.DefenseElement;
+        int tSize = (int)ts.Size;
+        int tClass = (ts.Mode & MobMode.Mvp) != 0
+            ? (int)Inventory.BattleClassFlag.Boss : (int)Inventory.BattleClassFlag.Normal;
+
+        // --- Attacker offensive cardfix (only a PC wears cards). Keyed on the
+        //     TARGET's race / element / size / class. ---
         if (src is PlayerEntity pc && pc.EquipBonuses is { } ab)
         {
-            var raceIdx = (int)ts.Race;
-            if (raceIdx >= 0 && raceIdx < ab.AddRace.Length) mult += ab.AddRace[raceIdx];
-            mult += ab.AddRace[(int)BattleRace.All];
-
-            var eleIdx = (int)ts.DefenseElement;
-            if (eleIdx >= 0 && eleIdx < ab.AddEle.Length) mult += ab.AddEle[eleIdx];
-            mult += ab.AddEle[(int)BattleElement.All];
-
-            var sizeIdx = (int)ts.Size;
-            if (sizeIdx >= 0 && sizeIdx < ab.AddSize.Length) mult += ab.AddSize[sizeIdx];
-            mult += ab.AddSize[(int)BattleSize.All];
-
-            // rAthena maps MD_MVP → CLASS_BOSS, else CLASS_NORMAL (guardian
-            // bit not modelled until GvG castles port).
-            var tClass = (ts.Mode & MobMode.Mvp) != 0
-                ? (int)Inventory.BattleClassFlag.Boss : (int)Inventory.BattleClassFlag.Normal;
-            if (tClass >= 0 && tClass < ab.AddClass.Length) mult += ab.AddClass[tClass];
-            mult += ab.AddClass[(int)Inventory.BattleClassFlag.All];
-
-            // Range bonus — short = melee (range ≤ 2), long = ranged.
-            mult += pc.Stats.AttackRange > 2 ? ab.LongAtkRate : ab.ShortAtkRate;
+            int cardfix = 1000;
+            // Race: magic uses magic_addrace (COMBAT-21); weapon/misc use addrace.
+            int raceAdd = isMagic
+                ? IdxAll(ab.MagicAddRace, tRace, (int)BattleRace.All)
+                : IdxAll(ab.AddRace, tRace, (int)BattleRace.All);
+            cardfix = cardfix * (100 + raceAdd) / 100;
+            cardfix = cardfix * (100 + IdxAll(ab.AddEle, tEle, (int)BattleElement.All)) / 100;
+            cardfix = cardfix * (100 + IdxAll(ab.AddSize, tSize, (int)BattleSize.All)) / 100;
+            cardfix = cardfix * (100 + IdxAll(ab.AddClass, tClass, (int)Inventory.BattleClassFlag.All)) / 100;
+            if (!isMagic)
+            {
+                // Short = melee (range ≤ 2), long = ranged.
+                int rangeRate = pc.Stats.AttackRange > 2 ? ab.LongAtkRate : ab.ShortAtkRate;
+                cardfix = cardfix * (100 + rangeRate) / 100;
+            }
+            damage = ApplyCardfix(damage, cardfix);
         }
 
-        // --- Defender defensive cardfix (only a PC wears cards). Indexed by
-        //     the ATTACKER's race / element / size / class; SUBTRACTS. This is
-        //     what makes a player's bSubRace / bSubEle / bSubSize / bSubClass
-        //     resist cards work — including against mob attackers, which the
-        //     old `src is not PC → return` early-out skipped entirely. ---
+        // --- Defender defensive cardfix (only a PC wears cards). Keyed on the
+        //     ATTACKER's race / element / size / class; each category REDUCES.
+        //     Works against mob attackers too (the old src-not-PC early-out
+        //     skipped it). ---
         if (target is PlayerEntity tpc && tpc.EquipBonuses is { } db)
         {
-            var aRace = (int)ss.Race;
-            if (aRace >= 0 && aRace < db.SubRace.Length) mult -= db.SubRace[aRace];
-            mult -= db.SubRace[(int)BattleRace.All];
-
-            // Attacker's attack element. COMBAT-19: magic/misc pass the resolved
-            // skill element via attackElement; weapon attacks (null) use the rh
-            // weapon element (rh_ele).
-            var aEle = (int)(attackElement ?? (BattleElement)ss.WeaponElement);
-            if (aEle >= 0 && aEle < db.SubEle.Length) mult -= db.SubEle[aEle];
-            mult -= db.SubEle[(int)BattleElement.All];
-
-            var aSize = (int)ss.Size;
-            if (aSize >= 0 && aSize < db.SubSize.Length) mult -= db.SubSize[aSize];
-
-            var aClass = (ss.Mode & MobMode.Mvp) != 0
+            int cardfix = 1000;
+            int aRace = (int)ss.Race;
+            // COMBAT-19: magic/misc pass the resolved skill element; weapon (null)
+            // uses the rh weapon element.
+            int aEle = (int)(attackElement ?? (BattleElement)ss.WeaponElement);
+            int aSize = (int)ss.Size;
+            int aClass = (ss.Mode & MobMode.Mvp) != 0
                 ? (int)Inventory.BattleClassFlag.Boss : (int)Inventory.BattleClassFlag.Normal;
-            if (aClass >= 0 && aClass < db.SubClass.Length) mult -= db.SubClass[aClass];
-            mult -= db.SubClass[(int)Inventory.BattleClassFlag.All];
+
+            cardfix = cardfix * (100 - IdxAll(db.SubEle, aEle, (int)BattleElement.All)) / 100;
+            cardfix = cardfix * (100 - Idx(db.SubSize, aSize)) / 100;
+            cardfix = cardfix * (100 - IdxAll(db.SubRace, aRace, (int)BattleRace.All)) / 100;
+            cardfix = cardfix * (100 - IdxAll(db.SubClass, aClass, (int)Inventory.BattleClassFlag.All)) / 100;
+            damage = ApplyCardfix(damage, cardfix);
         }
 
-        // Apply the % multiplier with floor-at-1.
-        return Math.Max(1, damage * mult / 100);
+        return Math.Max(1, damage);
     }
+
+    /// <summary>Sum of the specific-index and the All-index entries (0 if out of range).</summary>
+    private static int IdxAll(int[] arr, int idx, int allIdx) => Idx(arr, idx) + Idx(arr, allIdx);
+
+    private static int Idx(int[] arr, int idx) => idx >= 0 && idx < arr.Length ? arr[idx] : 0;
+
+    /// <summary>
+    /// rAthena <c>APPLY_CARDFIX</c> (battle.cpp:748): apply a 1000-base
+    /// accumulated <paramref name="cardfix"/> to <paramref name="damage"/>,
+    /// rounding the reduction/increase down — <c>damage -= damage * (1000 -
+    /// max(0, cardfix)) / 1000</c>. cardfix 1000 = no change; a category that
+    /// pushes it ≤ 0 zeroes the damage.
+    /// </summary>
+    private static long ApplyCardfix(long damage, int cardfix)
+        => damage - damage * (1000 - Math.Max(0, cardfix)) / 1000;
 
     public long AddMastery(PlayerEntity attacker, Entity target, long damage, BattleAttackType type)
     {

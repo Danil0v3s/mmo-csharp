@@ -171,9 +171,12 @@ public static class BonusScriptExtractor
             // Wave 65 — coma proc tables.
             case "comaclass": AddShort(b.ComaClass, ParseClass(idxToken), (short)v); break;
             case "comarace":  AddShort(b.ComaRace,  ParseRace(idxToken),  (short)v); break;
-            // bAddRace2, bMagicAddRace, bIgnoreDefRate, ... — many
-            // more layered options. Leave at 0 until the consumer
-            // ports.
+            // COMBAT-21 — advanced cardfix: offensive magic-per-race and the
+            // per-race critical-rate bonus (rAthena stores cri ×10, so ×10 here).
+            case "magicaddrace":    Add(b.MagicAddRace, ParseRace(idxToken), v); break;
+            case "criticaladdrace": Add(b.CritAddRace,  ParseRace(idxToken), v * 10); break;
+            // bAddRace2, bIgnoreDefRate, bSubDefEle, ... — race2 classification
+            // + flag-matched lists land in COMBAT-43.
         }
     }
 

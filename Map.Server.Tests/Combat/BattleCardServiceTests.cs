@@ -73,14 +73,16 @@ public class BattleCardServiceTests
     [Fact]
     public void GoblinCard_AddSizeMedium15_StacksWithRace()
     {
-        // bonus2 bAddSize,Size_Medium,15; + Hydra style → +35% total.
+        // COMBAT-21 — categories stack MULTIPLICATIVELY (APPLY_CARDFIX):
+        // bonus2 bAddRace,RC_DemiHuman,20; + bonus2 bAddSize,Size_Medium,15;
+        // → ×1.20 × 1.15 = ×1.38 (the old additive form gave ×1.35).
         var svc = new BattleCardService(NullLogger<BattleCardService>.Instance);
         var pc = NewPc();
         BonusScriptExtractor.Apply(
             "bonus2 bAddRace,RC_DemiHuman,20; bonus2 bAddSize,Size_Medium,15;",
             pc.EquipBonuses);
         var mob = NewMob(BattleRace.Demihuman, BattleSize.Medium);
-        Assert.Equal(1350, svc.CalcCardFix(BattleAttackType.Weapon, pc, mob, 1000, false));
+        Assert.Equal(1380, svc.CalcCardFix(BattleAttackType.Weapon, pc, mob, 1000, false));
     }
 
     [Fact]

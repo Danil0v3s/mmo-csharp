@@ -53,7 +53,7 @@ public sealed class BattleCalculator : IBattleCalculator
         var tgtIsPc = target is PlayerEntity;
 
         // --- Step 1: critical roll  (battle.cpp:2948 is_attack_critical) ---
-        bool isCritical = TryCritical(s, t, srcIsPc, tgtIsPc);
+        bool isCritical = TryCritical(source, target, s, t, srcIsPc, tgtIsPc);
 
         // --- Step 2: perfect dodge / flee  (battle.cpp:3154 is_attack_hitting) ---
         if (!isCritical)
@@ -372,14 +372,24 @@ public sealed class BattleCalculator : IBattleCalculator
 
     /// <summary>
     /// Port of <c>is_attack_critical</c> (battle.cpp:2948) trimmed to the
-    /// always-present branch: cri ≠ 0, subtract <c>2 × target.luk</c> (or
-    /// <c>3 × target.luk</c> when defender is PC and attacker is non-PC),
-    /// roll vs 1000 (cri is stored ×10).
+    /// always-present branch: cri ≠ 0, COMBAT-21 adds the attacker's per-race
+    /// <c>critaddrace</c> (battle.cpp:2980, stored ×10), subtract
+    /// <c>2 × target.luk</c> (or <c>3 × target.luk</c> when defender is PC and
+    /// attacker is non-PC), roll vs 1000 (cri is stored ×10).
     /// </summary>
-    private bool TryCritical(BattleStats s, BattleStats t, bool srcIsPc, bool tgtIsPc)
+    private bool TryCritical(Entity source, Entity target, BattleStats s, BattleStats t, bool srcIsPc, bool tgtIsPc)
     {
-        if (s.Cri <= 0) return false;
         int cri = s.Cri;
+        // COMBAT-21 — bonus2 bCriticalAddRace: +crit chance vs a race (×10,
+        // battle.cpp:2980). Added BEFORE the cri≤0 gate so a 0-base-crit attacker
+        // can still crit a race it carries the card for (rAthena has no early-out).
+        if (srcIsPc && (source as PlayerEntity)?.EquipBonuses is { } ab)
+        {
+            int tRace = (int)t.Race;
+            if (tRace >= 0 && tRace < ab.CritAddRace.Length) cri += ab.CritAddRace[tRace];
+            cri += ab.CritAddRace[(int)Map.Server.Status.BattleRace.All];
+        }
+        if (cri <= 0) return false;
         int lukMult = (!srcIsPc && tgtIsPc) ? 3 : 2;
         cri -= t.Luk * lukMult;
         if (cri <= 0) return false;
