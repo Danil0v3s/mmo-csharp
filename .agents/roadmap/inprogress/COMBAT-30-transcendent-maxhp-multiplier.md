@@ -1,6 +1,6 @@
 # COMBAT-30 — Transcendent (JOBL_UPPER ×1.25) + Taekwon-ranker (×3) MaxHP/SP multiplier
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 
 ## Problem
