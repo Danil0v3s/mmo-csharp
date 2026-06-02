@@ -62,6 +62,12 @@ public sealed class SkillAttackService : ISkillAttackService
             _ => 0,
         };
 
+        // COMBAT-42 — weapon-skill plant/zone is computed post-ratio inside this
+        // funnel too (CalcMagic/MiscDamage already ran their own plant/zone stage).
+        // BF_LONG when the skill's range > 3 (rAthena battle_range_type).
+        if (attackType == BattleAttackType.Weapon && damage > 0)
+            damage = _battle.ApplyWeaponSkillPlantZone(source, target, damage, isShortRange: _db.GetRange(skillId) <= 3);
+
         if (damage > 0)
         {
             // rAthena skill.cpp ~3680 — MER_BLESSING / MER_INCAGI on

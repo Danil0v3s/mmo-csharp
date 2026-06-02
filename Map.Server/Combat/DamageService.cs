@@ -127,9 +127,10 @@ public sealed class DamageService : IDamageService
         }
         // COMBAT-20 — auto-attack final stage: plant clamp (MD_IGNOREMELEE /
         // MD_IGNORERANGED → 1) + GvG/BG range rate (normal attack = BF_SHORT/LONG).
-        // Weapon SKILLS apply their plant/zone stage post-ratio — tracked in COMBAT-42.
+        // Weapon SKILLS apply their plant/zone stage post-ratio (COMBAT-42).
+        // COMBAT-42: pass _sc so SC_INVINCIBLE clamps the auto-attack too.
         BattleCalculator.ApplyPlantAndZone(damage, source, target,
-            BattleCalculator.IsShortRange(source), isSkill: false, _zone);
+            BattleCalculator.IsShortRange(source), isSkill: false, _zone, _sc);
         // Even a miss broadcasts ZC_NOTIFY_ACT3 so the client animates
         // the swing + the dodge — rAthena: clif_damage(... DMG_FLEE ...)
         // even when total = 0.

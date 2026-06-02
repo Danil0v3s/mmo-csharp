@@ -49,4 +49,17 @@ public interface IBattleCalculator
     ///   - card_fix with BattleAttackType.Misc
     /// </summary>
     BattleDamage CalcMiscAttack(Entity source, Entity target, ushort skillId, ushort skillLevel, int ratePerLevel);
+
+    /// <summary>
+    /// COMBAT-42 — apply the weapon-SKILL final stage (plant 1-damage clamp +
+    /// GvG/BG zone scaling + SC_INVINCIBLE) to a post-ratio weapon-skill damage.
+    /// rAthena runs this in <c>battle_calc_weapon_attack</c> (battle.cpp:8000);
+    /// the C# weapon-skill funnel computes the raw total, so the skill dispatch
+    /// (<c>WeaponSkillImpl.CastendDamageId</c> / <c>SkillAttackService</c>) calls
+    /// this before <c>ApplyDamage</c>. <paramref name="isShortRange"/> picks the
+    /// melee/ranged plant mode (default true = melee).
+    /// </summary>
+    /// <para>Default identity so fixed-swing test doubles need no change; the real
+    /// <c>BattleCalculator</c> overrides it.</para>
+    long ApplyWeaponSkillPlantZone(Entity src, Entity target, long damage, bool isShortRange) => damage;
 }

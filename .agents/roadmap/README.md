@@ -122,6 +122,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-59 | Wire IStatusChangeService into BattleCalculator (break cycle) — SC combat reads live — split from COMBAT-37 |
 | COMBAT-60 | Per-skill div_ remainder: splash/SkillImpl arms + miscflag/ctx hook + positive-div multiply — split from COMBAT-38 |
 | COMBAT-61 | Full per-hand renewal weapon-attack accumulator split (statusAtk2/patk/crit/res) — split from COMBAT-40 |
+| COMBAT-62 | GvG gates: INF2 ignore-reduction + can-hit gate + PK rate + Emperium — split from COMBAT-42 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |
