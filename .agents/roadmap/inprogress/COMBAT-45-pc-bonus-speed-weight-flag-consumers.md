@@ -1,6 +1,6 @@
 # COMBAT-45 — pc_bonus consumers: speed/weight/crit/usesp + unbreakable/intravision flags
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-23 (the fields are parsed; this wires the remaining consumers)
 > **Blocks:** none
 > **Filed by:** COMBAT-23 — the single-value/flag consumers it parsed but did not wire.
