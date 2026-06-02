@@ -1,6 +1,6 @@
 # COMBAT-14 — RE_LVL_DMOD per-skill exceptions (INF2_DISABLELVDMG data gate, 120/150 divisors, trap TMDMOD)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-03 · **Blocks:** none
 > **Filed by:** COMBAT-03 on 2026-06-01 (the per-skill refinements it shipped the default for).
 
