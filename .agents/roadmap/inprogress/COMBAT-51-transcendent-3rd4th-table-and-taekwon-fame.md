@@ -1,6 +1,6 @@
 # COMBAT-51 — Transcendent 3rd/4th job table + Taekwon-ranker fame population
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-30 (the ×1.25/×3 multiplier + the IsTranscendent/IsTaekwonRanker seam)
 > **Blocks:** none
 > **Filed by:** COMBAT-30 — the transcendent job-range gap + the unpopulated ranker flag.
