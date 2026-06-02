@@ -1,6 +1,6 @@
 # COMBAT-16 — Weapon size-fix table + bow arrow_atk
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-04 · **Blocks:** none
 > **Filed by:** COMBAT-04 (axis 2 + the bow slice it scoped out).
 
