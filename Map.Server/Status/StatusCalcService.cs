@@ -264,8 +264,10 @@ public sealed class StatusCalcService : IStatusCalcService
         // scaled by speed_rate. bSpeedRate (non-stackable min) + bSpeedAddRate
         // (stackable) are stored as the NEGATIVE delta in the bundle, so a faster
         // item lowers the speed value. (SC speed table is COMBAT-65.)
-        var speedRate = 100 + (eq?.SpeedRate ?? 0) + (eq?.SpeedAddRate ?? 0);
-        s.Speed = (ushort)Math.Clamp(150 * speedRate / 100, 1, ushort.MaxValue);
+        // COMBAT-65 — status_calc_speed (status.cpp:7787): the equip speed delta is folded
+        // into the SC slow/fast max-accumulators (NOT added), then the SC speed table applies.
+        var itemSpeedDelta = (eq?.SpeedRate ?? 0) + (eq?.SpeedAddRate ?? 0);
+        s.Speed = ComputeScSpeed(player, itemSpeedDelta);
         // job->aspd_base[weapon]; 40 (Novice/Fist) is the no-cache test default,
         // and a cache MISS returns 2000 (the rAthena yml default) which the
         // min(aspd,200) clamp turns into the slow "no row" fallback — faithful.
@@ -590,6 +592,61 @@ public sealed class StatusCalcService : IStatusCalcService
         amotion -= fixAspd;
         // cap_value(amotion, pc_maxaspd/2 (190/2=95), MIN_ASPD/2 (8000/2=4000)).
         return Math.Clamp(amotion, 95, 4000);
+    }
+
+    /// <summary>
+    /// COMBAT-65 — port of <c>status_calc_speed</c> (status.cpp:7787) over the common
+    /// movement SCs. DEFAULT_WALK_SPEED 150 is scaled by a <c>speed_rate</c> built from a
+    /// two-phase max-accumulator: a SLOW phase (<c>speed_rate += max(slowdowns)</c>) then a
+    /// FAST phase (<c>speed_rate -= max(speedups)</c>, floored at 40). The equip speed delta
+    /// (negative = faster) folds into the same max() accumulators, not additively. Fixed-speed
+    /// overrides (Steel Body 200, Defender ≥200) apply last. Re-read from the live SC set each
+    /// recalc (idempotent). The exotic-SC tail + the freecast / hiding-walk early branches are
+    /// COMBAT-84.
+    /// </summary>
+    private ushort ComputeScSpeed(PlayerEntity pc, int itemSpeedDelta)
+    {
+        const int MinWalk = 20, MaxWalk = 1000; // mmo.hpp MIN/MAX_WALK_SPEED
+        int speed = 150;                        // DEFAULT_WALK_SPEED
+
+        var sc = _sc;
+        if (sc == null)
+            return (ushort)Math.Clamp(speed * (100 + itemSpeedDelta) / 100, MinWalk, MaxWalk);
+
+        bool Has(StatusType t) => sc.Get(pc, t) != null;
+        int Val(StatusType t, Func<Status.StatusChange, int> read) => sc.Get(pc, t) is { } e ? read(e) : 0;
+
+        int speedRate = 100;
+
+        // --- SLOW phase: speed_rate += max(slowdown %) (status.cpp:7815) ---
+        int slow = 0;
+        if (Has(StatusType.DecreaseAgi))   slow = Math.Max(slow, 25);
+        if (Has(StatusType.Quagmire))      slow = Math.Max(slow, 50);
+        if (Has(StatusType.Curse))         slow = Math.Max(slow, 300);
+        slow = Math.Max(slow, Val(StatusType.Slowdown, e => e.Val1));      // Slow Potion
+        slow = Math.Max(slow, Val(StatusType.Dontforgetme, e => e.Val3));
+        if (itemSpeedDelta > 0) slow = Math.Max(slow, itemSpeedDelta);     // permanent item slowdown
+        speedRate += slow;
+
+        // --- FAST phase: speed_rate -= max(speedup %), floor 40 (status.cpp:7918) ---
+        int fast = 0;
+        fast = Math.Max(fast, Val(StatusType.Agiup, e => e.Val1));
+        if (Has(StatusType.IncreaseAgi))   fast = Math.Max(fast, 25);
+        fast = Math.Max(fast, 2 * Val(StatusType.Windwalk, e => e.Val1));
+        if (Has(StatusType.Cartboost))     fast = Math.Max(fast, 20);
+        if (Has(StatusType.Berserk))       fast = Math.Max(fast, 25);
+        if (Has(StatusType.Run))           fast = Math.Max(fast, 55);
+        if (Has(StatusType.FullThrottle))  fast = Math.Max(fast, 25);
+        if (itemSpeedDelta < 0) fast = Math.Max(fast, -itemSpeedDelta);    // permanent item speedup
+        speedRate -= fast;
+        if (speedRate < 40) speedRate = 40;
+
+        if (speedRate != 100) speed = speed * speedRate / 100;
+        // Fixed-speed overrides (status.cpp:7982).
+        if (Has(StatusType.Steelbody)) speed = 200;
+        if (Has(StatusType.Defender))  speed = Math.Max(speed, 200);
+
+        return (ushort)Math.Clamp(speed, MinWalk, MaxWalk);
     }
 
     /// <summary>

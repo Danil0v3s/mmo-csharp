@@ -77,7 +77,11 @@ public static class EntityActionGates
         // Source-side detector bits: boss class + MD_DETECTOR override the
         // base hide set; perfect-hiding overlay still excludes detectors.
         var isBoss = (src.Stats.Mode & MobMode.Mvp) != 0;
-        var isDetector = (src.Stats.Mode & MobMode.Detector) != 0;
+        // COMBAT-65 — a PC with the Intravision equip flag (bIntravision /
+        // special_state.intravision, rAthena status.cpp:3756) sees through the base
+        // hide set like a detector (Hiding/Cloaking/Camouflage/…), but not perfect-hide.
+        var isDetector = (src.Stats.Mode & MobMode.Detector) != 0
+            || (src is Map.Server.Entities.PlayerEntity ipc && ipc.EquipBonuses.Intravision);
 
         // Base hide set — Hiding / Cloaking / Camouflage / Stealthfield /
         // Suhide / Chasewalk2 all gate "low-tier" detection.

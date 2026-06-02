@@ -68,6 +68,11 @@ public sealed class SkillSideEffectService : ISkillSideEffectService
         // the on-hit pipeline can stack break + dispel cleanly.
         if (target is not PlayerEntity pc) return false;
         if (rate <= 0) return false;
+        // COMBAT-65 — unbreakable_equip mask (rAthena skill_break_equip, skill.cpp:2840:
+        // `where &= ~sd->bonus.unbreakable_equip`): a slot the wearer flags unbreakable
+        // is removed from the break mask, so it can never be picked below.
+        equipMask = (int)((uint)equipMask & ~UnbreakableMask(pc));
+        if (equipMask == 0) return false;
         if (_rng.Next(10000) >= rate) return false;
 
         var session = _sessions?.TryGet(pc);
@@ -87,6 +92,24 @@ public sealed class SkillSideEffectService : ISkillSideEffectService
             return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// COMBAT-65 — the wearer's unbreakable-equip slot mask (rAthena
+    /// <c>sd->bonus.unbreakable_equip</c>, set by <c>bUnbreakableWeapon</c> … per
+    /// SP_UNBREAKABLE_*). Maps each flag to its EQP_* slot bit.
+    /// </summary>
+    internal static uint UnbreakableMask(PlayerEntity pc)
+    {
+        var ab = pc.EquipBonuses;
+        uint m = 0;
+        if (ab.UnbreakableWeapon)  m |= EquipBits.HandR;
+        if (ab.UnbreakableShield)  m |= EquipBits.HandL;
+        if (ab.UnbreakableArmor)   m |= EquipBits.Armor;
+        if (ab.UnbreakableHelm)    m |= EquipBits.Helm;
+        if (ab.UnbreakableShoes)   m |= EquipBits.Shoes;
+        if (ab.UnbreakableGarment) m |= EquipBits.Garment;
+        return m;
     }
 
     /// <summary>
