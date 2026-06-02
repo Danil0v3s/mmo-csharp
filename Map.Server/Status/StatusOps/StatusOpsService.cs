@@ -171,7 +171,8 @@ public sealed class StatusOpsService : IStatusOpsService
             // non-equip recalc (equipment only changes via the equip flow).
             LeftWeaponAtkMin: pc.Stats.LeftWatkMin, LeftWeaponAtkMax: pc.Stats.LeftWatkMax,
             LeftWeaponLevel: pc.Stats.LeftWeaponLevel, LeftWeaponType: pc.Stats.LeftWeaponType,
-            LeftWeaponElement: (BattleElement)pc.Stats.LeftWeaponElement);
+            LeftWeaponElement: (BattleElement)pc.Stats.LeftWeaponElement,
+            HasShield: pc.Stats.HasShield);
         _calc.CalcPc(pc, inputs);
     }
 

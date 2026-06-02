@@ -101,4 +101,7 @@ public readonly record struct PcBaseInputs(
     int LeftWeaponAtkMax = 0,
     int LeftWeaponLevel = 0,
     int LeftWeaponType = 0,
-    BattleElement LeftWeaponElement = BattleElement.Neutral);
+    BattleElement LeftWeaponElement = BattleElement.Neutral,
+    // COMBAT-29: a shield in the off-hand adds the job's Shield ASPD-base row;
+    // a different off-hand weapon (dual wield) adds aspd_base[wt2]/4.
+    bool HasShield = false);

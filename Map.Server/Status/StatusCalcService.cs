@@ -226,7 +226,15 @@ public sealed class StatusCalcService : IStatusCalcService
         // job->aspd_base[weapon]; 40 (Novice/Fist) is the no-cache test default,
         // and a cache MISS returns 2000 (the rAthena yml default) which the
         // min(aspd,200) clamp turns into the slow "no row" fallback — faithful.
+        s.HasShield = inputs.HasShield;
         var aspdBase = _jobAspd?.GetBaseAspdByJobId(inputs.JobId, inputs.WeaponType) ?? DefaultAspdBase;
+        // COMBAT-29 — shield/dual-wield base terms (status.cpp:2321-2325):
+        //   + aspd_base[Shield=99] when a shield is worn, else
+        //   + aspd_base[weaponType2] / 4 when the off-hand holds a different weapon.
+        if (inputs.HasShield)
+            aspdBase += _jobAspd?.GetBaseAspdExactByJobId(inputs.JobId, ShieldAspdType) ?? 0;
+        else if (inputs.LeftWeaponType != Map.Server.Inventory.WeaponTypeCodes.Fist)
+            aspdBase += (_jobAspd?.GetBaseAspdExactByJobId(inputs.JobId, inputs.LeftWeaponType) ?? 0) / 4;
         // aspd_rate2 ← bAspd**Rate** (RE %-modifier, status.cpp:6165);
         // aspd_add  ← bAspd (flat: pc.cpp SP_ASPD does aspd_add -= 10*val).
         // COMBAT-10: feed the FINAL Agi/Dex (s.Agi/s.Dex = base + equip +
@@ -428,6 +436,9 @@ public sealed class StatusCalcService : IStatusCalcService
 
     /// <summary>Novice/Fist BaseASPD (db/re/job_aspd.yml) — the no-cache fallback.</summary>
     private const int DefaultAspdBase = 40;
+    // COMBAT-29 — job_aspd "Shield" weapon-type index (rAthena MAX_WEAPON_TYPE;
+    // the importer maps "Shield" → 99).
+    private const int ShieldAspdType = 99;
 
     /// <summary>
     /// COMBAT-09 — renewal PC base amotion. Mirrors

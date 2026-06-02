@@ -55,7 +55,10 @@ public static class EquipBonusAggregator
         int LeftWeaponAtkMax = 0,
         int LeftWeaponLevel = 0,
         int LeftWeaponType = 0,
-        BattleElement LeftWeaponElement = BattleElement.Neutral)
+        BattleElement LeftWeaponElement = BattleElement.Neutral,
+        // COMBAT-29: a shield occupies the off-hand slot (Type == "Armor"). Drives
+        // the renewal shield ASPD-base term (status.cpp:2322).
+        bool HasShield = false)
     {
         public static EquipSummary Empty => new(0, 0, 0, 0, 1, BattleElement.Neutral);
     }
@@ -75,6 +78,7 @@ public static class EquipBonusAggregator
         int leftWatk = 0;
         int leftWeaponLevel = 0;
         int leftWeaponType = WeaponTypeCodes.Fist;
+        bool hasShield = false; // COMBAT-29 — off-hand armor row.
         var leftElement = BattleElement.Neutral;
         var element = BattleElement.Neutral;
         // No weapon equipped → null; renewal status_base_atk_min/max
@@ -107,6 +111,10 @@ public static class EquipBonusAggregator
                 if (row.WeaponLevel is { } lwl) leftWeaponLevel = lwl;
                 leftWeaponType = WeaponTypeCodes.FromSubtype(row.Subtype);
             }
+            // COMBAT-29: a shield is an off-hand Armor row (the EQI_HAND_L bit
+            // also covers the shield slot). Drives the shield ASPD-base term.
+            if ((item.Equip & EquipLeftHand) != 0 && row.Type == "Armor")
+                hasShield = true;
             // COMBAT-16: equipped ammo (arrow / bullet) ATK — added to the
             // weapon ATK below only for ammo-using ranged weapons (battle.cpp
             // arrow_atk). Captured regardless of weapon so a mismatched ammo is
@@ -143,7 +151,8 @@ public static class EquipBonusAggregator
             LeftWeaponAtkMax: leftWatk,
             LeftWeaponLevel: leftWeaponLevel,
             LeftWeaponType: leftWeaponType,
-            LeftWeaponElement: leftElement);
+            LeftWeaponElement: leftElement,
+            HasShield: hasShield);
     }
 
     /// <summary>

@@ -272,7 +272,8 @@ public sealed class EquipService : IEquipService
             LeftWeaponAtkMax: summary.LeftWeaponAtkMax,
             LeftWeaponLevel: summary.LeftWeaponLevel,
             LeftWeaponType: summary.LeftWeaponType,
-            LeftWeaponElement: summary.LeftWeaponElement));
+            LeftWeaponElement: summary.LeftWeaponElement,
+            HasShield: summary.HasShield));
     }
 
     /// <inheritdoc />

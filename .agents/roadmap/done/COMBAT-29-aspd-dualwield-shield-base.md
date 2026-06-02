@@ -1,6 +1,6 @@
 # COMBAT-29 — Dual-wield + shield ASPD base terms
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-02) · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-09 (base renewal ASPD formula) · **Blocks:** none
 
 ## Problem
@@ -37,18 +37,22 @@ shield wearer / dual-wielder gets the wrong base ASPD.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Add `WeaponType2` + `HasShield` to `PcBaseInputs` (default 0/false).
-- [ ] Surface the second-hand weapon type + shield flag from `EquipSummary` /
-      `PlayerEquipHelpers.CalcWeaponType` (it already classifies both hands) and thread them
-      through the 3 `CalcPc` call sites (EquipService, StatusOpsService, NotifyActorInitHandler).
-- [ ] In `RenewalPcAmotion`, add the shield base (`aspd_base[Shield=99]`) when `HasShield`,
-      else the dual-wield `aspd_base[weaponType2]/4` when `weaponType2 != Fist`.
+- [x] `WeaponType2` already exists as `PcBaseInputs.LeftWeaponType` (COMBAT-18); added
+      `HasShield` to `PcBaseInputs` + `BattleStats` (default false).
+- [x] `EquipSummary.HasShield` captured in `Aggregate` (an off-hand `Type == "Armor"` row);
+      threaded through all 4 `CalcPc` builders (EquipService, NotifyActorInitHandler from the
+      summary; StatusOpsService, ExpService from `pc.Stats`).
+- [x] In `CalcPc` (where `_jobAspd` is available) the shield base
+      (`aspd_base[Shield=99]`) is added when `HasShield`, else the dual-wield
+      `aspd_base[weaponType2]/4` when the off-hand holds a distinct weapon. New
+      `IJobAspdCacheService.GetBaseAspdExactByJobId` returns the exact row or 0 (no
+      fist/default fallback) so a missing row adds nothing.
 
 ## Done criteria
 
-- Equipping a shield raises base amotion by the job's `Shield` ASPD row.
-- Dual-wielding two different weapons raises base amotion by `aspd_base[secondWeapon]/4`.
-- Single-weapon, no-shield ASPD is unchanged from COMBAT-09.
+- Equipping a shield raises base amotion by the job's `Shield` ASPD row ✅.
+- Dual-wielding a distinct off-hand weapon raises base amotion by `aspd_base[secondWeapon]/4` ✅.
+- Single-weapon, no-shield ASPD is unchanged from COMBAT-09 ✅.
 
 ## Test plan
 
@@ -60,3 +64,13 @@ shield wearer / dual-wielder gets the wrong base ASPD.
 
 - Overlaps the dual-wield damage work (COMBAT-18) only in that both need to know the
   left-hand weapon — coordinate the `WeaponType2` plumbing so it lands once.
+
+## History
+
+- **2026-06-02** — inprogress→done. `CalcPc` now adds the renewal shield / dual-wield ASPD
+  base terms: `+ aspd_base[Shield=99]` when a shield is worn (new `EquipSummary.HasShield`
+  from an off-hand Armor row + `PcBaseInputs`/`BattleStats.HasShield` threaded through all 4
+  recalc builders), else `+ aspd_base[wt2]/4` reusing COMBAT-18's `LeftWeaponType`. New
+  `IJobAspdCacheService.GetBaseAspdExactByJobId` (exact row or 0) keeps a missing row from
+  adding the "no row" default. Combat29AspdShieldDualWieldTests (2); unit suite 3845 (1 fail
+  = pre-existing INFRA-11 replay gate). No follow-ups — all done criteria met.

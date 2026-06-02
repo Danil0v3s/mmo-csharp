@@ -30,6 +30,14 @@ public interface IJobAspdCacheService
     /// form. Returns the fallback when the job id has no Aegis mapping.
     /// </summary>
     int GetBaseAspdByJobId(int jobId, int weaponType);
+
+    /// <summary>
+    /// COMBAT-29 — EXACT (job, weaponType) row, or 0 when not seeded (no
+    /// fist/default fallback). Used for the additive shield (weaponType 99) and
+    /// dual-wield (<c>aspd_base[wt2]/4</c>) ASPD base terms — a miss must add
+    /// nothing, not the "no row" default.
+    /// </summary>
+    int GetBaseAspdExactByJobId(int jobId, int weaponType);
 }
 
 /// <summary>
@@ -85,6 +93,13 @@ public sealed class JobAspdCacheService : IJobAspdCacheService
     {
         var aegis = JobAegisMapper.AegisByJobId(jobId);
         return aegis == null ? DefaultBaseAspdMs : GetBaseAspd(aegis, weaponType);
+    }
+
+    public int GetBaseAspdExactByJobId(int jobId, int weaponType)
+    {
+        var aegis = JobAegisMapper.AegisByJobId(jobId);
+        if (aegis == null) return 0;
+        return _table.TryGetValue((aegis, weaponType), out var ms) ? ms : 0;
     }
 }
 

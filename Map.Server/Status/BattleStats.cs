@@ -86,6 +86,7 @@ public sealed class BattleStats
     public byte LeftWeaponElement; // status_data.lhw.ele
     public byte LeftWeaponLevel;   // lhw weapon level (1-5)
     public int LeftWeaponType;     // lhw W_* type (0 = none/fist)
+    public bool HasShield;         // COMBAT-29 — off-hand shield (drives shield ASPD base)
 
     public ushort MatkMin;
     public ushort MatkMax;
