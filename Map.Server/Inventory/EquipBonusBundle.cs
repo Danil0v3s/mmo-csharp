@@ -72,6 +72,13 @@ public sealed class EquipBonusBundle
     /// (<c>bonus2 bFixedCastrate, sk, n</c> → <c>-n</c>; SP_FIXCASTRATE).
     /// Consumed by the cast-timing pipeline (COMBAT-24).</summary>
     public Dictionary<ushort, int> SkillFixCastrate { get; } = new();
+    /// <summary>Per-skill FLAT variable-cast ms add (<c>bonus2 bSkillVariableCast,
+    /// sk, t</c> / SP_SKILL_VARIABLECAST; rAthena adds the raw value, so a
+    /// faster-cast item uses a negative t). COMBAT-24.</summary>
+    public Dictionary<ushort, int> SkillVarCast { get; } = new();
+    /// <summary>Per-skill FLAT fixed-cast ms add (<c>bonus2 bSkillFixedCast,
+    /// sk, t</c> / SP_SKILL_FIXEDCAST). COMBAT-24.</summary>
+    public Dictionary<ushort, int> SkillFixCast { get; } = new();
 
     /// <summary>Catch-all flat-ATK additive bonus (<c>bonus bAtk, N</c>).</summary>
     public int FlatAtk { get; set; }
@@ -230,6 +237,7 @@ public sealed class EquipBonusBundle
         Array.Clear(MagicAddRace); Array.Clear(CritAddRace);
         IgnoreDefRace = IgnoreDefClass = 0;
         SkillAtk.Clear(); SkillVarCastrate.Clear(); SkillFixCastrate.Clear();
+        SkillVarCast.Clear(); SkillFixCast.Clear();
         Array.Clear(ComaClass); Array.Clear(ComaRace);
         AddEffOnAttack.Clear(); AddEffWhenHit.Clear();
         FlatAtk = FlatMatk = FlatCritical = FlatHit = FlatFlee = 0;

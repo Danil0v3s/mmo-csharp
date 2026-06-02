@@ -130,6 +130,10 @@ public sealed class SkillCastTimingService : ISkillCastTimingService
         if (variableTime < 0) return 0;
         if (caster is MobEntity or NpcEntity) return variableTime;
 
+        // COMBAT-24 — SA_ABRACADABRA casts instantly; it then fires a random
+        // skill (abra_db selection is tracked in COMBAT-46).
+        if (skillId == Map.Server.Skills.SkillIds.SA_ABRACADABRA) return 0;
+
         var fixedTime = _db.GetFixedCast(skillId, skillLevel);
         if (fixedTime < 0)
         {
@@ -152,8 +156,29 @@ public sealed class SkillCastTimingService : ISkillCastTimingService
         var bundle = (caster as PlayerEntity)?.EquipBonuses;
         variableTime = ApplyVariableCast(variableTime, caster.Stats.Dex, caster.Stats.IntStat, scale, dexBypass, bundle);
         fixedTime = ApplyFixedCast(fixedTime, bundle);
+        // COMBAT-24 — per-skill cast tables (skill.cpp:20357-20380), applied after
+        // the global equip/card bonuses, keyed on this skill only.
+        (variableTime, fixedTime) = ApplyPerSkillCast(variableTime, fixedTime, skillId, bundle);
 
         return Math.Max(0, variableTime + fixedTime);
+    }
+
+    /// <summary>
+    /// COMBAT-24 — per-skill cast bonuses (skill_vfcastfix per-skill loops):
+    /// flat <c>bSkillVariableCast</c>/<c>bSkillFixedCast</c> ms adds (raw,
+    /// negative = faster) + the per-skill <c>bVariableCastrate</c>/
+    /// <c>bFixedCastrate</c> % (stored INVERSED by the extractor, applied as
+    /// <c>×(100 + rate)/100</c> like the global form). Only the keyed skill is
+    /// affected.
+    /// </summary>
+    internal static (int variable, int fixedTime) ApplyPerSkillCast(int variableTime, int fixedTime, ushort skillId, EquipBonusBundle? b)
+    {
+        if (b == null) return (variableTime, fixedTime);
+        if (b.SkillVarCast.TryGetValue(skillId, out var vc)) variableTime += vc;
+        if (b.SkillVarCastrate.TryGetValue(skillId, out var vr)) variableTime = variableTime * (100 + vr) / 100;
+        if (b.SkillFixCast.TryGetValue(skillId, out var fc)) fixedTime += fc;
+        if (b.SkillFixCastrate.TryGetValue(skillId, out var fr)) fixedTime = fixedTime * (100 + fr) / 100;
+        return (variableTime < 0 ? 0 : variableTime, fixedTime < 0 ? 0 : fixedTime);
     }
 
     /// <summary>
@@ -198,8 +223,10 @@ public sealed class SkillCastTimingService : ISkillCastTimingService
     // ----- skill_delayfix (after-cast delay) -------------------------
     public int DelayFix(Entity caster, ushort skillId, ushort skillLevel)
     {
-        // SA_ABRACADABRA's 0-delay special case + the abra_db random-skill
-        // table are out of scope here — tracked in COMBAT-24.
+        // COMBAT-24 — SA_ABRACADABRA uses the picked skill's delay, so its own
+        // after-cast delay is 0 (skill.cpp:20460). The abra_db random-skill
+        // selection is tracked in COMBAT-46.
+        if (skillId == Map.Server.Skills.SkillIds.SA_ABRACADABRA) return 0;
 
         // BL-type no-skill-delay bypass — rAthena returns the floor immediately.
         if (caster is MobEntity)

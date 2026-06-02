@@ -264,6 +264,10 @@ public static class BonusScriptExtractor
             // cast-timing consumer (COMBAT-24) reads these as a reduction.
             case "variablecastrate": AddSkillMap(b.SkillVarCastrate, idxToken, -v); break;
             case "fixedcastrate":    AddSkillMap(b.SkillFixCastrate, idxToken, -v); break;
+            // COMBAT-24 — per-skill FLAT cast-ms add (rAthena adds the raw value;
+            // negative = faster). bonus2 bSkillVariableCast / bSkillFixedCast.
+            case "skillvariablecast": AddSkillMap(b.SkillVarCast, idxToken, v); break;
+            case "skillfixedcast":    AddSkillMap(b.SkillFixCast, idxToken, v); break;
             // bAddRace2, bIgnoreDefRate, bSubDefEle, ... — race2 classification
             // + flag-matched lists land in COMBAT-43.
         }

@@ -106,6 +106,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-43 | Cardfix remainder (ignore-def / element-debuff / race2 / distinct magic arrays) — split from COMBAT-21 |
 | COMBAT-44 | bonus tail: SkillHeal / HP-SP vanish / race2 / bonus3-5 forms — split from COMBAT-22 |
 | COMBAT-45 | pc_bonus consumers: speed/weight/crit/usesp + unbreakable/intravision flags — split from COMBAT-23 |
+| COMBAT-46 | SA_ABRACADABRA abra_db random-skill selection — split from COMBAT-24 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |
