@@ -63,6 +63,13 @@ public static class BonusScriptExtractor
         @"bonus\s+b(?<key>[A-Za-z]+)\s*;",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    // COMBAT-43 — the constant-arg form `bonus bIgnoreDefRace,RC_X;` /
+    // `bonus bIgnoreDefClass,Class_X;` — the second arg is a race/class CONSTANT,
+    // not a number, so BonusFlat (which requires digits) never matches it.
+    private static readonly Regex BonusIgnoreDef = new(
+        @"bonus\s+b(?<key>IgnoreDefRace|IgnoreDefClass)\s*,\s*(?<idx>\w+)\s*;",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     private static readonly Regex Bonus2Indexed = new(
         // The index token may be a constant (RC_X / Ele_X / a skill name) or a
         // quoted skill name (bonus2 bSkillAtk,"MG_FIREBOLT",20). COMBAT-22 widened
@@ -123,6 +130,32 @@ public static class BonusScriptExtractor
             var idxToken = m.Groups["idx"].Value;
             if (!int.TryParse(m.Groups["v"].Value, out var v)) continue;
             ApplyIndexed(bundle, key, idxToken, v);
+        }
+
+        // COMBAT-43 — ignore-def (constant-arg form). The DEF-reduction stage reads
+        // these bitmasks (rAthena SP_IGNORE_DEF_RACE / SP_IGNORE_DEF_CLASS).
+        foreach (Match m in BonusIgnoreDef.Matches(script))
+            ApplyIgnoreDef(bundle, m.Groups["key"].Value, m.Groups["idx"].Value);
+    }
+
+    /// <summary>
+    /// COMBAT-43 — OR the race/class bit for <c>bonus bIgnoreDefRace,RC_X</c> /
+    /// <c>bonus bIgnoreDefClass,Class_X</c>. <c>RC_All</c>/<c>Class_All</c> set every
+    /// real race/class bit (rAthena's "all" sentinel).
+    /// </summary>
+    internal static void ApplyIgnoreDef(EquipBonusBundle b, string key, string idxToken)
+    {
+        if (string.Equals(key, "IgnoreDefRace", StringComparison.OrdinalIgnoreCase))
+        {
+            var r = ParseRace(idxToken);
+            if (r == (int)BattleRace.All) b.IgnoreDefRace |= (1 << (int)BattleRace.PlayerDoram + 1) - 1; // all real races
+            else if (r >= 0) b.IgnoreDefRace |= 1 << r;
+        }
+        else // IgnoreDefClass
+        {
+            var c = ParseClass(idxToken);
+            if (c == (int)BattleClassFlag.All) b.IgnoreDefClass |= (1 << (int)BattleClassFlag.Guardian + 1) - 1; // all classes
+            else if (c >= 0) b.IgnoreDefClass |= 1 << c;
         }
     }
 

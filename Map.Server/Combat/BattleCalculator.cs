@@ -357,6 +357,16 @@ public sealed class BattleCalculator : IBattleCalculator
                 vitDef -= vitDef * signum.Val2 / 100;
             }
         }
+        // COMBAT-43 — bIgnoreDefRace / bIgnoreDefClass: skip the hard+soft DEF
+        // subtract vs the target's race/class (rAthena battle.cpp:3379). Per hand,
+        // so the right and left weapon are evaluated independently here.
+        if (srcIsPc && (source as PlayerEntity)?.EquipBonuses is { } eqDef
+            && (((int)t.Race >= 0 && (eqDef.IgnoreDefRace & (1 << (int)t.Race)) != 0)
+                || (eqDef.IgnoreDefClass & (1 << TargetClassBit(target))) != 0))
+        {
+            def1 = 0;
+            vitDef = 0;
+        }
         if (def1 == -400) def1 = -399; // div-by-zero guard from rAthena
         damage = damage * (4000L + def1) / (4000L + 10L * def1) - vitDef;
 
@@ -592,6 +602,18 @@ public sealed class BattleCalculator : IBattleCalculator
     /// melee weapons (range ≤ 3) are BF_SHORT, bows/guns BF_LONG.
     /// </summary>
     internal static bool IsShortRange(Entity src) => src.Stats.AttackRange <= 3;
+
+    /// <summary>
+    /// COMBAT-43 — the target's class bit for <c>bIgnoreDefClass</c> (rAthena
+    /// <c>status_get_class_</c>): a boss-protocol mob (<c>MD_STATUSIMMUNE</c>) is
+    /// <see cref="Map.Server.Inventory.BattleClassFlag.Boss"/>; everything else is
+    /// <see cref="Map.Server.Inventory.BattleClassFlag.Normal"/>. (Guardian is a WoE
+    /// distinction tracked separately.)
+    /// </summary>
+    private static int TargetClassBit(Entity target)
+        => (target.Stats.Mode & MobMode.StatusImmune) != 0
+            ? (int)Map.Server.Inventory.BattleClassFlag.Boss
+            : (int)Map.Server.Inventory.BattleClassFlag.Normal;
 
     /// <inheritdoc cref="IBattleCalculator.ApplyWeaponSkillPlantZone"/>
     public long ApplyWeaponSkillPlantZone(Entity src, Entity target, long damage, bool isShortRange)

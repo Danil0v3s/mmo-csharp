@@ -123,6 +123,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-60 | Per-skill div_ remainder: splash/SkillImpl arms + miscflag/ctx hook + positive-div multiply — split from COMBAT-38 |
 | COMBAT-61 | Full per-hand renewal weapon-attack accumulator split (statusAtk2/patk/crit/res) — split from COMBAT-40 |
 | COMBAT-62 | GvG gates: INF2 ignore-reduction + can-hit gate + PK rate + Emperium — split from COMBAT-42 |
+| COMBAT-63 | Cardfix remainder: element-debuff + race2 + distinct magic arrays + SubDefEle — split from COMBAT-43 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

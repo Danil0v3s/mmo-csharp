@@ -1,6 +1,6 @@
 # COMBAT-43 — Cardfix remainder (ignore-def, element-debuff, race2, magic arrays)
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-02) · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-21 (multiplicative cardfix + magic-add-race/critical-add-race)
 > **Blocks:** none
 > **Filed by:** COMBAT-21 — the cardfix sub-stages that live outside the offensive/defensive
@@ -42,21 +42,25 @@ pieces are unported because they live in other stages or need new infrastructure
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Extractor: parse `bonus bIgnoreDefRace,<race>` / `bonus bIgnoreDefClass,<class>`
-      (constant-value form) into the `IgnoreDefRace`/`IgnoreDefClass` bitmasks.
-- [ ] `ComputeHandDamage` def stage: when the target's race/class bit is set, skip the
-      hard+soft DEF subtract (right + left hand independently per rAthena).
-- [ ] `BattleCardService`: inject `IStatusChangeService` (Lazy) and fold
-      `battle_calc_cardfix_debuff` into the BF_MAGIC branch.
-- [ ] Add the distinct magic ele/size/class arrays + race2 (`AddRace2`/`SubRace2` via a
-      race2 classifier) + `SubDefEle` + `magic_subsize` + the flag-matched `subele2`/
-      `subrace3` lists + arrow-specific `arrow_addrace`/`arrow_addele`.
+- [x] Extractor: parse the constant-arg `bonus bIgnoreDefRace,<race>` /
+      `bonus bIgnoreDefClass,<class>` form (new `BonusIgnoreDef` regex +
+      `ApplyIgnoreDef`, incl. the `RC_All`/`Class_All` "all bits" sentinel) into the
+      `IgnoreDefRace`/`IgnoreDefClass` bitmasks.
+- [x] `ComputeHandDamage` def stage: when the attacker's `IgnoreDefRace` bit for the
+      target's race (or `IgnoreDefClass` for its class — boss via `MD_STATUSIMMUNE`) is
+      set, zero `def1`/`vitDef` (skip the hard+soft DEF subtract). Per hand, since
+      ComputeHandDamage runs for the right and left weapon independently.
+- [x] Element-debuff (`battle_calc_cardfix_debuff`) ➡️ COMBAT-63 (needs
+      `IStatusChangeService` injected into `BattleCardService`).
+- [x] race2 + distinct magic ele/size/class arrays + `SubDefEle` + `magic_subsize` +
+      flag-matched `subele2`/`subrace3` + arrow-specific ➡️ COMBAT-63 (each needs new
+      arrays / a race2 classifier).
 
 ## Done criteria
 
-- ➡️ from COMBAT-21: ignore-def zeroes the DEF subtract vs the carded race/class;
-  element-debuff increases magic damage vs a target carrying the SC.
-- race2 cards apply; magic uses its own ele/size/class arrays.
+- ➡️ from COMBAT-21: ignore-def zeroes the DEF subtract vs the carded race/class. ✅
+- element-debuff increases magic damage vs a target carrying the SC. ➡️ COMBAT-63.
+- race2 cards apply; magic uses its own ele/size/class arrays. ➡️ COMBAT-63.
 
 ## Test plan
 
@@ -67,3 +71,16 @@ pieces are unported because they live in other stages or need new infrastructure
 
 - Ignore-def is a DEF-stage effect, not a cardfix multiplier — keep it in
   `ComputeHandDamage`, not `CalcCardFix`.
+
+## History
+
+- 2026-06-02 · Landed the ignore-def slice: a new `BonusIgnoreDef` regex +
+  `BonusScriptExtractor.ApplyIgnoreDef` parse the constant-arg
+  `bonus bIgnoreDefRace,RC_X` / `bonus bIgnoreDefClass,Class_X` form (incl. RC_All /
+  Class_All → all bits) into the `IgnoreDefRace`/`IgnoreDefClass` bitmasks;
+  `BattleCalculator.ComputeHandDamage` zeroes `def1`/`vitDef` when the attacker's
+  bit matches the target's race (or class via `MD_STATUSIMMUNE` → Boss), per hand.
+  Combat43CardfixRemainderTests (6: extractor race/all/class, def-skip vs race,
+  no-fire vs other race, def-skip vs boss). Full Map.Server.Tests green except the
+  pre-existing INFRA-11 replay gate. Filed COMBAT-63 (element-debuff + race2 +
+  distinct magic arrays + SubDefEle — each needs new infra).
