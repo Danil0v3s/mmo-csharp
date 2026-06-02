@@ -1,6 +1,6 @@
 # COMBAT-67 — Warp Portal ground-unit placement + deferred consume + pc_memo set-path
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-48 (AL_WARP destination resolution + CZ_SELECT_WARPPOINT) · **Blocks:** none
 > **Filed by:** COMBAT-48 — the rAthena-faithful parts it intentionally simplified.
 
