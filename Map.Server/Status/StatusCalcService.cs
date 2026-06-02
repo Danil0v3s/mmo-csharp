@@ -198,6 +198,18 @@ public sealed class StatusCalcService : IStatusCalcService
             maxHp = NoviceMaxHp(inputs.BaseLevel, s.Vit);
             maxSp = NoviceMaxSp(inputs.BaseLevel, s.IntStat);
         }
+        // COMBAT-30 — transcendent ×1.25 / Taekwon-ranker ×3 (status.cpp:3479),
+        // applied AFTER the VIT/INT scale and BEFORE the flat/rate equip fold.
+        if (JobAegisMapper.IsTranscendent(inputs.JobId))
+        {
+            maxHp = maxHp * 125 / 100;
+            maxSp = maxSp * 125 / 100;
+        }
+        else if (inputs.JobId == JobAegisMapper.TaekwonJobId && inputs.BaseLevel >= 90 && player.IsTaekwonRanker)
+        {
+            maxHp *= 3;
+            maxSp *= 3;
+        }
         // COMBAT-09: equip MaxHP/MaxSP — rAthena status_calc_maxhp_pc
         // (status.cpp:3463) adds the FLAT bonus (STATUS_BONUS_FIX) FIRST, then
         // applies the percent (STATUS_BONUS_RATE) to the flat-included total —

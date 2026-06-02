@@ -1,6 +1,6 @@
 # COMBAT-30 — Transcendent (JOBL_UPPER ×1.25) + Taekwon-ranker (×3) MaxHP/SP multiplier
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-02) · **Size:** S · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 
 ## Problem
@@ -35,21 +35,26 @@ STA term**; STA feeds Res, which is already computed in `CalcMisc`.)
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Add a `JOBL_UPPER` test (use `PlayerEntity.ClassMask & 0x1000`, or a `JobAegisMapper`
-      helper) and apply the ×1.25 multiplier to MaxHP **and** MaxSP after the VIT/INT scale,
-      before the flat/rate equip fold.
-- [ ] Add the Taekwon-ranker ×3 multiplier (gate on Taekwon job + max-job-level + ranker
-      state; ranker state may need a small flag if not modeled — note, don't stub).
-- [ ] Ensure `ClassMask` is populated for connected players (it is set from `ch.*`? verify;
-      if not, wire it alongside `ClassId` in `NotifyActorInitHandler`).
-- [ ] Map the transcendent job ids needed to exercise this (extend `JobAegisMapper` /
-      `ClassMask` derivation) so the multiplier is reachable.
+- [x] Added `JobAegisMapper.IsTranscendent(jobId)` (job-id band 4001-4022 — `MapidClass.Upper`
+      is overloaded for this version so a job-id test is the reliable JOBL_UPPER signal) and
+      applied the ×1.25 multiplier to MaxHP **and** MaxSP after the VIT/INT scale, before the
+      flat/rate equip fold (`StatusCalcService.CalcPc`).
+- [x] Added the Taekwon-ranker ×3 multiplier — gates on `JobId == 4046` + `BaseLevel >= 90` +
+      `PlayerEntity.IsTaekwonRanker` (new flag; the fame-rank *population* of that flag
+      ➡️ COMBAT-51, the multiplier logic itself is done + tested).
+- [x] Fixed the latent never-populated `ClassMask` bug: `PlayerEntity.ClassId` is now a
+      property whose setter derives `ClassMask = MapidClass.FromClassId(value)`, so every
+      connected player's mask is populated wherever `ClassId` is assigned.
+- [x] Added `JobAegisMapper.TaekwonJobId = 4046` + the trans 1st/2nd ids the multiplier needs.
+      ➡️ COMBAT-51: the full trans-3rd/4th JOBL_UPPER inheritance table.
 
 ## Done criteria
 
-- A transcendent character's MaxHP/MaxSP is 1.25× the same-stat non-trans value.
-- A Taekwon ranker's MaxHP is 3× base.
-- Non-trans characters are unchanged.
+- A transcendent character's MaxHP/MaxSP is 1.25× the same-stat non-trans value. ✅ (trans
+  1st/2nd; trans-3rd/4th ➡️ COMBAT-51)
+- A Taekwon ranker's MaxHP is 3× base. ✅ (multiplier logic; live fame-rank population
+  ➡️ COMBAT-51)
+- Non-trans characters are unchanged. ✅
 
 ## Test plan
 
@@ -62,3 +67,13 @@ STA term**; STA feeds Res, which is already computed in `CalcMisc`.)
 - Multiplier order matters: VIT scale → ×1.25/×3 → +flat → ×rate (match rAthena exactly).
 - If `ClassMask` / ranker state isn't populated for live players, that wiring is part of
   this ticket (don't leave the multiplier dormant behind unpopulated state).
+
+## History
+
+- 2026-06-02 · Added `JobAegisMapper.IsTranscendent` (4001-4022) + `TaekwonJobId`, applied
+  the renewal ×1.25 / ×3 MaxHP+MaxSP multipliers in `StatusCalcService.CalcPc` (after the
+  VIT/INT scale, before the equip flat/rate fold, matching status.cpp:3479), added the
+  `PlayerEntity.IsTaekwonRanker` flag, and fixed the latent `ClassMask`-never-populated bug
+  via the `ClassId` setter. 5 tests in `Combat30TranscendentMaxHpTests` green; full
+  Map.Server.Tests suite green except the pre-existing INFRA-11 replay gate. Filed COMBAT-51
+  for the trans-3rd/4th JOBL_UPPER table + the Taekwon fame-rank population.

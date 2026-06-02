@@ -159,4 +159,17 @@ public static class JobAegisMapper
     /// <summary>Returns the rAthena yml Aegis name for a JobId, or null when unmapped.</summary>
     public static string? AegisByJobId(int jobId)
         => _byId.TryGetValue(jobId, out var name) ? name : null;
+
+    /// <summary>
+    /// COMBAT-30 — rAthena <c>class_ &amp; JOBL_UPPER</c> for the MaxHP/SP ×1.25
+    /// transcendent bonus. The trans 1st + trans 2nd job-id band is
+    /// <c>JOB_NOVICE_HIGH(4001)</c>..the trans-2nd classes (4022); baby classes
+    /// (4023-4045) and Taekwon-family (4046+) are NOT transcendent. The trans-3rd/
+    /// 4th JOBL_UPPER inheritance (Rune Knight from a Lord Knight base, etc.) needs
+    /// the full job-promotion table → COMBAT-51.
+    /// </summary>
+    public static bool IsTranscendent(int jobId) => jobId is >= 4001 and <= 4022;
+
+    /// <summary>rAthena <c>JOB_TAEKWON</c> id — the ×3 MaxHP ranker class.</summary>
+    public const int TaekwonJobId = 4046;
 }

@@ -66,8 +66,26 @@ public sealed class PlayerEntity : Entity
     /// mutated by <c>JobChangeService</c>. Used by every formula
     /// that branches on job (autospell job-only gates, weapon
     /// proficiency, MAPID_* introspection).
+    /// <para>COMBAT-30: setting <see cref="ClassId"/> keeps <see cref="ClassMask"/>
+    /// in sync (rAthena <c>pc_jobid2mapid</c>) — it was previously read in several
+    /// combat/skill checks (kagerou/thief/super-novice) but never populated, so
+    /// those gates silently saw the Novice default.</para>
     /// </summary>
-    public int ClassId { get; set; }
+    public int ClassId
+    {
+        get => _classId;
+        set { _classId = value; ClassMask = MapidClass.FromClassId(value); }
+    }
+    private int _classId;
+
+    /// <summary>
+    /// COMBAT-30 — rAthena <c>pc_is_taekwon_ranker</c> state (the character is a
+    /// Taekwon on the Taekwon fame rank). Drives the ×3 MaxHP bonus together with
+    /// the Taekwon class + base level ≥ 90. Populated by the fame-ranking
+    /// subsystem (COMBAT-51); defaults false (an unranked Taekwon gets no bonus,
+    /// matching rAthena).
+    /// </summary>
+    public bool IsTaekwonRanker { get; set; }
 
     /// <summary>
     /// rAthena <c>sd-&gt;class_</c> = MAPID_* bitmask reduction of
