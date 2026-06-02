@@ -100,6 +100,8 @@ public sealed class MapFlagService : IMapFlagService
             case "pvp_noparty": flag = MapFlag.PvpNoparty; return true;
             case "pvp_noguild": flag = MapFlag.PvpNoguild; return true;
             case "gvg_noparty": flag = MapFlag.GvgNoparty; return true;
+            case "nowarp": flag = MapFlag.NoWarp; return true;
+            case "nowarpto": flag = MapFlag.NoWarpTo; return true;
             default: return false;
         }
     }

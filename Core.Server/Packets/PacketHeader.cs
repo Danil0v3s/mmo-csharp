@@ -184,6 +184,7 @@ public enum PacketHeader : short
     CZ_REQUEST_TIME = 0x0363,              // PACKETVER ≥ 20220401 ticksend / heartbeat (rAthena moved it from 0x007e to 0x0363). Doubles as the keep-alive on our target client; the handler resets HeartbeatTimeout on receipt.
     CZ_WANT_TO_CONNECTION = 0x0436,        // modern post-charselect connect
     CZ_CONTACTNPC = 0x0090,                // clif_parse_NpcClicked, 7B (header + npcId(4) + type(1)). Not part of the 20180307 shuffle.
+    CZ_SELECT_WARPPOINT = 0x011b,          // clif_parse_UseSkillMap — Warp/Teleport chooser answer. 20B: skillId(2) + mapname(16).
     CZ_CHOOSE_MENU = 0x00b8,               // clif_parse_ChooseMenu, 7B (npcId + selection). 1-based; 255=Escape.
     CZ_REQ_NEXT_SCRIPT = 0x00b9,           // clif_parse_NextScript, 6B (npcId).
     CZ_CLOSE_DIALOG = 0x0146,              // clif_parse_CloseScript, 6B (npcId). NOTE: distinct from outgoing ZC_CLOSE_DIALOG=0x00b6.

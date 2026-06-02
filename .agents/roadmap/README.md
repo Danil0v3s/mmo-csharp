@@ -127,6 +127,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-64 | bonus3/4/5 static forms + pc_sub_skillatk_bonus (defender reduction) — split from COMBAT-44 |
 | COMBAT-65 | Unbreakable/Intravision consumers + SC speed table — split from COMBAT-45 |
 | COMBAT-66 | skill_db UnitFlags loader + production Land Protector unit handler — split from COMBAT-47 |
+| COMBAT-67 | Warp Portal ground-unit + deferred consume/cancel-refund + pc_memo set-path — split from COMBAT-48 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

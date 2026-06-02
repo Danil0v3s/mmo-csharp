@@ -179,6 +179,12 @@ public class NotifyActorInitHandler(
             }
         }
 
+        // COMBAT-48 — hydrate the Warp Portal memo points loaded from the
+        // memo table (PlayerStateService.LoadAsync) onto the live entity so
+        // AL_WARP destination resolution + pc_memo see the persisted slots.
+        for (var i = 0; i < player.MemoPoints.Length && i < session.MemoPoints.Length; i++)
+            player.MemoPoints[i] = session.MemoPoints[i];
+
         registry.Add(player);
 
         session.EntityId = player.Id;

@@ -87,6 +87,17 @@ public class MapSessionData(
     public Map.Server.Persistence.PlayerVarRegs? VarRegs { get; set; }
 
     /// <summary>
+    /// COMBAT-48 — the character's Warp Portal memo points (rAthena
+    /// <c>memo_point[3]</c>), loaded from the <c>memo</c> table by
+    /// <c>IPlayerStateService.LoadAsync</c>. Copied onto
+    /// <c>PlayerEntity.MemoPoints</c> when the entity is built
+    /// (NotifyActorInitHandler) and persisted back by <c>SaveAsync</c>.
+    /// Empty <c>MapName</c> = empty slot. Order = save order (memo id).
+    /// </summary>
+    public (string MapName, short X, short Y)[] MemoPoints { get; set; }
+        = new (string, short, short)[3];
+
+    /// <summary>
     /// Per-character inventory loaded by <c>IInventoryService.LoadAsync</c>
     /// during the connect flow. Null until the load completes; empty list
     /// for fresh characters with no items. Order matches the server-side

@@ -47,6 +47,17 @@ public sealed class PlayerStateService : IPlayerStateService
         var globStr = await db.GlobalAccountRegistersStr.AsNoTracking()
             .Where(r => r.AccountId == accountId).ToListAsync(ct);
 
+        // COMBAT-48 — Warp Portal memo points (rAthena memo_point[3]). Ordered
+        // by row id so the persisted save order survives the round trip; the
+        // first 3 rows fill the slots, extras (shouldn't exist) are ignored.
+        var memos = await db.Memos.AsNoTracking()
+            .Where(m => m.CharId == charId)
+            .OrderBy(m => m.MemoId).ToListAsync(ct);
+        var memoSlots = new (string, short, short)[3];
+        for (var i = 0; i < memoSlots.Length && i < memos.Count; i++)
+            memoSlots[i] = (memos[i].Map, (short)memos[i].X, (short)memos[i].Y);
+        session.MemoPoints = memoSlots;
+
         session.VarRegs = new PlayerVarRegs(
             BuildScope(permNum.Select(r => (r.Key, (object)r.Value)),
                        permStr.Select(r => (r.Key, (object)r.Value))),
@@ -85,7 +96,9 @@ public sealed class PlayerStateService : IPlayerStateService
 
         var pendingInventoryInserts = await SaveInventoryAsync(session, charId, db, ct);
 
-        // Single SaveChanges covers var-regs + inventory: any mid-flight
+        await SaveMemoPointsAsync(session, charId, db, ct);
+
+        // Single SaveChanges covers var-regs + inventory + memo: any mid-flight
         // failure rolls back consistently, and we cut one round trip.
         await db.SaveChangesAsync(ct);
 
@@ -211,6 +224,32 @@ public sealed class PlayerStateService : IPlayerStateService
         }
 
         return pendingInserts;
+    }
+
+    // ----- memo points (Warp Portal) -----
+
+    /// <summary>
+    /// COMBAT-48 — persist the live <see cref="PlayerEntity.MemoPoints"/> back to
+    /// the <c>memo</c> table (rAthena <c>memo_point[3]</c>). The runtime entity is
+    /// the source of truth (pc_memo mutates it); fall back to the load-time
+    /// snapshot when the entity is gone (final save after despawn). Strategy:
+    /// drop the char's rows and re-insert the non-empty slots in order, so the
+    /// row order matches the in-memory slot order on the next load.
+    /// </summary>
+    private async Task SaveMemoPointsAsync(MapSessionData session, int charId, GameDbContext db, CancellationToken ct)
+    {
+        var memos = session.EntityId is { } eid && _entities.Get(eid) is PlayerEntity pc
+            ? pc.MemoPoints
+            : session.MemoPoints;
+        if (memos == null) return;
+
+        var existing = await db.Memos.Where(m => m.CharId == charId).ToListAsync(ct);
+        db.Memos.RemoveRange(existing);
+        foreach (var (map, x, y) in memos)
+        {
+            if (string.IsNullOrEmpty(map)) continue;
+            db.Memos.Add(new MemoEntity { CharId = charId, Map = map, X = (ushort)x, Y = (ushort)y });
+        }
     }
 
     private static InventoryEntity MapToEntity(int charId, Map.Server.Inventory.InventoryItem item)

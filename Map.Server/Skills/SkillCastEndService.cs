@@ -25,6 +25,8 @@ public sealed class SkillCastEndService : ISkillCastEndService
     private readonly Map.Server.Combat.IPcDeathService? _death;
     private readonly Map.Server.World.IMapFlagService? _mapFlags;
     private readonly Map.Server.World.IMapWorldRegistry? _maps;
+    // COMBAT-48 — AL_WARP memo-destination warp (pc_setpos).
+    private readonly Map.Server.Movement.IPcSetposService? _setpos;
 
     public SkillCastEndService(
         ISkillDb db,
@@ -34,7 +36,8 @@ public sealed class SkillCastEndService : ISkillCastEndService
         Map.Server.Movement.IPlayerPositionHelpers? positions = null,
         Map.Server.Combat.IPcDeathService? death = null,
         Map.Server.World.IMapFlagService? mapFlags = null,
-        Map.Server.World.IMapWorldRegistry? maps = null)
+        Map.Server.World.IMapWorldRegistry? maps = null,
+        Map.Server.Movement.IPcSetposService? setpos = null)
     {
         _db = db;
         _resolvers = resolvers;
@@ -44,6 +47,7 @@ public sealed class SkillCastEndService : ISkillCastEndService
         _death = death;
         _mapFlags = mapFlags;
         _maps = maps;
+        _setpos = setpos;
     }
 
     public bool CastEndDamageId(Entity source, Entity target, ushort skillId, ushort skillLevel)
@@ -104,10 +108,63 @@ public sealed class SkillCastEndService : ISkillCastEndService
                     return _death?.WarpToSavepoint(pc) ?? false;
                 return false;
             }
+            case SkillIds.AL_WARP:
+            {
+                // rAthena skill_castend_map AL_WARP (skill.cpp:15693). The chooser
+                // dismiss button sends "cancel" → abort with no warp.
+                if (string.Equals(targetMap, "cancel", System.StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                // Destination list is level-gated: index 0 = save_point (lv≥1),
+                // index i = memo_point[i-1] (i < lv), capped at lv 4. lv comes
+                // from the learned AL_WARP level (pc_checkskill).
+                var lv = pc.LearnedSkills.GetValueOrDefault(SkillIds.AL_WARP);
+                if (lv <= 0) return false;
+                if (lv > 4) lv = 4;
+
+                // Source-map gate: rAthena MF_NOWARP forbids warping OUT.
+                var srcMap = _maps?.All.FirstOrDefault(m => (uint)m.Name.GetHashCode() == pc.MapId);
+                if (srcMap != null && _mapFlags?.IsSet(srcMap.Name, Map.Server.World.MapFlag.NoWarp) == true)
+                    return false;
+
+                // First chooser entry is the save point (sentinel "SavePoint").
+                if (string.Equals(targetMap, "SavePoint", System.StringComparison.OrdinalIgnoreCase))
+                    return _death?.WarpToSavepoint(pc) ?? false;
+
+                // Otherwise resolve the memo slot whose map matches the pick,
+                // within the level gate (memo slot s is reachable at lv ≥ s+2).
+                for (var s = 0; s < pc.MemoPoints.Length; s++)
+                {
+                    var memo = pc.MemoPoints[s];
+                    if (string.IsNullOrEmpty(memo.MapName)) continue;
+                    if (!string.Equals(memo.MapName, targetMap, System.StringComparison.OrdinalIgnoreCase)) continue;
+                    if (lv < s + 2)
+                    {
+                        // Picked a destination above the caster's skill level.
+                        _logger.LogDebug("skill_castend_map AL_WARP: {Map} above lv {Lv} gate", targetMap, lv);
+                        return false;
+                    }
+
+                    // Destination gate: rAthena MF_NOWARPTO forbids warping IN.
+                    if (_mapFlags?.IsSet(memo.MapName, Map.Server.World.MapFlag.NoWarpTo) == true)
+                        return false;
+
+                    // NOTE: rAthena places a Warp Portal ground unit at the cast
+                    // cell whose exit is (memo.X, memo.Y); this port warps the
+                    // caster directly (pc_setpos). The portal-placement and the
+                    // deferred-requirement-consume / cancel-refund semantics
+                    // (SKILL_NOCONSUME_REQ) are tracked in COMBAT-67 — here the
+                    // SP was already consumed at cast (StartCast).
+                    var result = _setpos?.Setpos(pc, memo.MapName, memo.X, memo.Y)
+                                 ?? Map.Server.Movement.SetposResult.UnknownMap;
+                    return result == Map.Server.Movement.SetposResult.Ok;
+                }
+
+                // No matching memo slot for the picked map.
+                return false;
+            }
             default:
-                // AL_WARP destination resolution (memo coords) + the
-                // CZ_SELECT_WARPPOINT handler wiring are tracked in COMBAT-48.
-                _logger.LogDebug("skill_castend_map: {Skill} → {Map} not yet handled (COMBAT-48)", skillId, targetMap);
+                _logger.LogDebug("skill_castend_map: {Skill} → {Map} not a warp skill", skillId, targetMap);
                 return false;
         }
     }

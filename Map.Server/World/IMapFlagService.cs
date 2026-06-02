@@ -66,4 +66,10 @@ public enum MapFlag
     PvpNoguild,
     /// <summary>GvG friendly-fire on party (rAthena <c>MF_GVG_NOPARTY</c>): party members ARE attackable.</summary>
     GvgNoparty,
+    // COMBAT-48 — Warp Portal / Teleport destination gates. Appended (the
+    // flag-bit store keys off the enum ordinal, so new members go at the end).
+    /// <summary>Warping OUT of this map is refused (rAthena <c>MF_NOWARP</c>) — Warp Portal / @warp source gate.</summary>
+    NoWarp,
+    /// <summary>Warping INTO this map is refused (rAthena <c>MF_NOWARPTO</c>) — Warp Portal / @warp destination gate.</summary>
+    NoWarpTo,
 }
