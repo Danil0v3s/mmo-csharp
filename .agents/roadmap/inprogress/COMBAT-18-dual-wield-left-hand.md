@@ -1,6 +1,6 @@
 # COMBAT-18 — Dual-wield left-hand damage (battle_calc_attack_left_right_hands)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-04 · **Blocks:** none
 > **Filed by:** COMBAT-04 (axis 4).
 
