@@ -15,10 +15,9 @@ public sealed class SonicBlow : WeaponSkillImpl
 {
     public SonicBlow() : base(SkillIds.AS_SONICBLOW) { }
 
-    // COMBAT-17 — rAthena skill_db AS_SONICBLOW HitCount: -8 (single damage
-    // shown as 8 hits). div_ magnitude = 8 on the wire; the ratio below
-    // already carries the full total, so there is no per-hit multiplication.
-    public override int GetMultiHitCount(ushort skillLevel) => 8;
+    // COMBAT-39 — AS_SONICBLOW HitCount (-8 → 8 hits on the wire) now comes from
+    // the SkillHitCounts table via the WeaponSkillImpl.GetMultiHitCount default, so
+    // the explicit override is no longer needed.
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {

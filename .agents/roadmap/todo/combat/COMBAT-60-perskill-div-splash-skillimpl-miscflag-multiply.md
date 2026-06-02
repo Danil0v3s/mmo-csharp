@@ -45,6 +45,10 @@ Three slices remain:
 
 ## Scope
 
+- [ ] Base hit count for SkillImpl/splash multi-hit skills (COMBAT-39 covered the
+      WeaponSkillImpl plugins via `SkillHitCounts` + `GetMultiHitCount`; SkillImpl/splash
+      plugins that don't already render N via their own per-hit loop still default to
+      div 1). Route their base div through `SkillHitCounts` in the funnel/their path.
 - [ ] Extend the div hook with `miscflag` + `ctx` (or add `ResolveDiv(src,target,lv,
       miscflag,ctx)`), and route the miscflag/SC-gated arms through it.
 - [ ] Invoke the hook in the splash + plain-SkillImpl damage paths (coordinate with

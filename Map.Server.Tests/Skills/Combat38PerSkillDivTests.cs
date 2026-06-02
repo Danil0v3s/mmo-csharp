@@ -33,8 +33,11 @@ public class Combat38PerSkillDivTests
         => Assert.Equal(2, DivOf(new BowlingBash(), BattleSize.Medium, WeaponTypeCodes.TwoHandSword));
 
     [Fact]
-    public void BowlingBash_other_weapon_renders_single_hit()
-        => Assert.Equal(1, DivOf(new BowlingBash(), BattleSize.Medium, WeaponTypeCodes.OneHandSword));
+    public void BowlingBash_other_weapon_keeps_its_base_two_hits()
+        // COMBAT-39: KN_BOWLINGBASH HitCount = 2 is the base for every weapon; the
+        // 2HSword/miscflag tiers (3/4) refine it (COMBAT-60), so a non-2HSword still
+        // renders the base 2.
+        => Assert.Equal(2, DivOf(new BowlingBash(), BattleSize.Medium, WeaponTypeCodes.OneHandSword));
 
     [Fact]
     public void FatalMenace_with_a_dagger_adds_one_hit()

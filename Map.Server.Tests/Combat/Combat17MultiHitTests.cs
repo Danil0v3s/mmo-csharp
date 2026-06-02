@@ -34,8 +34,10 @@ public class Combat17MultiHitTests
         => Assert.Equal(8, new SonicBlow().GetMultiHitCount(skillLevel: 5));
 
     [Fact]
-    public void DefaultWeaponSkill_reports_single_hit()
-        => Assert.Equal(1, new DoubleAttack().GetMultiHitCount(skillLevel: 1));
+    public void DoubleAttack_reports_two_hits()
+        // COMBAT-39: TF_DOUBLE HitCount = 2, now sourced from the SkillHitCounts
+        // table via the GetMultiHitCount default (was a stale "single-hit" example).
+        => Assert.Equal(2, new DoubleAttack().GetMultiHitCount(skillLevel: 1));
 
     // ---- auto-attack double attack (battle_calc_multi_attack) ----
 

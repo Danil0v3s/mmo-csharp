@@ -213,15 +213,18 @@ public abstract class WeaponSkillImpl : SkillImpl
     }
 
     /// <summary>
-    /// COMBAT-17 — the skill's displayed hit count (rAthena
+    /// COMBAT-17/39 — the skill's displayed hit count (rAthena
     /// <c>skill_get_num</c> / skill_db <c>num</c>). Drives
-    /// <c>ZC_NOTIFY_ACT3.div</c>. Default 1; multi-hit weapon skills override
-    /// (Sonic Blow → 8). Return the absolute display count — rAthena stores
-    /// the "single damage split into N" skills as a negative <c>num</c>, but
-    /// the wire and HP application both use the magnitude (the ratio already
-    /// carries the full total).
+    /// <c>ZC_NOTIFY_ACT3.div</c>. Defaults to the magnitude of the skill's
+    /// <see cref="SkillHitCounts"/> entry (the full multi-hit sweep — Double Strafe
+    /// 2, Triple Attack 3, Sonic Blow 8, …), 1 when the skill has no row. The wire
+    /// and HP application use the magnitude (the ratio already carries the full
+    /// total); the sign lives in <see cref="SkillHitCounts"/> for COMBAT-60's
+    /// positive-div per-hit multiply. A plugin can still override for a
+    /// context-dependent base count.
     /// </summary>
-    public virtual int GetMultiHitCount(ushort skillLevel) => 1;
+    public virtual int GetMultiHitCount(ushort skillLevel)
+        => System.Math.Abs(SkillHitCounts.Get(SkillId, skillLevel));
 
     /// <summary>
     /// SKILL-05 — the canonical per-skill weapon-damage formula, used by both
