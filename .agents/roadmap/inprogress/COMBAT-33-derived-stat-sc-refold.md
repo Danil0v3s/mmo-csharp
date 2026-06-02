@@ -1,6 +1,6 @@
 # COMBAT-33 — Re-fold derived-stat SC mods on recalc (Angelus Def2, Provoke Batk%, …)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-10 (param-base snapshot established) · **Blocks:** none
 > **Filed by:** COMBAT-10 on 2026-06-01 (primary-stat SC mods now survive recalc; derived-stat ones still don't).
 
