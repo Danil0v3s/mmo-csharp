@@ -110,6 +110,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-47 | Land Protector place-gate (UF_NOLP) + skill-path ground-unit intercept — split from COMBAT-25 |
 | COMBAT-48 | AL_WARP destination resolution + CZ_SELECT_WARPPOINT handler — split from COMBAT-26 |
 | COMBAT-49 | Basilica caster protection (SC_BASILICA cell invulnerability) — split from COMBAT-27 |
+| COMBAT-50 | ASPD skill-val terms + FREECAST + exotic fix_aspd SCs — split from COMBAT-28 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

@@ -28,11 +28,19 @@ public sealed class StatusCalcService : IStatusCalcService
     /// (preserving the old behaviour for tests that don't wire DI).
     /// </summary>
     private readonly IJobStatsCacheService? _jobStats;
+    // COMBAT-28 — live SC list for the ASPD buff/debuff terms. Held lazily to
+    // break the DI cycle StatusCalcService → IStatusChangeService → DamageService
+    // → MobSpawnService → IStatusCalcService. Optional so test ctors keep working
+    // (degrades to "no SC contribution" when null).
+    private readonly Lazy<IStatusChangeService>? _scLazy;
+    private IStatusChangeService? _sc => _scLazy?.Value;
 
-    public StatusCalcService(IJobAspdCacheService? jobAspd = null, IJobStatsCacheService? jobStats = null)
+    public StatusCalcService(IJobAspdCacheService? jobAspd = null, IJobStatsCacheService? jobStats = null,
+        Lazy<IStatusChangeService>? sc = null)
     {
         _jobAspd = jobAspd;
         _jobStats = jobStats;
+        _scLazy = sc;
     }
 
     public void CalcPc(PlayerEntity player, PcBaseInputs inputs)
@@ -225,9 +233,13 @@ public sealed class StatusCalcService : IStatusCalcService
         // job_bonus + SC) so AGI-Up / +AGI gear speed up attacks, matching
         // rAthena status_base_amotion_pc reading battle_status. Baseline-safe
         // (no gear/SC/job → final == base).
+        // COMBAT-28 — SC ASPD contributions (status_calc_aspd fixed/rate +
+        // status_calc_fix_aspd), re-summed from the live SC list each recalc.
+        var (fixedSc, rateSc, fixAspd) = ComputeScAspd(player);
         var amotion = RenewalPcAmotion(
             aspdBase, s.Dex, s.Agi, inputs.WeaponType,
-            aspdRate2: eq?.FlatAspdRate ?? 0, aspdAddVal: eq?.FlatAspd ?? 0);
+            aspdRate2: eq?.FlatAspdRate ?? 0, aspdAddVal: eq?.FlatAspd ?? 0,
+            fixedSc: fixedSc, rateSc: rateSc, fixAspd: fixAspd);
         s.Amotion = (ushort)amotion;
         s.ClientAmotion = s.Amotion;
         // adelay = AMOTION_DIVIDER_PC * amotion (status.cpp:6175).
@@ -435,22 +447,72 @@ public sealed class StatusCalcService : IStatusCalcService
     /// riding), FREECAST, and <c>status_calc_fix_aspd</c> are COMBAT-28; the
     /// dual-wield/shield base terms are COMBAT-29 — both zeroed here.</para>
     /// </summary>
-    internal static int RenewalPcAmotion(int aspdBase, int dex, int agi, int weaponType, int aspdRate2, int aspdAddVal)
+    internal static int RenewalPcAmotion(int aspdBase, int dex, int agi, int weaponType, int aspdRate2, int aspdAddVal,
+        int fixedSc = 0, int rateSc = 0, int fixAspd = 0)
     {
         double divisor = IsRangedWeaponType(weaponType) ? 7.0 : 5.0;
         double temp = dex * (double)dex / divisor + agi * (double)agi * 0.5;
         temp = Math.Sqrt(temp) * 0.25 + 196.0;
-        // (status_calc_aspd(fixed)+val)*agi/200 → 0 (COMBAT-28). aspd_rate (1000)
-        // is a no-op for renewal PCs.
-        int aspd = (int)temp - Math.Min(aspdBase, 200);
-        // RE ASPD % modifier (status.cpp:6165): aspd_rate2 from item bAspdRate.
-        aspd += Math.Max(195 - aspd, 2) * aspdRate2 / 100;
+        // COMBAT-28 — (status_calc_aspd(fixed) + skill val) * agi / 200
+        // (status.cpp:2343). `fixedSc` already includes the Quagmire-gated quicken
+        // bonuses + Madness/Berserk/ASPD-potion (skill `val` terms → COMBAT-50).
+        int aspd = (int)(temp + (double)fixedSc * agi / 200.0) - Math.Min(aspdBase, 200);
+        // RE ASPD % modifier (status.cpp:6165): aspd_rate2 (item bAspdRate) +
+        // status_calc_aspd(false) SC rate term (Steel Body / Defender / Gospel / …).
+        aspd += Math.Max(195 - aspd, 2) * (aspdRate2 + rateSc) / 100;
         // Convert ASPD value → amotion (AMOTION_ZERO_ASPD − aspd·AMOTION_INTERVAL).
         int amotion = 2000 - aspd * 10;
         // aspd_add (status.cpp:6170): pc.cpp SP_ASPD stores aspd_add -= 10*val.
         amotion -= 10 * aspdAddVal;
+        // COMBAT-28 — status_calc_fix_aspd (status.cpp:6172): flat amotion add.
+        amotion -= fixAspd;
         // cap_value(amotion, pc_maxaspd/2 (190/2=95), MIN_ASPD/2 (8000/2=4000)).
         return Math.Clamp(amotion, 95, 4000);
+    }
+
+    /// <summary>
+    /// COMBAT-28 — port of <c>status_calc_aspd(true)</c> / <c>status_calc_aspd(false)</c>
+    /// / <c>status_calc_fix_aspd</c> (status.cpp:8006 / 6172) over the SCs present in
+    /// <see cref="StatusType"/>. Returns (flat ASPD-point bonus, rate %, flat amotion
+    /// reduction). Re-summed from the live SC set each recalc, so it is idempotent.
+    /// </summary>
+    private (int fixedSc, int rateSc, int fixAspd) ComputeScAspd(PlayerEntity pc)
+    {
+        if (_sc == null) return (0, 0, 0);
+        int Val(StatusType t, Func<Status.StatusChange, int> read)
+            => _sc.Get(pc, t) is { } sce ? read(sce) : 0;
+        bool Has(StatusType t) => _sc.Get(pc, t) != null;
+
+        // ---- status_calc_aspd(fixed=true): flat ASPD-point bonus ----
+        int fixedSc = 0;
+        // Quagmire gates off the quicken family (status.cpp:8016).
+        if (!Has(StatusType.Quagmire))
+        {
+            if (Has(StatusType.Twohandquicken) || Has(StatusType.Spearquicken)
+                || Has(StatusType.Adrenaline) || Has(StatusType.MercQuicken)) fixedSc = 7;
+            else if (Has(StatusType.Adrenaline2)) fixedSc = 6;
+            else if (Has(StatusType.Fleet)) fixedSc = 5;
+        }
+        int assn = Val(StatusType.Assncros, sc => sc.Val2); // renewal: always applies
+        if (assn > fixedSc) fixedSc += assn;
+        if (Has(StatusType.Madnesscancel) && fixedSc < 20) fixedSc = 20;
+        else if (Has(StatusType.Berserk) && fixedSc < 15) fixedSc = 15;
+        // ASPD potions stack on top (val1).
+        foreach (var pot in new[] { StatusType.Aspdpotion3, StatusType.Aspdpotion2, StatusType.Aspdpotion1, StatusType.Aspdpotion0 })
+            if (Has(pot)) { fixedSc += Val(pot, sc => sc.Val1); break; }
+
+        // ---- status_calc_aspd(false): rate reduction % ----
+        int rateSc = 0;
+        rateSc -= Val(StatusType.Dontforgetme, sc => sc.Val2) / 10; // PC only — always a PC here
+        if (Has(StatusType.Steelbody)) rateSc -= 25;
+        rateSc -= Val(StatusType.Defender, sc => sc.Val4) / 10;
+        if (_sc.Get(pc, StatusType.Gospel) is { Val4: 2 }) rateSc -= 75; // BCT_ENEMY
+
+        // ---- status_calc_fix_aspd: flat amotion reduction ----
+        int fixAspd = 0;
+        fixAspd += Val(StatusType.HeatBarrel, sc => sc.Val1) * 10;
+
+        return (fixedSc, rateSc, fixAspd);
     }
 
     /// <summary>COMBAT-09 — renewal PC dmotion = cap(800 − 4·agi, 400, 800) (status.cpp:6593).</summary>

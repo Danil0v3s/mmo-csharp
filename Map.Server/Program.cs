@@ -220,7 +220,15 @@ builder.Services.AddSingleton<Map.Server.Status.StatusBroadcaster>();
 // Renewal stat recalc (status.cpp:status_calc_pc / status_calc_mob).
 // Owns BattleStats hydration for both players (at session enter / equip
 // change / SC apply) and mobs (at spawn). Consumed by combat, skill, AI.
-builder.Services.AddSingleton<Map.Server.Status.IStatusCalcService, Map.Server.Status.StatusCalcService>();
+// COMBAT-28 — StatusCalcService reads the live SC list for the ASPD buff/debuff
+// terms; held lazily (it sits in a cycle via StatusChangeService → DamageService
+// → MobSpawnService → back to here).
+builder.Services.AddSingleton<Map.Server.Status.IStatusCalcService>(sp =>
+    new Map.Server.Status.StatusCalcService(
+        sp.GetService<Map.Server.Status.IJobAspdCacheService>(),
+        sp.GetService<Map.Server.Status.IJobStatsCacheService>(),
+        new Lazy<Map.Server.Status.IStatusChangeService>(
+            () => sp.GetRequiredService<Map.Server.Status.IStatusChangeService>())));
 
 // DBR-1a: hydrate the static ElementTable matrix from attr_fix_db at
 // boot. Constructor runs once during DI resolution and seeds the 400

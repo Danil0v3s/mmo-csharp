@@ -1,6 +1,6 @@
 # COMBAT-28 — ASPD SC + skill contributions (status_calc_aspd / fix_aspd / FREECAST)
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-02) · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-09 (base renewal ASPD formula) · **Blocks:** none
 
 ## Problem
@@ -37,23 +37,25 @@ them. A buffed assassin attacks at its unbuffed rate.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Inject `IStatusChangeService?` into `StatusCalcService` (optional ctor arg; degrade to
-      no-op when null so test ctors keep working). Resolve any DI cycle (lazy or optional).
-- [ ] Port `status_calc_aspd(fixed=true)` over the SCs present in the `StatusType` enum and
-      feed it into the `(fixedSc + val) * agi / 200` term. Honor the Quagmire gate.
-- [ ] Port `status_calc_aspd(false)` rate term into the RE %-modifier alongside `aspd_rate2`.
-- [ ] Port `status_calc_fix_aspd` flat SC amotion adjustments (post-conversion).
-- [ ] Skill `val` terms (SA_ADVANCEDBOOK/SG_DEVIL/GS_SINGLEACTION/riding) via `pc_checkskill`
-      analogue + mount state.
-- [ ] FREECAST cast-time ASPD speed-up while the caster has an active cast.
+- [x] Injected `IStatusChangeService` into `StatusCalcService` as a `Lazy<>` (breaks the
+      cycle StatusCalcService → SC → DamageService → MobSpawnService → StatusCalcService);
+      DI registration uses a factory. Degrades to no SC contribution when null (test ctors).
+- [x] Ported `status_calc_aspd(fixed=true)` (`ComputeScAspd`) over the SCs in `StatusType`:
+      Quagmire-gated Quicken family (+7), Adrenaline2 (+6), Fleet (+5), AssnCros (+val2),
+      Madness (+20), Berserk (+15), ASPD potions (+val1) → the `(fixedSc + val)·agi/200` term.
+- [x] Ported `status_calc_aspd(false)` rate term (DontForgetMe −val2/10, Steel Body −25,
+      Defender −val4/10, Gospel-enemy −75) into the RE %-modifier alongside `aspd_rate2`.
+- [x] Ported `status_calc_fix_aspd` flat-amotion adjustments for the SCs present (Heat Barrel).
+- [ ] Skill `val` terms (SA_ADVANCEDBOOK/SG_DEVIL/GS_SINGLEACTION/riding) ➡️ **COMBAT-50**
+      (need new skill-id constants + class/mount gates).
+- [ ] FREECAST cast-time speed-up ➡️ **COMBAT-50** (cast-state-dependent; SC may need adding).
 
 ## Done criteria
 
-- Two-Hand Quicken (or Adrenaline / Berserk / an ASPD potion) measurably lowers amotion vs
-  the unbuffed value at the same stats.
-- Quagmire / Decrease-AGI-class ASPD debuff raises amotion.
-- A recalc while the buff is active preserves the ASPD bonus (it is re-summed from the SC
-  list each `CalcPc`, so this is naturally idempotent — no base/final split needed).
+- Two-Hand Quicken / Berserk measurably lowers amotion vs the unbuffed value ✅.
+- Quagmire raises amotion (gates the quicken off + its AGI cut) ✅.
+- A recalc while the buff is active preserves the ASPD bonus ✅ (re-summed from the live SC
+  set each `CalcPc` — naturally idempotent, no base/final split).
 
 ## Test plan
 
@@ -68,3 +70,15 @@ them. A buffed assassin attacks at its unbuffed rate.
   stat re-fold (COMBAT-10) — do NOT block this on COMBAT-10.
 - Many of the listed SCs may not yet have `StatusType` members; cover those that exist and
   note (do not stub) the ones that don't — add them when their SC ports.
+
+## History
+
+- **2026-06-02** — inprogress→done. `StatusCalcService` now reads the live SC list (injected
+  as `Lazy<IStatusChangeService>` to break the recalc DI cycle) and folds the ASPD
+  contributions via a new `ComputeScAspd`: `status_calc_aspd(fixed)` (Quagmire-gated Quicken
+  family + Madness/Berserk/AssnCros/ASPD-potions) into the `(fixedSc+val)·agi/200` term,
+  `status_calc_aspd(false)` (Steel Body / Defender / Gospel / DontForgetMe) into the
+  %-modifier, and `status_calc_fix_aspd` (Heat Barrel) as a flat amotion add. So Two-Hand
+  Quicken / Berserk speed up attacks and Quagmire slows them. Combat28AspdScTests (5); unit
+  suite 3843 (1 fail = pre-existing INFRA-11 replay gate). Filed COMBAT-50 (skill `val` terms
+  + FREECAST + the exotic fix_aspd SCs).
