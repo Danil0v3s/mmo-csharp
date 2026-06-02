@@ -97,4 +97,11 @@ public enum SkillCastResult
     /// <c>status_check_skilluse</c> refuses (status.cpp:1763).
     /// </summary>
     CannotAct,
+
+    /// <summary>
+    /// COMBAT-58 — an ammo-using skill cast with no/insufficient equipped ammo.
+    /// rAthena <c>skill_check_condition_castbegin</c> ammo gate (clif_arrow_fail /
+    /// USESKILL_FAIL_NEED_MORE_BULLET).
+    /// </summary>
+    NeedAmmo,
 }

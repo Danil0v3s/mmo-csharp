@@ -73,6 +73,8 @@ public sealed class SkillCastService : ISkillCastService
     private readonly IProduceRecipeService? _recipes;
     private readonly IAbraDatabase? _abra;
     private readonly Map.Server.Inventory.IInventoryService? _inventory;
+    // COMBAT-58 — ammo gate/consume for ammo-using skills.
+    private readonly Map.Server.Inventory.IAmmoService? _ammo;
     private readonly ILogger<SkillCastService> _logger;
 
     private readonly List<PendingCast> _pending = new();
@@ -121,7 +123,8 @@ public sealed class SkillCastService : ISkillCastService
         ISkillProductionService? production = null,
         IProduceRecipeService? recipes = null,
         IAbraDatabase? abra = null,
-        Map.Server.Inventory.IInventoryService? inventory = null)
+        Map.Server.Inventory.IInventoryService? inventory = null,
+        Map.Server.Inventory.IAmmoService? ammo = null)
     {
         _db = db;
         _entities = entities;
@@ -164,6 +167,7 @@ public sealed class SkillCastService : ISkillCastService
         _recipes = recipes;
         _abra = abra;
         _inventory = inventory;
+        _ammo = ammo;
         _logger = logger;
     }
 
@@ -242,6 +246,9 @@ public sealed class SkillCastService : ISkillCastService
         // SP cost.
         var spCost = def.SpCost.Length > skillLevel ? def.SpCost[skillLevel] : 0;
         if (source is PlayerEntity pc && pc.Sp < spCost) return SkillCastResult.NotEnoughSp;
+
+        // COMBAT-58 — ammo gate (rAthena skill_check_condition_castbegin ammo arm).
+        if (AmmoGateFails(source, def, skillId, skillLevel)) return SkillCastResult.NeedAmmo;
 
         // Cooldown.
         var cdKey = (source.Id, skillId);
@@ -334,6 +341,9 @@ public sealed class SkillCastService : ISkillCastService
         var spCost = def.SpCost.Length > skillLevel ? def.SpCost[skillLevel] : 0;
         if (source is PlayerEntity pc && pc.Sp < spCost) return SkillCastResult.NotEnoughSp;
 
+        // COMBAT-58 — ammo gate for ground-targeted ammo skills (e.g. Arrow Shower).
+        if (AmmoGateFails(source, def, skillId, skillLevel)) return SkillCastResult.NeedAmmo;
+
         var cdKey = (source.Id, skillId);
         var now = Environment.TickCount64;
         if (_cooldowns.TryGetValue(cdKey, out var readyAt) && readyAt > now) return SkillCastResult.OnCooldown;
@@ -400,11 +410,41 @@ public sealed class SkillCastService : ISkillCastService
         return false;
     }
 
+    // COMBAT-58 — a weapon-damage skill cast with an ammo-using weapon (bow/gun)
+    // consumes ammo, mirroring the auto-attack ammo path. The skill_db ammotype/
+    // ammo_qty columns aren't loaded yet (→ COMBAT-76), so reachability keys on the
+    // WEAPON ammo gate (the common ranged-skill case); qty falls back to 1.
+    private bool SkillUsesAmmo(PlayerEntity pc, SkillDefinition def)
+        => def.DamageKind == SkillDamageKind.Weapon
+           && Map.Server.Inventory.WeaponTypeCodes.UsesAmmo(pc.WeaponType);
+
+    private int SkillAmmoQty(ushort skillId, ushort skillLevel)
+        => Math.Max(1, _db.GetAmmoQty(skillId, skillLevel));
+
+    /// <summary>True (and emits the fail packet) when an ammo-using skill lacks ammo.</summary>
+    private bool AmmoGateFails(Entity source, SkillDefinition def, ushort skillId, ushort skillLevel)
+    {
+        if (source is not PlayerEntity pc || !SkillUsesAmmo(pc, def)) return false;
+        if (_ammo?.HasUsableAmmo(pc, SkillAmmoQty(skillId, skillLevel)) != false) return false;
+        // rAthena: guns → USESKILL_FAIL_NEED_MORE_BULLET; arrows → clif_arrow_fail.
+        var cause = pc.WeaponType >= Map.Server.Inventory.WeaponTypeCodes.Revolver
+                    && pc.WeaponType <= Map.Server.Inventory.WeaponTypeCodes.Grenade
+            ? Core.Server.Packets.Out.ZC.SkillFailCause.NeedMoreBullet
+            : Core.Server.Packets.Out.ZC.SkillFailCause.Stuff;
+        _client?.BroadcastSkillFail(pc, skillId, cause);
+        return true;
+    }
+
     public bool ResolveSkill(Entity source, Entity target, ushort skillId, ushort skillLevel)
     {
         var def = _db.Get(skillId);
         if (def == null) return false;
         if (!IsAlive(target)) return false;
+
+        // COMBAT-58 — consume ammo at castend (rAthena battle_consume_ammo). The gate
+        // already ran at cast-begin; ConsumeAmmo no-ops for non-ammo weapons.
+        if (source is PlayerEntity ammoPc && SkillUsesAmmo(ammoPc, def))
+            _ammo?.ConsumeAmmo(ammoPc, SkillAmmoQty(skillId, skillLevel));
 
         // T2.3 refactor — per-skill SkillImpl plugin first. When a
         // plugin is registered for this skill id, we route through its

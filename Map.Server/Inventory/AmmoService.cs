@@ -22,11 +22,31 @@ public interface IAmmoService
     bool HasUsableAmmo(PlayerEntity pc);
 
     /// <summary>
+    /// COMBAT-58 — enough equipped ammo for <paramref name="qty"/> rounds (rAthena's
+    /// <c>amount &lt; require.ammo_qty</c> gate for ammo-using skills). Default
+    /// delegates to the 1-round check for test doubles; the real service checks the
+    /// equipped amount against <paramref name="qty"/>.
+    /// </summary>
+    bool HasUsableAmmo(PlayerEntity pc, int qty) => HasUsableAmmo(pc);
+
+    /// <summary>
     /// Spend one equipped round (rAthena <c>battle_consume_ammo</c>). No-op for
     /// non-ammo weapons. Removes the stack + clears the equip bit when it hits 0
     /// (rAthena <c>pc_delitem</c>); returns true when a round was consumed.
     /// </summary>
     bool ConsumeAmmo(PlayerEntity pc);
+
+    /// <summary>
+    /// COMBAT-58 — spend <paramref name="qty"/> rounds (rAthena
+    /// <c>battle_consume_ammo</c> with <c>skill_get_ammo_qty</c>). Default loops the
+    /// 1-round consume for test doubles; the real service deletes the stack in one go.
+    /// </summary>
+    bool ConsumeAmmo(PlayerEntity pc, int qty)
+    {
+        var ok = true;
+        for (var i = 0; i < qty; i++) ok &= ConsumeAmmo(pc);
+        return ok;
+    }
 
     /// <summary>
     /// COMBAT-37 — the live <c>Amount</c> of the equipped (type-valid) ammo, or 0
@@ -51,13 +71,18 @@ public sealed class AmmoService : IAmmoService
         _logger = logger;
     }
 
-    public bool HasUsableAmmo(PlayerEntity pc)
+    public bool HasUsableAmmo(PlayerEntity pc) => HasUsableAmmo(pc, 1);
+
+    public bool HasUsableAmmo(PlayerEntity pc, int qty)
     {
         if (!WeaponTypeCodes.UsesAmmo(pc.WeaponType)) return true;
-        return FindEquippedAmmo(pc).slot >= 0;
+        var (ammo, slot) = FindEquippedAmmo(pc);
+        return slot >= 0 && ammo!.Amount >= (uint)Math.Max(1, qty);
     }
 
-    public bool ConsumeAmmo(PlayerEntity pc)
+    public bool ConsumeAmmo(PlayerEntity pc) => ConsumeAmmo(pc, 1);
+
+    public bool ConsumeAmmo(PlayerEntity pc, int qty)
     {
         if (!WeaponTypeCodes.UsesAmmo(pc.WeaponType)) return true;
         var session = _sessions.GetByEntityId(pc.Id);
@@ -65,10 +90,11 @@ public sealed class AmmoService : IAmmoService
         var (ammo, slot) = FindEquippedAmmo(pc);
         if (ammo == null || slot < 0) return false;
 
-        // rAthena pc_delitem: one round per swing; drop the stack + clear the
-        // equip bit when it empties. Removal rides the same RemovedInventoryIds
-        // client-sync path as ItemUseService (no separate body packet exists).
-        ammo.Amount -= 1;
+        // rAthena battle_consume_ammo → pc_delitem(qty): spend `qty` rounds; drop the
+        // stack + clear the equip bit when it empties. Removal rides the same
+        // RemovedInventoryIds client-sync path as ItemUseService.
+        var take = (uint)Math.Min(ammo.Amount, Math.Max(1, qty));
+        ammo.Amount -= take;
         if (ammo.Amount == 0)
         {
             ammo.Equip = 0;
