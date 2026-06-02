@@ -69,6 +69,15 @@ public sealed class PcDeathService : IPcDeathService
         Attack.StopAttack(pc);
         pc.Walk = null;
 
+        // COMBAT-52 — rAthena pc_dead: pc_setparam(SP_PCDIECOUNTER, die_counter+1)
+        // (pc.cpp:9745) bumps die_counter, persists the PC_DIE_COUNTER char register
+        // (written at save), and runs status_calc_pc so a Super Novice's never-died
+        // all-stat +10 drops on the first death. Recalc immediately.
+        pc.DieCounter++;
+        (_services.GetService(typeof(Map.Server.Status.IStatusCalcService))
+            as Map.Server.Status.IStatusCalcService)
+            ?.CalcPc(pc, Map.Server.Status.PcRecalcInputs.FromCurrent(pc));
+
         // Death penalty — pc.cpp pc_dead doesn't subtract here directly
         // (that's pc_loseexp via the script-side battle config), but for
         // the first slice we apply it inline.

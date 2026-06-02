@@ -104,6 +104,12 @@ public class NotifyActorInitHandler(
             // job_aspd_db / job catalogs.
             player.ClassId = (int)ch.ClassId;
 
+            // COMBAT-52: hydrate die_counter from the PC_DIE_COUNTER char register
+            // (rAthena pc.cpp:2297) BEFORE the CalcPc below, so the Super Novice
+            // never-died all-stat +10 gate folds with the persisted count in a single
+            // recalc (no double-calc / HP-clamp glitch for a previously-died relogger).
+            player.DieCounter = Map.Server.Persistence.DieCounterReg.Read(session.VarRegs);
+
             // COMBAT-16: resolve the right-hand weapon type from worn gear so the
             // size-fix penalty + renewal ASPD lookup are correct at login (not
             // stuck at 0/Fist).

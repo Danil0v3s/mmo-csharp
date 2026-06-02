@@ -191,22 +191,9 @@ public sealed class ExpService : IExpService
     // job-bonus the calc folds matches every other recalc path (otherwise the
     // param-base snapshot would strip the job bonus on the next level-up).
     // Weapon ATK / def / range stay sourced from Stats (equip-derived).
-    private static PcBaseInputs PcInputsFromCurrent(PlayerEntity p) => new(
-        BaseLevel: p.Level,
-        JobLevel: p.JobLevel,
-        Str: p.BaseParams.Str, Agi: p.BaseParams.Agi, Vit: p.BaseParams.Vit,
-        Int: p.BaseParams.IntStat, Dex: p.BaseParams.Dex, Luk: p.BaseParams.Luk,
-        Pow: p.BaseParams.Pow, Sta: p.BaseParams.Sta, Wis: p.BaseParams.Wis,
-        Spl: p.BaseParams.Spl, Con: p.BaseParams.Con, Crt: p.BaseParams.Crt,
-        WeaponAtkMin: p.Stats.WatkMin, WeaponAtkMax: p.Stats.WatkMax,
-        EquipDef: p.Stats.Def, EquipMdef: p.Stats.Mdef,
-        AttackRange: p.Stats.AttackRange,
-        JobId: p.ClassId, WeaponType: p.WeaponType,
-        // COMBAT-18: preserve the off-hand (dual-wield) weapon on EXP/level recalc.
-        LeftWeaponAtkMin: p.Stats.LeftWatkMin, LeftWeaponAtkMax: p.Stats.LeftWatkMax,
-        LeftWeaponLevel: p.Stats.LeftWeaponLevel, LeftWeaponType: p.Stats.LeftWeaponType,
-        LeftWeaponElement: (BattleElement)p.Stats.LeftWeaponElement,
-        HasShield: p.Stats.HasShield);
+    // COMBAT-52 — shared with PcDeathService via PcRecalcInputs.FromCurrent so the
+    // death recalc folds equip/job/SC exactly like the level-up recalc.
+    private static PcBaseInputs PcInputsFromCurrent(PlayerEntity p) => PcRecalcInputs.FromCurrent(p);
 
     private static void EmitLongLongPar(MapSessionData? session, ushort varId, long value)
     {

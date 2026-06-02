@@ -89,6 +89,12 @@ public sealed class PlayerStateService : IPlayerStateService
 
         if (session.VarRegs is { } regs)
         {
+            // COMBAT-52 — persist die_counter as the PC_DIE_COUNTER char register
+            // (rAthena pc_setglobalreg): mirror the live entity into the perm bag so
+            // the SavePermAsync diff writes it to char_reg_num.
+            if (session.EntityId is { } eid && _entities.Get(eid) is PlayerEntity diePc)
+                DieCounterReg.Persist(regs, diePc.DieCounter);
+
             await SavePermAsync(regs.Perm, charId, db, ct);
             await SaveAccountAsync(regs.Account, accountId, db, ct);
             await SaveAccountGlobalAsync(regs.AccountGlobal, accountId, db, ct);
