@@ -1,6 +1,6 @@
 # COMBAT-22 — bonus2 per-skill + indexed long tail (skillatk/skillheal/castrate/ignore-def/magic-add-race/vanish)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-06 · **Blocks:** none
 > **Filed by:** COMBAT-06 (the bonus2 tail it scoped but didn't reach).
 
