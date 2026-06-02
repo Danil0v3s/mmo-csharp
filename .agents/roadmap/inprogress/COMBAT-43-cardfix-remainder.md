@@ -1,6 +1,6 @@
 # COMBAT-43 — Cardfix remainder (ignore-def, element-debuff, race2, magic arrays)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-21 (multiplicative cardfix + magic-add-race/critical-add-race)
 > **Blocks:** none
 > **Filed by:** COMBAT-21 — the cardfix sub-stages that live outside the offensive/defensive
