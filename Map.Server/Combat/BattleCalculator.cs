@@ -29,15 +29,19 @@ public sealed class BattleCalculator : IBattleCalculator
     // Optional: when null, magic/misc fall back to the caster's weapon element
     // (the legacy behavior), so existing call sites/tests are unaffected.
     private readonly IBattleElementService? _elements;
+    // COMBAT-20 — GvG/BG zone damage scaling (battle_calc_attack_gvg_bg).
+    // Optional: null on a non-zone-aware build → no scaling.
+    private readonly IZoneDamageService? _zone;
 
     public BattleCalculator(Random? rng = null, IBattleCardService? cards = null, IStatusChangeService? sc = null,
-        IMadoGearService? mado = null, IBattleElementService? elements = null)
+        IMadoGearService? mado = null, IBattleElementService? elements = null, IZoneDamageService? zone = null)
     {
         _rng = rng ?? Random.Shared;
         _cards = cards;
         _sc = sc;
         _mado = mado;
         _elements = elements;
+        _zone = zone;
     }
 
     public BattleDamage CalcWeaponAttack(Entity source, Entity target)
@@ -435,6 +439,66 @@ public sealed class BattleCalculator : IBattleCalculator
             : 100;
 
     /// <summary>
+    /// COMBAT-20 — rAthena <c>is_infinite_defense</c> (battle.cpp:2823) for the
+    /// "plant" clamp: a target whose mode ignores the incoming attack lane takes
+    /// only 1 damage. Melee/ranged split on <paramref name="isShortRange"/>
+    /// (MD_IGNOREMELEE vs MD_IGNORERANGED); magic/misc gate on MD_IGNOREMAGIC /
+    /// MD_IGNOREMISC. PCs (mode None) are never plants.
+    /// </summary>
+    internal static bool IsInfiniteDefense(Entity target, BattleAttackType lane, bool isShortRange)
+    {
+        var mode = target.Stats.Mode;
+        return lane switch
+        {
+            BattleAttackType.Weapon => isShortRange
+                ? (mode & MobMode.IgnoreMelee) != 0
+                : (mode & MobMode.IgnoreRanged) != 0,
+            BattleAttackType.Magic => (mode & MobMode.IgnoreMagic) != 0,
+            BattleAttackType.Misc => (mode & MobMode.IgnoreMisc) != 0,
+            _ => false,
+        };
+    }
+
+    /// <summary>
+    /// COMBAT-20 — final-stage plant clamp + GvG/BG scaling, applied AFTER the
+    /// full damage is known. rAthena keeps the two mutually exclusive
+    /// (battle_calc_weapon_attack: infinite-defense → <c>battle_calc_attack_plant</c>
+    /// returns before <c>battle_calc_attack_gvg_bg</c>): a plant in WoE still
+    /// takes exactly 1, no GvG rate. <paramref name="isSkill"/> selects the
+    /// per-lane vs short/long zone rate.
+    /// </summary>
+    internal static void ApplyPlantAndZone(
+        BattleDamage wd, Entity src, Entity target, bool isShortRange, bool isSkill, IZoneDamageService? zone)
+    {
+        if (IsInfiniteDefense(target, wd.Lane, isShortRange))
+        {
+            // Plants take 1 (battle.cpp:7082). Right hand: 1 when it hit at all.
+            if (wd.DidHit || wd.Damage > 0) wd.Damage = 1;
+            if (wd.Damage2 > 0)
+            {
+                // Katar off-hand deals 0 vs plants; any other off-hand weapon 1.
+                bool katar = src is PlayerEntity p
+                    && p.WeaponType == Map.Server.Inventory.WeaponTypeCodes.Katar;
+                wd.Damage2 = katar ? 0 : 1;
+            }
+            return;
+        }
+
+        if (zone != null)
+        {
+            wd.Damage = zone.Scale(wd.Lane, src, wd.Damage, isSkill, isShortRange);
+            if (wd.Damage2 > 0)
+                wd.Damage2 = zone.Scale(wd.Lane, src, wd.Damage2, isSkill, isShortRange);
+        }
+    }
+
+    /// <summary>
+    /// rAthena <c>battle_range_type</c> short/long boundary for auto-attacks —
+    /// melee weapons (range ≤ 3) are BF_SHORT, bows/guns BF_LONG.
+    /// </summary>
+    internal static bool IsShortRange(Entity src) => src.Stats.AttackRange <= 3;
+
+    /// <summary>
     /// Wave 67 / Track C — rAthena <c>battle_calc_magic_attack</c>
     /// centralised. Mirrors the magic chain end-to-end:
     /// (MatkMin+MatkMax)/2 baseline → SC_MAGICPOWER / SC_MOONLITSERENADE
@@ -511,6 +575,9 @@ public sealed class BattleCalculator : IBattleCalculator
 
         if (damage < 1) damage = 1;
         result.Damage = damage;
+        // COMBAT-20 — plant clamp (MD_IGNOREMAGIC → 1) + GvG/BG magic rate. Magic
+        // is always a skill (BF_SKILL) so the per-lane gvg/bg_magic rate applies.
+        ApplyPlantAndZone(result, source, target, isShortRange: false, isSkill: true, _zone);
         PopulateMotionFields(result, t);
         return result;
     }
@@ -551,6 +618,8 @@ public sealed class BattleCalculator : IBattleCalculator
 
         if (damage < 1) damage = 1;
         result.Damage = damage;
+        // COMBAT-20 — plant clamp (MD_IGNOREMISC → 1) + GvG/BG misc rate.
+        ApplyPlantAndZone(result, source, target, isShortRange: false, isSkill: true, _zone);
         PopulateMotionFields(result, t);
         return result;
     }

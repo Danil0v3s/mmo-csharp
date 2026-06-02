@@ -3,32 +3,32 @@ using Map.Server.Entities;
 namespace Map.Server.Combat;
 
 /// <summary>
-/// Zone-specific damage scaling — rAthena
-/// <c>battle_calc_gvg_damage</c> (battle.cpp:8265),
-/// <c>battle_calc_bg_damage</c> (battle.cpp:8330), and
-/// <c>battle_calc_pk_damage</c> (battle.cpp:8390). Each map has a
-/// flag (gvg / bg / pk) that scales damage by the corresponding
-/// <c>battle_config.<zone>_<range>_damage_rate</c>.
+/// Zone-specific damage scaling — rAthena <c>battle_calc_gvg_damage</c>
+/// (battle.cpp:2121) and <c>battle_calc_bg_damage</c> (battle.cpp:2046),
+/// applied as the final stage of <c>battle_calc_attack_gvg_bg</c>
+/// (battle.cpp:7225). When the source map carries the GvG (WoE) or
+/// Battleground flag, damage is multiplied by a <c>battle_config</c> rate:
 ///
-/// Per attack-range gates:
 /// <list type="bullet">
-///   <item><b>short</b> — melee swings.</item>
-///   <item><b>long</b> — ranged + skill projectiles.</item>
-///   <item><b>weapon</b> — BF_WEAPON.</item>
-///   <item><b>magic</b> — BF_MAGIC.</item>
-///   <item><b>misc</b> — BF_MISC.</item>
+///   <item><b>skills</b> (BF_SKILL) use the per-lane rate —
+///         <c>{gvg,bg}_weapon/magic/misc_damage_rate</c>.</item>
+///   <item><b>normal attacks</b> use the range rate —
+///         <c>{gvg,bg}_short/long_damage_rate</c>.</item>
 /// </list>
-/// rAthena defaults: gvg 25% / 75% / 60% / 60% / 60%, bg 80% / 80%
-/// / 80% / 60% / 60%, pk 80% / 70% / 60% / 60% / 60%.
+///
+/// rAthena out-of-the-box defaults (battle.cpp battle_data): every rate is 60
+/// for the weapon/magic/misc lanes and 80 for short/long. A non-GvG/BG map
+/// returns the damage unchanged.
 /// </summary>
 public interface IZoneDamageService
 {
-    /// <summary>Scale weapon damage for the source map's zone flag.</summary>
-    long ScaleWeapon(Entity src, Entity target, long damage, bool isShortRange);
-
-    /// <summary>Scale magic damage for the source map's zone flag.</summary>
-    long ScaleMagic(Entity src, Entity target, long damage, bool isShortRange);
-
-    /// <summary>Scale misc damage for the source map's zone flag.</summary>
-    long ScaleMisc(Entity src, Entity target, long damage, bool isShortRange);
+    /// <summary>
+    /// Scale <paramref name="damage"/> for the source map's GvG/BG flag.
+    /// <paramref name="lane"/> selects weapon/magic/misc; <paramref name="isSkill"/>
+    /// chooses the per-lane rate (true) vs the short/long range rate (false);
+    /// <paramref name="isShortRange"/> picks short vs long for normal attacks.
+    /// Returns the damage unchanged on a non-zone map; never drops a positive
+    /// hit below 1.
+    /// </summary>
+    long Scale(BattleAttackType lane, Entity src, long damage, bool isSkill, bool isShortRange);
 }

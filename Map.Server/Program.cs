@@ -276,7 +276,9 @@ builder.Services.AddSingleton<Map.Server.Combat.IBattleZoneGateService, Map.Serv
 builder.Services.AddSingleton<IBattleCalculator>(sp =>
     new BattleCalculator(rng: null, cards: sp.GetRequiredService<Map.Server.Combat.IBattleCardService>(),
         // COMBAT-19 — resolve per-skill magic/misc element from skill_db.
-        elements: sp.GetRequiredService<Map.Server.Combat.IBattleElementService>()));
+        elements: sp.GetRequiredService<Map.Server.Combat.IBattleElementService>(),
+        // COMBAT-20 — GvG/BG magic+misc zone scaling.
+        zone: sp.GetRequiredService<Map.Server.Combat.IZoneDamageService>()));
 builder.Services.AddSingleton<IDamageService, DamageService>();
 
 // PC death + respawn (pc.cpp:9633 pc_dead + pc.cpp:9515 pc_respawn).

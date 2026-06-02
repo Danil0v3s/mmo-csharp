@@ -70,7 +70,8 @@ public sealed class DamageService : IDamageService
         Map.Server.World.IMapWorldRegistry? maps = null,
         IServiceProvider? services = null,
         Lazy<IStatusChangeService>? sc = null,
-        Random? rng = null)
+        Random? rng = null,
+        IZoneDamageService? zone = null)
     {
         _visibility = visibility;
         _mobSpawn = mobSpawn;
@@ -85,7 +86,11 @@ public sealed class DamageService : IDamageService
         _scLazy = sc;
         _rng = rng ?? Random.Shared;
         _logger = logger;
+        _zone = zone;
     }
+
+    // COMBAT-20 — GvG/BG zone scaling for the weapon auto-attack final stage.
+    private readonly IZoneDamageService? _zone;
 
     public int ApplyDamage(Entity target, int damage, Entity? source = null, int hits = 1)
     {
@@ -108,6 +113,11 @@ public sealed class DamageService : IDamageService
     {
         if (!CanDamage(source, target)) return default;
         var damage = _battleCalc.CalcWeaponAttack(source, target);
+        // COMBAT-20 — auto-attack final stage: plant clamp (MD_IGNOREMELEE /
+        // MD_IGNORERANGED → 1) + GvG/BG range rate (normal attack = BF_SHORT/LONG).
+        // Weapon SKILLS apply their plant/zone stage post-ratio — tracked in COMBAT-42.
+        BattleCalculator.ApplyPlantAndZone(damage, source, target,
+            BattleCalculator.IsShortRange(source), isSkill: false, _zone);
         // Even a miss broadcasts ZC_NOTIFY_ACT3 so the client animates
         // the swing + the dodge — rAthena: clif_damage(... DMG_FLEE ...)
         // even when total = 0.
