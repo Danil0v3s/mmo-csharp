@@ -1,6 +1,6 @@
 # COMBAT-64 — bonus3/4/5 static forms + pc_sub_skillatk_bonus (defender reduction)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-44
 > **Blocks:** none
 > **Filed by:** COMBAT-44 — the bonus-tail pieces beyond SkillHeal + vanish.
