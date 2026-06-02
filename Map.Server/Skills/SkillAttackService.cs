@@ -62,11 +62,16 @@ public sealed class SkillAttackService : ISkillAttackService
             _ => 0,
         };
 
+        // COMBAT-47 — Safety Wall (melee) / Pneuma (ranged) intercept a weapon SKILL
+        // too, not just the auto-attack. BF_LONG when the skill range > 3.
+        bool weaponShort = _db.GetRange(skillId) <= 3;
+        if (attackType == BattleAttackType.Weapon && _damage.TryGroundUnitBlock(target, weaponShort))
+            return 0;
+
         // COMBAT-42 — weapon-skill plant/zone is computed post-ratio inside this
         // funnel too (CalcMagic/MiscDamage already ran their own plant/zone stage).
-        // BF_LONG when the skill's range > 3 (rAthena battle_range_type).
         if (attackType == BattleAttackType.Weapon && damage > 0)
-            damage = _battle.ApplyWeaponSkillPlantZone(source, target, damage, isShortRange: _db.GetRange(skillId) <= 3);
+            damage = _battle.ApplyWeaponSkillPlantZone(source, target, damage, isShortRange: weaponShort);
 
         if (damage > 0)
         {

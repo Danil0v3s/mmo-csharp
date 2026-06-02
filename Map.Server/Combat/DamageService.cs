@@ -657,7 +657,13 @@ public sealed class DamageService : IDamageService
     /// group when spent; <b>Pneuma</b> blocks ranged hits (no pool). rAthena
     /// battle_calc_damage MG_SAFETYWALL / AL_PNEUMA cell checks.
     /// </summary>
-    private bool TryGroundUnitBlock(Entity target, bool isShortRange)
+    /// <summary>
+    /// COMBAT-25/47 — a Safety Wall cell blocks a melee swing (consuming one block
+    /// from the pool); a Pneuma cell blocks a ranged swing. Called by the auto-attack
+    /// (PerformMeleeAttack) and the skill funnel (SkillAttackService) so a melee/ranged
+    /// SKILL is intercepted too. Returns true when the hit is blocked.
+    /// </summary>
+    public bool TryGroundUnitBlock(Entity target, bool isShortRange)
     {
         var svc = UnitSvc;
         if (svc == null) return false;

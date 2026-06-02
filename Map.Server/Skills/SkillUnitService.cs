@@ -24,6 +24,9 @@ public sealed class SkillUnitService : ISkillUnitService
     private readonly SkillUnitTickRegistry _handlers;
     private readonly ISkillUnitContext _ctx;
     private readonly ISkillLayoutService? _layouts;
+    // COMBAT-47 — optional so existing test harnesses need no change; used to read
+    // the placed skill's UF_NOLP flag for the Land Protector place-gate.
+    private readonly ISkillDb? _db;
     private readonly ILogger<SkillUnitService> _logger;
     private readonly List<SkillUnitGroup> _groups = new();
 
@@ -38,12 +41,14 @@ public sealed class SkillUnitService : ISkillUnitService
         SkillUnitTickRegistry handlers,
         ISkillUnitContext ctx,
         ILogger<SkillUnitService> logger,
-        ISkillLayoutService? layouts = null)
+        ISkillLayoutService? layouts = null,
+        ISkillDb? db = null)
     {
         _entities = entities;
         _handlers = handlers;
         _ctx = ctx;
         _layouts = layouts;
+        _db = db;
         _logger = logger;
     }
 
@@ -56,6 +61,16 @@ public sealed class SkillUnitService : ISkillUnitService
         if (h == null)
         {
             _logger.LogDebug("SkillUnitService.Place: no handler for skill {Skill}", skillId);
+            return null;
+        }
+
+        // COMBAT-47 — Land Protector place-gate (rAthena skill_unitsetting): a ground
+        // unit cannot be placed on an SA_LANDPROTECTOR cell unless the skill carries
+        // UF_NOLP. Refuse (return null) — the cast caller handles the SP/item refund.
+        if (!(_db?.GetUnitFlag(skillId, SkillUnitFlag.NoLandProtector) ?? false)
+            && CellHasLandProtector(caster.MapId, centerX, centerY))
+        {
+            _logger.LogDebug("SkillUnitService.Place: skill {Skill} refused on a Land Protector cell", skillId);
             return null;
         }
 
@@ -262,6 +277,18 @@ public sealed class SkillUnitService : ISkillUnitService
         foreach (var u in group.Units) u.Removed = true;
         EvictGroupPresence(group);
         _groups.Remove(group);
+    }
+
+    /// <summary>COMBAT-47 — true when an SA_LANDPROTECTOR unit covers the cell.</summary>
+    private bool CellHasLandProtector(uint mapId, short x, short y)
+    {
+        foreach (var g in _groups)
+        {
+            if (g.SkillId != SkillIds.SA_LANDPROTECTOR || g.MapId != mapId) continue;
+            foreach (var u in g.Units)
+                if (!u.Removed && u.X == x && u.Y == y) return true;
+        }
+        return false;
     }
 
     public IReadOnlyList<SkillUnit> GetUnitsInArea(uint mapId, short cx, short cy, short radius)

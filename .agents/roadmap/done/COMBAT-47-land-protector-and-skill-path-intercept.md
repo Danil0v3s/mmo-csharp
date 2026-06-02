@@ -1,6 +1,6 @@
 # COMBAT-47 — Land Protector place-gate + skill-path ground-unit intercept
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-02) · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-25 (Safety Wall/Pneuma block + the SkillUnitGroup pool)
 > **Blocks:** none
 > **Filed by:** COMBAT-25 — the Land Protector gate (needs UF_NOLP) + the skill-attack intercept.
@@ -34,19 +34,34 @@ path (`DamageService.PerformMeleeAttack`). Two pieces remain:
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Add `NoLandProtector` (UF_NOLP) to `SkillUnitFlag` + load it into
-      `SkillDefinition.UnitFlags` from skill_db.
-- [ ] `SkillUnitService.Place`: when a `SA_LANDPROTECTOR` unit covers the center cell and
+- [x] Add `NoLandProtector` (UF_NOLP) to `SkillUnitFlag`. ➡️ Loading it (and the other
+      UF_* flags) into `SkillDefinition.UnitFlags` *from skill_db* + a placeable production
+      Land Protector unit handler **moved to COMBAT-66** (the gate is live; its data feed is
+      dormant until the importer/loader populate UnitFlags and an LP handler exists).
+- [x] `SkillUnitService.Place`: when a `SA_LANDPROTECTOR` unit covers the center cell and
       the placed skill lacks `UF_NOLP`, refuse (return null) — refund handled by the caller.
-- [ ] Thread the skill's BF_SHORT/BF_LONG lane into the skill damage funnel so
+- [x] Thread the skill's BF_SHORT/BF_LONG lane into the skill damage funnel so
       `TryGroundUnitBlock` runs for melee/ranged SKILLS too (Safety Wall blocks a melee
-      skill; Pneuma blocks a ranged skill).
+      skill; Pneuma blocks a ranged skill). (`SkillAttackService.SkillAttack` now calls
+      `_damage.TryGroundUnitBlock(target, _db.GetRange(skillId) <= 3)`.)
 
 ## Done criteria
 
 - ➡️ from COMBAT-25: a hostile ground-unit skill cannot place/tick on a Land Protector cell.
+  *(Gate logic lands here; live placeability of LP + UF_NOLP data feed ➡️ COMBAT-66.)*
 - A melee skill on a Safety Wall cell is blocked + consumes the pool; a ranged skill on a
-  Pneuma cell is blocked.
+  Pneuma cell is blocked. ✅
+
+## History
+
+- 2026-06-02 — Added `SkillUnitFlag.NoLandProtector` (UF_NOLP); Land Protector place-gate
+  in `SkillUnitService.Place` (refuse on an `SA_LANDPROTECTOR` cell via `CellHasLandProtector`
+  unless UF_NOLP, through an optional `ISkillDb`); made `DamageService.TryGroundUnitBlock`
+  public + added to `IDamageService` (default false) and called it from the weapon-skill funnel
+  (`SkillAttackService.SkillAttack`, BF_SHORT/BF_LONG via `GetRange<=3`) so Safety Wall/Pneuma
+  intercept skills, not just the auto-attack. Tests: `Combat47LandProtectorTests` (5, green).
+  Filed COMBAT-66 for the skill_db UnitFlags loader + production Land Protector unit handler
+  (the gate is dormant live until those land).
 
 ## Test plan
 

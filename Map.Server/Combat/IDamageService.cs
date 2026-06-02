@@ -37,4 +37,12 @@ public interface IDamageService
     /// so the caller (auto-attack loop / GM commands) can react to it.
     /// </summary>
     BattleDamage PerformMeleeAttack(Entity source, Entity target);
+
+    /// <summary>
+    /// COMBAT-47 — a Safety Wall cell blocks a melee hit (consuming one block); a
+    /// Pneuma cell blocks a ranged hit. The skill damage funnel calls this so a
+    /// melee/ranged SKILL is intercepted like the auto-attack. Returns true when
+    /// blocked. Default false for test doubles that don't model ground units.
+    /// </summary>
+    bool TryGroundUnitBlock(Entity target, bool isShortRange) => false;
 }

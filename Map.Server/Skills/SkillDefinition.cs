@@ -96,6 +96,9 @@ public enum SkillUnitFlag : uint
     CrazyWeedImmune   = 1u << 14,
     Removed           = 1u << 15,
     HiddenTrap        = 1u << 16,
+    /// <summary>COMBAT-47 — UF_NOLP: the skill ignores Land Protector (may be placed
+    /// on an SA_LANDPROTECTOR cell). Loading it from skill_db is COMBAT-66.</summary>
+    NoLandProtector   = 1u << 17,
 }
 
 /// <summary>
