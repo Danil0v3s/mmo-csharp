@@ -1,6 +1,6 @@
 # COMBAT-32 — Passive-skill absolute base-stat modifiers + Super Novice all-stat +10
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-10 (base→final stat layering) · **Blocks:** none
 > **Filed by:** COMBAT-10 on 2026-06-01 (the base-stat layering it ported skips these extra base addends).
 
