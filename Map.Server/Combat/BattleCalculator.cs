@@ -75,122 +75,35 @@ public sealed class BattleCalculator : IBattleCalculator
         // (Whitesmith Maximize Power; rAthena status.cpp:11268). Pass the
         // SC presence through so CalcBaseDamage picks atkMax.
         var forceMaxRoll = _sc?.Get(source, StatusType.Maximizepower) != null;
-        long damage = CalcBaseDamage(s, isCritical, forceMaxRoll, srcIsPc);
 
-        // COMBAT-06: bAtkRate (SP_ATK_RATE) — renewal battle_get_atkpercent
-        // (battle.cpp:4604) scales base weapon damage BEFORE the skill ratio.
-        if (srcIsPc && (source as PlayerEntity)?.EquipBonuses is { AtkRate: var ar } && ar != 0)
-            damage = damage * (100 + ar) / 100;
+        // COMBAT-18 — right-hand damage. Steps 3-7 (base → atkRate → sizeMod →
+        // element → def → mastery → cardfix → caster SC bumps → floor) run
+        // through the shared ComputeHandDamage so the left hand gets the
+        // identical pipeline.
+        int rightWeaponType = srcIsPc ? ((source as PlayerEntity)?.WeaponType ?? 0) : 0;
+        long damage = ComputeHandDamage(
+            source, target, s, t, srcIsPc, isCritical, forceMaxRoll,
+            atkMin: s.WatkMin, atkMax: s.WatkMax, weaponLevel: s.WeaponLevel,
+            weaponType: rightWeaponType, weaponElement: s.WeaponElement, leftHand: false);
 
-        // Mob/PC distinction: PCs would get size-mod via inventory atkmods.
-        // Until equip is parsed, apply the default mob size-mod table.
-        // rAthena: when no map_session_data sd is present (mob attacker),
-        // the path skips the sizefix lookup entirely (battle.cpp:2514).
-        if (srcIsPc)
+        // COMBAT-18 — left-hand (dual-wield) damage. Only a PC on a normal
+        // attack with an off-hand weapon (lhw.atk > 0) is left-handed
+        // (is_attack_left_handed, battle.cpp:2917). Mobs never dual-wield.
+        long damage2 = 0;
+        if (srcIsPc && s.LeftWatkMax > 0)
         {
-            var wtype = (source as PlayerEntity)?.WeaponType ?? 0;
-            damage = damage * SizeMod(wtype, t.Size) / 100;
+            damage2 = ComputeHandDamage(
+                source, target, s, t, srcIsPc, isCritical, forceMaxRoll,
+                atkMin: s.LeftWatkMin, atkMax: s.LeftWatkMax, weaponLevel: s.LeftWeaponLevel,
+                weaponType: s.LeftWeaponType, weaponElement: s.LeftWeaponElement, leftHand: true);
         }
 
-        // --- Step 4: element fix  (battle.cpp:453 battle_attr_fix) ---
-        var atkEle = s.WeaponElement == 0 ? BattleElement.Neutral : (BattleElement)s.WeaponElement;
-        damage = damage * ElementTable.GetRate(atkEle, t.DefenseElement, t.ElementLevel) / 100;
-        if (damage < 0) damage = 0;
-
-        // --- Step 6: defense reduction (battle.cpp:6843, renewal SIMPLE branch) ---
-        // RE: Damage = Damage * (4000 + eDEF) / (4000 + 10*eDEF) - sDEF.
-        // Pre-equip we don't have NK_SIMPLEDEFENSE skills; standard branch
-        // is the normal autoattack swing.
-        int def1 = t.Def;        // hard def (equipment)
-        int vitDef = t.Def2;     // soft def (renewal: just def2 verbatim)
-
-        // Wave 26 — rAthena <c>SC_SIGNUMCRUCIS</c> (status.cpp:11296).
-        // Crusader's Signum Crucis reduces the target's defense by
-        // <c>Val2 %</c> when the target is Undead or Demon race. Stored
-        // per rAthena as Val2 = 14+3*level / 14+5*level. We honor whatever
-        // the caster stored.
-        if (_sc != null && (t.Race == Map.Server.Status.BattleRace.Undead || t.Race == Map.Server.Status.BattleRace.Demon))
-        {
-            var signum = _sc.Get(target, Map.Server.Status.StatusType.Signumcrucis);
-            if (signum != null && signum.Val2 > 0)
-            {
-                def1 = def1 - (def1 * signum.Val2 / 100);
-                vitDef = vitDef - (vitDef * signum.Val2 / 100);
-            }
-        }
-
-        if (def1 == -400) def1 = -399; // div-by-zero guard from rAthena
-        damage = damage * (4000L + def1) / (4000L + 10L * def1) - vitDef;
-
-        // --- Step 5a: weapon mastery additive bonus
-        //               (battle.cpp:2215 battle_addmastery, renewal returns bonus only) ---
-        if (_cards != null && source is PlayerEntity pcAtk)
-        {
-            damage += _cards.AddMastery(pcAtk, target, damage, BattleAttackType.Weapon);
-        }
-
-        // --- Step 5b: card fix
-        //               (battle.cpp:711 battle_calc_cardfix) ---
-        if (_cards != null)
-        {
-            damage = _cards.CalcCardFix(BattleAttackType.Weapon, source, target, damage, leftHand: false);
-        }
-
-        // --- Step 5c: caster-side weapon-damage SC bumps ---------------
-        // Each read here is one of the rAthena allowlist entries where the
-        // SC's combat impact lives on the attacker side. Order matches
-        // rAthena status.cpp arms:
-        if (_sc != null)
-        {
-            // SC_HEAT_BARREL (status.cpp:11392) — Gunslinger Heat Barrel.
-            // 5 * Val1 % atk bonus. Val1 = level (1..5).
-            var hb = _sc.Get(source, Map.Server.Status.StatusType.HeatBarrel);
-            if (hb != null && hb.Val1 > 0)
-            {
-                damage += damage * (5 * hb.Val1) / 100;
-            }
-
-            // SC_EDP (status.cpp:10522-10535) — Assassin Cross Enchant
-            // Deadly Poison. Val3 stores the bonus damage % the SC adds
-            // to weapon hits. Falls back to a per-level default
-            // (50 + 50*Val1 %) when Val3 is unset.
-            var edp = _sc.Get(source, Map.Server.Status.StatusType.Edp);
-            if (edp != null)
-            {
-                var pct = edp.Val3 > 0 ? edp.Val3 : (50 + 50 * edp.Val1);
-                if (pct > 0) damage += damage * pct / 100;
-            }
-
-            // SC__BLOODYLUST — Shadow Chaser Bloody Lust. Val2 = dmg%
-            // boost applied to the caster's weapon hit.
-            var bl = _sc.Get(source, Map.Server.Status.StatusType.Bloodylust);
-            if (bl != null && bl.Val2 > 0)
-            {
-                damage += damage * bl.Val2 / 100;
-            }
-
-            // SC_RUSHWINDMILL — Wanderer / Minstrel song. Val2 stores
-            // the % weapon-damage boost for the band.
-            var rwm = _sc.Get(source, Map.Server.Status.StatusType.Rushwindmill);
-            if (rwm != null && rwm.Val2 > 0)
-            {
-                damage += damage * rwm.Val2 / 100;
-            }
-
-            // SC_PYROCLASTIC — Mechanic Pyroclastic. Val2 = additive
-            // atk bonus; the element override is handled by the
-            // element resolver elsewhere.
-            var pyro = _sc.Get(source, Map.Server.Status.StatusType.Pyroclastic);
-            if (pyro != null && pyro.Val2 > 0)
-            {
-                damage += pyro.Val2;
-            }
-        }
-
-        // --- Step 7: floor to 1 unless it actually missed (battle_min_damage) ---
-        if (damage < 1) damage = 1;
+        // COMBAT-18 — battle_calc_attack_left_right_hands (battle.cpp:7150):
+        // katar off-hand fraction + the thief / kagerou right/left masteries.
+        ApplyLeftRightSplit(source, rightWeaponType, ref damage, ref damage2);
 
         result.Damage = damage;
+        result.Damage2 = damage2;
         result.Type = isCritical
             ? Core.Server.Packets.Out.ZC.DamageActionType.Critical
             : Core.Server.Packets.Out.ZC.DamageActionType.Normal;
@@ -201,7 +114,8 @@ public sealed class BattleCalculator : IBattleCalculator
         // plugins. On a successful double-attack roll the single swing
         // becomes a positive-div multi-hit: div_ = skill_get_num(TF_DOUBLE)
         // = 2 and DAMAGE_DIV_FIX multiplies the per-hit damage by the count
-        // (battle.cpp:4365).
+        // (battle.cpp:4365). DAMAGE_DIV_FIX only multiplies wd.damage (the
+        // right hand), so Damage2 is untouched here.
         CalcMultiAttack(source, result);
 
         // Wave 66 / Track B — populate Damage.dmotion + Damage.walkdelay.
@@ -221,7 +135,8 @@ public sealed class BattleCalculator : IBattleCalculator
         if (_mado != null && _sc != null && source is PlayerEntity pcMado
             && _sc.Get(pcMado, StatusType.Madogear) != null)
         {
-            int heat = atkEle == BattleElement.Fire ? 3 : 1;
+            var rightEle = s.WeaponElement == 0 ? BattleElement.Neutral : (BattleElement)s.WeaponElement;
+            int heat = rightEle == BattleElement.Fire ? 3 : 1;
             _mado.AddHeat(pcMado, heat);
         }
         return result;
@@ -307,6 +222,145 @@ public sealed class BattleCalculator : IBattleCalculator
     }
 
     /// <summary>
+    /// COMBAT-18 — one weapon-hand's damage through the renewal pipeline
+    /// (battle.cpp:7635 body, steps 3-7): base damage → bAtkRate → size-fix →
+    /// element fix → defense reduction (incl. SC_SIGNUMCRUCIS) → weapon mastery
+    /// → cardfix(<paramref name="leftHand"/>) → caster-side SC weapon bumps →
+    /// floor 1. Shared by the right hand and the dual-wield left hand so the two
+    /// hands can never drift. The per-hand weapon fields
+    /// (<paramref name="atkMin"/>/<paramref name="atkMax"/>/
+    /// <paramref name="weaponLevel"/>/<paramref name="weaponType"/>/
+    /// <paramref name="weaponElement"/>) come from rhw for the right hand and lhw
+    /// for the left.
+    /// </summary>
+    private long ComputeHandDamage(
+        Entity source, Entity target, BattleStats s, BattleStats t,
+        bool srcIsPc, bool isCritical, bool forceMaxRoll,
+        int atkMin, int atkMax, byte weaponLevel, int weaponType, byte weaponElement, bool leftHand)
+    {
+        long damage = CalcBaseDamage(atkMin, atkMax, s.Dex, weaponLevel, s.Batk, isCritical, forceMaxRoll, srcIsPc);
+
+        // COMBAT-06: bAtkRate (SP_ATK_RATE) scales base weapon damage. rAthena
+        // ATK_ADDRATE applies it to both hands (battle.cpp:4604).
+        if (srcIsPc && (source as PlayerEntity)?.EquipBonuses is { AtkRate: var ar } && ar != 0)
+            damage = damage * (100 + ar) / 100;
+
+        // Size-fix (battle.cpp:2514) — PCs only; the per-hand weapon type drives
+        // the renewal Knuckle/Whip ×Large penalty.
+        if (srcIsPc)
+            damage = damage * SizeMod(weaponType, t.Size) / 100;
+
+        // Element fix (battle.cpp:453 battle_attr_fix) — per-hand weapon element.
+        var atkEle = weaponElement == 0 ? BattleElement.Neutral : (BattleElement)weaponElement;
+        damage = damage * ElementTable.GetRate(atkEle, t.DefenseElement, t.ElementLevel) / 100;
+        if (damage < 0) damage = 0;
+
+        // Defense reduction (battle.cpp:6843, renewal SIMPLE branch):
+        // Damage = Damage * (4000 + eDEF) / (4000 + 10*eDEF) - sDEF.
+        int def1 = t.Def;
+        int vitDef = t.Def2;
+        // SC_SIGNUMCRUCIS (status.cpp:11296) — Val2% def cut vs Undead/Demon.
+        if (_sc != null && (t.Race == Map.Server.Status.BattleRace.Undead || t.Race == Map.Server.Status.BattleRace.Demon))
+        {
+            var signum = _sc.Get(target, Map.Server.Status.StatusType.Signumcrucis);
+            if (signum != null && signum.Val2 > 0)
+            {
+                def1 -= def1 * signum.Val2 / 100;
+                vitDef -= vitDef * signum.Val2 / 100;
+            }
+        }
+        if (def1 == -400) def1 = -399; // div-by-zero guard from rAthena
+        damage = damage * (4000L + def1) / (4000L + 10L * def1) - vitDef;
+
+        // Weapon mastery (battle.cpp:2215 battle_addmastery — bonus only).
+        if (_cards != null && source is PlayerEntity pcAtk)
+            damage += _cards.AddMastery(pcAtk, target, damage, BattleAttackType.Weapon);
+
+        // Card fix (battle.cpp:711 battle_calc_cardfix) — left/right per hand.
+        if (_cards != null)
+            damage = _cards.CalcCardFix(BattleAttackType.Weapon, source, target, damage, leftHand);
+
+        // Caster-side weapon-damage SC bumps. rAthena ATK_ADDRATE applies these
+        // to both hands; mirror that here so the dual-wield off-hand benefits.
+        if (_sc != null)
+        {
+            // SC_HEAT_BARREL (status.cpp:11392) — 5*Val1 % atk bonus.
+            var hb = _sc.Get(source, Map.Server.Status.StatusType.HeatBarrel);
+            if (hb != null && hb.Val1 > 0) damage += damage * (5 * hb.Val1) / 100;
+
+            // SC_EDP (status.cpp:10522) — Val3 % (default 50+50*Val1).
+            var edp = _sc.Get(source, Map.Server.Status.StatusType.Edp);
+            if (edp != null)
+            {
+                var pct = edp.Val3 > 0 ? edp.Val3 : (50 + 50 * edp.Val1);
+                if (pct > 0) damage += damage * pct / 100;
+            }
+
+            // SC__BLOODYLUST — Val2 % weapon-damage boost.
+            var bl = _sc.Get(source, Map.Server.Status.StatusType.Bloodylust);
+            if (bl != null && bl.Val2 > 0) damage += damage * bl.Val2 / 100;
+
+            // SC_RUSHWINDMILL — Val2 % band weapon-damage boost.
+            var rwm = _sc.Get(source, Map.Server.Status.StatusType.Rushwindmill);
+            if (rwm != null && rwm.Val2 > 0) damage += damage * rwm.Val2 / 100;
+
+            // SC_PYROCLASTIC — Val2 flat atk bonus.
+            var pyro = _sc.Get(source, Map.Server.Status.StatusType.Pyroclastic);
+            if (pyro != null && pyro.Val2 > 0) damage += pyro.Val2;
+        }
+
+        // Floor to 1 (battle_min_damage).
+        if (damage < 1) damage = 1;
+        return damage;
+    }
+
+    /// <summary>
+    /// COMBAT-18 — <c>battle_calc_attack_left_right_hands</c> (battle.cpp:7150).
+    /// Mob sources keep their single <paramref name="damage"/>. For a PC:
+    ///   * Katar normal attack → off-hand <paramref name="damage2"/> =
+    ///     <c>damage * (1 + 2*TF_DOUBLE_lv) / 100</c> (Katar has no real off-hand
+    ///     weapon, so any pre-computed damage2 is replaced).
+    ///   * Dual-wield (a real off-hand weapon, <paramref name="damage2"/> &gt; 0):
+    ///     the right hand is reduced to <c>(50 + 10*AS_RIGHT) %</c> (thief) /
+    ///     <c>(70 + 10*KO_RIGHT) %</c> (kagerou/oboro) when a main-hand weapon is
+    ///     present, and the left hand to <c>(30 + 10*AS_LEFT) %</c> (thief) /
+    ///     <c>(50 + 10*KO_LEFT) %</c> (kagerou/oboro). Both floor at 1.
+    /// </summary>
+    private void ApplyLeftRightSplit(Entity source, int rightWeaponType, ref long damage, ref long damage2)
+    {
+        if (source is not PlayerEntity sd) return;
+        var ids = sd.LearnedSkills;
+        int Lv(ushort id) => ids.TryGetValue(id, out var l) ? l : 0;
+        bool thief = Map.Server.Entities.MapidClass.IsBase(sd.ClassMask, Map.Server.Entities.MapidClass.Thief);
+        bool kagerou = sd.ClassMask == Map.Server.Entities.MapidClass.KagerouOboro;
+
+        // Katar: off-hand damage only on normal attacks (battle.cpp:7157).
+        if (rightWeaponType == Map.Server.Inventory.WeaponTypeCodes.Katar)
+        {
+            int tfd = Lv(Map.Server.Skills.SkillIds.TF_DOUBLE);
+            damage2 = damage * (1 + tfd * 2) / 100;
+            return;
+        }
+
+        // Dual-wield: only adjusts when a real off-hand weapon produced damage2.
+        if (damage2 <= 0) return;
+
+        // is_attack_right_handed is false only when bare-handed main + off-hand
+        // weapon (battle.cpp:2903); then the right swing isn't mastery-reduced.
+        bool rightHanded = !Map.Server.Inventory.WeaponTypeCodes.IsFist(rightWeaponType);
+        if (rightHanded && damage > 0)
+        {
+            if (thief) damage = damage * (50 + Lv(Map.Server.Skills.SkillIds.AS_RIGHT) * 10) / 100;
+            else if (kagerou) damage = damage * (70 + Lv(Map.Server.Skills.SkillIds.KO_RIGHT) * 10) / 100;
+            if (damage < 1) damage = 1;
+        }
+
+        if (thief) damage2 = damage2 * (30 + Lv(Map.Server.Skills.SkillIds.AS_LEFT) * 10) / 100;
+        else if (kagerou) damage2 = damage2 * (50 + Lv(Map.Server.Skills.SkillIds.KO_LEFT) * 10) / 100;
+        if (damage2 < 1) damage2 = 1;
+    }
+
+    /// <summary>
     /// Port of <c>is_attack_critical</c> (battle.cpp:2948) trimmed to the
     /// always-present branch: cri ≠ 0, subtract <c>2 × target.luk</c> (or
     /// <c>3 × target.luk</c> when defender is PC and attacker is non-PC),
@@ -328,11 +382,11 @@ public sealed class BattleCalculator : IBattleCalculator
     /// atk, rolls between them, adds <c>batk</c>, applies the +40% crit
     /// modifier from rAthena's <c>#ifdef RENEWAL</c> tail.
     /// </summary>
-    private long CalcBaseDamage(BattleStats s, bool isCritical, bool forceMaxRoll = false, bool isPc = false)
+    private long CalcBaseDamage(int rawAtkMin, int atkMax, int dex, byte weaponLevel, ushort batk,
+        bool isCritical, bool forceMaxRoll, bool isPc)
     {
-        int atkMax = s.WatkMax;
         // PC: DEX-derived atkmin (battle.cpp:2453). Mob: rhw.atk straight.
-        int atkMin = isPc ? ComputePcAtkMin(s.Dex, s.WeaponLevel, atkMax) : s.WatkMin;
+        int atkMin = isPc ? ComputePcAtkMin(dex, weaponLevel, atkMax) : rawAtkMin;
         if (atkMin > atkMax) atkMin = atkMax;
 
         // P0.3 — Maximize Power / critical hits use atkMax. The
@@ -342,7 +396,7 @@ public sealed class BattleCalculator : IBattleCalculator
             ? atkMax
             : (atkMax > atkMin ? _rng.Next(atkMin, atkMax + 1) : atkMin);
 
-        dmg += s.Batk;
+        dmg += batk;
 
         // Renewal crit bonus — battle.cpp:2566
         if (isCritical) dmg = dmg * 14 / 10;

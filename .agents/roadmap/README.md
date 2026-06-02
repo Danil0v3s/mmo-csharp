@@ -100,6 +100,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-37 | Auto-attack multi_attack: FearBreeze bow + Chain Action revolver — split from COMBAT-17 |
 | COMBAT-38 | Per-skill div_ switch arms (Pierce/Backstab/Windcutter/Bowling Bash …) — split from COMBAT-17 |
 | COMBAT-39 | Multi-hit plugin GetMultiHitCount sweep (Double Strafe/Triple Attack …) — split from COMBAT-17 |
+| COMBAT-40 | Left-hand renewal accumulator fidelity (per-hand mastery/element) — split from COMBAT-18 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

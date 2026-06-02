@@ -111,7 +111,10 @@ public sealed class DamageService : IDamageService
         // Even a miss broadcasts ZC_NOTIFY_ACT3 so the client animates
         // the swing + the dodge — rAthena: clif_damage(... DMG_FLEE ...)
         // even when total = 0.
-        ApplyResolved(target, source, (int)Math.Clamp(damage.Total, 0, int.MaxValue), damage.Type, damage.Hits);
+        // COMBAT-18 — the HP delta is the combined total (right + left); the
+        // wire splits the right/left numbers via damage2.
+        ApplyResolved(target, source, (int)Math.Clamp(damage.Total, 0, int.MaxValue), damage.Type, damage.Hits,
+            (int)Math.Clamp(damage.Damage2, 0, int.MaxValue));
 
         // Wave 66 + 69 / Track B — apply dmotion + walkdelay on the
         // target via the canonical IAttackService.SetAttackDelay +
@@ -183,7 +186,8 @@ public sealed class DamageService : IDamageService
         Entity? source,
         int damage,
         Core.Server.Packets.Out.ZC.DamageActionType action,
-        int hits = 1)
+        int hits = 1,
+        int damage2 = 0)
     {
         if (damage < 0) damage = 0;
 
@@ -209,8 +213,8 @@ public sealed class DamageService : IDamageService
                     // is the new damage sink. Return the original target's
                     // delta as 0 (rAthena draws a hit anim on target but
                     // applies HP to guard).
-                    BroadcastAct(target, source, 0, action, hits);
-                    return ApplyResolved(guard, source, damage, action, hits);
+                    BroadcastAct(target, source, 0, action, hits, damage2);
+                    return ApplyResolved(guard, source, damage, action, hits, damage2);
                 }
             }
         }
@@ -244,7 +248,7 @@ public sealed class DamageService : IDamageService
             dmgPc.AttackerLog.Record(source.Id, actual);
         }
 
-        BroadcastAct(target, source, actual, action, hits);
+        BroadcastAct(target, source, actual, action, hits, damage2);
 
         // P0.3 — SC post-resolve reflect / sacrifice consumers. Read the
         // target's reflect SCs and feed back a slice of the dealt damage
@@ -570,7 +574,7 @@ public sealed class DamageService : IDamageService
         }
     }
 
-    private void BroadcastAct(Entity target, Entity? source, int damage, DamageActionType action, int hits = 1)
+    private void BroadcastAct(Entity target, Entity? source, int damage, DamageActionType action, int hits = 1, int damage2 = 0)
     {
         // Pull amotion from the attacker's stats (renewal ASPD-derived).
         // Falls back to 500ms when there's no source (environmental damage).
@@ -583,14 +587,19 @@ public sealed class DamageService : IDamageService
             ServerTick = (uint)Environment.TickCount,
             SourceAmotion = srcAmotion,
             TargetAmotion = tgtDmotion,
-            Damage = damage,
+            // COMBAT-18 — the wire splits the hit into right (Damage) + left
+            // (Damage2); `damage` here is the combined HP delta, so the
+            // right-hand number is the remainder after the off-hand portion.
+            Damage = Math.Max(0, damage - damage2),
             IsSpDamage = 0,
             // COMBAT-17 — div_ is the displayed hit count (rAthena
             // clif_damage's `div` arg). The client splits Damage across this
             // many hits; the HP delta is the full Damage either way.
             Div = (short)Math.Max(1, hits),
             ActionType = action,
-            Damage2 = 0,
+            // COMBAT-18 — left-hand (dual-wield) damage; 0 for single-weapon /
+            // skill / environmental hits.
+            Damage2 = damage2,
         };
         // Broadcast to AOI of the target (where the visual lives). Source
         // is automatically in the same AOI for melee; long-range will fan

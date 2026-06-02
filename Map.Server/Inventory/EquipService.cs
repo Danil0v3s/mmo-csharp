@@ -266,7 +266,13 @@ public sealed class EquipService : IEquipService
             // player.WeaponType current via CalcWeaponType).
             JobId: player.ClassId,
             WeaponType: player.WeaponType,
-            WeaponLevel: summary.WeaponLevel));
+            WeaponLevel: summary.WeaponLevel,
+            // COMBAT-18: left-hand (dual-wield) weapon from the off-hand slot.
+            LeftWeaponAtkMin: summary.LeftWeaponAtkMin,
+            LeftWeaponAtkMax: summary.LeftWeaponAtkMax,
+            LeftWeaponLevel: summary.LeftWeaponLevel,
+            LeftWeaponType: summary.LeftWeaponType,
+            LeftWeaponElement: summary.LeftWeaponElement));
     }
 
     /// <inheritdoc />

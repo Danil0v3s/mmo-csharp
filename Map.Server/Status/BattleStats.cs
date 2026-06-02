@@ -78,6 +78,15 @@ public sealed class BattleStats
     public byte WeaponElement; // status_data.rhw.ele
     public byte WeaponLevel;   // rhw weapon level (1-5); drives the renewal PC atkmin DEX floor
 
+    // COMBAT-18 — left-hand weapon (dual wield). Mirrors status_data.lhw.
+    // Zero when no off-hand weapon is equipped (single weapon / shield), which
+    // keeps BattleDamage.Damage2 at 0 (is_attack_left_handed false).
+    public ushort LeftWatkMin;     // status_data.lhw.atk
+    public ushort LeftWatkMax;     // status_data.lhw.atk2
+    public byte LeftWeaponElement; // status_data.lhw.ele
+    public byte LeftWeaponLevel;   // lhw weapon level (1-5)
+    public int LeftWeaponType;     // lhw W_* type (0 = none/fist)
+
     public ushort MatkMin;
     public ushort MatkMax;
 

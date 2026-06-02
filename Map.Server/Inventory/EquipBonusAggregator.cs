@@ -47,7 +47,15 @@ public static class EquipBonusAggregator
         // COMBAT-16: the right-hand weapon's W_* type (0 = bare/fist), resolved
         // from the item_db SubType name. Drives the renewal size-fix penalty and
         // the renewal ASPD job_aspd lookup.
-        int WeaponType = 0)
+        int WeaponType = 0,
+        // COMBAT-18: left-hand (dual-wield) weapon. Off-hand slot (EQI_HAND_L)
+        // holds either a weapon or a shield; only Type == "Weapon" rows count
+        // here. 0 ATK = no off-hand weapon → no Damage2.
+        int LeftWeaponAtkMin = 0,
+        int LeftWeaponAtkMax = 0,
+        int LeftWeaponLevel = 0,
+        int LeftWeaponType = 0,
+        BattleElement LeftWeaponElement = BattleElement.Neutral)
     {
         public static EquipSummary Empty => new(0, 0, 0, 0, 1, BattleElement.Neutral);
     }
@@ -63,6 +71,11 @@ public static class EquipBonusAggregator
         int weaponLevel = 0;
         int weaponType = WeaponTypeCodes.Fist;
         int ammoAtk = 0;
+        // COMBAT-18 — left-hand (dual-wield) weapon accumulators.
+        int leftWatk = 0;
+        int leftWeaponLevel = 0;
+        int leftWeaponType = WeaponTypeCodes.Fist;
+        var leftElement = BattleElement.Neutral;
         var element = BattleElement.Neutral;
         // No weapon equipped → null; renewal status_base_atk_min/max
         // returns the catalog values for the equipped weapon row.
@@ -84,6 +97,15 @@ public static class EquipBonusAggregator
                 // COMBAT-16: resolve the W_* weapon type from the item_db
                 // SubType NAME (the DB stores e.g. "Knuckle"/"Bow", not an int).
                 weaponType = WeaponTypeCodes.FromSubtype(row.Subtype);
+            }
+            // COMBAT-18: left-hand weapon (EQI_HAND_L). The off-hand slot also
+            // holds shields (same equip bit), so only count weapon rows
+            // (Type == "Weapon") — a shield contributes Def, not lhw ATK.
+            if ((item.Equip & EquipLeftHand) != 0 && row.Type == "Weapon")
+            {
+                leftWatk += row.Attack ?? 0;
+                if (row.WeaponLevel is { } lwl) leftWeaponLevel = lwl;
+                leftWeaponType = WeaponTypeCodes.FromSubtype(row.Subtype);
             }
             // COMBAT-16: equipped ammo (arrow / bullet) ATK — added to the
             // weapon ATK below only for ammo-using ranged weapons (battle.cpp
@@ -116,7 +138,12 @@ public static class EquipBonusAggregator
             AttackRange: range,
             WeaponElement: element,
             WeaponLevel: weaponLevel,
-            WeaponType: weaponType);
+            WeaponType: weaponType,
+            LeftWeaponAtkMin: leftWatk,
+            LeftWeaponAtkMax: leftWatk,
+            LeftWeaponLevel: leftWeaponLevel,
+            LeftWeaponType: leftWeaponType,
+            LeftWeaponElement: leftElement);
     }
 
     /// <summary>

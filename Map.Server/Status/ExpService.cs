@@ -201,7 +201,11 @@ public sealed class ExpService : IExpService
         WeaponAtkMin: p.Stats.WatkMin, WeaponAtkMax: p.Stats.WatkMax,
         EquipDef: p.Stats.Def, EquipMdef: p.Stats.Mdef,
         AttackRange: p.Stats.AttackRange,
-        JobId: p.ClassId, WeaponType: p.WeaponType);
+        JobId: p.ClassId, WeaponType: p.WeaponType,
+        // COMBAT-18: preserve the off-hand (dual-wield) weapon on EXP/level recalc.
+        LeftWeaponAtkMin: p.Stats.LeftWatkMin, LeftWeaponAtkMax: p.Stats.LeftWatkMax,
+        LeftWeaponLevel: p.Stats.LeftWeaponLevel, LeftWeaponType: p.Stats.LeftWeaponType,
+        LeftWeaponElement: (BattleElement)p.Stats.LeftWeaponElement);
 
     private static void EmitLongLongPar(MapSessionData? session, ushort varId, long value)
     {

@@ -166,7 +166,12 @@ public sealed class StatusOpsService : IStatusOpsService
             AttackRange: pc.Stats.AttackRange,
             WeaponElement: (BattleElement)pc.Stats.WeaponElement,
             // COMBAT-09: job + weapon type for the renewal ASPD formula.
-            JobId: pc.ClassId, WeaponType: pc.WeaponType);
+            JobId: pc.ClassId, WeaponType: pc.WeaponType,
+            // COMBAT-18: preserve the off-hand (dual-wield) weapon across a
+            // non-equip recalc (equipment only changes via the equip flow).
+            LeftWeaponAtkMin: pc.Stats.LeftWatkMin, LeftWeaponAtkMax: pc.Stats.LeftWatkMax,
+            LeftWeaponLevel: pc.Stats.LeftWeaponLevel, LeftWeaponType: pc.Stats.LeftWeaponType,
+            LeftWeaponElement: (BattleElement)pc.Stats.LeftWeaponElement);
         _calc.CalcPc(pc, inputs);
     }
 

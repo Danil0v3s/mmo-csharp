@@ -110,6 +110,12 @@ public sealed class StatusCalcService : IStatusCalcService
         s.WeaponElement = (byte)inputs.WeaponElement;
         s.WeaponLevel = (byte)Math.Clamp(inputs.WeaponLevel, 0, 5);
         s.AttackRange = (short)Math.Max(1, inputs.AttackRange);
+        // COMBAT-18 — left-hand (lhw) weapon for dual wield. status.cpp:2486.
+        s.LeftWatkMin = (ushort)Math.Max(0, inputs.LeftWeaponAtkMin);
+        s.LeftWatkMax = (ushort)Math.Max(0, inputs.LeftWeaponAtkMax);
+        s.LeftWeaponElement = (byte)inputs.LeftWeaponElement;
+        s.LeftWeaponLevel = (byte)Math.Clamp(inputs.LeftWeaponLevel, 0, 5);
+        s.LeftWeaponType = inputs.LeftWeaponType;
 
         // Hard def/mdef come from equipment; misc adds soft def2/mdef2.
         s.Def = (short)Math.Max(0, inputs.EquipDef);

@@ -94,4 +94,11 @@ public readonly record struct PcBaseInputs(
     int WeaponType = 0,
     // COMBAT-04: right-hand weapon level (1-5; 0 = bare-handed) for the
     // renewal PC base-atk DEX floor: atkmin = dex*(80+weaponLv*20)/100.
-    int WeaponLevel = 0);
+    int WeaponLevel = 0,
+    // COMBAT-18: left-hand (dual-wield) weapon. 0 ATK = no off-hand weapon →
+    // BattleDamage.Damage2 stays 0. Mirrors status_data.lhw.
+    int LeftWeaponAtkMin = 0,
+    int LeftWeaponAtkMax = 0,
+    int LeftWeaponLevel = 0,
+    int LeftWeaponType = 0,
+    BattleElement LeftWeaponElement = BattleElement.Neutral);

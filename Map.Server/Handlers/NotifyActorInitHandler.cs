@@ -152,7 +152,13 @@ public class NotifyActorInitHandler(
                 // helper (0 = bare-hand until first equip recalc).
                 JobId: (int)ch.ClassId,
                 WeaponType: player.WeaponType,
-                WeaponLevel: equip.WeaponLevel));
+                WeaponLevel: equip.WeaponLevel,
+                // COMBAT-18: off-hand (dual-wield) weapon from the equip summary.
+                LeftWeaponAtkMin: equip.LeftWeaponAtkMin,
+                LeftWeaponAtkMax: equip.LeftWeaponAtkMax,
+                LeftWeaponLevel: equip.LeftWeaponLevel,
+                LeftWeaponType: equip.LeftWeaponType,
+                LeftWeaponElement: equip.LeftWeaponElement));
             // Persisted current HP/SP from the snapshot wins over the calc-
             // derived max so partial-HP relog doesn't reset to full.
             player.Hp = (int)Math.Min(ch.Hp, (uint)player.MaxHp);

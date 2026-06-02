@@ -92,6 +92,10 @@ public static class SkillIds
     public const ushort HT_BLITZBEAT = 129;
 
     // ----- Assassin (1-2 advance from Thief) -----
+    /// <summary>Right Hand Mastery — dual-wield right-hand damage % (battle.cpp:7168).</summary>
+    public const ushort AS_RIGHT = 132;
+    /// <summary>Left Hand Mastery — dual-wield left-hand damage % (battle.cpp:7181).</summary>
+    public const ushort AS_LEFT = 133;
     public const ushort AS_CLOAKING = 135;
     public const ushort AS_SONICBLOW = 136;
     public const ushort AS_GRIMTOOTH = 137;
@@ -564,6 +568,10 @@ public static class SkillIds
     public const ushort KO_HYOUHU_HUBUKI = 3016;
     public const ushort KO_IZAYOI = 3022;
     public const ushort KO_JYUMONJIKIRI = 3004;
+    /// <summary>Right Hand Mastery (Kagerou/Oboro) — dual-wield right-hand % (battle.cpp:7172).</summary>
+    public const ushort KO_RIGHT = 3002;
+    /// <summary>Left Hand Mastery (Kagerou/Oboro) — dual-wield left-hand % (battle.cpp:7185).</summary>
+    public const ushort KO_LEFT = 3003;
     public const ushort KO_JYUSATSU = 3014;
     public const ushort KO_KAHU_ENTEN = 3015;
     public const ushort KO_KAIHOU = 3019;
