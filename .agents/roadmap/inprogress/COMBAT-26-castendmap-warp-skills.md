@@ -1,6 +1,6 @@
 # COMBAT-26 — CastEndMap warp skills (Teleport / Warp Portal / Greed map step)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 
 ## Problem
