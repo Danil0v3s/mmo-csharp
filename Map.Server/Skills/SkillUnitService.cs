@@ -70,6 +70,9 @@ public sealed class SkillUnitService : ISkillUnitService
             ExpiresAt = (startAt > 0 ? startAt : now) + h.DurationMs(skillLevel),
             IntervalMs = h.IntervalMs(skillLevel),
             StartAt = startAt,
+            // COMBAT-25 — Safety Wall's consumable block pool (rAthena
+            // skill_unitsetting: group->val2 = 2 + 2*skill_lv melee blocks).
+            Val2 = skillId == SkillIds.MG_SAFETYWALL ? 2 + 2 * skillLevel : 0,
         };
 
         var radius = (short)h.Radius(skillLevel);

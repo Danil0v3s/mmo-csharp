@@ -1,6 +1,6 @@
 # COMBAT-25 — Ground-unit damage intercept (Safety Wall / Pneuma / Land Protector)
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-02) · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 
 ## Problem
@@ -43,24 +43,25 @@ Canonical: `battle.cpp`, `skill.cpp` (monolithic switch arms).
 
 ## Scope — every sub-system that must be touched
 
-- [ ] In the melee/ranged apply path (`DamageService` pre-HP-commit and/or
-      `BattleCalculator.CalcWeaponAttack`), before committing damage, query
-      `ISkillUnitService.GetUnitsInArea(target.MapId, target.X, target.Y, 0)`.
-- [ ] **Safety Wall** on the target's cell + hit is melee (`BF_SHORT`) → damage 0, decrement
-      the unit's hit pool via the group bookkeeping; delete the unit/group when exhausted.
-- [ ] **Pneuma** on the cell + hit is ranged (`BF_LONG`) → damage 0.
-- [ ] **Land Protector** — enforce the hostile-ground-unit suppression in
-      `SkillUnitService.Place` (skillId-filtered), and note the overlap here so the cell check
-      is consistent. (Do not block direct attacks.)
-- [ ] `SkillUnitGroup` consumable hit/HP pool if not already present.
-- [ ] Thread `BF_SHORT`/`BF_LONG` from `BattleDamage`/`AttackRange` into the cell query.
+- [x] `DamageService.PerformMeleeAttack` queries `ISkillUnitService.GetUnitsInArea(target
+      cell, radius 0)` (resolved lazily via `_services`, like the COMBAT-08 cast services)
+      before committing the swing.
+- [x] **Safety Wall** on the cell + melee (`IsShortRange`) → damage 0, decrement the
+      group's `Val2` block pool, `DelUnitGroup` when exhausted. Ranged passes through.
+- [x] **Pneuma** on the cell + ranged → damage 0; melee passes through.
+- [x] `SkillUnitGroup.Val2` consumable pool added + initialized in `Place` (2 + 2·lv for
+      Safety Wall).
+- [x] Threaded melee/ranged via `BattleCalculator.IsShortRange(source)`.
+- [ ] **Land Protector** place-gate ➡️ moved to **COMBAT-47** (needs the `UF_NOLP`
+      unit-flag, not modeled on `SkillUnitFlag` yet). The skill-attack intercept (melee/
+      ranged SKILLS, which need the lane threaded into the skill funnel) is also COMBAT-47.
 
 ## Done criteria
 
-- A target on Safety Wall takes 0 from a melee swing; the wall's hit pool decrements and the
-  wall vanishes when exhausted. Ranged hits pass through Safety Wall.
-- A target on Pneuma takes 0 from a ranged hit; melee passes through.
-- A hostile ground-unit skill cannot place/tick on a Land Protector cell.
+- A target on Safety Wall takes 0 from a melee swing ✅; the pool decrements and the wall
+  vanishes when exhausted ✅; ranged hits pass through ✅.
+- A target on Pneuma takes 0 from a ranged hit ✅; melee passes through ✅.
+- ➡️ A hostile ground-unit skill cannot place/tick on a Land Protector cell — moved to **COMBAT-47**.
 
 ## Test plan
 
@@ -75,3 +76,13 @@ Canonical: `battle.cpp`, `skill.cpp` (monolithic switch arms).
   the COMBAT-08 cast services.
 - Confirm the renewal Safety Wall semantics (hit-count vs damage-absorb pool) against the
   loaded `skill_db` `val2` before picking the pool model.
+
+## History
+
+- **2026-06-02** — inprogress→done. Defensive ground-unit intercept: `DamageService.
+  TryGroundUnitBlock` (called from `PerformMeleeAttack`) blocks a landed melee swing on a
+  Safety Wall cell (consuming the new `SkillUnitGroup.Val2` block pool, removing the wall
+  when spent) and a ranged swing on a Pneuma cell; the opposite lane passes through. Pool
+  initialized in `SkillUnitService.Place` (2+2·lv). `Combat25GroundUnitBlockTests` (3);
+  unit suite 3830 (1 fail = pre-existing INFRA-11 replay gate). Filed COMBAT-47 (Land
+  Protector place-gate via UF_NOLP + the skill-path intercept).

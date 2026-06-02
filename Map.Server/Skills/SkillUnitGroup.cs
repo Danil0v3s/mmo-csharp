@@ -36,6 +36,14 @@ public sealed class SkillUnitGroup
     public List<SkillUnit> Units = new();
 
     /// <summary>
+    /// COMBAT-25 — consumable hit pool (rAthena <c>group-&gt;val2</c>). Safety Wall
+    /// initializes it to the remaining block count (2 + 2·lv); the combat
+    /// intercept decrements it per blocked melee hit and the group is removed
+    /// when it reaches 0. Skills that don't use a hit pool leave it 0.
+    /// </summary>
+    public int Val2;
+
+    /// <summary>
     /// Deferred-start gate. Tick processing skips this group until
     /// <see cref="StartAt"/> &lt;= now. Used by staggered sub-unit
     /// spawns (AG_VIOLENT_QUAKE_ATK / AG_ALL_BLOOM_ATK fan out their

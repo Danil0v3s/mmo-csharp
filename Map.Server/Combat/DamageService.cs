@@ -43,6 +43,10 @@ public sealed class DamageService : IDamageService
     private Map.Server.Skills.ISkillDb? _cachedSkillDb;
     private Map.Server.Skills.ISkillDb? SkillDbSvc
         => _cachedSkillDb ??= _services?.GetService<Map.Server.Skills.ISkillDb>();
+    // COMBAT-25 — defensive ground-unit intercept (Safety Wall / Pneuma).
+    private Map.Server.Skills.ISkillUnitService? _cachedUnits;
+    private Map.Server.Skills.ISkillUnitService? UnitSvc
+        => _cachedUnits ??= _services?.GetService<Map.Server.Skills.ISkillUnitService>();
     private readonly ILogger<DamageService> _logger;
     // T2.4b+: SC consumers (SteelBody / Kyrie / AutoGuard) — optional so
     // older tests that build DamageService without the SC engine still work.
@@ -113,6 +117,14 @@ public sealed class DamageService : IDamageService
     {
         if (!CanDamage(source, target)) return default;
         var damage = _battleCalc.CalcWeaponAttack(source, target);
+        // COMBAT-25 — defensive ground-unit intercept. A landed swing on a
+        // Safety Wall cell (melee) or Pneuma cell (ranged) is fully blocked.
+        if (damage.DidHit && damage.Total > 0
+            && TryGroundUnitBlock(target, BattleCalculator.IsShortRange(source)))
+        {
+            damage.Damage = 0;
+            damage.Damage2 = 0;
+        }
         // COMBAT-20 — auto-attack final stage: plant clamp (MD_IGNOREMELEE /
         // MD_IGNORERANGED → 1) + GvG/BG range rate (normal attack = BF_SHORT/LONG).
         // Weapon SKILLS apply their plant/zone stage post-ratio — tracked in COMBAT-42.
@@ -582,6 +594,35 @@ public sealed class DamageService : IDamageService
             case MobEntity m: m.Hp = Math.Max(0, newHp); break;
             case PlayerEntity p: p.Hp = Math.Max(0, newHp); break;
         }
+    }
+
+    /// <summary>
+    /// COMBAT-25 — defensive ground-unit intercept. Returns true (and zeroes the
+    /// caller's damage) when a unit on the target's cell blocks this attack:
+    /// <b>Safety Wall</b> blocks melee (<paramref name="isShortRange"/>) hits and
+    /// consumes one block from the group's pool (<c>group.Val2</c>), removing the
+    /// group when spent; <b>Pneuma</b> blocks ranged hits (no pool). rAthena
+    /// battle_calc_damage MG_SAFETYWALL / AL_PNEUMA cell checks.
+    /// </summary>
+    private bool TryGroundUnitBlock(Entity target, bool isShortRange)
+    {
+        var svc = UnitSvc;
+        if (svc == null) return false;
+        var units = svc.GetUnitsInArea(target.MapId, target.X, target.Y, 0);
+        for (var i = 0; i < units.Count; i++)
+        {
+            var g = units[i].Group;
+            if (isShortRange && g.SkillId == Map.Server.Skills.SkillIds.MG_SAFETYWALL)
+            {
+                // Consume one block; remove the wall when the pool is exhausted.
+                g.Val2--;
+                if (g.Val2 <= 0) svc.DelUnitGroup(g);
+                return true;
+            }
+            if (!isShortRange && g.SkillId == Map.Server.Skills.SkillIds.AL_PNEUMA)
+                return true;
+        }
+        return false;
     }
 
     private void BroadcastAct(Entity target, Entity? source, int damage, DamageActionType action, int hits = 1, int damage2 = 0)
