@@ -1,6 +1,6 @@
 # COMBAT-23 — pc_bonus single-value tail + 1-arg flag form (speed/healpower/nocastcancel/…)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-06 · **Blocks:** none
 > **Filed by:** COMBAT-06 (the single-value tail + flag form it scoped but didn't reach).
 
