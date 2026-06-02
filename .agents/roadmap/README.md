@@ -114,6 +114,10 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-51 | Transcendent 3rd/4th JOBL_UPPER table + Taekwon-ranker fame population — split from COMBAT-30 |
 | COMBAT-52 | die_counter persistence + death-increment wiring (Super Novice +10 gate) — split from COMBAT-32 |
 | COMBAT-53 | OnRecalc for bespoke derived-stat SCs + MaxHp/MaxSp SC re-fold — split from COMBAT-33 |
+| COMBAT-54 | Per-arm RE_LVL_DMOD for splash/plain 120/150 arms (needs SKILL-17 ratio funnel) — split from COMBAT-35 |
+| COMBAT-55 | Ranger trap RE_LVL_TMDMOD damage via trap-unit handlers — split from COMBAT-35 |
+| COMBAT-56 | Macro-omitting RE_LVL_DMOD audit (disable scaling per-arm) — split from COMBAT-35 |
+| COMBAT-57 | KO_JYUMONJIKIRI SC_JYUMONJIKIRI ratio bonus + double-hit/position-shift — split from COMBAT-35 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |
