@@ -1,6 +1,6 @@
 # COMBAT-29 — Dual-wield + shield ASPD base terms
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-09 (base renewal ASPD formula) · **Blocks:** none
 
 ## Problem
