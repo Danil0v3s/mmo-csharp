@@ -1,6 +1,6 @@
 # COMBAT-19 — Per-skill element resolution (magic/misc + endow overrides)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Filed by:** COMBAT-05 (axis 4).
 
