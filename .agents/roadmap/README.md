@@ -134,6 +134,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-71 | Remaining status_calc_aspd debuff SCs — split from COMBAT-50 |
 | COMBAT-72 | Bespoke derived-stat OnRecalc sweep (remainder + primary-coupled) — split from COMBAT-53 |
 | COMBAT-73 | MaxHp/MaxSp SC re-fold (post-CalcPc pass) — split from COMBAT-53 |
+| COMBAT-74 | Ranger trap detonation: splash AoE + consume + on-hit SC — split from COMBAT-55 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

@@ -1879,6 +1879,10 @@ builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.SanctuaryUnit>();
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.ViolentQuakeAtkUnit>();
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.AllBloomAtkUnit>();
+// COMBAT-55 — Ranger trap damage units.
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.ClusterBombUnit>();
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.FiringTrapUnit>();
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.IceboundTrapUnit>();
 builder.Services.AddSingleton<Map.Server.Skills.Units.SkillUnitTickRegistry>();
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitContext, Map.Server.Skills.Units.SkillUnitContext>();
 builder.Services.AddSingleton<Map.Server.Skills.ISkillUnitService, Map.Server.Skills.SkillUnitService>();
