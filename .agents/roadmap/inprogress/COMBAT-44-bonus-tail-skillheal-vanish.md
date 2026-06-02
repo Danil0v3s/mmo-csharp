@@ -1,6 +1,6 @@
 # COMBAT-44 — bonus tail: SkillHeal, HP/SP vanish, race2, bonus3/4/5 forms
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-22 (per-skill maps + skill-name resolver), COMBAT-43 (race2/subdefele)
 > **Blocks:** none
 > **Filed by:** COMBAT-22 — the bonus2/bonus3 tail it did not reach.
