@@ -1,6 +1,6 @@
 # COMBAT-36 — Ammo consumption + no-ammo gate on ranged attacks
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-16 (arrow_atk + weapon-type resolution) · **Blocks:** none
 > **Filed by:** COMBAT-16 on 2026-06-02 (the attack-loop half of the bow slice).
 
