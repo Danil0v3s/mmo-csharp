@@ -693,7 +693,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val2);
                 target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val3);
             },
-            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh,
+            // COMBAT-53 — re-apply the snapshot Hit/Flee drops after recalc.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val2);
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val3);
+            }));
 
         // SC_CURSE — Luk set to 0. rAthena status.cpp:9472 has a special
         // "immunity when luk is zero" guard, so we store the original
@@ -735,7 +741,11 @@ public sealed class StatusEffectRegistry
                 target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2);
                 target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-53 — re-apply the snapshot Flee after recalc. AspdRate is NOT
+            // reset by CalcPc (scope-3 guard) → left out.
+            OnRecalc: (target, sc) =>
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2)));
 
         // SC_BERSERK — major attack stance buff. rAthena status.cpp:10994
         // also forces SC_ENDURE for 10s, sets val4 = damage-interval, and
@@ -3486,7 +3496,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.Smatk = (short)Math.Max(0, target.Stats.Smatk - sc.Val2);
                 target.Stats.Mdef2 = (short)Math.Min(short.MaxValue, target.Stats.Mdef2 + sc.Val3);
             },
-            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh,
+            // COMBAT-53 — re-apply the snapshot Smatk boost + Mdef2 drop after recalc.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Smatk = (short)Math.Min(short.MaxValue, target.Stats.Smatk + sc.Val2);
+                target.Stats.Mdef2 = (short)Math.Max(0, target.Stats.Mdef2 - sc.Val3);
+            }));
 
         // SC_GATLINGFEVER (GS_GATLINGFEVER) — rAthena status.cpp:11286-11290:
         // val2 = 20*val1 ASPD, val3 = 20+10*val1 ATK flat, val4 = 5*val1
@@ -3512,7 +3528,14 @@ public sealed class StatusEffectRegistry
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val3);
                 target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + fleeDrop);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-53 — re-apply the snapshot Batk boost + Flee drop after recalc.
+            // AspdRate is NOT reset by CalcPc (scope-3 guard) → left out.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val3);
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - (short)(5 * sc.Val1));
+            }));
 
         // SC_DEFENCE (HAMI_DEFENCE — homunculus skill) — rAthena
         // status.cpp:11311-11318 (renewal): val2 = 5+5*val1 Vit+Def bonus.
@@ -3530,7 +3553,11 @@ public sealed class StatusEffectRegistry
                 target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val2);
                 target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-53 — re-apply the snapshot Def after recalc. Vit is PRIMARY
+            // (survives via the COMBAT-10 param delta) → left out.
+            OnRecalc: (target, sc) =>
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val2)));
 
         // SC_CHANGE (HAMI_CHANGE — homunculus skill) — rAthena status.cpp:
         // 11361-11364: val2 = 30*val1 Vit, val3 = 20*val1 Int. Generator
@@ -3569,7 +3596,10 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-53 — re-apply the snapshot Batk% boost after recalc.
+            OnRecalc: (target, sc) =>
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2)));
 
         // SC_OVERTHRUST (BS_OVERTHRUST) — rAthena status.cpp:11226-11246
         // (renewal): val3 = val2 ? 5*val1 : (val1>4?15:val1>2?10:5).
@@ -3590,7 +3620,10 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-53 — re-apply the snapshot Batk% boost after recalc.
+            OnRecalc: (target, sc) =>
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2)));
 
         // SC_MAGICPOWER (HW_MAGICPOWER) — rAthena status.cpp:10556-10564
         // (renewal): val3 = 5*val1 MAtk% increase. status_calc_smatk reads

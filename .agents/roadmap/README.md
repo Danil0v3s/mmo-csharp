@@ -132,6 +132,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-69 | SG_DEVIL max-job-level ASPD clause (Star Gladiator path) — split from COMBAT-50 |
 | COMBAT-70 | FREECAST cast-state ASPD recompute trigger — split from COMBAT-50 |
 | COMBAT-71 | Remaining status_calc_aspd debuff SCs — split from COMBAT-50 |
+| COMBAT-72 | Bespoke derived-stat OnRecalc sweep (remainder + primary-coupled) — split from COMBAT-53 |
+| COMBAT-73 | MaxHp/MaxSp SC re-fold (post-CalcPc pass) — split from COMBAT-53 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

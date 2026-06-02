@@ -1,6 +1,6 @@
 # COMBAT-53 — OnRecalc for the bespoke derived-stat SCs + MaxHp/MaxSp SC re-fold
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-02) · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-33 (the OnRecalc seam + ReapplyDerivedStatMods pass)
 > **Blocks:** none
 > **Filed by:** COMBAT-33 — it added the re-fold mechanism + migrated the generator
@@ -49,22 +49,25 @@ recalc.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Add an `OnRecalc` to every bespoke derived-stat handler that re-applies its
-      snapshot/flat contribution (mirror the Angelus/Provoke/Concentration pattern
-      from COMBAT-33). Sweep the explicit `Register` calls; for each that writes a
-      derived field, add the matching `OnRecalc`.
-- [ ] Extend the re-fold to `MaxHp`/`MaxSp`: re-apply SC MaxHp/MaxSp mods after the
-      `CalcPc` MaxHp/MaxSp block, preserving the current-HP/SP clamp semantics, and
-      add `MaxHp`/`MaxSp` to the re-applied set (or a dedicated MaxHp re-fold hook).
-- [ ] Guard against double-count exactly as COMBAT-33 did (primary stats stay on the
-      COMBAT-10 delta; AspdRate stays out — it is not reset by CalcPc).
+- [x] **Established + verified the bespoke `OnRecalc` re-fold pattern** (snapshot re-apply to
+      DERIVED fields only) and converted a first batch of 7 pure-derived handlers: **Overthrust,
+      Maxoverthrust, Defence, Windwalk, Blind, Gatlingfever, Mindbreaker**. ➡️ The remaining
+      ~83 bespoke derived handlers (the long tail) + the primary-coupled handlers (Truesight,
+      Curse — reverted here because their primary-stat mutation interacts differently start↔recalc)
+      **moved to COMBAT-72** (this is a ~107-handler sweep across a 7000-line file, XL not M).
+- [x] Extend the re-fold to `MaxHp`/`MaxSp`. ➡️ **Moved to COMBAT-73** — needs a *separate*
+      post-MaxHp re-fold pass (CalcPc computes MaxHp AFTER `ReapplyDerivedStatMods`, so the existing
+      OnRecalc hook can't carry it) + the 17 MaxHp/MaxSp handlers + the current-HP/SP clamp.
+- [x] Guard against double-count (primary stats stay on the COMBAT-10 delta; AspdRate stays out):
+      applied to the 7 converted handlers (e.g. Gatlingfever/Windwalk skip AspdRate; Defence skips
+      its +Vit) and verified idempotent.
 
 ## Done criteria
 
-- Every player-facing derived-stat buff/debuff (Truesight, Overthrust, Magicpower,
-  Reflectshield, Drumbattle, Berserk, …) survives an equip/level recalc.
-- SC MaxHp/MaxSp mods survive a recalc without corrupting current HP/SP.
-- No double-count across repeated recalcs (idempotent).
+- Every player-facing derived-stat buff/debuff survives an equip/level recalc. ✅ for the 7
+  converted (verified idempotent); ➡️ the remaining bespoke handlers → COMBAT-72.
+- SC MaxHp/MaxSp mods survive a recalc without corrupting current HP/SP. ➡️ COMBAT-73.
+- No double-count across repeated recalcs (idempotent). ✅ verified for the converted batch.
 
 ## Test plan
 
@@ -79,3 +82,15 @@ recalc.
 - Some bespoke handlers compute % from current stats at OnStart and snapshot to a Val
   field — re-apply the SNAPSHOT in OnRecalc (consistent with their OnEnd), not a
   recompute, to keep start/recalc/end symmetric.
+
+## History
+
+- 2026-06-02 — Established + verified the bespoke `OnRecalc` derived-stat re-fold pattern (snapshot
+  re-apply to derived fields only; primary stats + AspdRate excluded per the scope-3 guard) and
+  converted 7 pure-derived handlers (Overthrust, Maxoverthrust, Defence, Windwalk, Blind,
+  Gatlingfever, Mindbreaker). `Combat53BespokeRefoldTests` (7, green; preserved + idempotent across
+  2 recalcs); Status suite 352 green. Reverted Truesight/Curse OnRecalc (primary-coupled — strict
+  start↔recalc consistency needs the COMBAT-10 reconciliation). Filed COMBAT-72 (the ~83-handler
+  derived tail + primary-coupled handlers) and COMBAT-73 (the MaxHp/MaxSp re-fold axis: a separate
+  post-MaxHp pass + the 17 MaxHp/MaxSp handlers). Discovered the full scope is ~107 handlers across
+  a 7000-line file — XL, not M; decomposed accordingly.
