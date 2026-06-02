@@ -190,6 +190,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | FEATURE-13 | Cashshop catalog + buy |
 | FEATURE-14 | Instance lifecycle (NPC spawn, timers/auto-destroy, scoping) |
 | FEATURE-15 | WoE time-of-week scheduler |
+| FEATURE-16 | Fame-ranking subsystem + Taekwon-ranker population — split from COMBAT-51 |
 
 ### `scripting/` — NPC scripting runtime + content
 | Ticket | Title |

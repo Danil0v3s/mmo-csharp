@@ -161,14 +161,28 @@ public static class JobAegisMapper
         => _byId.TryGetValue(jobId, out var name) ? name : null;
 
     /// <summary>
-    /// COMBAT-30 — rAthena <c>class_ &amp; JOBL_UPPER</c> for the MaxHP/SP ×1.25
-    /// transcendent bonus. The trans 1st + trans 2nd job-id band is
-    /// <c>JOB_NOVICE_HIGH(4001)</c>..the trans-2nd classes (4022); baby classes
-    /// (4023-4045) and Taekwon-family (4046+) are NOT transcendent. The trans-3rd/
-    /// 4th JOBL_UPPER inheritance (Rune Knight from a Lord Knight base, etc.) needs
-    /// the full job-promotion table → COMBAT-51.
+    /// COMBAT-30/51 — rAthena <c>class_ &amp; JOBL_UPPER</c> for the MaxHP/SP ×1.25
+    /// transcendent bonus (status_calc_maxhp_pc). Covers every job whose mapid
+    /// carries <c>JOBL_UPPER</c> (map.hpp), enumerated from <c>e_job</c> (common/mmo.hpp):
+    /// <list type="bullet">
+    ///   <item>trans 1st/2nd: <c>JOB_NOVICE_HIGH(4001)</c>..4022;</item>
+    ///   <item>trans-3rd <c>_T</c>: 4060-4065 (Rune Knight_T..Guillotine Cross_T) +
+    ///         4073-4079 (Royal Guard_T..Shadow Chaser_T);</item>
+    ///   <item>trans-3rd <c>_T2</c> (mounted): 4081/4083/4085/4087;</item>
+    ///   <item>4th classes (all carry JOBL_UPPER, map.hpp MAPID_*): 4252-4264 +
+    ///         4278-4281 + 4302-4308 + 4316.</item>
+    /// </list>
+    /// Baby classes (JOBL_BABY, not JOBL_UPPER) and non-trans 3rd classes are excluded.
     /// </summary>
-    public static bool IsTranscendent(int jobId) => jobId is >= 4001 and <= 4022;
+    public static bool IsTranscendent(int jobId) => jobId is
+        (>= 4001 and <= 4022)   // trans 1st/2nd
+        or (>= 4060 and <= 4065) // trans-3rd _T (Rune Knight_T .. Guillotine Cross_T)
+        or (>= 4073 and <= 4079) // trans-3rd _T (Royal Guard_T .. Shadow Chaser_T)
+        or 4081 or 4083 or 4085 or 4087 // trans-3rd _T2 (mounted)
+        or (>= 4252 and <= 4264) // 4th classes (Dragon Knight .. Trouvere)
+        or (>= 4278 and <= 4281) // 4th mounted (Windhawk2 .. Imperial Guard2)
+        or (>= 4302 and <= 4308) // Sky Emperor .. Spirit Handler
+        or 4316;                 // Sky Emperor 2
 
     /// <summary>rAthena <c>JOB_TAEKWON</c> id — the ×3 MaxHP ranker class.</summary>
     public const int TaekwonJobId = 4046;
