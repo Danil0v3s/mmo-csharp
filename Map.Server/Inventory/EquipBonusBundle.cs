@@ -64,6 +64,20 @@ public sealed class EquipBonusBundle
     /// SP_SKILL_ATK). Applied after DEF for the matching skill in
     /// <c>WeaponSkillImpl.ComputeSkillDamage</c> / <c>CalcMagicAttack</c>.</summary>
     public Dictionary<ushort, int> SkillAtk { get; } = new();
+    /// <summary>COMBAT-44 — per-skill heal-output % (<c>bonus2 bSkillHeal, sk, n</c> /
+    /// SP_SKILL_HEAL). The CASTER's bonus, applied in the renewal heal formula.</summary>
+    public Dictionary<ushort, int> SkillHeal { get; } = new();
+
+    // COMBAT-44 — on-hit HP/SP vanish (bonus2 bHPVanishRate,rate,per / SP_HP_VANISH_RATE).
+    /// <summary>Vanish trigger chance in 1/1000 units (rAthena rolls rnd()%1000 &lt; rate;
+    /// rate ≥ 1000 = guaranteed).</summary>
+    public int HpVanishRate { get; set; }
+    /// <summary>% of the target's MAX HP drained on a vanish proc.</summary>
+    public int HpVanishPer { get; set; }
+    /// <inheritdoc cref="HpVanishRate"/>
+    public int SpVanishRate { get; set; }
+    /// <summary>% of the target's MAX SP drained on a vanish proc.</summary>
+    public int SpVanishPer { get; set; }
     /// <summary>Per-skill variable-cast rate, stored INVERSED like rAthena
     /// (<c>bonus2 bVariableCastrate, sk, n</c> → <c>-n</c>; SP_VARCASTRATE).
     /// Consumed by the cast-timing pipeline (COMBAT-24).</summary>
@@ -242,7 +256,8 @@ public sealed class EquipBonusBundle
         Array.Clear(AddClass); Array.Clear(SubClass);
         Array.Clear(MagicAddRace); Array.Clear(CritAddRace);
         IgnoreDefRace = IgnoreDefClass = 0;
-        SkillAtk.Clear(); SkillVarCastrate.Clear(); SkillFixCastrate.Clear();
+        SkillAtk.Clear(); SkillHeal.Clear(); SkillVarCastrate.Clear(); SkillFixCastrate.Clear();
+        HpVanishRate = HpVanishPer = SpVanishRate = SpVanishPer = 0;
         SkillVarCast.Clear(); SkillFixCast.Clear();
         Array.Clear(ComaClass); Array.Clear(ComaRace);
         AddEffOnAttack.Clear(); AddEffWhenHit.Clear();

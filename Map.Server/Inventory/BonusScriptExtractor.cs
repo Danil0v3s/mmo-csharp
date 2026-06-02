@@ -294,6 +294,17 @@ public static class BonusScriptExtractor
             case "criticaladdrace": Add(b.CritAddRace,  ParseRace(idxToken), v * 10); break;
             // COMBAT-22 — per-skill bonus2 maps (index is a skill name / id).
             case "skillatk":         AddSkillMap(b.SkillAtk, idxToken, v); break;
+            // COMBAT-44 — per-skill heal-output % (bonus2 bSkillHeal, sk, n).
+            case "skillheal":        AddSkillMap(b.SkillHeal, idxToken, v); break;
+            // COMBAT-44 — on-hit vanish: bonus2 bHPVanishRate,rate,per — the index
+            // token IS the rate (a number), the value is the per. Last-write wins
+            // (one vanish bonus per item is the common case).
+            case "hpvanishrate":
+                if (int.TryParse(idxToken, out var hpr)) { b.HpVanishRate = hpr; b.HpVanishPer = v; }
+                break;
+            case "spvanishrate":
+                if (int.TryParse(idxToken, out var spr)) { b.SpVanishRate = spr; b.SpVanishPer = v; }
+                break;
             // rAthena stores the cast-rate per-skill INVERSED (-val); the
             // cast-timing consumer (COMBAT-24) reads these as a reduction.
             case "variablecastrate": AddSkillMap(b.SkillVarCastrate, idxToken, -v); break;

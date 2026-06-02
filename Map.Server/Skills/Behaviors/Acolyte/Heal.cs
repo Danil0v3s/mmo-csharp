@@ -259,6 +259,12 @@ public sealed class Heal : SkillImpl
         if (src is PlayerEntity hpc && hpc.EquipBonuses.HealPower != 0)
             hp += hp * hpc.EquipBonuses.HealPower / 100;
 
+        // COMBAT-44 — bonus2 bSkillHeal (SP_SKILL_HEAL): the CASTER's per-skill
+        // heal-output bonus (rAthena skill_calc_heal: heal += heal *
+        // pc_skillheal_bonus(sd, skill_id)/100), keyed on the skill being cast.
+        if (src is PlayerEntity shc && shc.EquipBonuses.SkillHeal.TryGetValue(SkillId, out var skh) && skh != 0)
+            hp += hp * skh / 100;
+
         return Math.Max(1, hp);
     }
 }

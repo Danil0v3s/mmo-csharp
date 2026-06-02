@@ -139,6 +139,11 @@ public sealed class DamageService : IDamageService
         ApplyResolved(target, source, (int)Math.Clamp(damage.Total, 0, int.MaxValue), damage.Type, damage.Hits,
             (int)Math.Clamp(damage.Damage2, 0, int.MaxValue));
 
+        // COMBAT-44 — on-hit HP/SP vanish (bonus2 bHPVanishRate / bSPVanishRate,
+        // rAthena battle.cpp:9941): a landed weapon swing rolls the rate and drains
+        // per% of the target's MAX HP/SP.
+        ApplyVanish(source, target, damage.Total > 0);
+
         // Wave 66 + 69 / Track B — apply dmotion + walkdelay on the
         // target via the canonical IAttackService.SetAttackDelay +
         // IMovementService.SetWalkDelay entry points. Both are resolved
@@ -162,6 +167,29 @@ public sealed class DamageService : IDamageService
     /// returns false when:
     ///   * source and target share party / guild (friendly fire off),
     ///   * the source map has <c>nopvp</c> set (PC ↔ PC damage refused).
+    /// <summary>
+    /// COMBAT-44 — rAthena <c>battle_vanish</c> (battle.cpp:9933): a PC weapon hit
+    /// rolls the HP/SP vanish rate and drains a percentage of the target's MAX
+    /// HP/SP. The roll is in 1/1000 units (rate ≥ 1000 = guaranteed).
+    /// </summary>
+    private void ApplyVanish(Entity source, Entity target, bool hit)
+    {
+        if (!hit || source is not PlayerEntity pc || pc.EquipBonuses is not { } eq) return;
+
+        if (eq.HpVanishPer != 0 && VanishRoll(eq.HpVanishRate))
+        {
+            var drain = (int)((long)target.Stats.MaxHp * eq.HpVanishPer / 100);
+            if (drain > 0) ApplyDamage(target, drain, source);
+        }
+        if (eq.SpVanishPer != 0 && target.Stats.MaxSp > 0 && VanishRoll(eq.SpVanishRate))
+        {
+            var drain = (int)((long)target.Stats.MaxSp * eq.SpVanishPer / 100);
+            if (drain > 0) target.Stats.Sp = Math.Max(0, target.Stats.Sp - drain);
+        }
+    }
+
+    private bool VanishRoll(int rate) => rate > 0 && (rate >= 1000 || _rng.Next(1000) < rate);
+
     /// PvE (PC vs Mob / Mob vs PC / Mob vs Mob) is always allowed.
     /// GvG zones are documented under <see cref="MapFlag.Gvg"/> but the
     /// full GvG matrix lands when WoE ports — for now we only enforce
