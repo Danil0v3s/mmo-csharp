@@ -287,10 +287,17 @@ public sealed class StatusCalcService : IStatusCalcService
         // COMBAT-28 — SC ASPD contributions (status_calc_aspd fixed/rate +
         // status_calc_fix_aspd), re-summed from the live SC list each recalc.
         var (fixedSc, rateSc, fixAspd) = ComputeScAspd(player);
+        // COMBAT-50 — skill `val` ASPD terms (status.cpp:2343-2353): summed with the
+        // SC fixed term inside the `(status_calc_aspd(true)+val)*agi/200` stage.
+        var skillVal = ComputeSkillAspdVal(player, inputs.WeaponType);
         var amotion = RenewalPcAmotion(
             aspdBase, s.Dex, s.Agi, inputs.WeaponType,
             aspdRate2: eq?.FlatAspdRate ?? 0, aspdAddVal: eq?.FlatAspd ?? 0,
-            fixedSc: fixedSc, rateSc: rateSc, fixAspd: fixAspd);
+            fixedSc: fixedSc, rateSc: rateSc, fixAspd: fixAspd, skillVal: skillVal);
+        // COMBAT-50 — SC_OVERED_BOOST (status_calc_fix_aspd) overrides the final
+        // amotion to a fixed ASPD (val3): amotion = AMOTION_ZERO_ASPD − val3·10.
+        if (_sc?.Get(player, StatusType.OveredBoost) is { Val3: > 0 } ob)
+            amotion = Math.Clamp(2000 - ob.Val3 * 10, 95, 4000);
         s.Amotion = (ushort)amotion;
         s.ClientAmotion = s.Amotion;
         // adelay = AMOTION_DIVIDER_PC * amotion (status.cpp:6175).
@@ -557,15 +564,21 @@ public sealed class StatusCalcService : IStatusCalcService
     /// dual-wield/shield base terms are COMBAT-29 — both zeroed here.</para>
     /// </summary>
     internal static int RenewalPcAmotion(int aspdBase, int dex, int agi, int weaponType, int aspdRate2, int aspdAddVal,
-        int fixedSc = 0, int rateSc = 0, int fixAspd = 0)
+        int fixedSc = 0, int rateSc = 0, int fixAspd = 0, int skillVal = 0, int freecastLv = 0)
     {
         double divisor = IsRangedWeaponType(weaponType) ? 7.0 : 5.0;
         double temp = dex * (double)dex / divisor + agi * (double)agi * 0.5;
         temp = Math.Sqrt(temp) * 0.25 + 196.0;
-        // COMBAT-28 — (status_calc_aspd(fixed) + skill val) * agi / 200
-        // (status.cpp:2343). `fixedSc` already includes the Quagmire-gated quicken
-        // bonuses + Madness/Berserk/ASPD-potion (skill `val` terms → COMBAT-50).
-        int aspd = (int)(temp + (double)fixedSc * agi / 200.0) - Math.Min(aspdBase, 200);
+        // COMBAT-28/50 — (status_calc_aspd(fixed) + skill val) * agi / 200
+        // (status.cpp:2343). `fixedSc` carries the Quagmire-gated quicken bonuses +
+        // Madness/Berserk/ASPD-potion; `skillVal` carries the SA_ADVANCEDBOOK /
+        // SG_DEVIL / GS_SINGLEACTION / riding terms (COMBAT-50).
+        int aspd = (int)(temp + (double)(fixedSc + skillVal) * agi / 200.0) - Math.Min(aspdBase, 200);
+        // COMBAT-50 — SA_FREECAST (status.cpp:6156, RENEWAL_ASPD): while casting, the
+        // ASPD is scaled to 5*(lv+10)% (lv1 → 55%, lv10 → 100%). Applied before the
+        // RE ASPD% modifier, matching rAthena's amotion-variable order.
+        if (freecastLv > 0)
+            aspd = aspd * 5 * (freecastLv + 10) / 100;
         // RE ASPD % modifier (status.cpp:6165): aspd_rate2 (item bAspdRate) +
         // status_calc_aspd(false) SC rate term (Steel Body / Defender / Gospel / …).
         aspd += Math.Max(195 - aspd, 2) * (aspdRate2 + rateSc) / 100;
@@ -616,13 +629,71 @@ public sealed class StatusCalcService : IStatusCalcService
         if (Has(StatusType.Steelbody)) rateSc -= 25;
         rateSc -= Val(StatusType.Defender, sc => sc.Val4) / 10;
         if (_sc.Get(pc, StatusType.Gospel) is { Val4: 2 }) rateSc -= 75; // BCT_ENEMY
+        // COMBAT-50 — rate-term positives (status.cpp:6206-6213): SwingDance val3,
+        // IncAspdRate val1, GatlingFever val1.
+        rateSc += Val(StatusType.Swingdance, sc => sc.Val3);
+        rateSc += Val(StatusType.Incaspdrate, sc => sc.Val1);
+        rateSc += Val(StatusType.Gatlingfever, sc => sc.Val1);
 
         // ---- status_calc_fix_aspd: flat amotion reduction ----
         int fixAspd = 0;
         fixAspd += Val(StatusType.HeatBarrel, sc => sc.Val1) * 10;
+        // COMBAT-50 — exotic status_calc_fix_aspd terms (status.cpp:6172): +5 ASPD
+        // (−50 amotion) for the Sorcerer element options, plus Fighting Spirit /
+        // Soul Shadow / Sincere Faith. (SC_OVERED_BOOST overrides the whole amotion
+        // and is handled in CalcPc.)
+        if (Has(StatusType.GustOption) || Has(StatusType.BlastOption) || Has(StatusType.WildStormOption))
+            fixAspd += 50;
+        fixAspd += Val(StatusType.Fightingspirit, sc => sc.Val2);
+        fixAspd += Val(StatusType.Soulshadow, sc => sc.Val2) * 10;
+        fixAspd += Val(StatusType.SincereFaith, sc => sc.Val2) * 10;
 
         return (fixedSc, rateSc, fixAspd);
     }
+
+    /// <summary>
+    /// COMBAT-50 — the skill <c>val</c> ASPD terms (status.cpp:2343-2353): book /
+    /// star-emperor / gun ASPD bonuses and the riding penalties, gated on the
+    /// learned skill level + weapon / mount / class. Summed with the SC fixed term
+    /// inside <c>(status_calc_aspd(true)+val)·agi/200</c>.
+    /// </summary>
+    internal static int ComputeSkillAspdVal(PlayerEntity pc, int weaponType)
+    {
+        int Lv(ushort id) => pc.LearnedSkills.GetValueOrDefault(id);
+        int val = 0;
+
+        // SA_ADVANCEDBOOK — Book weapon: +(lv-1)/2 + 1.
+        int ab = Lv(SkillIds.SA_ADVANCEDBOOK);
+        if (ab > 0 && weaponType == Map.Server.Inventory.WeaponTypeCodes.Book)
+            val += (ab - 1) / 2 + 1;
+
+        // SG_DEVIL — Star Emperor (Taekwon 3rd-class): +1 + lv. The rAthena
+        // `|| pc_is_maxjoblv` Star-Gladiator-at-max-job path is COMBAT-69.
+        int dv = Lv(SkillIds.SG_DEVIL);
+        if (dv > 0 && IsStarEmperor(pc))
+            val += 1 + dv;
+
+        // GS_SINGLEACTION — guns (W_REVOLVER..W_GRENADE): +(lv+1)/2.
+        int gs = Lv(SkillIds.GS_SINGLEACTION);
+        if (gs > 0 && weaponType >= Map.Server.Inventory.WeaponTypeCodes.Revolver
+                   && weaponType <= Map.Server.Inventory.WeaponTypeCodes.Grenade)
+            val += (gs + 1) / 2;
+
+        // Riding penalties (mutually exclusive): Peco −50 + 10·KN_CAVALIERMASTERY;
+        // dragon −25 + 5·RK_DRAGONTRAINING.
+        if ((pc.Option & PlayerOption.Riding) != 0)
+            val -= 50 - 10 * Lv(SkillIds.KN_CAVALIERMASTERY);
+        else if (pc.Option.HasDragon())
+            val -= 25 - 5 * Lv(SkillIds.RK_DRAGONTRAINING);
+
+        return val;
+    }
+
+    /// <summary>True for a Star Emperor (Taekwon-tree 3rd class) — the
+    /// <c>(class &amp; MAPID_THIRDMASK) == MAPID_STAR_EMPEROR</c> gate.</summary>
+    private static bool IsStarEmperor(PlayerEntity pc)
+        => (pc.ClassMask & MapidClass.FirstMask) == MapidClass.Taekwon
+           && (pc.ClassMask & MapidClass.ThirdClass) != 0;
 
     /// <summary>COMBAT-09 — renewal PC dmotion = cap(800 − 4·agi, 400, 800) (status.cpp:6593).</summary>
     internal static int RenewalPcDmotion(int agi) => Math.Clamp(800 - 4 * agi, 400, 800);

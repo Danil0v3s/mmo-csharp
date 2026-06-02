@@ -129,6 +129,9 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-66 | skill_db UnitFlags loader + production Land Protector unit handler — split from COMBAT-47 |
 | COMBAT-67 | Warp Portal ground-unit + deferred consume/cancel-refund + pc_memo set-path — split from COMBAT-48 |
 | COMBAT-68 | Renewal Basilica ground-unit + pc_cell_basilica SC_BASILICA_CELL application — split from COMBAT-49 |
+| COMBAT-69 | SG_DEVIL max-job-level ASPD clause (Star Gladiator path) — split from COMBAT-50 |
+| COMBAT-70 | FREECAST cast-state ASPD recompute trigger — split from COMBAT-50 |
+| COMBAT-71 | Remaining status_calc_aspd debuff SCs — split from COMBAT-50 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

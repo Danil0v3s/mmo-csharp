@@ -1359,4 +1359,12 @@ public static class SkillIds
     public const ushort WZ_SIGHTRASHER = 81;
     public const ushort WZ_VERMILION = 85;
     public const ushort WZ_WATERBALL = 86;
+
+    // COMBAT-50 — renewal ASPD skill-val terms (status.cpp:2343-2353) + FREECAST.
+    public const ushort KN_CAVALIERMASTERY = 64;   // riding penalty offset
+    public const ushort SA_ADVANCEDBOOK = 274;     // Book weapon ASPD
+    public const ushort SA_FREECAST = 278;         // cast-time ASPD speed-up
+    public const ushort SG_DEVIL = 441;            // Star Emperor / max-job ASPD
+    public const ushort GS_SINGLEACTION = 509;     // gun ASPD
+    public const ushort RK_DRAGONTRAINING = 2007;  // dragon-riding penalty offset
 }
