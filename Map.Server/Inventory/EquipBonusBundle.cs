@@ -59,6 +59,20 @@ public sealed class EquipBonusBundle
     /// (<c>bonus bIgnoreDefClass, c</c> / SP_IGNORE_DEF_CLASS → <c>1&lt;&lt;class</c>).</summary>
     public int IgnoreDefClass { get; set; }
 
+    // COMBAT-22 — per-skill bonus2 maps (skillId → value).
+    /// <summary>Per-skill bonus damage % (<c>bonus2 bSkillAtk, sk, n</c> /
+    /// SP_SKILL_ATK). Applied after DEF for the matching skill in
+    /// <c>WeaponSkillImpl.ComputeSkillDamage</c> / <c>CalcMagicAttack</c>.</summary>
+    public Dictionary<ushort, int> SkillAtk { get; } = new();
+    /// <summary>Per-skill variable-cast rate, stored INVERSED like rAthena
+    /// (<c>bonus2 bVariableCastrate, sk, n</c> → <c>-n</c>; SP_VARCASTRATE).
+    /// Consumed by the cast-timing pipeline (COMBAT-24).</summary>
+    public Dictionary<ushort, int> SkillVarCastrate { get; } = new();
+    /// <summary>Per-skill fixed-cast rate, stored INVERSED
+    /// (<c>bonus2 bFixedCastrate, sk, n</c> → <c>-n</c>; SP_FIXCASTRATE).
+    /// Consumed by the cast-timing pipeline (COMBAT-24).</summary>
+    public Dictionary<ushort, int> SkillFixCastrate { get; } = new();
+
     /// <summary>Catch-all flat-ATK additive bonus (<c>bonus bAtk, N</c>).</summary>
     public int FlatAtk { get; set; }
     /// <summary>Catch-all flat-MATK additive bonus (<c>bonus bMatk, N</c>).</summary>
@@ -177,6 +191,7 @@ public sealed class EquipBonusBundle
         Array.Clear(AddClass); Array.Clear(SubClass);
         Array.Clear(MagicAddRace); Array.Clear(CritAddRace);
         IgnoreDefRace = IgnoreDefClass = 0;
+        SkillAtk.Clear(); SkillVarCastrate.Clear(); SkillFixCastrate.Clear();
         Array.Clear(ComaClass); Array.Clear(ComaRace);
         AddEffOnAttack.Clear(); AddEffWhenHit.Clear();
         FlatAtk = FlatMatk = FlatCritical = FlatHit = FlatFlee = 0;

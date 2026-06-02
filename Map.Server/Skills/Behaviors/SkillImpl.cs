@@ -239,6 +239,12 @@ public abstract class WeaponSkillImpl : SkillImpl
         ratio = ApplyReLvlDmod(ratio, src, ReLvlDivisor);
         var raw = swing.Total * ratio / 100
                   + CalculateSkillConstantAddition(src, target, skillLevel);
+        // COMBAT-22 — bonus2 bSkillAtk: per-skill % damage applied after the
+        // ratio/constant (rAthena pc_skillatk_bonus, battle.cpp:7729 — after DEF,
+        // ATK_ADDRATE). Weapon-skill lane; the magic lane applies it in
+        // CalcMagicAttack.
+        if (src is PlayerEntity p && p.EquipBonuses.SkillAtk.TryGetValue(SkillId, out var sa) && sa != 0)
+            raw += raw * sa / 100;
         return (int)Math.Clamp(raw, 0, int.MaxValue);
     }
 }

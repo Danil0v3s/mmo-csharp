@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Map.Server.Status;
 
@@ -57,8 +59,41 @@ public static class BonusScriptExtractor
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static readonly Regex Bonus2Indexed = new(
-        @"bonus2\s+b(?<key>[A-Za-z]+)\s*,\s*(?<idx>[A-Za-z_][A-Za-z_0-9]*)\s*,\s*(?<v>-?\d+)\s*;",
+        // The index token may be a constant (RC_X / Ele_X / a skill name) or a
+        // quoted skill name (bonus2 bSkillAtk,"MG_FIREBOLT",20). COMBAT-22 widened
+        // this to accept the optional surrounding quotes.
+        @"bonus2\s+b(?<key>[A-Za-z]+)\s*,\s*""?(?<idx>[A-Za-z_0-9]+)""?\s*,\s*(?<v>-?\d+)\s*;",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    // COMBAT-22 — skill-name → id map, reflected once from the SkillIds
+    // constants. bonus2 bSkillAtk / bVariableCastrate index by the rAthena
+    // skill constant name (e.g. MG_FIREBOLT); raw numeric ids are also accepted.
+    private static readonly Dictionary<string, ushort> SkillNameToId = BuildSkillNameMap();
+
+    private static Dictionary<string, ushort> BuildSkillNameMap()
+    {
+        var map = new Dictionary<string, ushort>(StringComparer.OrdinalIgnoreCase);
+        foreach (var f in typeof(Map.Server.Skills.SkillIds).GetFields(
+                     System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
+        {
+            if (f.IsLiteral && f.FieldType == typeof(ushort) && f.GetRawConstantValue() is ushort id)
+                map[f.Name] = id;
+        }
+        return map;
+    }
+
+    /// <summary>Resolve a skill index token (constant name or raw id) → skill id.</summary>
+    private static bool TryResolveSkill(string token, out ushort skillId)
+    {
+        if (ushort.TryParse(token, out skillId)) return true;
+        return SkillNameToId.TryGetValue(token, out skillId);
+    }
+
+    private static void AddSkillMap(Dictionary<ushort, int> map, string idxToken, int v)
+    {
+        if (!TryResolveSkill(idxToken, out var sid)) return; // unknown skill → skip (bias to miss)
+        map[sid] = map.GetValueOrDefault(sid) + v;
+    }
 
     public static void Apply(string? script, EquipBonusBundle bundle)
     {
@@ -175,6 +210,12 @@ public static class BonusScriptExtractor
             // per-race critical-rate bonus (rAthena stores cri ×10, so ×10 here).
             case "magicaddrace":    Add(b.MagicAddRace, ParseRace(idxToken), v); break;
             case "criticaladdrace": Add(b.CritAddRace,  ParseRace(idxToken), v * 10); break;
+            // COMBAT-22 — per-skill bonus2 maps (index is a skill name / id).
+            case "skillatk":         AddSkillMap(b.SkillAtk, idxToken, v); break;
+            // rAthena stores the cast-rate per-skill INVERSED (-val); the
+            // cast-timing consumer (COMBAT-24) reads these as a reduction.
+            case "variablecastrate": AddSkillMap(b.SkillVarCastrate, idxToken, -v); break;
+            case "fixedcastrate":    AddSkillMap(b.SkillFixCastrate, idxToken, -v); break;
             // bAddRace2, bIgnoreDefRate, bSubDefEle, ... — race2 classification
             // + flag-matched lists land in COMBAT-43.
         }
