@@ -1,6 +1,6 @@
 # COMBAT-66 — skill_db UnitFlags loader + production Land Protector unit handler
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-47 (Land Protector place-gate + UF_NOLP enum) · **Blocks:** none
 > **Filed by:** COMBAT-47 — the LP place-gate is wired but dormant in production: the
 > `UF_NOLP` exemption never fires (UnitFlags aren't loaded from skill_db) and Land Protector
