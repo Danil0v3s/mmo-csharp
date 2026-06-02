@@ -30,6 +30,9 @@ public sealed class FeintBomb : WeaponSkillImpl
         _unitOps = unitOps;
     }
 
+    // COMBAT-14: SC_FEINTBOMB uses RE_LVL_DMOD(120) (battle.cpp:5358).
+    protected override int ReLvlDivisor => 120;
+
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
         var jobLv = src is PlayerEntity p ? p.JobLevel : 50;

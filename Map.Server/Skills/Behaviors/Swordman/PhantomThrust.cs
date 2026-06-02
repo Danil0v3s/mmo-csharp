@@ -14,6 +14,9 @@ public sealed class PhantomThrust : WeaponSkillImpl
 {
     public PhantomThrust() : base(SkillIds.RK_PHANTOMTHRUST) { }
 
+    // COMBAT-14: RK_PHANTOMTHRUST uses RE_LVL_DMOD(150) (battle.cpp:5217).
+    protected override int ReLvlDivisor => 150;
+
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
     {
         var spearLv = src is PlayerEntity pc ? pc.LearnedSkills.GetValueOrDefault(SkillIds.KN_SPEARMASTERY) : 0;
