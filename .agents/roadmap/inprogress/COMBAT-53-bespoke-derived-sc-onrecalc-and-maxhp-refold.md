@@ -1,6 +1,6 @@
 # COMBAT-53 — OnRecalc for the bespoke derived-stat SCs + MaxHp/MaxSp SC re-fold
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-33 (the OnRecalc seam + ReapplyDerivedStatMods pass)
 > **Blocks:** none
 > **Filed by:** COMBAT-33 — it added the re-fold mechanism + migrated the generator
