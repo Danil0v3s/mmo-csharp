@@ -1,6 +1,6 @@
 # COMBAT-40 — Left-hand renewal accumulator fidelity (per-hand mastery/element)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-18 (left-hand Damage2 + the AS_RIGHT/AS_LEFT split)
 > **Blocks:** none
 > **Filed by:** COMBAT-18 — the off-hand damage uses the shared simplified pipeline,
