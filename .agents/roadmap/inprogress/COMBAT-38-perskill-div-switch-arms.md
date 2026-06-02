@@ -1,6 +1,6 @@
 # COMBAT-38 — Per-skill div_ switch arms (multi_attack + weapon_attack)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-17 (CalcMultiAttack + GetMultiHitCount), COMBAT-04 (size on stats)
 > **Blocks:** none
 > **Filed by:** COMBAT-17 — the per-skill_id div_ overrides it did not port.
