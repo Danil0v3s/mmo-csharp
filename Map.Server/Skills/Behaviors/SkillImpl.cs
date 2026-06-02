@@ -96,6 +96,16 @@ public abstract class SkillImpl
         => CalculateSkillRatio(baseRatio, src, target, skillLevel, ctx);
 
     /// <summary>
+    /// COMBAT-57 — ratio additions applied AFTER <c>RE_LVL_DMOD</c> (so they are NOT
+    /// scaled by it), mirroring rAthena arms that add to <c>skillratio</c> below the
+    /// macro. Default 0. Example: KO_JYUMONJIKIRI's <c>+skill_lv*src_base_level</c>
+    /// when the target already carries SC_JYUMONJIKIRI (battle.cpp:5639). Null ctx
+    /// (the funnel) → no addition (the SC read needs the behavior context).
+    /// </summary>
+    protected virtual int CalculateSkillRatioPostDmod(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext? ctx)
+        => 0;
+
+    /// <summary>
     /// rAthena <c>battle_calc_skill_constant_addition</c> (battle.cpp:6606).
     /// A FLAT additive (not a percent) applied <b>after</b> the skill ratio
     /// and before cardfix/defense — rAthena <c>ATK_ADD(... constant ...)</c>
@@ -255,6 +265,9 @@ public abstract class WeaponSkillImpl : SkillImpl
         // scale above level 99; force divisor 0 for those (disjoint from the 120/150
         // per-arm divisor overrides, which ARE skills that use the macro).
         ratio = ApplyReLvlDmod(ratio, src, ReLvlDmodOmit.OmitsRatioScaling(SkillId) ? 0 : ReLvlDivisor);
+        // COMBAT-57 — post-RE_LVL_DMOD ratio additions (unscaled), e.g. the
+        // SC_JYUMONJIKIRI bonus added after the macro in rAthena.
+        ratio += CalculateSkillRatioPostDmod(src, target, skillLevel, ctx);
         var raw = swing.Total * ratio / 100
                   + CalculateSkillConstantAddition(src, target, skillLevel);
         // COMBAT-22 — bonus2 bSkillAtk: per-skill % damage applied after the
