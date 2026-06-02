@@ -118,6 +118,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-55 | Ranger trap RE_LVL_TMDMOD damage via trap-unit handlers — split from COMBAT-35 |
 | COMBAT-56 | Macro-omitting RE_LVL_DMOD audit (disable scaling per-arm) — split from COMBAT-35 |
 | COMBAT-57 | KO_JYUMONJIKIRI SC_JYUMONJIKIRI ratio bonus + double-hit/position-shift — split from COMBAT-35 |
+| COMBAT-58 | Ammo consumption on ammo-using skills + out-of-ammo client feedback — split from COMBAT-36 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

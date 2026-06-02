@@ -329,6 +329,8 @@ builder.Services.AddSingleton<Map.Server.Session.IMapSessionRegistry, Map.Server
 // Auto-attack loop (rAthena unit.cpp:2615 unit_attack +
 // unit.cpp:3056 unit_attack_timer). Driven from the map game loop;
 // validates range/death/map every tick and chases via IMovementService.
+// COMBAT-36 — ranged ammo gate + consumption, consulted by AttackService per swing.
+builder.Services.AddSingleton<Map.Server.Inventory.IAmmoService, Map.Server.Inventory.AmmoService>();
 builder.Services.AddSingleton<AttackService>();
 builder.Services.AddSingleton<IAttackService>(sp => sp.GetRequiredService<AttackService>());
 // Narrow seam — see IAttackStopper. Setpos / death paths inject this to

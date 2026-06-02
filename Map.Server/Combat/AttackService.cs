@@ -19,6 +19,9 @@ public sealed class AttackService : IAttackService, IAttackStopper
     private readonly IDamageService _damage;
     private readonly IMovementService _movement;
     private readonly IStatusChangeService? _sc;
+    // COMBAT-36 — optional so existing test harnesses (no ammo wiring) keep their
+    // melee behavior; the real service is injected from Program.cs.
+    private readonly Inventory.IAmmoService? _ammo;
     private readonly ILogger<AttackService> _logger;
 
     public AttackService(
@@ -26,12 +29,14 @@ public sealed class AttackService : IAttackService, IAttackStopper
         IDamageService damage,
         IMovementService movement,
         ILogger<AttackService> logger,
-        IStatusChangeService? sc = null)
+        IStatusChangeService? sc = null,
+        Inventory.IAmmoService? ammo = null)
     {
         _entities = entities;
         _damage = damage;
         _movement = movement;
         _sc = sc;
+        _ammo = ammo;
         _logger = logger;
     }
 
@@ -152,9 +157,24 @@ public sealed class AttackService : IAttackService, IAttackStopper
 
             if (state.AttackableTick > nowTick) continue;
 
+            // COMBAT-36 — ranged ammo gate. A bow/gun with no valid equipped
+            // ammo cannot swing (rAthena battle_weapon_attack → ATK_NONE,
+            // battle.cpp:10386). Reschedule so we don't busy-loop, and keep the
+            // AttackState (a continuous attack resumes once ammo is re-equipped,
+            // matching rAthena keeping the unit_attack timer alive).
+            if (entity is PlayerEntity shooter && _ammo?.HasUsableAmmo(shooter) == false)
+            {
+                state.AttackableTick = nowTick + Math.Max(1, (int)entity.Stats.Adelay);
+                if (!state.Continuous) StopAttack(entity);
+                continue;
+            }
+
             // Swing! battle_weapon_attack(src, target, tick, 0) in rAthena.
             // PerformMeleeAttack runs the calculator + broadcasts + applies HP.
             var result = _damage.PerformMeleeAttack(entity, target);
+            // COMBAT-36 — spend one round per swing (rAthena battle_consume_ammo,
+            // battle.cpp:10595). No-op for non-ammo weapons.
+            if (entity is PlayerEntity ammoUser) _ammo?.ConsumeAmmo(ammoUser);
             state.HasSwung = true;
             // Schedule next swing at tick + adelay (rAthena unit.cpp:3024).
             state.AttackableTick = nowTick + Math.Max(1, (int)entity.Stats.Adelay);
