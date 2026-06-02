@@ -1,6 +1,6 @@
 # COMBAT-55 — Ranger trap damage (RE_LVL_TMDMOD) via trap-unit handlers
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-35
 > **Blocks:** none
 > **Filed by:** COMBAT-35 — the trap TMDMOD scaling has no damage path to apply to.
