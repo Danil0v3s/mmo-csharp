@@ -222,9 +222,10 @@ public static class BonusScriptExtractor
     {
         switch (key.ToLowerInvariant())
         {
-            // COMBAT-08 owns the consumer (cast-interrupt gate); this is the parse.
-            case "nocastcancel":
-            case "nocastcancel2":   b.NoCastCancel = true; break;
+            // COMBAT-08/27 own the consumer (cast-interrupt gate); this is the parse.
+            // bNoCastCancel is GvG/BG-gated; bNoCastCancel2 is unconditional.
+            case "nocastcancel":    b.NoCastCancel = true; break;
+            case "nocastcancel2":   b.NoCastCancel2 = true; break;
             case "unbreakablearmor":   b.UnbreakableArmor = true; break;
             case "unbreakableweapon":  b.UnbreakableWeapon = true; break;
             case "unbreakablehelm":    b.UnbreakableHelm = true; break;

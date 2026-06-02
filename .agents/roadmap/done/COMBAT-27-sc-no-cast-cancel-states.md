@@ -1,6 +1,6 @@
 # COMBAT-27 — SC-based no-cast-cancel states in the damage-interrupt gate
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-02) · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-08 (done) · **Blocks:** none
 
 ## Problem
@@ -34,16 +34,25 @@ Canonical: `unit.cpp` `unit_skillcastcancel` (the early-return block).
 
 ## Scope — every sub-system that must be touched
 
-- [ ] In `InterruptCastOnDamage` (damage variant), exempt a caster with `SC_BASILICA` active.
-- [ ] Split the equip flag into `no_castcancel` (GvG-gated) vs `no_castcancel2` (unconditional)
-      if COMBAT-23 surfaces both; gate `no_castcancel` on the target's map GvG flag.
-- [ ] Add any other rAthena no-cancel SCs present in the engine (Free Cast equivalent).
+- [x] Implemented the rAthena `unit_skillcastcancel` no-cancel gate in
+      `InterruptCastOnDamage`: exempt when `NoCastCancel2` (unconditional) OR
+      ((SC_UNLIMITEDHUMMINGVOICE || `NoCastCancel`) AND not GvG/BG). **Note:** SC_BASILICA
+      is NOT a cast-cancel exemption in this rAthena (the actual SC is
+      SC_UNLIMITEDHUMMINGVOICE) — a Basilica caster is uninterrupted because it takes no
+      damage, which is a different mechanism ➡️ filed as **COMBAT-49**.
+- [x] Split the equip flag into `NoCastCancel` (GvG-gated) vs `NoCastCancel2`
+      (unconditional) on `EquipBonusBundle` + the extractor (COMBAT-23 had collapsed both);
+      gate `NoCastCancel` on the target map's GvG/BG flag via the new `IsGvgOrBgMap`.
+- [x] SC_UNLIMITEDHUMMINGVOICE (the engine's Free-Cast-equivalent no-cancel SC) wired.
 
 ## Done criteria
 
-- A caster standing in Basilica is NOT interrupted by a damaging hit (cast survives).
-- A `bNoCastCancel` (GvG-only) caster is interrupted on a non-GvG map but exempt on a GvG map;
-  a `bNoCastCancel2` caster is always exempt.
+- ➡️ A caster standing in Basilica is NOT interrupted — this is damage-immunity, not a
+  cast-cancel exemption in this rAthena; moved to **COMBAT-49**.
+- A `bNoCastCancel` caster is exempt on a normal map but interrupted on a GvG/BG map ✅
+  (note: this is rAthena's actual logic — the ticket's "exempt on GvG" wording was
+  inverted, per the `unit.cpp` comment "flags being read the wrong way around"); a
+  `bNoCastCancel2` caster is always exempt ✅.
 
 ## Test plan
 
@@ -56,3 +65,14 @@ Canonical: `unit.cpp` `unit_skillcastcancel` (the early-return block).
 
 - Map GvG flag lookup: use the existing `IMapFlagService` (already injected into `DamageService`).
 - Keep the death variant (`onDeath:true`) unconditional — these exemptions are damage-variant only.
+
+## History
+
+- **2026-06-02** — inprogress→done. Ported the rAthena `unit_skillcastcancel` no-cancel
+  gate into `DamageService.InterruptCastOnDamage`: `NoCastCancel2` exempts unconditionally;
+  `NoCastCancel` / SC_UNLIMITEDHUMMINGVOICE exempt only off GvG/BG maps (new `IsGvgOrBgMap`).
+  Split `EquipBonusBundle.NoCastCancel2` out of COMBAT-23's collapsed flag + the extractor.
+  Found SC_BASILICA fictional-as-cast-cancel here (it's SC_UNLIMITEDHUMMINGVOICE) and the
+  ticket's GvG wording inverted vs rAthena. Combat27NoCastCancelTests (4); unit suite 3838
+  (1 fail = pre-existing INFRA-11 replay gate). Filed COMBAT-49 (Basilica caster
+  damage-immunity).

@@ -203,6 +203,20 @@ public sealed class DamageService : IDamageService
         return true;
     }
 
+    /// <summary>
+    /// COMBAT-27 — rAthena <c>map_flag_gvg2(m) || MF_BATTLEGROUND</c> for the
+    /// no-cast-cancel gate. The GvG-gated <c>bNoCastCancel</c> + SC exemptions
+    /// only apply on normal maps, NOT in WoE / Battleground zones.
+    /// </summary>
+    private bool IsGvgOrBgMap(Entity who)
+    {
+        if (_mapFlags == null || _maps == null) return false;
+        var map = _maps.All.FirstOrDefault(m => (uint)m.Name.GetHashCode() == who.MapId);
+        if (map == null) return false;
+        return _mapFlags.IsSet(map.Name, Map.Server.World.MapFlag.Gvg)
+            || _mapFlags.IsSet(map.Name, Map.Server.World.MapFlag.Battleground);
+    }
+
     private int ApplyResolved(
         Entity target,
         Entity? source,
@@ -352,8 +366,18 @@ public sealed class DamageService : IDamageService
             // Damage-interrupt gate (unit_skillcastcancel type 2).
             var (skillId, _) = castSvc.GetCurrentCast(target.Id);
             if (SkillDbSvc is { } db && !db.GetCastCancel(skillId)) return; // not cancellable by damage
-            if (target is PlayerEntity pc && pc.EquipBonuses.NoCastCancel) return; // bNoCastCancel(2)
-            // SC-based no-cancel states (SC_BASILICA / Free Cast) → COMBAT-27.
+            // COMBAT-27 — rAthena unit_skillcastcancel (unit.cpp) no-cancel gate:
+            //   exempt when no_castcancel2 (unconditional), OR
+            //   ((SC_UNLIMITEDHUMMINGVOICE || no_castcancel) && !gvg && !bg).
+            // (SC_BASILICA is NOT a cast-cancel exemption in this rAthena — a
+            // Basilica caster simply takes no damage, so this gate isn't reached.)
+            if (target is PlayerEntity pc)
+            {
+                if (pc.EquipBonuses.NoCastCancel2) return; // unconditional
+                bool noCancel = pc.EquipBonuses.NoCastCancel
+                    || (_sc?.Get(pc, StatusType.Unlimitedhummingvoice) != null);
+                if (noCancel && !IsGvgOrBgMap(pc)) return; // exempt on normal maps only
+            }
         }
 
         if (castSvc.CancelCast(target.Id))

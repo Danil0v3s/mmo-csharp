@@ -109,6 +109,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-46 | SA_ABRACADABRA abra_db random-skill selection — split from COMBAT-24 |
 | COMBAT-47 | Land Protector place-gate (UF_NOLP) + skill-path ground-unit intercept — split from COMBAT-25 |
 | COMBAT-48 | AL_WARP destination resolution + CZ_SELECT_WARPPOINT handler — split from COMBAT-26 |
+| COMBAT-49 | Basilica caster protection (SC_BASILICA cell invulnerability) — split from COMBAT-27 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

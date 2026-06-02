@@ -157,6 +157,12 @@ public sealed class EquipBonusBundle
     // parser below); the consumer (the cancel gate) is wired in COMBAT-08.
     public bool NoCastCancel { get; set; }
 
+    // COMBAT-27 — bNoCastCancel2: the UNCONDITIONAL no-cast-cancel flag (rAthena
+    // sd->special_state.no_castcancel2). Unlike bNoCastCancel (which only exempts
+    // on non-GvG/BG maps), this exempts everywhere. Split out from COMBAT-23,
+    // which collapsed both onto NoCastCancel.
+    public bool NoCastCancel2 { get; set; }
+
     // COMBAT-23 — single-value pc_bonus tail.
     /// <summary>Heal-output % the CASTER adds (<c>bonus bHealPower, n</c> /
     /// SP_ADD_HEAL_RATE). Applied in the heal formula.</summary>
@@ -248,7 +254,7 @@ public sealed class EquipBonusBundle
         Str = Agi = Vit = IntStat = Dex = Luk = 0;
         Pow = Sta = Wis = Spl = Con = Crt = 0;
         VarCastRate = FixCastRate = AddVarCastMs = AddFixCastMs = DelayRate = 0;
-        NoCastCancel = false;
+        NoCastCancel = NoCastCancel2 = false;
         HealPower = HealPower2 = HpRecovRate = SpRecovRate = 0;
         SpeedRate = SpeedAddRate = CriticalRate = UseSpRate = AddMaxWeight = 0;
         UnbreakableArmor = UnbreakableWeapon = UnbreakableHelm = false;
