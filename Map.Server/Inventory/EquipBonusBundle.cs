@@ -146,9 +146,47 @@ public sealed class EquipBonusBundle
     // COMBAT-08 — bNoCastCancel / bNoCastCancel2. When set, an in-progress
     // cast is NOT aborted on taking damage (DamageService cast-interrupt
     // gate). rAthena: sd->state.no_castcancel (status.cpp bonus parse).
-    // The bonus parse that flips this lives in COMBAT-23 (skill-state flag
-    // batch); the consumer (the cancel gate) is wired here in COMBAT-08.
+    // The bonus parse that flips this lives in COMBAT-23 (the flag-form
+    // parser below); the consumer (the cancel gate) is wired in COMBAT-08.
     public bool NoCastCancel { get; set; }
+
+    // COMBAT-23 — single-value pc_bonus tail.
+    /// <summary>Heal-output % the CASTER adds (<c>bonus bHealPower, n</c> /
+    /// SP_ADD_HEAL_RATE). Applied in the heal formula.</summary>
+    public int HealPower { get; set; }
+    /// <summary>Heal-RECEIVED % (<c>bonus bHealPower2, n</c> / SP_ADD_HEAL2_RATE).
+    /// Consumer lands in COMBAT-45.</summary>
+    public int HealPower2 { get; set; }
+    /// <summary>Natural HP-regen % bonus (<c>bonus bHPrecovRate, n</c> /
+    /// SP_HP_RECOV_RATE). Applied in NaturalHealService.</summary>
+    public int HpRecovRate { get; set; }
+    /// <summary>Natural SP-regen % bonus (<c>bonus bSPrecovRate, n</c> /
+    /// SP_SP_RECOV_RATE). Applied in NaturalHealService.</summary>
+    public int SpRecovRate { get; set; }
+    /// <summary>Non-stackable move-speed bonus, stored as the rAthena MIN of
+    /// <c>-val</c> (<c>bonus bSpeedRate, n</c> / SP_SPEED_RATE). Consumer (a
+    /// status_calc_speed port) lands in COMBAT-45.</summary>
+    public int SpeedRate { get; set; }
+    /// <summary>Stackable move-speed % (<c>bonus bSpeedAddRate, n</c> /
+    /// SP_SPEED_ADDRATE). Consumer in COMBAT-45.</summary>
+    public int SpeedAddRate { get; set; }
+    /// <summary>Flat extra crit-rate (<c>bonus bCriticalRate, n</c>). Consumer in COMBAT-45.</summary>
+    public int CriticalRate { get; set; }
+    /// <summary>SP-cost % modifier (<c>bonus bUseSPrate, n</c>). Consumer in COMBAT-45.</summary>
+    public int UseSpRate { get; set; }
+    /// <summary>Flat max-weight bonus (<c>bonus bAddMaxWeight, n</c>). Consumer in COMBAT-45.</summary>
+    public int AddMaxWeight { get; set; }
+
+    // COMBAT-23 — 1-arg flag-form pc_bonus (no value). True when the equip sets it.
+    /// <summary>Equipment can't be broken / stripped (per-slot flags).</summary>
+    public bool UnbreakableArmor { get; set; }
+    public bool UnbreakableWeapon { get; set; }
+    public bool UnbreakableHelm { get; set; }
+    public bool UnbreakableShield { get; set; }
+    public bool UnbreakableShoes { get; set; }
+    public bool UnbreakableGarment { get; set; }
+    /// <summary>See hidden / cloaked enemies (<c>bonus bIntravision;</c>).</summary>
+    public bool Intravision { get; set; }
 
     // COMBAT-17 — double-attack proc rate (%). rAthena
     // `bonus bDoubleRate, n;` (SP_DOUBLE_RATE, pc.cpp:3924) sets
@@ -203,6 +241,10 @@ public sealed class EquipBonusBundle
         Pow = Sta = Wis = Spl = Con = Crt = 0;
         VarCastRate = FixCastRate = AddVarCastMs = AddFixCastMs = DelayRate = 0;
         NoCastCancel = false;
+        HealPower = HealPower2 = HpRecovRate = SpRecovRate = 0;
+        SpeedRate = SpeedAddRate = CriticalRate = UseSpRate = AddMaxWeight = 0;
+        UnbreakableArmor = UnbreakableWeapon = UnbreakableHelm = false;
+        UnbreakableShield = UnbreakableShoes = UnbreakableGarment = Intravision = false;
         DoubleRate = 0;
         DrainHpRate = DrainSpRate = 0;
     }

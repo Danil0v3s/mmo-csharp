@@ -85,9 +85,10 @@ public sealed class ScriptedBonusHost
         var key = StripBPrefix(args[0]?.ToString() ?? "");
         if (args.Length == 1)
         {
-            // Flag bonus (e.g. bonus bNoCastCancel;). The regex
-            // extractor doesn't handle this form either — silently
-            // skip for now; specific flags wire in as needed.
+            // COMBAT-23 — flag bonus (e.g. bonus bNoCastCancel;). Route through
+            // the shared flag switch so the V8 host and the regex extractor
+            // stay in sync.
+            BonusScriptExtractor.ApplyFlagBonus(_bundle, key);
             return;
         }
         var value = ToInt(args[1]);

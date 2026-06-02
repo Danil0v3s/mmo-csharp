@@ -93,6 +93,11 @@ public sealed class NaturalHealService : INaturalHealService
                         {
                             amount = amount * (100 + inspiration.Val1) / 100;
                         }
+                        // COMBAT-23 — bonus bHPrecovRate (SP_HP_RECOV_RATE): % HP-regen
+                        // bonus from equipment (rAthena status_natural_heal hp_regen).
+                        if (entity is PlayerEntity hpc && hpc.EquipBonuses.HpRecovRate != 0)
+                            amount = amount * (100 + hpc.EquipBonuses.HpRecovRate) / 100;
+                        if (amount < 1) amount = 1;
                         s.Hp = Math.Min(s.MaxHp, s.Hp + amount);
                     }
                 }
@@ -109,6 +114,10 @@ public sealed class NaturalHealService : INaturalHealService
                     // 50 % faster, simplified to 2× here while the
                     // Val1-level table ports).
                     if (_sc?.Get(entity, StatusType.Magnificat) != null) amount *= 2;
+                    // COMBAT-23 — bonus bSPrecovRate (SP_SP_RECOV_RATE).
+                    if (entity is PlayerEntity spc && spc.EquipBonuses.SpRecovRate != 0)
+                        amount = amount * (100 + spc.EquipBonuses.SpRecovRate) / 100;
+                    if (amount < 1) amount = 1;
                     s.Sp = Math.Min(s.MaxSp, s.Sp + amount);
                 }
                 rs.NextSpTick = nowTick + SpIntervalMs;

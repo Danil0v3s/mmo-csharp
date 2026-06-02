@@ -206,6 +206,11 @@ public sealed class Heal : SkillImpl
     /// until IBattleCalculator exposes a MatkBase accessor —
     /// the constant component is the dominant term across all levels.
     /// </summary>
+    /// <summary>COMBAT-23 — exposed internally so the heal-power test can pin
+    /// the renewal heal output without the full cast pipeline.</summary>
+    internal int CalcRenewalHealForTest(Entity src, Entity target, ushort skillLevel)
+        => CalcRenewalHeal(src, target, skillLevel);
+
     private int CalcRenewalHeal(Entity src, Entity target, ushort skillLevel)
     {
         var lv = src.Level;
@@ -248,6 +253,11 @@ public sealed class Heal : SkillImpl
                 hp *= 2; // Non-SN partner doubling (existing behavior preserved).
             }
         }
+
+        // COMBAT-23 — bonus bHealPower (SP_ADD_HEAL_RATE): the CASTER's heal-output
+        // % bonus (rAthena skill_calc_heal: heal += heal * bonus.add_heal_rate/100).
+        if (src is PlayerEntity hpc && hpc.EquipBonuses.HealPower != 0)
+            hp += hp * hpc.EquipBonuses.HealPower / 100;
 
         return Math.Max(1, hp);
     }

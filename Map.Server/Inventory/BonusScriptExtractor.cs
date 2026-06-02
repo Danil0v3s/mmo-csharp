@@ -58,6 +58,11 @@ public static class BonusScriptExtractor
         @"bonus\s+b(?<key>[A-Za-z]+)\s*,\s*(?<v>-?\d+)\s*;",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    // COMBAT-23 — the 1-arg flag form: `bonus bNoCastCancel;` (no value).
+    private static readonly Regex BonusFlag = new(
+        @"bonus\s+b(?<key>[A-Za-z]+)\s*;",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     private static readonly Regex Bonus2Indexed = new(
         // The index token may be a constant (RC_X / Ele_X / a skill name) or a
         // quoted skill name (bonus2 bSkillAtk,"MG_FIREBOLT",20). COMBAT-22 widened
@@ -105,6 +110,12 @@ public static class BonusScriptExtractor
             if (!int.TryParse(m.Groups["v"].Value, out var v)) continue;
             ApplyFlat(bundle, key, v);
         }
+
+        // COMBAT-23 — flag-form bonuses (no value). Match AFTER the valued form
+        // so `bonus bAtk,10;` isn't mis-read; the regex requires a `;` right
+        // after the key, so a valued bonus (which has a comma) never matches.
+        foreach (Match m in BonusFlag.Matches(script))
+            ApplyFlag(bundle, m.Groups["key"].Value);
 
         foreach (Match m in Bonus2Indexed.Matches(script))
         {
@@ -167,6 +178,17 @@ public static class BonusScriptExtractor
             // COMBAT-17 — bonus bDoubleRate, n (SP_DOUBLE_RATE). rAthena
             // keeps the MAX across sources (pc.cpp:3925), not a sum.
             case "doublerate":     if (v > b.DoubleRate) b.DoubleRate = v; break;
+            // COMBAT-23 — single-value pc_bonus tail.
+            case "healpower":      b.HealPower += v; break;
+            case "healpower2":     b.HealPower2 += v; break;
+            case "hprecovrate":    b.HpRecovRate += v; break;
+            case "sprecovrate":    b.SpRecovRate += v; break;
+            // SP_SPEED_RATE: non-stackable, rAthena keeps the MIN of -val.
+            case "speedrate":      { var sr = -v; if (sr < b.SpeedRate) b.SpeedRate = sr; break; }
+            case "speedaddrate":   b.SpeedAddRate += v; break;
+            case "criticalrate":   b.CriticalRate += v; break;
+            case "usesprate":      b.UseSpRate += v; break;
+            case "addmaxweight":   b.AddMaxWeight += v; break;
             // Primary + trait param bonuses (rAthena pc_bonus SP_STR..SP_LUK
             // / SP_POW..SP_CRT). Captured into the bundle; the base→final
             // stat layering that adds them to the displayed/derived stat
@@ -186,6 +208,32 @@ public static class BonusScriptExtractor
             case "crt":  b.Crt += v; break;
             // bAllStats / bAgiVit / bAgiDexStr etc. (composite keys) and
             // the remaining long tail land with COMBAT-06.
+        }
+    }
+
+    /// <summary>
+    /// COMBAT-23 — apply a 1-arg flag-form bonus (<c>bonus bX;</c>) to the
+    /// bundle. Also reachable from <see cref="ScriptedBonusHost"/> so the V8
+    /// host routes flags through the same switch.
+    /// </summary>
+    internal static void ApplyFlagBonus(EquipBonusBundle b, string key) => ApplyFlag(b, key);
+
+    private static void ApplyFlag(EquipBonusBundle b, string key)
+    {
+        switch (key.ToLowerInvariant())
+        {
+            // COMBAT-08 owns the consumer (cast-interrupt gate); this is the parse.
+            case "nocastcancel":
+            case "nocastcancel2":   b.NoCastCancel = true; break;
+            case "unbreakablearmor":   b.UnbreakableArmor = true; break;
+            case "unbreakableweapon":  b.UnbreakableWeapon = true; break;
+            case "unbreakablehelm":    b.UnbreakableHelm = true; break;
+            case "unbreakableshield":  b.UnbreakableShield = true; break;
+            case "unbreakableshoes":   b.UnbreakableShoes = true; break;
+            case "unbreakablegarment": b.UnbreakableGarment = true; break;
+            case "intravision":        b.Intravision = true; break;
+            // Other 1-arg flags (bNoWalkDelay / bNoGemStone / bPerfectHide …)
+            // land with their consumers in COMBAT-45.
         }
     }
 

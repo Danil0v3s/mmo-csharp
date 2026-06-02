@@ -23,10 +23,13 @@ public class Combat19SkillElementTests
 {
     static Combat19SkillElementTests()
     {
+        // ElementTable.Initialize REPLACES the global matrix; seed the same
+        // superset BattleCalculatorTests uses so parallel class ordering can't
+        // wipe an entry another class needs (Water→Fire 150 here).
         ElementTable.Initialize(new[]
         {
-            // Lv1 Fire → Water = 90% (db/re/attr_fix.yml).
             new AttrFixDbEntity { Level = 1, AttackerElement = "Fire", DefenderElement = "Water", Multiplier = 90 },
+            new AttrFixDbEntity { Level = 1, AttackerElement = "Water", DefenderElement = "Fire", Multiplier = 150 },
         });
     }
 
