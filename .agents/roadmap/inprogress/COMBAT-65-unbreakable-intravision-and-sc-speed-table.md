@@ -1,6 +1,6 @@
 # COMBAT-65 — Unbreakable / Intravision consumers + the SC speed table
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-45
 > **Blocks:** none
 > **Filed by:** COMBAT-45 — the two flag-form consumers + the SC speed table it deferred.
