@@ -1,6 +1,6 @@
 # COMBAT-39 — Multi-hit plugin GetMultiHitCount sweep
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-17 (GetMultiHitCount hook + wire)
 > **Blocks:** none
 > **Filed by:** COMBAT-17 — only AS_SONICBLOW was given its hit count; the rest still
