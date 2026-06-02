@@ -265,6 +265,12 @@ public sealed class Heal : SkillImpl
         if (src is PlayerEntity shc && shc.EquipBonuses.SkillHeal.TryGetValue(SkillId, out var skh) && skh != 0)
             hp += hp * skh / 100;
 
+        // COMBAT-45 — bonus bHealPower2 (SP_ADD_HEAL2_RATE): the TARGET's
+        // heal-RECEIVED % bonus (rAthena skill_calc_heal: heal += heal *
+        // tsd->bonus.add_heal2_rate/100).
+        if (target is PlayerEntity thc && thc.EquipBonuses.HealPower2 != 0)
+            hp += hp * thc.EquipBonuses.HealPower2 / 100;
+
         return Math.Max(1, hp);
     }
 }

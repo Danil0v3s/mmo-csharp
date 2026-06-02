@@ -31,10 +31,7 @@ public sealed class SkillRequirementService : ISkillRequirementService
         else if (hpRate < 0) hp += caster.Hp * (-hpRate) / 100;
         if (hp > 0 && caster.Hp <= hp) return false;
 
-        var sp = _db.GetSp(skillId, skillLevel);
-        var spRate = _db.GetSpRate(skillId, skillLevel);
-        if (spRate > 0) sp += caster.MaxSp * spRate / 100;
-        else if (spRate < 0) sp += caster.Sp * (-spRate) / 100;
+        var sp = SpCost(caster, skillId, skillLevel);
         if (sp > 0 && caster.Sp < sp) return false;
 
         // Zeny check — Zeny lives on MapSessionData.CharacterData, not
@@ -55,6 +52,23 @@ public sealed class SkillRequirementService : ISkillRequirementService
         // dispatched buffs). Until the cast lifecycle exposes those
         // edges we delegate to castbegin.
         return CheckCondition(caster, skillId, skillLevel);
+    }
+
+    /// <summary>
+    /// The effective SP cost: skill_db SP + the SpRate %, then COMBAT-45's
+    /// bUseSPrate (SP_USE_SP_RATE) % modifier (rAthena skill.cpp:19855 —
+    /// <c>req.sp = req.sp * sd->dsprate/100</c>, where dsprate = 100 + Σ bUseSPrate;
+    /// the bundle stores the bonus delta, negative = cheaper).
+    /// </summary>
+    private int SpCost(PlayerEntity caster, ushort skillId, ushort skillLevel)
+    {
+        var sp = _db.GetSp(skillId, skillLevel);
+        var spRate = _db.GetSpRate(skillId, skillLevel);
+        if (spRate > 0) sp += caster.MaxSp * spRate / 100;
+        else if (spRate < 0) sp += caster.Sp * (-spRate) / 100;
+        if (caster.EquipBonuses?.UseSpRate is int usr && usr != 0)
+            sp = sp * (100 + usr) / 100;
+        return sp;
     }
 
     public void ConsumeHpSpAp(Entity bl, ushort skillId, int hp, int sp, int ap)
@@ -83,7 +97,7 @@ public sealed class SkillRequirementService : ISkillRequirementService
         if ((type & 1) != 0)
         {
             var hp = _db.GetHp(skillId, skillLevel);
-            var sp = _db.GetSp(skillId, skillLevel);
+            var sp = SpCost(caster, skillId, skillLevel);
             var ap = _db.GetAp(skillId, skillLevel);
             if (hp > 0 || sp > 0 || ap > 0)
                 ConsumeHpSpAp(caster, skillId, hp, sp, ap);

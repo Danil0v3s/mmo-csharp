@@ -172,6 +172,11 @@ public sealed class StatusCalcService : IStatusCalcService
             s.Flee = (short)CapShort(s.Flee + eq.FlatFlee, 1);
             // bCritical is a display value (×1); s.Cri is the ×10 internal.
             s.Cri = (short)CapShort(s.Cri + eq.FlatCritical * 10, 1);
+            // COMBAT-45 — bCriticalRate (SP_CRITICAL_RATE) is a PERCENT modifier on
+            // crit (rAthena status.cpp:4389 status->cri *= (100+critical_rate)/100),
+            // not a flat add — applied here in the stat calc, after the flat fold.
+            if (eq.CriticalRate != 0)
+                s.Cri = (short)CapShort(s.Cri * (100 + eq.CriticalRate) / 100, 1);
             s.Batk = (ushort)CapUShort(s.Batk + eq.FlatAtk);
             s.MatkMin = (ushort)CapUShort(s.MatkMin + eq.FlatMatk);
             s.MatkMax = (ushort)CapUShort(s.MatkMax + eq.FlatMatk);
@@ -255,7 +260,12 @@ public sealed class StatusCalcService : IStatusCalcService
         // ASPD base (e.g. Novice/Fist = 40), NOT a millisecond delay — feeding
         // it straight into s.Amotion (the prior code) produced ~40ms amotion
         // when the cache was wired. We now run it through the formula.
-        s.Speed = 150;
+        // COMBAT-45 — status_calc_speed (status.cpp:7790): DEFAULT_WALK_SPEED 150
+        // scaled by speed_rate. bSpeedRate (non-stackable min) + bSpeedAddRate
+        // (stackable) are stored as the NEGATIVE delta in the bundle, so a faster
+        // item lowers the speed value. (SC speed table is COMBAT-65.)
+        var speedRate = 100 + (eq?.SpeedRate ?? 0) + (eq?.SpeedAddRate ?? 0);
+        s.Speed = (ushort)Math.Clamp(150 * speedRate / 100, 1, ushort.MaxValue);
         // job->aspd_base[weapon]; 40 (Novice/Fist) is the no-cache test default,
         // and a cache MISS returns 2000 (the rAthena yml default) which the
         // min(aspd,200) clamp turns into the slow "no row" fallback — faithful.

@@ -96,8 +96,9 @@ public sealed class PlayerWeightStatusService : IPlayerWeightStatusService
         // Default max weight = 20000 (rAthena pc.cpp base). Job-table
         // MaxWeight + bonus pipe accrual is layered on later by the
         // status calc path; until that lands we floor to the rAthena
-        // base to avoid divide-by-zero.
-        long maxWeight = 20000;
+        // base to avoid divide-by-zero. COMBAT-45 — bAddMaxWeight
+        // (SP_ADD_MAX_WEIGHT) adds a flat bonus to the cap.
+        long maxWeight = 20000 + Math.Max(0, pc.EquipBonuses?.AddMaxWeight ?? 0);
 
         return (int)((currentWeight * 100L) / maxWeight);
     }

@@ -125,6 +125,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-62 | GvG gates: INF2 ignore-reduction + can-hit gate + PK rate + Emperium — split from COMBAT-42 |
 | COMBAT-63 | Cardfix remainder: element-debuff + race2 + distinct magic arrays + SubDefEle — split from COMBAT-43 |
 | COMBAT-64 | bonus3/4/5 static forms + pc_sub_skillatk_bonus (defender reduction) — split from COMBAT-44 |
+| COMBAT-65 | Unbreakable/Intravision consumers + SC speed table — split from COMBAT-45 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

@@ -1,6 +1,6 @@
 # COMBAT-45 — pc_bonus consumers: speed/weight/crit/usesp + unbreakable/intravision flags
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-02) · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-23 (the fields are parsed; this wires the remaining consumers)
 > **Blocks:** none
 > **Filed by:** COMBAT-23 — the single-value/flag consumers it parsed but did not wire.
@@ -36,18 +36,23 @@ fields are captured but have no consumer:
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Port `status_calc_speed` (or a trimmed slice): fold `SpeedRate` (min, faster) +
-      `SpeedAddRate` into `StatusCalcService`'s PC speed.
-- [ ] `is_attack_critical`: add `CriticalRate`.
-- [ ] Skill SP-cost check: apply `UseSpRate`.
-- [ ] Weight service: add `AddMaxWeight` to the max-weight.
-- [ ] Heal target: apply `HealPower2` (heal received).
-- [ ] Equip break/strip gate: honor `Unbreakable*`; visibility: honor `Intravision`.
+- [x] Folded `SpeedRate` (non-stackable min) + `SpeedAddRate` (stackable) into
+      `StatusCalcService`'s PC speed (`150 * (100 + SpeedRate + SpeedAddRate) / 100`).
+      The SC speed table ➡️ COMBAT-65.
+- [x] `bCriticalRate` — it's a PERCENT modifier (rAthena `status->cri *= (100+rate)/100`,
+      base 100), applied in `CalcPc` (the stat calc) after the flat crit fold — NOT a
+      flat add in `is_attack_critical` as the ticket assumed.
+- [x] Skill SP-cost: `UseSpRate` % modifier in a shared `SkillRequirementService.SpCost`
+      used by both the check and the consume.
+- [x] Weight service: `AddMaxWeight` added to the weight cap.
+- [x] Heal target: `HealPower2` (heal received) applied in `Heal.CalcRenewalHeal`.
+- [x] `Unbreakable*` equip-break gate + `Intravision` see-hidden ➡️ COMBAT-65.
 
 ## Done criteria
 
-- ➡️ from COMBAT-23: `bonus bSpeedRate,25;` increases move speed per rAthena.
-- crit-rate / usesp / max-weight / heal-power2 / unbreakable each verified.
+- ➡️ from COMBAT-23: `bonus bSpeedRate,25;` increases move speed per rAthena. ✅
+- crit-rate ✅ / usesp ✅ / max-weight ✅ / heal-power2 ✅ each verified;
+  unbreakable ➡️ COMBAT-65.
 
 ## Test plan
 
@@ -58,3 +63,14 @@ fields are captured but have no consumer:
 
 - `bSpeedRate` is non-stackable (rAthena keeps `min(-val)`); the bundle already stores it
   that way. A lower speed value = faster movement.
+
+## History
+
+- 2026-06-02 · Wired 5 single-value pc_bonus consumers: `bSpeedRate`/`bSpeedAddRate`
+  → PC speed fold (StatusCalcService), `bCriticalRate` → crit % modifier in CalcPc
+  (it's a percent, not a flat add — rAthena status.cpp:4389), `bUseSPrate` →
+  `SkillRequirementService.SpCost` (shared check+consume), `bAddMaxWeight` → weight cap
+  (PlayerWeightStatusService), `bHealPower2` → heal-received in `Heal.CalcRenewalHeal`.
+  Combat45PcBonusConsumerTests (5). Full Map.Server.Tests green except the pre-existing
+  INFRA-11 replay gate. Filed COMBAT-65 (Unbreakable equip-break gate + Intravision
+  see-hidden + the SC speed table).
