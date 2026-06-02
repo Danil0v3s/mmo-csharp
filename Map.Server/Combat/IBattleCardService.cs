@@ -43,8 +43,13 @@ public interface IBattleCardService
     /// weapon-mastery / race-bane passives to <paramref name="damage"/>.
     /// Renewal: returns the additive bonus only (caller adds);
     /// Pre-renewal: returns dmg + bonus. We follow renewal.
+    /// <para>COMBAT-40: <paramref name="weaponType"/> selects the weapon-type-gated
+    /// mastery branch (rAthena's <c>weapontype1</c>/<c>weapontype2</c> switch) — the
+    /// caller passes the RIGHT weapon type for the main hand and the LEFT (off-hand)
+    /// weapon type for the dual-wield left hand, so Sword/Spear/Katar/… mastery is
+    /// resolved per hand.</para>
     /// </summary>
-    long AddMastery(PlayerEntity attacker, Entity target, long damage, BattleAttackType type);
+    long AddMastery(PlayerEntity attacker, Entity target, long damage, BattleAttackType type, int weaponType);
 
     /// <summary>
     /// rAthena <c>battle_calc_chorusbonus</c> (battle.cpp:2847). Counts

@@ -1,4 +1,5 @@
 using Map.Server.Entities;
+using Map.Server.Inventory;
 using Map.Server.Status;
 using Microsoft.Extensions.Logging;
 
@@ -34,6 +35,21 @@ public sealed class BattleCardService : IBattleCardService
     private const ushort NC_MADOLICENCE   = 2501;
     private const ushort NV_BREAKTHROUGH  = 8000;
     private const ushort RA_RANGERMAIN    = 2351;
+    // COMBAT-40 — weapon-type-gated mastery skills (battle_addmastery switch).
+    private const ushort SM_SWORD          = 2;
+    private const ushort SM_TWOHAND        = 3;
+    private const ushort KN_SPEARMASTERY   = 55;
+    private const ushort PR_MACEMASTERY    = 65;
+    private const ushort AS_KATAR          = 134;
+    private const ushort AM_AXEMASTERY     = 226;
+    private const ushort MO_IRONHAND       = 259;
+    private const ushort SA_ADVANCEDBOOK   = 274;
+    private const ushort BA_MUSICALLESSON  = 315;
+    private const ushort DC_DANCINGLESSON  = 323;
+    private const ushort TK_RUN            = 411;
+    private const ushort RK_DRAGONTRAINING = 2007;
+    private const ushort NC_TRAININGAXE    = 2276;
+    private const ushort GN_TRAINING_SWORD = 2474;
 
     private readonly ILogger<BattleCardService> _logger;
     public BattleCardService(ILogger<BattleCardService> logger) => _logger = logger;
@@ -122,7 +138,7 @@ public sealed class BattleCardService : IBattleCardService
     private static long ApplyCardfix(long damage, int cardfix)
         => damage - damage * (1000 - Math.Max(0, cardfix)) / 1000;
 
-    public long AddMastery(PlayerEntity attacker, Entity target, long damage, BattleAttackType type)
+    public long AddMastery(PlayerEntity attacker, Entity target, long damage, BattleAttackType type, int weaponType)
     {
         // rAthena: renewal returns only the bonus (caller does the
         // addition); pre-renewal mutates damage. We follow renewal —
@@ -189,7 +205,78 @@ public sealed class BattleCardService : IBattleCardService
             }
         }
 
+        // COMBAT-40 — weapon-type-gated masteries (battle.cpp:2269-2335). The
+        // caller passes the per-hand weapon type, so the dual-wield off-hand
+        // resolves its mastery from the LEFT weapon (rAthena weapontype2), not
+        // the main hand.
+        bonus += WeaponMastery(attacker, weaponType);
+
         return bonus;
+    }
+
+    /// <summary>
+    /// rAthena <c>battle_addmastery</c> weapon-type switch (battle.cpp:2269-2335):
+    /// the learned weapon-mastery passive for <paramref name="weaponType"/>.
+    /// </summary>
+    private static long WeaponMastery(PlayerEntity sd, int weaponType)
+    {
+        long m = 0;
+        int Lv(ushort id) => sd.LearnedSkills.GetValueOrDefault(id);
+        switch (weaponType)
+        {
+            case WeaponTypeCodes.OneHandSword: // W_1HSWORD: +AxeMastery (RE), then sword/dagger
+                m += Lv(AM_AXEMASTERY) * 3;
+                goto case WeaponTypeCodes.Dagger;
+            case WeaponTypeCodes.Dagger:       // W_DAGGER
+                m += Lv(SM_SWORD) * 4;
+                m += Lv(GN_TRAINING_SWORD) * 10;
+                break;
+            case WeaponTypeCodes.TwoHandSword: // W_2HSWORD
+                m += Lv(SM_TWOHAND) * 4;
+                break;
+            case WeaponTypeCodes.OneHandSpear:
+            case WeaponTypeCodes.TwoHandSpear: // W_1HSPEAR / W_2HSPEAR
+            {
+                var spear = Lv(KN_SPEARMASTERY);
+                if (spear > 0)
+                {
+                    bool riding = (sd.Option & Map.Server.Status.PlayerOption.Riding) != 0
+                        || sd.Option.HasDragon();
+                    m += spear * (riding ? 5 : 4);
+                    if (Lv(RK_DRAGONTRAINING) > 0) m += spear * 10;
+                }
+                break;
+            }
+            case WeaponTypeCodes.OneHandAxe:
+            case WeaponTypeCodes.TwoHandAxe:   // W_1HAXE / W_2HAXE
+                m += Lv(AM_AXEMASTERY) * 3;
+                m += Lv(NC_TRAININGAXE) * 5;
+                break;
+            case WeaponTypeCodes.Mace:
+            case WeaponTypeCodes.TwoHandMace:  // W_MACE / W_2HMACE
+                m += Lv(PR_MACEMASTERY) * 3;
+                m += Lv(NC_TRAININGAXE) * 4;
+                break;
+            case WeaponTypeCodes.Fist:         // W_FIST: +TK_RUN, then knuckle
+                m += Lv(TK_RUN) * 10;
+                goto case WeaponTypeCodes.Knuckle;
+            case WeaponTypeCodes.Knuckle:      // W_KNUCKLE
+                m += Lv(MO_IRONHAND) * 3;
+                break;
+            case WeaponTypeCodes.Musical:      // W_MUSICAL
+                m += Lv(BA_MUSICALLESSON) * 3;
+                break;
+            case WeaponTypeCodes.Whip:         // W_WHIP
+                m += Lv(DC_DANCINGLESSON) * 3;
+                break;
+            case WeaponTypeCodes.Book:         // W_BOOK
+                m += Lv(SA_ADVANCEDBOOK) * 3;
+                break;
+            case WeaponTypeCodes.Katar:        // W_KATAR
+                m += Lv(AS_KATAR) * 3;
+                break;
+        }
+        return m;
     }
 
     private static bool IsUndead(Status.BattleStats s)

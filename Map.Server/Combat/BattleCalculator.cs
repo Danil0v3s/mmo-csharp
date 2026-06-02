@@ -361,8 +361,10 @@ public sealed class BattleCalculator : IBattleCalculator
         damage = damage * (4000L + def1) / (4000L + 10L * def1) - vitDef;
 
         // Weapon mastery (battle.cpp:2215 battle_addmastery — bonus only).
+        // COMBAT-40: pass the per-hand weapon type so the dual-wield off-hand
+        // resolves its mastery from the LEFT weapon (rAthena weapontype2).
         if (_cards != null && source is PlayerEntity pcAtk)
-            damage += _cards.AddMastery(pcAtk, target, damage, BattleAttackType.Weapon);
+            damage += _cards.AddMastery(pcAtk, target, damage, BattleAttackType.Weapon, weaponType);
 
         // Card fix (battle.cpp:711 battle_calc_cardfix) — left/right per hand.
         if (_cards != null)
