@@ -1,6 +1,6 @@
 # COMBAT-58 — Ammo consumption on ammo-using skills + out-of-ammo client feedback
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-36 (the `IAmmoService` gate/consume seam)
 > **Blocks:** none
 > **Filed by:** COMBAT-36 — it wired ammo gate/consume into the auto-attack loop only.
