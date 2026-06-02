@@ -37,8 +37,20 @@ public sealed class AsuraStrike : WeaponSkillImpl
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        // Standard weapon damage pipeline.
-        base.CastendDamageId(src, target, skillLevel, ctx);
+        // COMBAT-13: rAthena sets wd->miscflag bit 1 when the caster had MORE
+        // than 5 spirit spheres at cast time (skill.cpp Asura handling reads
+        // sd->spiritball_old > 5); the renewal ratio then doubles. Spirit
+        // spheres aren't consumed by the C# cast path yet (SkillRequirementService
+        // spends only HP/SP/AP — spirit-ball consumption is SKILL-19), so the
+        // live SpiritBall count IS the pre-cast value. Thread it as the miscflag
+        // so the ratio override applies the ×2 before the 500000 cap.
+        var spheres = src is PlayerEntity sphereOwner ? sphereOwner.SpiritBall : 0;
+        int miscflag = spheres > 5 ? 1 : 0;
+
+        // Standard weapon damage pipeline (miscflag carries the >5-sphere bit;
+        // SP is still the pre-cast value here — it is zeroed below, after the
+        // damage/ratio has been resolved).
+        base.CastendDamageId(src, target, skillLevel, ctx, miscflag);
 
         // rAthena: status_set_sp(src, 0, 0);
         if (src is PlayerEntity sd) sd.Sp = 0;
@@ -61,20 +73,36 @@ public sealed class AsuraStrike : WeaponSkillImpl
             easy: 1, checkColl: true) ?? false;
         if (moved)
         {
-            // The slide broadcast happens inside MovePos via clif_blown
-            // in rAthena; our UnitOpsService.MovePos doesn't yet emit
-            // ZC_HIGHJUMP — that's TODO for the unit-ops layer.
+            // The slide broadcast happens inside MovePos via clif_blown in
+            // rAthena; our UnitOpsService.MovePos doesn't yet emit ZC_HIGHJUMP
+            // — the dash-slide broadcast is tracked in SKILL-18.
         }
     }
 
     public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel)
+        // No-ctx / funnel path: no >5-sphere miscflag available, so no ×2.
+        => ComputeAsuraRatio(baseRatio, src, miscflag: 0);
+
+    /// <summary>
+    /// COMBAT-13 — miscflag-aware ratio. Bit 1 of <paramref name="miscflag"/>
+    /// is the renewal "&gt;5 spirit spheres at cast" flag (set by
+    /// <see cref="CastendDamageId"/>); when present the whole ratio doubles
+    /// before the 500000 cap (battle.cpp:4843).
+    /// </summary>
+    public override int CalculateSkillRatio(int baseRatio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx, int miscflag)
+        => ComputeAsuraRatio(baseRatio, src, miscflag);
+
+    private static int ComputeAsuraRatio(int baseRatio, Entity src, int miscflag)
     {
         // rAthena: base_skillratio += 700 + sstatus->sp * 10;
         var sp = src is PlayerEntity sd ? sd.Sp : (int)src.Stats.MaxSp;
-        var ratio = baseRatio + 700 + sp * 10;
-        // rAthena cap: min(500000, ratio).
+        long ratio = baseRatio + 700 + (long)sp * 10;
+        // RENEWAL (battle.cpp:4845): if (wd->miscflag & 1) skillratio *= 2;
+        // — the caster had more than 5 spirit spheres at cast time.
+        if ((miscflag & 1) != 0) ratio *= 2;
+        // rAthena cap: min(500000, ratio) — applied AFTER the ×2.
         if (ratio > 500_000) ratio = 500_000;
-        return ratio;
+        return (int)ratio;
     }
 
     /// <summary>
