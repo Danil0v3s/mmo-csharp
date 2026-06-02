@@ -22,8 +22,12 @@ public interface IDamageService
     /// when HP reaches 0 the target's death pipeline fires (mob: drop loot +
     /// schedule respawn; PC death is stubbed until MS3 savepoints land).
     /// </summary>
+    /// <param name="hits">COMBAT-17 — displayed hit count (rAthena div_) for
+    /// the <c>ZC_NOTIFY_ACT3</c> packet. Skill callers pass the skill's hit
+    /// count (Sonic Blow = 8); <paramref name="damage"/> stays the resolved
+    /// total. Default 1 (single hit).</param>
     /// <returns>The actual damage applied (clamped to target's remaining HP).</returns>
-    int ApplyDamage(Entity target, int damage, Entity? source = null);
+    int ApplyDamage(Entity target, int damage, Entity? source = null, int hits = 1);
 
     /// <summary>
     /// Resolve a full melee swing (calc + apply). Calls

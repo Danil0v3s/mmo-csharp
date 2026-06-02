@@ -197,9 +197,24 @@ public abstract class WeaponSkillImpl : SkillImpl
         // WeaponSkillResolver so a plugin skill can never get two different
         // ratios depending on which dispatch path it takes.
         var dmg = ComputeSkillDamage(swing, src, target, skillLevel, ctx, miscflag);
-        ctx.Damage.ApplyDamage(target, dmg, src);
+        // COMBAT-17 — render the skill's hit count (rAthena skill_get_num /
+        // skill_db `num`). The ratio above already produced the full
+        // multi-hit total (rAthena's negative-div "single damage shown as N
+        // hits"), so we only set the display div — no extra multiplication.
+        ctx.Damage.ApplyDamage(target, dmg, src, hits: GetMultiHitCount(skillLevel));
         ApplyAdditionalEffects(src, target, skillLevel, ctx);
     }
+
+    /// <summary>
+    /// COMBAT-17 — the skill's displayed hit count (rAthena
+    /// <c>skill_get_num</c> / skill_db <c>num</c>). Drives
+    /// <c>ZC_NOTIFY_ACT3.div</c>. Default 1; multi-hit weapon skills override
+    /// (Sonic Blow → 8). Return the absolute display count — rAthena stores
+    /// the "single damage split into N" skills as a negative <c>num</c>, but
+    /// the wire and HP application both use the magnitude (the ratio already
+    /// carries the full total).
+    /// </summary>
+    public virtual int GetMultiHitCount(ushort skillLevel) => 1;
 
     /// <summary>
     /// SKILL-05 — the canonical per-skill weapon-damage formula, used by both

@@ -326,7 +326,7 @@ public class UnitOpsServiceTests
 
     private sealed class NullDamage : IDamageService
     {
-        public int ApplyDamage(Entity target, int damage, Entity? source = null) => damage;
+        public int ApplyDamage(Entity target, int damage, Entity? source = null, int hits = 1) => damage;
         public BattleDamage PerformMeleeAttack(Entity source, Entity target) => new();
     }
 }

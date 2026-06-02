@@ -196,7 +196,7 @@ public class NaturalHealServiceTests
 /// </summary>
 internal sealed class DummyDamageService : Map.Server.Combat.IDamageService
 {
-    public int ApplyDamage(Entity target, int damage, Entity? source = null)
+    public int ApplyDamage(Entity target, int damage, Entity? source = null, int hits = 1)
         => throw new InvalidOperationException("DummyDamageService: ApplyDamage was called from a test that shouldn't trigger damage");
     public Map.Server.Combat.BattleDamage PerformMeleeAttack(Entity source, Entity target)
         => throw new InvalidOperationException("DummyDamageService: PerformMeleeAttack was called from a test that shouldn't trigger damage");

@@ -97,6 +97,9 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-33 | Derived-stat SC re-fold on recalc (Angelus Def2 / Provoke Batk%) — split from COMBAT-10 |
 | COMBAT-35 | RE_LVL_DMOD per-arm completeness (remaining 120/150 + trap TMDMOD + macro-omitting disable) — split from COMBAT-14 |
 | COMBAT-36 | Ammo consumption + no-ammo gate on ranged attacks — split from COMBAT-16 |
+| COMBAT-37 | Auto-attack multi_attack: FearBreeze bow + Chain Action revolver — split from COMBAT-17 |
+| COMBAT-38 | Per-skill div_ switch arms (Pierce/Backstab/Windcutter/Bowling Bash …) — split from COMBAT-17 |
+| COMBAT-39 | Multi-hit plugin GetMultiHitCount sweep (Double Strafe/Triple Attack …) — split from COMBAT-17 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

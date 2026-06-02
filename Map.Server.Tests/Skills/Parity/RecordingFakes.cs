@@ -43,7 +43,7 @@ public sealed class RecordingDamageService : IDamageService
     private readonly SkillTraceRecorder _rec;
     public RecordingDamageService(SkillTraceRecorder rec) => _rec = rec;
 
-    public int ApplyDamage(Entity target, int damage, Entity? source = null)
+    public int ApplyDamage(Entity target, int damage, Entity? source = null, int hits = 1)
     {
         _rec.Record("damage", new()
         {

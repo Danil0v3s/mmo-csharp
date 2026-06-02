@@ -215,7 +215,7 @@ public class Wave65EquipBonusTrackATests
 
     private sealed class NoopDamageService : IDamageService
     {
-        public int ApplyDamage(Entity target, int damage, Entity? source = null) => 0;
+        public int ApplyDamage(Entity target, int damage, Entity? source = null, int hits = 1) => 0;
         public BattleDamage PerformMeleeAttack(Entity source, Entity target) => new();
     }
 

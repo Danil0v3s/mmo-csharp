@@ -121,6 +121,14 @@ public sealed class EquipBonusBundle
     // batch); the consumer (the cancel gate) is wired here in COMBAT-08.
     public bool NoCastCancel { get; set; }
 
+    // COMBAT-17 — double-attack proc rate (%). rAthena
+    // `bonus bDoubleRate, n;` (SP_DOUBLE_RATE, pc.cpp:3924) sets
+    // `sd->bonus.double_rate = max(double_rate, n)` — it takes the MAX
+    // across all equip sources, NOT a sum. Consumed by
+    // BattleCalculator.CalcMultiAttack (battle.cpp:4440) as one of the
+    // auto-attack double-attack triggers (`max(7*lv, double_rate)`).
+    public int DoubleRate { get; set; }
+
     // Drain (renewal: hp/sp drained per hit).
     public int DrainHpRate { get; set; }     // % chance × 100
     public int DrainSpRate { get; set; }     // % chance × 100
@@ -163,6 +171,7 @@ public sealed class EquipBonusBundle
         Pow = Sta = Wis = Spl = Con = Crt = 0;
         VarCastRate = FixCastRate = AddVarCastMs = AddFixCastMs = DelayRate = 0;
         NoCastCancel = false;
+        DoubleRate = 0;
         DrainHpRate = DrainSpRate = 0;
     }
 

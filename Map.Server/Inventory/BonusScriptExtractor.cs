@@ -129,6 +129,9 @@ public static class BonusScriptExtractor
             case "mdef":           b.FlatMdef += v; break;
             case "defrate":        b.DefRate += v; break;
             case "mdefrate":       b.MdefRate += v; break;
+            // COMBAT-17 — bonus bDoubleRate, n (SP_DOUBLE_RATE). rAthena
+            // keeps the MAX across sources (pc.cpp:3925), not a sum.
+            case "doublerate":     if (v > b.DoubleRate) b.DoubleRate = v; break;
             // Primary + trait param bonuses (rAthena pc_bonus SP_STR..SP_LUK
             // / SP_POW..SP_CRT). Captured into the bundle; the base→final
             // stat layering that adds them to the displayed/derived stat

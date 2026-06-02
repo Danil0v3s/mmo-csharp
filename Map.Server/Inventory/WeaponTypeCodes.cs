@@ -85,6 +85,16 @@ public static class WeaponTypeCodes
     /// </summary>
     public static bool IsKnuckleOrWhip(int weaponType) => weaponType is Knuckle or Whip;
 
+    /// <summary>Bare-handed (rAthena <c>W_FIST</c>). Double-attack triggers
+    /// that read <c>weapontype1 != W_FIST</c> (bonus double_rate, SC_KAGEMUSYA)
+    /// fail bare-handed — see <see cref="WeaponTypeCodes"/> / battle.cpp:4440.</summary>
+    public static bool IsFist(int weaponType) => weaponType == Fist;
+
+    /// <summary>Dagger (rAthena <c>W_DAGGER</c>). Thief Double Attack
+    /// (TF_DOUBLE) only procs on auto-attack with a dagger equipped
+    /// (battle.cpp:4438).</summary>
+    public static bool IsDagger(int weaponType) => weaponType == Dagger;
+
     /// <summary>
     /// Ammo-consuming ranged weapons (rAthena: bow + the gunslinger guns).
     /// Their attacks add the equipped ammo's ATK (<c>arrow_atk</c>) and

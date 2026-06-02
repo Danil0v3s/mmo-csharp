@@ -195,6 +195,15 @@ public sealed class BattleCalculator : IBattleCalculator
             ? Core.Server.Packets.Out.ZC.DamageActionType.Critical
             : Core.Server.Packets.Out.ZC.DamageActionType.Normal;
 
+        // COMBAT-17 — auto-attack multi-hit (battle.cpp:4394
+        // battle_calc_multi_attack). Only the no-skill_id (auto-attack)
+        // branch runs here; per-skill div_ overrides live on the skill
+        // plugins. On a successful double-attack roll the single swing
+        // becomes a positive-div multi-hit: div_ = skill_get_num(TF_DOUBLE)
+        // = 2 and DAMAGE_DIV_FIX multiplies the per-hit damage by the count
+        // (battle.cpp:4365).
+        CalcMultiAttack(source, result);
+
         // Wave 66 / Track B — populate Damage.dmotion + Damage.walkdelay.
         // rAthena: Damage struct's dmotion is the target's Amotion (capped
         // at 2000ms), and walkdelay is half of that with a 80ms floor on
@@ -237,6 +246,64 @@ public sealed class BattleCalculator : IBattleCalculator
         int dmotion = Math.Clamp(target.Amotion - 50, 0, 2000);
         result.DMotion = dmotion;
         result.WalkDelay = Math.Max(80, dmotion / 2);
+    }
+
+    /// <summary>
+    /// COMBAT-17 — auto-attack slice of <c>battle_calc_multi_attack</c>
+    /// (battle.cpp:4394). rAthena only enters this for a PC source with no
+    /// skill_id (a plain auto-attack swing); the per-skill div_ switch arms
+    /// (RK_WINDCUTTER, SC_FATALMENACE, SR_RIDEINLIGHTNING …) and the
+    /// SC_FEARBREEZE bow multi-shot / GS_CHAINACTION revolver chain are
+    /// separate triggers tracked in <c>COMBAT-37</c>.
+    ///
+    /// Double-attack triggers (battle.cpp:4438-4458), highest single rate wins:
+    ///   * TF_DOUBLE learned AND dagger equipped,
+    ///   * <c>bonus.double_rate &gt; 0</c> AND not bare-handed,
+    ///   * SC_KAGEMUSYA active AND not bare-handed.
+    /// Renewal success rate = <c>max(7 * TF_DOUBLE_lv, double_rate)</c>, or
+    /// <c>SC_KAGEMUSYA.Val1 * 10</c> when the shadow clone is up. On success
+    /// div_ becomes 2 (<c>skill_get_num(TF_DOUBLE)</c>) and the per-hit damage
+    /// is doubled (positive-div <c>DAMAGE_DIV_FIX</c>). A critical double-swing
+    /// keeps the critical animation but still renders 2 hits.
+    /// </summary>
+    private void CalcMultiAttack(Entity source, BattleDamage result)
+    {
+        // sd && !skill_id — auto-attack, PC only. Mob double-attack is
+        // handled by mob skill data, not this branch.
+        if (source is not PlayerEntity sd) return;
+        // Already multi (another branch / skill) — don't stack.
+        if (result.Hits != 1) return;
+        // A miss / perfect dodge never multi-hits.
+        if (!result.DidHit || result.Total <= 0) return;
+
+        int weapon = sd.WeaponType;
+        bool isFist = Map.Server.Inventory.WeaponTypeCodes.IsFist(weapon);
+        int tfDoubleLv = sd.LearnedSkills.TryGetValue(Map.Server.Skills.SkillIds.TF_DOUBLE, out var lv) ? lv : 0;
+        var kagemusya = _sc?.Get(sd, StatusType.Kagemusya);
+        int doubleRate = sd.EquipBonuses?.DoubleRate ?? 0;
+
+        bool eligible =
+            (tfDoubleLv > 0 && Map.Server.Inventory.WeaponTypeCodes.IsDagger(weapon))
+            || (doubleRate > 0 && !isFist)
+            || (kagemusya != null && !isFist);
+        if (!eligible) return;
+
+        // Success chance is not additive — the higher one is used (Skotlex).
+        int maxRate = kagemusya != null
+            ? kagemusya.Val1 * 10                 // same rate as even TF_DOUBLE levels
+            : Math.Max(7 * tfDoubleLv, doubleRate); // RENEWAL
+
+        if (_rng.Next(100) >= maxRate) return;
+
+        // skill_get_num(TF_DOUBLE) = 2; positive div → multiply damage.
+        result.Hits = 2;
+        result.Damage *= 2;
+        // DMG_MULTI_HIT type, preserving the critical animation when the
+        // swing crit (rAthena sets type=DMG_MULTI_HIT in multi_attack but
+        // is_attack_critical later promotes it to DMG_CRITICAL).
+        result.Type = result.IsCritical
+            ? Core.Server.Packets.Out.ZC.DamageActionType.MultiHitCrit
+            : Core.Server.Packets.Out.ZC.DamageActionType.MultiHit;
     }
 
     /// <summary>

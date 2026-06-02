@@ -87,7 +87,7 @@ public sealed class DamageService : IDamageService
         _logger = logger;
     }
 
-    public int ApplyDamage(Entity target, int damage, Entity? source = null)
+    public int ApplyDamage(Entity target, int damage, Entity? source = null, int hits = 1)
     {
         if (source != null && !CanDamage(source, target)) return 0;
         // Match rAthena clif_damage: 0 damage → miss animation (Flee),
@@ -96,7 +96,12 @@ public sealed class DamageService : IDamageService
         var action = damage > 0
             ? Core.Server.Packets.Out.ZC.DamageActionType.Normal
             : Core.Server.Packets.Out.ZC.DamageActionType.Flee;
-        return ApplyResolved(target, source, damage, action);
+        // COMBAT-17 — skill callers pass the skill's hit count (Sonic Blow
+        // div = 8, etc.) so ZC_NOTIFY_ACT3.Div renders the right number of
+        // hits. `damage` is the already-resolved total (the skill ratio
+        // produces the full multi-hit total; this is rAthena's negative-div
+        // "single damage shown as N hits" — no further multiplication).
+        return ApplyResolved(target, source, damage, action, hits);
     }
 
     public BattleDamage PerformMeleeAttack(Entity source, Entity target)
@@ -106,7 +111,7 @@ public sealed class DamageService : IDamageService
         // Even a miss broadcasts ZC_NOTIFY_ACT3 so the client animates
         // the swing + the dodge — rAthena: clif_damage(... DMG_FLEE ...)
         // even when total = 0.
-        ApplyResolved(target, source, (int)Math.Clamp(damage.Total, 0, int.MaxValue), damage.Type);
+        ApplyResolved(target, source, (int)Math.Clamp(damage.Total, 0, int.MaxValue), damage.Type, damage.Hits);
 
         // Wave 66 + 69 / Track B — apply dmotion + walkdelay on the
         // target via the canonical IAttackService.SetAttackDelay +
@@ -177,7 +182,8 @@ public sealed class DamageService : IDamageService
         Entity target,
         Entity? source,
         int damage,
-        Core.Server.Packets.Out.ZC.DamageActionType action)
+        Core.Server.Packets.Out.ZC.DamageActionType action,
+        int hits = 1)
     {
         if (damage < 0) damage = 0;
 
@@ -203,8 +209,8 @@ public sealed class DamageService : IDamageService
                     // is the new damage sink. Return the original target's
                     // delta as 0 (rAthena draws a hit anim on target but
                     // applies HP to guard).
-                    BroadcastAct(target, source, 0, action);
-                    return ApplyResolved(guard, source, damage, action);
+                    BroadcastAct(target, source, 0, action, hits);
+                    return ApplyResolved(guard, source, damage, action, hits);
                 }
             }
         }
@@ -238,7 +244,7 @@ public sealed class DamageService : IDamageService
             dmgPc.AttackerLog.Record(source.Id, actual);
         }
 
-        BroadcastAct(target, source, actual, action);
+        BroadcastAct(target, source, actual, action, hits);
 
         // P0.3 — SC post-resolve reflect / sacrifice consumers. Read the
         // target's reflect SCs and feed back a slice of the dealt damage
@@ -564,7 +570,7 @@ public sealed class DamageService : IDamageService
         }
     }
 
-    private void BroadcastAct(Entity target, Entity? source, int damage, DamageActionType action)
+    private void BroadcastAct(Entity target, Entity? source, int damage, DamageActionType action, int hits = 1)
     {
         // Pull amotion from the attacker's stats (renewal ASPD-derived).
         // Falls back to 500ms when there's no source (environmental damage).
@@ -579,7 +585,10 @@ public sealed class DamageService : IDamageService
             TargetAmotion = tgtDmotion,
             Damage = damage,
             IsSpDamage = 0,
-            Div = 1,
+            // COMBAT-17 — div_ is the displayed hit count (rAthena
+            // clif_damage's `div` arg). The client splits Damage across this
+            // many hits; the HP delta is the full Damage either way.
+            Div = (short)Math.Max(1, hits),
             ActionType = action,
             Damage2 = 0,
         };
