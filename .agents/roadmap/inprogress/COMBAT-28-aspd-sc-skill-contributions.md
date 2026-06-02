@@ -1,6 +1,6 @@
 # COMBAT-28 — ASPD SC + skill contributions (status_calc_aspd / fix_aspd / FREECAST)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-09 (base renewal ASPD formula) · **Blocks:** none
 
 ## Problem
