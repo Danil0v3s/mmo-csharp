@@ -299,6 +299,8 @@ public static class BonusScriptExtractor
             case "magicaddclass":   Add(b.MagicAddClass, ParseClass(idxToken),   v); break;
             // COMBAT-22 — per-skill bonus2 maps (index is a skill name / id).
             case "skillatk":         AddSkillMap(b.SkillAtk, idxToken, v); break;
+            // COMBAT-64 — defender per-skill incoming-damage reduction (bonus2 bSubSkill, sk, n).
+            case "subskill":         AddSkillMap(b.SubSkillAtk, idxToken, v); break;
             // COMBAT-44 — per-skill heal-output % (bonus2 bSkillHeal, sk, n).
             case "skillheal":        AddSkillMap(b.SkillHeal, idxToken, v); break;
             // COMBAT-44 — on-hit vanish: bonus2 bHPVanishRate,rate,per — the index

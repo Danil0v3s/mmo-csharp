@@ -201,6 +201,26 @@ public sealed class ScriptedBonusHost
             var script = $"skill \"{spell}\",{lvl};";
             _bonusSvc?.AddAutobonus(_pc, AutobonusTrigger.OnSkill, script,
                 rate: rate, durationMs: 0, flag: 0);
+            return;
+        }
+        // COMBAT-64 — bonus4 bAddEff,eff,n,y,t / bAddEffWhenHit,eff,n,y,t: the 4-arg AddEff
+        // form carries an explicit duration `t` (the 3-arg bonus3 form has none). args =
+        // [key, eff, n(rate), y(ATF flag — dropped, same as bonus3), t(durMs)].
+        if (string.Equals(key, "AddEff", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "AddEff2", StringComparison.OrdinalIgnoreCase))
+        {
+            var sc = ParseEffectId(args[1]);
+            var rate = (short)ToInt(args[2]);
+            var dur = (uint)Math.Max(0, ToInt(args[4]));
+            if (sc != StatusType.None) _bundle.AddEffOnAttack.Add(new AddEffEntry(sc, rate, dur));
+            return;
+        }
+        if (string.Equals(key, "AddEffWhenHit", StringComparison.OrdinalIgnoreCase))
+        {
+            var sc = ParseEffectId(args[1]);
+            var rate = (short)ToInt(args[2]);
+            var dur = (uint)Math.Max(0, ToInt(args[4]));
+            if (sc != StatusType.None) _bundle.AddEffWhenHit.Add(new AddEffEntry(sc, rate, dur));
         }
     }
 

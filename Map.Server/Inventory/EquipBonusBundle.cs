@@ -71,6 +71,11 @@ public sealed class EquipBonusBundle
     /// SP_SKILL_ATK). Applied after DEF for the matching skill in
     /// <c>WeaponSkillImpl.ComputeSkillDamage</c> / <c>CalcMagicAttack</c>.</summary>
     public Dictionary<ushort, int> SkillAtk { get; } = new();
+    /// <summary>COMBAT-64 — DEFENDER per-skill incoming-damage reduction %
+    /// (<c>bonus2 bSubSkill, sk, n</c> / SP_SUB_SKILL). <c>pc_sub_skillatk_bonus</c>
+    /// subtracts this when the wearer is hit by skill <c>sk</c>
+    /// (battle.cpp:7873 — <c>ATK_ADDRATE(-i)</c>), mirroring the offensive SkillAtk.</summary>
+    public Dictionary<ushort, int> SubSkillAtk { get; } = new();
     /// <summary>COMBAT-44 — per-skill heal-output % (<c>bonus2 bSkillHeal, sk, n</c> /
     /// SP_SKILL_HEAL). The CASTER's bonus, applied in the renewal heal formula.</summary>
     public Dictionary<ushort, int> SkillHeal { get; } = new();
@@ -264,7 +269,7 @@ public sealed class EquipBonusBundle
         Array.Clear(MagicAddRace); Array.Clear(CritAddRace);
         Array.Clear(MagicAddEle); Array.Clear(MagicAddSize); Array.Clear(MagicAddClass);
         IgnoreDefRace = IgnoreDefClass = 0;
-        SkillAtk.Clear(); SkillHeal.Clear(); SkillVarCastrate.Clear(); SkillFixCastrate.Clear();
+        SkillAtk.Clear(); SubSkillAtk.Clear(); SkillHeal.Clear(); SkillVarCastrate.Clear(); SkillFixCastrate.Clear();
         HpVanishRate = HpVanishPer = SpVanishRate = SpVanishPer = 0;
         SkillVarCast.Clear(); SkillFixCast.Clear();
         Array.Clear(ComaClass); Array.Clear(ComaRace);

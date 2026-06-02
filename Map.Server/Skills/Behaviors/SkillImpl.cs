@@ -276,6 +276,11 @@ public abstract class WeaponSkillImpl : SkillImpl
         // CalcMagicAttack.
         if (src is PlayerEntity p && p.EquipBonuses.SkillAtk.TryGetValue(SkillId, out var sa) && sa != 0)
             raw += raw * sa / 100;
+        // COMBAT-64 — bonus2 bSubSkill: the DEFENDER's per-skill incoming-damage reduction
+        // (rAthena pc_sub_skillatk_bonus, battle.cpp:7873 — ATK_ADDRATE(-i), right after the
+        // offensive bonus). Lowers damage from the matching skill.
+        if (target is PlayerEntity tp && tp.EquipBonuses.SubSkillAtk.TryGetValue(SkillId, out var ssa) && ssa != 0)
+            raw -= raw * ssa / 100;
         return (int)Math.Clamp(raw, 0, int.MaxValue);
     }
 }

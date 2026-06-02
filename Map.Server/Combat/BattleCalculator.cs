@@ -735,6 +735,12 @@ public sealed class BattleCalculator : IBattleCalculator
             && satk.TryGetValue(skillId, out var sapct) && sapct != 0)
             damage += damage * sapct / 100;
 
+        // COMBAT-64 — bonus2 bSubSkill: the DEFENDER's per-skill incoming-damage reduction
+        // (pc_sub_skillatk_bonus, battle.cpp:7873 — ATK_ADDRATE(-i)), symmetric to SkillAtk.
+        if ((target as PlayerEntity)?.EquipBonuses.SubSkillAtk is { } ssatk
+            && ssatk.TryGetValue(skillId, out var sspct) && sspct != 0)
+            damage -= damage * sspct / 100;
+
         // Card fix (per-target race/element/size/class additions). COMBAT-19:
         // pass the resolved skill element so the defender's bSubEle lookup uses
         // the magic element, not the caster's weapon element.
