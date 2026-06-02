@@ -1,6 +1,6 @@
 # COMBAT-62 — GvG gates: INF2 ignore-reduction + can-hit gate + PK rate + Emperium
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-42 · INF2 part also needs the skill_db `Inf2` loader
 > **Blocks:** none
 > **Filed by:** COMBAT-42 — the GvG gates beyond the weapon-skill plant/zone wiring.
