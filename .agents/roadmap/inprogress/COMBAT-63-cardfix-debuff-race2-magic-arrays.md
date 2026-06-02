@@ -1,6 +1,6 @@
 # COMBAT-63 — Cardfix remainder: element-debuff + race2 + distinct magic arrays + SubDefEle
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-43 (ignore-def landed)
 > **Blocks:** none
 > **Filed by:** COMBAT-43 — the cardfix pieces that need new infrastructure beyond ignore-def.
