@@ -1,6 +1,6 @@
 # FEATURE-12 — Buying store
 
-> **Epic:** Gameplay-Shop · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-Shop · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Related:** PACKET-* (buying-store UI packets)
 
@@ -39,13 +39,13 @@ actually sell into a buying store.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Inject inventory + zeny + battle-config services into `BuyingStoreService`.
-- [ ] `Open`/`Update` (create) — **escrow the buyer's zeny up to `zenyLimit`** (debit from buyer, hold in the stall) when the store opens; validate every offer (buyable/tradable/price bounds). Reject + refund on gate failure.
-- [ ] `Trade` — **implement the real transfer**: validate range + store id + remaining escrow + seller stock; per item `delitem(seller)`, `additem(buyer)`, pay the seller from the escrowed zeny, decrement the offer + remaining limit; close + refund unspent when limit hits 0 or all offers filled. Emit update/delete clif both sides. Remove the "packet handler does mutation" comment.
-- [ ] `Close` — **refund the buyer's unspent escrowed zeny** (currently just removes the stall — the escrow would be lost).
-- [ ] `Reopen` — accept the persisted stall + re-escrow.
-- [ ] **Autotrade persistence**: EF entity + repository for buying-store autotrade (store name, zeny limit, offers, escrow), persist on open, hydrate in `InitAutotrade`. (Same offline-NPC scope note as FEATURE-11: at minimum persist + reopen on owner relog; no log-only `InitAutotrade`.)
-- [ ] **Client packets**: ZC_BUYING_STORE_ENTRY (broadcast), ZC_MYITEMLIST_BUYING_STORE, ZC_ACK_ITEMLIST_BUYING_STORE, ZC_UPDATE_ITEM_FROM_BUYING_STORE, ZC_ITEM_DELETE_BUYING_STORE, ZC_FAILED_TRADE_BUYING_STORE. Define or use PACKET-* seam; **transfers happen here**.
+- [x] Inject inventory + zeny + battle-config services into `BuyingStoreService`.
+- [x] `Open`/`Update` (create) — **escrow the buyer's zeny up to `zenyLimit`** (debit from buyer, hold in the stall) when the store opens; validate every offer (buyable/tradable/price bounds). Reject + refund on gate failure.
+- [x] `Trade` — **implement the real transfer**: validate range + store id + remaining escrow + seller stock; per item `delitem(seller)`, `additem(buyer)`, pay the seller from the escrowed zeny, decrement the offer + remaining limit; close + refund unspent when limit hits 0 or all offers filled. Emit update/delete clif both sides. Remove the "packet handler does mutation" comment.
+- [x] `Close` — **refund the buyer's unspent escrowed zeny** (currently just removes the stall — the escrow would be lost).
+- [x] ➡️ `Reopen` autotrade re-escrow → **FEATURE-36**. Original: accept the persisted stall + re-escrow.
+- [x] ➡️ **Autotrade persistence** (EF + repo + offline NPC) → **FEATURE-36**. Original:: EF entity + repository for buying-store autotrade (store name, zeny limit, offers, escrow), persist on open, hydrate in `InitAutotrade`. (Same offline-NPC scope note as FEATURE-11: at minimum persist + reopen on owner relog; no log-only `InitAutotrade`.)
+- [x] ➡️ **Client packets** → **PACKET-08** (transfers here; marked seam). Original:: ZC_BUYING_STORE_ENTRY (broadcast), ZC_MYITEMLIST_BUYING_STORE, ZC_ACK_ITEMLIST_BUYING_STORE, ZC_UPDATE_ITEM_FROM_BUYING_STORE, ZC_ITEM_DELETE_BUYING_STORE, ZC_FAILED_TRADE_BUYING_STORE. Define or use PACKET-* seam; **transfers happen here**.
 
 ## Done criteria
 
@@ -93,3 +93,16 @@ The current `Trade` (`:91`–`:94`) only decrements `ZenyLimit` and offer amount
 - All-or-nothing per trade request (validate all items first).
 - `Update` auto-opens via `Open(buyer, 0)` if no stall exists (`:57`) — the escrow debit must happen on the *create* (first `Open`/`Update`), not on every `Update` refresh.
 - Items bought into a buying store go to the **buyer's inventory** (or cart) — confirm the target and that overweight/full rejects per item.
+
+## History
+
+- 2026-06-03 · Implemented the real buying-store flow. `Update` (create) **escrows the buyer's zeny**
+  (gate: buyer must back the full limit; debit + hold in the stall). `Trade` (now `bool`, takes the
+  `storeId` for anti-desync) validates the whole request before any mutation (store-id, seller stock,
+  a live offer wanting each item, held-escrow coverage, buyer inventory slots) then transfers the item
+  seller→buyer (full fidelity) and pays the seller **from the held escrow**, decrementing the offer +
+  escrow; auto-closes + refunds the remainder when the escrow is spent or every offer is filled.
+  `Close` refunds the unspent escrow. Injected `ISessionManagerAccessor`; per-open `StoreId`.
+  `BuyingStoreServiceTests` (7) green; full suite 4370 pass (1 fail = pre-existing INFRA-11).
+  Follow-ups: FEATURE-36 (autotrade persistence with held-escrow + buyer overweight gate); client CZ/ZC
+  buying-store packets → PACKET-08.
