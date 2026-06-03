@@ -94,9 +94,76 @@ public class AttackServiceTests
         Assert.True(target.Hp < 10000);
     }
 
+    // ---- COMBAT-88: cast-lock (block auto-attack while casting unless SA_FREECAST) ----
+
+    [Fact]
+    public void Casting_non_freecast_attacker_does_not_swing()
+    {
+        var cast = new StubCast { Casting = true };
+        var ctx = Build(cast);
+        var (attacker, target) = Pair(ctx);
+
+        ctx.AttackService.StartAttack(attacker, target.Id, continuous: true);
+        ctx.AttackService.Tick(nowTick: 100);
+
+        Assert.Equal(100, target.Hp);            // no swing landed
+        Assert.NotNull(attacker.Attack);         // AttackState kept (resumes on cast end)
+    }
+
+    [Fact]
+    public void Casting_freecast_attacker_still_swings()
+    {
+        var cast = new StubCast { Casting = true };
+        var ctx = Build(cast);
+        var (attacker, target) = Pair(ctx);
+        attacker.LearnedSkills[Map.Server.Skills.SkillIds.SA_FREECAST] = 5; // Free-Cast exempts the lock
+
+        ctx.AttackService.StartAttack(attacker, target.Id, continuous: true);
+        ctx.AttackService.Tick(nowTick: 100);
+
+        Assert.True(target.Hp < 100); // swing landed despite casting
+    }
+
+    [Fact]
+    public void Cast_end_resumes_the_swing_train()
+    {
+        var cast = new StubCast { Casting = true };
+        var ctx = Build(cast);
+        var (attacker, target) = Pair(ctx);
+
+        ctx.AttackService.StartAttack(attacker, target.Id, continuous: true);
+        ctx.AttackService.Tick(nowTick: 100);
+        Assert.Equal(100, target.Hp);   // locked while casting
+
+        cast.Casting = false;
+        ctx.AttackService.Tick(nowTick: 200);
+        Assert.True(target.Hp < 100);   // resumes once the cast ends
+    }
+
+    private static (PlayerEntity attacker, MobEntity target) Pair(TestContext ctx)
+    {
+        var attacker = ctx.AddPlayer(50, 50, charId: 1);
+        var target = ctx.AddMob(51, 50, hp: 100);
+        attacker.Stats.AttackRange = 1;
+        attacker.Stats.WatkMin = attacker.Stats.WatkMax = 20;
+        attacker.Stats.Hit = 200; attacker.Stats.Adelay = 1000; attacker.Stats.Cri = 0;
+        return (attacker, target);
+    }
+
+    private sealed class StubCast : Map.Server.Skills.ISkillCastService
+    {
+        public bool Casting;
+        public bool IsCasting(EntityId entityId) => Casting;
+        public (ushort skillId, ushort skillLevel) GetCurrentCast(EntityId entityId) => (0, 0);
+        public Map.Server.Skills.SkillCastResult StartCast(Entity source, EntityId targetId, ushort skillId, ushort skillLevel) => Map.Server.Skills.SkillCastResult.Started;
+        public bool ResolveSkill(Entity source, Entity target, ushort skillId, ushort skillLevel) => false;
+        public void Tick(long nowTick) { }
+        public bool CancelCast(EntityId entityId) => false;
+    }
+
     // ---- harness ----
 
-    private static TestContext Build()
+    private static TestContext Build(Map.Server.Skills.ISkillCastService? cast = null)
     {
         const string mapName = "test_map";
         var map = new MapData(mapName, 200, 200, new byte[200 * 200]);
@@ -117,7 +184,7 @@ public class AttackServiceTests
             ids, new StatusCalcService(), NullLogger<MobSpawnService>.Instance, new Random(0));
         var damage = new DamageService(visibility, mobSpawn, entities,
             new BattleCalculator(new Random(0)), NullLogger<DamageService>.Instance);
-        var attack = new AttackService(entities, damage, movement, NullLogger<AttackService>.Instance);
+        var attack = new AttackService(entities, damage, movement, NullLogger<AttackService>.Instance, cast: cast);
         return new TestContext(attack, entities, dispatcher, ids, (uint)mapName.GetHashCode());
     }
 

@@ -1,6 +1,6 @@
 # COMBAT-88 — Cast-lock: block attack/move while casting unless SA_FREECAST
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-70 · **Blocks:** none
 > **Filed by:** COMBAT-70 — discovered while confirming the FREECAST precondition: the C#
 > auto-attack loop has no cast-lock, so *every* caster can attack while casting (not just
@@ -34,15 +34,19 @@ relies on this permissiveness to make the FREECAST amotion modifier observable, 
 
 ## Scope — every sub-system that must be touched
 
-- [ ] In `AttackService.Tick`, refuse a swing when the attacker `IsCasting` **and** lacks
-      SA_FREECAST (mirror rAthena's mid-cast attack block); keep the `AttackState` so it resumes
-      on cast end.
-- [ ] Confirm the movement path applies the same SA_FREECAST gate (move-while-cast).
+- [x] In `AttackService.Tick`, refuse a swing when the attacker `IsCasting` **and** lacks
+      SA_FREECAST — added the gate to the per-tick swing guard (`_cast?.IsCasting && !HasFreecast`),
+      keeping the `AttackState` so the train resumes the instant the cast ends; FREECAST attackers
+      still swing at `NextSwingDelay`'s `FreecastAdelay` (COMBAT-70 preserved).
+- [x] Confirmed the movement path: `MovementService` has **no** cast gate at all (everyone can walk
+      while casting). ➡️ The move-while-cast block (rAthena `unit_can_move`, with the SA_FREECAST /
+      LG_EXEEDBREAK / INF2_ISGUILD exemptions) is **COMBAT-110** (needs a new `ISkillCastService`
+      dependency on `MovementService`).
 
 ## Done criteria
 
-- A non-Free-Cast player cannot auto-attack while casting; a Free-Cast player can (at the
-  COMBAT-70 freecast delay).
+- ✅ A non-Free-Cast player cannot auto-attack while casting (swing skipped, AttackState kept); a
+  Free-Cast player can (swing lands, at the COMBAT-70 freecast delay). ➡️ Move-while-cast is COMBAT-110.
 
 ## Test plan
 
@@ -52,3 +56,14 @@ relies on this permissiveness to make the FREECAST amotion modifier observable, 
 
 - Don't regress COMBAT-70: FREECAST attackers must still swing (at `FreecastAdelay`) while
   casting. The block is non-FREECAST-only.
+
+## History
+
+- 2026-06-03 — Added the auto-attack cast-lock to `AttackService.Tick`'s per-tick swing guard: a
+  caster mid-cast (`_cast.IsCasting`) is refused a swing unless it has SA_FREECAST
+  (`HasFreecast` → `pc_checkskill(SA_FREECAST) > 0`), matching rAthena `unit_attack_timer_sub`. The
+  `AttackState` is preserved so the swing train resumes when the cast ends; FREECAST attackers keep
+  swinging at COMBAT-70's `FreecastAdelay`. AttackServiceTests +3 (non-freecast casting → no swing +
+  state kept, freecast casting → swings, cast-end resumes). Full suite 4183 pass (1 fail =
+  pre-existing INFRA-11 replay gate). Confirmed the movement path has no cast gate → filed COMBAT-110
+  for the move-while-cast block.

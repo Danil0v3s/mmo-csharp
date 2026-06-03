@@ -52,6 +52,11 @@ public sealed class AttackService : IAttackService, IAttackStopper
     /// (the `5*(lv+10)%` ASPD-base scale, status.cpp:6156); otherwise the normal
     /// <see cref="BattleStats.Adelay"/>. Non-PCs (FreecastAdelay 0) always use Adelay.
     /// </summary>
+    // COMBAT-88 — rAthena pc_checkskill(sd, SA_FREECAST) > 0: a Free-Cast player can act while
+    // casting. Non-PCs and players without the skill are cast-locked.
+    private static bool HasFreecast(Entity entity)
+        => entity is PlayerEntity pc && pc.LearnedSkills.GetValueOrDefault(Map.Server.Skills.SkillIds.SA_FREECAST) > 0;
+
     internal int NextSwingDelay(Entity entity)
     {
         if (entity is PlayerEntity && entity.Stats.FreecastAdelay > 0
@@ -153,6 +158,16 @@ public sealed class AttackService : IAttackService, IAttackStopper
             // mid-fight stops the swing train but keeps the AttackState so it resumes
             // on SC end.
             if (!entity.CanAttack(_sc))
+            {
+                continue;
+            }
+
+            // COMBAT-88 — cast-lock: a caster cannot auto-attack mid-cast unless SA_FREECAST
+            // (rAthena unit_attack_timer_sub: ud.skilltimer != INVALID_TIMER blocks the swing;
+            // pc_checkskill(SA_FREECAST) > 0 exempts). Keep the AttackState so the swing train
+            // resumes the instant the cast ends; the FREECAST swing uses NextSwingDelay's
+            // FreecastAdelay (COMBAT-70).
+            if (_cast?.IsCasting(entity.Id) == true && !HasFreecast(entity))
             {
                 continue;
             }
