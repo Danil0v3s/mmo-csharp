@@ -220,7 +220,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 |---|---|
 | FEATURE-01 | ✅ Mob-death observer hub (quest + achievement + pet-catch + MVP) |
 | FEATURE-02 | ✅ Companion/quest/achievement save wiring (Phase A: quest+achievement+pet) — Phase B → FEATURE-17 |
-| FEATURE-03 | Quest service real implementation |
+| FEATURE-03 | ✅ Quest service real implementation |
 | FEATURE-04 | Achievement service real implementation |
 | FEATURE-05 | Mail / RODEX service (attach/zeny/return + IPC) |
 | FEATURE-06 | Auction map-side wiring |
@@ -236,6 +236,9 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | FEATURE-16 | Fame-ranking subsystem + Taekwon-ranker population — split from COMBAT-51 |
 | FEATURE-18 | MVP reward client packets (item/special-exp/effect) — split from FEATURE-01 |
 | FEATURE-19 | Party / in-range kill credit for quest + achievement — split from FEATURE-01 |
+| FEATURE-20 | Wire quest/achievement load → Hydrate → PcLogin on session enter — split from FEATURE-03 |
+| FEATURE-21 | Quest any-mob + filter objectives (race/size/element/level/map) — split from FEATURE-03 |
+| FEATURE-22 | Immediate quest persistence on mutation (chrif_save parity) — split from FEATURE-03 |
 
 ### `scripting/` — NPC scripting runtime + content
 | Ticket | Title |

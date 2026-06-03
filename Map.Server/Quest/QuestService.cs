@@ -20,6 +20,13 @@ public sealed class QuestService : IQuestService
     private readonly IServiceScopeFactory? _scopes;
     private readonly ILogger<QuestService> _logger;
 
+    // rAthena e_quest_state.
+    private const int QInactive = 0, QActive = 1, QComplete = 2;
+
+    /// <summary>FEATURE-03 — server wall clock (rAthena uses <c>localtime</c>/<c>time(nullptr)</c>);
+    /// injectable so Add time-limits + PLAYTIME expiry are deterministic in tests.</summary>
+    internal Func<DateTimeOffset> Clock { get; set; } = () => DateTimeOffset.Now;
+
     public QuestService(IServiceScopeFactory scopes, ILogger<QuestService> logger)
     {
         _scopes = scopes;
@@ -29,12 +36,127 @@ public sealed class QuestService : IQuestService
 
     public QuestService(ILogger<QuestService> logger) { _logger = logger; }
 
-    public int Add(PlayerEntity pc, int questId) => 0;
-    public int Change(PlayerEntity pc, int oldQuestId, int newQuestId) => 0;
-    public int Check(PlayerEntity pc, int questId, byte status) => 0;
-    public int Delete(PlayerEntity pc, int questId) => 0;
-    public int PcLogin(PlayerEntity pc) => 0;
-    public int UpdateObjectiveSub(PlayerEntity pc, int questId, byte index, int delta) => 0;
+    /// <summary>
+    /// FEATURE-03 — rAthena <c>quest_add</c> (quest.cpp:587): accept a quest. Fails (-1) on unknown
+    /// catalog id or if the PC already has it; else appends a <c>Q_ACTIVE</c> entry with a computed
+    /// time limit and zeroed per-objective counters. Returns 0 on success.
+    /// </summary>
+    public int Add(PlayerEntity pc, int questId)
+    {
+        var cat = GetCatalogEntry((uint)questId);
+        if (cat == null)
+        {
+            _logger.LogWarning("quest_add: quest {Quest} not in DB", questId);
+            return -1;
+        }
+        if (Check(pc, questId, (byte)QuestCheckType.HaveQuest) >= 0)
+            return -1; // rAthena: already has the quest
+
+        var now = Clock();
+        pc.QuestLog.Add(new QuestEntry
+        {
+            QuestId = questId,
+            State = QActive,
+            Counts = new int[ObjectiveCount(cat)],
+            TimeUnix = QuestTime.ParseTimeUnix(cat.TimeLimit, now.ToUnixTimeSeconds(), now),
+        });
+        // PACKET-10 owns ZC_ADD_QUEST + ZC_UPDATE_MISSION_HUNT; the log entry mutated here persists
+        // via the FEATURE-02 quest-save fan-out.
+        return 0;
+    }
+
+    /// <summary>FEATURE-03 — rAthena <c>quest_change</c> (quest.cpp:633): replace
+    /// <paramref name="oldQuestId"/> with <paramref name="newQuestId"/> in the same slot. Fails (-1)
+    /// if the PC already has the new quest, lacks the old one, or the new id is unknown.</summary>
+    public int Change(PlayerEntity pc, int oldQuestId, int newQuestId)
+    {
+        var newCat = GetCatalogEntry((uint)newQuestId);
+        if (newCat == null) return -1;
+        if (Check(pc, newQuestId, (byte)QuestCheckType.HaveQuest) >= 0) return -1; // already has new
+        var idx = IndexOf(pc, oldQuestId);
+        if (idx < 0) return -1; // doesn't have old
+
+        var now = Clock();
+        pc.QuestLog[idx] = new QuestEntry
+        {
+            QuestId = newQuestId,
+            State = QActive,
+            Counts = new int[ObjectiveCount(newCat)],
+            TimeUnix = QuestTime.ParseTimeUnix(newCat.TimeLimit, now.ToUnixTimeSeconds(), now),
+        };
+        // PACKET-10: ZC_DEL_QUEST(old) + ZC_ADD_QUEST(new) emit seam.
+        return 0;
+    }
+
+    /// <summary>
+    /// FEATURE-03 — rAthena <c>quest_check</c> (quest.cpp:898). Returns -1 if the PC lacks the quest;
+    /// otherwise per <see cref="QuestCheckType"/>: HAVEQUEST → the state (Q_INACTIVE reported as
+    /// active=1); PLAYTIME → 2 expired / 1 complete / 0 otherwise; HUNTING → 2 objectives met /
+    /// 1 expired / 0 otherwise.
+    /// </summary>
+    public int Check(PlayerEntity pc, int questId, byte status)
+    {
+        var idx = IndexOf(pc, questId);
+        if (idx < 0) return -1;
+        var q = pc.QuestLog[idx];
+        var nowUnix = Clock().ToUnixTimeSeconds();
+
+        switch ((QuestCheckType)status)
+        {
+            case QuestCheckType.HaveQuest:
+                return q.State == QInactive ? QActive : q.State;
+            case QuestCheckType.PlayTime:
+                return (q.TimeUnix > 0 && q.TimeUnix < nowUnix) ? 2 : q.State == QComplete ? 1 : 0;
+            case QuestCheckType.Hunting:
+                if (q.State == QInactive || q.State == QActive)
+                {
+                    if (AllObjectivesMet(q, GetCatalogEntry((uint)questId))) return 2;
+                    if (q.TimeUnix > 0 && q.TimeUnix < nowUnix) return 1;
+                }
+                return 0;
+            default:
+                return -1;
+        }
+    }
+
+    /// <summary>FEATURE-03 — rAthena <c>quest_delete</c> (quest.cpp:684): remove the quest from the
+    /// log. Returns 0 if removed, -1 if the PC didn't have it.</summary>
+    public int Delete(PlayerEntity pc, int questId)
+    {
+        var idx = IndexOf(pc, questId);
+        if (idx < 0) return -1;
+        pc.QuestLog.RemoveAt(idx);
+        // PACKET-10: ZC_DEL_QUEST emit seam; removal persists via the quest-save fan-out.
+        return 0;
+    }
+
+    /// <summary>FEATURE-03 — rAthena <c>quest_pc_login</c> (quest.cpp:560): on session enter (after
+    /// <c>Hydrate</c>) push the quest list to the client. No expiry timer is armed — rAthena reports
+    /// time-limit expiry on query (<c>PLAYTIME</c>/<c>HUNTING</c>), not via an active state flip.
+    /// Returns the active-quest count.</summary>
+    public int PcLogin(PlayerEntity pc)
+    {
+        var active = 0;
+        foreach (var q in pc.QuestLog) if (q.State != QComplete) active++;
+        // PACKET-10 owns ZC_ALL_QUEST_LIST / ZC_ALL_QUEST_MISSION; this is the post-hydrate push seam.
+        return active;
+    }
+
+    /// <summary>FEATURE-03 — rAthena <c>quest_update_objective_sub</c>: add <paramref name="delta"/>
+    /// to objective <paramref name="index"/> of an active quest (capped at the catalog target),
+    /// returning the new count, or -1 when the quest/objective isn't valid.</summary>
+    public int UpdateObjectiveSub(PlayerEntity pc, int questId, byte index, int delta)
+    {
+        var q = FindActive(pc, questId);
+        if (q == null) return -1;
+        var cat = GetCatalogEntry((uint)questId);
+        if (cat == null) return -1;
+        var target = ObjectiveTarget(cat, index);
+        if (target <= 0) return -1;
+        EnsureCounts(q, index + 1);
+        q.Counts[index] = Math.Clamp(q.Counts[index] + delta, 0, target);
+        return q.Counts[index];
+    }
 
     /// <summary>
     /// FEATURE-01 — rAthena <c>quest_update_objective</c> single-objective bump: add
@@ -45,17 +167,12 @@ public sealed class QuestService : IQuestService
     public void UpdateObjective(PlayerEntity pc, int questId, byte index, int delta)
     {
         if (delta == 0) return;
-        var q = FindActive(pc, questId);
-        if (q == null) return;
-        var cat = GetCatalogEntry((uint)questId);
-        if (cat == null) return;
-        var target = ObjectiveTarget(cat, index);
-        if (target <= 0) return; // no such objective
-        EnsureCounts(q, index + 1);
-        var updated = Math.Min(target, q.Counts[index] + delta);
-        if (updated == q.Counts[index]) return;
-        q.Counts[index] = updated;
-        TryComplete(q, cat);
+        var before = FindActive(pc, questId);
+        if (before == null) return;
+        var prior = index < before.Counts.Length ? before.Counts[index] : 0;
+        if (UpdateObjectiveSub(pc, questId, index, delta) < 0) return;
+        if (before.Counts[index] == prior) return; // already capped — no change
+        TryComplete(before, GetCatalogEntry((uint)questId)!);
     }
 
     /// <inheritdoc />
@@ -64,7 +181,7 @@ public sealed class QuestService : IQuestService
         if (string.IsNullOrEmpty(mobAegis)) return;
         foreach (var q in pc.QuestLog)
         {
-            if (q.State != 1) continue; // Q_ACTIVE only (rAthena skips Q_COMPLETE)
+            if (q.State != QActive) continue; // Q_ACTIVE only (rAthena skips Q_COMPLETE)
             var cat = GetCatalogEntry((uint)q.QuestId);
             if (cat == null) continue;
 
@@ -85,14 +202,51 @@ public sealed class QuestService : IQuestService
         }
     }
 
-    public int UpdateStatus(PlayerEntity pc, int questId, byte status) => 0;
+    /// <summary>FEATURE-03 — rAthena <c>quest_update_status</c> (quest.cpp:850): set the quest's
+    /// state. Returns 0 if applied, -1 if the PC doesn't have the quest.</summary>
+    public int UpdateStatus(PlayerEntity pc, int questId, byte status)
+    {
+        var idx = IndexOf(pc, questId);
+        if (idx < 0) return -1;
+        pc.QuestLog[idx].State = status;
+        // PACKET-10: ZC_UPDATE_MISSION_HUNT (status<complete) / ZC_DEL_QUEST (complete) emit seam.
+        return 0;
+    }
 
-    // --- FEATURE-01 objective helpers ---
+    // --- objective + lookup helpers ---
+
+    private static int IndexOf(PlayerEntity pc, int questId)
+    {
+        for (var i = 0; i < pc.QuestLog.Count; i++)
+            if (pc.QuestLog[i].QuestId == questId) return i;
+        return -1;
+    }
+
+    private static int ObjectiveCount(Core.Database.Entities.QuestDbEntity cat)
+    {
+        var n = 0;
+        if (!string.IsNullOrEmpty(cat.Mob1)) n++;
+        if (!string.IsNullOrEmpty(cat.Mob2)) n++;
+        if (!string.IsNullOrEmpty(cat.Mob3)) n++;
+        return n;
+    }
+
+    private static bool AllObjectivesMet(QuestEntry q, Core.Database.Entities.QuestDbEntity? cat)
+    {
+        if (cat == null) return false;
+        for (byte i = 0; i < 3; i++)
+        {
+            var target = ObjectiveTarget(cat, i);
+            if (target <= 0) continue;
+            if (i >= q.Counts.Length || q.Counts[i] < target) return false;
+        }
+        return true;
+    }
 
     private static QuestEntry? FindActive(PlayerEntity pc, int questId)
     {
         foreach (var q in pc.QuestLog)
-            if (q.QuestId == questId && q.State == 1) return q;
+            if (q.QuestId == questId && q.State == QActive) return q;
         return null;
     }
 
@@ -127,7 +281,7 @@ public sealed class QuestService : IQuestService
             if (target <= 0) continue;
             if (i >= q.Counts.Length || q.Counts[i] < target) return;
         }
-        q.State = 2; // Q_COMPLETE
+        q.State = QComplete;
     }
 
     public void Reload()
