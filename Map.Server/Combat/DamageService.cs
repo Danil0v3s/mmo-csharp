@@ -177,17 +177,28 @@ public sealed class DamageService : IDamageService
     {
         if (!hit || source is not PlayerEntity pc || pc.EquipBonuses is not { } eq) return;
 
-        if (eq.HpVanishPer != 0 && VanishRoll(eq.HpVanishRate))
+        // COMBAT-83 — the attack's BF_* flag for the flag-gated vanish (bonus3 bHPVanishRate,…,bf).
+        // A weapon hit: BF_WEAPON + melee/ranged from the attacker's range + normal|skill.
+        int attackFlag = Map.Server.Status.BattleFlags.Weapon
+            | (pc.Stats.AttackRange > 2 ? Map.Server.Status.BattleFlags.Long : Map.Server.Status.BattleFlags.Short)
+            | Map.Server.Status.BattleFlags.Normal | Map.Server.Status.BattleFlags.Skill;
+
+        if (eq.HpVanishPer != 0 && VanishFlagMatches(eq.HpVanishFlag, attackFlag) && VanishRoll(eq.HpVanishRate))
         {
             var drain = (int)((long)target.Stats.MaxHp * eq.HpVanishPer / 100);
             if (drain > 0) ApplyDamage(target, drain, source);
         }
-        if (eq.SpVanishPer != 0 && target.Stats.MaxSp > 0 && VanishRoll(eq.SpVanishRate))
+        if (eq.SpVanishPer != 0 && target.Stats.MaxSp > 0 && VanishFlagMatches(eq.SpVanishFlag, attackFlag) && VanishRoll(eq.SpVanishRate))
         {
             var drain = (int)((long)target.Stats.MaxSp * eq.SpVanishPer / 100);
             if (drain > 0) target.Stats.Sp = Math.Max(0, target.Stats.Sp - drain);
         }
     }
+
+    /// <summary>COMBAT-83 — flag 0 (the COMBAT-44 bonus2 form) is unconstrained; otherwise the
+    /// attack must match the gated BF flag (rAthena s_vanish_bonus.flag).</summary>
+    private static bool VanishFlagMatches(int vanishFlag, int attackFlag)
+        => vanishFlag == 0 || Map.Server.Status.BattleFlags.Matches(vanishFlag, attackFlag);
 
     private bool VanishRoll(int rate) => rate > 0 && (rate >= 1000 || _rng.Next(1000) < rate);
 

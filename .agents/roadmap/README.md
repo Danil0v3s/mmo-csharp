@@ -160,6 +160,11 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-97 | PC five-accumulator damage parts (element split + ×2 status + percentAtk) — split from COMBAT-79 |
 | COMBAT-98 | race2 cardfix: melee per-group multiply + pet race2 — split from COMBAT-81 |
 | COMBAT-99 | Thread the real BF_* damage flag into CalcCardFix (skill/normal + skill range) — split from COMBAT-82 |
+| COMBAT-100 | Per-race vellum vanish (bHPVanishRaceRate damage override) — split from COMBAT-83 |
+| COMBAT-101 | Drop-item bonus tables (bAddMonsterDropItem/Class/Group) — split from COMBAT-83 |
+| COMBAT-102 | bSetDefRace/bSetMDefRace (set target DEF/MDEF vs race) — split from COMBAT-83 |
+| COMBAT-103 | bStateNoRecoverRace (on-hit no-recover by race) — split from COMBAT-83 |
+| COMBAT-104 | bAddEffOnSkill (on-skill status proc) — split from COMBAT-83 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

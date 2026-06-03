@@ -100,6 +100,43 @@ public class Combat44BonusTailTests
         Assert.True(10000 - mob.Hp < 1000);
     }
 
+    // ---- COMBAT-83: flag-gated vanish (bonus3 bHPVanishRate,x,n,bf) ----
+
+    [Fact]
+    public void Flag_gated_vanish_fires_only_when_the_attack_flag_matches()
+    {
+        var ctx = NewContext();
+        var attacker = ctx.AddPc(50, 50);
+        attacker.Stats.WatkMin = attacker.Stats.WatkMax = 100;
+        attacker.Stats.Dex = 100; attacker.Stats.Hit = 10000; attacker.Stats.Cri = 0;
+        attacker.Stats.AttackRange = 1; // melee → the attack is BF_SHORT
+        attacker.EquipBonuses.HpVanishRate = 1000; // guaranteed roll
+        attacker.EquipBonuses.HpVanishPer = 10;     // 10% of 10000 = 1000
+
+        // bSubEle-style flag gate on BF_LONG → a melee (short) swing must NOT vanish.
+        attacker.EquipBonuses.HpVanishFlag = BattleFlags.Default(BattleFlags.Long);
+        var noFire = ctx.AddMob(52, 50, hp: 10000);
+        var plainDrop = PlainSwingDrop(ctx, attacker);
+        ctx.Service.PerformMeleeAttack(attacker, noFire);
+        Assert.Equal(plainDrop, 10000 - noFire.Hp); // no +1000
+
+        // Gate on BF_SHORT → the melee swing vanishes.
+        attacker.EquipBonuses.HpVanishFlag = BattleFlags.Default(BattleFlags.Short);
+        var fires = ctx.AddMob(56, 50, hp: 10000);
+        ctx.Service.PerformMeleeAttack(attacker, fires);
+        Assert.Equal(plainDrop + 1000, 10000 - fires.Hp);
+    }
+
+    private static int PlainSwingDrop(Ctx ctx, PlayerEntity attacker)
+    {
+        var probe = ctx.AddMob(40, 40, hp: 10000);
+        var saved = attacker.EquipBonuses.HpVanishPer;
+        attacker.EquipBonuses.HpVanishPer = 0; // suppress vanish for the probe
+        ctx.Service.PerformMeleeAttack(attacker, probe);
+        attacker.EquipBonuses.HpVanishPer = saved;
+        return 10000 - probe.Hp;
+    }
+
     // ---- helpers ----
 
     private static PlayerEntity NewPc(int level, int intStat)

@@ -117,6 +117,11 @@ public sealed class EquipBonusBundle
     public int SpVanishRate { get; set; }
     /// <summary>% of the target's MAX SP drained on a vanish proc.</summary>
     public int SpVanishPer { get; set; }
+    // COMBAT-83 — the BF_* flag the vanish is gated on (bonus3 bHPVanishRate,x,n,bf). 0 = unconstrained
+    // (the bonus2 bHPVanishRate form, COMBAT-44). When non-zero the proc only rolls when the attack's
+    // BF flag matches (rAthena s_vanish_bonus.flag, pc.hpp:332).
+    public int HpVanishFlag { get; set; }
+    public int SpVanishFlag { get; set; }
     /// <summary>Per-skill variable-cast rate, stored INVERSED like rAthena
     /// (<c>bonus2 bVariableCastrate, sk, n</c> → <c>-n</c>; SP_VARCASTRATE).
     /// Consumed by the cast-timing pipeline (COMBAT-24).</summary>
@@ -302,6 +307,7 @@ public sealed class EquipBonusBundle
         SubEle2.Clear(); SubRace3.Clear();
         SkillAtk.Clear(); SubSkillAtk.Clear(); SkillHeal.Clear(); SkillVarCastrate.Clear(); SkillFixCastrate.Clear();
         HpVanishRate = HpVanishPer = SpVanishRate = SpVanishPer = 0;
+        HpVanishFlag = SpVanishFlag = 0;
         SkillVarCast.Clear(); SkillFixCast.Clear();
         Array.Clear(ComaClass); Array.Clear(ComaRace);
         AddEffOnAttack.Clear(); AddEffWhenHit.Clear();

@@ -170,6 +170,18 @@ public sealed class ScriptedBonusHost
             var rate = ToInt(args[2]);
             var flag = args[3] is string fs ? BattleFlags.FromToken(fs) : ToInt(args[3]);
             BonusScriptExtractor.ApplyFlagMatchedBonus3(_bundle, key, idx, rate, flag);
+            return;
+        }
+        // COMBAT-83 — flag-gated on-hit vanish: bonus3 bHPVanishRate,x,n,bf / bSPVanishRate,x,n,bf.
+        // (The bonus2 form — COMBAT-44 — has no flag and parses in ApplyIndexed.)
+        bool hpVanish = string.Equals(key, "HPVanishRate", StringComparison.OrdinalIgnoreCase);
+        if (hpVanish || string.Equals(key, "SPVanishRate", StringComparison.OrdinalIgnoreCase))
+        {
+            var rate = ToInt(args[1]);
+            var per = ToInt(args[2]);
+            var flag = BattleFlags.Default(args[3] is string vs ? BattleFlags.FromToken(vs) : ToInt(args[3]));
+            if (hpVanish) { _bundle.HpVanishRate = rate; _bundle.HpVanishPer = per; _bundle.HpVanishFlag = flag; }
+            else { _bundle.SpVanishRate = rate; _bundle.SpVanishPer = per; _bundle.SpVanishFlag = flag; }
         }
     }
 
