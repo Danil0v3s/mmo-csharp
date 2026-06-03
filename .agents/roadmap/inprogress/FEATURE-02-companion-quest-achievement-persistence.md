@@ -1,6 +1,6 @@
 # FEATURE-02 — Companion / quest / achievement save wiring
 
-> **Epic:** Persistence · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Persistence · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none (independent of FEATURE-01; complements FEATURE-03/04/07/08/09/10) · **Blocks:** none
 
 ## Problem
