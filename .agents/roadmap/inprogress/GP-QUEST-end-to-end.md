@@ -50,11 +50,20 @@ element/level/map) and immediate-on-mutation save are missing.
       round-trips the char-side log, hydrates onto the live entity, emits `ZC_ALL_QUEST_LIST`; called
       from `NotifyActorInitHandler` LoadEndAck after the inventory list.)*
 - [ ] **Service**: objective filters (any-mob + race/size/element/level/map) on
-      `UpdateMobObjective` (archive FEATURE-21); immediate persistence on every mutation
-      (add/delete/objective tick/status) — `chrif_save` parity (archive FEATURE-22).
-- [ ] **CZ handlers**: accept (from NPC), cancel/erase, active-quest toggle.
-- [ ] **ZC emits**: quest list on login, add, delete, objective-count update on kill,
-      status update.
+      `UpdateMobObjective` (archive FEATURE-21) — **remaining** (needs `QuestDbEntity`/schema
+      extension: the catalog only has Mob1-3 aegis + Count1-3, no race/size/element/level/map
+      filter columns yet).
+- [x] **Service (immediate save)**: immediate persistence on add/change/delete/status —
+      `chrif_save(CSAVE_NORMAL)` parity (archive FEATURE-22). *(turn 4 — `IQuestSaveTrigger`
+      breaks the QuestService→intif DI cycle via lazy `IServiceProvider` resolution; `RequestSave`
+      fires on `Add`/`Change`/`Delete`/`UpdateStatus`, mirroring rAthena's explicit chrif_save sites.
+      Objective ticks set dirty only and ride the periodic save — rAthena parity, quest.cpp:804.)*
+- [x] **CZ handlers**: active-quest toggle (`CZ_ACTIVE_QUEST` 0x02b6 → `ActiveQuestHandler` →
+      `UpdateStatus`). *(turn 4.)* Accept-from-NPC / cancel-erase are NPC-script-driven
+      (`setquest`/`erasequest` builtins) → belong to **SCR-DOMAIN** which this ticket unlocks, not a
+      client→server quest packet.
+- [x] **ZC emits**: quest list on login (turn 3), add + mission (turn 2), delete (turn 1),
+      objective-count update on kill (turn 1), status update (`ZC_ACTIVE_QUEST` 0x02b7, turn 4).
 - [ ] **Persistence**: quest + objective rows round-trip; relog restores progress.
 
 ## Done criteria
@@ -114,6 +123,21 @@ element/level/map) and immediate-on-mutation save are missing.
   **Reachable now: enter map → quest window populates from the persisted log with live progress;**
   accept → appears; kill → ticks; complete/delete → removed. Remaining (next turns → done):
   `CZ_ACTIVE_QUEST` toggle handler + objective filters (FEATURE-21) + immediate-save (FEATURE-22).
+
+- **2026-06-03 (turn 4)** — Active-quest toggle + immediate-save landed. New `CZ_ACTIVE_QUEST`
+  (0x02b6, 7B `quest_id.L active.B`) + `ZC_ACTIVE_QUEST` (0x02b7, 7B) + `ActiveQuestHandler`
+  (`clif_parse_questStateAck` → `quest_update_status`): the client toggles a quest's tracked state
+  and the server flips Q_ACTIVE/Q_INACTIVE, confirms via `ZC_ACTIVE_QUEST`, or — on a complete
+  transition — drops it with `ZC_DEL_QUEST` (rAthena `quest_update_status` move-to-completed +
+  `clif_quest_delete`). FEATURE-22 immediate-save: `IQuestSaveTrigger` (lazy `IServiceProvider`
+  resolution to break the QuestService→`IIntifService` DI cycle) fires `QuestSave` on
+  `Add`/`Change`/`Delete`/`UpdateStatus`, mirroring rAthena's `chrif_save(CSAVE_NORMAL)` calls;
+  objective ticks stay dirty-only (periodic save), matching quest.cpp:804. Tests: `QuestEmitTests`
+  +3 (status inactive→`ZC_ACTIVE_QUEST`+save, complete→`ZC_DEL_QUEST` not active, add→save),
+  new `ActiveQuestHandlerTests` (3: active/inactive mapping + unspawned-ignored). Full suite 4439
+  pass (1 = standing replay-fixture). **Only FEATURE-21 objective filters remain** (needs a
+  `QuestDbEntity`/schema extension — race/size/element/min-max-level/map per objective) before
+  GP-QUEST is done.
 
 ## Notes / gotchas
 

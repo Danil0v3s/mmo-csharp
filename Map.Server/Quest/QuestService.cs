@@ -20,6 +20,7 @@ public sealed class QuestService : IQuestService
     private readonly IServiceScopeFactory? _scopes;
     private readonly Map.Server.Status.ISessionManagerAccessor? _sessions;
     private readonly Map.Server.Mob.IMobDb? _mobDb;
+    private readonly IQuestSaveTrigger? _saver;
     private readonly ILogger<QuestService> _logger;
 
     // rAthena e_quest_state.
@@ -30,21 +31,24 @@ public sealed class QuestService : IQuestService
     internal Func<DateTimeOffset> Clock { get; set; } = () => DateTimeOffset.Now;
 
     public QuestService(IServiceScopeFactory scopes, ILogger<QuestService> logger,
-        Map.Server.Status.ISessionManagerAccessor? sessions = null, Map.Server.Mob.IMobDb? mobDb = null)
+        Map.Server.Status.ISessionManagerAccessor? sessions = null, Map.Server.Mob.IMobDb? mobDb = null,
+        IQuestSaveTrigger? saver = null)
     {
         _scopes = scopes;
         _logger = logger;
         _sessions = sessions;
         _mobDb = mobDb;
+        _saver = saver;
         Reload();
     }
 
     public QuestService(ILogger<QuestService> logger) { _logger = logger; }
 
-    /// <summary>Test seam — inject a session accessor (+ optional mob DB) for the ZC-emit paths.</summary>
+    /// <summary>Test seam — inject a session accessor (+ optional mob DB / save trigger) for the
+    /// ZC-emit and immediate-save paths.</summary>
     internal QuestService(ILogger<QuestService> logger, Map.Server.Status.ISessionManagerAccessor sessions,
-        Map.Server.Mob.IMobDb? mobDb = null)
-    { _logger = logger; _sessions = sessions; _mobDb = mobDb; }
+        Map.Server.Mob.IMobDb? mobDb = null, IQuestSaveTrigger? saver = null)
+    { _logger = logger; _sessions = sessions; _mobDb = mobDb; _saver = saver; }
 
     /// <summary>
     /// FEATURE-03 — rAthena <c>quest_add</c> (quest.cpp:587): accept a quest. Fails (-1) on unknown
@@ -70,7 +74,8 @@ public sealed class QuestService : IQuestService
             Counts = new int[ObjectiveCount(cat)],
             TimeUnix = QuestTime.ParseTimeUnix(cat.TimeLimit, now.ToUnixTimeSeconds(), now),
         });
-        EmitAdd(pc, questId); // the log entry persists via the FEATURE-02 quest-save fan-out
+        EmitAdd(pc, questId);
+        RequestSave(pc); // chrif_save(CSAVE_NORMAL) on quest_add (rAthena quest.cpp:623)
         return 0;
     }
 
@@ -95,6 +100,7 @@ public sealed class QuestService : IQuestService
         };
         EmitDelete(pc, oldQuestId);
         EmitAdd(pc, newQuestId);
+        RequestSave(pc); // chrif_save(CSAVE_NORMAL) on quest_change (rAthena quest.cpp:712)
         return 0;
     }
 
@@ -136,7 +142,8 @@ public sealed class QuestService : IQuestService
         var idx = IndexOf(pc, questId);
         if (idx < 0) return -1;
         pc.QuestLog.RemoveAt(idx);
-        EmitDelete(pc, questId); // removal persists via the quest-save fan-out
+        EmitDelete(pc, questId);
+        RequestSave(pc); // chrif_save(CSAVE_NORMAL) on quest_delete (rAthena quest.cpp:673)
         return 0;
     }
 
@@ -269,7 +276,11 @@ public sealed class QuestService : IQuestService
         var idx = IndexOf(pc, questId);
         if (idx < 0) return -1;
         pc.QuestLog[idx].State = status;
-        // PACKET-10: ZC_UPDATE_MISSION_HUNT (status<complete) / ZC_DEL_QUEST (complete) emit seam.
+        if (status < QComplete)
+            EmitStatus(pc, questId, status == QActive); // clif_quest_update_status (active/inactive)
+        else
+            EmitDelete(pc, questId);                    // complete → drop from client log (rAthena)
+        RequestSave(pc);                                // chrif_save(CSAVE_NORMAL) parity
         return 0;
     }
 
@@ -318,6 +329,15 @@ public sealed class QuestService : IQuestService
     /// <summary>rAthena <c>clif_quest_delete</c> — tell the client to drop the quest from its log.</summary>
     private void EmitDelete(PlayerEntity pc, int questId)
         => _sessions?.GetByEntityId(pc.Id)?.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_DEL_QUEST { QuestId = questId });
+
+    /// <summary>rAthena <c>clif_quest_update_status</c> — confirm a quest's active/inactive tracking
+    /// toggle to the client (0x02b7). Only for non-complete transitions.</summary>
+    private void EmitStatus(PlayerEntity pc, int questId, bool active)
+        => _sessions?.GetByEntityId(pc.Id)?.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_ACTIVE_QUEST { QuestId = questId, Active = active });
+
+    /// <summary>FEATURE-22 — fire the immediate quest persist (rAthena <c>chrif_save</c> on mutate).
+    /// No-op when no save trigger is wired (e.g. a catalog-only unit test).</summary>
+    private void RequestSave(PlayerEntity pc) => _saver?.Save(pc);
 
     /// <summary>rAthena <c>clif_quest_update_objective</c> — push the live hunt counts (target +
     /// current per objective) for an active quest so the tracker ticks up.</summary>

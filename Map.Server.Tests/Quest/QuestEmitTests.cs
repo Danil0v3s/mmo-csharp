@@ -89,6 +89,53 @@ public class QuestEmitTests
     }
 
     [Fact]
+    public void UpdateStatus_inactive_emits_active_quest_and_saves()
+    {
+        var saver = new RecordingSaver();
+        var (svc, pc, session) = Build(saver, new QuestDbEntity { QuestId = 1000, Mob1 = "PORING", Count1 = 3 });
+        svc.Add(pc, 1000);
+        saver.Count = 0; // ignore the add's save; assert the status save
+
+        Assert.Equal(0, svc.UpdateStatus(pc, 1000, 0)); // Q_INACTIVE
+
+        var b = Outbound(session).Single(x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_ACTIVE_QUEST);
+        Assert.Equal(7, b.Length);
+        Assert.Equal(1000, BitConverter.ToInt32(b, 2)); // quest id
+        Assert.Equal(0, b[6]);                          // active = false (inactive)
+        Assert.Equal(1, saver.Count);                   // immediate-save fired (chrif_save parity)
+    }
+
+    [Fact]
+    public void UpdateStatus_complete_emits_del_quest_not_active_quest()
+    {
+        var saver = new RecordingSaver();
+        var (svc, pc, session) = Build(saver, new QuestDbEntity { QuestId = 1000, Mob1 = "PORING", Count1 = 3 });
+        svc.Add(pc, 1000);
+
+        Assert.Equal(0, svc.UpdateStatus(pc, 1000, 2)); // Q_COMPLETE
+
+        Assert.Contains(Outbound(session), x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_DEL_QUEST);
+        Assert.DoesNotContain(Outbound(session), x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_ACTIVE_QUEST);
+    }
+
+    [Fact]
+    public void Add_fires_immediate_save()
+    {
+        var saver = new RecordingSaver();
+        var (svc, pc, _) = Build(saver, new QuestDbEntity { QuestId = 1000, Mob1 = "PORING", Count1 = 3 });
+
+        svc.Add(pc, 1000);
+
+        Assert.Equal(1, saver.Count); // chrif_save on quest_add
+    }
+
+    private sealed class RecordingSaver : Map.Server.Quest.IQuestSaveTrigger
+    {
+        public int Count;
+        public void Save(PlayerEntity pc) => Count++;
+    }
+
+    [Fact]
     public void Delete_emits_del_quest()
     {
         var (svc, pc, session) = Build(new QuestDbEntity { QuestId = 1000, Mob1 = "PORING", Count1 = 3 });
@@ -103,13 +150,17 @@ public class QuestEmitTests
     // --- helpers ---
 
     private static (QuestService svc, PlayerEntity pc, MapSessionData session) Build(params QuestDbEntity[] catalog)
+        => Build(null, catalog);
+
+    private static (QuestService svc, PlayerEntity pc, MapSessionData session) Build(
+        Map.Server.Quest.IQuestSaveTrigger? saver, params QuestDbEntity[] catalog)
     {
         var pc = new PlayerEntity(1, 1, "P1", Guid.NewGuid(), 1, 50, 50) { Hp = 1000, MaxHp = 1000 };
         var sockets = TestSocketFactory.CreateSocketPair();
         var session = new MapSessionData(sockets.ServerSide, 30000, new PacketSystem().Factory, new PacketSystem().Registry, NullLogger.Instance)
         { AccountId = 1, CharacterId = 1, EntityId = pc.Id };
         var sessions = new FakeSessions(pc.Id, session);
-        var svc = new QuestService(NullLogger<QuestService>.Instance, sessions, new FakeMobDb());
+        var svc = new QuestService(NullLogger<QuestService>.Instance, sessions, new FakeMobDb(), saver);
         svc.SeedCatalogForTest(catalog);
         return (svc, pc, session);
     }

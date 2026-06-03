@@ -551,6 +551,7 @@ builder.Services.AddSingleton<Map.Server.Logging.IGameLogService, Map.Server.Log
 builder.Services.AddSingleton<Map.Server.Shop.Vending.IVendingService, Map.Server.Shop.Vending.VendingService>();
 builder.Services.AddSingleton<Map.Server.Shop.Buying.IBuyingStoreService, Map.Server.Shop.Buying.BuyingStoreService>();
 builder.Services.AddSingleton<Map.Server.Mercenary.IMercenaryService, Map.Server.Mercenary.MercenaryService>();
+builder.Services.AddSingleton<Map.Server.Quest.IQuestSaveTrigger, Map.Server.Quest.QuestSaveTrigger>();
 builder.Services.AddSingleton<Map.Server.Quest.IQuestService, Map.Server.Quest.QuestService>();
 builder.Services.AddSingleton<Map.Server.Elemental.IElementalService, Map.Server.Elemental.ElementalService>();
 builder.Services.AddSingleton<Map.Server.Storage.Guild.IGuildStorageService, Map.Server.Storage.Guild.GuildStorageService>();
