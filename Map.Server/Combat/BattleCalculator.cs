@@ -61,6 +61,9 @@ public sealed class BattleCalculator : IBattleCalculator
     }
 
     public BattleDamage CalcWeaponAttack(Entity source, Entity target)
+        => CalcWeaponAttack(source, target, skillId: 0);
+
+    public BattleDamage CalcWeaponAttack(Entity source, Entity target, ushort skillId)
     {
         var result = new BattleDamage { Lane = BattleAttackType.Weapon };
         var s = source.Stats;
@@ -124,12 +127,13 @@ public sealed class BattleCalculator : IBattleCalculator
                 weaponType: s.LeftWeaponType, weaponElement: s.LeftWeaponElement, leftHand: true);
         }
 
-        // COMBAT-61 — bonus bCritAtkRate (battle.cpp:7787). On a critical the
-        // per-hand damage gains +crit_atk_rate %. This is the normal-attack
-        // branch (skill_id == 0 → divisor 100); the skill-crit variant uses
-        // /200 and lives on the skill-damage path (➡️ COMBAT-78). Applied per
-        // hand, PC sources only, and commutes through the left/right split.
-        if (isCritical && srcIsPc
+        // COMBAT-61/78 — bonus bCritAtkRate (battle.cpp:7787). On a critical the
+        // per-hand damage gains +crit_atk_rate %. The auto-attack branch (skill_id == 0)
+        // uses ÷100 and is applied here. For a skill swing (skillId > 0) the bump is
+        // SUPPRESSED here — ComputeSkillDamage applies it with the ÷200 skill divisor
+        // AFTER the skill ratio, so it isn't double-counted. PC sources only; commutes
+        // through the left/right split.
+        if (skillId == 0 && isCritical && srcIsPc
             && (source as PlayerEntity)?.EquipBonuses is { CritAtkRate: var car } && car != 0)
         {
             damage += damage * car / 100;

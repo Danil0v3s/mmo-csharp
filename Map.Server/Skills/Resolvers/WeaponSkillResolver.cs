@@ -36,13 +36,16 @@ public sealed class WeaponSkillResolver : ISkillResolver
 
     public void Resolve(Entity source, Entity target, SkillDefinition def, ushort lvl)
     {
-        var swing = _battle.CalcWeaponAttack(source, target);
+        // COMBAT-78 — skill-aware swing only when a plugin owns the ratio (crit_atk_rate ÷200
+        // deferred to ComputeSkillDamage); the DamageRate fallback keeps the basic ÷100 swing.
+        var plugin = _behaviors?.Get(def.Id) as Behaviors.WeaponSkillImpl;
+        var swing = _battle.CalcWeaponAttack(source, target, plugin != null ? def.Id : (ushort)0);
 
         // SKILL-05 — the plugin is the single ratio authority. Reaching this
         // resolver for a plugin skill means dispatch leaked (SkillCastService
         // routes to the plugin first); honor the plugin ratio anyway and warn
         // so the leak is visible rather than silently applying DamageRate.
-        if (_behaviors?.Get(def.Id) is Behaviors.WeaponSkillImpl plugin)
+        if (plugin != null)
         {
             _logger?.LogWarning(
                 "WeaponSkillResolver invoked for skill {Skill} which HAS a plugin — dispatch leaked; using the plugin ratio, not DamageRate.",

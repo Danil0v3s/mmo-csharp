@@ -22,6 +22,17 @@ public interface IBattleCalculator
     BattleDamage CalcWeaponAttack(Entity source, Entity target);
 
     /// <summary>
+    /// COMBAT-78 — skill-aware weapon swing. Identical to <see cref="CalcWeaponAttack(Entity,Entity)"/>
+    /// except that for a skill (<paramref name="skillId"/> &gt; 0) the <c>crit_atk_rate</c> bump is
+    /// NOT baked into the swing (battle.cpp:7787 applies it with the ÷200 skill divisor on the
+    /// skill-damage path instead of the auto-attack ÷100). Skill swing builders call this so
+    /// <c>ComputeSkillDamage</c> can own the crit_atk_rate ÷200 without double-counting. The default
+    /// delegates to the basic swing (test doubles that return a fixed swing are unaffected).
+    /// </summary>
+    BattleDamage CalcWeaponAttack(Entity source, Entity target, ushort skillId)
+        => CalcWeaponAttack(source, target);
+
+    /// <summary>
     /// Wave 67 / Track C — rAthena <c>battle_calc_magic_attack</c>
     /// (battle.cpp:battle_calc_magic_attack). Centralises BF_MAGIC
     /// damage through the same pipeline as weapon attacks:

@@ -228,7 +228,7 @@ public abstract class WeaponSkillImpl : SkillImpl
     /// </summary>
     public virtual void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx, int miscflag)
     {
-        var swing = ctx.Battle.CalcWeaponAttack(src, target);
+        var swing = ctx.Battle.CalcWeaponAttack(src, target, SkillId); // COMBAT-78: skill-aware (crit_atk_rate ÷200)
         // SKILL-05: the ratio→ReLvlDmod→constant computation is the SINGLE
         // entry point ComputeSkillDamage, shared with SkillAttackService /
         // WeaponSkillResolver so a plugin skill can never get two different
@@ -301,6 +301,13 @@ public abstract class WeaponSkillImpl : SkillImpl
         ratio = CalculateSkillRatioPostDmodMultiply(ratio, src, target, skillLevel, ctx);
         var raw = swing.Total * ratio / 100
                   + CalculateSkillConstantAddition(src, target, skillLevel);
+        // COMBAT-78 — crit_atk_rate ÷200 skill variant (battle.cpp:7787). When the swing
+        // resolved critical, a skill applies the caster's bonus bCritAtkRate with the ÷200
+        // divisor (vs the auto-attack ÷100), after the skill ratio. The swing was built via
+        // the skill-aware CalcWeaponAttack(skillId) so the ÷100 bump is NOT already in it.
+        if (swing.IsCritical && src is PlayerEntity critPc
+            && critPc.EquipBonuses is { CritAtkRate: var car } && car != 0)
+            raw += raw * car / 200;
         // COMBAT-22 — bonus2 bSkillAtk: per-skill % damage applied after the
         // ratio/constant (rAthena pc_skillatk_bonus, battle.cpp:7729 — after DEF,
         // ATK_ADDRATE). Weapon-skill lane; the magic lane applies it in

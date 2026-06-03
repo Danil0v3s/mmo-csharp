@@ -193,8 +193,12 @@ public sealed class SkillAttackService : ISkillAttackService
     /// </summary>
     private long WeaponDamage(Entity source, Entity target, ushort skillId, ushort skillLevel, SkillDefinition? def, byte flag)
     {
-        var swing = _battle.CalcWeaponAttack(source, target);
-        if (_behaviors?.Get(skillId) is Behaviors.WeaponSkillImpl plugin)
+        // COMBAT-78 — when a plugin owns the ratio, build the swing skill-aware (crit_atk_rate
+        // ÷200 deferred to ComputeSkillDamage); the no-plugin DamageRate fallback keeps the
+        // basic auto-attack swing (÷100).
+        var plugin = _behaviors?.Get(skillId) as Behaviors.WeaponSkillImpl;
+        var swing = _battle.CalcWeaponAttack(source, target, plugin != null ? skillId : (ushort)0);
+        if (plugin != null)
             return plugin.ComputeSkillDamage(swing, source, target, skillLevel, ctx: null, miscflag: flag);
         var ratePerLevel = def != null && def.DamageRate.Length > skillLevel ? def.DamageRate[skillLevel] : 100;
         return swing.Total * ratePerLevel / 100;

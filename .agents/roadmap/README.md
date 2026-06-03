@@ -156,6 +156,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-93 | Reconcile SkillFailCause with rAthena e_useskill_fail_cause wire values — split from COMBAT-76 |
 | COMBAT-94 | Immediate inventory amount-update packet on consume (ammo + items) — split from COMBAT-76 |
 | COMBAT-95 | Magic-side MRes reduction curve + ignore (by race + SC_A_VITA) — split from COMBAT-77 |
+| COMBAT-96 | Route swing-bypass weapon plugins through the ÷200 skill crit_atk_rate — split from COMBAT-78 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |
