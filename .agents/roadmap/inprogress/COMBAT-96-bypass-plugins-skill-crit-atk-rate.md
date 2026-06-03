@@ -1,6 +1,6 @@
 # COMBAT-96 — Route the swing-bypass weapon plugins through the ÷200 skill crit_atk_rate
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-78 (the skill-aware CalcWeaponAttack + ComputeSkillDamage ÷200) · **Blocks:** none
 > **Filed by:** COMBAT-78 — it put the crit_atk_rate ÷200 on the `ComputeSkillDamage` authority;
 > a handful of weapon plugins compute damage from the raw swing instead and still get ÷100.
