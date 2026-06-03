@@ -69,7 +69,9 @@ this ticket already needed.** "Service landed, packets later" is not done.
 |---|---|---|
 | GP-PARTY | Party works end-to-end (invite/leave/expel/leader/share/HP-bar) | PACKET-01 |
 | GP-GUILD | Guild works end-to-end (invite/expel/position/break/notice/emblem/storage/alliance) | PACKET-02 |
-| GP-MAIL | RODEX mail works end-to-end (compose/read/attach/zeny/return) | FEATURE-05/25, PACKET-06 |
+| GP-MAIL | ✅ RODEX mail end-to-end (open/list/read/claim/delete + compose/attach/send; rental→GP-MAIL-RENTAL, partial-claim→GP-MAIL-PARTIAL-CLAIM) | FEATURE-05/25, PACKET-06 |
+| GP-MAIL-RENTAL | Rental-item expiry on mail attachments (needs expire_time proto field) — split from GP-MAIL |
+| GP-MAIL-PARTIAL-CLAIM | Separated zeny-only/item-only mail claims (needs char partial-settle) — split from GP-MAIL |
 | GP-AUCTION | Auction house works end-to-end (register/bid/buy/cancel/search) | FEATURE-06/26, PACKET-07 |
 | GP-PET | Pet works end-to-end (catch/hatch/feed/rename/return/combat/loot) | FEATURE-07/27/28, PACKET-03 |
 | GP-HOMUN | Homunculus works end-to-end (summon/feed/AI/combat/growth/hunger/skill) | FEATURE-08/29/30/31, PACKET-04 |

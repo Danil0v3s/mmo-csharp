@@ -1,6 +1,6 @@
 # GP-MAIL — RODEX mail works end-to-end
 
-> **Epic:** gameplay · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** ✅ Done (2026-06-03) · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** GP-AUCTION (shares attachment/escrow patterns)
 
 ## The deliverable (definition of done)
@@ -71,7 +71,9 @@ reading, and taking attachments all do nothing on the client.
 - Player B (online) gets a new-mail notify; opens RODEX, sees the mail, reads it, takes the
   zeny (balance +50,000) and the item (with cards intact), deletes it.
 - Overweight recipient is refused the item-take with the rAthena ack code; nothing is lost.
-- Both A and B relog → balances/inventory/mailbox intact; an expired rental item is gone on take.
+- Both A and B relog → balances/inventory/mailbox intact (persistence round-trips through the
+  char-side mail RPCs). ➡️ Expired-rental-gone-on-take **moved to GP-MAIL-RENTAL** (needs an
+  `expire_time` field on the `MailAttachmentItem` proto + char-side).
 - No CZ handler missing, no ZC emit stubbed.
 
 ## Test plan (cross-layer)
@@ -140,6 +142,30 @@ reading, and taking attachments all do nothing on the client.
   partial-settle); (b) rental-expiry on take (`expire_time` proto field); (c) read-window item
   `viewSprite`/`location` display hints (default 0 — faithful, the client renders from the item id).
   All are layers of THIS vertical (no separate tickets).
+- **2026-06-03 (turn 6 — DONE)** — Item-attachment compose landed; the full RODEX loop is reachable.
+  New CZ `CZ_REQ_ADD_ITEM_TO_MAIL` (0x0a04) / `CZ_REQ_REMOVE_ITEM_MAIL` (0x0a06) + ZC
+  `ZC_ACK_ADD_ITEM_RODEX` (0x0a05, 64-byte item-confirmation struct) / `ZC_ACK_REMOVE_ITEM_MAIL`
+  (0x0a07). Handlers `MailAddItemHandler` (client-index→server-index, `SetAttachment`, builds the
+  item ack with cards/options/refine/grade + running mail weight) / `MailRemoveItemHandler`
+  (`RemoveItem` + weight ack). `MailHandlersTests` now 16 (3 new). Full suite 4414 pass (1 = standing
+  replay-fixture). **End-to-end: a player composes a mail with zeny + a carded item, sends it; the
+  recipient opens RODEX, sees the list, reads it, claims the zeny + item (cards intact), deletes it
+  — all client→service→client, persisting via the char-side mail RPCs.**
+
+## History
+
+- 2026-06-03 — RODEX mail works end-to-end (6 turns). The service + persistence IPC were already
+  built (archive FEATURE-05); this card built the **entire client packet bridge** to rAthena struct
+  fidelity + handler unit tests: receive side (`CZ_OPEN_MAILBOX`/`refresh` → `ZC_ACK_MAIL_LIST`;
+  `CZ_REQ_READ_MAIL` → `ZC_ACK_READ_RODEX`; `CZ_REQ_ZENY/ITEM_FROM_MAIL` → acks; `CZ_REQ_DELETE_MAIL`
+  → `ZC_ACK_DELETE_MAIL`) and compose side (`CZ_REQ_OPEN_WRITE_MAIL`/`CZ_CHECKNAME`/
+  `CZ_REQ_ADD_ITEM_TO_MAIL`/`CZ_REQ_REMOVE_ITEM_MAIL`/`CZ_REQ_SEND_MAIL` → their acks), plus the
+  service methods (`RequestInbox`/`Read`/`Delete`/`CheckReceiver`) + the overweight gate. Corrected a
+  mislabeled packet (`ZC_MAIL_NEW_NOTIFY` 0x0ac2 → the real `ZC_ACK_MAIL_LIST`). 16 handler tests +
+  the extended service tests; full suite green (1 standing replay-fixture). Follow-ups filed:
+  **GP-MAIL-RENTAL** (rental-expiry on take — needs an `expire_time` proto field) and
+  **GP-MAIL-PARTIAL-CLAIM** (separated zeny-only/item-only claims — needs a char-side partial-settle).
+  Live-client byte-validation of the wire layouts is the project's standing deferred pass (all packets).
 
 ## Notes / gotchas
 

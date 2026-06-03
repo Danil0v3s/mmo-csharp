@@ -262,6 +262,10 @@ public enum PacketHeader : short
     ZC_CHECKNAME          = 0x0a14,        // RODEX receiver-name ack (clif_Mail_Receiver_Ack): charId.L class.W baseLevel.W, 10B
     CZ_REQ_SEND_MAIL      = 0x0a6e,        // RODEX send (clif_parse_Mail_send), variable
     ZC_WRITE_MAIL_RESULT  = 0x09ed,        // RODEX send result (rodexwriteresult): result.B, 3B
+    CZ_REQ_ADD_ITEM_TO_MAIL = 0x0a04,      // RODEX stage item (clif_parse_Mail_setattach): index.W count.W, 6B
+    ZC_ACK_ADD_ITEM_RODEX = 0x0a05,        // RODEX add-item ack (clif_Mail_setattachment): full item struct, 64B
+    CZ_REQ_REMOVE_ITEM_MAIL = 0x0a06,      // RODEX unstage item (clif_parse_Mail_winopen): index.W amount.W, 6B
+    ZC_ACK_REMOVE_ITEM_MAIL = 0x0a07,      // RODEX remove-item ack (clif_mail_removeitem): result.B index.W cnt.W weight.W, 9B
     ZC_LONGLONGPAR_CHANGE = 0x0acb,        // clif_longlongpar_change for SP_BASEEXP/JOBEXP at PACKETVER ≥ 20170830, 12B
     ZC_OVERWEIGHT_PERCENT = 0x0ade,        // pc_updateweightstatus, 6B
     ZC_INVENTORY_START    = 0x0b08,        // clif_inventorystart, variable

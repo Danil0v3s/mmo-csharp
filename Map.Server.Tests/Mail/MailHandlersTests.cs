@@ -191,6 +191,58 @@ public class MailHandlersTests
     }
 
     [Fact]
+    public async Task AddItem_stages_and_acks_the_item()
+    {
+        var (reg, mail, pc, session) = Build();
+        mail.SetOk = true;
+        session.Inventory = new List<Map.Server.Inventory.InventoryItem>
+        {
+            new() { Id = 1, ServerIndex = 5, NameId = 501, Amount = 10, Refine = 4, Identified = true, Card0 = 4001 },
+        };
+        var h = new MailAddItemHandler(reg, mail);
+
+        // client index 7 → server index 5
+        await h.HandleAsync(session, Cz(new CZ_REQ_ADD_ITEM_TO_MAIL(), ("ClientIndex", (ushort)7), ("Count", (short)3)));
+
+        Assert.Equal(5, mail.LastSetIndex);
+        var b = Outbound(session).Single(x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_ACK_ADD_ITEM_RODEX);
+        Assert.Equal(64, b.Length);                       // fixed-size struct
+        Assert.Equal(0, b[2]);                            // result = staged
+        Assert.Equal(7, BitConverter.ToInt16(b, 3));      // index (client)
+        Assert.Equal(3, BitConverter.ToInt16(b, 5));      // count
+        Assert.Equal(501u, BitConverter.ToUInt32(b, 7));  // itemId
+    }
+
+    [Fact]
+    public async Task AddItem_missing_item_acks_rejected()
+    {
+        var (reg, mail, pc, session) = Build();
+        mail.SetOk = true;
+        session.Inventory = new List<Map.Server.Inventory.InventoryItem>(); // empty — slot not present
+        var h = new MailAddItemHandler(reg, mail);
+
+        await h.HandleAsync(session, Cz(new CZ_REQ_ADD_ITEM_TO_MAIL(), ("ClientIndex", (ushort)7), ("Count", (short)3)));
+
+        var b = Outbound(session).Single(x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_ACK_ADD_ITEM_RODEX);
+        Assert.Equal(1, b[2]);                            // result = rejected
+    }
+
+    [Fact]
+    public async Task RemoveItem_acks_success()
+    {
+        var (reg, mail, pc, session) = Build();
+        mail.RemoveOk = true;
+        var h = new MailRemoveItemHandler(reg, mail);
+
+        await h.HandleAsync(session, Cz(new CZ_REQ_REMOVE_ITEM_MAIL(), ("ClientIndex", (ushort)7), ("Amount", (short)3)));
+
+        var b = Outbound(session).Single(x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_ACK_REMOVE_ITEM_MAIL);
+        Assert.Equal(9, b.Length);
+        Assert.Equal(1, b[2]);                            // success
+        Assert.Equal(7, BitConverter.ToInt16(b, 3));      // index
+    }
+
+    [Fact]
     public void ReadWindow_packet_size_matches_written_bytes()
     {
         var msg = new MailMessageData { MailId = 1, Body = "body", Zeny = 5 };
@@ -285,6 +337,7 @@ public class MailHandlersTests
         public MailMessageData? ReadResult;
         public bool SendOk; public string? LastSendTo; public long LastSendZeny;
         public bool CheckFound; public long CheckCharId;
+        public bool SetOk; public int LastSetIndex; public bool RemoveOk;
 
         public Task<bool> DeleteMailAsync(PlayerEntity pc, long mailId, CancellationToken ct = default)
         { LastDeleteId = mailId; return Task.FromResult(DeleteOk); }
@@ -297,8 +350,8 @@ public class MailHandlersTests
         public void Clear(PlayerEntity pc) { Cleared = true; }
         public Task<bool> SendAsync(PlayerEntity pc, string recipientName, string title, string body, CancellationToken ct = default)
         { LastSendTo = recipientName; LastSendZeny = pc.MailDraftZeny; return Task.FromResult(SendOk); }
-        public bool SetAttachment(PlayerEntity pc, int inventoryIndex, int amount) => false;
-        public bool RemoveItem(PlayerEntity pc, int inventoryIndex) => false;
+        public bool SetAttachment(PlayerEntity pc, int inventoryIndex, int amount) { LastSetIndex = inventoryIndex; return SetOk; }
+        public bool RemoveItem(PlayerEntity pc, int inventoryIndex) => RemoveOk;
         public bool RemoveZeny(PlayerEntity pc, long amount) => false;
         public bool InvalidOperation(PlayerEntity pc) => false;
         public void DeliveryFail(PlayerEntity pc) { }
