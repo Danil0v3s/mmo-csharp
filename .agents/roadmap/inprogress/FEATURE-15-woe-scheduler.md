@@ -1,6 +1,6 @@
 # FEATURE-15 — WoE (Agit) time-of-week scheduler
 
-> **Epic:** Gameplay-WoE · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-WoE · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Related:** PACKET-* (none required — WoE start/end fire NPC events + broadcasts)
 
