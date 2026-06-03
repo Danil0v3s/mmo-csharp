@@ -19,7 +19,7 @@ public class MailServiceTests
     private const uint PotionId = 501;
 
     private static (MailService svc, PlayerEntity pc, MapSessionData session, FakeMailIpc ipc) Build(
-        uint zeny = 100_000, params InventoryItem[] inv)
+        uint zeny = 100_000, Map.Server.Items.IItemCatalog? items = null, params InventoryItem[] inv)
     {
         var pc = new PlayerEntity(1, 7, "Sender", Guid.NewGuid(), 1, 50, 50) { Hp = 1, MaxHp = 1 };
         var sockets = TestSocketFactory.CreateSocketPair();
@@ -32,7 +32,7 @@ public class MailServiceTests
         };
         var sessions = new FakeSessions(session);
         var ipc = new FakeMailIpc();
-        var svc = new MailService(NullLogger<MailService>.Instance, sessions, ipc);
+        var svc = new MailService(NullLogger<MailService>.Instance, sessions, ipc, items);
         pc.MailOpened = true;
         return (svc, pc, session, ipc);
     }
@@ -133,7 +133,76 @@ public class MailServiceTests
         Assert.Equal(5u, session.Inventory!.Single().Amount); // never debited
     }
 
+    [Fact]
+    public async Task GetAttachment_over_weight_is_rejected_without_mutation()
+    {
+        var heavy = new FakeItems((909, weight: 30000)); // one unit already exceeds the 20000 cap
+        var (svc, pc, session, ipc) = Build(zeny: 1000, items: heavy, inv: Item(0, 1));
+        ipc.AttachZeny = 500;
+        ipc.AttachItems.Add(new MailAttachmentItem { NameId = 909, Amount = 1, Identify = 1 });
+
+        var ok = await svc.GetAttachmentAsync(pc, mailId: 42);
+
+        Assert.False(ok);
+        Assert.Equal(1000u, session.CharacterData!.Zeny);                 // zeny not credited
+        Assert.DoesNotContain(session.Inventory!, i => i.NameId == 909);  // item not credited
+    }
+
+    [Fact]
+    public async Task RequestInbox_returns_the_mailbox()
+    {
+        var (svc, pc, _, ipc) = Build();
+        ipc.Inbox.Add(new MailMessageData { MailId = 1, Title = "A", SenderName = "X" });
+        ipc.Inbox.Add(new MailMessageData { MailId = 2, Title = "B", SenderName = "Y" });
+
+        var inbox = await svc.RequestInboxAsync(pc);
+
+        Assert.Equal(2, inbox.Count);
+        Assert.Equal("A", inbox[0].Title);
+    }
+
+    [Fact]
+    public async Task ReadMail_returns_the_body_when_open()
+    {
+        var (svc, pc, _, ipc) = Build();
+        ipc.ReadResult = new MailMessageData { MailId = 7, Title = "Hi", Body = "Hello", SenderName = "X" };
+
+        var mail = await svc.ReadMailAsync(pc, 7);
+
+        Assert.NotNull(mail);
+        Assert.Equal("Hello", mail!.Body);
+
+        pc.MailOpened = false;
+        Assert.Null(await svc.ReadMailAsync(pc, 7)); // gated on the mailbox being open
+    }
+
+    [Fact]
+    public async Task DeleteMail_delegates_to_char_side()
+    {
+        var (svc, pc, _, ipc) = Build();
+        ipc.DeleteOk = true;
+        Assert.True(await svc.DeleteMailAsync(pc, 5));
+
+        ipc.DeleteOk = false;
+        Assert.False(await svc.DeleteMailAsync(pc, 5)); // char-side refusal honored
+    }
+
     // --- fakes ---
+
+    private sealed class FakeItems : Map.Server.Items.IItemCatalog
+    {
+        private readonly Dictionary<uint, Core.Database.Entities.ItemEntity> _byId = new();
+        public FakeItems(params (uint id, ushort weight)[] items)
+        {
+            foreach (var (id, weight) in items)
+                _byId[id] = new Core.Database.Entities.ItemEntity { Id = id, NameAegis = $"i{id}", Weight = weight, Type = "Etc" };
+        }
+        public int Count => _byId.Count;
+        public Core.Database.Entities.ItemEntity? Get(uint itemId) => _byId.GetValueOrDefault(itemId);
+        public Core.Database.Entities.ItemEntity? GetByAegisName(string aegisName) => null;
+        public IEnumerable<Core.Database.Entities.ItemEntity> All() => _byId.Values;
+        public void Reload() { }
+    }
 
     private sealed class FakeSessions(MapSessionData session) : ISessionManagerAccessor
     {
@@ -145,6 +214,8 @@ public class MailServiceTests
         public int SendCalls; public IReadOnlyList<MailAttachmentItem> LastItems = Array.Empty<MailAttachmentItem>();
         public long LastZeny; public bool FailSend;
         public long AttachZeny; public readonly List<MailAttachmentItem> AttachItems = new();
+        public readonly List<MailMessageData> Inbox = new();
+        public MailMessageData? ReadResult; public bool DeleteOk;
 
         public Task<MailReceiverCheckResponse?> MailReceiverCheckAsync(string receiverName, CancellationToken ct = default)
             => Task.FromResult<MailReceiverCheckResponse?>(new MailReceiverCheckResponse
@@ -166,11 +237,15 @@ public class MailServiceTests
         }
 
         public Task<MailRequestInboxResponse?> MailRequestInboxAsync(int accountId, long characterId, CancellationToken ct = default)
-            => Task.FromResult<MailRequestInboxResponse?>(new MailRequestInboxResponse());
+        {
+            var resp = new MailRequestInboxResponse { Success = true };
+            resp.Mails.AddRange(Inbox);
+            return Task.FromResult<MailRequestInboxResponse?>(resp);
+        }
         public Task<MailReadResponse?> MailReadAsync(int accountId, long characterId, long mailId, CancellationToken ct = default)
-            => Task.FromResult<MailReadResponse?>(new MailReadResponse());
+            => Task.FromResult<MailReadResponse?>(new MailReadResponse { Success = ReadResult != null, Mail = ReadResult });
         public Task<MailDeleteResponse?> MailDeleteAsync(int accountId, long characterId, long mailId, CancellationToken ct = default)
-            => Task.FromResult<MailDeleteResponse?>(new MailDeleteResponse());
+            => Task.FromResult<MailDeleteResponse?>(new MailDeleteResponse { Success = DeleteOk });
         public Task<MailReturnResponse?> MailReturnAsync(int accountId, long characterId, long mailId, CancellationToken ct = default)
             => Task.FromResult<MailReturnResponse?>(new MailReturnResponse());
     }

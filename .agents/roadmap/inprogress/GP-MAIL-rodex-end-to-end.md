@@ -82,6 +82,24 @@ reading, and taking attachments all do nothing on the client.
 - Persistence round-trip: send → reload recipient → mail present → take → reload → gone.
 - Live: full A→B compose/send/read/take/delete loop.
 
+## Progress log (multi-turn vertical)
+
+- **2026-06-03 (turn 1)** — Service layer completed + tested. The persistence IPC was already 100%
+  built (`MailRequestInbox`/`Read`/`GetAttachment`/`Delete`/`Return`/`Send`/`ReceiverCheck` RPCs +
+  messages all exist) and the service was ~85% (send/attach/remove/get-attachment with full item
+  fidelity, from archive FEATURE-05). This turn added the missing service API — `RequestInboxAsync`
+  / `ReadMailAsync` / `DeleteMailAsync` (wired to the existing IPC) — and the **overweight gate** on
+  `GetAttachmentAsync` (`IItemCatalog` weight vs. the 20000 + AddMaxWeight cap; the FEATURE-25
+  fold-in). `MailServiceTests` now 11 (4 new: over-weight reject, inbox, read-when-open,
+  delete-delegates). Full suite 4398 pass (1 = standing replay-fixture). **Card stays in-progress** —
+  the service is done but not yet client-reachable.
+- **Remaining (next turns):** the RODEX **client packet bridge** — the whole CZ set (open-write,
+  add/remove-item, send, read, list open/next/refresh, zeny/item-from-mail, delete, check-receiver-
+  name) + handlers, and the ZC emits (new-mail notify, inbox list, read window, get-attachment ack,
+  send ack, delete ack). Plus **rental-expiry on take**, which needs an `expire_time` field on the
+  `MailAttachmentItem` proto + char-side (the proto currently lacks it). This is the large,
+  client-version-specific half; it lands across the coming wakeups (the loop resumes this card).
+
 ## Notes / gotchas
 
 - The send fee is `mail_attachment_price` (default 2500), already a const in the service.

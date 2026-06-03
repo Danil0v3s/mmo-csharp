@@ -39,9 +39,22 @@ public interface IMailService
     void DeliveryFail(PlayerEntity pc);
 
     /// <summary>rAthena <c>mail_getattachment</c> — claim a mail's attachments (items + zeny) to the
-    /// PC's inventory. Rejects (returns false) when the inventory can't hold them.</summary>
+    /// PC's inventory. Rejects (returns false) when the inventory is full OR the player would be
+    /// over the weight limit (rAthena MAIL_ATTACH_WEIGHT / MAIL_ATTACH_ITEMCNT).</summary>
     Task<bool> GetAttachmentAsync(PlayerEntity pc, int mailId, CancellationToken ct = default);
 
     /// <summary>rAthena <c>mail_refresh_remaining_amount</c>.</summary>
     void RefreshRemainingAmount(PlayerEntity pc);
+
+    /// <summary>rAthena <c>clif_parse_Mail_refreshinbox</c> → <c>intif_Mail_requestinbox</c> — fetch
+    /// the PC's mailbox so the client list can render. Returns the inbox (empty list on failure).</summary>
+    Task<IReadOnlyList<Core.Server.IPC.MailMessageData>> RequestInboxAsync(PlayerEntity pc, CancellationToken ct = default);
+
+    /// <summary>rAthena <c>clif_parse_Mail_read</c> → <c>intif_Mail_read</c> — open one mail (marks it
+    /// read char-side) and return its full body + attachments for the read window. Null if not found.</summary>
+    Task<Core.Server.IPC.MailMessageData?> ReadMailAsync(PlayerEntity pc, long mailId, CancellationToken ct = default);
+
+    /// <summary>rAthena <c>clif_parse_Mail_delete</c> → <c>intif_Mail_delete</c> — delete one mail.
+    /// Rejects (false) if the mail still has unclaimed attachments (rAthena gate).</summary>
+    Task<bool> DeleteMailAsync(PlayerEntity pc, long mailId, CancellationToken ct = default);
 }

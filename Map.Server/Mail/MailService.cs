@@ -1,6 +1,7 @@
 using Core.Server.IPC;
 using Map.Server.Entities;
 using Map.Server.Inventory;
+using Map.Server.Items;
 using Map.Server.Services;
 using Map.Server.Status;
 using Microsoft.Extensions.Logging;
@@ -23,17 +24,21 @@ public sealed class MailService : IMailService
     // rAthena battle_config defaults: a per-item flat fee + a percentage tax on the attached zeny.
     private const long MailAttachmentPrice = 2500;    // battle_config.mail_attachment_price
     private const long MailZenyFeePercent = 0;        // battle_config.mail_zeny_fee
+    private const long BaseMaxWeight = 20000;         // rAthena pc.cpp base max weight
 
     private readonly ISessionManagerAccessor? _sessions;
     private readonly ICharServerIpcServiceMail? _mailIpc;
+    private readonly IItemCatalog? _items;
     private readonly ILogger<MailService> _logger;
 
     public MailService(ILogger<MailService> logger,
-        ISessionManagerAccessor? sessions = null, ICharServerIpcServiceMail? mailIpc = null)
+        ISessionManagerAccessor? sessions = null, ICharServerIpcServiceMail? mailIpc = null,
+        IItemCatalog? items = null)
     {
         _logger = logger;
         _sessions = sessions;
         _mailIpc = mailIpc;
+        _items = items;
     }
 
     /// <summary>rAthena <c>mail_openmail</c> — flip the open flag.</summary>
@@ -174,6 +179,10 @@ public sealed class MailService : IMailService
             if (FindMergeable(inv, a) == null) freshSlots++;
         if (inv.Count + freshSlots > MaxInventory) return false;
 
+        // Overweight gate (rAthena mail_getattachment MAIL_ATTACH_WEIGHT): the incoming items must
+        // not push the player past the weight cap.
+        if (CurrentWeight(inv) + IncomingWeight(resp.Items) > MaxWeight(pc)) return false;
+
         foreach (var a in resp.Items) CreditItem(session, inv, a);
         if (resp.Zeny > 0)
             session.CharacterData.Zeny = (uint)Math.Min(MaxDraftZeny, (long)session.CharacterData.Zeny + resp.Zeny);
@@ -189,8 +198,63 @@ public sealed class MailService : IMailService
     {
         if (_mailIpc == null) return;
         _ = _mailIpc.MailRequestInboxAsync(pc.AccountId, pc.CharacterId);
-        // PACKET-06: ZC_MAIL_REQ_GET_LIST render seam off the inbox response.
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<MailMessageData>> RequestInboxAsync(PlayerEntity pc, CancellationToken ct = default)
+    {
+        if (_mailIpc == null) return Array.Empty<MailMessageData>();
+        var resp = await _mailIpc.MailRequestInboxAsync(pc.AccountId, pc.CharacterId, ct);
+        if (resp is not { Success: true }) return Array.Empty<MailMessageData>();
+        _logger.LogInformation("mail_requestinbox: {Pc} has {N} mail(s)", pc.Name, resp.Mails.Count);
+        return resp.Mails;
+    }
+
+    /// <inheritdoc />
+    public async Task<MailMessageData?> ReadMailAsync(PlayerEntity pc, long mailId, CancellationToken ct = default)
+    {
+        if (!pc.MailOpened || _mailIpc == null) return null;
+        var resp = await _mailIpc.MailReadAsync(pc.AccountId, pc.CharacterId, mailId, ct);
+        if (resp is not { Success: true } || resp.Mail == null) return null;
+        return resp.Mail;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DeleteMailAsync(PlayerEntity pc, long mailId, CancellationToken ct = default)
+    {
+        if (!pc.MailOpened || _mailIpc == null) return false;
+        // rAthena gates delete on the attachments being claimed first; the char side is the
+        // authority (it knows the mail's current attach state) — delegate + honor its verdict.
+        var resp = await _mailIpc.MailDeleteAsync(pc.AccountId, pc.CharacterId, mailId, ct);
+        var ok = resp is { Success: true };
+        _logger.LogInformation("mail_delete: {Pc} delete mail #{Mail} = {Ok}", pc.Name, mailId, ok);
+        return ok;
+    }
+
+    // --- weight helpers (mirror the cash-shop / PlayerWeightStatusService pattern) ---
+
+    private long CurrentWeight(IReadOnlyList<InventoryItem> inv)
+    {
+        if (_items == null) return 0;
+        long w = 0;
+        foreach (var row in inv)
+        {
+            if (row.Amount == 0) continue;
+            w += (long)(_items.Get(row.NameId)?.Weight ?? 0) * row.Amount;
+        }
+        return w;
+    }
+
+    private long IncomingWeight(IReadOnlyList<MailAttachmentItem> items)
+    {
+        if (_items == null) return 0;
+        long w = 0;
+        foreach (var a in items)
+            w += (long)(_items.Get(a.NameId)?.Weight ?? 0) * a.Amount;
+        return w;
+    }
+
+    private static long MaxWeight(PlayerEntity pc) => BaseMaxWeight + Math.Max(0, pc.EquipBonuses.AddMaxWeight);
 
     // --- inventory helpers (mirror the Trade debit/credit-with-fidelity pattern) ---
 
