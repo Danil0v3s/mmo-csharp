@@ -18,4 +18,12 @@ public interface IPetClientService
     /// <summary>rAthena <c>clif_send_petdata</c> (ZC_CHANGESTATE_PET) — one changed field
     /// (intimacy/hunger/accessory/performance/...) for the pet, to the owner.</summary>
     void SendPetData(PlayerEntity master, PetEntity pet, PetDataType type, int data);
+
+    /// <summary>rAthena <c>clif_catch_process</c> (ZC_START_CAPTURE) — open the taming targeting
+    /// cursor on the owner's client once a catch is armed.</summary>
+    void SendCatchProcess(PlayerEntity master);
+
+    /// <summary>rAthena <c>clif_pet_roulette</c> (ZC_TRYCAPTURE_MONSTER) — the taming result
+    /// (caught / failed) to the owner.</summary>
+    void SendPetRoulette(PlayerEntity master, bool success);
 }

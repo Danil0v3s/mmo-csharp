@@ -64,10 +64,12 @@ public interface IPetOpsService
     void DelAutoBonus(PlayerEntity master);
     /// <summary>rAthena <c>pet_exeautobonus</c>.</summary>
     void ExeAutoBonus(PlayerEntity master);
-    /// <summary>rAthena <c>pet_catch_process_start</c>.</summary>
+    /// <summary>rAthena <c>pet_catch_process_start</c> — arm a catch for <paramref name="targetMobClass"/>
+    /// and open the targeting cursor (ZC_START_CAPTURE).</summary>
     void CatchProcessStart(PlayerEntity master, int targetMobClass);
-    /// <summary>rAthena <c>pet_catch_process_end</c>.</summary>
-    void CatchProcessEnd(PlayerEntity master, int targetMobClass);
+    /// <summary>rAthena <c>pet_catch_process_end</c> — the player clicked a monster to tame; roll the
+    /// capture against the live mob's HP% and (on success) remove it + create the egg.</summary>
+    void CatchProcessEnd(PlayerEntity master, EntityId targetId);
     /// <summary>rAthena <c>PetDatabase::reload</c>.</summary>
     void Reload();
 }

@@ -134,33 +134,8 @@ public class MobDeathObserverTests
         Assert.Equal(1, pc.AchievementLog.Single().Counts[0]);
     }
 
-    // --- Pet catch ---
-
-    [Fact]
-    public void Pet_catch_creates_egg_when_armed_and_roll_passes()
-    {
-        var ctx = Build();
-        var pc = ctx.AddPlayer(1);
-        pc.PetCatchTargetClass = PoporingClass; // armed
-
-        ctx.Observer.OnMobDead(ctx.Mob(), pc, ctx.DmgLog(pc));
-
-        Assert.Equal(1, ctx.Intif.PetCreateCalls);
-        Assert.Equal(PoporingClass, ctx.Intif.LastPetClass);
-        Assert.Equal(-1, pc.PetCatchTargetClass); // disarmed
-    }
-
-    [Fact]
-    public void Pet_catch_skipped_when_not_armed()
-    {
-        var ctx = Build();
-        var pc = ctx.AddPlayer(1);
-        pc.PetCatchTargetClass = -1; // not armed
-
-        ctx.Observer.OnMobDead(ctx.Mob(), pc, ctx.DmgLog(pc));
-
-        Assert.Equal(0, ctx.Intif.PetCreateCalls);
-    }
+    // NOTE: pet capture is no longer a death event (it was a parity bug). rAthena rolls the catch
+    // when the player clicks the LIVE mob (CZ_TRYCAPTURE_MONSTER) — see PetCaptureTests.
 
     // --- MVP ---
 
@@ -208,16 +183,10 @@ public class MobDeathObserverTests
         var mobDb = new FakeMobDb();
         var items = new FakeItems();
         var intif = new RecordingIntif();
-        // CaptureRate 10000 → death-time rate 10000/10000 → always succeeds regardless of RNG.
-        var petOps = new PetOpsService(NullLogger<PetOpsService>.Instance, mobDb, items, intif, new Random(0));
-        petOps.SeedCatalogForTest(new PetDbEntity
-        {
-            MobAegis = PoporingAegis, EggItem = "POPORING_EGG", CaptureRate = 10000, IntimacyStart = 250, Fullness = 80,
-        });
         var exp = new FakeExp();
         var drops = new FakeDrops();
 
-        var observer = new MobDeathObserver(entities, quest, achievement, petOps,
+        var observer = new MobDeathObserver(entities, quest, achievement,
             NullLogger<MobDeathObserver>.Instance, exp, drops, items, players: null, sessions: null);
 
         return new TestContext(observer, quest, achievement, intif, exp, drops, entities, mapId);

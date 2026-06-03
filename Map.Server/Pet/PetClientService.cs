@@ -49,4 +49,10 @@ public sealed class PetClientService : IPetClientService
             Data = data,
         });
     }
+
+    public void SendCatchProcess(PlayerEntity master)
+        => _sessions.GetByEntityId(master.Id)?.EnqueuePacket(new ZC_START_CAPTURE());
+
+    public void SendPetRoulette(PlayerEntity master, bool success)
+        => _sessions.GetByEntityId(master.Id)?.EnqueuePacket(new ZC_TRYCAPTURE_MONSTER { Success = success });
 }

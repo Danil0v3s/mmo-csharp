@@ -22,7 +22,6 @@ public sealed class MobDeathObserver : IMobDeathObserver
     private readonly IEntityRegistry _entities;
     private readonly IQuestService _quest;
     private readonly IAchievementService _achievement;
-    private readonly IPetOpsService _pet;
     private readonly IExpService? _exp;
     private readonly IItemDropService? _itemDrops;
     private readonly IItemCatalog? _items;
@@ -34,7 +33,6 @@ public sealed class MobDeathObserver : IMobDeathObserver
         IEntityRegistry entities,
         IQuestService quest,
         IAchievementService achievement,
-        IPetOpsService pet,
         ILogger<MobDeathObserver> logger,
         IExpService? exp = null,
         IItemDropService? itemDrops = null,
@@ -45,7 +43,6 @@ public sealed class MobDeathObserver : IMobDeathObserver
         _entities = entities;
         _quest = quest;
         _achievement = achievement;
-        _pet = pet;
         _logger = logger;
         _exp = exp;
         _itemDrops = itemDrops;
@@ -79,10 +76,9 @@ public sealed class MobDeathObserver : IMobDeathObserver
             if (achievementMatch)
                 _achievement.UpdateObjective(pc, (byte)AchievementGroup.Battle, 0, mob.ClassId);
         }
-
-        // 5. Pet catch — only the catcher (rAthena keys off the killer's catch_target_class).
-        if (killer != null && killer.PetCatchTargetClass == mob.ClassId)
-            _pet.CatchProcessEnd(killer, mob.ClassId);
+        // NOTE: pet capture is NOT a death event. rAthena's pet_catch_process_end fires when the
+        // player clicks the LIVE mob with a taming item armed (CZ_TRYCAPTURE_MONSTER → PetMenuHandler
+        // sibling), rolling against the mob's current HP%. Handled by PetCaptureHandler, not here.
     }
 
     /// <summary>Distinct live PCs in the damage log, plus the killer (deduped).</summary>

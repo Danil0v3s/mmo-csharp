@@ -251,6 +251,9 @@ public enum PacketHeader : short
     ZC_UPDATE_MISSION_HUNT = 0x09fa,       // clif_quest_update_objective: <len>.W <count>.W then per-obj questId.L questIndex.L target.W current.W, variable.
 
     // Pet (GP-PET). rAthena pet.cpp / clif.cpp pet packet set.
+    ZC_START_CAPTURE      = 0x019e,        // clif_catch_process: header only, 2B (opens the taming targeting cursor).
+    CZ_TRYCAPTURE_MONSTER = 0x019f,        // clif_parse_CatchPet: <target id>.L, 6B (click the mob to tame).
+    ZC_TRYCAPTURE_MONSTER = 0x01a0,        // clif_pet_roulette: <result>.B, 3B (1=caught, 0=failed).
     CZ_COMMAND_PET        = 0x01a1,        // clif_parse_PetMenu: <type>.B, 3B (0=info 1=feed 2=performance 3=return 4=unequip).
     ZC_PROPERTY_PET       = 0x01a2,        // clif_send_petstatus: <name>.24 <renamed>.B <level>.W <hunger>.W <intimacy>.W <accessory>.W <class>.W, 37B.
     ZC_CHANGESTATE_PET    = 0x01a4,        // clif_send_petdata: <type>.B <GID>.L <data>.L, 11B (intimacy/hunger/accessory/... update).

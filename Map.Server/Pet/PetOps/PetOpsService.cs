@@ -40,6 +40,7 @@ public sealed class PetOpsService : IPetOpsService
     private readonly Map.Server.Status.ISessionManagerAccessor? _sessions;
     private readonly Map.Server.Inventory.IInventoryService? _inventory;
     private readonly IPetClientService? _client;
+    private readonly Map.Server.Visibility.IVisibilityService? _visibility;
     private readonly Random _rng;
 
     // FEATURE-07 — egg item id → pet class id (built lazily from pet_db + mob_db).
@@ -56,6 +57,7 @@ public sealed class PetOpsService : IPetOpsService
         Map.Server.Status.ISessionManagerAccessor? sessions = null,
         Map.Server.Inventory.IInventoryService? inventory = null,
         IPetClientService? client = null,
+        Map.Server.Visibility.IVisibilityService? visibility = null,
         Random? rng = null)
     {
         _scopes = scopes;
@@ -68,6 +70,7 @@ public sealed class PetOpsService : IPetOpsService
         _sessions = sessions;
         _inventory = inventory;
         _client = client;
+        _visibility = visibility;
         _rng = rng ?? Random.Shared;
         Reload();
     }
@@ -81,7 +84,8 @@ public sealed class PetOpsService : IPetOpsService
         Map.Server.Inventory.IInventoryService? inventory = null,
         IPetService? pet = null,
         IPetClientService? client = null,
-        IEntityRegistry? entities = null)
+        IEntityRegistry? entities = null,
+        Map.Server.Visibility.IVisibilityService? visibility = null)
     {
         _logger = logger;
         _mobDb = mobDb;
@@ -92,6 +96,7 @@ public sealed class PetOpsService : IPetOpsService
         _pet = pet;
         _client = client;
         _entities = entities;
+        _visibility = visibility;
         _rng = rng ?? Random.Shared;
     }
 
@@ -443,57 +448,79 @@ public sealed class PetOpsService : IPetOpsService
 
     // ----- Catch -----
 
+    /// <summary>rAthena <c>pet_catch_process_start</c> (pet.cpp:1214): arm a catch for the mob class
+    /// and open the targeting cursor (<c>clif_catch_process</c> → ZC_START_CAPTURE).</summary>
     public void CatchProcessStart(PlayerEntity master, int targetMobClass)
     {
         master.PetCatchTargetClass = targetMobClass;
+        _client?.SendCatchProcess(master);
         _logger.LogInformation("pet_catch_process_start: {Master} → class {Cls}",
             master.Name, targetMobClass);
     }
 
+    /// <summary>rAthena <c>pet_distance_check</c> default — max king-move distance to the tamed mob.</summary>
+    private const int PetDistanceCheck = 5;
+
     /// <summary>
-    /// FEATURE-01 — rAthena <c>pet_catch_process_end</c> (pet.cpp:1241): the mob the player armed a
-    /// catch for just died, so roll the capture and (on success) create the egg char-side. Called by
-    /// the mob-death observer for the killer. The mob is at 0 HP when this runs, so the rAthena
-    /// non-legacy rate at full HP-loss is <c>capture + (100-0)*capture/100 = 2·capture</c>.
+    /// rAthena <c>pet_catch_process_end</c> (pet.cpp:1241): the player clicked a monster to tame.
+    /// Validates the armed catch (mob alive, tameable, the armed class matches, in range), rolls the
+    /// non-legacy capture rate <c>capture + ((100 − hp%) · capture) / 100</c> (≥1) against the mob's
+    /// LIVE HP%, and on success removes the mob from the map + creates the egg char-side
+    /// (<c>intif_create_pet</c>). Emits <c>clif_pet_roulette</c> either way and disarms the catch.
     /// </summary>
-    public void CatchProcessEnd(PlayerEntity master, int targetMobClass)
+    public void CatchProcessEnd(PlayerEntity master, EntityId targetId)
     {
-        master.PetCatchTargetClass = -1; // disarm regardless of outcome (rAthena clears catch_target_class)
+        var armedClass = master.PetCatchTargetClass;
+        master.PetCatchTargetClass = -1; // disarm regardless of outcome (rAthena erases the process)
 
-        var aegis = _mobDb?.Get(targetMobClass)?.AegisName;
+        if (armedClass < 0) { Fail(master); return; }                        // no catch armed
+        if (_entities?.Get(targetId) is not Map.Server.Entities.MobEntity mob // invalid / gone
+            || mob is Map.Server.Entities.PetEntity || mob.Hp <= 0)
+        { Fail(master); return; }
+
+        var aegis = _mobDb?.Get(mob.ClassId)?.AegisName;
         var pet = aegis != null ? GetCatalogEntry(aegis) : null;
-        if (pet == null)
-        {
-            // Not a tameable mob (no pet_db row) — nothing to roll.
-            _logger.LogInformation("pet_catch_process_end: {Master} class {Cls} is not tameable", master.Name, targetMobClass);
-            return;
-        }
+        if (pet == null) { Fail(master); return; }                           // not tameable (no pet_db)
 
+        // PET_CATCH_NORMAL parity: the armed taming target must be this mob's class.
+        if (armedClass != mob.ClassId) { Fail(master); return; }
+
+        // rAthena battle_config.pet_distance_check (default 5) — Chebyshev range to the target.
+        var dist = Math.Max(Math.Abs(master.X - mob.X), Math.Abs(master.Y - mob.Y));
+        if (dist > PetDistanceCheck) { Fail(master); return; }
+
+        // Non-legacy rate vs the mob's LIVE HP%. get_percentage(hp, max_hp).
+        var hpPct = mob.MaxHp > 0 ? (int)(100L * mob.Hp / mob.MaxHp) : 0;
         var capture = pet.CaptureRate ?? 0;
-        // mob is dead → HP% = 0 → rate = capture + (100-0)*capture/100. Clamp to the 10000 scale.
-        var rate = Math.Clamp(capture + (100 * capture) / 100, 0, 10000);
-        var success = rate > 0 && _rng.Next(10000) < rate;
+        var rate = capture + ((100 - hpPct) * capture) / 100;
+        if (rate < 1) rate = 1;
 
-        if (!success)
+        if (_rng.Next(10000) >= rate)
         {
-            // Failure: rAthena clif_pet_roulette(sd,false). The ZC_TRYCAPTURE result packet is owned
-            // by PACKET-03 (see PET-CATCH-PACKET follow-up); the catch marker is already cleared above.
-            _logger.LogInformation("pet_catch_process_end: {Master} failed to catch {Aegis} (rate={Rate}/10000)",
-                master.Name, aegis, rate);
+            _logger.LogInformation("pet_catch_process_end: {Master} failed to catch {Aegis} (rate={Rate}/10000, hp%={Hp})",
+                master.Name, aegis, rate, hpPct);
+            Fail(master);
             return;
         }
+
+        // Success — remove the mob (rAthena unit_remove_map + status_kill, CLR_OUTSIGHT), tell the
+        // client it was caught, and create the egg row char-side (granted via pet_get_egg later).
+        _visibility?.NotifyVanishedToArea(mob, Core.Server.Packets.Out.ZC.VanishReason.Outsight);
+        _entities?.Remove(mob.Id);
+        _client?.SendPetRoulette(master, true);
 
         var eggId = pet.EggItem != null ? (int)(_items?.GetByAegisName(pet.EggItem)?.Id ?? 0) : 0;
-        var petName = _mobDb?.Get(targetMobClass)?.Name ?? aegis;
+        var petName = _mobDb?.Get(mob.ClassId)?.Name ?? aegis;
         var intimacy = (byte)Math.Clamp(pet.IntimacyStart ?? 250, 0, 255);
         var hungry = (byte)Math.Clamp(pet.Fullness ?? MaxHunger, 0, 100);
-        // Success: create the egg row char-side (rAthena intif_create_pet). The ZC capture-success
-        // packet is PACKET-03 scope; the persistent egg creation is the real reward here.
-        _intif?.PetCreate(master, classId: targetMobClass, nameId: eggId, rename: 0, eggItemId: eggId,
+        _intif?.PetCreate(master, classId: mob.ClassId, nameId: eggId, rename: 0, eggItemId: eggId,
             intimate: intimacy, hungry: hungry, gender: '\0', petName: petName);
-        _logger.LogInformation("pet_catch_process_end: {Master} caught {Aegis} (rate={Rate}/10000) → egg {Egg}",
-            master.Name, aegis, rate, eggId);
+        _logger.LogInformation("pet_catch_process_end: {Master} caught {Aegis} (rate={Rate}/10000, hp%={Hp}) → egg {Egg}",
+            master.Name, aegis, rate, hpPct, eggId);
     }
+
+    /// <summary>rAthena <c>clif_pet_roulette(sd, false)</c> — the catch attempt failed.</summary>
+    private void Fail(PlayerEntity master) => _client?.SendPetRoulette(master, false);
 
     // ----- Catalog -----
 

@@ -206,7 +206,7 @@ public class PetMenuEmitTests
         public void DelAutoBonus(PlayerEntity master) { }
         public void ExeAutoBonus(PlayerEntity master) { }
         public void CatchProcessStart(PlayerEntity master, int targetMobClass) { }
-        public void CatchProcessEnd(PlayerEntity master, int targetMobClass) { }
+        public void CatchProcessEnd(PlayerEntity master, EntityId targetId) { }
         public void Reload() { }
     }
 }

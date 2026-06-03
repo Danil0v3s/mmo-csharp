@@ -75,7 +75,8 @@ this ticket already needed.** "Service landed, packets later" is not done.
 | GP-MAIL-RENTAL | Rental-item expiry on mail attachments (needs expire_time proto field) — split from GP-MAIL |
 | GP-MAIL-PARTIAL-CLAIM | Separated zeny-only/item-only mail claims (needs char partial-settle) — split from GP-MAIL |
 | GP-AUCTION | Auction house works end-to-end (register/bid/buy/cancel/search) | FEATURE-06/26, PACKET-07 |
-| GP-PET | Pet works end-to-end (catch/hatch/feed/rename/return/combat/loot) | FEATURE-07/27/28, PACKET-03 |
+| GP-PET | 🚧 Pet works end-to-end (catch/hatch/feed/rename/return/combat/loot) — capture-gates→GP-PET-CATCH-GATES | FEATURE-07/27/28, PACKET-03 |
+| GP-PET-CATCH-GATES | nopetcapture mapflag + hide-check + inventory-blank capture guards — split from GP-PET |
 | GP-HOMUN | Homunculus works end-to-end (summon/feed/AI/combat/growth/hunger/skill) | FEATURE-08/29/30/31, PACKET-04 |
 | GP-MERC | Mercenary works end-to-end (summon/AI/combat/lifetime) | FEATURE-09/32/33, PACKET-05 |
 | GP-ELEM | Elemental works end-to-end (summon/AI/lifetime/persist) | FEATURE-10/34 |
