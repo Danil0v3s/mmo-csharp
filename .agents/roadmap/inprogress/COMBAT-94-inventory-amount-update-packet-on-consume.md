@@ -1,6 +1,6 @@
 # COMBAT-94 — Immediate inventory amount-update packet on consume (ammo + items)
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Filed by:** COMBAT-76 — its scope mentioned "the explicit inventory amount packet on consume";
 > the codebase has no immediate amount-update packet, so ammo/item consume only syncs the FULL
