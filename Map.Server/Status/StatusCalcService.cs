@@ -291,7 +291,11 @@ public sealed class StatusCalcService : IStatusCalcService
         var (fixedSc, rateSc, fixAspd) = ComputeScAspd(player);
         // COMBAT-50 — skill `val` ASPD terms (status.cpp:2343-2353): summed with the
         // SC fixed term inside the `(status_calc_aspd(true)+val)*agi/200` stage.
-        var skillVal = ComputeSkillAspdVal(player, inputs.WeaponType);
+        // COMBAT-69 — supply the per-class job-level cap (jobId→aegis→job_db.MaxJobLevel) so the
+        // SG_DEVIL `pc_is_maxjoblv` half resolves for a maxed Star Gladiator.
+        var devilAegis = JobAegisMapper.AegisByJobId(inputs.JobId);
+        var maxJobLevel = (_jobStats != null && devilAegis != null) ? _jobStats.GetMaxJobLevel(devilAegis) : 0;
+        var skillVal = ComputeSkillAspdVal(player, inputs.WeaponType, maxJobLevel);
         var amotion = RenewalPcAmotion(
             aspdBase, s.Dex, s.Agi, inputs.WeaponType,
             aspdRate2: eq?.FlatAspdRate ?? 0, aspdAddVal: eq?.FlatAspd ?? 0,
@@ -714,7 +718,7 @@ public sealed class StatusCalcService : IStatusCalcService
     /// learned skill level + weapon / mount / class. Summed with the SC fixed term
     /// inside <c>(status_calc_aspd(true)+val)·agi/200</c>.
     /// </summary>
-    internal static int ComputeSkillAspdVal(PlayerEntity pc, int weaponType)
+    internal static int ComputeSkillAspdVal(PlayerEntity pc, int weaponType, int maxJobLevel = 0)
     {
         int Lv(ushort id) => pc.LearnedSkills.GetValueOrDefault(id);
         int val = 0;
@@ -724,10 +728,14 @@ public sealed class StatusCalcService : IStatusCalcService
         if (ab > 0 && weaponType == Map.Server.Inventory.WeaponTypeCodes.Book)
             val += (ab - 1) / 2 + 1;
 
-        // SG_DEVIL — Star Emperor (Taekwon 3rd-class): +1 + lv. The rAthena
-        // `|| pc_is_maxjoblv` Star-Gladiator-at-max-job path is COMBAT-69.
+        // SG_DEVIL — +1 + lv. rAthena gate (status.cpp:2345):
+        //   (class & MAPID_THIRDMASK) == MAPID_STAR_EMPEROR || pc_is_maxjoblv(sd)
+        // COMBAT-69 adds the `|| pc_is_maxjoblv` half: a Star Gladiator (Taekwon 2nd-class,
+        // not yet Star Emperor) who is at their job-level cap also gets the bonus. maxJobLevel
+        // is 0 when no job-stats cache is wired (callers without it keep the Star-Emperor-only
+        // behavior).
         int dv = Lv(SkillIds.SG_DEVIL);
-        if (dv > 0 && IsStarEmperor(pc))
+        if (dv > 0 && (IsStarEmperor(pc) || (maxJobLevel > 0 && pc.JobLevel >= maxJobLevel)))
             val += 1 + dv;
 
         // GS_SINGLEACTION — guns (W_REVOLVER..W_GRENADE): +(lv+1)/2.

@@ -1,6 +1,6 @@
 # COMBAT-69 — SG_DEVIL max-job-level ASPD clause (Star Gladiator path)
 
-> **Epic:** combat · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
+> **Epic:** combat · **Status:** ✅ Done (2026-06-03) · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-50 (the skill-val ASPD seam) · **Blocks:** none
 > **Filed by:** COMBAT-50 — the `|| pc_is_maxjoblv` half of the SG_DEVIL gate it could not cleanly resolve.
 
@@ -28,14 +28,17 @@ not the job aegis name `IJobStatsCacheService.GetMaxJobLevel` keys on).
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Thread a per-class max-job-level resolver (jobId→aegis→`GetMaxJobLevel`, or a jobId-keyed
-      accessor) into `StatusCalcService`/`ComputeSkillAspdVal`.
-- [ ] Extend the SG_DEVIL gate to `IsStarEmperor(pc) || pc.JobLevel >= maxJobLevel`.
+- [x] Threaded the per-class job-level cap into `ComputeSkillAspdVal` via a new `int maxJobLevel`
+      param, computed at the `CalcPc` call site from `JobAegisMapper.AegisByJobId(inputs.JobId)` →
+      `IJobStatsCacheService.GetMaxJobLevel` (the jobId→aegis resolver already existed in the file;
+      the ticket's "not reachable" note was stale). `maxJobLevel` defaults 0 so callers without a
+      job-stats cache keep the Star-Emperor-only behavior.
+- [x] Extended the SG_DEVIL gate to `IsStarEmperor(pc) || (maxJobLevel > 0 && pc.JobLevel >= maxJobLevel)`.
 
 ## Done criteria
 
 - A Star Gladiator at max job level with SG_DEVIL learned gets `+1 + lv` ASPD val; below max
-  job level, no bonus. Star Emperors keep the existing behavior.
+  job level, no bonus. Star Emperors keep the existing behavior. ✅ Combat69SgDevilMaxJobTests (3).
 
 ## Test plan
 
@@ -45,3 +48,13 @@ not the job aegis name `IJobStatsCacheService.GetMaxJobLevel` keys on).
 
 - COMBAT-50 already wires `ComputeSkillAspdVal` into the amotion formula — this only widens the
   SG_DEVIL gate + supplies the max-job-level input.
+
+## History
+
+- 2026-06-03 · Widened the SG_DEVIL ASPD gate with the `|| pc_is_maxjoblv` half. Added a
+  `maxJobLevel` param to `StatusCalcService.ComputeSkillAspdVal` (default 0 = backward-compatible),
+  computed at the `CalcPc` call site via `JobAegisMapper.AegisByJobId(inputs.JobId)` →
+  `GetMaxJobLevel`; the gate is now `IsStarEmperor(pc) || (maxJobLevel > 0 && pc.JobLevel >=
+  maxJobLevel)`. The jobId→aegis resolver already existed in the file (ticket's "not reachable"
+  premise was stale). Combat69SgDevilMaxJobTests (3); Status+Combat suite 801 green, full suite
+  4088 pass (1 fail = pre-existing INFRA-11 replay gate). No follow-ups.
