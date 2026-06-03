@@ -1898,9 +1898,21 @@ builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler>(sp 
     new Map.Server.Skills.Units.Handlers.WarpPortalUnit(sp.GetService<Map.Server.Movement.IPcSetposService>()));
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.AllBloomAtkUnit>();
 // COMBAT-55 — Ranger trap damage units.
-builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.ClusterBombUnit>();
-builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.FiringTrapUnit>();
-builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.IceboundTrapUnit>();
+// COMBAT-74 — Ranger traps splash on detonation + consume the unit, so they take the splash
+// service + a Lazy<ISkillUnitService> (the direct dep would cycle SkillUnitService → handler →
+// SkillUnitService).
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler>(sp =>
+    new Map.Server.Skills.Units.Handlers.ClusterBombUnit(
+        sp.GetService<Map.Server.Skills.Splash.IMapForeachInRangeService>(),
+        new Lazy<Map.Server.Skills.ISkillUnitService>(sp.GetRequiredService<Map.Server.Skills.ISkillUnitService>)));
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler>(sp =>
+    new Map.Server.Skills.Units.Handlers.FiringTrapUnit(
+        sp.GetService<Map.Server.Skills.Splash.IMapForeachInRangeService>(),
+        new Lazy<Map.Server.Skills.ISkillUnitService>(sp.GetRequiredService<Map.Server.Skills.ISkillUnitService>)));
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler>(sp =>
+    new Map.Server.Skills.Units.Handlers.IceboundTrapUnit(
+        sp.GetService<Map.Server.Skills.Splash.IMapForeachInRangeService>(),
+        new Lazy<Map.Server.Skills.ISkillUnitService>(sp.GetRequiredService<Map.Server.Skills.ISkillUnitService>)));
 builder.Services.AddSingleton<Map.Server.Skills.Units.SkillUnitTickRegistry>();
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitContext, Map.Server.Skills.Units.SkillUnitContext>();
 builder.Services.AddSingleton<Map.Server.Skills.ISkillUnitService, Map.Server.Skills.SkillUnitService>();
