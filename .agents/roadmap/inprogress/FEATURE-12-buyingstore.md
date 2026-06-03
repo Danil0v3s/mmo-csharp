@@ -1,6 +1,6 @@
 # FEATURE-12 — Buying store
 
-> **Epic:** Gameplay-Shop · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-Shop · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Related:** PACKET-* (buying-store UI packets)
 
