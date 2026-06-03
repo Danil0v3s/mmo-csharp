@@ -93,12 +93,24 @@ reading, and taking attachments all do nothing on the client.
   fold-in). `MailServiceTests` now 11 (4 new: over-weight reject, inbox, read-when-open,
   delete-delegates). Full suite 4398 pass (1 = standing replay-fixture). **Card stays in-progress** —
   the service is done but not yet client-reachable.
-- **Remaining (next turns):** the RODEX **client packet bridge** — the whole CZ set (open-write,
-  add/remove-item, send, read, list open/next/refresh, zeny/item-from-mail, delete, check-receiver-
-  name) + handlers, and the ZC emits (new-mail notify, inbox list, read window, get-attachment ack,
-  send ack, delete ack). Plus **rental-expiry on take**, which needs an `expire_time` field on the
-  `MailAttachmentItem` proto + char-side (the proto currently lacks it). This is the large,
-  client-version-specific half; it lands across the coming wakeups (the loop resumes this card).
+- **2026-06-03 (turn 2)** — Started the RODEX packet bridge (decision: build to rAthena struct
+  fidelity + handler unit tests; live-client byte-validation is a later pass, the project's standing
+  standard). Landed the **manage-action path**: CZ defs `CZ_REQ_DELETE_MAIL` (0x09f5),
+  `CZ_REQ_ITEM_FROM_MAIL` (0x09f3), `CZ_REQ_ZENY_FROM_MAIL` (0x09f1) + ZC acks `ZC_ACK_DELETE_MAIL`
+  (0x09f6), `ZC_ACK_ITEM_FROM_MAIL` (0x09f4), `ZC_ACK_ZENY_FROM_MAIL` (0x09f2) — layouts from
+  rAthena `packets_struct.hpp`; 6 `PacketHeader` entries. Handlers `MailDeleteHandler` /
+  `MailGetItemHandler` / `MailGetZenyHandler` wire CZ → `IMailService.DeleteMailAsync` /
+  `GetAttachmentAsync` → ZC ack (auto-discovered via `[PacketHandler]` + reflection registration).
+  `MailHandlersTests` (5) green; full suite 4403 pass (1 = standing replay-fixture).
+- **Remaining (next turns):** (1) the **inbox-list + read-window** ZC render — `ZC_ACK_MAIL_LIST`
+  (0x0ac2 era) + `ZC_ACK_READ_RODEX`, the two complex variable-length packets (nested per-mail +
+  per-attachment), + their CZ requests (open-mailbox/refresh/next, read). (2) the **compose/send**
+  path — begin-write, add/remove-item, send, check-receiver-name CZ + acks. (3) **separated
+  zeny-only / item-only partial claims** — the current get-zeny/get-item both settle the whole
+  attachment via the combined char-side RPC; the true partial claim needs a char-side
+  partial-settle path (noted in `MailGetZenyHandler`). (4) **rental-expiry on take** — needs an
+  `expire_time` field on the `MailAttachmentItem` proto + char-side. All are layers of THIS vertical
+  (no separate tickets); the loop resumes this card.
 
 ## Notes / gotchas
 

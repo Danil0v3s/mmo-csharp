@@ -244,6 +244,13 @@ public enum PacketHeader : short
     ZC_ACH_UPDATE         = 0x0a24,        // clif_achievement_update, 66B
     ZC_EQUIPSWITCH_LIST   = 0x0a9b,        // clif_equipswitch_list, variable
     ZC_MAIL_NEW_NOTIFY    = 0x0ac2,        // mail / rodex update (PACKETVER ≥ 20170419), 5B
+    // RODEX manage-action packets (GP-MAIL). Layouts from rAthena packets_struct.hpp.
+    CZ_REQ_ZENY_FROM_MAIL = 0x09f1,        // clif_parse_Mail_getattach (zeny): MailID.Q opentype.B, 11B
+    ZC_ACK_ZENY_FROM_MAIL = 0x09f2,        // clif_mail_getattachment ack (zeny): MailID.Q opentype.B result.B, 12B
+    CZ_REQ_ITEM_FROM_MAIL = 0x09f3,        // clif_parse_Mail_getattach (item): MailID.Q opentype.B, 11B
+    ZC_ACK_ITEM_FROM_MAIL = 0x09f4,        // clif_mail_getattachment ack (item): MailID.Q opentype.B result.B, 12B
+    CZ_REQ_DELETE_MAIL    = 0x09f5,        // clif_parse_Mail_delete: opentype.B MailID.Q, 11B
+    ZC_ACK_DELETE_MAIL    = 0x09f6,        // clif_mail_delete ack: opentype.B MailID.Q, 11B
     ZC_LONGLONGPAR_CHANGE = 0x0acb,        // clif_longlongpar_change for SP_BASEEXP/JOBEXP at PACKETVER ≥ 20170830, 12B
     ZC_OVERWEIGHT_PERCENT = 0x0ade,        // pc_updateweightstatus, 6B
     ZC_INVENTORY_START    = 0x0b08,        // clif_inventorystart, variable
