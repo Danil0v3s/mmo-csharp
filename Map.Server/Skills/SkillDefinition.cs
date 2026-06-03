@@ -139,7 +139,7 @@ public sealed record SkillDefinition
     /// multiplier; the per-skill ratio is hardcoded in
     /// <c>battle_calc_attack_skill_ratio</c>. For any skill with a
     /// <see cref="Behaviors.WeaponSkillImpl"/> plugin, the plugin's
-    /// <see cref="Behaviors.WeaponSkillImpl.ComputeSkillDamage"/> is the single
+    /// <see cref="Behaviors.SkillImpl.ComputeSkillDamage"/> is the single
     /// ratio authority and this column is ignored; it is read only for the long
     /// tail of skills with no plugin. (Heal / Misc skills repurpose this as a
     /// per-level *amount*, not a ratio.)

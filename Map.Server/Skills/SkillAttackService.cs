@@ -186,7 +186,7 @@ public sealed class SkillAttackService : ISkillAttackService
     /// <summary>
     /// SKILL-05 — weapon damage for the funnel. When a skill has a registered
     /// <see cref="Behaviors.WeaponSkillImpl"/> plugin, its
-    /// <see cref="Behaviors.WeaponSkillImpl.ComputeSkillDamage"/> is the single
+    /// <see cref="Behaviors.SkillImpl.ComputeSkillDamage"/> is the single
     /// ratio authority (same number this skill produces via
     /// ResolveSkill→CastendDamageId) — the <see cref="SkillDefinition.DamageRate"/>
     /// column is consulted ONLY for skills with no plugin.

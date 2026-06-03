@@ -151,7 +151,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-88 | Cast-lock: block attack/move while casting unless SA_FREECAST — split from COMBAT-70 |
 | COMBAT-89 | Bespoke OnRecalc tail (~73 handlers) + primary-coupled sub-class — split from COMBAT-72 |
 | COMBAT-90 | ✅ MaxHp/MaxSp re-fold tail (14 handlers: % snapshot/inverse, flat, Berserk ×3, Melodyofsink debuff) — split from COMBAT-73 |
-| COMBAT-91 | KO_HUUMARANKA/KO_BAKURETSU splash damage path + base-ratio terms + KAGEMUSYA — split from COMBAT-75 |
+| COMBAT-91 | ✅ KO_HUUMARANKA/KO_BAKURETSU splash damage path + base-ratio terms (ComputeSkillDamage hoisted to SkillImpl) — split from COMBAT-75 |
 | COMBAT-92 | Real skill_db Requirements column loader (fold curated ammo/Inf2 overlays) — split from COMBAT-76 |
 | COMBAT-93 | Reconcile SkillFailCause with rAthena e_useskill_fail_cause wire values — split from COMBAT-76 |
 | COMBAT-94 | Immediate inventory amount-update packet on consume (ammo + items) — split from COMBAT-76 |
@@ -172,6 +172,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-109 | General bMagicAtkEle equip bonus (magic_atk_ele by skill element) — split from COMBAT-87 |
 | COMBAT-110 | Movement cast-lock: block move while casting unless SA_FREECAST/LG_EXEEDBREAK — split from COMBAT-88 |
 | COMBAT-111 | Bespoke OnRecalc remainder: multi-field / +AspdRate / +primary / +trait / primary-coupled — split from COMBAT-89 |
+| COMBAT-112 | Recursive-splash victims skip ApplyWeaponSkillPlantZone (plant clamp / GvG-BG / SC_INVINCIBLE) — split from COMBAT-91 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

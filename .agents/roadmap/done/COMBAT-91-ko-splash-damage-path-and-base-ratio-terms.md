@@ -1,6 +1,6 @@
 # COMBAT-91 — KO_HUUMARANKA / KO_BAKURETSU splash damage path + missing base-ratio terms
 
-> **Epic:** combat · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** combat · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-75 (the SC_KAGEMUSYA ratio multiply hook) · **Blocks:** none
 > **Filed by:** COMBAT-75 — while wiring the SC_KAGEMUSYA ratio multiply, the two Kagerou
 > *splash* arms turned out to compute **no damage at all** (their ratio path is dead), so the
@@ -42,30 +42,50 @@ SC_KAGEMUSYA close) lives only on `WeaponSkillImpl`, these two skills never reac
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Give `SwirlingPetal` / `KunaiExplosion` a real per-victim damage: override `SplashDamage` to
-      run the weapon swing × the per-skill ratio (route through a shared ratio computation that also
-      applies `RE_LVL_DMOD`, the post-dmod adds, and the SC_KAGEMUSYA multiply), OR re-base them on a
-      hierarchy that exposes `ComputeSkillDamage`. Match `RecursiveDamageSplashSkillImpl` peers.
-- [ ] Add the `NJ_HUUMA * 100` term (KO_HUUMARANKA) and the real `pc_checkskill(NJ_TOBIDOUGU)`
-      factor + post-dmod `10 * job_level` (KO_BAKURETSU) via `pc_checkskill`/job-level reads.
-- [ ] Apply the SC_KAGEMUSYA multiply (`ApplyKagemusyaRatio`) as the final ratio step on both arms,
-      after the base + dmod + post-dmod adds (mirror KoCrossSlash).
+- [x] Moved `ComputeSkillDamage` from `WeaponSkillImpl` up to `SkillImpl` (transparent — every
+      `WeaponSkillImpl` still inherits it) so `RecursiveDamageSplashSkillImpl` subclasses can reach
+      the full ratio pipeline. `SwirlingPetal`/`KunaiExplosion` now override `SplashDamage` to run a
+      skill-aware `CalcWeaponAttack(SkillId)` swing × `ComputeSkillDamage` (ratio → `RE_LVL_DMOD` →
+      post-dmod → SC_KAGEMUSYA multiply).
+- [x] Added the `NJ_HUUMA*100` term (KO_HUUMARANKA, PC-only, `: 0` fallback) and the real
+      `pc_checkskill(NJ_TOBIDOUGU)` factor (PC-only, `: 1` fallback) + post-dmod `10*job_level`
+      (KO_BAKURETSU, via `CalculateSkillRatioPostDmod` so it is NOT scaled by `RE_LVL_DMOD(120)`).
+      Added `SkillIds.NJ_TOBIDOUGU = 522` and `ReLvlDivisor` 120 (BAKURETSU) / 100 (HUUMARANKA).
+- [x] Applied the SC_KAGEMUSYA multiply via `CalculateSkillRatioPostDmodMultiply` →
+      `ApplyKagemusyaRatio` on both arms (mirror KoCrossSlash), as the final ratio step.
+- [x] ➡️ The per-victim weapon-skill **final stage** (`ApplyWeaponSkillPlantZone`: plant 1-dmg
+      clamp / GvG-BG zone / SC_INVINCIBLE) that the single-target path applies is NOT applied by the
+      splash hierarchy — hierarchy-wide (all splash skills), pre-existing, **COMBAT-112**.
 
 ## Done criteria
 
-- KO_HUUMARANKA and KO_BAKURETSU deal nonzero splash damage equal to rAthena's ratio at
-  representative levels (partner-skill terms included), and a caster under SC_KAGEMUSYA gets the
-  `×(100+20)/100` boosted ratio on both.
+- ✅ KO_HUUMARANKA and KO_BAKURETSU deal nonzero splash damage equal to rAthena's ratio at
+  representative levels (partner-skill terms included): HUUMARANKA lv5 = 800% (no NJ_HUUMA) / 1800%
+  (NJ_HUUMA 10); BAKURETSU lv5 = 1320% (NJ_TOBIDOUGU 5 + post-dmod 10*70), 700% with factor 0; and a
+  caster under SC_KAGEMUSYA gets the `×(100+20)/100` boosted ratio on both. ➡️ The plant/GvG
+  per-victim stage is COMBAT-112 (separate from the ratio — the ratio is rAthena-exact here).
 
 ## Test plan
 
-- `Combat91KoSplashTests`: each skill's splash victim takes `swing × ratio` (with the partner-skill
-  term) and the KAGEMUSYA-on vs -off ratio differs by val2%.
+- ✅ `Combat91KoSplashTests` (7 cases): each skill's splash victim takes `swing × ratio` (with the
+  partner-skill term), the TOBIDOUGU factor is read (not hardcoded 1), the `+10*job_level` is
+  post-dmod (verified at lv150 — unscaled by the macro), and KAGEMUSYA-on vs -off differs by val2%.
 
 ## Notes / gotchas
 
 - COMBAT-75 already shipped the `CalculateSkillRatioPostDmodMultiply` hook + `ApplyKagemusyaRatio`
-  helper on `SkillImpl`; reuse them. The blocker here is that the splash hierarchy doesn't compute a
-  ratio-scaled damage at all — fix that first, then the KAGEMUSYA multiply is a one-line override.
+  helper on `SkillImpl`; reused them. The blocker was that the splash hierarchy didn't compute a
+  ratio-scaled damage at all — fixed by exposing `ComputeSkillDamage` on `SkillImpl`.
 - `pc_checkskill` partner-skill reads are PlayerEntity-only (non-player → the rAthena `: 1` / `: 0`
   fallbacks).
+
+## History
+
+- 2026-06-03 — Hoisted `ComputeSkillDamage` to `SkillImpl` so recursive-splash skills can reuse the
+  ratio pipeline; rewrote `SwirlingPetal` (KO_HUUMARANKA) and `KunaiExplosion` (KO_BAKURETSU) to
+  override `SplashDamage` through it — each splash victim now takes the rAthena-exact `swing × ratio`
+  (NJ_HUUMA*100 / real pc_checkskill(NJ_TOBIDOUGU) factor / post-dmod `+10*job_level` / SC_KAGEMUSYA
+  ×(100+val2)/100) instead of 0. Added `SkillIds.NJ_TOBIDOUGU = 522`. `Combat91KoSplashTests` (7,
+  green); full Map.Server.Tests 4227 pass (1 fail = pre-existing INFRA-11 replay-fixture boot). Filed
+  COMBAT-112 for the splash-hierarchy plant/GvG/SC_INVINCIBLE per-victim stage (pre-existing, all
+  splash skills).

@@ -743,6 +743,7 @@ public static class SkillIds
     public const ushort NJ_SUITON = 538;
     public const ushort NJ_SYURIKEN = 523;
     public const ushort NJ_TATAMIGAESHI = 527;
+    public const ushort NJ_TOBIDOUGU = 522;
     public const ushort NJ_ZENYNAGE = 526;
     public const ushort NPC_ACIDBREATH = 657;
     public const ushort NPC_AGIUP = 350;

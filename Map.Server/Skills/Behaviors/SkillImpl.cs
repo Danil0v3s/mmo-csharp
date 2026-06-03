@@ -203,6 +203,65 @@ public abstract class SkillImpl
     /// the damage pipeline initialized it. Default: pass-through.
     /// </summary>
     public virtual void ModifyDamageData(ref Map.Server.Combat.BattleDamage dmg, Entity src, Entity target, ushort skillLevel) { }
+
+    /// <summary>
+    /// SKILL-05 — the canonical per-skill weapon-damage formula, used by both
+    /// <see cref="WeaponSkillImpl.CastendDamageId"/> (plugin dispatch, with <paramref name="ctx"/>)
+    /// and the ctx-less <c>SkillAttackService</c> / <c>WeaponSkillResolver</c>
+    /// funnels. rAthena order (battle.cpp:7708-7711): <c>ATK_RATE(skillratio)</c>
+    /// then <c>ATK_ADD(constant)</c>; the renewal <c>RE_LVL_DMOD</c> multiplies
+    /// the ratio first (COMBAT-03). This is the ONLY skill-ratio authority for a
+    /// plugin skill — <see cref="SkillDefinition.DamageRate"/> is the no-plugin
+    /// fallback only. When <paramref name="ctx"/> is null (the funnel has no
+    /// <see cref="SkillBehaviorContext"/>) the ctx-free ratio/constant overloads
+    /// are used; ctx-reading ratio overrides are honored only on the plugin path
+    /// (SKILL-17).
+    /// <para>COMBAT-91 — lives on <see cref="SkillImpl"/> (not just
+    /// <see cref="WeaponSkillImpl"/>) so recursive-splash skills
+    /// (<see cref="RecursiveDamageSplashSkillImpl"/>) can route each victim through the
+    /// same ratio pipeline (RE_LVL_DMOD + post-dmod adds + the SC_KAGEMUSYA multiply)
+    /// from <see cref="RecursiveDamageSplashSkillImpl.SplashDamage"/>.</para>
+    /// </summary>
+    public int ComputeSkillDamage(
+        Map.Server.Combat.BattleDamage swing, Entity src, Entity target,
+        ushort skillLevel, SkillBehaviorContext? ctx = null, int miscflag = 0)
+    {
+        var ratio = ctx != null
+            ? CalculateSkillRatio(100, src, target, skillLevel, ctx, miscflag)
+            : CalculateSkillRatio(100, src, target, skillLevel);
+        // COMBAT-56 — a skill whose rAthena ratio arm OMITS RE_LVL_DMOD does not
+        // scale above level 99; force divisor 0 for those (disjoint from the 120/150
+        // per-arm divisor overrides, which ARE skills that use the macro).
+        ratio = ApplyReLvlDmod(ratio, src, ReLvlDmodOmit.OmitsRatioScaling(SkillId) ? 0 : ReLvlDivisor);
+        // COMBAT-57 — post-RE_LVL_DMOD ratio additions (unscaled), e.g. the
+        // SC_JYUMONJIKIRI bonus added after the macro in rAthena.
+        ratio += CalculateSkillRatioPostDmod(src, target, skillLevel, ctx);
+        // COMBAT-75 — multiplicative ratio close (after the post-dmod adds), e.g. the
+        // SC_KAGEMUSYA caster bonus `skillratio += skillratio * val2/100` on the
+        // Ninja/Kagerou arms. Scales the full running ratio.
+        ratio = CalculateSkillRatioPostDmodMultiply(ratio, src, target, skillLevel, ctx);
+        var raw = swing.Total * ratio / 100
+                  + CalculateSkillConstantAddition(src, target, skillLevel);
+        // COMBAT-78 — crit_atk_rate ÷200 skill variant (battle.cpp:7787). When the swing
+        // resolved critical, a skill applies the caster's bonus bCritAtkRate with the ÷200
+        // divisor (vs the auto-attack ÷100), after the skill ratio. The swing was built via
+        // the skill-aware CalcWeaponAttack(skillId) so the ÷100 bump is NOT already in it.
+        if (swing.IsCritical && src is PlayerEntity critPc
+            && critPc.EquipBonuses is { CritAtkRate: var car } && car != 0)
+            raw += raw * car / 200;
+        // COMBAT-22 — bonus2 bSkillAtk: per-skill % damage applied after the
+        // ratio/constant (rAthena pc_skillatk_bonus, battle.cpp:7729 — after DEF,
+        // ATK_ADDRATE). Weapon-skill lane; the magic lane applies it in
+        // CalcMagicAttack.
+        if (src is PlayerEntity p && p.EquipBonuses.SkillAtk.TryGetValue(SkillId, out var sa) && sa != 0)
+            raw += raw * sa / 100;
+        // COMBAT-64 — bonus2 bSubSkill: the DEFENDER's per-skill incoming-damage reduction
+        // (rAthena pc_sub_skillatk_bonus, battle.cpp:7873 — ATK_ADDRATE(-i), right after the
+        // offensive bonus). Lowers damage from the matching skill.
+        if (target is PlayerEntity tp && tp.EquipBonuses.SubSkillAtk.TryGetValue(SkillId, out var ssa) && ssa != 0)
+            raw -= raw * ssa / 100;
+        return (int)Math.Clamp(raw, 0, int.MaxValue);
+    }
 }
 
 /// <summary>
@@ -267,60 +326,6 @@ public abstract class WeaponSkillImpl : SkillImpl
     /// </summary>
     public virtual int GetMultiHitCount(ushort skillLevel)
         => System.Math.Abs(SkillHitCounts.Get(SkillId, skillLevel));
-
-    /// <summary>
-    /// SKILL-05 — the canonical per-skill weapon-damage formula, used by both
-    /// <see cref="CastendDamageId"/> (plugin dispatch, with <paramref name="ctx"/>)
-    /// and the ctx-less <c>SkillAttackService</c> / <c>WeaponSkillResolver</c>
-    /// funnels. rAthena order (battle.cpp:7708-7711): <c>ATK_RATE(skillratio)</c>
-    /// then <c>ATK_ADD(constant)</c>; the renewal <c>RE_LVL_DMOD</c> multiplies
-    /// the ratio first (COMBAT-03). This is the ONLY skill-ratio authority for a
-    /// plugin skill — <see cref="SkillDefinition.DamageRate"/> is the no-plugin
-    /// fallback only. When <paramref name="ctx"/> is null (the funnel has no
-    /// <see cref="SkillBehaviorContext"/>) the ctx-free ratio/constant overloads
-    /// are used; ctx-reading ratio overrides are honored only on the plugin path
-    /// (SKILL-17).
-    /// </summary>
-    public int ComputeSkillDamage(
-        Map.Server.Combat.BattleDamage swing, Entity src, Entity target,
-        ushort skillLevel, SkillBehaviorContext? ctx = null, int miscflag = 0)
-    {
-        var ratio = ctx != null
-            ? CalculateSkillRatio(100, src, target, skillLevel, ctx, miscflag)
-            : CalculateSkillRatio(100, src, target, skillLevel);
-        // COMBAT-56 — a skill whose rAthena ratio arm OMITS RE_LVL_DMOD does not
-        // scale above level 99; force divisor 0 for those (disjoint from the 120/150
-        // per-arm divisor overrides, which ARE skills that use the macro).
-        ratio = ApplyReLvlDmod(ratio, src, ReLvlDmodOmit.OmitsRatioScaling(SkillId) ? 0 : ReLvlDivisor);
-        // COMBAT-57 — post-RE_LVL_DMOD ratio additions (unscaled), e.g. the
-        // SC_JYUMONJIKIRI bonus added after the macro in rAthena.
-        ratio += CalculateSkillRatioPostDmod(src, target, skillLevel, ctx);
-        // COMBAT-75 — multiplicative ratio close (after the post-dmod adds), e.g. the
-        // SC_KAGEMUSYA caster bonus `skillratio += skillratio * val2/100` on the
-        // Ninja/Kagerou arms. Scales the full running ratio.
-        ratio = CalculateSkillRatioPostDmodMultiply(ratio, src, target, skillLevel, ctx);
-        var raw = swing.Total * ratio / 100
-                  + CalculateSkillConstantAddition(src, target, skillLevel);
-        // COMBAT-78 — crit_atk_rate ÷200 skill variant (battle.cpp:7787). When the swing
-        // resolved critical, a skill applies the caster's bonus bCritAtkRate with the ÷200
-        // divisor (vs the auto-attack ÷100), after the skill ratio. The swing was built via
-        // the skill-aware CalcWeaponAttack(skillId) so the ÷100 bump is NOT already in it.
-        if (swing.IsCritical && src is PlayerEntity critPc
-            && critPc.EquipBonuses is { CritAtkRate: var car } && car != 0)
-            raw += raw * car / 200;
-        // COMBAT-22 — bonus2 bSkillAtk: per-skill % damage applied after the
-        // ratio/constant (rAthena pc_skillatk_bonus, battle.cpp:7729 — after DEF,
-        // ATK_ADDRATE). Weapon-skill lane; the magic lane applies it in
-        // CalcMagicAttack.
-        if (src is PlayerEntity p && p.EquipBonuses.SkillAtk.TryGetValue(SkillId, out var sa) && sa != 0)
-            raw += raw * sa / 100;
-        // COMBAT-64 — bonus2 bSubSkill: the DEFENDER's per-skill incoming-damage reduction
-        // (rAthena pc_sub_skillatk_bonus, battle.cpp:7873 — ATK_ADDRATE(-i), right after the
-        // offensive bonus). Lowers damage from the matching skill.
-        if (target is PlayerEntity tp && tp.EquipBonuses.SubSkillAtk.TryGetValue(SkillId, out var ssa) && ssa != 0)
-            raw -= raw * ssa / 100;
-        return (int)Math.Clamp(raw, 0, int.MaxValue);
-    }
 }
 
 /// <summary>
