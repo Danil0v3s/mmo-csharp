@@ -153,7 +153,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-90 | ✅ MaxHp/MaxSp re-fold tail (14 handlers: % snapshot/inverse, flat, Berserk ×3, Melodyofsink debuff) — split from COMBAT-73 |
 | COMBAT-91 | ✅ KO_HUUMARANKA/KO_BAKURETSU splash damage path + base-ratio terms (ComputeSkillDamage hoisted to SkillImpl) — split from COMBAT-75 |
 | COMBAT-92 | ✅ Real skill_db Requirements column loader (ammo/inf2/unit_flags) — retires curated overlays — split from COMBAT-76/62 |
-| COMBAT-93 | Reconcile SkillFailCause with rAthena e_useskill_fail_cause wire values — split from COMBAT-76 |
+| COMBAT-93 | ✅ Reconcile SkillFailCause with rAthena e_useskill_fail_cause wire values |
 | COMBAT-94 | Immediate inventory amount-update packet on consume (ammo + items) — split from COMBAT-76 |
 | COMBAT-95 | Magic-side MRes reduction curve + ignore (by race + SC_A_VITA) — split from COMBAT-77 |
 | COMBAT-96 | Route swing-bypass weapon plugins through the ÷200 skill crit_atk_rate — split from COMBAT-78 |

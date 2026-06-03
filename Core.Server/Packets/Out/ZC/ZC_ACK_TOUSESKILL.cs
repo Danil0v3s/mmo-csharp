@@ -47,45 +47,51 @@ public class ZC_ACK_TOUSESKILL : OutgoingPacket
 }
 
 /// <summary>
-/// rAthena <c>useskill_fail_cause</c> (status.hpp) — the byte the client
-/// maps to a localized "skill fail" string. Only the most common values
-/// are enumerated here; rAthena defines ~75 total. Add more on demand
-/// when a port surfaces a fail mode the existing entries don't cover.
+/// rAthena <c>e_useskill_fail_cause</c> (clif.hpp:402) — the byte the client maps to a
+/// localized "skill fail" string. It is sent <b>raw</b> on the wire (<c>clif_skill_fail</c> →
+/// <c>ZC_ACK_TOUSESKILL.Cause = (byte)cause</c>), so every value MUST equal rAthena's for the
+/// client to render the correct message.
+///
+/// <para>COMBAT-93 — reconciled the whole enum to <c>e_useskill_fail_cause</c>. The prior values
+/// were a legacy partial renumbering that mostly did NOT match (e.g. <c>SummonNone</c> was 26 vs
+/// rAthena 20, <c>Skill</c> 17 vs 16, <c>NeedHelpers</c> 20 vs 17). C# member names are kept (so
+/// call sites stay source-compatible); the rAthena cause each maps to is noted inline. A few
+/// C#-invented causes have no <c>e_useskill_fail_cause</c> equivalent — they fall back to the
+/// generic <c>USESKILL_FAIL_LEVEL = 0</c> ("skill failed"), the correct client behavior for an
+/// unmapped cause. Add more rAthena causes on demand.</para>
 /// </summary>
 public enum SkillFailCause : byte
 {
-    SkillFail = 0,            // generic "skill failed"
-    SpInsufficient = 1,       // not enough SP
-    HpInsufficient = 2,       // not enough HP
-    NoMemo = 3,               // no memo'd warp point
-    Delay = 4,                // skill delay still active
-    ZenyInsufficient = 5,     // not enough zeny
-    WrongWeapon = 6,          // wrong weapon equipped
-    NoRedJewel = 7,           // red gemstone required
-    NoBlueJewel = 8,          // blue gemstone required
-    Weight = 9,               // overweight
-    NoCombo = 10,             // combo prerequisite not met
-    StealCoin = 11,           // mug failed (no coin)
-    NoEnemy = 12,             // no enemy in range
-    NoSpiritualSphere = 13,   // missing spirit sphere
-    UndeadId = 14,            // target is undead
-    Stuff = 15,               // need ammo / projectile
-    State = 16,               // wrong state (e.g. not in cart)
-    Skill = 17,               // need other skill first
-    Item = 18,                // need item
-    InvokerNotConfirm = 19,
-    NeedHelpers = 20,
-    NeedEquipment = 21,
-    Coin = 23,
-    Amount = 24,
-    Sight = 25,
-    SummonNone = 26,
-    NeedItem = 27,
-
-    // COMBAT-76 — exact rAthena `e_useskill_fail_cause` (clif.hpp) wire values for the
-    // ammo fail messages. NOTE: the values ABOVE this line are a legacy renumbering that
-    // does NOT match rAthena's enum (sent raw via clif_skill_fail → wrong client string);
-    // reconciling the whole enum is COMBAT-92. These two are correct.
+    SkillFail = 0,            // USESKILL_FAIL_LEVEL (generic "skill failed")
+    SpInsufficient = 1,       // USESKILL_FAIL_SP_INSUFFICIENT
+    HpInsufficient = 2,       // USESKILL_FAIL_HP_INSUFFICIENT
+    Stuff = 3,                // USESKILL_FAIL_STUFF_INSUFFICIENT (need ammo / projectile)
+    Delay = 4,                // USESKILL_FAIL_SKILLINTERVAL
+    ZenyInsufficient = 5,     // USESKILL_FAIL_MONEY
+    WrongWeapon = 6,          // USESKILL_FAIL_THIS_WEAPON
+    NoRedJewel = 7,           // USESKILL_FAIL_REDJAMSTONE
+    NoBlueJewel = 8,          // USESKILL_FAIL_BLUEJAMSTONE
+    Weight = 9,               // USESKILL_FAIL_WEIGHTOVER
+    NoEnemy = 11,             // USESKILL_FAIL_TOTARGET (no target)
+    Skill = 16,               // USESKILL_FAIL_NEED_OTHER_SKILL (need other skill first)
+    NeedHelpers = 17,         // USESKILL_FAIL_NEED_HELPER
+    SummonNone = 20,          // USESKILL_FAIL_SUMMON_NONE
     NeedEquipmentKunai = 34,  // USESKILL_FAIL_NEED_EQUIPMENT_KUNAI
+    State = 57,               // USESKILL_FAIL_CART (need to be in a cart / mounted state)
+    NeedItem = 71,            // USESKILL_FAIL_NEED_ITEM
+    Item = 71,                // USESKILL_FAIL_NEED_ITEM (alias of NeedItem)
+    NeedEquipment = 72,       // USESKILL_FAIL_NEED_EQUIPMENT
+    NoCombo = 73,             // USESKILL_FAIL_COMBOSKILL
+    NoSpiritualSphere = 74,   // USESKILL_FAIL_SPIRITS
     NeedMoreBullet = 84,      // USESKILL_FAIL_NEED_MORE_BULLET
+    Coin = 85,                // USESKILL_FAIL_COINS
+
+    // No exact e_useskill_fail_cause equivalent — fall back to the generic LEVEL = 0 ("skill
+    // failed") so the client renders the generic string. Unused today; kept for source compat.
+    NoMemo = 0,
+    StealCoin = 0,
+    UndeadId = 0,
+    InvokerNotConfirm = 0,
+    Amount = 0,
+    Sight = 0,
 }
