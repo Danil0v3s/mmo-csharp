@@ -671,7 +671,7 @@ public sealed class StatusCalcService : IStatusCalcService
     /// <see cref="StatusType"/>. Returns (flat ASPD-point bonus, rate %, flat amotion
     /// reduction). Re-summed from the live SC set each recalc, so it is idempotent.
     /// </summary>
-    private (int fixedSc, int rateSc, int fixAspd) ComputeScAspd(PlayerEntity pc)
+    internal (int fixedSc, int rateSc, int fixAspd) ComputeScAspd(PlayerEntity pc)
     {
         if (_sc == null) return (0, 0, 0);
         int Val(StatusType t, Func<Status.StatusChange, int> read)
@@ -702,11 +702,37 @@ public sealed class StatusCalcService : IStatusCalcService
         if (Has(StatusType.Steelbody)) rateSc -= 25;
         rateSc -= Val(StatusType.Defender, sc => sc.Val4) / 10;
         if (_sc.Get(pc, StatusType.Gospel) is { Val4: 2 }) rateSc -= 75; // BCT_ENEMY
+        // COMBAT-71 — remaining renewal status_calc_aspd(false) debuffs (status.cpp:8056-8092).
+        // (LONGING / GRAVITATION are `#else`/`#ifndef RENEWAL` and so skipped here.)
+        rateSc -= Val(StatusType.Ensemblefatigue, sc => sc.Val2) / 10; // renewal: replaces pre-re Longing
+        // Joint Beat — val2 break-flags bitmask (status.hpp:2909): WRIST 0x02 → −25, KNEE 0x04 → −10.
+        if (_sc.Get(pc, StatusType.Jointbeat) is { } jb)
+        {
+            if ((jb.Val2 & 0x02) != 0) rateSc -= 25;
+            if ((jb.Val2 & 0x04) != 0) rateSc -= 10;
+        }
+        if (Has(StatusType.Freezing)) rateSc -= 30;                       // NOTE: 30, not 15
+        if (Has(StatusType.HallucinationwalkPostdelay)) rateSc -= 50;
+        if (_sc.Get(pc, StatusType.Paralyse) is { Val3: 1 }) rateSc -= 10;
+        rateSc -= 5 * Val(StatusType.Bodypaint, sc => sc.Val1);
+        rateSc -= Val(StatusType.Invisibility, sc => sc.Val2);
+        rateSc -= Val(StatusType.Groomy, sc => sc.Val2);
         // COMBAT-50 — rate-term positives (status.cpp:6206-6213): SwingDance val3,
         // IncAspdRate val1, GatlingFever val1.
         rateSc += Val(StatusType.Swingdance, sc => sc.Val3);
         rateSc += Val(StatusType.Incaspdrate, sc => sc.Val1);
         rateSc += Val(StatusType.Gatlingfever, sc => sc.Val1);
+        // COMBAT-71 — the remaining renewal rate-term entries (status.cpp:8090-8114).
+        rateSc += Val(StatusType.Dancewithwug, sc => sc.Val3);
+        rateSc -= Val(StatusType.Gloomyday, sc => sc.Val3);     // debuff
+        rateSc += Val(StatusType.GtChange, sc => sc.Val3);
+        rateSc -= Val(StatusType.MelonBomb, sc => sc.Val3);     // debuff
+        rateSc += Val(StatusType.GoldeneFerse, sc => sc.Val3);
+        rateSc += 3 * Val(StatusType.StarComfort, sc => sc.Val1);
+        if (_sc.Get(pc, StatusType.WindInsignia) is { Val1: 2 }) rateSc += 10;
+        rateSc += Val(StatusType.IncreaseAgi, sc => sc.Val1);
+        if (_sc.Get(pc, StatusType.Nibelungen) is { Val2: 1 }) rateSc += 20; // RINGNBL_ASPDRATE
+        rateSc += Val(StatusType.Starstance, sc => sc.Val2);
 
         // ---- status_calc_fix_aspd: flat amotion reduction ----
         int fixAspd = 0;
