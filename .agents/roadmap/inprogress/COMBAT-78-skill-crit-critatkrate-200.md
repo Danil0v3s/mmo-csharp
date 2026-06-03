@@ -1,6 +1,6 @@
 # COMBAT-78 — Skill-crit crit_atk_rate ÷200 variant on the skill-damage path
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-61 (normal-attack crit_atk_rate ÷100) · **Blocks:** none
 > **Filed by:** COMBAT-61 — it landed the normal-attack (`skill_id == 0`) crit_atk_rate ÷100
 > branch on the weapon swing; the `skill_id > 0` ÷200 branch belongs to the skill path.
