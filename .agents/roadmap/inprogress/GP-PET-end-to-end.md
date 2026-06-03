@@ -1,6 +1,6 @@
 # GP-PET — Pet works end-to-end
 
-> **Epic:** gameplay · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** SCR-DOMAIN (pet builtins)
 
 ## The deliverable
