@@ -52,9 +52,11 @@ public interface ISkillUnitTickHandler
     /// <summary>
     /// rAthena <c>skill_unit_onplace</c> — fired the instant an entity
     /// steps onto the cell. Use for one-shot SC application (Pneuma's
-    /// <c>SC_PNEUMA</c>, Sanctuary's heal-then-end). Default = no-op.
+    /// <c>SC_PNEUMA</c>, Sanctuary's heal-then-end) or per-group state like the
+    /// Warp Portal exit (COMBAT-67 — <paramref name="group"/> carries
+    /// <c>DestMap</c>/<c>DestX</c>/<c>DestY</c>). Default = no-op.
     /// </summary>
-    void OnPlace(Entity? caster, Entity victim, ushort skillLevel, long tick, ISkillUnitContext ctx) { }
+    void OnPlace(Entity? caster, Entity victim, ushort skillLevel, long tick, ISkillUnitContext ctx, SkillUnitGroup group) { }
 
     /// <summary>
     /// rAthena <c>skill_unit_onleft</c> / <c>skill_unit_onout</c> — fired

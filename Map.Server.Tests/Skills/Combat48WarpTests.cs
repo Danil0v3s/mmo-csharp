@@ -25,19 +25,24 @@ namespace Map.Server.Tests.Skills;
 public class Combat48WarpTests
 {
     [Fact]
-    public void Warp_to_memo_destination_setpos()
+    public void Warp_to_memo_destination_places_a_portal()
     {
+        // COMBAT-67 — AL_WARP no longer warps the caster directly; it places a Warp Portal
+        // ground unit at the cast cell stamped with the chosen exit.
         var setpos = new StubSetpos();
-        var svc = NewService(setpos, new StubDeath(), srcMap: "prt");
+        var units = new NoOpUnits();
+        var svc = NewService(setpos, new StubDeath(), srcMap: "prt", units: units);
         var pc = NewPc(mapId: (uint)"prt".GetHashCode());
         pc.LearnedSkills[SkillIds.AL_WARP] = 4;
         pc.MemoPoints[0] = ("geffen", 100, 120);
 
         Assert.True(svc.CastEndMap(pc, "geffen", SkillIds.AL_WARP));
-        Assert.Equal(1, setpos.Calls);
-        Assert.Equal("geffen", setpos.Map);
-        Assert.Equal((short)100, setpos.X);
-        Assert.Equal((short)120, setpos.Y);
+        Assert.Equal(0, setpos.Calls); // no direct warp at cast time
+        Assert.NotNull(units.LastPlaced);
+        Assert.Equal(SkillIds.AL_WARP, units.LastPlaced!.SkillId);
+        Assert.Equal("geffen", units.LastPlaced.DestMap);
+        Assert.Equal((short)100, units.LastPlaced.DestX);
+        Assert.Equal((short)120, units.LastPlaced.DestY);
     }
 
     [Fact]
@@ -174,13 +179,13 @@ public class Combat48WarpTests
 
     private static SkillCastEndService NewService(
         StubSetpos setpos, StubDeath death, string srcMap,
-        string? noWarpToMap = null, string? noWarpMap = null)
+        string? noWarpToMap = null, string? noWarpMap = null, ISkillUnitService? units = null)
     {
         var map = new MapData(srcMap, 100, 100, new byte[100 * 100]);
         return new SkillCastEndService(
             new SkillDb(),
             new SkillResolverRegistry(Array.Empty<ISkillResolver>()),
-            new NoOpUnits(),
+            units ?? new NoOpUnits(),
             NullLogger<SkillCastEndService>.Instance,
             positions: null,
             death: death,
@@ -250,8 +255,19 @@ public class Combat48WarpTests
 
     private sealed class NoOpUnits : ISkillUnitService
     {
-        public SkillUnitGroup? Place(Entity caster, ushort skillId, ushort skillLevel, short cx, short cy) => null;
-        public SkillUnitGroup? Place(Entity caster, ushort skillId, ushort skillLevel, short cx, short cy, int delayMs) => null;
+        // COMBAT-67 — capture the placed group so the AL_WARP portal-placement path is testable.
+        public SkillUnitGroup? LastPlaced;
+        public SkillUnitGroup? Place(Entity caster, ushort skillId, ushort skillLevel, short cx, short cy)
+            => Place(caster, skillId, skillLevel, cx, cy, 0);
+        public SkillUnitGroup? Place(Entity caster, ushort skillId, ushort skillLevel, short cx, short cy, int delayMs)
+        {
+            LastPlaced = new SkillUnitGroup
+            {
+                SkillId = skillId, SkillLevel = skillLevel, CasterId = caster.Id,
+                MapId = caster.MapId, ExpiresAt = 0, IntervalMs = 1000,
+            };
+            return LastPlaced;
+        }
         public void Tick(long nowTick) { }
         public void UnitMove(Entity who, long tick, int flag) { }
         public void UnitMoveUnit(SkillUnit unit, short newX, short newY) { }

@@ -44,17 +44,20 @@ public sealed class PlayerPositionHelpers : IPlayerPositionHelpers
     private readonly IPcSetposService _setpos;
     private readonly IStatusChangeService _scs;
     private readonly ILogger<PlayerPositionHelpers> _logger;
+    private readonly IMapFlagService? _mapFlags;
 
     public PlayerPositionHelpers(
         IMapWorldRegistry maps,
         IPcSetposService setpos,
         IStatusChangeService scs,
-        ILogger<PlayerPositionHelpers> logger)
+        ILogger<PlayerPositionHelpers> logger,
+        IMapFlagService? mapFlags = null)
     {
         _maps = maps;
         _setpos = setpos;
         _scs = scs;
         _logger = logger;
+        _mapFlags = mapFlags;
     }
 
     public bool IsLastpointSpecial(string mapName)
@@ -77,26 +80,49 @@ public sealed class PlayerPositionHelpers : IPlayerPositionHelpers
 
     public bool Memo(PlayerEntity pc, int slot)
     {
-        // rAthena Warp Portal memo — 3 slots; slot < 0 picks the
-        // first empty / oldest. We use the same convention.
+        // COMBAT-67 — rAthena pc_memo (pc.cpp:7098). `slot == -1` is the client
+        // "remember this point" path: dedup the current map, memmove the list down,
+        // and insert at slot 0. A fixed `slot` writes that slot directly.
         var map = _maps.All.FirstOrDefault(m => (uint)m.Name.GetHashCode() == pc.MapId);
         if (map == null) return false;
-        var idx = slot;
-        if (idx < 0 || idx >= pc.MemoPoints.Length)
+
+        // Mapflag gate: MF_NOMEMO / MF_NOWARPTO forbid memo-ing here.
+        if (_mapFlags != null
+            && (_mapFlags.IsSet(map.Name, MapFlag.NoMemo) || _mapFlags.IsSet(map.Name, MapFlag.NoWarpTo)))
+            return false;
+
+        // Input gate (rAthena: pos < -1 || pos >= MAX_MEMOPOINTS).
+        if (slot < -1 || slot >= pc.MemoPoints.Length) return false;
+
+        // AL_WARP level gate: skill < 1 → not learned; skill < 2 || skill-2 < pos → low level.
+        var lv = pc.LearnedSkills.GetValueOrDefault(SkillIdAlWarp);
+        if (lv < 1) return false;
+        if (lv < 2 || lv - 2 < slot) return false;
+
+        if (slot == -1)
         {
-            // Pick first empty; if all full, fall back to slot 0.
-            idx = 0;
+            // Dedup: find the first slot already holding the current map (else = length).
+            var dupAt = pc.MemoPoints.Length;
             for (var i = 0; i < pc.MemoPoints.Length; i++)
-            {
-                if (string.IsNullOrEmpty(pc.MemoPoints[i].MapName)) { idx = i; break; }
-            }
+                if (string.Equals(pc.MemoPoints[i].MapName, map.Name, StringComparison.OrdinalIgnoreCase))
+                { dupAt = i; break; }
+            // memmove [0 .. shift-1] → [1 .. shift] (insert-at-0), shift = min(dupAt, MAX-1).
+            var shift = Math.Min(dupAt, pc.MemoPoints.Length - 1);
+            for (var i = shift; i > 0; i--)
+                pc.MemoPoints[i] = pc.MemoPoints[i - 1];
+            slot = 0;
         }
-        pc.MemoPoints[idx] = (map.Name, pc.X, pc.Y);
+
+        pc.MemoPoints[slot] = (map.Name, pc.X, pc.Y);
         _logger.LogInformation(
             "pc_memo: char {Char} slot {Slot} = {Map} ({X},{Y})",
-            pc.CharacterId, idx, map.Name, pc.X, pc.Y);
+            pc.CharacterId, slot, map.Name, pc.X, pc.Y);
         return true;
     }
+
+    // AL_WARP skill id (Map.Server.Skills.SkillIds.AL_WARP = 27) — referenced here without
+    // a Map.Server.Skills using to keep the movement layer dependency-light.
+    private const ushort SkillIdAlWarp = 27;
 
     public bool IsBasilicaCell(PlayerEntity pc)
     {

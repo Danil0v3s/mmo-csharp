@@ -65,8 +65,13 @@ public class Combat55RangerTrapTests
         var victim = new MobEntity(new EntityId(5), 1002, "Poring", 0, 0, 0) { Hp = 100000, MaxHp = 100000 };
         var rec = new RecordingDamage();
         var unit = new ClusterBombUnit();
+        var group = new SkillUnitGroup
+        {
+            SkillId = unit.SkillId, SkillLevel = 5, CasterId = pc.Id,
+            MapId = 0, ExpiresAt = 0, IntervalMs = 1000,
+        };
 
-        unit.OnPlace(pc, victim, skillLevel: 5, tick: 0, new Ctx(rec));
+        unit.OnPlace(pc, victim, skillLevel: 5, tick: 0, new Ctx(rec), group);
         Assert.Equal(4500, rec.LastDamage);
         Assert.Same(victim, rec.LastTarget);
     }

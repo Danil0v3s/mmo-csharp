@@ -1893,6 +1893,9 @@ builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map
 // COMBAT-66 — Land Protector placeable ground unit (no-damage; its presence drives the
 // CellHasLandProtector place-gate in SkillUnitService.Place).
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.LandProtectorUnit>();
+// COMBAT-67 — Warp Portal ground unit: warps any player who steps on it to the chosen exit.
+builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler>(sp =>
+    new Map.Server.Skills.Units.Handlers.WarpPortalUnit(sp.GetService<Map.Server.Movement.IPcSetposService>()));
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.AllBloomAtkUnit>();
 // COMBAT-55 — Ranger trap damage units.
 builder.Services.AddSingleton<Map.Server.Skills.Units.ISkillUnitTickHandler, Map.Server.Skills.Units.Handlers.ClusterBombUnit>();

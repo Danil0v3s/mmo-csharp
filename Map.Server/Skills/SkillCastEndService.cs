@@ -149,15 +149,19 @@ public sealed class SkillCastEndService : ISkillCastEndService
                     if (_mapFlags?.IsSet(memo.MapName, Map.Server.World.MapFlag.NoWarpTo) == true)
                         return false;
 
-                    // NOTE: rAthena places a Warp Portal ground unit at the cast
-                    // cell whose exit is (memo.X, memo.Y); this port warps the
-                    // caster directly (pc_setpos). The portal-placement and the
-                    // deferred-requirement-consume / cancel-refund semantics
-                    // (SKILL_NOCONSUME_REQ) are tracked in COMBAT-67 — here the
-                    // SP was already consumed at cast (StartCast).
-                    var result = _setpos?.Setpos(pc, memo.MapName, memo.X, memo.Y)
-                                 ?? Map.Server.Movement.SetposResult.UnknownMap;
-                    return result == Map.Server.Movement.SetposResult.Ok;
+                    // COMBAT-67 — rAthena places a Warp Portal ground unit at the cast
+                    // cell whose exit is (memo.X, memo.Y); anyone who steps on it is warped
+                    // there (skill_castend_map AL_WARP → skill_unitsetting). Place the portal
+                    // at the caster's cell and stamp the destination onto the group; the
+                    // WarpPortalUnit.OnPlace warps steppers via IPcSetposService.
+                    var portal = _units.Place(pc, SkillIds.AL_WARP, (ushort)lv, pc.X, pc.Y);
+                    if (portal == null) return false;
+                    portal.DestMap = memo.MapName;
+                    portal.DestX = memo.X;
+                    portal.DestY = memo.Y;
+                    // The deferred-requirement-consume / cancel-refund semantics
+                    // (SKILL_NOCONSUME_REQ) are COMBAT-86 — SP is consumed at cast today.
+                    return true;
                 }
 
                 // No matching memo slot for the picked map.

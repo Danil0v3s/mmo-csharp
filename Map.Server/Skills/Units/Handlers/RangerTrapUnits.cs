@@ -20,7 +20,7 @@ public abstract class RangerTrapUnit : ISkillUnitTickHandler
     // The trap's recurring tick is inert; detonation fires on cell entry (OnPlace).
     public void OnTick(Entity? caster, Entity victim, ushort skillLevel, long tick, ISkillUnitContext ctx) { }
 
-    public void OnPlace(Entity? caster, Entity victim, ushort skillLevel, long tick, ISkillUnitContext ctx)
+    public void OnPlace(Entity? caster, Entity victim, ushort skillLevel, long tick, ISkillUnitContext ctx, SkillUnitGroup group)
     {
         if (caster == null) return;
         var dmg = TrapDamage.Compute(SkillId, skillLevel, caster);

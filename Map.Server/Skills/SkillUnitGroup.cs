@@ -60,6 +60,15 @@ public sealed class SkillUnitGroup
     /// before broadcasting unit-place / unit-vanish packets.
     /// </summary>
     public bool HiddenFromNonOwner;
+
+    /// <summary>
+    /// COMBAT-67 — Warp Portal exit (rAthena <c>group-&gt;val2</c>=map, <c>val3</c>=coords).
+    /// For AL_WARP the placed ground unit warps any player who steps on it to
+    /// (<see cref="DestMap"/>, <see cref="DestX"/>, <see cref="DestY"/>). Null for non-portals.
+    /// </summary>
+    public string? DestMap;
+    public short DestX;
+    public short DestY;
 }
 
 /// <summary>

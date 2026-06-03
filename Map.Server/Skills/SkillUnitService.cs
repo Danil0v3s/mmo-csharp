@@ -175,7 +175,7 @@ public sealed class SkillUnitService : ISkillUnitService
                     {
                         // First time we've seen this entity on the cell
                         // (or it moved to a new cell within the same group).
-                        h.OnPlace(caster, e, g.SkillLevel, nowTick, _ctx);
+                        h.OnPlace(caster, e, g.SkillLevel, nowTick, _ctx, g);
                         _presence[key] = (e.X, e.Y);
                     }
                     h.OnTick(caster, e, g.SkillLevel, nowTick, _ctx);
