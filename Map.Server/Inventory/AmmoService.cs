@@ -30,11 +30,27 @@ public interface IAmmoService
     bool HasUsableAmmo(PlayerEntity pc, int qty) => HasUsableAmmo(pc);
 
     /// <summary>
+    /// COMBAT-76 — enough equipped ammo for <paramref name="qty"/> rounds whose item
+    /// subtype matches the skill's <paramref name="ammoMask"/> (rAthena <c>require.ammo</c>,
+    /// a <c>1&lt;&lt;AMMO_*</c> bitmask). When <paramref name="ammoMask"/> is 0 the skill rides
+    /// the weapon-ammo heuristic, so this delegates to the weapon-based check. The mask path
+    /// is weapon-independent (a Kunai-throwing skill needs Kunai equipped, not a bow/gun).
+    /// </summary>
+    bool HasUsableAmmo(PlayerEntity pc, int qty, int ammoMask) => HasUsableAmmo(pc, qty);
+
+    /// <summary>
     /// Spend one equipped round (rAthena <c>battle_consume_ammo</c>). No-op for
     /// non-ammo weapons. Removes the stack + clears the equip bit when it hits 0
     /// (rAthena <c>pc_delitem</c>); returns true when a round was consumed.
     /// </summary>
     bool ConsumeAmmo(PlayerEntity pc);
+
+    /// <summary>
+    /// COMBAT-76 — spend <paramref name="qty"/> rounds of the ammo matching
+    /// <paramref name="ammoMask"/> (rAthena <c>battle_consume_ammo</c> on the skill's
+    /// <c>require.ammo</c>). Mask 0 → the weapon-ammo path.
+    /// </summary>
+    bool ConsumeAmmo(PlayerEntity pc, int qty, int ammoMask) => ConsumeAmmo(pc, qty);
 
     /// <summary>
     /// COMBAT-58 — spend <paramref name="qty"/> rounds (rAthena
@@ -80,14 +96,30 @@ public sealed class AmmoService : IAmmoService
         return slot >= 0 && ammo!.Amount >= (uint)Math.Max(1, qty);
     }
 
+    public bool HasUsableAmmo(PlayerEntity pc, int qty, int ammoMask)
+    {
+        // COMBAT-76 — explicit skill ammo mask: weapon-independent (a Kunai/Shuriken/
+        // Cannonball skill gates on the matching equipped ammo regardless of weapon type).
+        if (ammoMask == 0) return HasUsableAmmo(pc, qty);
+        var (ammo, slot) = FindEquippedAmmoByMask(pc, ammoMask);
+        return slot >= 0 && ammo!.Amount >= (uint)Math.Max(1, qty);
+    }
+
     public bool ConsumeAmmo(PlayerEntity pc) => ConsumeAmmo(pc, 1);
 
-    public bool ConsumeAmmo(PlayerEntity pc, int qty)
+    public bool ConsumeAmmo(PlayerEntity pc, int qty) => ConsumeAmmoFrom(pc, qty, FindEquippedAmmo(pc), weaponGated: true);
+
+    public bool ConsumeAmmo(PlayerEntity pc, int qty, int ammoMask)
+        => ammoMask == 0
+            ? ConsumeAmmo(pc, qty)
+            : ConsumeAmmoFrom(pc, qty, FindEquippedAmmoByMask(pc, ammoMask), weaponGated: false);
+
+    private bool ConsumeAmmoFrom(PlayerEntity pc, int qty, (InventoryItem? ammo, int slot) found, bool weaponGated)
     {
-        if (!WeaponTypeCodes.UsesAmmo(pc.WeaponType)) return true;
+        if (weaponGated && !WeaponTypeCodes.UsesAmmo(pc.WeaponType)) return true;
         var session = _sessions.GetByEntityId(pc.Id);
         if (session?.Inventory is not { } inv) return false;
-        var (ammo, slot) = FindEquippedAmmo(pc);
+        var (ammo, slot) = found;
         if (ammo == null || slot < 0) return false;
 
         // rAthena battle_consume_ammo → pc_delitem(qty): spend `qty` rounds; drop the
@@ -129,6 +161,36 @@ public sealed class AmmoService : IAmmoService
         }
         return (null, -1);
     }
+
+    /// <summary>
+    /// COMBAT-76 — locate the equipped ammo whose item subtype bit is set in
+    /// <paramref name="ammoMask"/> (rAthena <c>require.ammo &amp; 1&lt;&lt;subtype</c>,
+    /// skill.cpp:19633). Weapon-independent — used for explicit-ammo skills (Kunai /
+    /// Shuriken / Cannonball / Throw) whose weapon isn't a bow/gun.
+    /// </summary>
+    private (InventoryItem? ammo, int slot) FindEquippedAmmoByMask(PlayerEntity pc, int ammoMask)
+    {
+        var session = _sessions.GetByEntityId(pc.Id);
+        if (session?.Inventory is not { } inv) return (null, -1);
+        for (var i = 0; i < inv.Count; i++)
+        {
+            var item = inv[i];
+            if (item.Amount == 0) continue;
+            if ((item.Equip & EquipBonusAggregator.EquipAmmo) == 0) continue;
+            var bit = AmmoSubtypeBit(_catalog.Get(item.NameId)?.Subtype);
+            if (bit != 0 && (bit & ammoMask) != 0) return (item, i);
+        }
+        return (null, -1);
+    }
+
+    /// <summary>rAthena <c>e_ammo_type</c> (pc.hpp:1001): item subtype → <c>1&lt;&lt;AMMO_*</c> bit.</summary>
+    private static int AmmoSubtypeBit(string? subtype) => subtype switch
+    {
+        "Arrow" => 1 << 1, "Dagger" => 1 << 2, "Bullet" => 1 << 3, "Shell" => 1 << 4,
+        "Grenade" => 1 << 5, "Shuriken" => 1 << 6, "Kunai" => 1 << 7,
+        "Cannonball" => 1 << 8, "Throwweapon" => 1 << 9,
+        _ => 0,
+    };
 
     /// <summary>
     /// rAthena ammo-type gate (battle.cpp:10401-10426, RENEWAL): a bow needs an

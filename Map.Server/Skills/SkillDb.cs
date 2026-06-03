@@ -445,6 +445,64 @@ public sealed class SkillDb : ISkillDb
             [SkillIds.NPC_HELLBURNING] = SkillInf2.IgnoreLandProtector,
         };
 
+    // COMBAT-76 — rAthena ammo-type bits (e_ammo_type, pc.hpp:1001; require.ammo is `1<<AMMO_x`).
+    private const int AmmoArrow = 1 << 1, AmmoDagger = 1 << 2, AmmoBullet = 1 << 3,
+        AmmoShell = 1 << 4, AmmoGrenade = 1 << 5, AmmoShuriken = 1 << 6, AmmoKunai = 1 << 7,
+        AmmoCannonball = 1 << 8, AmmoThrow = 1 << 9;
+
+    /// <summary>
+    /// COMBAT-76 — curated <c>Requirements.Ammo</c> (type mask) + <c>AmmoAmount</c> (qty)
+    /// overlay scanned from <c>db/re/skill_db.yml</c> (the 59 skills with a non-zero
+    /// AmmoAmount; SS_FUUMASHOUAKU/SS_FUUMAKOUCHIKU carry a type but no amount, so per
+    /// rAthena <c>skill_get_requirement</c> they fall through to the weapon-ammo heuristic).
+    /// The SQL <c>skill_db</c> loader doesn't surface the Requirements block, so — like the
+    /// COMBAT-62 Inf2 overlay — the data lives here until a real requirements-column loader
+    /// lands (COMBAT-92). Mirrors <c>skill_get_ammotype</c> / <c>skill_get_ammo_qty</c>.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<ushort, (int Mask, int Qty)> CuratedAmmo =
+        new Dictionary<ushort, (int, int)>
+        {
+            // Arrow
+            [SkillIds.AC_DOUBLE] = (AmmoArrow, 1), [SkillIds.AC_SHOWER] = (AmmoArrow, 1),
+            [SkillIds.AC_CHARGEARROW] = (AmmoArrow, 1), [SkillIds.BA_MUSICALSTRIKE] = (AmmoArrow, 1),
+            [SkillIds.DC_THROWARROW] = (AmmoArrow, 1), [SkillIds.SN_SHARPSHOOTING] = (AmmoArrow, 1),
+            [SkillIds.CG_ARROWVULCAN] = (AmmoArrow, 1), [SkillIds.HT_POWER] = (AmmoArrow, 1),
+            [SkillIds.RA_ARROWSTORM] = (AmmoArrow, 5), [SkillIds.RA_AIMEDBOLT] = (AmmoArrow, 3),
+            [SkillIds.SC_TRIANGLESHOT] = (AmmoArrow, 3), [SkillIds.WM_REVERBERATION] = (AmmoArrow, 5),
+            [SkillIds.WM_SEVERE_RAINSTORM] = (AmmoArrow, 10), [SkillIds.ABC_CHAIN_REACTION_SHOT] = (AmmoArrow, 7),
+            [SkillIds.ABC_FRENZY_SHOT] = (AmmoArrow, 3), [SkillIds.WH_GALESTORM] = (AmmoArrow, 5),
+            [SkillIds.WH_CRESCIVE_BOLT] = (AmmoArrow, 1), [SkillIds.TR_ROSEBLOSSOM] = (AmmoArrow, 1),
+            [SkillIds.TR_RHYTHMSHOOTING] = (AmmoArrow, 1), [SkillIds.TR_METALIC_FURY] = (AmmoArrow, 1),
+            [SkillIds.MA_DOUBLE] = (AmmoArrow, 1), [SkillIds.MA_SHOWER] = (AmmoArrow, 1),
+            [SkillIds.MA_CHARGEARROW] = (AmmoArrow, 1), [SkillIds.MA_SHARPSHOOTING] = (AmmoArrow, 1),
+            // Bullet
+            [SkillIds.GS_TRACKING] = (AmmoBullet, 1), [SkillIds.GS_DISARM] = (AmmoBullet, 1),
+            [SkillIds.GS_PIERCINGSHOT] = (AmmoBullet, 1), [SkillIds.GS_RAPIDSHOWER] = (AmmoBullet, 1),
+            [SkillIds.GS_DESPERADO] = (AmmoBullet, 10), [SkillIds.GS_DUST] = (AmmoBullet, 1),
+            [SkillIds.GS_FULLBUSTER] = (AmmoBullet, 2), [SkillIds.GS_SPREADATTACK] = (AmmoBullet, 5),
+            [SkillIds.GS_GROUNDDRIFT] = (AmmoBullet, 1), [SkillIds.RL_MASS_SPIRAL] = (AmmoBullet, 1),
+            [SkillIds.RL_BANISHING_BUSTER] = (AmmoBullet, 1), [SkillIds.RL_S_STORM] = (AmmoBullet, 1),
+            [SkillIds.RL_FIREDANCE] = (AmmoBullet, 3), [SkillIds.RL_P_ALTER] = (AmmoBullet, 1),
+            [SkillIds.RL_R_TRIP] = (AmmoBullet, 5), [SkillIds.RL_FIRE_RAIN] = (AmmoBullet, 10),
+            [SkillIds.NW_THE_VIGILANTE_AT_NIGHT] = (AmmoBullet, 10), [SkillIds.NW_ONLY_ONE_BULLET] = (AmmoBullet, 1),
+            [SkillIds.NW_SPIRAL_SHOOTING] = (AmmoBullet, 6), [SkillIds.NW_MAGAZINE_FOR_ONE] = (AmmoBullet, 6),
+            [SkillIds.NW_WILD_FIRE] = (AmmoBullet, 5),
+            // Bullet | Shell | Grenade
+            [SkillIds.RL_QD_SHOT] = (AmmoBullet | AmmoShell | AmmoGrenade, 1),
+            // Shuriken / Kunai / Dagger
+            [SkillIds.NJ_SYURIKEN] = (AmmoShuriken, 1), [SkillIds.NJ_KUNAI] = (AmmoKunai, 1),
+            [SkillIds.KO_HAPPOKUNAI] = (AmmoKunai, 2), [SkillIds.SS_KUNAIWAIKYOKU] = (AmmoKunai, 2),
+            [SkillIds.SS_KUNAIKAITEN] = (AmmoKunai, 5), [SkillIds.SS_KUNAIKUSSETSU] = (AmmoKunai, 5),
+            [SkillIds.AS_VENOMKNIFE] = (AmmoDagger, 1),
+            // Cannonball / Throw
+            [SkillIds.NC_ARMSCANNON] = (AmmoCannonball, 1), [SkillIds.GN_CARTCANNON] = (AmmoCannonball, 1),
+            [SkillIds.GN_SLINGITEM] = (AmmoThrow, 1),
+            // All ammo types (the Gunslinger's basic shots accept any loaded ammo)
+            [SkillIds.GS_TRIPLEACTION] = (AmmoArrow | AmmoDagger | AmmoBullet | AmmoShell | AmmoGrenade | AmmoShuriken | AmmoKunai | AmmoCannonball | AmmoThrow, 1),
+            [SkillIds.GS_BULLSEYE] = (AmmoArrow | AmmoDagger | AmmoBullet | AmmoShell | AmmoGrenade | AmmoShuriken | AmmoKunai | AmmoCannonball | AmmoThrow, 1),
+            [SkillIds.GS_CRACKER] = (AmmoArrow | AmmoDagger | AmmoBullet | AmmoShell | AmmoGrenade | AmmoShuriken | AmmoKunai | AmmoCannonball | AmmoThrow, 1),
+        };
+
     /// <inheritdoc />
     public void LoadingFinished()
     {
@@ -453,6 +511,20 @@ public sealed class SkillDb : ISkillDb
         {
             if (_byId.TryGetValue(id, out var def) && (def.Inf2 & flags) != flags)
                 _byId[id] = def with { Inf2 = def.Inf2 | flags };
+        }
+
+        // COMBAT-76 — fold the curated ammo mask + per-level qty into any loaded def
+        // (idempotent). Builds a MaxLevel-wide qty array (rAthena ammo_qty is the same for
+        // every level in renewal skill_db). Applied even to skills not yet in the SQL load
+        // by registering a minimal def so GetAmmoType/GetAmmoQty resolve before SkillDbLoader.
+        foreach (var (id, (mask, qty)) in CuratedAmmo)
+        {
+            if (!_byId.TryGetValue(id, out var def)) continue;
+            var levels = Math.Max(1, (int)def.MaxLevel);
+            var qtyArr = new int[levels + 1];
+            for (var lv = 1; lv <= levels; lv++) qtyArr[lv] = qty;
+            if (def.AmmoTypeMask != mask || def.AmmoQuantity.Length != qtyArr.Length)
+                _byId[id] = def with { AmmoTypeMask = mask, AmmoQuantity = qtyArr };
         }
 
         if (_byId.Count > MaxSkillSoftCap)

@@ -115,6 +115,13 @@ public sealed class SkillClientService : ISkillClientService
         _visibility.SendToSelf(caster, packet);
     }
 
+    public void BroadcastArrowFail(PlayerEntity caster,
+        Core.Server.Packets.Out.ZC.ArrowFailType type = Core.Server.Packets.Out.ZC.ArrowFailType.NoAmmo)
+    {
+        // rAthena clif_arrow_fail (clif.cpp:4217): PACKET_ZC_ACTION_FAILURE, SELF scope.
+        _visibility.SendToSelf(caster, new Core.Server.Packets.Out.ZC.ZC_ACTION_FAILURE { Type = (ushort)type });
+    }
+
     public void BroadcastSkillEstimation(PlayerEntity caster, Entity targetMob)
     {
         // rAthena: clif_skill_estimation packs the target's BattleStats

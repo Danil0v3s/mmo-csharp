@@ -73,6 +73,16 @@ public interface ISkillClientService
         int btype = 0, uint itemId = 0);
 
     /// <summary>
+    /// rAthena <c>clif_arrow_fail(sd, ARROWFAIL_NO_AMMO)</c> (clif.cpp:4217) — sent only
+    /// to the caster when a ranged attack/skill can't fire because no (or wrong-type)
+    /// projectile is equipped. Renders the "Please equip the proper ammunition first."
+    /// message. Distinct from <see cref="BroadcastSkillFail"/> (a different packet,
+    /// ZC_ACTION_FAILURE vs ZC_ACK_TOUSESKILL).
+    /// </summary>
+    void BroadcastArrowFail(PlayerEntity caster,
+        Core.Server.Packets.Out.ZC.ArrowFailType type = Core.Server.Packets.Out.ZC.ArrowFailType.NoAmmo);
+
+    /// <summary>
     /// rAthena <c>clif_skillcasting(src, dst, dst_x, dst_y, skill_id, skill_lv,
     /// property, casttime)</c> (clif.cpp:5930). Broadcasts the cast-start
     /// frame to AOI — clients render the casting bar over the caster.

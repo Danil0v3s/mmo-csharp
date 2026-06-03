@@ -410,30 +410,68 @@ public sealed class SkillCastService : ISkillCastService
         return false;
     }
 
-    // COMBAT-58 — a weapon-damage skill cast with an ammo-using weapon (bow/gun)
-    // consumes ammo, mirroring the auto-attack ammo path. The skill_db ammotype/
-    // ammo_qty columns aren't loaded yet (→ COMBAT-76), so reachability keys on the
-    // WEAPON ammo gate (the common ranged-skill case); qty falls back to 1.
-    private bool SkillUsesAmmo(PlayerEntity pc, SkillDefinition def)
-        => def.DamageKind == SkillDamageKind.Weapon
-           && Map.Server.Inventory.WeaponTypeCodes.UsesAmmo(pc.WeaponType);
+    // COMBAT-76 — rAthena ammo-type bits (e_ammo_type) for packet selection / weapon fallback.
+    private const int AmmoArrow = 1 << 1, AmmoBullet = 1 << 3, AmmoShell = 1 << 4,
+        AmmoGrenade = 1 << 5, AmmoKunai = 1 << 7;
 
-    private int SkillAmmoQty(ushort skillId, ushort skillLevel)
-        => Math.Max(1, _db.GetAmmoQty(skillId, skillLevel));
+    // COMBAT-58/76 — a skill consumes ammo when the skill_db carries an explicit ammo
+    // requirement (skill_get_ammotype != 0), OR — rAthena's `!req.ammo && skill_isammotype`
+    // fallback (skill.cpp:19925) — it is a weapon-damage skill cast with an ammo-using
+    // weapon (bow/gun). The explicit per-skill mask + qty come from the COMBAT-76 overlay.
+    private bool SkillUsesAmmo(PlayerEntity pc, SkillDefinition def, ushort skillId)
+        => _db.GetAmmoType(skillId) != 0
+           || (def.DamageKind == SkillDamageKind.Weapon
+               && Map.Server.Inventory.WeaponTypeCodes.UsesAmmo(pc.WeaponType));
+
+    // rAthena battle_consume_ammo / skill_get_requirement: per-skill qty (≥1 when ammo is
+    // used), plus the NW_MAGAZINE_FOR_ONE + W_GATLING special (+4). `gate` adds the 2016
+    // renewal "extra ammo" (+1) charged at cast-begin only — the consume removes the base qty.
+    private int SkillAmmoQty(ushort skillId, ushort skillLevel, PlayerEntity pc, bool gate)
+    {
+        var qty = Math.Max(1, _db.GetAmmoQty(skillId, skillLevel));
+        if (skillId == SkillIds.NW_MAGAZINE_FOR_ONE
+            && pc.WeaponType == Map.Server.Inventory.WeaponTypeCodes.Gatling)
+            qty += 4;
+        if (gate && IsExtraAmmoSkill(skillId)) qty += 1;
+        return qty;
+    }
+
+    // skill.cpp:19602 (RENEWAL) — these four skills require one extra ammo to cast.
+    private static bool IsExtraAmmoSkill(ushort skillId) => skillId is
+        SkillIds.WM_SEVERE_RAINSTORM or SkillIds.RL_FIREDANCE
+        or SkillIds.RL_R_TRIP or SkillIds.RL_FIRE_RAIN;
 
     /// <summary>True (and emits the fail packet) when an ammo-using skill lacks ammo.</summary>
     private bool AmmoGateFails(Entity source, SkillDefinition def, ushort skillId, ushort skillLevel)
     {
-        if (source is not PlayerEntity pc || !SkillUsesAmmo(pc, def)) return false;
-        if (_ammo?.HasUsableAmmo(pc, SkillAmmoQty(skillId, skillLevel)) != false) return false;
-        // rAthena: guns → USESKILL_FAIL_NEED_MORE_BULLET; arrows → clif_arrow_fail.
-        var cause = pc.WeaponType >= Map.Server.Inventory.WeaponTypeCodes.Revolver
-                    && pc.WeaponType <= Map.Server.Inventory.WeaponTypeCodes.Grenade
-            ? Core.Server.Packets.Out.ZC.SkillFailCause.NeedMoreBullet
-            : Core.Server.Packets.Out.ZC.SkillFailCause.Stuff;
-        _client?.BroadcastSkillFail(pc, skillId, cause);
+        if (source is not PlayerEntity pc || !SkillUsesAmmo(pc, def, skillId)) return false;
+        var skillMask = _db.GetAmmoType(skillId);
+        if (_ammo?.HasUsableAmmo(pc, SkillAmmoQty(skillId, skillLevel, pc, gate: true), skillMask) != false) return false;
+
+        // rAthena gate packet selection (skill.cpp:19618-19635): bullet/grenade/shell →
+        // NEED_MORE_BULLET; kunai → NEED_EQUIPMENT_KUNAI; otherwise (arrows, no/wrong ammo)
+        // → clif_arrow_fail. Use the explicit skill ammo mask, falling back to the weapon's
+        // own ammo type for skills that ride the weapon heuristic.
+        var mask = skillMask != 0 ? skillMask : WeaponAmmoMask(pc.WeaponType);
+
+        if ((mask & (AmmoBullet | AmmoShell | AmmoGrenade)) != 0)
+            _client?.BroadcastSkillFail(pc, skillId, Core.Server.Packets.Out.ZC.SkillFailCause.NeedMoreBullet);
+        else if ((mask & AmmoKunai) != 0)
+            _client?.BroadcastSkillFail(pc, skillId, Core.Server.Packets.Out.ZC.SkillFailCause.NeedEquipmentKunai);
+        else
+            _client?.BroadcastArrowFail(pc);
         return true;
     }
+
+    // rAthena ammo-type a weapon fires (skill_isammotype / the EQI_AMMO subtype gate):
+    // bow → arrow, every gun (Revolver..Grenade) → bullet.
+    private static int WeaponAmmoMask(int weaponType) => weaponType switch
+    {
+        Map.Server.Inventory.WeaponTypeCodes.Bow => AmmoArrow,
+        >= Map.Server.Inventory.WeaponTypeCodes.Revolver
+            and <= Map.Server.Inventory.WeaponTypeCodes.Grenade => AmmoBullet,
+        _ => 0,
+    };
 
     public bool ResolveSkill(Entity source, Entity target, ushort skillId, ushort skillLevel)
     {
@@ -441,10 +479,11 @@ public sealed class SkillCastService : ISkillCastService
         if (def == null) return false;
         if (!IsAlive(target)) return false;
 
-        // COMBAT-58 — consume ammo at castend (rAthena battle_consume_ammo). The gate
-        // already ran at cast-begin; ConsumeAmmo no-ops for non-ammo weapons.
-        if (source is PlayerEntity ammoPc && SkillUsesAmmo(ammoPc, def))
-            _ammo?.ConsumeAmmo(ammoPc, SkillAmmoQty(skillId, skillLevel));
+        // COMBAT-58/76 — consume ammo at castend (rAthena battle_consume_ammo). The gate
+        // already ran at cast-begin; ConsumeAmmo no-ops for non-ammo weapons. Consume the
+        // base per-skill qty (the renewal +1 extra is a gate-only charge, not consumed).
+        if (source is PlayerEntity ammoPc && SkillUsesAmmo(ammoPc, def, skillId))
+            _ammo?.ConsumeAmmo(ammoPc, SkillAmmoQty(skillId, skillLevel, ammoPc, gate: false), _db.GetAmmoType(skillId));
 
         // T2.3 refactor — per-skill SkillImpl plugin first. When a
         // plugin is registered for this skill id, we route through its

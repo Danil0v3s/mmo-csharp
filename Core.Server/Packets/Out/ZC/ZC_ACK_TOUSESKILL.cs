@@ -76,10 +76,16 @@ public enum SkillFailCause : byte
     InvokerNotConfirm = 19,
     NeedHelpers = 20,
     NeedEquipment = 21,
-    NeedMoreBullet = 22,
     Coin = 23,
     Amount = 24,
     Sight = 25,
     SummonNone = 26,
     NeedItem = 27,
+
+    // COMBAT-76 — exact rAthena `e_useskill_fail_cause` (clif.hpp) wire values for the
+    // ammo fail messages. NOTE: the values ABOVE this line are a legacy renumbering that
+    // does NOT match rAthena's enum (sent raw via clif_skill_fail → wrong client string);
+    // reconciling the whole enum is COMBAT-92. These two are correct.
+    NeedEquipmentKunai = 34,  // USESKILL_FAIL_NEED_EQUIPMENT_KUNAI
+    NeedMoreBullet = 84,      // USESKILL_FAIL_NEED_MORE_BULLET
 }

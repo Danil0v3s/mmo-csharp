@@ -62,7 +62,7 @@ public class Combat58SkillAmmoTests
     // ---- skill cast path ----
 
     [Fact]
-    public void Bow_skill_with_no_ammo_is_gated_and_fails_with_stuff_cause()
+    public void Bow_skill_with_no_ammo_is_gated_and_sends_arrow_fail()
     {
         var rec = new SkillTraceRecorder();
         var ctx = SkillCtx(WeaponTypeCodes.Bow, ammoAmount: 0, rec);
@@ -70,8 +70,9 @@ public class Combat58SkillAmmoTests
         var result = ctx.svc.StartCast(ctx.pc, ctx.target.Id, SkillIds.SM_BASH, BashLv);
 
         Assert.Equal(SkillCastResult.NeedAmmo, result);
-        var fail = rec.Events.Single(e => e.Kind == "fail");
-        Assert.Equal("Stuff", (string)fail.Data["cause"]!); // arrows → clif_arrow_fail
+        // COMBAT-76 — arrows → clif_arrow_fail (ZC_ACTION_FAILURE), not clif_skill_fail.
+        var fail = rec.Events.Single(e => e.Kind == "arrow-fail");
+        Assert.Equal("NoAmmo", (string)fail.Data["type"]!);
     }
 
     [Fact]

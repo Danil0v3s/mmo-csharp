@@ -991,6 +991,7 @@ public static class SkillIds
     public const ushort RL_C_MARKER = 2560;
     public const ushort RL_D_TAIL = 2566;
     public const ushort RL_FALLEN_ANGEL = 2564;
+    public const ushort RL_P_ALTER = 2563;
     public const ushort RL_FIREDANCE = 2561;
     public const ushort RL_FIRE_RAIN = 2567;
     public const ushort RL_FLICKER = 2556;

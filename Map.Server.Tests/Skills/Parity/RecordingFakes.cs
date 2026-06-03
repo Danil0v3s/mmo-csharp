@@ -147,6 +147,14 @@ public sealed class RecordingSkillClientService : ISkillClientService
             ["itemId"] = (long)itemId,
         });
 
+    public void BroadcastArrowFail(PlayerEntity caster,
+        Core.Server.Packets.Out.ZC.ArrowFailType type = Core.Server.Packets.Out.ZC.ArrowFailType.NoAmmo)
+        => _rec.Record("arrow-fail", new()
+        {
+            ["caster"] = caster.CharacterId,
+            ["type"] = type.ToString(),
+        });
+
     public void BroadcastSkillCasting(Entity src, Entity? target, short targetX, short targetY,
         ushort skillId, ushort skillLevel, int castTimeMs)
         => _rec.Record("casting", new()
