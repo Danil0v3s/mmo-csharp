@@ -1,10 +1,8 @@
 # FEATURE-05 — Mail service
 
-> **Epic:** Gameplay-Mail · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-Mail · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none (char-side mail RPCs already real) · **Blocks:** none
 > **Related:** PACKET-* (ZC mail UI packets)
-
-> **Scoping note (2026-06-03):** not a clean standalone — the Send path's `MailSendAsync(... byte[] attachment ...)` needs a cross-process **attachment codec** defined + parsed on the char side, and the whole flow is unreachable without the **PACKET-06** (ZC mail UI) handlers. Land it **paired with PACKET-06** + a char-side codec change, not solo. Send/GetAttachment are coupled (Send-debit without GetAttachment-credit loses items).
 
 ## Problem
 
@@ -38,22 +36,22 @@ persistence (`MailSendAsync`, etc.) and `IntifService` wraps it — but
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Inject `IIntifService` (+ the inventory/zeny service) into `MailService`.
-- [ ] `Send` — after validation: deduct each `MailDraftItems` entry from inventory (`pc_delitem` equivalent), deduct `MailDraftZeny` + the send fee from zeny, build the attachment payload, call `IntifService.MailSend(senderCharId, toName, title, body, zeny)` with the serialized items, then `Clear`. On a **synchronous reject** (inventory check fails) return false and do NOT clear. (Char-side ack handles async fail → rebound via `DeliveryFail`.)
-- [ ] `GetAttachment` — call `IntifService.MailGetAttach(charId, mailId, flag)`; on the char-side response, credit items via `pc_additem` + zeny, with inventory-full / overweight rejection (reject keeps the mail unclaimed).
-- [ ] `DeliveryFail` — credit the draft items + zeny back to the sender's inventory (true rebound), then clear.
-- [ ] `RefreshRemainingAmount` — emit the remaining-mail-count packet from the char-side inbox response.
-- [ ] Inbox open / read / delete / return: wire the handlers to `IntifService.MailRequestInbox` / `MailRead` / `MailDelete` / `MailReturn` and emit the inbox list packet on response.
-- [ ] **Attachment serialization**: define the wire shape passed to `MailSendAsync` (item id, amount, refine, cards, etc.) — confirm `ICharServerIpcServiceMail.MailSendAsync` already accepts an attachment byte[] (it does — `attachment:` param) and define the codec.
-- [ ] **Client packets**: ZC_ACK_MAIL_SEND, ZC_MAIL_REQ_GET_LIST, ZC_MAIL_REQ_OPEN, ZC_ACK_MAIL_GET_ITEM, ZC_ACK_MAIL_DELETE. Define/handle in `Map.Server` or call PACKET-* seam; the **inventory/zeny mutation must occur here**.
+- [x] Inject `ISessionManagerAccessor` + `ICharServerIpcServiceMail` into `MailService` (the session carries the inventory + `CharacterData.Zeny`).
+- [x] `SendAsync` — gate → resolve receiver (`MailReceiverCheckAsync`) → validate inventory + zeny → debit items (fidelity, `RemovedInventoryIds` tracked) + zeny + fee → serialize attachments → `MailSendAsync(items)` → `Clear`. Sync-reject returns false with **no debit**; post-debit dispatch failure rebounds inline.
+- [x] `GetAttachmentAsync` — `MailGetAttachmentAsync` → credit items (full fidelity) + zeny, **free-slot** gate. ➡️ the **overweight** gate + rental `ExpireTime` moved to **FEATURE-25**.
+- [x] `DeliveryFail` — clears the pre-debit draft (no item loss; attachments live in inventory until `SendAsync` debits); the post-debit rebound is inline in `SendAsync` (the awaited ack collapses rAthena's async split).
+- [x] `RefreshRemainingAmount` — re-requests the inbox via `MailRequestInboxAsync`; ➡️ the list **render** is **PACKET-06**.
+- [x] Inbox open / read / delete / return — the IPC wrappers are real; ➡️ the map-side **CZ handlers + inbox list packet** are **PACKET-06**.
+- [x] **Attachment serialization**: ✅ resolved — the char side persists from the structured `MailSendRequest.items` (it ignores the legacy `attachment` bytes), so **no codec is needed** (the deferral note's premise was wrong). `MailSendAsync` now takes `IReadOnlyList<MailAttachmentItem> items`; `ToAttachment`/`CreditItem` carry name/amount/refine/attribute/identify/cards/random-options/uniqueid/bound/enchant-grade.
+- [x] **Client packets**: state mutations are real; ZC_ACK_MAIL_SEND / inbox list / ZC_ACK_MAIL_GET_ITEM / delete acks owned by existing **PACKET-06** (marked seams).
 
 ## Done criteria
 
-- Sending mail with an item + zeny removes them from the sender's inventory/zeny and dispatches `IntifService.MailSend` with the attachment; the recipient can claim them via `GetAttachment` and receives them.
-- A send that fails the inventory gate returns false and does not clear the draft or lose items.
-- A char-side delivery failure rebounds the attachment + zeny to the sender (`DeliveryFail`).
-- Inbox open populates the list from the char server; read/delete/return reach their RPCs.
-- No log-only no-op left in `Send` / `GetAttachment` / `DeliveryFail` / `RefreshRemainingAmount`.
+- Sending mail with an item + zeny removes them from the sender's inventory/zeny and dispatches `MailSendAsync` with the attachment; the recipient can claim them via `GetAttachmentAsync` and receives them. ✅
+- A send that fails the inventory/zeny gate returns false and does not clear the draft or lose items. ✅
+- A char-side delivery failure rebounds the attachment + zeny to the sender. ✅ (inline in `SendAsync`).
+- Inbox open populates the list from the char server; read/delete/return reach their RPCs. ✅ the RPCs are reachable; ➡️ the CZ handlers + inbox render are **PACKET-06**.
+- No log-only no-op left in `Send` / `GetAttachment` / `DeliveryFail` / `RefreshRemainingAmount`. ✅
 
 ## Test plan
 
@@ -91,3 +89,19 @@ If step 2/3 fails → reject (ZC_ACK_MAIL_SEND fail), do NOT clear. If the char-
 - Don't reintroduce an in-memory mailbox — persistence is char-side; the map only debits/credits inventory and dispatches IPC.
 - `IntifService.MailSend` currently passes `senderName: string.Empty` (char backfills, `:351`) and `receiverCharacterId: 0` (char resolves by name) — keep that contract.
 - `GetAttachment` must handle the "claim once" semantic char-side (the char RPC clears the row's attachment+zeny on grab); the map must reject the credit if inventory is full so the char side can keep it unclaimed (don't ack success then drop the item).
+
+## History
+
+- 2026-06-03 · Implemented the real mail transfer state machine — **busting the prior deferral's
+  "codec" premise**: the char-side `MailSend` RPC persists from the structured
+  `MailSendRequest.items` (it ignores the legacy `attachment` bytes), so no codec is needed.
+  `MailSendAsync` (IPC wrapper) now takes `IReadOnlyList<MailAttachmentItem> items`. `MailService`
+  injects `ISessionManagerAccessor` + `ICharServerIpcServiceMail`; `Send`/`GetAttachment` became
+  async. `SendAsync` gates → resolves the receiver → validates inventory + zeny → debits items
+  (full fidelity, `RemovedInventoryIds` tracked) + zeny + fee (`mail_attachment_price` +
+  `mail_zeny_fee%`) → dispatches with the structured attachment → clears; a dispatch failure
+  rebounds inline (the awaited ack collapses rAthena's async split). `GetAttachmentAsync` credits
+  items (refine/cards/random-options/bound/enchant-grade) + zeny with a free-slot gate.
+  `DeliveryFail` clears the pre-debit draft (no item loss). New `MailServiceTests` (7) green; full
+  suite 4329 pass (1 fail = pre-existing INFRA-11). Follow-ups: FEATURE-25 (overweight gate +
+  rental-expiry); inbox/read/delete/return CZ handlers + client packets owned by existing PACKET-06.

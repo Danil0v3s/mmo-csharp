@@ -93,11 +93,12 @@ public partial class CharServerIpcService
         string body,
         long zeny,
         byte[] attachment,
+        IReadOnlyList<MailAttachmentItem>? items = null,
         CancellationToken cancellationToken = default)
     {
         var client = GetClient();
         if (client == null) return null;
-        return await client.MailSendAsync(new MailSendRequest
+        var request = new MailSendRequest
         {
             SenderAccountId = senderAccountId,
             SenderCharacterId = senderCharacterId,
@@ -109,7 +110,11 @@ public partial class CharServerIpcService
             Body = body ?? string.Empty,
             Zeny = zeny,
             Attachment = Google.Protobuf.ByteString.CopyFrom(attachment ?? Array.Empty<byte>())
-        }, cancellationToken: cancellationToken);
+        };
+        // FEATURE-05 — the char side persists from the structured items (it ignores the legacy
+        // attachment bytes), so the attachment rides this repeated field.
+        if (items != null) request.Items.AddRange(items);
+        return await client.MailSendAsync(request, cancellationToken: cancellationToken);
     }
 
     public async Task<MailReceiverCheckResponse?> MailReceiverCheckAsync(

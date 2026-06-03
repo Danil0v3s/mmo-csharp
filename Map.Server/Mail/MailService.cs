@@ -1,27 +1,40 @@
+using Core.Server.IPC;
 using Map.Server.Entities;
+using Map.Server.Inventory;
+using Map.Server.Services;
+using Map.Server.Status;
 using Microsoft.Extensions.Logging;
 
 namespace Map.Server.Mail;
 
 /// <summary>
-/// Default <see cref="IMailService"/>. Per-PC draft tracking +
-/// char-server forwarding. The mail persistence path already exists
-/// on the char server (MailSendAsync / MailReceiveAsync RPC). This
-/// service is the rAthena-named seam map-side handlers call.
-///
-/// AT-D2 wave: real draft state on PlayerEntity (<see cref="PlayerEntity.MailDraftItems"/>
-/// + <see cref="PlayerEntity.MailDraftZeny"/>); the inventory mutation
-/// + char-server dispatch on <see cref="Send"/> hands off to the
-/// existing intif mail RPC.
+/// Default <see cref="IMailService"/>. Per-PC draft tracking + real attachment transfer through the
+/// char-server mail RPCs (FEATURE-05). Persistence lives char-side (the mail + mail_attachment
+/// tables); this service debits the sender on send, credits the receiver on claim, and rebounds on
+/// dispatch failure. The client packets (ZC_ACK_MAIL_SEND / inbox list / get-item ack) are owned by
+/// PACKET-06 — the inventory/zeny mutation happens here regardless.
 /// </summary>
 public sealed class MailService : IMailService
 {
     private const long MaxDraftZeny = 1_000_000_000L; // rAthena MAX_ZENY
     private const int MaxAttachments = 5;             // rAthena MAIL_MAX_ITEM
+    private const int MaxInventory = 100;             // rAthena MAX_INVENTORY
 
+    // rAthena battle_config defaults: a per-item flat fee + a percentage tax on the attached zeny.
+    private const long MailAttachmentPrice = 2500;    // battle_config.mail_attachment_price
+    private const long MailZenyFeePercent = 0;        // battle_config.mail_zeny_fee
+
+    private readonly ISessionManagerAccessor? _sessions;
+    private readonly ICharServerIpcServiceMail? _mailIpc;
     private readonly ILogger<MailService> _logger;
 
-    public MailService(ILogger<MailService> logger) => _logger = logger;
+    public MailService(ILogger<MailService> logger,
+        ISessionManagerAccessor? sessions = null, ICharServerIpcServiceMail? mailIpc = null)
+    {
+        _logger = logger;
+        _sessions = sessions;
+        _mailIpc = mailIpc;
+    }
 
     /// <summary>rAthena <c>mail_openmail</c> — flip the open flag.</summary>
     public int OpenMail(PlayerEntity pc)
@@ -37,23 +50,64 @@ public sealed class MailService : IMailService
         pc.MailDraftZeny = 0;
     }
 
-    /// <summary>
-    /// rAthena <c>mail_send</c> — handoff to the char-server mail RPC.
-    /// Wire to the existing IPC bridge (see intif-parity.md
-    /// MailSendAsync row). For local-only delivery the validation gate
-    /// stays here; persistence is char-side.
-    /// </summary>
-    public bool Send(PlayerEntity pc, string recipientName, string title, string body)
+    /// <inheritdoc />
+    public async Task<bool> SendAsync(PlayerEntity pc, string recipientName, string title, string body,
+        CancellationToken ct = default)
     {
+        // 1. Sync gates (rAthena mail_send MAIL_SEND_FAIL checks).
         if (!pc.MailOpened) return false;
         if (string.IsNullOrWhiteSpace(recipientName) || recipientName.Length > 24) return false;
         if (string.IsNullOrEmpty(title) || title.Length > 40) return false;
         if (body.Length > 200) return false;
-        // Validation passed. Char-server mail RPC handles persistence; we
-        // wipe the local draft to mirror rAthena post-send cleanup.
-        _logger.LogInformation("mail_send: {From} → {To} '{Title}' ({Items} items, {Zeny}z)",
-            pc.Name, recipientName, title, pc.MailDraftItems.Count, pc.MailDraftZeny);
-        Clear(pc);
+        if (string.Equals(recipientName, pc.Name, StringComparison.OrdinalIgnoreCase)) return false; // not self
+
+        var session = _sessions?.GetByEntityId(pc.Id);
+        var inv = session?.Inventory;
+        if (session?.CharacterData == null || inv == null || _mailIpc == null) return false;
+
+        // 2. Validate the draft against the live inventory + zeny before any debit.
+        var attachments = new List<MailAttachmentItem>();
+        foreach (var (index, amount) in pc.MailDraftItems)
+        {
+            if (amount <= 0) return false;
+            var item = FindBySlot(inv, index);
+            if (item == null || item.Equip != 0 || item.Amount < (uint)amount) return false; // gone / equipped / short
+            attachments.Add(ToAttachment(item, amount));
+        }
+        var fee = pc.MailDraftZeny * MailZenyFeePercent / 100 + attachments.Count * MailAttachmentPrice;
+        var totalCost = pc.MailDraftZeny + fee;
+        if (totalCost < 0 || (long)session.CharacterData.Zeny < totalCost) return false; // can't afford zeny + fee
+
+        // 3. Resolve the receiver char-side (rAthena's name → char_id check).
+        var receiver = await _mailIpc.MailReceiverCheckAsync(recipientName, ct);
+        if (receiver is not { Success: true }) return false;
+
+        // 4. Debit the sender (items + zeny + fee) — rAthena pc_delitem / pc_payzeny.
+        foreach (var (index, amount) in pc.MailDraftItems)
+            DebitSlot(session, inv, index, amount);
+        session.CharacterData.Zeny = (uint)((long)session.CharacterData.Zeny - totalCost);
+
+        // 5. Dispatch with the structured attachment.
+        var resp = await _mailIpc.MailSendAsync(
+            senderAccountId: pc.AccountId, senderCharacterId: pc.CharacterId, senderName: pc.Name,
+            receiverAccountId: receiver.AccountId, receiverCharacterId: receiver.CharacterId,
+            receiverName: receiver.ReceiverName, title: title, body: body,
+            zeny: pc.MailDraftZeny, attachment: Array.Empty<byte>(), items: attachments, cancellationToken: ct);
+
+        if (resp is not { Success: true })
+        {
+            // rAthena mail_deliveryfail — the send was refused; rebound the debited items + zeny.
+            foreach (var a in attachments) CreditItem(session, inv, a);
+            session.CharacterData.Zeny = (uint)((long)session.CharacterData.Zeny + totalCost);
+            _logger.LogWarning("mail_send: dispatch failed {From}->{To}; rebounded {N} items + {Zeny}z",
+                pc.Name, recipientName, attachments.Count, totalCost);
+            return false;
+        }
+
+        Clear(pc); // draft wiped only after a successful dispatch
+        // PACKET-06: ZC_ACK_MAIL_SEND(success) emit seam.
+        _logger.LogInformation("mail_send: {From}->{To} '{Title}' ({N} items, {Zeny}z, fee {Fee})",
+            pc.Name, recipientName, title, attachments.Count, pc.MailDraftZeny, fee);
         return true;
     }
 
@@ -75,10 +129,7 @@ public sealed class MailService : IMailService
         return pc.MailDraftItems.Remove(inventoryIndex);
     }
 
-    /// <summary>
-    /// rAthena <c>mail_removezeny</c> — decrement attached zeny (negative
-    /// = add). rAthena clamps to MAX_ZENY; we mirror that.
-    /// </summary>
+    /// <summary>rAthena <c>mail_removezeny</c> — decrement attached zeny (negative = add).</summary>
     public bool RemoveZeny(PlayerEntity pc, long amount)
     {
         if (!pc.MailOpened) return false;
@@ -97,28 +148,143 @@ public sealed class MailService : IMailService
         return true;
     }
 
-    /// <summary>rAthena <c>mail_deliveryfail</c> — push attachments back to sender on bounce.</summary>
+    /// <summary>rAthena <c>mail_deliveryfail</c> — a draft abort before dispatch. Attachments are
+    /// only flagged in the draft (the real items stay in inventory until <see cref="SendAsync"/>
+    /// debits them), so clearing the draft returns the player to a clean state with no item loss. The
+    /// post-debit dispatch-failure rebound is handled inline in <see cref="SendAsync"/>.</summary>
     public void DeliveryFail(PlayerEntity pc)
     {
-        _logger.LogInformation("mail_deliveryfail: returning draft to {Pc}", pc.Name);
-        // Real attachments rebound through char-server IPC; here we
-        // just clear the local draft state so the client can re-open.
+        _logger.LogInformation("mail_deliveryfail: clearing draft for {Pc}", pc.Name);
         Clear(pc);
     }
 
-    /// <summary>rAthena <c>mail_getattachment</c> — claim attachments to inventory (char-side).</summary>
-    public void GetAttachment(PlayerEntity pc, int mailId)
+    /// <inheritdoc />
+    public async Task<bool> GetAttachmentAsync(PlayerEntity pc, int mailId, CancellationToken ct = default)
     {
-        // Inventory mutation happens after the char-server returns the
-        // attachment payload — see CharServerIpcServiceMail.GetMailAsync.
-        _logger.LogInformation("mail_getattachment: {Pc} requesting mail #{Mail}", pc.Name, mailId);
+        var session = _sessions?.GetByEntityId(pc.Id);
+        var inv = session?.Inventory;
+        if (session?.CharacterData == null || inv == null || _mailIpc == null) return false;
+
+        var resp = await _mailIpc.MailGetAttachmentAsync(pc.AccountId, pc.CharacterId, mailId, ct);
+        if (resp is not { Success: true }) return false;
+
+        // Inventory-full / can't-hold gate (rAthena rejects, leaving the mail unclaimed).
+        var freshSlots = 0;
+        foreach (var a in resp.Items)
+            if (FindMergeable(inv, a) == null) freshSlots++;
+        if (inv.Count + freshSlots > MaxInventory) return false;
+
+        foreach (var a in resp.Items) CreditItem(session, inv, a);
+        if (resp.Zeny > 0)
+            session.CharacterData.Zeny = (uint)Math.Min(MaxDraftZeny, (long)session.CharacterData.Zeny + resp.Zeny);
+        // PACKET-06: ZC_ACK_MAIL_GET_ITEM emit seam. Char side flips the mail's attachment-claimed flag.
+        _logger.LogInformation("mail_getattachment: {Pc} claimed mail #{Mail} ({N} items, {Zeny}z)",
+            pc.Name, mailId, resp.Items.Count, resp.Zeny);
+        return true;
     }
 
-    /// <summary>rAthena <c>mail_refresh_remaining_amount</c> — push remaining-mail count to client.</summary>
+    /// <summary>rAthena <c>mail_refresh_remaining_amount</c> — re-request the inbox so the client's
+    /// remaining-mail counter is refreshed. The list render is PACKET-06.</summary>
     public void RefreshRemainingAmount(PlayerEntity pc)
     {
-        // Wire packet ZC_MAIL_REQ_GET_LIST follows the char-server's
-        // count response; canonical entry kept for the handler that
-        // pumps the IPC reply.
+        if (_mailIpc == null) return;
+        _ = _mailIpc.MailRequestInboxAsync(pc.AccountId, pc.CharacterId);
+        // PACKET-06: ZC_MAIL_REQ_GET_LIST render seam off the inbox response.
+    }
+
+    // --- inventory helpers (mirror the Trade debit/credit-with-fidelity pattern) ---
+
+    private static InventoryItem? FindBySlot(List<InventoryItem> inv, int serverIndex)
+    {
+        foreach (var i in inv) if (i.ServerIndex == serverIndex) return i;
+        return null;
+    }
+
+    private static MailAttachmentItem ToAttachment(InventoryItem i, int amount)
+    {
+        var a = new MailAttachmentItem
+        {
+            Index = (uint)i.ServerIndex,
+            NameId = i.NameId,
+            Amount = (uint)amount,
+            Refine = i.Refine,
+            Attribute = i.Attribute,
+            Identify = i.Identified ? 1 : 0,
+            Card0 = i.Card0, Card1 = i.Card1, Card2 = i.Card2, Card3 = i.Card3,
+            UniqueId = i.UniqueId,
+            Bound = i.Bound,
+            EnchantGrade = i.EnchantGrade,
+        };
+        WriteOptions(a, i.Options);
+        return a;
+    }
+
+    /// <summary>Copy the 5 random-option slots into the attachment payload (rAthena item.option[]).</summary>
+    private static void WriteOptions(MailAttachmentItem a, ItemOption[] opt)
+    {
+        if (opt.Length > 0) { a.OptionId0 = opt[0].Id; a.OptionVal0 = opt[0].Value; a.OptionParm0 = opt[0].Param; }
+        if (opt.Length > 1) { a.OptionId1 = opt[1].Id; a.OptionVal1 = opt[1].Value; a.OptionParm1 = opt[1].Param; }
+        if (opt.Length > 2) { a.OptionId2 = opt[2].Id; a.OptionVal2 = opt[2].Value; a.OptionParm2 = opt[2].Param; }
+        if (opt.Length > 3) { a.OptionId3 = opt[3].Id; a.OptionVal3 = opt[3].Value; a.OptionParm3 = opt[3].Param; }
+        if (opt.Length > 4) { a.OptionId4 = opt[4].Id; a.OptionVal4 = opt[4].Value; a.OptionParm4 = opt[4].Param; }
+    }
+
+    private static ItemOption[] ReadOptions(MailAttachmentItem a) => new[]
+    {
+        new ItemOption { Id = (short)a.OptionId0, Value = (short)a.OptionVal0, Param = (sbyte)a.OptionParm0 },
+        new ItemOption { Id = (short)a.OptionId1, Value = (short)a.OptionVal1, Param = (sbyte)a.OptionParm1 },
+        new ItemOption { Id = (short)a.OptionId2, Value = (short)a.OptionVal2, Param = (sbyte)a.OptionParm2 },
+        new ItemOption { Id = (short)a.OptionId3, Value = (short)a.OptionVal3, Param = (sbyte)a.OptionParm3 },
+        new ItemOption { Id = (short)a.OptionId4, Value = (short)a.OptionVal4, Param = (sbyte)a.OptionParm4 },
+    };
+
+    private static void DebitSlot(Map.Server.MapSessionData session, List<InventoryItem> inv, int serverIndex, int amount)
+    {
+        var item = FindBySlot(inv, serverIndex);
+        if (item == null) return;
+        item.Amount -= (uint)amount;
+        if (item.Amount == 0)
+        {
+            if (item.Id > 0) session.RemovedInventoryIds.Add(item.Id);
+            inv.Remove(item);
+        }
+    }
+
+    private static InventoryItem? FindMergeable(List<InventoryItem> inv, MailAttachmentItem a)
+    {
+        foreach (var i in inv)
+        {
+            if (i.NameId != a.NameId) continue;
+            if (i.Refine != a.Refine || (i.Identified ? 1 : 0) != a.Identify) continue;
+            if (i.Card0 != a.Card0 || i.Card1 != a.Card1 || i.Card2 != a.Card2 || i.Card3 != a.Card3) continue;
+            return i;
+        }
+        return null;
+    }
+
+    private static void CreditItem(Map.Server.MapSessionData session, List<InventoryItem> inv, MailAttachmentItem a)
+    {
+        var mergeable = FindMergeable(inv, a);
+        if (mergeable != null)
+        {
+            mergeable.Amount += a.Amount;
+            return;
+        }
+        var nextSlot = 0;
+        foreach (var i in inv) if (i.ServerIndex >= nextSlot) nextSlot = i.ServerIndex + 1;
+        inv.Add(new InventoryItem
+        {
+            ServerIndex = nextSlot,
+            NameId = a.NameId,
+            Amount = a.Amount,
+            Refine = (byte)a.Refine,
+            Attribute = (byte)a.Attribute,
+            Identified = a.Identify != 0,
+            Card0 = a.Card0, Card1 = a.Card1, Card2 = a.Card2, Card3 = a.Card3,
+            UniqueId = a.UniqueId,
+            Bound = (byte)a.Bound,
+            EnchantGrade = (byte)a.EnchantGrade,
+            Options = ReadOptions(a),
+        });
     }
 }

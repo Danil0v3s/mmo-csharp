@@ -178,6 +178,7 @@ public class IntifMailWiringTests
             int senderAccountId, long senderCharacterId, string senderName,
             int receiverAccountId, long receiverCharacterId, string receiverName,
             string title, string body, long zeny, byte[] attachment,
+            IReadOnlyList<Core.Server.IPC.MailAttachmentItem>? items = null,
             CancellationToken cancellationToken = default)
         {
             MailSendCalls.Add(new MailSendCall(senderAccountId, senderCharacterId,

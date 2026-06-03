@@ -44,6 +44,7 @@ public interface ICharServerIpcServiceMail
         string body,
         long zeny,
         byte[] attachment,
+        IReadOnlyList<MailAttachmentItem>? items = null,
         CancellationToken cancellationToken = default);
 
     Task<MailReceiverCheckResponse?> MailReceiverCheckAsync(
