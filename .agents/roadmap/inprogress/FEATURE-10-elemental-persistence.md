@@ -1,6 +1,6 @@
 # FEATURE-10 — Elemental persistence + lifetime expiry
 
-> **Epic:** Gameplay-Companion · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-Companion · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** FEATURE-02 (elemental save) · **Blocks:** none
 > **Related:** PACKET-* (elemental status packets)
 
