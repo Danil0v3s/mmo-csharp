@@ -1,6 +1,6 @@
 # COMBAT-70 — FREECAST cast-state ASPD recompute trigger
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-50 (the FREECAST amotion formula) · **Blocks:** none
 > **Filed by:** COMBAT-50 — the cast-state trigger that makes the FREECAST formula take effect live.
 
