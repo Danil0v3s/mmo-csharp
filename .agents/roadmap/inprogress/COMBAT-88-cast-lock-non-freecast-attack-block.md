@@ -1,6 +1,6 @@
 # COMBAT-88 — Cast-lock: block attack/move while casting unless SA_FREECAST
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-70 · **Blocks:** none
 > **Filed by:** COMBAT-70 — discovered while confirming the FREECAST precondition: the C#
 > auto-attack loop has no cast-lock, so *every* caster can attack while casting (not just
