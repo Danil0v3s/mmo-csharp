@@ -33,10 +33,10 @@ public class Combat76SkillAmmoDataTests
 {
     private const int AmmoArrowBit = 1 << 1, AmmoBulletBit = 1 << 3, AmmoKunaiBit = 1 << 7;
 
-    // ---- the curated overlay populates GetAmmoType / GetAmmoQty ----
+    // ---- the column load populates GetAmmoType / GetAmmoQty ----
 
     [Fact]
-    public void Overlay_loads_per_skill_mask_and_qty()
+    public void Column_load_populates_per_skill_mask_and_qty()
     {
         var db = Db(SkillIds.RA_ARROWSTORM, maxLevel: 10);
         Assert.Equal(AmmoArrowBit, db.GetAmmoType(SkillIds.RA_ARROWSTORM));
@@ -124,16 +124,30 @@ public class Combat76SkillAmmoDataTests
 
     private const uint AmmoNameId = 1750;
 
+    // COMBAT-92 — build the skill via the real column loader (SkillDbLoader.FromEntity) so the
+    // ammo mask + qty come from the skill_db Requirements columns (as seed_skill_db.sql provides),
+    // NOT a curated overlay. The per-skill ammo fixture mirrors db/re/skill_db.yml.
     private static SkillDb Db(ushort skillId, byte maxLevel)
     {
+        var (ammo, qty) = AmmoFor(skillId);
         var db = new SkillDb();
-        db.Register(new SkillDefinition
+        db.Register(SkillDbLoader.FromEntity(new SkillDbEntity
         {
             Id = skillId, Name = skillId.ToString(), MaxLevel = maxLevel,
-            Target = SkillTargetMode.TargetEnemy, DamageKind = SkillDamageKind.Weapon, Range = 9,
-        }, revalidate: true);
+            TargetMode = "TargetEnemy", DamageKind = "Weapon", Range = 9,
+            Ammo = ammo, AmmoAmount = qty,
+        }), revalidate: true);
         return db;
     }
+
+    private static (string ammo, int qty) AmmoFor(ushort skillId) => skillId switch
+    {
+        SkillIds.RA_ARROWSTORM       => ("Arrow", 5),
+        SkillIds.GS_DESPERADO        => ("Bullet", 10),
+        SkillIds.NW_MAGAZINE_FOR_ONE => ("Bullet", 6),
+        SkillIds.KO_HAPPOKUNAI       => ("Kunai", 2),
+        _ => (string.Empty, 0),
+    };
 
     private sealed record CastBundle(SkillCastService svc, PlayerEntity pc, MobEntity target,
         MapSessionData session, SkillTraceRecorder rec);

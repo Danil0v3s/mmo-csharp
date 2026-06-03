@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Core.Database.Entities;
 using Map.Server.Combat;
 using Map.Server.Entities;
 using Map.Server.Mob;
@@ -22,10 +23,10 @@ namespace Map.Server.Tests.Combat;
 /// </summary>
 public class Combat62GvgPkGatesTests
 {
-    // ---- curated Inf2 overlay ----
+    // ---- Inf2 from the skill_db column (COMBAT-92) ----
 
     [Fact]
-    public void Inf2_overlay_marks_zenynage_and_fire_expansion_acid()
+    public void Inf2_column_marks_zenynage_and_fire_expansion_acid()
     {
         var db = NewSkillDb();
         Assert.True(db.GetInf2(SkillIds.NJ_ZENYNAGE, SkillInf2.IgnoreGvgReduction));
@@ -148,16 +149,19 @@ public class Combat62GvgPkGatesTests
     private static SkillDb NewSkillDb()
     {
         var db = new SkillDb();
-        db.Register(Def(SkillIds.NJ_ZENYNAGE, "NJ_ZENYNAGE"));
-        db.Register(Def(SkillIds.GN_FIRE_EXPANSION_ACID, "GN_FIRE_EXPANSION_ACID"));
-        db.Register(Def(SkillIds.MG_FIREBOLT, "MG_FIREBOLT"), revalidate: true);
+        db.Register(Def(SkillIds.NJ_ZENYNAGE, "NJ_ZENYNAGE", "IgnoreGvgReduction|IgnoreBgReduction"));
+        db.Register(Def(SkillIds.GN_FIRE_EXPANSION_ACID, "GN_FIRE_EXPANSION_ACID", "IgnoreGvgReduction|IgnoreBgReduction"));
+        db.Register(Def(SkillIds.MG_FIREBOLT, "MG_FIREBOLT", ""), revalidate: true);
         return db;
 
-        static SkillDefinition Def(ushort id, string name) => new()
-        {
-            Id = id, Name = name, MaxLevel = 10,
-            Target = SkillTargetMode.TargetEnemy, DamageKind = SkillDamageKind.Weapon,
-        };
+        // COMBAT-92 — Inf2 now comes from the skill_db `inf2` column via FromEntity (seed populates
+        // it from db/re/skill_db.yml Flags), not the retired curated overlay.
+        static SkillDefinition Def(ushort id, string name, string inf2) =>
+            SkillDbLoader.FromEntity(new SkillDbEntity
+            {
+                Id = id, Name = name, MaxLevel = 10,
+                TargetMode = "TargetEnemy", DamageKind = "Weapon", Inf2 = inf2,
+            });
     }
 
     private static PlayerEntity NewPlayer()

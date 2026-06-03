@@ -33,7 +33,53 @@ public static class SkillDbLoader
             DamageRate = ParsePerLevel(row.DamageRate, maxLevel),
             EffectAmount = ParsePerLevel(row.EffectAmount, maxLevel),
             StatusDurationMs = ParsePerLevel(row.StatusDurationMs, maxLevel),
+            // COMBAT-92 — Requirements / Flags / Unit columns (replaces the curated overlays).
+            AmmoTypeMask = ParseAmmoMask(row.Ammo),
+            AmmoQuantity = BroadcastAmmoQty(row.AmmoAmount, maxLevel),
+            Inf2 = ParseFlags<SkillInf2>(row.Inf2),
+            UnitFlags = ParseFlags<SkillUnitFlag>(row.UnitFlags),
         };
+    }
+
+    // COMBAT-92 — rAthena e_ammo_type bits (pc.hpp): require.ammo is `1<<AMMO_x`.
+    // Mirrors the SkillDb curated AmmoArrow..AmmoThrow constants this loader replaces.
+    private static readonly IReadOnlyDictionary<string, int> AmmoNameBits =
+        new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Arrow"] = 1 << 1, ["Dagger"] = 1 << 2, ["Bullet"] = 1 << 3, ["Shell"] = 1 << 4,
+            ["Grenade"] = 1 << 5, ["Shuriken"] = 1 << 6, ["Kunai"] = 1 << 7, ["Cannonball"] = 1 << 8,
+            ["Throwweapon"] = 1 << 9,
+        };
+
+    /// <summary>Pipe-delimited ammo-type names → OR'd `1&lt;&lt;AMMO_x` mask. Unknown tokens skipped.</summary>
+    private static int ParseAmmoMask(string ammo)
+    {
+        if (string.IsNullOrWhiteSpace(ammo)) return 0;
+        var mask = 0;
+        foreach (var tok in ammo.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            if (AmmoNameBits.TryGetValue(tok, out var bit)) mask |= bit;
+        return mask;
+    }
+
+    /// <summary>Renewal skill_db uses one ammo amount for every level — broadcast it (1-indexed).</summary>
+    private static int[] BroadcastAmmoQty(int amount, byte maxLevel)
+    {
+        var arr = new int[maxLevel + 1];
+        if (amount <= 0) return arr;
+        for (var lv = 1; lv <= maxLevel; lv++) arr[lv] = amount;
+        return arr;
+    }
+
+    /// <summary>Pipe-delimited flag names → OR'd flags enum. Tokens that don't name a known member
+    /// of <typeparamref name="TFlag"/> are silently skipped (the runtime only models a subset).</summary>
+    private static TFlag ParseFlags<TFlag>(string flags) where TFlag : struct, Enum
+    {
+        ulong acc = 0;
+        if (!string.IsNullOrWhiteSpace(flags))
+            foreach (var tok in flags.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                if (Enum.TryParse<TFlag>(tok, ignoreCase: true, out var f))
+                    acc |= Convert.ToUInt64(f);
+        return (TFlag)Enum.ToObject(typeof(TFlag), acc);
     }
 
     private static int[] ParsePerLevel(string packed, byte maxLevel)

@@ -34,6 +34,8 @@ public sealed class SkillDbConverter : IYamlToSqlConverter
             "damage_kind", "range", "element", "status_type",
             "sp_cost", "cast_time_ms", "cooldown_ms", "damage_rate",
             "effect_amount", "status_duration_ms",
+            // COMBAT-92 — Requirements / Flags / Unit blocks.
+            "ammo", "ammo_amount", "inf2", "unit_flags",
         };
 
         foreach (var row in body.Rows())
@@ -96,11 +98,22 @@ public sealed class SkillDbConverter : IYamlToSqlConverter
 
             statusMs = row.PackPerLevel("Duration1", "Time", maxLevel);
 
+            // COMBAT-92 — Requirements.Ammo / AmmoAmount, Flags, Unit.Flag → pipe-delimited name
+            // tokens (parsed by SkillDbLoader.FromEntity). The ammo TYPE is only emitted when a
+            // positive AmmoAmount is present: that matches the prior curated overlay (the qty>0
+            // subset) and rAthena's skill_get_ammo_qty consume gate; a type with no amount falls
+            // through to the weapon-ammo heuristic.
+            var ammoAmount = requires?.Int("AmmoAmount") ?? 0;
+            var ammo = ammoAmount > 0 ? (requires?.TrueKeys("Ammo") ?? string.Empty) : string.Empty;
+            var inf2 = row.TrueKeys("Flags");
+            var unitFlags = row.Get("Unit") is YamlMappingNode unit ? unit.TrueKeys("Flag") : string.Empty;
+
             var values = new object?[]
             {
                 (ushort)id.Value, name, desc, (byte)maxLevel,
                 target, damageKind, range, element, status,
                 spCost, castMs, cooldownMs, dmgRate, effectAmt, statusMs,
+                ammo, ammoAmount, inf2, unitFlags,
             };
 
             sb.AppendLine(SqlEmit.Replace("skill_db", columns, values));

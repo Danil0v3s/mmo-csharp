@@ -39,14 +39,14 @@ public class Combat85UnitFlagsTests
         Assert.Equal(1u << 17, (uint)SkillUnitFlag.HiddenTrap);        // UF_HIDDENTRAP (was one bit low)
     }
 
-    // ---- the curated overlay populates UnitFlags for ≥2 known skills ----
+    // ---- the unit_flags column populates UnitFlags for ≥2 known skills ----
 
     [Fact]
-    public void Overlay_loads_the_unit_flags_for_handled_skills()
+    public void Column_loads_the_unit_flags_for_handled_skills()
     {
         var db = new SkillDb();
-        db.Register(Def(SkillIds.MG_SAFETYWALL, "MG_SAFETYWALL"));
-        db.Register(Def(SkillIds.PR_SANCTUARY, "PR_SANCTUARY"));
+        db.Register(Def(SkillIds.MG_SAFETYWALL, "MG_SAFETYWALL", "NoEnemy|NoReiteration"));
+        db.Register(Def(SkillIds.PR_SANCTUARY, "PR_SANCTUARY", "NoOverlap|PathCheck"));
         db.Register(Def(SkillIds.WZ_STORMGUST, "WZ_STORMGUST"), revalidate: true);
 
         Assert.True(db.GetUnitFlag(SkillIds.MG_SAFETYWALL, SkillUnitFlag.NoReiteration));
@@ -62,7 +62,7 @@ public class Combat85UnitFlagsTests
     public void NoReiteration_blocks_a_second_overlapping_unit_of_the_same_skill()
     {
         var db = new SkillDb();
-        db.Register(Def(SkillIds.MG_SAFETYWALL, "MG_SAFETYWALL"), revalidate: true); // gets NoReiteration
+        db.Register(Def(SkillIds.MG_SAFETYWALL, "MG_SAFETYWALL", "NoEnemy|NoReiteration"), revalidate: true); // NoReiteration
         var ctx = Build(db);
         var caster = ctx.AddPlayer(1, 100, 100);
 
@@ -83,11 +83,14 @@ public class Combat85UnitFlagsTests
 
     // ---- harness ----
 
-    private static SkillDefinition Def(ushort id, string name) => new()
-    {
-        Id = id, Name = name, MaxLevel = 10,
-        Target = SkillTargetMode.Ground, DamageKind = SkillDamageKind.Magic,
-    };
+    // COMBAT-92 — UnitFlags now come from the skill_db `unit_flags` column via FromEntity (seed
+    // populates it from db/re/skill_db.yml Unit.Flag), not the retired curated overlay.
+    private static SkillDefinition Def(ushort id, string name, string unitFlags = "") =>
+        SkillDbLoader.FromEntity(new SkillDbEntity
+        {
+            Id = id, Name = name, MaxLevel = 10,
+            TargetMode = "Ground", DamageKind = "Magic", UnitFlags = unitFlags,
+        });
 
     private static TestContext Build(ISkillDb? db)
     {

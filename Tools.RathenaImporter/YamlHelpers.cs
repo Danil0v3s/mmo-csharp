@@ -87,6 +87,22 @@ internal static class YamlHelpers
             : (bool?)null;
     }
 
+    /// <summary>
+    /// For a sub-mapping field that rAthena models as a map of <c>Name: true</c>
+    /// (e.g. <c>Flags</c>, <c>Requires.Ammo</c>, <c>Unit.Flag</c>), return the pipe-joined
+    /// names whose value is <c>true</c>. Empty string if the field is absent or non-mapping.
+    /// </summary>
+    public static string TrueKeys(this YamlMappingNode node, string field)
+    {
+        if (node.Get(field) is not YamlMappingNode map) return string.Empty;
+        var names = new List<string>();
+        foreach (var kv in map.Children)
+            if (kv.Key is YamlScalarNode k && kv.Value is YamlScalarNode v
+                && v.Value != null && v.Value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                names.Add(k.Value!);
+        return string.Join('|', names);
+    }
+
     /// <summary>Iterate child rows of a sequence-valued field.</summary>
     public static IEnumerable<YamlMappingNode> Rows(this YamlMappingNode node, string key)
     {

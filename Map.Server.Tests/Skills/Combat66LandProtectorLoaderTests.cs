@@ -28,14 +28,14 @@ namespace Map.Server.Tests.Skills;
 /// </summary>
 public class Combat66LandProtectorLoaderTests
 {
-    // ---- INF2_IGNORELANDPROTECTOR overlay (replaces the fictional UF_NOLP load) ----
+    // ---- INF2_IGNORELANDPROTECTOR from the skill_db inf2 column (COMBAT-92) ----
 
     [Fact]
-    public void Curated_overlay_marks_ignore_land_protector_skills()
+    public void Inf2_column_marks_ignore_land_protector_skills()
     {
         var db = new SkillDb();
-        db.Register(Def(SkillIds.AC_SHOWER, "AC_SHOWER"));
-        db.Register(Def(SkillIds.SG_SUN_WARM, "SG_SUN_WARM"));
+        db.Register(Def(SkillIds.AC_SHOWER, "AC_SHOWER", "IgnoreLandProtector"));
+        db.Register(Def(SkillIds.SG_SUN_WARM, "SG_SUN_WARM", "IgnoreLandProtector"));
         db.Register(Def(SkillIds.WZ_STORMGUST, "WZ_STORMGUST"), revalidate: true); // control
 
         Assert.True(db.GetInf2(SkillIds.AC_SHOWER, SkillInf2.IgnoreLandProtector));
@@ -92,11 +92,14 @@ public class Combat66LandProtectorLoaderTests
 
     // ---- harness (mirrors COMBAT-47, but with the production LandProtectorUnit) ----
 
-    private static SkillDefinition Def(ushort id, string name) => new()
-    {
-        Id = id, Name = name, MaxLevel = 10,
-        Target = SkillTargetMode.Ground, DamageKind = SkillDamageKind.Magic,
-    };
+    // COMBAT-92 — Inf2 now comes from the skill_db `inf2` column via FromEntity (seed populates it
+    // from db/re/skill_db.yml Flags), not the retired curated overlay.
+    private static SkillDefinition Def(ushort id, string name, string inf2 = "") =>
+        SkillDbLoader.FromEntity(new SkillDbEntity
+        {
+            Id = id, Name = name, MaxLevel = 10,
+            TargetMode = "Ground", DamageKind = "Magic", Inf2 = inf2,
+        });
 
     private static TestContext Build(ISkillDb? db)
     {

@@ -31,5 +31,11 @@ public class SkillDbEntityConfiguration : IEntityTypeConfiguration<SkillDbEntity
         builder.Property(e => e.DamageRate).HasColumnName("damage_rate").HasMaxLength(255);
         builder.Property(e => e.EffectAmount).HasColumnName("effect_amount").HasMaxLength(255);
         builder.Property(e => e.StatusDurationMs).HasColumnName("status_duration_ms").HasMaxLength(255);
+
+        // COMBAT-92 — Requirements / Flags / Unit columns (pipe-delimited name tokens + ammo qty).
+        builder.Property(e => e.Ammo).HasColumnName("ammo").HasMaxLength(80);
+        builder.Property(e => e.AmmoAmount).HasColumnName("ammo_amount");
+        builder.Property(e => e.Inf2).HasColumnName("inf2").HasMaxLength(255);
+        builder.Property(e => e.UnitFlags).HasColumnName("unit_flags").HasMaxLength(255);
     }
 }
