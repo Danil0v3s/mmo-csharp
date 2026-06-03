@@ -1,6 +1,6 @@
 # COMBAT-95 — Magic-side MRes reduction curve + ignore (by race + SC_A_VITA)
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-77 (the physical Res-ignore design to mirror) · **Blocks:** none
 > **Filed by:** COMBAT-77 — it added the physical Res reduction's ignore_res (race + SC). The
 > magic lane's identical MRes reduction is not modeled in C# **at all** (no curve, no ignore).
