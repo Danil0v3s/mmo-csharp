@@ -1,6 +1,6 @@
 # COMBAT-71 — Remaining status_calc_aspd SCs (debuff + misc terms)
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-28, COMBAT-50 (the ComputeScAspd seam) · **Blocks:** none
 > **Filed by:** COMBAT-50 — the status_calc_aspd SCs beyond the subset COMBAT-28/50 ported.
 
