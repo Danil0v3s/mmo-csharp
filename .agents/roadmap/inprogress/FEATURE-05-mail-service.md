@@ -1,6 +1,6 @@
 # FEATURE-05 — Mail service
 
-> **Epic:** Gameplay-Mail · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-Mail · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none (char-side mail RPCs already real) · **Blocks:** none
 > **Related:** PACKET-* (ZC mail UI packets)
 
