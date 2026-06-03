@@ -1,8 +1,10 @@
 # FEATURE-05 — Mail service
 
-> **Epic:** Gameplay-Mail · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-Mail · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
 > **Depends on:** none (char-side mail RPCs already real) · **Blocks:** none
 > **Related:** PACKET-* (ZC mail UI packets)
+
+> **Scoping note (2026-06-03):** not a clean standalone — the Send path's `MailSendAsync(... byte[] attachment ...)` needs a cross-process **attachment codec** defined + parsed on the char side, and the whole flow is unreachable without the **PACKET-06** (ZC mail UI) handlers. Land it **paired with PACKET-06** + a char-side codec change, not solo. Send/GetAttachment are coupled (Send-debit without GetAttachment-credit loses items).
 
 ## Problem
 
