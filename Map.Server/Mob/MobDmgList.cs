@@ -65,5 +65,25 @@ public sealed class MobDmgList
     /// <summary>Drop all entries (mob respawn / unit_remove_map).</summary>
     public void Clear() => _entries.Clear();
 
+    /// <summary>
+    /// FEATURE-01 — a copy of the current entries, taken at mob death before
+    /// <c>KillMob</c> clears the log, so the death-observer's quest/achievement/MVP
+    /// fan-out can iterate contributors after the live list is gone.
+    /// </summary>
+    public DmgEntry[] Snapshot() => _entries.ToArray();
+
+    /// <summary>
+    /// FEATURE-01 — the attacker that dealt the most cumulative damage (rAthena
+    /// <c>mvp_sd</c> — the MVP-reward recipient). Null when the log is empty.
+    /// </summary>
+    public EntityId? TopDamageAttacker()
+    {
+        if (_entries.Count == 0) return null;
+        var best = _entries[0];
+        for (var i = 1; i < _entries.Count; i++)
+            if (_entries[i].Damage > best.Damage) best = _entries[i];
+        return best.AttackerId;
+    }
+
     public readonly record struct DmgEntry(EntityId AttackerId, long Damage);
 }

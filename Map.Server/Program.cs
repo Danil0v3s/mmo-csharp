@@ -589,6 +589,8 @@ builder.Services.AddSingleton<Map.Server.Status.StatusOps.IStatusOpsService, Map
 builder.Services.AddSingleton<Map.Server.Handlers.ClifWire.IClifWireService, Map.Server.Handlers.ClifWire.ClifWireService>();
 builder.Services.AddSingleton<Map.Server.Scripting.ScriptApi.IScriptApiService, Map.Server.Scripting.ScriptApi.ScriptApiService>();
 builder.Services.AddSingleton<Map.Server.Spawn.MobOps.IMobOpsService, Map.Server.Spawn.MobOps.MobOpsService>();
+// FEATURE-01 — mob-death observer hub (quest/achievement/pet-catch/MVP fan-out).
+builder.Services.AddSingleton<Map.Server.Mob.IMobDeathObserver, Map.Server.Mob.MobDeathObserver>();
 builder.Services.AddSingleton<Map.Server.Spawn.NpcOps.INpcOpsService, Map.Server.Spawn.NpcOps.NpcOpsService>();
 builder.Services.AddSingleton<Map.Server.Movement.UnitOps.IUnitOpsService, Map.Server.Movement.UnitOps.UnitOpsService>();
 builder.Services.AddSingleton<Map.Server.World.MapOps.IMapOpsService, Map.Server.World.MapOps.MapOpsService>();

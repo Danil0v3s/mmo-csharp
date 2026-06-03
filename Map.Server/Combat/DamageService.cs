@@ -20,6 +20,8 @@ public sealed class DamageService : IDamageService
     private readonly Status.IExpService? _exp;
     private readonly IPcDeathService? _pcDeath;
     private readonly Party.IPartyShareService? _partyShare;
+    // FEATURE-01 — mob-death fan-out (quest/achievement/pet-catch/MVP). Runs before KillMob frees the mob.
+    private readonly Mob.IMobDeathObserver? _mobDeath;
     private readonly Map.Server.World.IMapFlagService? _mapFlags;
     private readonly Map.Server.World.IMapWorldRegistry? _maps;
     // IMobAiService → IAttackService → IDamageService is a hard cycle at
@@ -75,7 +77,8 @@ public sealed class DamageService : IDamageService
         IServiceProvider? services = null,
         Lazy<IStatusChangeService>? sc = null,
         Random? rng = null,
-        IZoneDamageService? zone = null)
+        IZoneDamageService? zone = null,
+        Mob.IMobDeathObserver? mobDeath = null)
     {
         _visibility = visibility;
         _mobSpawn = mobSpawn;
@@ -84,6 +87,7 @@ public sealed class DamageService : IDamageService
         _exp = exp;
         _pcDeath = pcDeath;
         _partyShare = partyShare;
+        _mobDeath = mobDeath;
         _mapFlags = mapFlags;
         _maps = maps;
         _services = services;
@@ -776,6 +780,11 @@ public sealed class DamageService : IDamageService
                         _exp.GainExp(killer, mob.DbEntry.BaseExp, mob.DbEntry.JobExp, srcLv);
                     }
                 }
+                // FEATURE-01 — fan the death out to quest / achievement / pet-catch / MVP BEFORE
+                // KillMob frees the mob + its damage log (rAthena runs these inside mob_dead while the
+                // unit is still alive). Exp/drops are already awarded above + inside KillMob.
+                _mobDeath?.OnMobDead(mob, source as PlayerEntity, mob.DmgList.Snapshot());
+
                 // Re-uses MobSpawnService's death pipeline so respawn timer
                 // wiring + visibility broadcast (Died reason) stay in one
                 // place. Drops attribute to the last-hitter (and their

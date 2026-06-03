@@ -11,19 +11,37 @@ public sealed class MobOpsService : IMobOpsService
     private readonly IMobDb? _mobDb;
     private readonly IMobChangeTargetService? _changeTarget;
     private readonly IEntityRegistry? _entities;
+    // FEATURE-01 — wire mob_dead through the real death pipeline (fan-out + drop/vanish/respawn).
+    private readonly IMobDeathObserver? _death;
+    private readonly Spawn.IMobDeathSink? _mobSink;
 
     public MobOpsService(ILogger<MobOpsService> logger, IMobDb? mobDb = null,
-        IMobChangeTargetService? changeTarget = null, IEntityRegistry? entities = null)
+        IMobChangeTargetService? changeTarget = null, IEntityRegistry? entities = null,
+        IMobDeathObserver? death = null, Spawn.IMobDeathSink? mobSink = null)
     {
         _logger = logger;
         _mobDb = mobDb;
         _changeTarget = changeTarget;
         _entities = entities;
+        _death = death;
+        _mobSink = mobSink;
     }
 
     public bool Spawn(MobEntity mob) => true;
     public int WarpSlave(MobEntity master, short range) => 0;
-    public int Dead(MobEntity mob, Entity? killer, byte type) => 0;
+    /// <summary>
+    /// FEATURE-01 — rAthena <c>mob_dead</c>: run the death fan-out (quest / achievement / pet-catch /
+    /// MVP) while the mob + its damage log are still alive, then the drop / vanish / respawn pipeline.
+    /// Returns 1 once the death is processed (rAthena returns the kill result).
+    /// </summary>
+    public int Dead(MobEntity mob, Entity? killer, byte type)
+    {
+        var pc = killer as PlayerEntity;
+        _death?.OnMobDead(mob, pc, mob.DmgList.Snapshot());
+        mob.Hp = 0;
+        _mobSink?.KillMob(mob.Id, pc);
+        return 1;
+    }
     public int Damage(Entity src, MobEntity mob, int damage) => 0;
     public int Heal(MobEntity mob, int hp) { mob.Hp = Math.Min(mob.MaxHp, mob.Hp + hp); return hp; }
 

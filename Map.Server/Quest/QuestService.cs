@@ -35,8 +35,100 @@ public sealed class QuestService : IQuestService
     public int Delete(PlayerEntity pc, int questId) => 0;
     public int PcLogin(PlayerEntity pc) => 0;
     public int UpdateObjectiveSub(PlayerEntity pc, int questId, byte index, int delta) => 0;
-    public void UpdateObjective(PlayerEntity pc, int questId, byte index, int delta) { }
+
+    /// <summary>
+    /// FEATURE-01 — rAthena <c>quest_update_objective</c> single-objective bump: add
+    /// <paramref name="delta"/> to objective <paramref name="index"/> of the active quest
+    /// <paramref name="questId"/> (capped at the catalog target), completing the quest when every
+    /// objective is satisfied.
+    /// </summary>
+    public void UpdateObjective(PlayerEntity pc, int questId, byte index, int delta)
+    {
+        if (delta == 0) return;
+        var q = FindActive(pc, questId);
+        if (q == null) return;
+        var cat = GetCatalogEntry((uint)questId);
+        if (cat == null) return;
+        var target = ObjectiveTarget(cat, index);
+        if (target <= 0) return; // no such objective
+        EnsureCounts(q, index + 1);
+        var updated = Math.Min(target, q.Counts[index] + delta);
+        if (updated == q.Counts[index]) return;
+        q.Counts[index] = updated;
+        TryComplete(q, cat);
+    }
+
+    /// <inheritdoc />
+    public void UpdateMobObjective(PlayerEntity pc, string mobAegis)
+    {
+        if (string.IsNullOrEmpty(mobAegis)) return;
+        foreach (var q in pc.QuestLog)
+        {
+            if (q.State != 1) continue; // Q_ACTIVE only (rAthena skips Q_COMPLETE)
+            var cat = GetCatalogEntry((uint)q.QuestId);
+            if (cat == null) continue;
+
+            var changed = false;
+            for (byte i = 0; i < 3; i++)
+            {
+                if (!ObjectiveMobMatches(cat, i, mobAegis)) continue;
+                var target = ObjectiveTarget(cat, i);
+                if (target <= 0) continue;
+                EnsureCounts(q, i + 1);
+                if (q.Counts[i] >= target) continue;
+                q.Counts[i]++;
+                changed = true;
+            }
+            if (changed) TryComplete(q, cat);
+            // ZC_UPDATE_MISSION_HUNT client emit is owned by PACKET-10 (see QUEST-UI follow-up);
+            // the count + state mutated here rides the existing QuestSaveAsync fan-out.
+        }
+    }
+
     public int UpdateStatus(PlayerEntity pc, int questId, byte status) => 0;
+
+    // --- FEATURE-01 objective helpers ---
+
+    private static QuestEntry? FindActive(PlayerEntity pc, int questId)
+    {
+        foreach (var q in pc.QuestLog)
+            if (q.QuestId == questId && q.State == 1) return q;
+        return null;
+    }
+
+    private static bool ObjectiveMobMatches(Core.Database.Entities.QuestDbEntity cat, byte index, string mobAegis)
+    {
+        var mob = index switch { 0 => cat.Mob1, 1 => cat.Mob2, 2 => cat.Mob3, _ => null };
+        return !string.IsNullOrEmpty(mob) && string.Equals(mob, mobAegis, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int ObjectiveTarget(Core.Database.Entities.QuestDbEntity cat, byte index) => index switch
+    {
+        0 => string.IsNullOrEmpty(cat.Mob1) ? 0 : cat.Count1,
+        1 => string.IsNullOrEmpty(cat.Mob2) ? 0 : cat.Count2,
+        2 => string.IsNullOrEmpty(cat.Mob3) ? 0 : cat.Count3,
+        _ => 0,
+    };
+
+    private static void EnsureCounts(QuestEntry q, int length)
+    {
+        if (q.Counts.Length >= length) return;
+        var grown = new int[length];
+        Array.Copy(q.Counts, grown, q.Counts.Length);
+        q.Counts = grown;
+    }
+
+    /// <summary>Flip the quest to Q_COMPLETE (2) once every mob objective hits its target.</summary>
+    private static void TryComplete(QuestEntry q, Core.Database.Entities.QuestDbEntity cat)
+    {
+        for (byte i = 0; i < 3; i++)
+        {
+            var target = ObjectiveTarget(cat, i);
+            if (target <= 0) continue;
+            if (i >= q.Counts.Length || q.Counts[i] < target) return;
+        }
+        q.State = 2; // Q_COMPLETE
+    }
 
     public void Reload()
     {
@@ -54,6 +146,12 @@ public sealed class QuestService : IQuestService
         {
             _logger.LogWarning(ex, "quest_db load failed");
         }
+    }
+
+    /// <summary>FEATURE-01 test seam — seed catalog rows without a DB round-trip.</summary>
+    internal void SeedCatalogForTest(params QuestDbEntity[] entries)
+    {
+        foreach (var e in entries) _catalog[e.QuestId] = e;
     }
 
     /// <summary>Catalog lookup — null if unknown id.</summary>

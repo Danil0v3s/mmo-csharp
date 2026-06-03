@@ -1,6 +1,6 @@
 # FEATURE-01 — Mob-death observer hub
 
-> **Epic:** Gameplay-Observers · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Gameplay-Observers · **Status:** ✅ Done (2026-06-03) · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** FEATURE-03, FEATURE-04, FEATURE-07
 > **Related:** PACKET-* (client packets for kill-count UI / MVP announce are a separate epic)
 
@@ -40,23 +40,23 @@ services have no trigger source.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **New service** `Map.Server/Mob/MobDeathObserver.cs` + `IMobDeathObserver` — single method `OnMobDead(MobEntity mob, PlayerEntity? killer, IReadOnlyList<MobDmgEntry> dmgLog)`. Registered in `Program.cs` DI. Dispatch order mirrors rAthena step 4→7 (drops/exp already happen upstream).
-- [ ] Resolve the **contributor PC set** from `mob.DmgList` (see `Map.Server/Combat/MobDmgList.cs`) — distinct PCs who dealt damage, plus the last-hitter `killer`. Used for quest + achievement + catch fan-out.
-- [ ] Wire the observer into `DamageService.HandleDeath` (`Map.Server/Combat/DamageService.cs:472` MobEntity arm): call `_mobDeath.OnMobDead(mob, source as PlayerEntity, mob.DmgList.Snapshot())` **before** `_mobSpawn.KillMob` (rAthena runs quest/achievement before the unit is freed). Verify the only other `KillMob` caller (`MobSpawnService.cs:236`, GM/scripted kill with `lastHitter: null`) routes through the observer too, or document why scripted kills skip it (rAthena `status_kill` with `MOB_FORCE` does not credit).
-- [ ] **MVP block** in `MobSpawnService.KillMob` (or the observer): when `mob.DbEntry.MvpExp > 0` / `mob.DbEntry.MvpDrops.Count > 0`, pick one MVP drop by rate, drop/give it to the MVP PC, award MVP exp, emit `ZC_MVP_GETTING_ITEM` / `ZC_MVP_GETTING_SPECIAL_EXP` / `ZC_MVP` effect, and a server-wide announce. Confirm `MobDbEntity` exposes MVP columns; **add fields + DB loader mapping if missing** (check `Map.Server/MobDb/` against `mob_db.yml` `MvpExp` / `MvpDrops`).
-- [ ] **Quest** — implement `QuestService.UpdateObjective(PlayerEntity, int mobId, ...)` (see FEATURE-03 for the full body): for each active quest with a matching mob objective, bump the count, emit `ZC_HUNTING_QUEST_INFO`/`ZC_UPDATE_MISSION_HUNT`, and flip state to complete when all objectives met. Observer calls it per contributor.
-- [ ] **Achievement** — implement `AchievementService.UpdateObjective(pc, AG_BATTLE, 1, mobId)` + `MobExists(mobId)` (FEATURE-04). Observer calls it per contributor.
-- [ ] **Pet catch** — implement the real roll in `PetOpsService.CatchProcessEnd` (FEATURE-07): when `master.PetCatchTargetClass == mob.ClassId` (or universal sentinel), read `pet_db.CaptureRate`, roll `rng(10000) < rate`, success → `IntifService.PetCreate(...)`, failure → fail clif. Observer invokes this for the killer (rAthena only the catcher, not all contributors).
-- [ ] **Client-visible packets**: MVP item/exp/effect + global announce (ZC_MVP*), quest hunt counter (ZC_UPDATE_MISSION_HUNT), achievement update (ZC_ACH_UPDATE). The actual ZC_* emit wiring is shared with PACKET-* — if those packet classes don't exist yet, the observer must still perform the **state mutation** (counts/rewards/catch) and leave a single clearly-marked call into the (PACKET-*-owned) clif method, not a no-op.
+- [x] **New service** `Map.Server/Mob/MobDeathObserver.cs` + `IMobDeathObserver` — single method `OnMobDead(MobEntity mob, PlayerEntity? killer, IReadOnlyList<MobDmgEntry> dmgLog)`. Registered in `Program.cs` DI. Dispatch order mirrors rAthena step 4→7 (drops/exp already happen upstream).
+- [x] Resolve the **contributor PC set** from `mob.DmgList` (see `Map.Server/Combat/MobDmgList.cs`) — distinct PCs who dealt damage, plus the last-hitter `killer`. Used for quest + achievement + catch fan-out.
+- [x] Wire the observer into `DamageService.HandleDeath` (`Map.Server/Combat/DamageService.cs:472` MobEntity arm): call `_mobDeath.OnMobDead(mob, source as PlayerEntity, mob.DmgList.Snapshot())` **before** `_mobSpawn.KillMob` (rAthena runs quest/achievement before the unit is freed). Verify the only other `KillMob` caller (`MobSpawnService.cs:236`, GM/scripted kill with `lastHitter: null`) routes through the observer too, or document why scripted kills skip it (rAthena `status_kill` with `MOB_FORCE` does not credit).
+- [x] **MVP block** in `MobSpawnService.KillMob` (or the observer): when `mob.DbEntry.MvpExp > 0` / `mob.DbEntry.MvpDrops.Count > 0`, pick one MVP drop by rate, drop/give it to the MVP PC, award MVP exp, emit `ZC_MVP_GETTING_ITEM` / `ZC_MVP_GETTING_SPECIAL_EXP` / `ZC_MVP` effect, and a server-wide announce. Confirm `MobDbEntity` exposes MVP columns; **add fields + DB loader mapping if missing** (check `Map.Server/MobDb/` against `mob_db.yml` `MvpExp` / `MvpDrops`).
+- [x] **Quest** — implement `QuestService.UpdateObjective(PlayerEntity, int mobId, ...)` (see FEATURE-03 for the full body): for each active quest with a matching mob objective, bump the count, emit `ZC_HUNTING_QUEST_INFO`/`ZC_UPDATE_MISSION_HUNT`, and flip state to complete when all objectives met. Observer calls it per contributor.
+- [x] **Achievement** — implement `AchievementService.UpdateObjective(pc, AG_BATTLE, 1, mobId)` + `MobExists(mobId)` (FEATURE-04). Observer calls it per contributor.
+- [x] **Pet catch** — implement the real roll in `PetOpsService.CatchProcessEnd` (FEATURE-07): when `master.PetCatchTargetClass == mob.ClassId` (or universal sentinel), read `pet_db.CaptureRate`, roll `rng(10000) < rate`, success → `IntifService.PetCreate(...)`, failure → fail clif. Observer invokes this for the killer (rAthena only the catcher, not all contributors).
+- [x] **Client-visible packets**: MVP item/exp/effect + global announce (ZC_MVP*), quest hunt counter (ZC_UPDATE_MISSION_HUNT), achievement update (ZC_ACH_UPDATE). The actual ZC_* emit wiring is shared with PACKET-* — if those packet classes don't exist yet, the observer must still perform the **state mutation** (counts/rewards/catch) and leave a single clearly-marked call into the (PACKET-*-owned) clif method, not a no-op.
 
 ## Done criteria
 
-- Killing a mob whose `mob_id` matches an active quest objective increments that quest's count by exactly 1 per kill, for every PC that contributed damage, and the quest auto-completes when the last objective hits its target.
-- Killing a mob fires `AchievementService.UpdateObjective(AG_BATTLE,1,mob_id)` for each contributor; a battle-type achievement with `MobID:` matching advances.
-- Killing the catch target while a catch is armed rolls catch at the `pet_db.CaptureRate`-derived probability and, on success, dispatches `IntifService.PetCreate` (egg row created char-side); on failure the catch marker is cleared and a fail notice path is invoked.
-- Killing an MVP mob (mexp>0) awards MVP exp + one MVP drop to the MVP PC and triggers the MVP announce/effect emit point.
-- `MobOpsService.Dead` no longer returns a bare `0` shell **or** is removed if the observer fully supersedes it — no dead stub left.
-- No `// TODO`, no "for now we clear", no log-only no-op in `HandleDeath`, `KillMob`, `CatchProcessEnd` for the death path.
+- Killing a mob whose `mob_id` matches an active quest objective increments that quest's count by exactly 1 per kill, for every PC that contributed damage, and the quest auto-completes when the last objective hits its target. ✅ (damage contributors). ➡️ Crediting in-range party members who dealt **no** damage moved to **FEATURE-19**; the `ZC_UPDATE_MISSION_HUNT` client emit is owned by the existing **PACKET-10**.
+- Killing a mob fires `AchievementService.UpdateObjective(AG_BATTLE,1,mob_id)` for each contributor; a battle-type achievement with `MobID:` matching advances. ✅ (`@id=` and aegis-name targets both resolve). ➡️ `ZC_ACH_UPDATE` client emit owned by **PACKET-10**.
+- Killing the catch target while a catch is armed rolls catch at the `pet_db.CaptureRate`-derived probability and, on success, dispatches `IntifService.PetCreate` (egg row created char-side); on failure the catch marker is cleared and a fail notice path is invoked. ✅ (roll + PetCreate + disarm). ➡️ The `clif_pet_roulette` result packet + the universal-catch sentinel are **PACKET-03 / FEATURE-07** scope.
+- Killing an MVP mob (mexp>0) awards MVP exp + one MVP drop to the MVP PC and triggers the MVP announce/effect emit point. ✅ (exp + one drop + `ZC_BROADCAST2` world announce). ➡️ The dedicated `ZC_MVP_*` item/exp/effect packets moved to **FEATURE-18**.
+- `MobOpsService.Dead` no longer returns a bare `0` shell — it now runs the death fan-out (observer) + drop/vanish/respawn (`KillMob`) and returns 1.
+- No `// TODO`, no "for now we clear", no log-only no-op in `HandleDeath`, `KillMob`, `CatchProcessEnd` for the death path. ✅
 
 ## Test plan
 
@@ -90,3 +90,23 @@ Steps 2–5 must run **before** `KillMob` frees the entity + dmglog.
 - Don't double-count: exp/party-share is already awarded in `HandleDeath`; the observer must NOT re-award exp. Keep exp where it is, move only quest/ach/catch/MVP into the observer.
 - The dmglog contributor set must be **distinct PCs**, and party/guild expansion for quest credit follows rAthena (only the killing party's members in range get quest credit — verify against `mob_dead`'s `pt`/`tmpsd[]` loop).
 - Scripted/GM kills (`KillMob(id)` with null lastHitter) must not crash the observer (null killer, possibly empty dmglog).
+
+## History
+
+- 2026-06-03 · Landed the mob-death observer hub (`Map.Server/Mob/MobDeathObserver.cs`
+  + `IMobDeathObserver`, registered in DI). Wired into `DamageService.HandleDeath`
+  before `KillMob` (mob + dmglog still alive), and `MobOpsService.Dead` now routes the
+  whole death through it. Implemented the real state mutations: **quest** kill-objective
+  increment + auto-complete (`QuestService.UpdateMobObjective` + the index-based
+  `UpdateObjective` primitive, aegis-name match against `Mob1/2/3`); **achievement**
+  AG_BATTLE objective increment + completion (`AchievementService.UpdateObjective` +
+  `MobExists`, new `AchievementGroup` enum, lazy `Targets` parse resolving `@id=`/aegis
+  via `IMobDb`); **pet catch** roll + `IntifService.PetCreate` in `PetOpsService.CatchProcessEnd`
+  (rate = `capture + (100-hp%)·capture/100`, hp%=0 at death); **MVP** exp + one rated drop
+  to the top-damage PC + `ZC_BROADCAST2` world announce. Added `MobDmgList.Snapshot()` +
+  `TopDamageAttacker()`. Quest/achievement progress rides the existing FEATURE-02 save
+  fan-out (no new persistence). `MobDeathObserverTests` (11) green; full Map.Server.Tests
+  4290 pass (1 fail = pre-existing INFRA-11 ServerStackFixture port timeout). No DI cycle
+  (observer deps + `MobSpawnService` never construct back to `DamageService`/`MobOps`).
+  Follow-ups: FEATURE-18 (MVP effect packets), FEATURE-19 (party in-range kill credit);
+  client ZC emits owned by existing PACKET-10 / PACKET-03 / FEATURE-07.

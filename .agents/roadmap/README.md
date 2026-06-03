@@ -218,7 +218,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 ### `features/` — gameplay subsystem behavior + persistence
 | Ticket | Title |
 |---|---|
-| FEATURE-01 | Mob-death observer hub (quest + achievement + pet-catch + MVP) |
+| FEATURE-01 | ✅ Mob-death observer hub (quest + achievement + pet-catch + MVP) |
 | FEATURE-02 | ✅ Companion/quest/achievement save wiring (Phase A: quest+achievement+pet) — Phase B → FEATURE-17 |
 | FEATURE-03 | Quest service real implementation |
 | FEATURE-04 | Achievement service real implementation |
@@ -234,6 +234,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | FEATURE-14 | Instance lifecycle (NPC spawn, timers/auto-destroy, scoping) |
 | FEATURE-15 | WoE time-of-week scheduler |
 | FEATURE-16 | Fame-ranking subsystem + Taekwon-ranker population — split from COMBAT-51 |
+| FEATURE-18 | MVP reward client packets (item/special-exp/effect) — split from FEATURE-01 |
+| FEATURE-19 | Party / in-range kill credit for quest + achievement — split from FEATURE-01 |
 
 ### `scripting/` — NPC scripting runtime + content
 | Ticket | Title |

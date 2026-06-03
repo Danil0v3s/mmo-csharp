@@ -32,21 +32,45 @@ public sealed class PetOpsService : IPetOpsService
     private readonly IEntityRegistry? _entities;
     private readonly IPetService? _pet;
     private readonly ILogger<PetOpsService> _logger;
+    // FEATURE-01 — catch-roll dependencies (all optional so the light test ctor keeps working).
+    private readonly Map.Server.Mob.IMobDb? _mobDb;
+    private readonly Map.Server.Items.IItemCatalog? _items;
+    private readonly Map.Server.Services.Intif.IIntifService? _intif;
+    private readonly Random _rng;
 
     public PetOpsService(
         IServiceScopeFactory scopes,
         IEntityRegistry entities,
         IPetService pet,
-        ILogger<PetOpsService> logger)
+        ILogger<PetOpsService> logger,
+        Map.Server.Mob.IMobDb? mobDb = null,
+        Map.Server.Items.IItemCatalog? items = null,
+        Map.Server.Services.Intif.IIntifService? intif = null,
+        Random? rng = null)
     {
         _scopes = scopes;
         _entities = entities;
         _pet = pet;
         _logger = logger;
+        _mobDb = mobDb;
+        _items = items;
+        _intif = intif;
+        _rng = rng ?? Random.Shared;
         Reload();
     }
 
-    public PetOpsService(ILogger<PetOpsService> logger) { _logger = logger; }
+    public PetOpsService(ILogger<PetOpsService> logger) { _logger = logger; _rng = Random.Shared; }
+
+    /// <summary>FEATURE-01 test ctor — wires the catch-roll deps without triggering a DB reload.</summary>
+    internal PetOpsService(ILogger<PetOpsService> logger, Map.Server.Mob.IMobDb? mobDb,
+        Map.Server.Items.IItemCatalog? items, Map.Server.Services.Intif.IIntifService? intif, Random? rng)
+    {
+        _logger = logger;
+        _mobDb = mobDb;
+        _items = items;
+        _intif = intif;
+        _rng = rng ?? Random.Shared;
+    }
 
     // ----- Lookup helpers -----
     private Map.Server.Entities.PetEntity? GetLivePet(PlayerEntity master)
@@ -338,15 +362,49 @@ public sealed class PetOpsService : IPetOpsService
             master.Name, targetMobClass);
     }
 
+    /// <summary>
+    /// FEATURE-01 — rAthena <c>pet_catch_process_end</c> (pet.cpp:1241): the mob the player armed a
+    /// catch for just died, so roll the capture and (on success) create the egg char-side. Called by
+    /// the mob-death observer for the killer. The mob is at 0 HP when this runs, so the rAthena
+    /// non-legacy rate at full HP-loss is <c>capture + (100-0)*capture/100 = 2·capture</c>.
+    /// </summary>
     public void CatchProcessEnd(PlayerEntity master, int targetMobClass)
     {
-        // Called after the mob dies during a catch attempt; roll the
-        // catch chance (rAthena: catch_rate * intimacy / 1000). For now
-        // we clear the target marker — the success path is handled by
-        // the mob-death observer.
-        master.PetCatchTargetClass = -1;
-        _logger.LogInformation("pet_catch_process_end: {Master} catch closed (class={Cls})",
-            master.Name, targetMobClass);
+        master.PetCatchTargetClass = -1; // disarm regardless of outcome (rAthena clears catch_target_class)
+
+        var aegis = _mobDb?.Get(targetMobClass)?.AegisName;
+        var pet = aegis != null ? GetCatalogEntry(aegis) : null;
+        if (pet == null)
+        {
+            // Not a tameable mob (no pet_db row) — nothing to roll.
+            _logger.LogInformation("pet_catch_process_end: {Master} class {Cls} is not tameable", master.Name, targetMobClass);
+            return;
+        }
+
+        var capture = pet.CaptureRate ?? 0;
+        // mob is dead → HP% = 0 → rate = capture + (100-0)*capture/100. Clamp to the 10000 scale.
+        var rate = Math.Clamp(capture + (100 * capture) / 100, 0, 10000);
+        var success = rate > 0 && _rng.Next(10000) < rate;
+
+        if (!success)
+        {
+            // Failure: rAthena clif_pet_roulette(sd,false). The ZC_TRYCAPTURE result packet is owned
+            // by PACKET-03 (see PET-CATCH-PACKET follow-up); the catch marker is already cleared above.
+            _logger.LogInformation("pet_catch_process_end: {Master} failed to catch {Aegis} (rate={Rate}/10000)",
+                master.Name, aegis, rate);
+            return;
+        }
+
+        var eggId = pet.EggItem != null ? (int)(_items?.GetByAegisName(pet.EggItem)?.Id ?? 0) : 0;
+        var petName = _mobDb?.Get(targetMobClass)?.Name ?? aegis;
+        var intimacy = (byte)Math.Clamp(pet.IntimacyStart ?? 250, 0, 255);
+        var hungry = (byte)Math.Clamp(pet.Fullness ?? MaxHunger, 0, 100);
+        // Success: create the egg row char-side (rAthena intif_create_pet). The ZC capture-success
+        // packet is PACKET-03 scope; the persistent egg creation is the real reward here.
+        _intif?.PetCreate(master, classId: targetMobClass, nameId: eggId, rename: 0, eggItemId: eggId,
+            intimate: intimacy, hungry: hungry, gender: '\0', petName: petName);
+        _logger.LogInformation("pet_catch_process_end: {Master} caught {Aegis} (rate={Rate}/10000) → egg {Egg}",
+            master.Name, aegis, rate, eggId);
     }
 
     // ----- Catalog -----
@@ -367,6 +425,12 @@ public sealed class PetOpsService : IPetOpsService
         {
             _logger.LogWarning(ex, "pet_db load failed");
         }
+    }
+
+    /// <summary>FEATURE-01 test seam — seed pet_db rows without a DB round-trip.</summary>
+    internal void SeedCatalogForTest(params PetDbEntity[] entries)
+    {
+        foreach (var e in entries) _catalog[e.MobAegis] = e;
     }
 
     /// <summary>Catalog lookup by mob Aegis name (e.g. "PORING").</summary>

@@ -29,6 +29,14 @@ public interface IQuestService
     /// <summary>rAthena <c>quest_update_objective</c>.</summary>
     void UpdateObjective(PlayerEntity pc, int questId, byte index, int delta);
 
+    /// <summary>
+    /// FEATURE-01 — rAthena <c>quest_update_objective(sd, md)</c> kill-path entry: walk the PC's
+    /// active quest log and, for every active quest with a mob objective matching
+    /// <paramref name="mobAegis"/>, increment that objective's counter (capped at the target),
+    /// completing the quest once all objectives are met. Called once per contributing PC on mob death.
+    /// </summary>
+    void UpdateMobObjective(PlayerEntity pc, string mobAegis);
+
     /// <summary>rAthena <c>quest_update_status</c>.</summary>
     int UpdateStatus(PlayerEntity pc, int questId, byte status);
 
