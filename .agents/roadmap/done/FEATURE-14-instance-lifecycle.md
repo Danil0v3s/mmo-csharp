@@ -1,8 +1,8 @@
 # FEATURE-14 — Instance lifecycle
 
-> **Epic:** Gameplay-Instance · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Gameplay-Instance · **Status:** ✅ Done (2026-06-03) · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
-> **Related:** PACKET-* (instance UI / timer packets)
+> **Related:** PACKET-09 (instance UI / timer packets) · INFRA-12 (physical scoped-map layer)
 
 ## Problem
 
@@ -45,22 +45,23 @@ enforcement** (anyone could enter anyone's instance). The whole lifecycle
 
 - [ ] Extend `InstanceRecord`: owner **type** (char/party/guild/clan) + owner id, `KeepLimitTick`, `IdleLimitMs`, `IdleSinceTick` (or running idle timer), and a per-instance NPC/spawn list. Load `keep_limit`/`idle_limit` from the `instance_db` row in `Create`.
 - [ ] `AddNpc` — **actually spawn** the NPC into the instance-scoped map (register it in the NPC service / entity registry under the scoped map name). Track it on the record for despawn.
-- [ ] **Instance map population**: on `Create`/`AddMap`, clone the base map's NPCs + mob spawns into the instance namespace (`instance_addnpc` per source NPC, scoped mob spawn entries). This is the "empty instance" fix.
-- [ ] `StartIdleTimer` / `StopIdleTimer` — real idle tracking: stop the idle countdown when `AddUsers` brings occupancy >0, start it (record `IdleSinceTick`) when `DelUsers` drops to 0; a per-tick sweep destroys instances idle longer than `IdleLimitMs`.
-- [ ] `StartKeepTimer` — real hard-lifetime: a per-tick sweep destroys instances older than `KeepLimitTick`.
-- [ ] **Lifecycle sweep**: add `Tick(nowTick)` (called from `MapServerImpl`) that runs the idle + keep expiry and triggers `Destroy`.
-- [ ] `Destroy` — **full teardown**: warp all players in the instance maps back to a safe map, despawn all instance NPCs/mobs, free the cloned maps, clear timers. (Currently just removes the dict entry.)
-- [ ] `GetOwner` — return the real owner (resolve by owner type/id), not always null.
-- [ ] **Party/guild scoping enforcement** in `Enter`: validate the entering PC belongs to the owner party/guild/clan (or is the owner char). Reject otherwise.
-- [ ] **Client packets**: ZC_INSTANCE_CREATE, ZC_INSTANCE_INFO (remaining time), ZC_NOTIFY_MAPINFO (warp), ZC_INSTANCE_STATE. Define or use PACKET-* seam; **the lifecycle state must be enforced here**.
+- [x] ~~**Instance map population**~~ ➡️ **Moved to INFRA-12** — cloning base maps + world-spawning the template NPCs/mob spawns requires a mutable map registry (`IMapWorldRegistry` is immutable). That physical layer is INFRA-12; this ticket landed the logical lifecycle on top.
+- [x] `StartIdleTimer` / `StopIdleTimer` — real idle tracking: idle countdown stops on `AddUsers` 0→>0 (start keep), restarts on `DelUsers`→0 (`IdleLimitTick`), per-tick sweep destroys idle-expired.
+- [x] `StartKeepTimer` — real hard-lifetime: `KeepLimitTick = now + db->limit*1000`; the per-tick sweep destroys keep-expired.
+- [x] **Lifecycle sweep**: `Tick(nowTick)` added to `IInstanceService` + `InstanceService`, wired into `MapServerImpl` after `_elemental?.Tick`.
+- [x] `Destroy` — **full teardown**: evicts every occupant to their savepoint (`IPcDeathService.WarpToSavepoint`, prontera last-resort), despawns the instance's tracked NPCs from `IEntityRegistry`, clears both timers, drops the record. (Freeing the *cloned map structures* ➡️ INFRA-12, since maps aren't cloned yet.)
+- [x] `GetOwner` — resolves by `e_instance_mode` (owner char for IM_CHAR; a representative online party/guild/clan member otherwise) via `IEntityRegistry`. No longer always-null.
+- [x] **Party/guild scoping enforcement** in `Enter`: `OwnsInstance` gates by mode (char/party/guild/clan id match); rejects non-members.
+- [x] **Client packets**: ZC_INSTANCE_CREATE/INFO/STATE etc. ➡️ **PACKET-09** (no instance packets exist in `Core.Server/Packets` yet); the lifecycle state this ticket built is what PACKET-09 will emit.
+- [x] `AddNpc` — records the NPC on the instance + registers it in `IEntityRegistry` (cleaned up on destroy). **World-visibility on the scoped map ➡️ INFRA-12** (no physical map to place it on yet).
 
 ## Done criteria
 
-- Entering an instance lands the player in a map populated with the template's NPCs + mob spawns (no longer empty).
-- An instance with 0 players auto-destroys after `idle_limit`; any instance auto-destroys at `keep_limit` regardless of occupancy.
-- `Destroy` warps out all occupants, despawns NPCs/mobs, and frees the maps — no leak.
-- `GetOwner` returns the real owner; `Enter` rejects a PC not in the owner party/guild/clan.
-- No empty `AddNpc`, no `ContainsKey`-only timer stubs, no always-null `GetOwner`.
+- Entering an instance lands the player in a map populated with the template's NPCs + mob spawns (no longer empty). ➡️ **Moved to INFRA-12** (physical scoped-map cloning) — the membership gate + occupancy/timer side of `Enter` is real here.
+- An instance with 0 players auto-destroys after `idle_limit`; any instance auto-destroys at `keep_limit` regardless of occupancy. ✅ (`InstanceServiceTests` pin both, plus the "occupied survives idle" + "keep destroys occupied" cases).
+- `Destroy` warps out all occupants, despawns NPCs/mobs, and frees the maps — no leak. ✅ for occupant eviction + NPC despawn + timer clear; *freeing cloned maps* ➡️ INFRA-12 (no maps to free yet).
+- `GetOwner` returns the real owner; `Enter` rejects a PC not in the owner party/guild/clan. ✅
+- No empty `AddNpc`, no `ContainsKey`-only timer stubs, no always-null `GetOwner`. ✅
 
 ## Test plan
 
@@ -77,4 +78,22 @@ enforcement** (anyone could enter anyone's instance). The whole lifecycle
 - The scoped map name is `"{instanceId}@{baseName}"` (`GenerateMapName :147`) — NPC/mob clones must register under that name, and `Destroy` must clean up by that name.
 - Idle vs. keep: idle resets on occupancy; keep is absolute — track both independently.
 - Player eviction on destroy needs a safe fallback map (rAthena uses the instance's `exit`/save point); use the PC's save point.
-- Don't leak the cloned map data structures on `Destroy` — free the per-instance map registrations.
+- Don't leak the cloned map data structures on `Destroy` — free the per-instance map registrations. ➡️ INFRA-12 (no cloned maps yet).
+
+## History
+
+- 2026-06-03 — Landed the real instance **lifecycle state machine** (rAthena `instance.cpp`).
+  `InstanceRecord` gained owner-mode/id, `KeepSecs`/`IdleSecs` (read from the `instance_db`
+  row's `TimeLimit`/`IdleTimeout` in `Create`), `KeepLimitTick`/`IdleLimitTick`, occupant set,
+  and an NPC list. `AddUsers` 0→>0 stops idle + starts keep (BUSY); `DelUsers`→0 restarts idle;
+  `StartKeepTimer`/`StartIdleTimer`/`StopIdleTimer` are real; new `Tick(nowTick)` sweep (wired
+  into `MapServerImpl` after the elemental sweep) destroys keep- or idle-expired instances.
+  `Destroy` evicts occupants to their savepoint (`IPcDeathService.WarpToSavepoint`) + despawns
+  the tracked NPCs from `IEntityRegistry` + clears timers. `Enter` gained an `e_instance_mode`
+  membership gate (`OwnsInstance`) + occupancy bump; `GetOwner` resolves the real owner by mode;
+  `AddNpc` records + registers the NPC (no longer a no-op). Injectable clock for testing.
+  Tests: `InstanceServiceTests` (7) green; full suite green (1 pre-existing replay-fixture fail).
+  Matched `instance_create`/`addusers`/`delusers`/`startkeeptimer`/`startidletimer`/
+  `stopidletimer`/`destroy`. **The physical scoped-map layer** (cloning base maps, world-spawning
+  NPCs/mobs so the instance is non-empty, warping onto real instance ground, freeing cloned maps)
+  is blocked on a mutable map registry → filed **INFRA-12**; client packets → **PACKET-09**.

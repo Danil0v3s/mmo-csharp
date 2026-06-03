@@ -47,6 +47,10 @@ public interface IInstanceService
     /// <summary>rAthena <c>do_reload_instance</c>.</summary>
     void Reload();
 
+    /// <summary>rAthena <c>instance_delete_timer</c> sweep — per-tick lifecycle expiry (idle/keep
+    /// timeout → destroy). Called from the map-server game loop.</summary>
+    void Tick(long nowTick);
+
     /// <summary>rAthena <c>instance_mapid</c> — resolve a base map id within an instance.</summary>
     int MapId(int baseMapId, int instanceId);
 

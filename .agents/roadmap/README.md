@@ -231,7 +231,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | FEATURE-11 | ✅ Vending real transfer (autotrade persistence → FEATURE-35) |
 | FEATURE-12 | ✅ Buying store real implementation (autotrade → FEATURE-36) |
 | FEATURE-13 | ✅ Cash shop real buy (catalog load + kafra/cash debit + grant; data→FEATURE-37, persistence→FEATURE-38, edges→FEATURE-39) |
-| FEATURE-14 | Instance lifecycle (NPC spawn, timers/auto-destroy, scoping) |
+| FEATURE-14 | ✅ Instance lifecycle (keep/idle timers + auto-destroy + eviction + scoping + owner; physical scoped-map layer→INFRA-12) |
 | FEATURE-15 | WoE time-of-week scheduler |
 | FEATURE-16 | Fame-ranking subsystem + Taekwon-ranker population — split from COMBAT-51 |
 | FEATURE-18 | MVP reward client packets (item/special-exp/effect) — split from FEATURE-01 |
@@ -309,6 +309,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | INFRA-09 | `ScriptedBonusHost` residual host stubs (getskilllv/eaclass/countitem/Class/Zeny/bonus5) |
 | INFRA-10 | Navi list generator (deferral decision documented) |
 | INFRA-11 | PacketReplayTests Login/Char internal-ping readiness gate — split from COMBAT-31 |
+| INFRA-12 | Dynamic instance-map registration + cloning (mutable map registry; physical instance maps) — split from FEATURE-14 |
 
 ### `mobai/` — mob AI gaps
 | Ticket | Title |

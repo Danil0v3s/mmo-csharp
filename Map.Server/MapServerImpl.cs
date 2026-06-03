@@ -44,6 +44,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly Pet.IPetService _pet;
     // FEATURE-10 — elemental lifetime expiry sweep.
     private readonly Elemental.IElementalService? _elemental;
+    // FEATURE-14 — instance idle/keep lifecycle sweep.
+    private readonly Instance.IInstanceService? _instance;
     private readonly ScriptHost _scriptHost;
     private readonly INpcSpawnService _npcSpawn;
     private readonly Scripting.INpcRegistry _scriptRegistry;
@@ -91,7 +93,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         World.IMapWorldRegistry world,
         Persistence.IPlayerStateService playerState,
         ILoggerFactory loggerFactory,
-        Elemental.IElementalService? elemental = null)
+        Elemental.IElementalService? elemental = null,
+        Instance.IInstanceService? instance = null)
         : base("MapServer", configuration, logger, packetSystem, sessionManager)
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
@@ -113,6 +116,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _naturalHeal = naturalHeal;
         _pet = pet;
         _elemental = elemental;
+        _instance = instance;
         _scriptHost = scriptHost;
         _npcSpawn = npcSpawn;
         _scriptRegistry = scriptRegistry;
@@ -313,6 +317,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _pet.Tick(nowTick);
         // FEATURE-10 — elemental lifetime expiry (rAthena elemental_summon_end).
         _elemental?.Tick(nowTick);
+        _instance?.Tick(nowTick);
         // Continuous-attack swings (rAthena unit_attack_timer).
         _attackService.Tick(nowTick);
         // Skill cast-timer resolution (rAthena skill_castend_id).
