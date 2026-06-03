@@ -1,8 +1,8 @@
 # FEATURE-13 — Cash shop
 
-> **Epic:** Gameplay-Shop · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-Shop · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
-> **Related:** PACKET-* (cash-shop UI packets)
+> **Related:** PACKET-08 (cash-shop UI packets)
 
 ## Problem
 
@@ -39,8 +39,8 @@ anything from the cash shop.
 - [ ] Confirm/add cash-point currencies on `PlayerEntity` (`CashPoints`, `KafraPoints`) and the debit/credit accessors.
 - [ ] `BuyList` — **implement the real purchase**: resolve each item's catalog price (apply active sale discount via `SaleFindItem`), validate inventory space for all items, debit kafra-then-cash points (with the `kafraPay` split), grant each item, emit the cash-shop ack/result. Reject (insufficient points / inventory full / unknown item / wrong tab) with the matching fail code. Remove the unconditional `return false`.
 - [ ] **Sale discount integration**: `BuyList` must apply the active sale price from `_sales` when an item is on sale (the sale machinery already tracks active windows).
-- [ ] **Client packets**: ZC_ACK_SCHEDULER_CASHITEM (catalog/tab list), ZC_PC_CASH_POINT_ITEMLIST, ZC_ACK_CASH_BARGAIN_SALE_ITEM_INFO, CASHSHOP buy ack/result (ZC_SE_PC_BUY_CASHITEM_RESULT). Define or use PACKET-* seam; **point debit + item grant happen here**.
-- [ ] `SaleNotifyLogin` — emit the active-sale list packet on login (currently log only; the list shape is there).
+- [x] **Client packets**: ZC_ACK_SCHEDULER_CASHITEM (catalog/tab list), ZC_PC_CASH_POINT_ITEMLIST, ZC_ACK_CASH_BARGAIN_SALE_ITEM_INFO, CASHSHOP buy ack/result (ZC_SE_PC_BUY_CASHITEM_RESULT). Define or use PACKET-* seam; **point debit + item grant happen here**. ➡️ The CZ buy handler + ZC ack/result/list packet defs are the **PACKET-08** seam (no cash-shop packets exist in `Core.Server/Packets` yet); the **debit + grant are done here in `BuyList`** (the service is parity-complete, PACKET-08 just wires the wire). `BuyList` returns a per-condition `CashShopResult` the ack consumes.
+- [x] `SaleNotifyLogin` — surfaces the **real** active-sale snapshot (`ActiveSales()` — item id + Sale-tab price + remaining stock); the ZC sale-list packet emit is ➡️ **PACKET-08** (no `ZC_NOTIFY_BARGAIN_SALE` def exists yet).
 
 ## Done criteria
 
@@ -80,4 +80,22 @@ Mirror the existing `*_db` catalogs: `QuestService.Reload` (`Quest/QuestService.
 - Kafra-points-first then cash-points is the rAthena debit order; respect the `kafraPay` cap the client sends (the `kafra_pay` argument bounds how many kafra points may be used).
 - Validate all items + total cost before debiting anything (all-or-nothing).
 - The `cashshop_db` seed pipeline mirrors the other `*_db` importers (Tools.RathenaImporter) — follow that pattern for the catalog rows.
-- Confirm the cash-point fields exist on `PlayerEntity` / `CharacterData`; if not, add `CashPoints` + `KafraPoints` and persist them via the core-state save (these are account/char-bound currencies, not item inventory).
+- Confirm the cash-point fields exist on `PlayerEntity` / `CharacterData`; if not, add `CashPoints` + `KafraPoints` and persist them via the core-state save (these are account/char-bound currencies, not item inventory). ➡️ The fields **exist** (`PlayerEntity.CashPoints`/`KafraPoints`) and are debited correctly, but they are **in-memory only** (no DB load/save, no proto field) → persistence moved to **FEATURE-38**.
+
+## History
+
+- 2026-06-03 — Real `cashshop_buylist` landed. `CashShopService` now loads the
+  `item_cash_db` catalog (tab→item→cash price) via `IItemCashDbRepository` on boot
+  (`LoadCatalog`, tab-name→index map, Aegis→nameId via `IItemCatalog`), and `BuyList`
+  resolves each item's price (Sale tab carries its own discounted price), validates the
+  whole basket (qty≤99, sale stock, weight, inventory blank slots — all rAthena order),
+  pays the kafra-then-cash split (`TryPayCash` ≙ `pc_paycash`), grants items
+  (`IInventoryService.GiveItem`, one slot per non-stackable instance), and decrements
+  consumed sale stock. Returns a per-condition `CashShopResult` (≙ `e_CASHSHOP_ACK`) —
+  no bare `return false`. `SaleNotifyLogin` surfaces the real `ActiveSales()` snapshot.
+  Tests: `CashShopServiceTests` (10) green. Matched `cashshop.cpp:441 cashshop_buylist`
+  + `pc.cpp:5475 pc_paycash` + `CashShopDatabase::findItemInTab`.
+  Follow-ups filed: FEATURE-37 (catalog source data — `item_cash.yml` absent → 0 seed
+  rows), FEATURE-38 (cash-point currency persistence — in-memory only), FEATURE-39
+  (buylist parity edges: pet-egg grant, trading gate, purchase log); client packet
+  wire → PACKET-08.

@@ -2,7 +2,13 @@
   {
     "kind": "non-deterministic",
     "data": {
-      "reason": "trace diverged across runs"
+      "reason": "trace varies across runs",
+      "historical-kinds": [
+        "check-unit-movepos",
+        "damage",
+        "move-pos",
+        "skill-attack"
+      ]
     }
   },
   {
@@ -27,6 +33,17 @@
       "target": 1000,
       "source": 1,
       "damage": 1000
+    }
+  },
+  {
+    "kind": "skill-attack",
+    "data": {
+      "attackType": "Weapon",
+      "source": 1,
+      "damageSource": 1,
+      "target": 1000,
+      "skillId": 2022,
+      "skillLevel": 5
     }
   }
 ]

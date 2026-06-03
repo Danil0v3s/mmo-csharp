@@ -230,7 +230,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | FEATURE-10 | ✅ Elemental lifetime expiry despawn (persistence IPC → FEATURE-34) |
 | FEATURE-11 | ✅ Vending real transfer (autotrade persistence → FEATURE-35) |
 | FEATURE-12 | ✅ Buying store real implementation (autotrade → FEATURE-36) |
-| FEATURE-13 | Cashshop catalog + buy |
+| FEATURE-13 | ✅ Cash shop real buy (catalog load + kafra/cash debit + grant; data→FEATURE-37, persistence→FEATURE-38, edges→FEATURE-39) |
 | FEATURE-14 | Instance lifecycle (NPC spawn, timers/auto-destroy, scoping) |
 | FEATURE-15 | WoE time-of-week scheduler |
 | FEATURE-16 | Fame-ranking subsystem + Taekwon-ranker population — split from COMBAT-51 |
@@ -253,6 +253,9 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | FEATURE-34 | Elemental create/load/delete IPC round-trip — split from FEATURE-10 |
 | FEATURE-35 | Vending autotrade persistence + overweight gate — split from FEATURE-11 |
 | FEATURE-36 | Buying-store autotrade persistence + overweight gate — split from FEATURE-12 |
+| FEATURE-37 | Cash-shop catalog source data (`item_cash.yml` absent → 0 seed rows) — split from FEATURE-13 |
+| FEATURE-38 | Cash-point currency persistence (#CASHPOINTS/#KAFRAPOINTS load+save) — split from FEATURE-13 |
+| FEATURE-39 | Cash-shop buylist parity edges (pet-egg grant, trading gate, purchase log) — split from FEATURE-13 |
 
 ### `scripting/` — NPC scripting runtime + content
 | Ticket | Title |
