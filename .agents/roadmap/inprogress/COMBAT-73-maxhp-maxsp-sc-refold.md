@@ -1,6 +1,6 @@
 # COMBAT-73 — MaxHp/MaxSp SC re-fold (post-CalcPc pass)
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-53 (the OnRecalc seam) · **Blocks:** none
 > **Filed by:** COMBAT-53 — the MaxHp/MaxSp axis it did not implement.
 
