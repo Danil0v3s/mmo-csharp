@@ -1,6 +1,6 @@
 # FEATURE-09 — Mercenary live entity
 
-> **Epic:** Gameplay-Companion · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Gameplay-Companion · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** FEATURE-02 (merc save), FEATURE-01 (kill bonus on master kill) · **Blocks:** none
 > **Related:** PACKET-* (merc UI / HP-bar packets)
 
