@@ -1,6 +1,6 @@
 # COMBAT-85 — Generic skill_db UnitFlags column loader (+ SkillUnitFlag bit-order fix)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** no (infra)
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** no (infra)
 > **Depends on:** COMBAT-66 · **Blocks:** none
 > **Filed by:** COMBAT-66 — it corrected the Land Protector exemption to use
 > `INF2_IGNORELANDPROTECTOR` (the real rAthena flag), so the generic `Unit.Flag` loader is no
