@@ -1,6 +1,6 @@
 # COMBAT-90 — MaxHp/MaxSp re-fold tail (remaining ~10 handlers)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-73 (the OnRecalcPool seam + verified batch) · **Blocks:** none
 > **Filed by:** COMBAT-73 — it built the MaxHp/MaxSp re-fold pass (`OnRecalcPool` +
 > `ReapplyMaxHpSpMods`, wired into CalcPc) and gave it to 7 handlers; the rest remain.
