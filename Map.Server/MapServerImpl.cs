@@ -48,6 +48,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly Instance.IInstanceService? _instance;
     // FEATURE-15 — WoE weekly schedule (coarse per-minute check).
     private readonly Agit.IWoeScheduler? _woeScheduler;
+    // GP-PARTY — party dot/HP sync (coarse ~1s broadcast).
+    private readonly Party.IPartySyncService? _partySync;
     private readonly ScriptHost _scriptHost;
     private readonly INpcSpawnService _npcSpawn;
     private readonly Scripting.INpcRegistry _scriptRegistry;
@@ -98,7 +100,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         ILoggerFactory loggerFactory,
         Elemental.IElementalService? elemental = null,
         Instance.IInstanceService? instance = null,
-        Agit.IWoeScheduler? woeScheduler = null)
+        Agit.IWoeScheduler? woeScheduler = null,
+        Party.IPartySyncService? partySync = null)
         : base("MapServer", configuration, logger, packetSystem, sessionManager)
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
@@ -122,6 +125,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _elemental = elemental;
         _instance = instance;
         _woeScheduler = woeScheduler;
+        _partySync = partySync;
         _scriptHost = scriptHost;
         _npcSpawn = npcSpawn;
         _scriptRegistry = scriptRegistry;
@@ -323,6 +327,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         // FEATURE-10 — elemental lifetime expiry (rAthena elemental_summon_end).
         _elemental?.Tick(nowTick);
         _instance?.Tick(nowTick);
+        _partySync?.Tick(nowTick);
         // FEATURE-15 — WoE schedule on a coarse cadence (server-local time); WoE resolution is
         // minutes, so don't evaluate every frame.
         if (_woeScheduler != null && DateTime.UtcNow >= _nextWoeCheckUtc)

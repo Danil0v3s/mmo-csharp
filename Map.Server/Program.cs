@@ -336,6 +336,7 @@ builder.Services.AddSingleton<Map.Server.Party.IPartyService, Map.Server.Party.P
 // PartyService (the cache) and IntifService.Party* (the IPC dispatch);
 // this is the seam that turns lifecycle events into client packets.
 builder.Services.AddSingleton<Map.Server.Party.IPartyClientService, Map.Server.Party.PartyClientService>();
+builder.Services.AddSingleton<Map.Server.Party.IPartySyncService, Map.Server.Party.PartySyncService>();
 // P0.1 — session lookup from PlayerEntity → MapSessionData. Wraps
 // SessionManager; lets gameplay services resolve the per-PC session
 // without pulling in the network API.

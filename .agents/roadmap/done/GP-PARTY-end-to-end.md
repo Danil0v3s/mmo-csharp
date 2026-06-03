@@ -1,6 +1,6 @@
 # GP-PARTY — Party works end-to-end
 
-> **Epic:** gameplay · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** GP-MVPFAME (kill-credit fan-out), GP-QUEST/ACHIEVE (party objectives)
 
 ## The deliverable
@@ -98,9 +98,28 @@ options and the on-screen HP-bar updates are not reachable.
   byte — `IIntifService.LeaveParty` hard-codes reason 0; deferred to avoid churning the 4 intif stubs).
   **A player can now create/invite/accept/leave/expel/change-leader/set-EXP-share — the whole party
   management UI works.**
-- **Remaining (1 turn → done):** the **HP-bar / position sync** — emit `ZC_NOTIFY_HP_TO_GROUPM` on
-  HP change + `ZC_NOTIFY_POSITION_TO_GROUPM` on move/map-enter to party members in view (the cache +
-  `PartyMapService`/`IPartyClientService` are the seam). Then the card moves to done.
+- **2026-06-03 (turn 3 — DONE)** — HP-bar / position sync landed. New `ZC_NOTIFY_HP_TO_GROUPM`
+  (0x0106, AID+hp.W+maxhp.W with the >INT16 %-scaling) + new `PartySyncService` (rAthena
+  `party_send_xy_timer` + `clif_party_hp`): a coarse ~1 s tick (wired into `MapServerImpl` after the
+  instance sweep) that, for each online party member whose cell or HP changed, broadcasts
+  `ZC_NOTIFY_POSITION_TO_GROUPM` + `ZC_NOTIFY_HP_TO_GROUPM` to their same-map teammates
+  (`IPartyMapService.ForEachOnSameMap`, excl self), change-gated to avoid flooding. `PartySyncServiceTests`
+  (4) green; full suite 4429 pass (1 = standing replay-fixture). **GP-PARTY is reachable end-to-end:
+  create → invite → accept → see member list + HP bars + minimap dots → set EXP-share → change leader
+  → expel → leave.**
+
+## History
+
+- 2026-06-03 — Party works end-to-end (3 turns). The char-side party IPC + the notify/broadcast layer
+  (`IPartyClientService`) + the cache (`IPartyService`) were already built (archive PARTY work); the
+  invite-reply handler existed. This card built the rest of the client packet bridge: create
+  (`CZ_MAKE_GROUP`) + invite-by-name (`CZ_PARTY_JOIN_REQ`) + leave (`CZ_REQ_LEAVE_GROUP`) + expel
+  (`CZ_REQ_EXPEL_GROUP_MEMBER`, leader-gated) + change-leader (`CZ_PARTY_CHANGE_LEADER`) +
+  change-option (`CZ_PARTY_CHANGE_OPTION`) handlers, and the HP-bar/minimap-dot sync
+  (`ZC_NOTIFY_HP_TO_GROUPM` + `PartySyncService`). Build-to-struct + handler/service unit tests (19
+  across the party suite); full suite green (1 standing replay-fixture). Follow-ups filed:
+  **GP-PARTY-EXPEL-REASON** (kicked-vs-left withdraw byte) + **GP-PARTY-INSTANT-HP** (instant HP-bar on
+  damage vs. the ~1 s sync). Live-client wire validation is the project's standing deferred pass.
 
 ## Notes / gotchas
 

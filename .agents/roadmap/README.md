@@ -67,7 +67,9 @@ this ticket already needed.** "Service landed, packets later" is not done.
 ### `gameplay/` — playable capabilities (Phase 2, highest leverage)
 | Ticket | Capability (player outcome) | Absorbs (archive) |
 |---|---|---|
-| GP-PARTY | Party works end-to-end (invite/leave/expel/leader/share/HP-bar) | PACKET-01 |
+| GP-PARTY | ✅ Party end-to-end (create/invite/leave/expel/leader/share + HP-bar/dot sync; reason→GP-PARTY-EXPEL-REASON, instant-HP→GP-PARTY-INSTANT-HP) | PACKET-01 |
+| GP-PARTY-EXPEL-REASON | Kicked-vs-left party withdraw reason byte — split from GP-PARTY |
+| GP-PARTY-INSTANT-HP | Instant party HP-bar on damage/heal (vs the ~1s sync) — split from GP-PARTY |
 | GP-GUILD | Guild works end-to-end (invite/expel/position/break/notice/emblem/storage/alliance) | PACKET-02 |
 | GP-MAIL | ✅ RODEX mail end-to-end (open/list/read/claim/delete + compose/attach/send; rental→GP-MAIL-RENTAL, partial-claim→GP-MAIL-PARTIAL-CLAIM) | FEATURE-05/25, PACKET-06 |
 | GP-MAIL-RENTAL | Rental-item expiry on mail attachments (needs expire_time proto field) — split from GP-MAIL |
