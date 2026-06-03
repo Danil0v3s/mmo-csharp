@@ -1,6 +1,6 @@
 # GP-QUEST — Quests work end-to-end
 
-> **Epic:** gameplay · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** none (coordinate ZC quest-UI packets with GP-ACHIEVE) · **Unlocks:** SCR-DOMAIN (quest builtins)
 
 ## The deliverable
