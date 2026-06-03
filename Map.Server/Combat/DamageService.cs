@@ -686,11 +686,18 @@ public sealed class DamageService : IDamageService
     }
 
     /// <summary>
-    /// COMBAT-49 — rAthena <c>battle_calc_damage</c> (RENEWAL): a target with
-    /// <c>SC_BASILICA_CELL</c> takes no damage from an attack, unless the attacker
-    /// has <c>MD_STATUSIMMUNE</c> mode (boss/MVP). The <c>SP_SOULEXPLOSION</c>
-    /// skill exemption is the caller's responsibility (only the skill funnel knows
-    /// the skill id).
+    /// COMBAT-49 — rAthena <c>battle_calc_damage</c>: a target with <c>SC_BASILICA_CELL</c>
+    /// takes no damage from an attack, unless the attacker has <c>MD_STATUSIMMUNE</c> mode
+    /// (boss/MVP). The <c>SP_SOULEXPLOSION</c> skill exemption is the caller's responsibility
+    /// (only the skill funnel knows the skill id).
+    ///
+    /// <para><b>COMBAT-68 — dormant in renewal by design.</b> <c>SC_BASILICA_CELL</c> is granted
+    /// only by <c>pc_cell_basilica</c> off a <c>CELL_BASILICA</c> cell, and that cell-marking
+    /// (skill.cpp:21830) is <c>#ifndef RENEWAL</c> — so in renewal HP_BASILICA never marks a cell
+    /// and this SC is never applied. The check is therefore inert in renewal (it stays correct
+    /// for any hand-applied/scripted SC_BASILICA_CELL, and would light up if pre-renewal Basilica
+    /// were ever ported). The renewal Basilica effect is the SC_BASILICA self-buff — see
+    /// <c>Acolyte/Basilica.cs</c> + COMBAT-87.</para>
     /// </summary>
     public bool IsBasilicaImmune(Entity target, Entity source)
     {

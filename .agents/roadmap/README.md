@@ -147,6 +147,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-84 | SC speed-table tail (exotic SCs + freecast / hiding-walk early branches) — split from COMBAT-65 |
 | COMBAT-85 | Generic skill_db UnitFlags column loader (+ SkillUnitFlag bit-order fix) — split from COMBAT-66 (no live consumer yet) |
 | COMBAT-86 | AL_WARP deferred requirement-consume + cancel-refund (SKILL_NOCONSUME_REQ) — split from COMBAT-67 |
+| COMBAT-87 | Renewal SC_BASILICA effects: offensive element buff + NoAttack caster state — split from COMBAT-68 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |
