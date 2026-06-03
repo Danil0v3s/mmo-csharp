@@ -102,9 +102,103 @@ public class PartyJoinReqAckHandlerTests
         var sessions = new InMemorySessions();
         var partyClient = new StubPartyClient();
         var intif = new StubIntif();
+        var partyService = new StubPartyService();
         var handler = new PartyJoinReqAckHandler(entities, partyClient, intif,
             NullLogger<PartyJoinReqAckHandler>.Instance);
-        return new TestContext(handler, entities, sessions, partyClient, intif, (uint)mapName.GetHashCode());
+        return new TestContext(handler, entities, sessions, partyClient, intif, partyService, (uint)mapName.GetHashCode());
+    }
+
+    // --- GP-PARTY manage handlers (leave / expel / change-leader / change-option) ---
+
+    [Fact]
+    public async Task Leave_dispatches_and_clears_party_id()
+    {
+        var ctx = New();
+        var pc = ctx.AddPc(1, 100, "Alice"); pc.PartyId = 42;
+        var h = new PartyLeaveHandler(ctx.Entities, ctx.Intif, NullLogger<PartyLeaveHandler>.Instance);
+
+        await h.HandleAsync(ctx.SessionOf(pc), new CZ_REQ_LEAVE_GROUP());
+
+        Assert.Equal((42, 100, 1), ctx.Intif.LastLeave);
+        Assert.Equal(0, pc.PartyId);
+    }
+
+    [Fact]
+    public async Task Expel_by_leader_removes_target()
+    {
+        var ctx = New();
+        var leader = ctx.AddPc(1, 100, "Alice"); leader.PartyId = 42;
+        var bob = ctx.AddPc(2, 200, "Bob"); bob.PartyId = 42;
+        ctx.PartyService.SetParty(42, leaderCharId: 1,
+            (acc: 100, ch: 1, "Alice"), (acc: 200, ch: 2, "Bob"));
+        var h = new PartyExpelHandler(ctx.Entities, ctx.PartyService, ctx.Intif, NullLogger<PartyExpelHandler>.Instance);
+
+        await h.HandleAsync(ctx.SessionOf(leader), Expel(accountId: 200, "Bob"));
+
+        Assert.Equal((42, 200, 2), ctx.Intif.LastLeave);
+        Assert.Equal(0, bob.PartyId); // online target cleared locally
+    }
+
+    [Fact]
+    public async Task Expel_by_non_leader_is_noop()
+    {
+        var ctx = New();
+        var member = ctx.AddPc(2, 200, "Bob"); member.PartyId = 42;
+        ctx.AddPc(1, 100, "Alice");
+        ctx.PartyService.SetParty(42, leaderCharId: 1, (100, 1, "Alice"), (200, 2, "Bob"));
+        var h = new PartyExpelHandler(ctx.Entities, ctx.PartyService, ctx.Intif, NullLogger<PartyExpelHandler>.Instance);
+
+        await h.HandleAsync(ctx.SessionOf(member), Expel(accountId: 100, "Alice")); // Bob isn't leader
+
+        Assert.Equal(0, ctx.Intif.LeavePartyCalls);
+    }
+
+    [Fact]
+    public async Task ChangeLeader_by_leader_dispatches()
+    {
+        var ctx = New();
+        var leader = ctx.AddPc(1, 100, "Alice"); leader.PartyId = 42;
+        ctx.PartyService.SetParty(42, leaderCharId: 1, (100, 1, "Alice"), (200, 2, "Bob"));
+        var h = new PartyChangeLeaderHandler(ctx.Entities, ctx.PartyService, ctx.Intif, NullLogger<PartyChangeLeaderHandler>.Instance);
+
+        await h.HandleAsync(ctx.SessionOf(leader), ChangeLeader(accountId: 200));
+
+        Assert.Equal((42, 200, 2), ctx.Intif.LastLeader);
+    }
+
+    [Fact]
+    public async Task ChangeOption_by_leader_dispatches_keeping_item()
+    {
+        var ctx = New();
+        var leader = ctx.AddPc(1, 100, "Alice"); leader.PartyId = 42;
+        ctx.PartyService.SetParty(42, leaderCharId: 1, item: 2, (100, 1, "Alice"));
+        var h = new PartyChangeOptionHandler(ctx.Entities, ctx.PartyService, ctx.Intif, NullLogger<PartyChangeOptionHandler>.Instance);
+
+        await h.HandleAsync(ctx.SessionOf(leader), ChangeOption(exp: 1));
+
+        Assert.Equal((42, 100, 1, 2), ctx.Intif.LastOption); // exp=1, item kept = 2
+    }
+
+    private static CZ_REQ_EXPEL_GROUP_MEMBER Expel(int accountId, string name)
+    {
+        var p = new CZ_REQ_EXPEL_GROUP_MEMBER();
+        typeof(CZ_REQ_EXPEL_GROUP_MEMBER).GetProperty("AccountId")!.SetValue(p, accountId);
+        typeof(CZ_REQ_EXPEL_GROUP_MEMBER).GetProperty("Name")!.SetValue(p, name);
+        return p;
+    }
+
+    private static CZ_PARTY_CHANGE_LEADER ChangeLeader(int accountId)
+    {
+        var p = new CZ_PARTY_CHANGE_LEADER();
+        typeof(CZ_PARTY_CHANGE_LEADER).GetProperty("AccountId")!.SetValue(p, accountId);
+        return p;
+    }
+
+    private static CZ_PARTY_CHANGE_OPTION ChangeOption(int exp)
+    {
+        var p = new CZ_PARTY_CHANGE_OPTION();
+        typeof(CZ_PARTY_CHANGE_OPTION).GetProperty("ExpFlag")!.SetValue(p, exp);
+        return p;
     }
 
     private sealed record TestContext(
@@ -113,6 +207,7 @@ public class PartyJoinReqAckHandlerTests
         InMemorySessions Sessions,
         StubPartyClient PartyClient,
         StubIntif Intif,
+        StubPartyService PartyService,
         uint MapId)
     {
         public PlayerEntity AddPc(int charId, int accountId, string name)
@@ -192,9 +287,11 @@ public class PartyJoinReqAckHandlerTests
         public int RequestRegistry(PlayerEntity pc, byte flag) => 0;
         public int CreateParty(PlayerEntity pc, string name, byte item, byte itemDiv) => 0;
         public int RequestPartyInfo(int partyId, int charId) => 0;
-        public int ChangePartyLeader(int partyId, int accountId, int charId) => 0;
-        public int PartyChangeOption(int partyId, int accountId, int exp, int item, int flag) => 0;
-        public int LeaveParty(int partyId, int accountId, int charId) => 0;
+        public int ChangePartyLeader(int partyId, int accountId, int charId) { LastLeader = (partyId, accountId, charId); return 1; }
+        public int PartyChangeOption(int partyId, int accountId, int exp, int item, int flag) { LastOption = (partyId, accountId, exp, item); return 1; }
+        public int LeavePartyCalls; public (int, int, int) LastLeave;
+        public (int, int, int)? LastLeader; public (int, int, int, int)? LastOption;
+        public int LeaveParty(int partyId, int accountId, int charId) { LeavePartyCalls++; LastLeave = (partyId, accountId, charId); return 1; }
         public int PartyChangemap(PlayerEntity pc, bool online) => 0;
         public int BreakParty(int partyId) => 0;
         public int PartyMessage(int partyId, int accountId, string text) => 0;
@@ -256,6 +353,30 @@ public class PartyJoinReqAckHandlerTests
         public bool CheckConnection() => true;
         public void Init() { }
         public void Final() { }
+    }
+
+    private sealed class StubPartyService : IPartyService
+    {
+        private MapPartyEntity? _party; private int _leaderCharId;
+        public void SetParty(int partyId, int leaderCharId, params (int acc, int ch, string name)[] members)
+            => SetParty(partyId, leaderCharId, item: 0, members);
+        public void SetParty(int partyId, int leaderCharId, int item, params (int acc, int ch, string name)[] members)
+        {
+            _leaderCharId = leaderCharId;
+            _party = new MapPartyEntity(partyId) { LeaderCharacterId = leaderCharId, Item = (byte)item };
+            foreach (var (acc, ch, name) in members)
+                _party.Members[ch] = new MapPartyMember { AccountId = acc, CharacterId = ch, Name = name, Leader = ch == leaderCharId };
+        }
+        public MapPartyEntity? Get(int partyId) => _party;
+        public bool IsLeader(PlayerEntity pc) => _party != null && pc.CharacterId == _leaderCharId;
+        public MapPartyMember? GetMember(int partyId, int characterId) => _party?.Members.GetValueOrDefault(characterId);
+        public int SkillCheck(PlayerEntity caster, int partyId, ushort skillId, ushort skillLevel) => 0;
+        public void OnLevelUp(PlayerEntity pc) { }
+        public MapPartyEntity ApplySnapshot(int partyId, string name, byte exp, byte item, int leaderCharacterId, int leaderAccountId, IEnumerable<MapPartyMember> members) => _party!;
+        public void Forget(int partyId) { }
+        public void UpdateMemberMap(int partyId, int characterId, string mapName, uint level, bool online) { }
+        public void Hydrate(int partyId, int requestingCharacterId) { }
+        public Task<MapPartyEntity?> HydrateAsync(int partyId, int requestingCharacterId, CancellationToken ct = default) => Task.FromResult(_party);
     }
 
     private sealed class InMemorySessions : ISessionManagerAccessor

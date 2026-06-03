@@ -174,6 +174,10 @@ public enum PacketHeader : short
     CZ_PARTY_JOIN_REQ_ACK = 0x02c7,        // clif_parse_ReplyPartyInvite (clif.cpp:11860), 7B. <party_id>.L <flag>.B (0=refuse, 1=accept).
     CZ_MAKE_GROUP         = 0x00f9,        // clif_parse_CreateParty: <name>.24B, 26B.
     CZ_PARTY_JOIN_REQ     = 0x0802,        // clif_parse_PartyInvite2 (invite by name): <name>.24B, 26B.
+    CZ_REQ_LEAVE_GROUP    = 0x0100,        // clif_parse_LeaveParty: no body, 2B.
+    CZ_REQ_EXPEL_GROUP_MEMBER = 0x0103,    // clif_parse_RemovePartyMember: <AID>.L <name>.24B, 30B.
+    CZ_PARTY_CHANGE_OPTION = 0x0102,       // clif_parse_PartyChangeOption: <expflag>.L, 6B (leader-only).
+    CZ_PARTY_CHANGE_LEADER = 0x07da,       // clif_parse_PartyChangeLeader: <AID>.L, 6B (leader-only).
     ZC_NOTIFY_CHAT_PARTY = 0x0109,         // <len>.W <AID>.L <chatMsg>.?B.
     CZ_GUILD_CHAT = 0x017e,                // <len>.W <text>.?B. clif_parse_GuildMessage.
     ZC_GUILD_CHAT = 0x017f,                // <len>.W <message>.?B.

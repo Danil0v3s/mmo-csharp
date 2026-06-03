@@ -87,6 +87,20 @@ options and the on-screen HP-bar updates are not reachable.
   `NotifyOptionChanged`; the **HP-bar / position sync** wiring (`ZC_NOTIFY_HP_TO_GROUPM` /
   `ZC_NOTIFY_POSITION_TO_GROUPM` on map-enter/move/HP-change). All are layers of THIS vertical; the
   loop resumes this card. Live-client wire validation is the project's standing deferred pass.
+- **2026-06-03 (turn 2)** — Manage handlers landed (leave / expel / change-leader / change-option).
+  4 CZ packets (`CZ_REQ_LEAVE_GROUP` 0x0100, `CZ_REQ_EXPEL_GROUP_MEMBER` 0x0103, `CZ_PARTY_CHANGE_OPTION`
+  0x0102, `CZ_PARTY_CHANGE_LEADER` 0x07da) + handlers driving the established `IIntifService`
+  path (`LeaveParty`/`ChangePartyLeader`/`PartyChangeOption`, which wrap the IPC + fan out the
+  broadcast). Leave clears the leaver's PartyId; expel/leader/option are leader-gated (`IsLeader`) +
+  resolve the target char id from the party cache by account id; change-option keeps the existing
+  item-share policy. `PartyJoinReqAckHandlerTests` extended to 9 (5 new). Full suite 4425 pass
+  (1 = standing replay-fixture). Filed **GP-PARTY-EXPEL-REASON** (the kicked-vs-left withdraw reason
+  byte — `IIntifService.LeaveParty` hard-codes reason 0; deferred to avoid churning the 4 intif stubs).
+  **A player can now create/invite/accept/leave/expel/change-leader/set-EXP-share — the whole party
+  management UI works.**
+- **Remaining (1 turn → done):** the **HP-bar / position sync** — emit `ZC_NOTIFY_HP_TO_GROUPM` on
+  HP change + `ZC_NOTIFY_POSITION_TO_GROUPM` on move/map-enter to party members in view (the cache +
+  `PartyMapService`/`IPartyClientService` are the seam). Then the card moves to done.
 
 ## Notes / gotchas
 
