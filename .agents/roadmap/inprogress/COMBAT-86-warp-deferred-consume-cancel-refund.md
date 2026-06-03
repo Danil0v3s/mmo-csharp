@@ -1,6 +1,6 @@
 # COMBAT-86 — AL_WARP deferred requirement-consume + cancel-refund (SKILL_NOCONSUME_REQ)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-67 (Warp Portal unit + chooser) · **Blocks:** none
 > **Filed by:** COMBAT-67 — it shipped the portal + the memo-set path; the consume-timing
 > half is a cast-pipeline change, split out.
