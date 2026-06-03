@@ -15,15 +15,102 @@ public sealed class SlaveMobService : ISlaveMobService
 {
     private readonly IEntityRegistry _entities;
     private readonly IStatusChangeService? _sc;
+    // MOBAI-01 — walk primitive for the slave-follow pass. Null in tests that don't exercise follow.
+    private readonly Map.Server.Movement.IMovementService? _movement;
 
     /// <summary>rAthena fixed friend search radius (mob.cpp:4124 / 4201).</summary>
     public const short FriendSearchRange = 8;
 
-    public SlaveMobService(IEntityRegistry entities, IStatusChangeService? sc = null)
+    // MOBAI-01 — rAthena slave-coupling constants (mob.hpp): keep the slave within 2 cells of its
+    // master and throttle target inheritance to once per 300ms.
+    private const int MobSlaveDistance = 2;   // MOB_SLAVEDISTANCE (mob.hpp:44)
+    private const long MinMobLinkTime = 300;  // MIN_MOBLINKTIME (mob.hpp:36)
+
+    public SlaveMobService(IEntityRegistry entities, IStatusChangeService? sc = null,
+        Map.Server.Movement.IMovementService? movement = null)
     {
         _entities = entities;
         _sc = sc;
+        _movement = movement;
     }
+
+    /// <inheritdoc/>
+    public SlaveTickResult TickSlave(MobEntity slave, long nowTick)
+    {
+        if (slave.MasterId is not { } masterId) return SlaveTickResult.Continue;
+        var master = _entities.Get(masterId);
+
+        // 1. Master dead or gone → the slave dies with it (rAthena status_kill(slave)).
+        if (master is null || !Alive(master)) return SlaveTickResult.MasterGone;
+
+        // Alive master on a different map: with slave_stick_with_master OFF (the rAthena default;
+        // the unconditional warp arm is AI_ABR/AI_BIONIC-only) the slave cannot follow cross-map —
+        // act independently this tick.
+        if (master.MapId != slave.MapId) return SlaveTickResult.Continue;
+
+        var dist = System.Math.Max(System.Math.Abs(master.X - slave.X), System.Math.Abs(master.Y - slave.Y));
+        slave.MasterDist = dist;
+
+        var canMove = (slave.Stats.Mode & MobMode.CanMove) != 0;
+        if (canMove)
+        {
+            if (slave.TargetId != 0)
+            {
+                // Player-mastered slave that strayed > 5 cells from its player master: abandon the
+                // target and walk back (rAthena BL_PC master → mob_unlocktarget + unit_walktobl).
+                if (master is PlayerEntity && dist > 5)
+                {
+                    slave.TargetId = 0;
+                    slave.AttackedId = 0;
+                    _movement?.TryStartWalk(slave, master.X, master.Y);
+                    return SlaveTickResult.Handled;
+                }
+                // Mob master, or close enough → keep fighting (rAthena returns 0).
+                return SlaveTickResult.Continue;
+            }
+
+            // Approach the master when out of slave-distance (or standing on top of it).
+            // (map_search_freecell keeps slaves off the master's exact cell in rAthena; the C#
+            // movement layer resolves to the nearest walkable cell — see the MOBAI follow-up note.)
+            if (dist > MobSlaveDistance || dist == 0)
+            {
+                _movement?.TryStartWalk(slave, master.X, master.Y);
+                return SlaveTickResult.Handled;
+            }
+        }
+
+        // 3. Target inheritance — only when idle, throttled to one per MIN_MOBLINKTIME (300ms).
+        if (slave.TargetId == 0 && nowTick - slave.LastLinkTime >= MinMobLinkTime
+            && ResolveMasterTarget(master) is { } tid
+            && _entities.Get(tid) is PlayerEntity enemy && enemy.Hp > 0 && enemy.MapId == slave.MapId)
+        {
+            slave.TargetId = (int)tid.Value;
+            slave.LastLinkTime = nowTick;
+            return SlaveTickResult.Handled;
+        }
+
+        return SlaveTickResult.Continue;
+    }
+
+    /// <summary>MOBAI-01 — the master's current combat target id (engaged swing target, else the
+    /// mob-master's locked/attacked target). Player masters carry it on <c>Attack.TargetId</c>.</summary>
+    private static EntityId? ResolveMasterTarget(Entity master)
+    {
+        if (master.Attack is { } a && a.TargetId.Value != 0) return a.TargetId;
+        if (master is MobEntity mm)
+        {
+            if (mm.TargetId != 0) return new EntityId(mm.TargetId);
+            if (mm.AttackedId != 0) return new EntityId(mm.AttackedId);
+        }
+        return null;
+    }
+
+    private static bool Alive(Entity e) => e switch
+    {
+        PlayerEntity p => p.Hp > 0,
+        MobEntity m => m.Hp > 0,
+        _ => false,
+    };
 
     /// <inheritdoc/>
     public int CountSlaves(Entity master)

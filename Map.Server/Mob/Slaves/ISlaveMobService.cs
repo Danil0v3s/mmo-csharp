@@ -47,4 +47,26 @@ public interface ISlaveMobService
     /// otherwise null. Mirrors <c>mob_getmasterhpltmaxrate</c>.
     /// </summary>
     Entity? GetMasterIfHpBelow(MobEntity mob, int rate);
+
+    /// <summary>
+    /// MOBAI-01 — the slave→master coupling pass (rAthena <c>mob_ai_sub_hard_slavemob</c>,
+    /// mob.cpp:1449), run once per think-tick for a mob with a master. Follows the master, inherits
+    /// its combat target (throttled by <c>MIN_MOBLINKTIME</c>), and reports when the master is gone.
+    /// </summary>
+    SlaveTickResult TickSlave(MobEntity slave, long nowTick);
+}
+
+/// <summary>MOBAI-01 — outcome of <see cref="ISlaveMobService.TickSlave"/>, mirroring rAthena's
+/// <c>mob_ai_sub_hard_slavemob</c> 1 / 0 / status_kill branches.</summary>
+public enum SlaveTickResult
+{
+    /// <summary>The slave acted this tick (walked / inherited a target) — skip the rest of its AI
+    /// pass (rAthena returns 1).</summary>
+    Handled,
+    /// <summary>No slave action — fall through to the looter / aggressive scan (rAthena returns 0).
+    /// An aggressive slave that reaches here still re-scans this tick (<c>slave_lost_target</c>).</summary>
+    Continue,
+    /// <summary>The master is dead or gone — the caller kills the slave (rAthena
+    /// <c>status_kill</c>, no exp/loot credit).</summary>
+    MasterGone,
 }

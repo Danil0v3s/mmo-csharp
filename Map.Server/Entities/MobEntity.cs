@@ -117,6 +117,18 @@ public class MobEntity : Entity
     public int AttackedId { get; set; }
 
     /// <summary>
+    /// MOBAI-01 — rAthena <c>md-&gt;master_dist</c>: the last Chebyshev distance to this slave's
+    /// master, computed by the slave-coupling pass. Transient AI state (not persisted).
+    /// </summary>
+    public int MasterDist { get; set; }
+
+    /// <summary>
+    /// MOBAI-01 — rAthena <c>md-&gt;last_linktime</c>: tick of the last successful target inheritance
+    /// from the master, throttling re-inherit to once per <c>MIN_MOBLINKTIME</c> (300ms). Transient.
+    /// </summary>
+    public long LastLinkTime { get; set; }
+
+    /// <summary>
     /// rAthena <c>md-&gt;dmglog</c> — ring buffer of distinct attackers
     /// and their cumulative damage. Updated by
     /// <c>IDamageService.ApplyDamage</c>; queried by MSC_ATTACKPCGT /

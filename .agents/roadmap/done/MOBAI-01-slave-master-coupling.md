@@ -1,6 +1,6 @@
 # MOBAI-01 — Slave→master coupling in the hard-AI tick
 
-> **Epic:** Mob AI parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Mob AI parity · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** MOBAI-03
 
 ## Problem
@@ -116,6 +116,37 @@ Canonical: `rathena/src/map/mob.cpp` (monolithic; no split files).
 
 ## Scope — every sub-system that must be touched
 
+- [x] **Field additions** — `MobEntity.MasterDist` + `MobEntity.LastLinkTime` (transient AI state).
+- [x] **`ISlaveMobService.TickSlave` + `SlaveMobService`** — implemented the `mob_ai_sub_hard_slavemob`
+      body returning `SlaveTickResult { Handled, Continue, MasterGone }`. MasterGone → caller sets
+      Hp 0 + `IMobDeathSink.KillMob(id, null)`; Handled → `continue` (+ engage an inherited target);
+      Continue → `slave_lost_target = true` + fall through to looter/aggro.
+- [x] **Follow logic** — compute `MasterDist`; walk toward master when `MasterDist > MOB_SLAVEDISTANCE
+      (2) || == 0`. The unconditional warp arm is gated on `slave_stick_with_master` (rAthena default
+      **off** → only ABR/Bionic summons warp; ordinary boss adds walk) — hardcoded off + documented in
+      the code. No freecell primitive → walk to the master's cell (the movement layer resolves the
+      nearest walkable); noted as the parity-neutral pile-on divergence.
+- [x] **Target inheritance** — throttled on `nowTick - LastLinkTime >= MIN_MOBLINKTIME (300)`, only when
+      idle; resolves the master's target (`Attack.TargetId`, else `MobEntity.TargetId/AttackedId`),
+      validates it as an alive same-map PlayerEntity (the mob-slave enemy case), sets `TargetId` +
+      `LastLinkTime`, and the AI tick starts the attack so the slave engages.
+- [x] **Wired into `MobAiService.Tick`** after the engaged-target `continue`, before the looter scan;
+      threaded `slaveLostTarget` into the aggro gate (an aggressive **or** slave-lost-target mob scans).
+      Also: a mob with a master now always runs the **hard** path (bypasses the lazy/no-PC shortcut)
+      so slaves follow a master kited away from any PC.
+  - [ ] ➡️ The engaged player-mastered slave's leash-back (target-busy `> 5` drop) is unreachable with
+        the "after the engaged-continue" placement — split to **MOBAI-06** (dormant: no spawn path
+        produces a player-mastered *mob* slave today; the TickSlave arm is present but un-wired).
+- [x] **Replenish verification** — a slave death (Hp 0) drops `CountSlaves` (it filters `Hp<=0`),
+      re-firing the master's `NPC_SUMMONSLAVE` via the existing `SlaveLessThan` skill condition
+      (no new replenish path). Verified by a test.
+- [x] **DI / ctor** — `MobAiService` injects `ISlaveMobService` + `IMobDeathSink` (both already DI-
+      registered; auto-resolved in production), defaulting to an inline `SlaveMobService` so the
+      existing test ctor keeps working.
+- [x] No EF migration, no packets.
+
+### Original scope (reference)
+
 - [ ] **Field additions** on `Map.Server/Entities/MobEntity.cs`: `int MasterDist`
       (last computed Chebyshev distance to master) and `long LastLinkTime` (the
       `md->last_linktime` throttle anchor). No persistence — transient AI state.
@@ -170,18 +201,30 @@ Canonical: `rathena/src/map/mob.cpp` (monolithic; no split files).
 
 ## Done criteria
 
-- A boss + slave spawn: kiting the boss makes each living slave path toward the
-  boss when its Chebyshev distance exceeds 2, and stop within 2 cells.
-- A slave with no target inherits the boss's current target within one
-  `MIN_MOBLINKTIME` window (≤300ms after the boss engages) and begins attacking it.
-- Killing the boss kills/removes its living slaves on the slaves' next tick
-  (no orphaned slaves wandering the map).
-- Killing a slave below the master's `slavele`/`slavelt` threshold causes the
-  master to re-summon on its next think (live-slave count observed to drop then
-  recover).
-- A player-mastered slave (if any mob-summon path produces one) more than 5 cells
-  from its player master abandons its target and returns to within 2 cells.
-- No `// TODO`, no log-only no-op left in `Tick` or `TickSlave`.
+- ✅ A boss + slave spawn: kiting the boss makes each living slave path toward the boss when its
+  Chebyshev distance exceeds 2 (`Slave_follows_master_when_out_of_slave_distance`).
+- ✅ An idle slave inherits the boss's current target within one `MIN_MOBLINKTIME` window and begins
+  attacking it; it does NOT inherit before 300ms (`Idle_slave_inherits_master_target_after_the_link_throttle`).
+- ✅ Killing the boss kills its living slaves on the slaves' next tick — no orphans
+  (`Slave_dies_when_its_master_is_gone`).
+- ✅ A slave death drops the master's live-slave count, re-firing the `NPC_SUMMONSLAVE` summon
+  condition (`Slave_death_lowers_the_masters_live_slave_count`).
+- ➡️ A player-mastered slave > 5 cells from its player master abandons its target — **MOBAI-06**
+  (unreachable with the ticket's "after the engaged-continue" placement; dormant — no spawn path
+  produces a player-mastered mob slave today; the TickSlave arm is implemented but un-wired).
+- ✅ No `// TODO`, no log-only no-op in `Tick` / `TickSlave`.
+
+## History
+
+- 2026-06-03 — Ported `mob_ai_sub_hard_slavemob`: added `MobEntity.MasterDist`/`LastLinkTime`,
+  `ISlaveMobService.TickSlave` (+ `SlaveTickResult`), and wired the slave branch into
+  `MobAiService.Tick` (after target validation, before the looter/aggro scans). Slaves now follow a
+  kited master (walk when > 2 cells away), inherit the master's target (throttled 300ms) and engage
+  it, die with the master (`IMobDeathSink.KillMob`, no exp credit), and force the aggro scan when
+  slave-lost-target. A mob with a master always runs the hard path so it follows even with no PC in
+  view. `MobAiServiceTests` +6; full Map.Server.Tests 4266 pass (1 fail = pre-existing INFRA-11 replay
+  gate). Filed MOBAI-06 for the engaged player-mastered-slave leash-back (unreachable with the
+  ticket's placement; dormant today).
 
 ## Test plan
 

@@ -33,6 +33,9 @@ public sealed class MobAiService : IMobAiService
     // MOBAI-04 — line-of-sight gate for the aggressive scan (rAthena path_search_long /
     // status_check_visible). Null in tests → the scan degrades to distance-only (no LOS gate).
     private readonly Map.Server.Pathing.IPathService? _paths;
+    // MOBAI-01 — slave→master coupling pass + the kill seam for a slave whose master is gone.
+    private readonly Slaves.ISlaveMobService _slaves;
+    private readonly Map.Server.Spawn.IMobDeathSink? _death;
     private readonly Random _rng;
     private readonly Dictionary<EntityId, long> _lastThink = new();
 
@@ -49,7 +52,9 @@ public sealed class MobAiService : IMobAiService
         IMobChangeTargetService? changeTarget = null,
         IMobRandomWalkService? wander = null,
         IStatusChangeService? sc = null,
-        Map.Server.Pathing.IPathService? paths = null)
+        Map.Server.Pathing.IPathService? paths = null,
+        Slaves.ISlaveMobService? slaves = null,
+        Map.Server.Spawn.IMobDeathSink? death = null)
     {
         _entities = entities;
         _attack = attack;
@@ -59,6 +64,10 @@ public sealed class MobAiService : IMobAiService
         _wander = wander;
         _sc = sc;
         _paths = paths;
+        // MOBAI-01 — default to a SlaveMobService over the registry so the existing test ctor (which
+        // doesn't pass one) keeps a working slave pass; production injects the DI singleton.
+        _slaves = slaves ?? new Slaves.SlaveMobService(entities, sc, movement);
+        _death = death;
         _rng = rng ?? Random.Shared;
 
         // Default to the standard evaluator set so existing tests don't
@@ -125,7 +134,10 @@ public sealed class MobAiService : IMobAiService
             // to the lazy path which only rolls idle-skill picks at a
             // low rate; mobs in active PC range go through the full
             // hard path below.
-            if (!HasAnyPcInView(mob))
+            // MOBAI-01 — a mob with a master always runs the hard path (it stays on rAthena's
+            // active list) so the slave-coupling pass follows its master even when the master is
+            // kited away from any PC.
+            if (mob.MasterId == null && !HasAnyPcInView(mob))
             {
                 TickLazy(mob, nowTick);
                 continue;
@@ -187,6 +199,34 @@ public sealed class MobAiService : IMobAiService
                 }
             }
 
+            // MOBAI-01 — slave→master coupling pass (rAthena mob_ai_sub_hard_slavemob, mob.cpp:1857):
+            // runs after target validation, before the looter/aggressive scans. A slave follows its
+            // master + inherits its target (Handled → skip the rest of this tick); a slave whose
+            // master is gone dies with it; an un-handled aggressive slave still re-scans for aggro.
+            bool slaveLostTarget = false;
+            if (mob.MasterId != null)
+            {
+                switch (_slaves.TickSlave(mob, nowTick))
+                {
+                    case Slaves.SlaveTickResult.MasterGone:
+                        // rAthena status_kill(slave) — no exp/loot credit (null last-hitter).
+                        mob.Hp = 0;
+                        _death?.KillMob(mob.Id, lastHitter: null);
+                        continue;
+                    case Slaves.SlaveTickResult.Handled:
+                        // If the slave inherited a target this tick (TargetId set, not yet engaged),
+                        // start the attack so it chases + swings — rAthena's md->target_id drives
+                        // unit_attack on the next think; we engage it now. A pure follow (TargetId 0)
+                        // just keeps walking.
+                        if (mob.TargetId != 0 && mob.Attack == null)
+                            _attack.StartAttack(mob, new EntityId(mob.TargetId), continuous: true);
+                        continue;
+                    case Slaves.SlaveTickResult.Continue:
+                        slaveLostTarget = true; // rAthena: force the aggro scan even if it had a target
+                        break;
+                }
+            }
+
             // T4.9c — MD_LOOTER scan. Inserted between the slave/target
             // handling above and the aggressive scan below, mirroring
             // rAthena mob.cpp:2008-2129. Looter mobs walk to the
@@ -214,7 +254,9 @@ public sealed class MobAiService : IMobAiService
                 }
             }
 
-            if ((mode & MobMode.Aggressive) == 0 || (mode & MobMode.CanAttack) == 0)
+            // rAthena mob.cpp:1870 — the active scan runs when the mob is aggressive OR a slave that
+            // had no master action this tick (slave_lost_target), so a slave joins its master's fight.
+            if ((mode & MobMode.CanAttack) == 0 || ((mode & MobMode.Aggressive) == 0 && !slaveLostTarget))
                 continue;
 
             // Scan PCs within view range. mob_db.View / db.range2 is the

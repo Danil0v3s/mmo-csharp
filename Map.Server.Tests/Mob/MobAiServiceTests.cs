@@ -90,6 +90,102 @@ public class MobAiServiceTests
         Assert.Equal(pc.Id, mob.Attack!.TargetId);
     }
 
+    // ---- MOBAI-01: slave→master coupling ----
+
+    [Fact]
+    public void Slave_follows_master_when_out_of_slave_distance()
+    {
+        var ctx = Build();
+        var master = ctx.AddAggressiveMob(50, 50, range2: 10);
+        var slave = ctx.AddSlaveMob(56, 50, master, aggressive: false); // dist 6 > MOB_SLAVEDISTANCE
+
+        ctx.Ai.Tick(0);
+
+        Assert.Equal(6, slave.MasterDist);
+        Assert.NotNull(slave.Walk);   // walking toward the master
+        Assert.Null(slave.Attack);    // pure follow — not engaging
+    }
+
+    [Fact]
+    public void Idle_slave_inherits_master_target_after_the_link_throttle()
+    {
+        var ctx = Build();
+        var master = ctx.AddAggressiveMob(50, 50, range2: 10);
+        var pc = ctx.AddPlayer(80, 80, 1);      // far — out of the slave's small view, so only
+        master.TargetId = (int)pc.Id.Value;      // inheritance (not the active scan) can set it
+        var slave = ctx.AddSlaveMob(51, 50, master, aggressive: false, range2: 3); // adjacent
+
+        // Before MIN_MOBLINKTIME (300ms): no inheritance.
+        ctx.Ai.Tick(100);
+        Assert.Equal(0, slave.TargetId);
+
+        // After 300ms: inherit the master's target and engage it.
+        ctx.Ai.Tick(400);
+        Assert.Equal((int)pc.Id.Value, slave.TargetId);
+        Assert.NotNull(slave.Attack);
+        Assert.Equal(pc.Id, slave.Attack!.TargetId);
+    }
+
+    [Fact]
+    public void Slave_dies_when_its_master_is_gone()
+    {
+        var ctx = Build();
+        var master = ctx.AddAggressiveMob(50, 50, range2: 10);
+        var slave = ctx.AddSlaveMob(52, 50, master, aggressive: false);
+        ctx.Entities.Remove(master.Id); // master gone
+
+        ctx.Ai.Tick(0);
+
+        Assert.Equal(0, slave.Hp); // status_kill (no IMobDeathSink in this harness → HP→0)
+    }
+
+    [Fact]
+    public void Non_aggressive_slave_that_lost_its_target_still_scans_for_aggro()
+    {
+        // slave_lost_target forces the active scan even for a non-aggressive mob, so the slave
+        // joins its master's fight. Master idle (no target to inherit) + a PC in the slave's view.
+        var ctx = Build();
+        var master = ctx.AddAggressiveMob(50, 50, range2: 10);
+        var slave = ctx.AddSlaveMob(51, 50, master, aggressive: false, range2: 5); // adjacent to master
+        var pc = ctx.AddPlayer(53, 50, 1); // in the slave's view (dist 2)
+
+        ctx.Ai.Tick(400); // throttle elapsed; master has no target → inherit fails → slave_lost_target
+
+        Assert.NotNull(slave.Attack);          // aggroed via the forced scan
+        Assert.Equal(pc.Id, slave.Attack!.TargetId);
+    }
+
+    [Fact]
+    public void Non_slave_non_aggressive_mob_does_not_aggro()
+    {
+        // Control for the slave_lost_target override: a passive mob with no master never scans.
+        var ctx = Build();
+        var mob = ctx.AddPassiveMob(50, 50);
+        ctx.AddPlayer(52, 50, 1);
+
+        ctx.Ai.Tick(0);
+
+        Assert.Null(mob.Attack);
+    }
+
+    [Fact]
+    public void Slave_death_lowers_the_masters_live_slave_count()
+    {
+        // The replenish precondition: a slave dying (Hp 0) drops CountSlaves, which re-fires the
+        // master's NPC_SUMMONSLAVE via the SlaveLessThan skill condition (unchanged by this ticket).
+        var ctx = Build();
+        var master = ctx.AddAggressiveMob(50, 50, range2: 10);
+        ctx.AddSlaveMob(51, 50, master, aggressive: false);
+        var dying = ctx.AddSlaveMob(52, 50, master, aggressive: false);
+        ctx.AddSlaveMob(53, 50, master, aggressive: false);
+
+        var slaves = new Map.Server.Mob.Slaves.SlaveMobService(ctx.Entities);
+        Assert.Equal(3, slaves.CountSlaves(master));
+
+        dying.Hp = 0; // a slave dies
+        Assert.Equal(2, slaves.CountSlaves(master)); // count drops → summon condition re-fires
+    }
+
     [Fact]
     public void Passive_Mob_Does_Not_Engage()
     {
@@ -202,7 +298,7 @@ public class MobAiServiceTests
         var attack = new AttackService(entities, damage, movement, NullLogger<AttackService>.Instance);
         var sc = new StatusChangeService(damage, entities,
             new StatusEffectRegistry(), NullLogger<StatusChangeService>.Instance);
-        var ai = new MobAiService(entities, attack, NullLogger<MobAiService>.Instance, sc: sc, paths: paths);
+        var ai = new MobAiService(entities, attack, NullLogger<MobAiService>.Instance, movement: movement, sc: sc, paths: paths);
         return new TestContext(ai, entities, ids, sc, (uint)mapName.GetHashCode());
     }
 
@@ -256,6 +352,29 @@ public class MobAiServiceTests
             var origin = new MobSpawnEntry { MapId = MapId, MobClassId = 1002 };
             var mob = new MobEntity(Ids.NextMob(), db, origin, MapId, x, y);
             new StatusCalcService().CalcMob(mob);
+            Entities.Add(mob);
+            return mob;
+        }
+
+        // MOBAI-01 — a mob slave owned by `master`. CanMove always; aggressive optional (a
+        // non-aggressive slave only scans for aggro when slave_lost_target is set).
+        public MobEntity AddSlaveMob(short x, short y, Entity master, bool aggressive, int range2 = 3)
+        {
+            var modes = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["CanAttack"] = true,
+                ["CanMove"] = true,
+            };
+            if (aggressive) modes["Aggressive"] = true;
+            var db = new MobDbEntry
+            {
+                Id = 1109, AegisName = "DEVIRUCHI", Name = "Deviruchi",
+                Hp = 300, ChaseRange = range2, AttackRange = 1, Modes = modes,
+            };
+            var origin = new MobSpawnEntry { MapId = MapId, MobClassId = 1109 };
+            var mob = new MobEntity(Ids.NextMob(), db, origin, MapId, x, y);
+            new StatusCalcService().CalcMob(mob);
+            mob.MasterId = master.Id;
             Entities.Add(mob);
             return mob;
         }
