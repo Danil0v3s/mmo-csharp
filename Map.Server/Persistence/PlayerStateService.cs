@@ -12,14 +12,21 @@ public sealed class PlayerStateService : IPlayerStateService
     private readonly IServiceScopeFactory _scopes;
     private readonly IEntityRegistry _entities;
     private readonly ILogger<PlayerStateService> _logger;
+    // FEATURE-02 — companion/quest/achievement save fan-out (mirrors rAthena chrif_save).
+    private readonly Map.Server.Services.Intif.IIntifService _intif;
+    private readonly Map.Server.Pet.IPetService _pets;
 
     public PlayerStateService(
         IServiceScopeFactory scopes,
         IEntityRegistry entities,
+        Map.Server.Services.Intif.IIntifService intif,
+        Map.Server.Pet.IPetService pets,
         ILogger<PlayerStateService> logger)
     {
         _scopes = scopes;
         _entities = entities;
+        _intif = intif;
+        _pets = pets;
         _logger = logger;
     }
 
@@ -115,6 +122,41 @@ public sealed class PlayerStateService : IPlayerStateService
         {
             runtime.Id = entity.Id;
         }
+
+        // FEATURE-02 — companion/quest/achievement save fan-out (rAthena chrif_save order: core
+        // state above, then pet/quest/achievement). These are gRPC to the char server, separate
+        // from the local GameDbContext write above (no cross-process transaction).
+        if (session.EntityId is { } pcEid && _entities.Get(pcEid) is PlayerEntity pc)
+            await SaveCompanionsAsync(pc, finalSave, ct);
+    }
+
+    /// <summary>
+    /// FEATURE-02 — fan the save out to the companion / quest / achievement char-server RPCs that
+    /// the game loop previously never called (their wrappers were orphaned). On a final save
+    /// (logout) the calls are <b>awaited</b> so the row lands before the session is torn down; on a
+    /// periodic autosave they are fire-and-forget (the int wrappers). Phase A here covers quest,
+    /// achievement, and pet — their snapshot sources are already real. Phase B (homunculus /
+    /// mercenary / elemental) slots into the marked block once FEATURE-08/09/10 assign live entity
+    /// ids (+ a non-null mercenary snapshot).
+    /// </summary>
+    internal async Task SaveCompanionsAsync(PlayerEntity pc, bool finalSave, CancellationToken ct = default)
+    {
+        if (finalSave)
+        {
+            await _intif.QuestSaveAsync(pc, ct);
+            await _intif.AchievementSaveAsync(pc, ct);
+            if (_pets.TryGetLivePetId(pc, out var petId)) await _intif.SavePetAsync(petId, ct);
+        }
+        else
+        {
+            _intif.QuestSave(pc);
+            _intif.AchievementSave(pc);
+            if (_pets.TryGetLivePetId(pc, out var petId)) _intif.SavePet(petId);
+        }
+
+        // Phase B — FEATURE-08/09/10: homunculus / mercenary / elemental saves slot in here once
+        // those tickets assign real live-entity ids (and a non-null MercenaryService snapshot),
+        // following the same finalSave-awaits / autosave-fire-and-forget pattern as above.
     }
 
     // ----- core state -----

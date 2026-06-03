@@ -462,10 +462,17 @@ public sealed class IntifService : IIntifService
     public int QuestSave(PlayerEntity pc)
     {
         if (_questIpc == null) return 0;
+        _ = QuestSaveAsync(pc);   // fire-and-forget autosave path
+        return 1;
+    }
+
+    /// <summary>FEATURE-02 — awaitable quest save (final-save fan-out awaits the char-server row).</summary>
+    public async Task QuestSaveAsync(PlayerEntity pc, CancellationToken ct = default)
+    {
+        if (_questIpc == null) return;
         var snapshot = _questService?.SnapshotFor(pc)
             ?? (IReadOnlyList<Core.Server.IPC.QuestEntryData>)Array.Empty<Core.Server.IPC.QuestEntryData>();
-        _ = _questIpc.QuestSaveAsync(pc.CharacterId, quests: snapshot);
-        return 1;
+        await _questIpc.QuestSaveAsync(pc.CharacterId, quests: snapshot);
     }
 
     /// <summary>
@@ -488,10 +495,17 @@ public sealed class IntifService : IIntifService
     public int AchievementSave(PlayerEntity pc)
     {
         if (_questIpc == null) return 0;
+        _ = AchievementSaveAsync(pc);   // fire-and-forget autosave path
+        return 1;
+    }
+
+    /// <summary>FEATURE-02 — awaitable achievement save (final-save fan-out awaits the row).</summary>
+    public async Task AchievementSaveAsync(PlayerEntity pc, CancellationToken ct = default)
+    {
+        if (_questIpc == null) return;
         var snapshot = _achievementService?.SnapshotFor(pc)
             ?? (IReadOnlyList<Core.Server.IPC.AchievementEntryData>)Array.Empty<Core.Server.IPC.AchievementEntryData>();
-        _ = _questIpc.AchievementSaveAsync(pc.CharacterId, achievements: snapshot);
-        return 1;
+        await _questIpc.AchievementSaveAsync(pc.CharacterId, achievements: snapshot);
     }
 
     /// <summary>
@@ -550,14 +564,22 @@ public sealed class IntifService : IIntifService
     public int SavePet(int petId)
     {
         if (_petIpc == null) return 0;
-        var snapshot = _petService?.SerializeSnapshot(petId);
-        if (snapshot == null)
+        if (_petService?.SerializeSnapshot(petId) == null)
         {
             _logger.LogDebug("intif_save_petdata: no live pet for id {PetId}", petId);
             return 0;
         }
-        _ = _petIpc.PetSaveAsync(accountId: snapshot.AccountId, pet: snapshot);
+        _ = SavePetAsync(petId);   // fire-and-forget autosave path
         return 1;
+    }
+
+    /// <summary>FEATURE-02 — awaitable pet save (final-save fan-out awaits the row).</summary>
+    public async Task SavePetAsync(int petId, CancellationToken ct = default)
+    {
+        if (_petIpc == null) return;
+        var snapshot = _petService?.SerializeSnapshot(petId);
+        if (snapshot == null) return;
+        await _petIpc.PetSaveAsync(accountId: snapshot.AccountId, pet: snapshot);
     }
 
     /// <summary>

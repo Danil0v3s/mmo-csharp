@@ -127,6 +127,16 @@ public sealed class PetService : IPetService
         return null;
     }
 
+    /// <inheritdoc />
+    public bool TryGetLivePetId(PlayerEntity owner, out int petId)
+    {
+        petId = 0;
+        if (!_ownerToPet.TryGetValue(owner.CharacterId, out var entityId)) return false;
+        if (_entities.Get(entityId) is not PetEntity pet) return false;
+        petId = (int)pet.PetId;
+        return true;
+    }
+
     /// <summary>
     /// Maps a live <see cref="PetEntity"/> to the
     /// <see cref="Core.Server.IPC.PetData"/> shape consumed by

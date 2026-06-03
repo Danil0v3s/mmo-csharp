@@ -35,4 +35,11 @@ public interface IPetService
     /// with that id exists (e.g. recalled to egg).
     /// </summary>
     Core.Server.IPC.PetData? SerializeSnapshot(int petId);
+
+    /// <summary>
+    /// FEATURE-02 — the persistent <c>pet_id</c> of <paramref name="owner"/>'s live pet (one per
+    /// owner), for the save fan-out. Returns false when the owner has no pet out. Mirrors rAthena
+    /// gating the pet save on <c>sd-&gt;status.pet_id &amp;&amp; sd-&gt;pd</c>.
+    /// </summary>
+    bool TryGetLivePetId(PlayerEntity owner, out int petId);
 }

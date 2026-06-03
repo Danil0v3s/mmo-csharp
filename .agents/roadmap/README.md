@@ -219,7 +219,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | Ticket | Title |
 |---|---|
 | FEATURE-01 | Mob-death observer hub (quest + achievement + pet-catch + MVP) |
-| FEATURE-02 | Companion/quest/achievement persistence on logout (wire IntifService) |
+| FEATURE-02 | ✅ Companion/quest/achievement save wiring (Phase A: quest+achievement+pet) — Phase B → FEATURE-17 |
 | FEATURE-03 | Quest service real implementation |
 | FEATURE-04 | Achievement service real implementation |
 | FEATURE-05 | Mail / RODEX service (attach/zeny/return + IPC) |

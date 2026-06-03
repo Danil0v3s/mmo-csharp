@@ -1,6 +1,6 @@
 # FEATURE-02 — Companion / quest / achievement save wiring
 
-> **Epic:** Persistence · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Persistence · **Status:** ✅ Done — Phase A (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none (independent of FEATURE-01; complements FEATURE-03/04/07/08/09/10) · **Blocks:** none
 
 ## Problem
@@ -41,24 +41,34 @@ pointless without it: progress that can't survive a relog isn't real progress.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Inject `IIntifService` (and the relevant companion services for live-id lookup) into `PlayerStateService` **or** add a new `CompanionSaveCoordinator` that `MapServerImpl` + `MapSessionLifecycle` call. Pick one seam and route both autosave and final-save through it.
-- [ ] In the save fan-out, for the given `MapSessionData` / `PlayerEntity`, mirror `chrif_save` order:
-  - [ ] `IntifService.QuestSave(pc)` — always (snapshot is empty when no quests).
-  - [ ] `IntifService.AchievementSave(pc)` — always.
-  - [ ] Pet: if the PC has a live pet, resolve its `pet_id` and call `IntifService.SavePet(petId)`. (`PetService.SerializeSnapshot` takes a `petId`; expose a `TryGetLivePetId(PlayerEntity)` helper on `IPetService`.)
-  - [ ] Homunculus: if live, `IntifService.HomunculusSave(...)` — needs the homun id; add `IHomunculusService.TryGetLiveId(PlayerEntity)` (depends on FEATURE-08 assigning real ids).
-  - [ ] Mercenary: if live, `IntifService.MercenarySave(...)` (depends on FEATURE-09 making `SerializeSnapshot` non-null + a live id).
-  - [ ] Elemental: if live, `IntifService.ElementalSave(...)` (depends on FEATURE-10 assigning a persisted id).
-- [ ] Map the snapshot `byte[]`/id-keyed signatures of the legacy intif methods (`HomunculusSave(byte[])`, `MercenarySave(byte[])`, `ElementalSave(byte[])`) onto the live-entity id: pass a 4-byte LE id header so the existing `BitConverter.ToInt32(data,0)` lookups in `IntifService` resolve the snapshot. (These methods already look up `_xService.SerializeSnapshot(id)`.)
-- [ ] Order + transactionality: companion/quest/achievement saves are independent gRPC fire-and-forget today; ensure `finalSave:true` (logout) **awaits** them so the row lands before the session is torn down. Autosave may stay fire-and-forget.
-- [ ] Optional but recommended: state-change save hooks (pet hatch, homun level-up/vaporize, merc create/contract-stop) call the matching `IntifService.*Save` immediately. Keep it minimal — periodic + final save is the parity floor.
+- [x] **Phase A** — injected `IIntifService` + `IPetService` into `PlayerStateService` (the existing
+      autosave + final-save seam — both route through `SaveAsync`) and added an
+      `internal SaveCompanionsAsync(pc, finalSave, ct)` fan-out called at the end of `SaveAsync`,
+      mirroring `chrif_save` order (core state, then companions):
+  - [x] `IIntifService.QuestSave(pc)` / `QuestSaveAsync(pc)` — always.
+  - [x] `IIntifService.AchievementSave(pc)` / `AchievementSaveAsync(pc)` — always.
+  - [x] Pet: `IPetService.TryGetLivePetId(pc, out petId)` (new helper) → `SavePet(petId)` /
+        `SavePetAsync(petId)` when a pet is live.
+- [x] Order + awaiting: added awaitable `QuestSaveAsync` / `AchievementSaveAsync` / `SavePetAsync`
+      to `IIntifService` (the int wrappers now delegate to them fire-and-forget). `finalSave:true`
+      **awaits** them; autosave uses the fire-and-forget int wrappers.
+- [ ] ➡️ **Phase B → FEATURE-17** (deps FEATURE-08/09/10) — homunculus / mercenary / elemental saves. A clearly-marked
+      slot is left in `SaveCompanionsAsync`; each is a one-line add once those tickets assign live
+      entity ids (and a non-null `MercenaryService.SerializeSnapshot`). The `byte[]`-keyed
+      `HomunculusSave/MercenarySave/ElementalSave` id-header mapping lands with them.
+- [ ] ➡️ State-change save hooks (pet hatch, homun level-up, merc create) — optional refinement,
+      deferred (periodic + final save is the parity floor, which Phase A delivers).
 
 ## Done criteria
 
-- After a periodic autosave, the pet/homun/merc/elemental/quest/achievement rows on the char DB reflect current in-memory state (verified by querying the char DB or asserting the IPC wrappers were invoked with the right snapshot).
-- On logout (`finalSave:true`), all six saves are awaited before LeaveMap completes; a relog rehydrates the same companion + quest + achievement state.
-- `IntifService.QuestSave` / `AchievementSave` / `SavePet` / `HomunculusSave` / `MercenarySave` / `ElementalSave` are each reachable from the game-loop save path (no longer orphaned).
-- No companion/quest/achievement state is silently dropped on logout.
+- ✅ **Phase A**: after autosave / on final-save the quest + achievement + pet char-server saves are
+  invoked from the game-loop save path (previously orphaned); final-save awaits them before teardown;
+  pet is saved only when one is live. Verified by `CompanionSaveFanoutTests`.
+- ➡️ The homunculus / mercenary / elemental saves (and the "all six awaited" wording) are **Phase B → FEATURE-17**,
+  gated on FEATURE-08/09/10 (FEATURE-17 does the wiring into the marked slot).
+- ✅ `IIntifService.QuestSave` / `AchievementSave` / `SavePet` are each reachable from the game-loop
+  save path (no longer orphaned). Homun/merc/elemental remain orphaned until FEATURE-08/09/10.
+- ✅ No quest / achievement / pet state is silently dropped on logout.
 
 ## Test plan
 
@@ -85,3 +95,14 @@ Grep confirms the orphan: searching `Map.Server` for callers of the companion sa
 - The legacy `byte[]`-keyed save wrappers (`HomunculusSave(byte[])` etc.) resolve the snapshot by reading the id from `BitConverter.ToInt32(data, 0)` (`IntifService.cs:612/672/777`). The fan-out must pass a 4-byte LE id header so that lookup hits `_xService.SerializeSnapshot(id)` instead of the raw-payload fallback.
 - Autosave interval is `MapServerConfiguration.AutosaveInterval` (floored at 30 s, `MapServerImpl.cs:435`); final-save runs in `MapSessionLifecycle.SweepAsync` (`:86`). Both must route through the new fan-out.
 - Pet save needs a `pet_id`; `PetService.SerializeSnapshot(petId)` takes the persistent id, so add `IPetService.TryGetLivePetId(PlayerEntity)` (the live pet is one-per-owner, tracked in `_ownerToPet`).
+
+## History
+
+- 2026-06-03 — **Phase A landed.** Wired the orphaned quest / achievement / pet char-server saves
+  into the game-loop save path: injected `IIntifService` + `IPetService` into `PlayerStateService`
+  and added `SaveCompanionsAsync(pc, finalSave, ct)` (called at the end of `SaveAsync`, the shared
+  autosave + final-save seam). Added awaitable `QuestSaveAsync` / `AchievementSaveAsync` /
+  `SavePetAsync` to `IIntifService` (the int wrappers delegate fire-and-forget) so final-save awaits
+  the row before teardown; added `IPetService.TryGetLivePetId`. `CompanionSaveFanoutTests` (4); full
+  Map.Server.Tests 4257 pass (1 fail = pre-existing INFRA-11 replay gate); solution builds.
+  Phase B (homunculus / mercenary / elemental) is the marked one-line-each slot, ➡️ FEATURE-08/09/10.

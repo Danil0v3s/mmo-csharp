@@ -111,6 +111,7 @@ public class IntifPetWiringTests
         public void Recall(PlayerEntity owner) => throw new NotImplementedException();
         public void Tick(long nowTick) { }
         public Core.Server.IPC.PetData? SerializeSnapshot(int petId) => _snapshot;
+        public bool TryGetLivePetId(PlayerEntity owner, out int petId) { petId = 0; return false; }
     }
 
     private sealed class RecordingPetIpc : ICharServerIpcServicePet

@@ -83,10 +83,17 @@ public interface IIntifService
     int AchievementSave(PlayerEntity pc);
     int AchievementRequest(int charId);
 
+    // FEATURE-02 — awaitable save variants for the game-loop save fan-out: the final-save
+    // (logout) path awaits these so the char-server row lands before the session is torn down.
+    // The int wrappers above stay the fire-and-forget autosave path (they delegate to these).
+    Task QuestSaveAsync(PlayerEntity pc, CancellationToken ct = default);
+    Task AchievementSaveAsync(PlayerEntity pc, CancellationToken ct = default);
+
     // -- pet / homun / merc --
     int PetCreate(PlayerEntity master, int classId, int nameId, byte rename, int eggItemId, byte intimate, byte hungry, char gender, string petName);
     int RequestPetInfo(int petId, int accountId, byte flag);
     int SavePet(int petId);
+    Task SavePetAsync(int petId, CancellationToken ct = default);
     int DeletePet(int petId);
     int HomunculusCreate(int accountId, byte[] data);
     int HomunculusRequest(int accountId, int homunId);
