@@ -157,6 +157,70 @@ public class Combat48WarpTests
         Assert.Equal(SkillIds.AL_WARP, castEnd.Skill);
     }
 
+    // ---- COMBAT-86: deferred SP consume + cancel-refund (SKILL_NOCONSUME_REQ) ----
+
+    [Fact]
+    public void Menuskill_consume_is_deferred_at_cast()
+    {
+        Assert.True(SkillCastService.IsDeferredConsumeMenuSkill(SkillIds.AL_WARP));
+        Assert.True(SkillCastService.IsDeferredConsumeMenuSkill(SkillIds.AL_TELEPORT));
+        Assert.False(SkillCastService.IsDeferredConsumeMenuSkill(SkillIds.SM_BASH));
+    }
+
+    [Fact]
+    public void Warp_pick_consumes_the_deferred_sp_once()
+    {
+        var (svc, pc) = WarpServiceWithSp(spCost: 35);
+        pc.LearnedSkills[SkillIds.AL_WARP] = 4;
+        pc.MemoPoints[0] = ("geffen", 100, 120);
+        pc.Sp = pc.MaxSp = 100;
+
+        Assert.True(svc.CastEndMap(pc, "geffen", SkillIds.AL_WARP));
+        Assert.Equal(65, pc.Sp); // 100 - 35 (consumed only now, on the successful pick)
+    }
+
+    [Fact]
+    public void Warp_cancel_consumes_no_sp()
+    {
+        var (svc, pc) = WarpServiceWithSp(spCost: 35);
+        pc.LearnedSkills[SkillIds.AL_WARP] = 4;
+        pc.MemoPoints[0] = ("geffen", 100, 120);
+        pc.Sp = pc.MaxSp = 100;
+
+        Assert.False(svc.CastEndMap(pc, "cancel", SkillIds.AL_WARP));
+        Assert.Equal(100, pc.Sp); // cancel = full refund (nothing was spent)
+    }
+
+    [Fact]
+    public void Warp_to_savepoint_consumes_the_deferred_sp()
+    {
+        var (svc, pc) = WarpServiceWithSp(spCost: 35);
+        pc.LearnedSkills[SkillIds.AL_WARP] = 1;
+        pc.Sp = pc.MaxSp = 100;
+
+        Assert.True(svc.CastEndMap(pc, "SavePoint", SkillIds.AL_WARP));
+        Assert.Equal(65, pc.Sp);
+    }
+
+    private static (SkillCastEndService svc, PlayerEntity pc) WarpServiceWithSp(int spCost)
+    {
+        var db = new SkillDb();
+        db.Register(new SkillDefinition
+        {
+            Id = SkillIds.AL_WARP, Name = "AL_WARP", MaxLevel = 4,
+            Target = SkillTargetMode.Ground, DamageKind = SkillDamageKind.None,
+            SpCost = new[] { 0, spCost, spCost, spCost, spCost },
+        }, revalidate: true);
+        var map = new MapData("prt", 100, 100, new byte[100 * 100]);
+        var svc = new SkillCastEndService(
+            db, new SkillResolverRegistry(Array.Empty<ISkillResolver>()),
+            new NoOpUnits(), NullLogger<SkillCastEndService>.Instance,
+            positions: null, death: new StubDeath(), mapFlags: new StubFlags(null, null),
+            maps: new StubWorld(map), setpos: new StubSetpos());
+        var pc = NewPc(mapId: (uint)"prt".GetHashCode());
+        return (svc, pc);
+    }
+
     // ---- helpers ----
 
     private static CZ_SELECT_WARPPOINT BuildPacket(ushort skillId, string mapName)

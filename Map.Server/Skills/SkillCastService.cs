@@ -255,8 +255,10 @@ public sealed class SkillCastService : ISkillCastService
         var now = Environment.TickCount64;
         if (_cooldowns.TryGetValue(cdKey, out var readyAt) && readyAt > now) return SkillCastResult.OnCooldown;
 
-        // Consume SP now (rAthena: pre-cast SP deduction).
-        if (source is PlayerEntity pc2)
+        // Consume SP now (rAthena: pre-cast SP deduction) — UNLESS this is a menuskill whose
+        // requirement is deferred to the destination pick (SKILL_NOCONSUME_REQ; COMBAT-86), so
+        // cancelling the chooser costs nothing.
+        if (source is PlayerEntity pc2 && !IsDeferredConsumeMenuSkill(skillId))
         {
             pc2.Sp -= spCost;
         }
@@ -348,7 +350,8 @@ public sealed class SkillCastService : ISkillCastService
         var now = Environment.TickCount64;
         if (_cooldowns.TryGetValue(cdKey, out var readyAt) && readyAt > now) return SkillCastResult.OnCooldown;
 
-        if (source is PlayerEntity pc2) pc2.Sp -= spCost;
+        // COMBAT-86 — defer the SP consume for menuskills (AL_WARP/AL_TELEPORT) to the pick.
+        if (source is PlayerEntity pc2 && !IsDeferredConsumeMenuSkill(skillId)) pc2.Sp -= spCost;
 
         var castTime = _timing != null
             ? _timing.CastFix(source, skillId, skillLevel)
@@ -462,6 +465,12 @@ public sealed class SkillCastService : ISkillCastService
             _client?.BroadcastArrowFail(pc);
         return true;
     }
+
+    // COMBAT-86 — rAthena SKILL_NOCONSUME_REQ menuskills: the SP/item requirement is NOT consumed
+    // when the destination chooser opens — only when the player picks a destination (skill_castend_map).
+    // Cancelling the chooser therefore costs nothing.
+    internal static bool IsDeferredConsumeMenuSkill(ushort skillId)
+        => skillId is SkillIds.AL_WARP or SkillIds.AL_TELEPORT;
 
     // rAthena ammo-type a weapon fires (skill_isammotype / the EQI_AMMO subtype gate):
     // bow → arrow, every gun (Revolver..Grenade) → bullet.

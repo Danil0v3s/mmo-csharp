@@ -85,6 +85,19 @@ public sealed class SkillCastEndService : ISkillCastEndService
         return true;
     }
 
+    /// <summary>
+    /// COMBAT-86 — consume the deferred SP requirement on a successful menuskill warp
+    /// (SKILL_NOCONSUME_REQ). Returns <paramref name="warped"/> so it threads through the caller's
+    /// return. A refused warp (false) consumes nothing.
+    /// </summary>
+    private bool ConsumeOnWarp(bool warped, PlayerEntity pc, ushort skillId, ushort skillLevel)
+    {
+        if (!warped) return false;
+        var sp = _db.GetSp(skillId, skillLevel);
+        if (sp > 0) pc.Sp = System.Math.Max(0, pc.Sp - sp);
+        return true;
+    }
+
     public bool CastEndMap(Entity source, string targetMap, ushort skillId)
     {
         // COMBAT-26 — rAthena skill_castend_map. Only PCs warp.
@@ -102,10 +115,13 @@ public sealed class SkillCastEndService : ISkillCastEndService
 
                 // The Teleport chooser sends the literal tokens "Random" /
                 // "SavePoint" in ZC_WARPLIST; the client echoes the pick here.
+                // COMBAT-86 — the SP requirement is consumed only on a successful pick (it was
+                // deferred at cast); "cancel" / a refused warp costs nothing.
+                var tlv = pc.LearnedSkills.GetValueOrDefault(SkillIds.AL_TELEPORT);
                 if (string.Equals(targetMap, "Random", System.StringComparison.OrdinalIgnoreCase))
-                    return _positions?.RandomWarp(pc) ?? false;
+                    return ConsumeOnWarp(_positions?.RandomWarp(pc) ?? false, pc, SkillIds.AL_TELEPORT, tlv);
                 if (string.Equals(targetMap, "SavePoint", System.StringComparison.OrdinalIgnoreCase))
-                    return _death?.WarpToSavepoint(pc) ?? false;
+                    return ConsumeOnWarp(_death?.WarpToSavepoint(pc) ?? false, pc, SkillIds.AL_TELEPORT, tlv);
                 return false;
             }
             case SkillIds.AL_WARP:
@@ -129,7 +145,7 @@ public sealed class SkillCastEndService : ISkillCastEndService
 
                 // First chooser entry is the save point (sentinel "SavePoint").
                 if (string.Equals(targetMap, "SavePoint", System.StringComparison.OrdinalIgnoreCase))
-                    return _death?.WarpToSavepoint(pc) ?? false;
+                    return ConsumeOnWarp(_death?.WarpToSavepoint(pc) ?? false, pc, SkillIds.AL_WARP, (ushort)lv);
 
                 // Otherwise resolve the memo slot whose map matches the pick,
                 // within the level gate (memo slot s is reachable at lv ≥ s+2).
@@ -159,9 +175,10 @@ public sealed class SkillCastEndService : ISkillCastEndService
                     portal.DestMap = memo.MapName;
                     portal.DestX = memo.X;
                     portal.DestY = memo.Y;
-                    // The deferred-requirement-consume / cancel-refund semantics
-                    // (SKILL_NOCONSUME_REQ) are COMBAT-86 — SP is consumed at cast today.
-                    return true;
+                    // COMBAT-86 — the SP requirement (deferred at cast, SKILL_NOCONSUME_REQ) is
+                    // consumed now that a destination was picked and the portal placed. (The Blue
+                    // Gemstone item-consume awaits the skill_db Required-item column → COMBAT-108.)
+                    return ConsumeOnWarp(true, pc, SkillIds.AL_WARP, (ushort)lv);
                 }
 
                 // No matching memo slot for the picked map.
