@@ -70,6 +70,15 @@ public sealed class EquipBonusBundle
     /// The combat reader sums <c>[race] + [RC_ALL]</c> (the <see cref="BattleRace.All"/> slot).</summary>
     public int[] IgnoreResRace { get; } = new int[RaceSize];
 
+    // COMBAT-81 — race2 (RaceGroups) cardfix folds: bonus2 bAddRace2/bSubRace2/bMagicAddRace2.
+    private const int Race2Size = (int)Status.BattleRace2.Max;
+    /// <summary>Per-race2 % damage vs the target's race2 group(s) (<c>bonus2 bAddRace2, RC2_X, n</c>).</summary>
+    public int[] AddRace2 { get; } = new int[Race2Size];
+    /// <summary>Per-race2 % incoming-damage reduction from the attacker's race2 group(s) (<c>bSubRace2</c>).</summary>
+    public int[] SubRace2 { get; } = new int[Race2Size];
+    /// <summary>Per-race2 % MAGIC damage vs the target's race2 group(s) (<c>bMagicAddRace2</c>).</summary>
+    public int[] MagicAddRace2 { get; } = new int[Race2Size];
+
     // COMBAT-22 — per-skill bonus2 maps (skillId → value).
     /// <summary>Per-skill bonus damage % (<c>bonus2 bSkillAtk, sk, n</c> /
     /// SP_SKILL_ATK). Applied after DEF for the matching skill in
@@ -274,6 +283,7 @@ public sealed class EquipBonusBundle
         Array.Clear(MagicAddEle); Array.Clear(MagicAddSize); Array.Clear(MagicAddClass);
         IgnoreDefRace = IgnoreDefClass = 0;
         Array.Clear(IgnoreResRace);
+        Array.Clear(AddRace2); Array.Clear(SubRace2); Array.Clear(MagicAddRace2);
         SkillAtk.Clear(); SubSkillAtk.Clear(); SkillHeal.Clear(); SkillVarCastrate.Clear(); SkillFixCastrate.Clear();
         HpVanishRate = HpVanishPer = SpVanishRate = SpVanishPer = 0;
         SkillVarCast.Clear(); SkillFixCast.Clear();

@@ -99,7 +99,19 @@ public sealed class BattleCardService : IBattleCardService
             int raceAdd = isMagic
                 ? IdxAll(ab.MagicAddRace, tRace, (int)BattleRace.All)
                 : IdxAll(ab.AddRace, tRace, (int)BattleRace.All);
-            cardfix = cardfix * (100 + raceAdd) / 100;
+            // COMBAT-81 — race2 (RaceGroups) fold, summed across the target's groups. rAthena folds
+            // it INTO the race multiply for magic (battle.cpp:795) and as its OWN category for weapon
+            // (910/936).
+            int race2Add = SumRace2(target, isMagic ? ab.MagicAddRace2 : ab.AddRace2);
+            if (isMagic)
+            {
+                cardfix = cardfix * (100 + raceAdd + race2Add) / 100;
+            }
+            else
+            {
+                cardfix = cardfix * (100 + raceAdd) / 100;
+                if (race2Add != 0) cardfix = cardfix * (100 + race2Add) / 100;
+            }
             cardfix = cardfix * (100 + IdxAll(isMagic ? ab.MagicAddEle : ab.AddEle, tEle, (int)BattleElement.All)) / 100;
             cardfix = cardfix * (100 + IdxAll(isMagic ? ab.MagicAddSize : ab.AddSize, tSize, (int)BattleSize.All)) / 100;
             cardfix = cardfix * (100 + IdxAll(isMagic ? ab.MagicAddClass : ab.AddClass, tClass, (int)Inventory.BattleClassFlag.All)) / 100;
@@ -138,6 +150,9 @@ public sealed class BattleCardService : IBattleCardService
             cardfix = cardfix * (100 - IdxAll(db.SubEle, aEle, (int)BattleElement.All)) / 100;
             cardfix = cardfix * (100 - Idx(db.SubSize, aSize)) / 100;
             cardfix = cardfix * (100 - IdxAll(db.SubRace, aRace, (int)BattleRace.All)) / 100;
+            // COMBAT-81 — race2 reduction from the ATTACKER's race2 group(s) (battle.cpp:843).
+            int sub2 = SumRace2(src, db.SubRace2);
+            if (sub2 != 0) cardfix = cardfix * (100 - sub2) / 100;
             cardfix = cardfix * (100 - IdxAll(db.SubClass, aClass, (int)Inventory.BattleClassFlag.All)) / 100;
             damage = ApplyCardfix(damage, cardfix);
         }
@@ -149,6 +164,20 @@ public sealed class BattleCardService : IBattleCardService
     private static int IdxAll(int[] arr, int idx, int allIdx) => Idx(arr, idx) + Idx(arr, allIdx);
 
     private static int Idx(int[] arr, int idx) => idx >= 0 && idx < arr.Length ? arr[idx] : 0;
+
+    /// <summary>
+    /// COMBAT-81 — sum a per-race2 bonus array over <paramref name="e"/>'s race2 set
+    /// (rAthena <c>status_get_race2</c>: mobs only). Non-mob entities have no race2 → 0.
+    /// </summary>
+    private static int SumRace2(Entity e, int[] arr)
+    {
+        if (e is not Entities.MobEntity m) return 0;
+        var groups = m.Race2;
+        if (groups.Count == 0) return 0;
+        int sum = 0;
+        for (int i = 0; i < groups.Count; i++) sum += Idx(arr, (int)groups[i]);
+        return sum;
+    }
 
     /// <summary>
     /// rAthena <c>APPLY_CARDFIX</c> (battle.cpp:748): apply a 1000-base

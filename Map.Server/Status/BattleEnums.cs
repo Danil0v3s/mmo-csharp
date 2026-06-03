@@ -26,6 +26,27 @@ public enum BattleRace : sbyte
 }
 
 /// <summary>
+/// COMBAT-81 — rAthena <c>enum e_race2</c> (map.hpp:336): a SECOND mob classification axis
+/// (RaceGroups / mob_db <c>RaceGroups</c>), independent of <see cref="BattleRace"/>. A mob can
+/// belong to several. Used by the <c>bAddRace2</c>/<c>bSubRace2</c>/<c>bMagicAddRace2</c> cardfix
+/// folds. Names match the mob_db <c>Racegroup*</c> column suffixes (and the <c>RC2_*</c> script
+/// tokens after underscore-normalization). Ordinals are internal-only (never serialized), so they
+/// need not match rAthena's e_race2 — only mutual consistency between the mob race2 set and the
+/// bonus lookups matters.
+/// </summary>
+public enum BattleRace2
+{
+    None = 0,
+    Goblin, Kobold, Orc, Golem, Guardian, Ninja, Gvg, Battlefield, Treasure, Biolab,
+    Manuk, Splendide, Scaraba, OghAtkDef, OghHidden, Bio5SwordmanThief, Bio5AcolyteMerchant,
+    Bio5MageArcher, Bio5Mvp, Clocktower, Thanatos, Faceworm, Hearthunter, Rockridge, WernerLab,
+    TempleDemon, IllusionVampire, Malangdo, Ep172alpha, Ep172beta, Ep172bath, IllusionTurtle,
+    RachelSanctuary, IllusionLuanda, IllusionFrozen, IllusionMoonlight, Ep16Def, EddaArunafeltz,
+    GlastHeimAbyss, EncroachedGephenia, DestroyedValkyrieRealm, Lasagna,
+    Max,
+}
+
+/// <summary>
 /// Mirrors rAthena <c>enum e_element</c> (map.hpp:380). The attack table
 /// in <see cref="ElementTable"/> is indexed by attacker × defender.
 /// </summary>

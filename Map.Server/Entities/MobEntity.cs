@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Map.Server.Mob;
 using Map.Server.Spawn;
 using Map.Server.Status;
@@ -17,6 +18,12 @@ public class MobEntity : Entity
     public int ClassId { get; private set; }
     public string Name { get; private set; }
     public MobDbEntry? DbEntry { get; private set; }
+
+    private IReadOnlyList<Map.Server.Status.BattleRace2>? _race2;
+    /// <summary>COMBAT-81 — rAthena <c>status_get_race2</c>: the mob's race2 set (from mob_db
+    /// <c>RaceGroups</c>), used by the <c>bAddRace2</c>/<c>bSubRace2</c> cardfix folds. Cached.</summary>
+    public IReadOnlyList<Map.Server.Status.BattleRace2> Race2
+        => _race2 ??= Map.Server.Status.Race2Map.FromRaceGroups(DbEntry?.RaceGroups);
 
     /// <summary>
     /// rAthena <c>mob_class_change</c> (mob.cpp ~4180) — swap this
