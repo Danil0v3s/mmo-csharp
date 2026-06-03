@@ -1,6 +1,6 @@
 # FEATURE-06 — Auction (map-side)
 
-> **Epic:** Gameplay-Auction · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-Auction · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** FEATURE-05 (auction refunds/payouts go via mail) · **Blocks:** none
 > **Related:** PACKET-* (ZC auction UI packets)
 
