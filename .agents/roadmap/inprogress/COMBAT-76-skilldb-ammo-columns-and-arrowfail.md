@@ -1,6 +1,6 @@
 # COMBAT-76 — skill_db ammo columns (per-skill ammotype/ammo_qty) + clif_arrow_fail
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-58 (the skill ammo gate/consume seam) · **Blocks:** none
 > **Filed by:** COMBAT-58 — the precise per-skill ammo data + the arrow-fail packet it could not wire (data unloaded).
 
