@@ -1,6 +1,6 @@
 # COMBAT-74 — Ranger trap detonation: splash AoE + consume + on-hit SC
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-55 (the trap-damage unit handlers) · **Blocks:** none
 > **Filed by:** COMBAT-55 — the trap trigger-model refinements beyond the damage formula.
 
