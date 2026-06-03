@@ -3,6 +3,7 @@ using Core.Database.Repositories.Api;
 using Map.Server.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using HomunculusEntity = Map.Server.Entities.HomunculusEntity;
 
 namespace Map.Server.Homunculus;
 
@@ -32,15 +33,34 @@ public sealed class HomunculusService : IHomunculusService
     private readonly Dictionary<(string cls, ushort skill), (ushort MaxLevel, ushort RequiredLevel, ushort RequiredIntimacy, bool RequireEvolution)> _skillTreeFromDb = new(EqualityComparer<(string, ushort)>.Default);
     private readonly IServiceScopeFactory? _scopes;
     private readonly ILogger<HomunculusService> _logger;
+    // FEATURE-08 — spatial entity wiring (optional so the light test ctor keeps working).
+    private readonly IEntityRegistry? _entities;
+    private readonly Map.Server.Visibility.IVisibilityService? _visibility;
+    private readonly EntityIdAllocator? _ids;
 
-    public HomunculusService(IServiceScopeFactory scopes, ILogger<HomunculusService> logger)
+    public HomunculusService(IServiceScopeFactory scopes, ILogger<HomunculusService> logger,
+        IEntityRegistry? entities = null, Map.Server.Visibility.IVisibilityService? visibility = null,
+        EntityIdAllocator? ids = null)
     {
         _scopes = scopes;
         _logger = logger;
+        _entities = entities;
+        _visibility = visibility;
+        _ids = ids;
         Reload();
     }
 
     public HomunculusService(ILogger<HomunculusService> logger) { _logger = logger; }
+
+    /// <summary>FEATURE-08 test ctor — wires the spatial deps without a DB reload.</summary>
+    internal HomunculusService(ILogger<HomunculusService> logger, IEntityRegistry entities,
+        Map.Server.Visibility.IVisibilityService visibility, EntityIdAllocator ids)
+    {
+        _logger = logger;
+        _entities = entities;
+        _visibility = visibility;
+        _ids = ids;
+    }
 
     /// <summary>Catalog lookup by class Aegis name.</summary>
     public HomunculusDbEntity? GetCatalogEntry(string classAegis)
@@ -52,8 +72,9 @@ public sealed class HomunculusService : IHomunculusService
     {
         if (_alive.TryGetValue(master.Id, out var live))
         {
-            // Already alive but vaporized — wake it back up.
+            // Already alive but vaporized — wake it back up + re-spawn into view.
             live.Vaporized = false;
+            SpawnEntity(master, live);
             return true;
         }
         // No homunculus record yet — needs CreateRequest first.
@@ -75,14 +96,56 @@ public sealed class HomunculusService : IHomunculusService
         return true;
     }
 
+    /// <summary>FEATURE-08 — rAthena <c>hom_recv_data</c>: the char-hydrated homun row arrived; build
+    /// + spawn the live <see cref="HomunculusEntity"/> into the world (unless vaporized). Returns 1
+    /// when a record exists.</summary>
     public int RecvData(PlayerEntity master)
-        => _alive.ContainsKey(master.Id) ? 1 : 0;
+    {
+        if (!_alive.TryGetValue(master.Id, out var live)) return 0;
+        if (!live.Vaporized) SpawnEntity(master, live);
+        return 1;
+    }
 
+    /// <summary>FEATURE-08 — hom_save. ➡️ The actual <c>IntifService.HomunculusSave</c> dispatch rides
+    /// the FEATURE-17 companion save-fan-out (Phase B) — injecting <c>IIntifService</c> here would form
+    /// a DI cycle (IntifService already depends on IHomunculusService for the snapshot).</summary>
     public void Save(PlayerEntity master)
     {
         if (!_alive.TryGetValue(master.Id, out var live)) return;
-        _logger.LogDebug("hom_save: master={Master} class={Class} hp={Hp} sp={Sp}",
+        _logger.LogDebug("hom_save: master={Master} class={Class} hp={Hp} sp={Sp} (persists via FEATURE-17 fan-out)",
             master.Name, live.ClassId, live.Hp, live.Sp);
+    }
+
+    // ----- FEATURE-08 spatial helpers -----
+
+    /// <summary>Spawn (or re-spawn) the live homun entity adjacent to the master + notify the AOI.</summary>
+    private void SpawnEntity(PlayerEntity master, LiveHomun live)
+    {
+        if (_entities == null || _ids == null) return; // headless / test-light path
+        if (live.Entity != null && _entities.Get(live.Entity.Id) != null) return; // already in world
+
+        var entity = new HomunculusEntity(_ids.NextMob(), live.HomunId, live.ClassId, master.Id,
+            master.MapId, master.X, master.Y)
+        {
+            HomName = live.Name,
+            MaxHp = GetMaxHp(live),
+            MaxSp = GetMaxSp(live),
+        };
+        entity.Hp = live.Hp > 0 ? Math.Min(live.Hp, entity.MaxHp) : entity.MaxHp;
+        entity.Sp = live.Sp > 0 ? Math.Min(live.Sp, entity.MaxSp) : entity.MaxSp;
+        live.Entity = entity;
+        _entities.Add(entity);
+        _visibility?.NotifySpawnedToArea(entity);
+        // PACKET-* (homun UI / HP-bar): clif_send_homdata / clif_hominfo emit seam → FEATURE-31.
+    }
+
+    /// <summary>Remove the live homun entity from the world (vaporize / death / delete).</summary>
+    private void VanishEntity(LiveHomun live, Core.Server.Packets.Out.ZC.VanishReason reason)
+    {
+        if (live.Entity == null) return;
+        _visibility?.NotifyVanishedToArea(live.Entity, reason);
+        _entities?.Remove(live.Entity.Id);
+        live.Entity = null;
     }
 
     public void Alloc(PlayerEntity master)
@@ -96,17 +159,23 @@ public sealed class HomunculusService : IHomunculusService
         if (!_alive.TryGetValue(master.Id, out var live)) return 0;
         live.Hp = 0;
         live.Vaporized = true;
+        VanishEntity(live, Core.Server.Packets.Out.ZC.VanishReason.Died); // removed from view; record kept
         return 1;
     }
 
     public int Delete(PlayerEntity master)
-        => _alive.Remove(master.Id) ? 1 : 0;
+    {
+        if (!_alive.TryGetValue(master.Id, out var live)) return 0;
+        VanishEntity(live, Core.Server.Packets.Out.ZC.VanishReason.Outsight);
+        return _alive.Remove(master.Id) ? 1 : 0;
+    }
 
     public int Resurrect(PlayerEntity master, byte percent, short x, short y)
     {
         if (!_alive.TryGetValue(master.Id, out var live)) return 0;
         live.Hp = Math.Max(1, (int)(GetMaxHp(live) * (percent / 100.0)));
         live.Vaporized = false;
+        SpawnEntity(master, live); // back into view at the master
         return 1;
     }
 
@@ -116,12 +185,14 @@ public sealed class HomunculusService : IHomunculusService
         live.Hp = GetMaxHp(live);
         live.Sp = GetMaxSp(live);
         live.Vaporized = false;
+        SpawnEntity(master, live);
     }
 
     public int Vaporize(PlayerEntity master, byte flag)
     {
         if (!_alive.TryGetValue(master.Id, out var live)) return 0;
         live.Vaporized = true;
+        VanishEntity(live, Core.Server.Packets.Out.ZC.VanishReason.Outsight); // out of view, keep the record
         return 1;
     }
 
@@ -487,5 +558,7 @@ public sealed class HomunculusService : IHomunculusService
         public DateTime LastHungerTick;
         public Dictionary<ushort, ushort> Skills = new();
         public int SpiritBalls;
+        // FEATURE-08 — the live in-world entity (null while vaporized / not yet spawned).
+        public HomunculusEntity? Entity;
     }
 }
