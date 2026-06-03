@@ -1,6 +1,6 @@
 # FEATURE-07 — Pet lifecycle
 
-> **Epic:** Gameplay-Companion · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Gameplay-Companion · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** FEATURE-01 (catch roll on mob death), FEATURE-02 (pet save) · **Blocks:** none
 > **Related:** PACKET-* (pet UI / egg / intimacy packets)
 
