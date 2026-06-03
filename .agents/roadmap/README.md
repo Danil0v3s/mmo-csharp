@@ -150,7 +150,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-87 | Renewal SC_BASILICA effects: offensive element buff + NoAttack caster state — split from COMBAT-68 |
 | COMBAT-88 | Cast-lock: block attack/move while casting unless SA_FREECAST — split from COMBAT-70 |
 | COMBAT-89 | Bespoke OnRecalc tail (~73 handlers) + primary-coupled sub-class — split from COMBAT-72 |
-| COMBAT-90 | MaxHp/MaxSp re-fold tail (remaining ~10 handlers) — split from COMBAT-73 |
+| COMBAT-90 | ✅ MaxHp/MaxSp re-fold tail (14 handlers: % snapshot/inverse, flat, Berserk ×3, Melodyofsink debuff) — split from COMBAT-73 |
 | COMBAT-91 | KO_HUUMARANKA/KO_BAKURETSU splash damage path + base-ratio terms + KAGEMUSYA — split from COMBAT-75 |
 | COMBAT-92 | Real skill_db Requirements column loader (fold curated ammo/Inf2 overlays) — split from COMBAT-76 |
 | COMBAT-93 | Reconcile SkillFailCause with rAthena e_useskill_fail_cause wire values — split from COMBAT-76 |

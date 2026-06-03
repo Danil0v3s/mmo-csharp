@@ -836,7 +836,16 @@ public sealed class StatusEffectRegistry
                 target.Stats.Mdef = (short)mdefSnap;
                 target.Stats.Mdef2 = (short)mdef2Snap;
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-90 — re-apply the ×3 MaxHp on the rebuilt pool; re-store the ×2 snapshot.
+            // Berserk's HP-fill is a one-time cast effect, NOT re-applied on recalc — the CalcPc
+            // Hp re-clamp keeps current Hp within the new max. (The Def/Flee/Batk/AspdRate zero/add
+            // axes are the COMBAT-111 derived re-fold.)
+            OnRecalcPool: (target, sc) =>
+            {
+                sc.Val2 = target.Stats.MaxHp * 2;
+                target.Stats.MaxHp += sc.Val2;
+            }));
 
         // SC_LAUDAAGNUS (AB_LAUDAAGNUS) — +4 × val1 Vit per rAthena
         // status.cpp Lauda Agnus side-effect when not curing.
@@ -1240,7 +1249,14 @@ public sealed class StatusEffectRegistry
                     target.Stats.MaxSp = Math.Max(1, target.Stats.MaxSp - sc.Val4);
                 }
             },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-90 — re-apply the MaxSp % on the rebuilt pool; re-store the snapshot.
+            OnRecalcPool: (target, sc) =>
+            {
+                var maxSpDelta = target.Stats.MaxSp * sc.Val2 / 100;
+                sc.Val4 = maxSpDelta;
+                target.Stats.MaxSp += maxSpDelta;
+            }));
 
         // SC_AURABLADE — Val2 = 20*Val1 (Power increase / Watk bonus).
         // rAthena status.cpp:case SC_AURABLADE. Generator: +Val1 Batk
@@ -1528,7 +1544,14 @@ public sealed class StatusEffectRegistry
                     if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
                 }
             },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-90 — re-apply the MaxHp % on the rebuilt pool; re-store the snapshot.
+            OnRecalcPool: (target, sc) =>
+            {
+                var maxHpDelta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = maxHpDelta;
+                target.Stats.MaxHp += maxHpDelta;
+            }));
 
         // ===== Wave 40 — Soul Reaper / Royal Guard / Ninja formula batch =====
 
@@ -2427,7 +2450,14 @@ public sealed class StatusEffectRegistry
             {
                 if (sc.Val4 > 0) target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
             },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-90 — re-apply the MaxHp % on the rebuilt pool; re-store the snapshot.
+            OnRecalcPool: (target, sc) =>
+            {
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = delta;
+                target.Stats.MaxHp += delta;
+            }));
 
         // SC_FLAMETECHNIC_OPTION — Val3 = ELE_FIRE (3).
         Register(StatusType.FlametechnicOption, new StatusEffectHandler(
@@ -2604,7 +2634,14 @@ public sealed class StatusEffectRegistry
                     if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
                 }
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-90 — re-apply the MaxHp % on the rebuilt pool; re-store the snapshot.
+            OnRecalcPool: (target, sc) =>
+            {
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = delta;
+                target.Stats.MaxHp += delta;
+            }));
 
         // SC_DEFENDER (CR_DEFENDER) — rAthena status.cpp:11314-11318:
         // val2 = 5+15·val1 (ranged-damage reduction %), val4 = 250-50·val1
@@ -2682,7 +2719,11 @@ public sealed class StatusEffectRegistry
                 target.Stats.Def2 = (short)Math.Max(0, target.Stats.Def2 - sc.Val1);
                 target.Stats.MaxHp = (int)Math.Max(0, target.Stats.MaxHp - sc.Val1);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-90 — re-add the flat MaxHp (Val1) on the rebuilt pool. (The Def2 derived
+            // re-fold is the COMBAT-111 axis.)
+            OnRecalcPool: (target, sc) =>
+                target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1)));
 
         // Wave 58 — SC_Flashcombo: +Val1 to listed CalcFlag fields.
         Register(StatusType.Flashcombo, new StatusEffectHandler(
@@ -2919,7 +2960,14 @@ public sealed class StatusEffectRegistry
                     if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
                 }
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-90 — re-apply the MaxHp % on the rebuilt pool; re-store the snapshot.
+            OnRecalcPool: (target, sc) =>
+            {
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = delta;
+                target.Stats.MaxHp += delta;
+            }));
 
         // Wave 58 — SC_PowerOfGaia: +Val1 to listed CalcFlag fields.
         Register(StatusType.PowerOfGaia, new StatusEffectHandler(
@@ -2935,7 +2983,11 @@ public sealed class StatusEffectRegistry
                 target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
                 target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-90 — re-add the flat MaxHp (Val1) on the rebuilt pool. (The Def derived
+            // re-fold is the COMBAT-111 axis; AspdRate is not reset by CalcPc.)
+            OnRecalcPool: (target, sc) =>
+                target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1)));
 
         // Wave 58 — SC_Providence: +Val1 to listed CalcFlag fields.
         Register(StatusType.Providence, new StatusEffectHandler(
@@ -3073,7 +3125,11 @@ public sealed class StatusEffectRegistry
                 target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
                 target.Stats.MaxHp = (int)Math.Max(0, target.Stats.MaxHp - sc.Val1);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-90 — re-add the flat MaxHp (Val1) on the rebuilt pool. (The Def derived
+            // re-fold is the COMBAT-111 axis.)
+            OnRecalcPool: (target, sc) =>
+                target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1)));
 
         // Wave 58 — SC_SpSha: -Val1 to listed CalcFlag fields.
         Register(StatusType.SpSha, new StatusEffectHandler(
@@ -5887,7 +5943,11 @@ public sealed class StatusEffectRegistry
                 target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - bonus);
                 if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-90 — re-apply the MaxHp % (Val3) on the rebuilt pool. OnEnd recomputes its
+            // own inverse delta, so there is no snapshot to store.
+            OnRecalcPool: (target, sc) =>
+                target.Stats.MaxHp = Math.Min(int.MaxValue / 2, target.Stats.MaxHp + target.Stats.MaxHp * sc.Val3 / 100)));
 
         // SC_MELODYOFSINK (WM_MELODYOFSINK) — status.cpp:11750-11751
         // val2 = 10*val1 INT reduction, val3 = 2+2*val1 MaxSP% reduction.
@@ -5909,7 +5969,15 @@ public sealed class StatusEffectRegistry
                 var spDelta = target.Stats.MaxSp * sc.Val3 / (100 - sc.Val3);
                 target.Stats.MaxSp = Math.Min(int.MaxValue / 2, target.Stats.MaxSp + spDelta);
             },
-            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh,
+            // COMBAT-90 — re-apply the MaxSp -Val3% reduction on the rebuilt pool (the Int debuff
+            // survives via the COMBAT-10 param-base delta). Re-clamp Sp to the lowered max.
+            OnRecalcPool: (target, sc) =>
+            {
+                var spDelta = target.Stats.MaxSp * sc.Val3 / 100;
+                target.Stats.MaxSp = Math.Max(1, target.Stats.MaxSp - spDelta);
+                if (target.Stats.Sp > target.Stats.MaxSp) target.Stats.Sp = target.Stats.MaxSp;
+            }));
 
         // SC_COMPETENTIA (CD_COMPETENTIA) — status.cpp:12479
         // val2 = 10*val1 → PAtk + SMatk
@@ -7047,7 +7115,10 @@ public sealed class StatusEffectRegistry
                 target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val3);
                 if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
             },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-90 — re-add the flat MaxHp (Val3) on the rebuilt pool.
+            OnRecalcPool: (target, sc) =>
+                target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp + sc.Val3)));
 
         // SC_ENERGY_DRINK_RESERCH (status.cpp:12327) —
         // val3 = lv/10 + 5*val2 - 10 (MaxSp percentage). val2 = potion
@@ -7072,7 +7143,15 @@ public sealed class StatusEffectRegistry
                 target.Stats.MaxSp = Math.Max(1, target.Stats.MaxSp - delta);
                 if (target.Stats.Sp > target.Stats.MaxSp) target.Stats.Sp = target.Stats.MaxSp;
             },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-90 — re-apply the MaxSp % (Val3) on the rebuilt pool (≥1 delta, mirrors
+            // OnStart). OnEnd recomputes its own inverse, so there is no snapshot to store.
+            OnRecalcPool: (target, sc) =>
+            {
+                var delta = target.Stats.MaxSp * sc.Val3 / 100;
+                if (delta < 1) delta = 1;
+                target.Stats.MaxSp = Math.Max(1, target.Stats.MaxSp + delta);
+            }));
 
         // SC_ZANGETSU (status.cpp:12348) — Watk ± (lv/3 + 20*val1) on HP parity,
         // Matk ± (lv/3 + 20*val1) on SP parity (each can be ±).
@@ -7120,7 +7199,11 @@ public sealed class StatusEffectRegistry
                 target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - delta);
                 if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
             },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-90 — re-apply the MaxHp % (Val2) on the rebuilt pool. OnEnd recomputes its
+            // own inverse delta, so there is no snapshot to store.
+            OnRecalcPool: (target, sc) =>
+                target.Stats.MaxHp += target.Stats.MaxHp * sc.Val2 / 100));
 
         // SC_ARMORCHANGE (status.cpp:11765) — NPC_ANTIMAGIC: val2=-20, val3=+20
         // (Mdef boost); else val2=+20, val3=-20 (Def boost). Scaled by val1.

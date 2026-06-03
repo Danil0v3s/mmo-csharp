@@ -122,6 +122,17 @@ public class Combat53BespokeRefoldTests
     [InlineData(StatusType.Lunarstance, 8)]  // Val2 = 2+Val1  → +10%
     [InlineData(StatusType.FriggSong, 2)]    // Val2 = 5*Val1  → +10%
     [InlineData(StatusType.Forceofvanguard, 1)] // Val2 = 8+12*Val1 = 20% → +20%
+    // COMBAT-90 — MaxHp re-fold tail (% snapshot, % inverse-revert, and flat).
+    [InlineData(StatusType.Appleidun, 5)]        // Val2 = 5+2*Val1 = 15% (no caster ctx) → +15%
+    [InlineData(StatusType.CursedSoilOption, 1)] // Val2 = 10 (fixed) → +10%
+    [InlineData(StatusType.PetrologyOption, 1)]  // Val2 = 5  (fixed) → +5%
+    [InlineData(StatusType.UpheavalOption, 1)]   // Val2 = 15 (fixed) → +15%
+    [InlineData(StatusType.Leradsdew, 5)]        // Val3 = 2+3*Val1+min(3*Val2,25) = 17% (inverse-revert)
+    [InlineData(StatusType.Deluge, 5)]           // Val2 = delugeEff[4] = 15% (inverse-revert)
+    [InlineData(StatusType.PromoteHealthReserch, 1)] // Val3 = 1000*tier-500+lv*10/3 (flat MaxHp)
+    [InlineData(StatusType.Eqc, 5)]              // flat MaxHp += Val1 (Wave-58 active arm)
+    [InlineData(StatusType.PowerOfGaia, 5)]      // flat MaxHp += Val1 (Wave-58 active arm)
+    [InlineData(StatusType.SolidSkinOption, 5)]  // flat MaxHp += Val1 (Wave-58 active arm)
     public void MaxHp_buff_survives_recalc_and_does_not_clobber_hp(StatusType type, int val1)
     {
         var (calc, sc) = Build();
@@ -144,8 +155,12 @@ public class Combat53BespokeRefoldTests
         Assert.Equal(afterStart, pc.Stats.MaxHp);
     }
 
-    [Fact]
-    public void MaxSp_buff_survives_recalc_without_clobbering_current_sp() // COMBAT-73
+    // COMBAT-73 + COMBAT-90 — MaxSp buffs re-fold via OnRecalcPool without clobbering current Sp.
+    [Theory]
+    [InlineData(StatusType.MercSpup, 5)]            // Val2 = 5*Val1 = 25% (COMBAT-73)
+    [InlineData(StatusType.Service4u, 5)]           // Val2 = 9+Val1 = 14% (COMBAT-90)
+    [InlineData(StatusType.EnergyDrinkReserch, 1)]  // Val3 = lv/10+5*tier-10 (COMBAT-90)
+    public void MaxSp_buff_survives_recalc_without_clobbering_current_sp(StatusType type, int val1)
     {
         var (calc, sc) = Build();
         var pc = NewPc();
@@ -154,17 +169,65 @@ public class Combat53BespokeRefoldTests
         pc.Stats.Sp = baseMax / 2;
         var curSp = pc.Stats.Sp;
 
-        sc.Start(pc, StatusType.MercSpup, val1: 5, 0, 0, 0, durationMs: 60_000); // Val2 = 5*Val1 = 25%
+        sc.Start(pc, type, val1: val1, 0, 0, 0, durationMs: 60_000);
         var afterStart = pc.Stats.MaxSp;
-        Assert.True(afterStart > baseMax);
+        Assert.True(afterStart > baseMax);          // the buff raised MaxSp
+        Assert.Equal(curSp, pc.Stats.Sp);           // OnStart didn't touch current Sp
+
+        calc.CalcPc(pc, Inputs());
+        Assert.Equal(afterStart, pc.Stats.MaxSp);   // re-folded onto the rebuilt pool
         Assert.Equal(curSp, pc.Stats.Sp);
 
         calc.CalcPc(pc, Inputs());
-        Assert.Equal(afterStart, pc.Stats.MaxSp);
-        Assert.Equal(curSp, pc.Stats.Sp);
+        Assert.Equal(afterStart, pc.Stats.MaxSp);   // idempotent
+    }
+
+    // COMBAT-90 — Melodyofsink is a MaxSp DEBUFF (-Val3%) that also drops INT (a primary, which
+    // survives via the COMBAT-10 param-base delta). The pool reduction must re-apply each recalc;
+    // without OnRecalcPool the rebuilt pool would equal the un-reduced base.
+    [Fact]
+    public void Melodyofsink_maxsp_debuff_survives_recalc()
+    {
+        var (calc, sc) = Build();
+        var pc = NewPc();
+        calc.CalcPc(pc, Inputs());
+        var baseMax = pc.Stats.MaxSp;
+
+        sc.Start(pc, StatusType.Melodyofsink, val1: 5, 0, 0, 0, durationMs: 60_000); // Val3 = 2+2*Val1 = 12%
+        var afterStart = pc.Stats.MaxSp;
+        Assert.True(afterStart < baseMax);          // the debuff lowered MaxSp
 
         calc.CalcPc(pc, Inputs());
-        Assert.Equal(afterStart, pc.Stats.MaxSp);
+        // The rebuilt pool from the (debuff-lowered) INT, BEFORE the -12% re-fold.
+        var unreduced = Math.Max(1, 10 + 99) * (100 + pc.Stats.IntStat) / 100;
+        Assert.True(pc.Stats.MaxSp < unreduced);    // OnRecalcPool re-applied the -12% (else == unreduced)
+        var rebuilt = pc.Stats.MaxSp;
+
+        calc.CalcPc(pc, Inputs());
+        Assert.Equal(rebuilt, pc.Stats.MaxSp);      // idempotent
+    }
+
+    // COMBAT-90 — Berserk triples MaxHp (Val2 = MaxHp*2) and fills HP on cast. The ×3 must survive
+    // a recalc; the one-time HP-fill is NOT re-applied (CalcPc only re-clamps Hp to the new max).
+    [Fact]
+    public void Berserk_triple_maxhp_survives_recalc()
+    {
+        var (calc, sc) = Build();
+        var pc = NewPc();
+        calc.CalcPc(pc, Inputs());
+        var baseMax = pc.Stats.MaxHp;
+
+        sc.Start(pc, StatusType.Berserk, val1: 10, 0, 0, 0, durationMs: 60_000);
+        var afterStart = pc.Stats.MaxHp;
+        Assert.Equal(baseMax * 3, afterStart);      // ×3 MaxHp
+        Assert.Equal(afterStart, pc.Stats.Hp);      // filled to full on cast
+
+        calc.CalcPc(pc, Inputs());
+        Assert.Equal(afterStart, pc.Stats.MaxHp);   // ×3 re-folded onto the rebuilt pool
+        Assert.True(pc.Stats.Hp <= pc.Stats.MaxHp); // Hp re-clamped, not corrupted
+
+        calc.CalcPc(pc, Inputs());
+        Assert.Equal(afterStart, pc.Stats.MaxHp);   // idempotent
     }
 
     // ---- helpers ----
