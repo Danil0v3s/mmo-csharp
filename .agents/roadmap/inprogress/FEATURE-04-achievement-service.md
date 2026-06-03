@@ -1,6 +1,6 @@
 # FEATURE-04 — Achievement service
 
-> **Epic:** Gameplay-Achievement · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Gameplay-Achievement · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** FEATURE-01 (mob-death + trigger dispatch), FEATURE-02 (save) · **Blocks:** none
 > **Related:** PACKET-* (ZC achievement packets)
 
