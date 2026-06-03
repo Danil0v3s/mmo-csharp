@@ -293,10 +293,11 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 |---|---|
 | MOBAI-01 | ✅ Slave→master coupling in the hard-AI tick (follow + target-inherit + die-with-master) |
 | MOBAI-02 | MVP behavior (skill priority, hp announce, drop tier) |
-| MOBAI-03 | Change-target mode handling (melee/chase/weak/random) |
+| MOBAI-03 | ✅ Change-target mode handling (melee/chase/weak/random) |
 | MOBAI-04 | ✅ Gate aggro on line-of-sight + reachable range (no aggro-through-walls) |
 | MOBAI-05 | True cell-grid range query for the mob scans (perf) — split from MOBAI-04 |
 | MOBAI-06 | Slave-coupling pass for engaged (player-mastered) slaves — split from MOBAI-01 |
+| MOBAI-07 | Changechase target-set: reconcile CanChangeTarget gate with rAthena's direct set — split from MOBAI-03 |
 
 ## Doc cleanup
 

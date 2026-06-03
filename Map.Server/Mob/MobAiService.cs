@@ -60,7 +60,9 @@ public sealed class MobAiService : IMobAiService
         _attack = attack;
         _movement = movement;
         _looter = looter;
-        _changeTarget = changeTarget ?? new MobChangeTargetService();
+        // MOBAI-03 — pass the registry so the default service can run the changechase / random-enemy
+        // scans (TryChangeChase / PickRandomEnemy use ForEachInRange).
+        _changeTarget = changeTarget ?? new MobChangeTargetService(entities);
         _wander = wander;
         _sc = sc;
         _paths = paths;
@@ -254,51 +256,80 @@ public sealed class MobAiService : IMobAiService
                 }
             }
 
-            // rAthena mob.cpp:1870 — the active scan runs when the mob is aggressive OR a slave that
-            // had no master action this tick (slave_lost_target), so a slave joins its master's fight.
-            if ((mode & MobMode.CanAttack) == 0 || ((mode & MobMode.Aggressive) == 0 && !slaveLostTarget))
-                continue;
-
-            // Scan PCs within view range. mob_db.View / db.range2 is the
-            // aggro radius; mob.cpp:1758 uses range2 (default 14).
+            // mob_db.View / db.range2 aggro radius (mob.cpp:1758, default 14) — shared by the
+            // aggressive scan and the MOBAI-03 changechase reach below.
             var viewRange = mob.DbEntry.ChaseRange > 0
                 ? mob.DbEntry.ChaseRange
                 : Math.Max(1, mob.DbEntry.SkillRange);
             if (viewRange <= 0) viewRange = 12; // rAthena default mob view = 12.
 
-            // MOBAI-04 — cell-grid range query (rAthena map_foreachinallrange over view_range),
-            // replacing the full-registry `_entities.All()` walk. Same PC + alive + distance filter.
-            PlayerEntity? closest = null;
-            int closestDist = int.MaxValue;
-            foreach (var other in _entities.ForEachInRange(mob.MapId, mob.X, mob.Y, (short)viewRange, EntityType.Pc))
+            // rAthena mob.cpp:1870 — the active scan runs when the mob is aggressive OR a slave that
+            // had no master action this tick (slave_lost_target), so a slave joins its master's fight.
+            if ((mode & MobMode.CanAttack) != 0 && ((mode & MobMode.Aggressive) != 0 || slaveLostTarget))
             {
-                if (other is not PlayerEntity pc) continue;
-                if (pc.Hp <= 0) continue;
-                var dist = Math.Max(Math.Abs(pc.X - mob.X), Math.Abs(pc.Y - mob.Y));
-                if (dist > viewRange) continue;
-                if (dist >= closestDist) continue;
-                // MOBAI-04 — line-of-sight gate (rAthena mob_ai_sub_hard_activesearch's
-                // status_check_skilluse / ACTIVEPATHSEARCH path_search): skip a wall-blocked PC so
-                // the mob doesn't aggro through terrain and walk-into-wall-loop. LOS + within-view
-                // is the reach proxy (PathSearchLong is the shootable Bresenham check). With no
-                // path service (tests) LOS is treated as clear — distance-only fallback.
-                if (_paths != null && !_paths.PathSearchLong(mob.MapId, mob.X, mob.Y, pc.X, pc.Y))
+                // MOBAI-04 — cell-grid range query (rAthena map_foreachinallrange over view_range),
+                // replacing the full-registry `_entities.All()` walk. Same PC + alive + distance filter.
+                PlayerEntity? closest = null;
+                int closestDist = int.MaxValue;
+                foreach (var other in _entities.ForEachInRange(mob.MapId, mob.X, mob.Y, (short)viewRange, EntityType.Pc))
+                {
+                    if (other is not PlayerEntity pc) continue;
+                    if (pc.Hp <= 0) continue;
+                    // MOBAI-03 — MD_TARGETWEAK (mob.cpp:1309): skip a PC unless it is at least 5
+                    // levels below the mob (`status_get_lv(bl) >= md->level-5` → skip).
+                    if ((mode & MobMode.TargetWeak) != 0 && pc.Level >= mob.Level - 5) continue;
+                    var dist = Math.Max(Math.Abs(pc.X - mob.X), Math.Abs(pc.Y - mob.Y));
+                    if (dist > viewRange) continue;
+                    if (dist >= closestDist) continue;
+                    // MOBAI-04 — line-of-sight gate (rAthena mob_ai_sub_hard_activesearch's
+                    // status_check_skilluse / ACTIVEPATHSEARCH path_search): skip a wall-blocked PC.
+                    // With no path service (tests) LOS is treated as clear — distance-only fallback.
+                    if (_paths != null && !_paths.PathSearchLong(mob.MapId, mob.X, mob.Y, pc.X, pc.Y))
+                        continue;
+                    closestDist = dist;
+                    closest = pc;
+                }
+
+                if (closest == null)
+                {
+                    // T4.9f — no enemy in view → roll random walk (rAthena mob.cpp:2059-2067).
+                    _wander?.TryWander(mob, nowTick);
                     continue;
-                closestDist = dist;
-                closest = pc;
-            }
+                }
 
-            if (closest == null)
+                // MOBAI-03 — MD_RANDOMTARGET (mob.cpp:1993): swing ONCE at the current target then
+                // re-aim at a RANDOM in-range enemy (min(view, attack range)); the non-random path
+                // continuous-attacks. Engage the previously re-aimed target if still valid so the
+                // target hops between swings; otherwise the freshly-scanned closest.
+                if ((mode & MobMode.RandomTarget) != 0)
+                {
+                    Entity engage = closest;
+                    if (mob.TargetId != 0 && _entities.Get(new EntityId(mob.TargetId)) is { } prev
+                        && IsAlive(prev) && prev.MapId == mob.MapId)
+                        engage = prev;
+                    _attack.StartAttack(mob, engage.Id, continuous: false);
+                    var reaimRange = (short)Math.Min(viewRange, Math.Max(1, (int)mob.Stats.AttackRange));
+                    var next = _changeTarget.PickRandomEnemy(mob, reaimRange, _rng);
+                    mob.TargetId = next != null ? (int)next.Id.Value : (int)engage.Id.Value;
+                }
+                else
+                {
+                    // Engage. AttackService validates range + drives chase/swings.
+                    _attack.StartAttack(mob, closest.Id, continuous: true);
+                }
+            }
+            // MOBAI-03 — MD_CHANGECHASE (mob.cpp:1881): a chasing mob (RUSH/FOLLOW) switches to an
+            // enemy already in its melee reach. Exclusive `else if` with the aggressive scan (a mob
+            // that ran the active search does not also changechase). Gated by the FSM matrix
+            // (CanChangeTarget — Rush requires MD_CHANGETARGETCHASE; Follow always allows).
+            else if ((mode & MobMode.ChangeChase) != 0
+                     && (mob.SkillState == MobSkillState.Rush || mob.SkillState == MobSkillState.Follow))
             {
-                // T4.9f — no enemy in view → roll random walk
-                // (rAthena mob.cpp:2059-2067). Gated by IMobRandomWalkService
-                // (MD_CANMOVE + MD_NORANDOMWALK + NextWanderTick).
-                _wander?.TryWander(mob, nowTick);
-                continue;
+                var reach = (short)Math.Min(viewRange, Math.Max(1, (int)mob.Stats.AttackRange));
+                var newTarget = _changeTarget.TryChangeChase(mob, reach);
+                if (newTarget != null && _changeTarget.CanChangeTarget(mob, newTarget))
+                    mob.TargetId = (int)newTarget.Id.Value;
             }
-
-            // Engage. AttackService validates range + drives chase/swings.
-            _attack.StartAttack(mob, closest.Id, continuous: true);
         }
 
         // Periodically prune stale think entries — entries for mobs that
@@ -460,6 +491,11 @@ public sealed class MobAiService : IMobAiService
         // re-aim. Pure target-id mutation; the engage-on-Tick path
         // picks it up next pump.
         _changeTarget.TrySetTarget(mob, attacker);
+        // MOBAI-03 — rAthena mob.cpp:1851 clears attacked_id after the change-target decision so the
+        // next think doesn't re-process the same attacker. TrySetTarget has already gated the switch
+        // on CanChangeTarget + folded the attacker into TargetId; the rude skill/escape below targets
+        // via TargetId (or the `attacker` arg), so dropping the fallback id here is safe.
+        mob.AttackedId = 0;
 
         var fired = _mobSkillCast.TryUseSkill(mob, now)
                     || _mobSkillCast.NotifyEvent(mob, attacker, now, MobSkillCondition.RudeAttacked);

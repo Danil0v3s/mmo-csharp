@@ -81,4 +81,34 @@ public sealed class MobChangeTargetService : IMobChangeTargetService
         }
         return switched;
     }
+
+    public Entity? TryChangeChase(MobEntity mob, short range)
+    {
+        if (_entities == null) return null;
+        // rAthena mob_ai_sub_hard_changechase: the first enemy already within the mob's melee reach
+        // (battle_check_range(rhw.range)) that passes the enemy + visibility checks becomes the new
+        // target. Enemy of a mob = a live PC; reach = Chebyshev distance ≤ range.
+        foreach (var e in _entities.ForEachInRange(mob.MapId, mob.X, mob.Y, range, EntityType.Pc))
+        {
+            if (e is not PlayerEntity pc || pc.Hp <= 0) continue;
+            if (System.Math.Max(System.Math.Abs(pc.X - mob.X), System.Math.Abs(pc.Y - mob.Y)) > range) continue;
+            return pc;
+        }
+        return null;
+    }
+
+    public Entity? PickRandomEnemy(MobEntity mob, short range, System.Random rng)
+    {
+        if (_entities == null) return null;
+        // rAthena battle_getenemy: a RANDOM (not nearest) live enemy PC in range. Collect then pick.
+        System.Collections.Generic.List<Entity>? pool = null;
+        foreach (var e in _entities.ForEachInRange(mob.MapId, mob.X, mob.Y, range, EntityType.Pc))
+        {
+            if (e is not PlayerEntity pc || pc.Hp <= 0) continue;
+            if (System.Math.Max(System.Math.Abs(pc.X - mob.X), System.Math.Abs(pc.Y - mob.Y)) > range) continue;
+            (pool ??= new System.Collections.Generic.List<Entity>()).Add(pc);
+        }
+        if (pool == null || pool.Count == 0) return null;
+        return pool[rng.Next(pool.Count)];
+    }
 }

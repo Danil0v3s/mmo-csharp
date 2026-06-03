@@ -45,4 +45,18 @@ public interface IMobChangeTargetService
     /// (Illusion Bewitch) and similar "redirect aggro" skills.
     /// </summary>
     int RetargetMobsChasing(Entity center, short range, Entity oldTarget, Entity newTarget);
+
+    /// <summary>
+    /// MOBAI-03 — rAthena <c>mob_ai_sub_hard_changechase</c> (mob.cpp:1348): the first live enemy
+    /// PC already within <paramref name="range"/> (the mob's melee reach) of <paramref name="mob"/>,
+    /// for the MD_CHANGECHASE mid-chase retarget. Null when none is in reach.
+    /// </summary>
+    Entity? TryChangeChase(MobEntity mob, short range);
+
+    /// <summary>
+    /// MOBAI-03 — rAthena <c>battle_getenemy</c> (a RANDOM in-range enemy, not the nearest) for the
+    /// MD_RANDOMTARGET post-swing re-aim. Picks uniformly from the live enemy PCs within
+    /// <paramref name="range"/>; null when none. <paramref name="rng"/> drives the pick.
+    /// </summary>
+    Entity? PickRandomEnemy(MobEntity mob, short range, System.Random rng);
 }

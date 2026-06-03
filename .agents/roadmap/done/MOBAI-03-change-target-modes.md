@@ -1,6 +1,6 @@
 # MOBAI-03 — Change-target mode bits driven from the hard-AI tick
 
-> **Epic:** Mob AI parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Mob AI parity · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** MOBAI-01 (slave-lost-target feeds the same scan) · **Blocks:** none
 
 ## Problem
@@ -94,11 +94,11 @@ Canonical: `rathena/src/map/mob.cpp` (monolithic).
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **TARGETWEAK** in `MobAiService` aggressive scan (`:224-236`): when
+- [x] **TARGETWEAK** in `MobAiService` aggressive scan (`:224-236`): when
       `(mode & MobMode.TargetWeak) != 0`, skip any PC whose level
       `>= mobLevel - 5`. Resolve mob level from `mob.DbEntry` and player level from
       `PlayerEntity` status. Mirror `mob.cpp:1309`.
-- [ ] **CHANGECHASE branch** in `MobAiService.Tick`: add the `else if` arm after the
+- [x] **CHANGECHASE branch** in `MobAiService.Tick`: add the `else if` arm after the
       aggressive scan, mirroring `mob.cpp:1881`. When
       `(mode & MobMode.ChangeChase) != 0 && SkillState is Rush or Follow`, run a
       `min(viewRange, attackRange)` enemy scan; for the first enemy already within
@@ -107,7 +107,7 @@ Canonical: `rathena/src/map/mob.cpp` (monolithic).
       using `IEntityRegistry.ForEachInRange` (so it is unit-testable), returning the
       switched target or null. Honor `CanChangeTarget` (Rush state requires
       `ChangeTargetChase`).
-- [ ] **RANDOMTARGET** in the engage/attack path: when
+- [x] **RANDOMTARGET** in the engage/attack path: when
       `(mode & MobMode.RandomTarget) != 0` and the mob is about to attack an
       in-range target, issue a **single** swing (`continuous: false`) instead of
       continuous, then immediately pick a new random enemy within
@@ -117,15 +117,15 @@ Canonical: `rathena/src/map/mob.cpp` (monolithic).
       `MobSkillTargetResolver.ResolveRandomEnemy` semantics) for the re-aim. This
       lives where `MobAiService` decides continuous vs single attack — at the
       Berserk engage arm (`:178-181`) and the aggressive `StartAttack` (`:248`).
-- [ ] **Verify the proactive attacker-switch** (`NotifyAttacked` + `TrySetTarget`)
+- [x] **Verify the proactive attacker-switch** (`NotifyAttacked` + `TrySetTarget`)
       matches `mob.cpp:1806-1847`: attacker becomes target only when
       `CanChangeTarget` passes and the attacker is a reachable enemy; ensure the
       `attacked_id` is cleared after the check (rAthena clears it at `:1851`). Add
       the clear if missing (`mob.AttackedId = 0` after the change-target decision).
-- [ ] **Document** that the Berserk `norm_attacked_id` + `mob_ai&0x80` sub-gates
+- [x] **Document** that the Berserk `norm_attacked_id` + `mob_ai&0x80` sub-gates
       remain the conservative simplification already noted in
       `MobChangeTargetService.cs:30-32` (do not regress that).
-- [ ] No EF migration, no packets — pure AI targeting.
+- [x] No EF migration, no packets — pure AI targeting.
 
 ## Done criteria
 
@@ -133,6 +133,10 @@ Canonical: `rathena/src/map/mob.cpp` (monolithic).
   weaker PCs; a non-TargetWeak mob aggros regardless of level.
 - A `ChangeChase` mob in RUSH/FOLLOW state switches its target to an enemy that
   steps into its melee range mid-chase (and a mob without the bit does not).
+  ➡️ The changechase switch is gated on `CanChangeTarget` per this ticket's
+  instruction; rAthena's `mob_ai_sub_hard_changechase` actually sets the target
+  *directly* (no gate), so a RUSH-state `MD_CHANGECHASE` mob lacking
+  `MD_CHANGETARGETCHASE` diverges — **Moved to MOBAI-07**. FOLLOW path matches.
 - A `RandomTarget` mob swings once at its current target, then re-aims at a
   randomly chosen in-range enemy each cycle (target id observed to change between
   swings when ≥2 enemies are in range); a non-RandomTarget mob keeps hitting the
@@ -179,3 +183,21 @@ Canonical: `rathena/src/map/mob.cpp` (monolithic).
 - MOBAI-01's `slaveLostTarget` flag feeds the same aggressive-scan gate; if both
   tickets land, ensure the changechase `else if` sits after the
   `aggressive || slaveLostTarget` arm so the exclusivity still holds.
+
+## History
+
+- 2026-06-03 · Implemented all five sub-items. **TARGETWEAK**: added the
+  `pc.Level >= mob.Level - 5` skip in the `MobAiService.Tick` aggressive scan
+  (mob.cpp:1309). **CHANGECHASE**: new `IMobChangeTargetService.TryChangeChase`
+  (first live enemy in melee reach) + an `else if` arm exclusive with the
+  aggressive `Aggressive || slaveLostTarget` scan, gated on `CanChangeTarget`
+  (rAthena's direct-set divergence captured as **MOBAI-07**). **RANDOMTARGET**:
+  new `PickRandomEnemy` (random in-range enemy, `battle_getenemy` analogue); the
+  engage path now issues a single swing (`continuous:false`) and re-aims
+  `mob.TargetId`, engaging the re-aimed target on the next cycle (AttackService
+  clears non-continuous Attack after one swing → target hops). **Attacker-switch**:
+  verified `NotifyAttacked → TrySetTarget` gates on `CanChangeTarget` and added
+  `mob.AttackedId = 0` after the decision (mob.cpp:1851). **Doc**: kept the Berserk
+  `norm_attacked_id`/`mob_ai&0x80` simplification. New `MobChangeTargetModeTests`
+  (12 tests) green; full Map.Server.Tests 4279 pass (1 pre-existing unrelated
+  INFRA-11 ServerStackFixture boot-timeout). Follow-up: MOBAI-07.
