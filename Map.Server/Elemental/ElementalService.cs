@@ -171,6 +171,40 @@ public sealed class ElementalService : IElementalService
     public int Dead(PlayerEntity master) => Delete(master);
 
     /// <summary>
+    /// FEATURE-10 — rAthena <c>elemental_summon_end</c> sweep: despawn every elemental whose
+    /// <see cref="ElementalEntity.SummonExpiresAtTick"/> has passed. Routes through the same teardown
+    /// as <see cref="Delete"/> (clean SCs + registry removal + master-binding clear), so there is a
+    /// single expiry path. Returns the number expired this tick.
+    /// ➡️ The char-side <c>IntifService.ElementalDelete</c> row removal is FEATURE-34 (a direct
+    /// IIntifService inject here is a DI cycle — IntifService already depends on IElementalService).
+    /// </summary>
+    public int Tick(long nowTick)
+    {
+        if (_byMasterCharId.Count == 0) return 0;
+        List<int>? expired = null;
+        foreach (var (charId, ele) in _byMasterCharId)
+            if (ele.SummonExpiresAtTick > 0 && nowTick >= ele.SummonExpiresAtTick)
+                (expired ??= new List<int>()).Add(charId);
+        if (expired == null) return 0;
+
+        foreach (var charId in expired)
+        {
+            // Resolve the master (player EntityId.Value == char id) so the binding is cleared too.
+            if (_entities?.Get(new EntityId(charId)) is PlayerEntity master)
+            {
+                Delete(master);
+            }
+            else if (_byMasterCharId.Remove(charId, out var ele))
+            {
+                CleanEffectInternal(ele);
+                _entities?.Remove(ele.Id);
+            }
+        }
+        _logger.LogInformation("elemental_summon_end: {N} elemental(s) expired", expired.Count);
+        return expired.Count;
+    }
+
+    /// <summary>
     /// rAthena <c>elemental_change_mode</c> (elemental.cpp:416) — flip
     /// the elemental's mode, drop any current target, strip prior
     /// per-master SCs, and chain to <see cref="ChangeModeAck"/> for the

@@ -18,6 +18,10 @@ public interface IElementalService
     int Save(PlayerEntity master);
     /// <summary>rAthena <c>elemental_delete</c>.</summary>
     int Delete(PlayerEntity master);
+    /// <summary>FEATURE-10 — per-tick lifetime sweep (rAthena <c>elemental_summon_end</c>): despawn
+    /// any elemental whose summon timer (<c>SummonExpiresAtTick</c>) has passed. Returns the count
+    /// expired this tick.</summary>
+    int Tick(long nowTick);
     /// <summary>rAthena <c>elemental_dead</c>.</summary>
     int Dead(PlayerEntity master);
     /// <summary>rAthena <c>elemental_change_mode</c>.</summary>

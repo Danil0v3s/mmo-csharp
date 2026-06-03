@@ -1,6 +1,6 @@
 # FEATURE-10 — Elemental persistence + lifetime expiry
 
-> **Epic:** Gameplay-Companion · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-Companion · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** FEATURE-02 (elemental save) · **Blocks:** none
 > **Related:** PACKET-* (elemental status packets)
 
@@ -34,13 +34,13 @@ stamped but nothing prunes the entity when it passes.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] `Create` — dispatch `IntifService.ElementalCreate(...)` so the char side allocates a real `elemental_id`; on the load/create response, set `ele.ElementalId` (currently hardcoded 0 in `DataReceived`).
-- [ ] `DataReceived` — wire the real load round-trip: when re-summoning, pull the saved row via `IntifService.ElementalRequest`; build the entity from the hydrated payload (HP/SP/stats), not the placeholder `MaxHp = master.MaxHp/3` (`:112`). Keep the spawn path.
-- [ ] `Save` — call `IntifService.ElementalSave(...)` (4-byte id header per FEATURE-02). Remove the log-only body. `SerializeSnapshot` is already real.
-- [ ] **Lifetime expiry tick**: implement the despawn — a per-tick sweep in the elemental service (a `Tick(nowTick)` called from `MapServerImpl`) or a per-elemental timer that, when `Environment.TickCount64 >= ele.SummonExpiresAtTick`, calls `Delete(master)` (vanish + remove + `IntifService.ElementalDelete`). Confirm whether `_summonAi.Tick` already prunes; if not, add the sweep.
-- [ ] **Delete** — call `IntifService.ElementalDelete` on teardown (currently `Delete` :157 only removes locally).
-- [ ] **Client packets**: ZC_EL_INIT / ZC_EL_PAR_CHANGE (HP/SP update on heal — the `clif_elemental_updatestatus` seam at `:313`). Define or use PACKET-* seam; **entity + state mutation stay here**.
-- [ ] **Save wiring** via FEATURE-02 fan-out + on map-change.
+- [x] ➡️ `Create` IPC + ele_id → **FEATURE-34** (DI cycle from here). Original: dispatch `IntifService.ElementalCreate(...)` so the char side allocates a real `elemental_id`; on the load/create response, set `ele.ElementalId` (currently hardcoded 0 in `DataReceived`).
+- [x] ➡️ `DataReceived` load round-trip + hydrated stats → **FEATURE-34**. Original: wire the real load round-trip: when re-summoning, pull the saved row via `IntifService.ElementalRequest`; build the entity from the hydrated payload (HP/SP/stats), not the placeholder `MaxHp = master.MaxHp/3` (`:112`). Keep the spawn path.
+- [x] ➡️ `Save` IPC → **FEATURE-17** fan-out (DI cycle). `SerializeSnapshot` already real. Original: call `IntifService.ElementalSave(...)` (4-byte id header per FEATURE-02). Remove the log-only body. `SerializeSnapshot` is already real.
+- [x] **Lifetime expiry tick**: implement the despawn — a per-tick sweep in the elemental service (a `Tick(nowTick)` called from `MapServerImpl`) or a per-elemental timer that, when `Environment.TickCount64 >= ele.SummonExpiresAtTick`, calls `Delete(master)` (vanish + remove + `IntifService.ElementalDelete`). Confirm whether `_summonAi.Tick` already prunes; if not, add the sweep.
+- [x] ➡️ **Delete** char-row IPC → **FEATURE-34**. Local vanish done. Original: call `IntifService.ElementalDelete` on teardown (currently `Delete` :157 only removes locally).
+- [x] ➡️ **Client packets** → PACKET-* (marked seam). Original:: ZC_EL_INIT / ZC_EL_PAR_CHANGE (HP/SP update on heal — the `clif_elemental_updatestatus` seam at `:313`). Define or use PACKET-* seam; **entity + state mutation stay here**.
+- [x] ➡️ **Save wiring** → **FEATURE-17**. Original: via FEATURE-02 fan-out + on map-change.
 
 ## Done criteria
 
@@ -78,3 +78,14 @@ stamped but nothing prunes the entity when it passes.
 - `Dead` delegates to `Delete` (`:171`); `SummonStop` also delegates to `Delete` (`:370`). Route the expiry sweep through `Delete` too so teardown (clean-effect + registry removal + IPC delete) is single-sourced.
 - One elemental per master is enforced in `Create` (`:58`, delete-before-create) — preserve.
 - The mode skill picker (`ChangeModeAck` :206, `Action` :252) is gated on the elemental_db per-class skill map, which isn't loaded yet — those return 1 and stamp `LastThinkTick` without casting. That gap is a separate (skill-engine) concern, not this persistence ticket; don't expand scope into it.
+
+## History
+
+- 2026-06-03 · Implemented the headline missing piece — the **lifetime expiry sweep**: new
+  `IElementalService.Tick(nowTick)` despawns every elemental whose `SummonExpiresAtTick` has passed
+  (routed through the same teardown as `Delete` — clean SCs + registry removal + master-binding clear,
+  single expiry path), hooked into `MapServerImpl`'s game loop after `_pet.Tick`. Confirmed `_summonAi`
+  does NOT prune (no double-delete). `SerializeSnapshot` was already real. `ElementalServiceTests` +2;
+  full suite 4357 pass (1 fail = pre-existing INFRA-11). The Create/DataReceived/Delete IPC round-trips
+  + hydrated stats are a DI cycle from here (IntifService ctor-depends on IElementalService) → filed
+  **FEATURE-34**; Save IPC → **FEATURE-17** fan-out; client packets → PACKET-*.

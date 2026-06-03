@@ -42,6 +42,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly Combat.IDelayedDamageService _delayedDamage;
     private readonly Status.INaturalHealService _naturalHeal;
     private readonly Pet.IPetService _pet;
+    // FEATURE-10 — elemental lifetime expiry sweep.
+    private readonly Elemental.IElementalService? _elemental;
     private readonly ScriptHost _scriptHost;
     private readonly INpcSpawnService _npcSpawn;
     private readonly Scripting.INpcRegistry _scriptRegistry;
@@ -88,7 +90,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         Spawn.IMobSpawnRegistry mobSpawnRegistry,
         World.IMapWorldRegistry world,
         Persistence.IPlayerStateService playerState,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        Elemental.IElementalService? elemental = null)
         : base("MapServer", configuration, logger, packetSystem, sessionManager)
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
@@ -109,6 +112,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _delayedDamage = delayedDamage;
         _naturalHeal = naturalHeal;
         _pet = pet;
+        _elemental = elemental;
         _scriptHost = scriptHost;
         _npcSpawn = npcSpawn;
         _scriptRegistry = scriptRegistry;
@@ -307,6 +311,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _summonAi.Tick(nowTick);
         // Pet hunger / intimacy decay (rAthena pet_hungry / pet_data_init).
         _pet.Tick(nowTick);
+        // FEATURE-10 — elemental lifetime expiry (rAthena elemental_summon_end).
+        _elemental?.Tick(nowTick);
         // Continuous-attack swings (rAthena unit_attack_timer).
         _attackService.Tick(nowTick);
         // Skill cast-timer resolution (rAthena skill_castend_id).

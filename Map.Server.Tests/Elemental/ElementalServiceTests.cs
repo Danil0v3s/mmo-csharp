@@ -275,6 +275,31 @@ public class ElementalServiceTests
 
     // ---- helpers ----
 
+    // FEATURE-10 — lifetime expiry sweep.
+    [Fact]
+    public void Tick_despawns_the_elemental_once_its_lifetime_expires()
+    {
+        var (svc, pc, registry, _) = NewServiceWithRegistry();
+        svc.Create(pc, 2114 /* AGNI */, lifetimeMs: 100_000);
+        Assert.Equal(1, svc.DataReceived(pc));
+        Assert.Single(registry.AllElementalEntities());
+
+        var expiresAt = pc.ActiveElementalExpiresAt;
+        Assert.Equal(0, svc.Tick(expiresAt - 1));          // not yet expired
+        Assert.Single(registry.AllElementalEntities());
+
+        Assert.Equal(1, svc.Tick(expiresAt + 1));          // expired → despawned
+        Assert.Empty(registry.AllElementalEntities());
+        Assert.Equal(0, pc.ActiveElementalClassId);        // master binding cleared
+    }
+
+    [Fact]
+    public void Tick_with_no_elementals_is_a_noop()
+    {
+        var (svc, _, _, _) = NewServiceWithRegistry();
+        Assert.Equal(0, svc.Tick(long.MaxValue));
+    }
+
     private static PlayerEntity NewPc()
         => new(characterId: 1234, accountId: 1, name: "Sorcerer", sessionId: Guid.NewGuid(),
             mapId: 0, x: 100, y: 100);
