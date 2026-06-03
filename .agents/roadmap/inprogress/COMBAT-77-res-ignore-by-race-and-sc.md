@@ -1,6 +1,6 @@
 # COMBAT-77 — Res-ignore (by race + SC_A_TELUM / SC_POTENT_VENOM) on the physical Res reduction
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-61 (per-hand Res reduction) · **Blocks:** none
 > **Filed by:** COMBAT-61 — the base `(5000+res)/(5000+10*res)` reduction landed; the
 > ignore-res refinement that lowers the *effective* res before the curve is out of its scope.
