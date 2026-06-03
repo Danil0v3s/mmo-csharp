@@ -68,6 +68,26 @@ options and the on-screen HP-bar updates are not reachable.
 - Persistence round-trip.
 - Live: 2-client invite → share → expel → leave.
 
+## Progress log (multi-turn vertical)
+
+- **2026-06-03 (turn 1)** — Investigation: the char-side party IPC (`PartyCreate`/`AddMember`/
+  `ChangeOption`/`Leave`/`ChangeMap`/`Break`/`Message`/`LeaderChange`/`ShareLevel`) and the
+  notify/broadcast layer (`IPartyClientService`: `NotifyPartyCreated`/`NotifyJoinRequest`/
+  `NotifyMemberJoined`/`NotifyMemberWithdraw`/`NotifyOptionChanged`/`NotifyDotRemove`) and the cache
+  (`IPartyService`) are all already built; the invite-**reply** handler exists. The gap is the
+  remaining CZ handlers. Landed the **form-a-party core**: `CZ_MAKE_GROUP` (0x00f9) +
+  `PartyCreateHandler` (gate-not-in-party → `PartyCreateAsync` → stamp `PartyId` + `NotifyPartyCreated`)
+  and `CZ_PARTY_JOIN_REQ` (0x0802) + `PartyInviteHandler` (gate-in-party → `map_nick2sd` via the
+  entity registry → `NotifyJoinRequest` popup, which the existing reply handler consumes).
+  `PartyCreateInviteHandlersTests` (6) green; full suite 4420 pass (1 = standing replay-fixture).
+  **A player can now create a party + invite someone (who accepts via the existing reply handler).**
+- **Remaining (next turns):** `CZ_REQ_LEAVE_GROUP` (leave) → `PartyLeaveAsync` + `NotifyMemberWithdraw`;
+  `CZ_REQ_EXPEL_GROUP_MEMBER` (expel, leader-gated) → `PartyLeaveAsync(expel)`; `CZ_PARTY_CHANGE_LEADER`
+  → `PartyLeaderChangeAsync`; `CZ_PARTY_CHANGE_OPTION` (EXP/item share) → `PartyChangeOptionAsync` +
+  `NotifyOptionChanged`; the **HP-bar / position sync** wiring (`ZC_NOTIFY_HP_TO_GROUPM` /
+  `ZC_NOTIFY_POSITION_TO_GROUPM` on map-enter/move/HP-change). All are layers of THIS vertical; the
+  loop resumes this card. Live-client wire validation is the project's standing deferred pass.
+
 ## Notes / gotchas
 
 - EXP/item share + the in-range kill-credit fan-out is the seam GP-MVPFAME / GP-QUEST
