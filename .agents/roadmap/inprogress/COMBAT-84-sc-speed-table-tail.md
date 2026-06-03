@@ -1,6 +1,6 @@
 # COMBAT-84 — SC speed-table tail: exotic SCs + freecast / hiding-walk early branches
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-65 · **Blocks:** none
 > **Filed by:** COMBAT-65 — it ported the `status_calc_speed` core (two-phase slow/fast
 > accumulator + the common movement SCs + Steel Body / Defender overrides + caps). The long
