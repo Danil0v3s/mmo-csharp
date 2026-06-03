@@ -1,6 +1,6 @@
 # COMBAT-91 — KO_HUUMARANKA / KO_BAKURETSU splash damage path + missing base-ratio terms
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-75 (the SC_KAGEMUSYA ratio multiply hook) · **Blocks:** none
 > **Filed by:** COMBAT-75 — while wiring the SC_KAGEMUSYA ratio multiply, the two Kagerou
 > *splash* arms turned out to compute **no damage at all** (their ratio path is dead), so the
