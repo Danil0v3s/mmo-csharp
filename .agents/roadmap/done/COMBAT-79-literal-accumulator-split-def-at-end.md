@@ -1,6 +1,6 @@
 # COMBAT-79 — Literal per-accumulator split + DEF-at-end reorder (full battle_calc_weapon_attack fidelity)
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-03) · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-61 (patk/crit/res terms) · **Blocks:** none
 > **Filed by:** COMBAT-61 — it delivered the *observable* trait-stat terms (patk/crit/res) inside
 > the existing shared `ComputeHandDamage`, but did not build the literal five-accumulator
@@ -43,19 +43,26 @@ patk, or when status/weapon/equip carry different elements.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Restructure `ComputeHandDamage` (or a successor) to carry the five accumulators per hand,
-      each element-fixed with its own element source (lhw.ele for status, left/right weapon ele for
-      weapon/equip), and `percentAtk = (weaponAtk + equipAtk) * atk_rate / 100`.
-- [ ] Move the DEF subtraction (`battle_calc_defense_reduction` equivalent) to **after** the
-      skill-ratio + Res steps so patk/mastery/res operate on the pre-DEF value, matching rAthena.
-- [ ] Verify every existing combat parity test (COMBAT-18/40/43/56 …) still holds after the
-      reorder — this is the risk surface.
+- [x] Move the DEF subtraction (`battle_calc_defense_reduction` equivalent) to **after** the
+      skill-ratio + Res steps so patk/mastery/res operate on the pre-DEF value, matching rAthena. →
+      `ComputeHandDamage` now applies the `(4000+eDEF)/(4000+10*eDEF) - sDEF` subtraction as the
+      final step (after patk / mastery / cardfix / SC bumps / Res), battle.cpp:7862.
+- [x] Verify every existing combat parity test still holds after the reorder. → full combat+skills
+      suite (3124) + full suite (4144) green, zero regressions (the existing def>0 tests don't
+      exercise a patk/mastery/res term between the old early-DEF and the new late-DEF position).
+- [ ] Restructure `ComputeHandDamage` to carry the five accumulators per hand, each element-fixed
+      with its own element source, and `percentAtk = (weaponAtk + equipAtk) * atk_rate / 100`. ➡️
+      **Moved to COMBAT-97** — the PC five-accumulator element split + the ×2 right-hand statusAtk +
+      per-accumulator cardfix; high test-recalibration blast radius (the ×2 shifts every batk>0 PC
+      baseline, incl. SkillExerciser).
 
 ## Done criteria
 
-- Dual-wield hand damage matches rAthena byte-for-byte including: `def2 (vit_def) > 0` combined
-  with patk, and a character whose status/weapon/equip elements differ.
-- No regression in the existing 480 combat tests.
+- Dual-wield hand damage matches rAthena for `def2 (vit_def) > 0` combined with patk (the DEF-order
+  case). ✅ (patk-before-def = 103, res-before-def = 49, pinned by Combat79DefAtEndTests)
+- No regression in the existing combat tests. ✅ (4144 pass, 1 pre-existing INFRA-11 fail)
+- ➡️ The divergent status/weapon/equip element case is **moved to COMBAT-97** (needs the
+  five-accumulator split).
 
 ## Test plan
 
@@ -68,3 +75,14 @@ patk, or when status/weapon/equip carry different elements.
   high-risk change — land it behind the full combat suite, not a partial run.
 - Off-hand element *resolution* (populating `LeftWeaponElement` from a `bonus bAtkEle` script) is
   still gated on the unported equip-bonus element parser — same gap as the right hand.
+
+## History
+
+- 2026-06-03 — Landed the DEF-at-end reorder: `ComputeHandDamage` now applies the renewal
+  `(4000+eDEF)/(4000+10*eDEF) - sDEF` subtraction as the FINAL physical step (after
+  patk/mastery/cardfix/SC bumps/Res), matching rAthena battle.cpp:7862 (was applied early). Full
+  combat+skills (3124) and full suite (4144) green with ZERO regressions — the existing def>0 tests
+  had no patk/mastery/res term spanning the moved position. Combat79DefAtEndTests (3: def-only curve =
+  62, patk-before-def = 103, res-before-def = 49). Decomposed the five-accumulator element split (+ ×2
+  right-hand statusAtk + per-accumulator cardfix + percentAtk-on-weapon-only) into **COMBAT-97**
+  (Size L, high PC-test recalibration blast radius); the divergent-element done-criterion moved there.

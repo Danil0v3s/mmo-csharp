@@ -370,32 +370,11 @@ public sealed class BattleCalculator : IBattleCalculator
         damage = damage * ElementTable.GetRate(atkEle, t.DefenseElement, t.ElementLevel) / 100;
         if (damage < 0) damage = 0;
 
-        // Defense reduction (battle.cpp:6843, renewal SIMPLE branch):
-        // Damage = Damage * (4000 + eDEF) / (4000 + 10*eDEF) - sDEF.
-        int def1 = t.Def;
-        int vitDef = t.Def2;
-        // SC_SIGNUMCRUCIS (status.cpp:11296) — Val2% def cut vs Undead/Demon.
-        if (_sc != null && (t.Race == Map.Server.Status.BattleRace.Undead || t.Race == Map.Server.Status.BattleRace.Demon))
-        {
-            var signum = _sc.Get(target, Map.Server.Status.StatusType.Signumcrucis);
-            if (signum != null && signum.Val2 > 0)
-            {
-                def1 -= def1 * signum.Val2 / 100;
-                vitDef -= vitDef * signum.Val2 / 100;
-            }
-        }
-        // COMBAT-43 — bIgnoreDefRace / bIgnoreDefClass: skip the hard+soft DEF
-        // subtract vs the target's race/class (rAthena battle.cpp:3379). Per hand,
-        // so the right and left weapon are evaluated independently here.
-        if (srcIsPc && (source as PlayerEntity)?.EquipBonuses is { } eqDef
-            && (((int)t.Race >= 0 && (eqDef.IgnoreDefRace & (1 << (int)t.Race)) != 0)
-                || (eqDef.IgnoreDefClass & (1 << TargetClassBit(target))) != 0))
-        {
-            def1 = 0;
-            vitDef = 0;
-        }
-        if (def1 == -400) def1 = -399; // div-by-zero guard from rAthena
-        damage = damage * (4000L + def1) / (4000L + 10L * def1) - vitDef;
+        // COMBAT-79 — the DEF subtraction (battle_calc_defense_reduction) is rAthena's
+        // LAST damage step (battle.cpp:7862), AFTER patk / mastery / cardfix / SC bumps /
+        // skill-ratio / Res. It was applied early here; it now runs at the end of this
+        // method so those terms operate on the pre-DEF value, matching rAthena. See the
+        // moved block below the Res reduction.
 
         // COMBAT-61 — P.ATK trait stat (battle.cpp:7775). rAthena applies
         // `wd.damage = floor(wd.damage * (100 + patk) / 100)` per hand to the
@@ -473,6 +452,35 @@ public sealed class BattleCalculator : IBattleCalculator
             if (ignoreRes > 0) res -= res * ignoreRes / 100;
             damage = damage * (5000L + res) / (5000L + 10L * res);
         }
+
+        // COMBAT-79 — Defense reduction (battle_calc_defense_reduction, battle.cpp:7862,
+        // renewal SIMPLE branch): Damage = Damage * (4000 + eDEF) / (4000 + 10*eDEF) - sDEF.
+        // rAthena's FINAL physical step — runs after patk/mastery/cardfix/SC/ratio/Res above.
+        int def1 = t.Def;
+        int vitDef = t.Def2;
+        // SC_SIGNUMCRUCIS (status.cpp:11296) — Val2% def cut vs Undead/Demon.
+        if (_sc != null && (t.Race == Map.Server.Status.BattleRace.Undead || t.Race == Map.Server.Status.BattleRace.Demon))
+        {
+            var signum = _sc.Get(target, Map.Server.Status.StatusType.Signumcrucis);
+            if (signum != null && signum.Val2 > 0)
+            {
+                def1 -= def1 * signum.Val2 / 100;
+                vitDef -= vitDef * signum.Val2 / 100;
+            }
+        }
+        // COMBAT-43 — bIgnoreDefRace / bIgnoreDefClass: skip the hard+soft DEF
+        // subtract vs the target's race/class (rAthena battle.cpp:3379). Per hand,
+        // so the right and left weapon are evaluated independently here.
+        if (srcIsPc && (source as PlayerEntity)?.EquipBonuses is { } eqDef
+            && (((int)t.Race >= 0 && (eqDef.IgnoreDefRace & (1 << (int)t.Race)) != 0)
+                || (eqDef.IgnoreDefClass & (1 << TargetClassBit(target))) != 0))
+        {
+            def1 = 0;
+            vitDef = 0;
+        }
+        if (def1 == -400) def1 = -399; // div-by-zero guard from rAthena
+        if (damage > 0)
+            damage = damage * (4000L + def1) / (4000L + 10L * def1) - vitDef;
 
         // Floor to 1 (battle_min_damage).
         if (damage < 1) damage = 1;
