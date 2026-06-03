@@ -1,6 +1,6 @@
 # COMBAT-83 — Flat bonus3/4/5 remainder (drops, vanish-race/flag, SetDefRace, StateNoRecover, AddEffOnSkill)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-64 · **Blocks:** none
 > **Filed by:** COMBAT-64 — the flat bonus3/4/5 forms that each need a subsystem the live
 > `ScriptedBonusHost` does not yet model.
