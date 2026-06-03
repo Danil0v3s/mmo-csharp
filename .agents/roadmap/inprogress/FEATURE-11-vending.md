@@ -1,6 +1,6 @@
 # FEATURE-11 — Vending (player shops)
 
-> **Epic:** Gameplay-Shop · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-Shop · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Related:** PACKET-* (vending UI packets)
 
