@@ -246,6 +246,8 @@ public enum PacketHeader : short
     ZC_ACK_MAIL_LIST      = 0x0ac2,        // RODEX inbox list (clif_Mail_refreshinbox, PACKETVER ≥ 20170419), variable
     CZ_OPEN_MAILBOX       = 0x0ac0,        // RODEX open mailbox / request inbox (clif_parse_Mail_refreshinbox), 26B
     CZ_REQ_REFRESH_MAIL_LIST = 0x0ac1,     // RODEX refresh inbox list, 26B
+    CZ_REQ_READ_MAIL      = 0x09ea,        // RODEX read one mail (clif_parse_Mail_read): opentype.B mailID.Q, 11B
+    ZC_ACK_READ_RODEX     = 0x09eb,        // RODEX read-window (clif_Mail_read, PACKETVER ≥ 20150513), variable
     // RODEX manage-action packets (GP-MAIL). Layouts from rAthena packets_struct.hpp.
     CZ_REQ_ZENY_FROM_MAIL = 0x09f1,        // clif_parse_Mail_getattach (zeny): MailID.Q opentype.B, 11B
     ZC_ACK_ZENY_FROM_MAIL = 0x09f2,        // clif_mail_getattachment ack (zeny): MailID.Q opentype.B result.B, 12B

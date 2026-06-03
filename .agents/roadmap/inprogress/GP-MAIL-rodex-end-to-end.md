@@ -112,14 +112,25 @@ reading, and taking attachments all do nothing on the client.
   packet, emits it. `MailHandlersTests` now 7 (2 new: open emits the list with correct
   header/length/fields; a packet-size==written-bytes wire-consistency check). Full suite 4405 pass
   (1 = standing replay-fixture). Core.Server + Tools.PacketReplay still build.
-- **Remaining (next turns):** (1) the **read-window** ZC render — `ZC_ACK_READ_RODEX` (body text +
-  the nested per-attachment item sub-struct: cards/options/grade/location) + the `CZ_REQ_READ_MAIL`
-  handler. (2) `CZ_REQ_REFRESH_MAIL_LIST` / next-page handlers (header added; trivial — reuse
-  `MailOpenHandler`'s list build). (3) the **compose/send** path — begin-write, add/remove-item,
-  send, check-receiver-name CZ + acks. (4) **separated zeny-only / item-only partial claims** (needs
-  a char-side partial-settle path; noted in `MailGetZenyHandler`). (5) **rental-expiry on take**
-  (needs an `expire_time` field on the `MailAttachmentItem` proto + char-side). All are layers of
-  THIS vertical (no separate tickets); the loop resumes this card.
+- **2026-06-03 (turn 4)** — Read-window + refresh landed. New variable-length `ZC_ACK_READ_RODEX`
+  (0x09eb) renders `clif_Mail_read` (modern): 24-byte header (opentype/mailID/textLen/zeny/itemCnt)
+  + null-terminated body + N × 59-byte item sub-structs (count/ITID/identified/damaged/refine/
+  cards[4 u32]/location/type/viewSprite/bindOnEquip/option[5]). New `CZ_REQ_READ_MAIL` (0x09ea) +
+  `MailReadHandler` drives `ReadMailAsync` (marks read char-side) → builds + emits the window;
+  resolves item `type` from `IItemCatalog`. New `CZ_REQ_REFRESH_MAIL_LIST` (0x0ac1) +
+  `MailRefreshHandler` re-emits the list (reuses `MailOpenHandler.BuildList`). `MailHandlersTests`
+  now 10 (3 new: read window decodes body/zeny/item + length, read-window size==written-bytes,
+  refresh resends list). Full suite 4408 pass (1 = standing replay-fixture).
+- **Remaining (next turns):** (1) the **compose/send** packet path — begin-write (`CZ_REQ_OPEN_WRITE_MAIL`),
+  add/remove item (`CZ_REQ_ADD_ITEM_TO_MAIL`/remove), check-receiver-name (`CZ_CHECKNAME`), send
+  (`CZ_REQ_SEND_MAIL`, variable) + their ZC acks → the existing `SendAsync`/`SetAttachment`/
+  `RemoveItem`. (2) **separated zeny-only / item-only partial claims** (needs a char-side
+  partial-settle path; noted in `MailGetZenyHandler`). (3) **rental-expiry on take** (needs an
+  `expire_time` field on the `MailAttachmentItem` proto + char-side). (4) read-window item display
+  hints `viewSprite`/`location` default to 0 (faithful for the read preview — the client renders
+  from the item id; `type` is resolved). All are layers of THIS vertical (no separate tickets); the
+  loop resumes this card. Once the compose/send path lands, the full open→write→send→read→claim→
+  delete loop is reachable and the card moves to done.
 
 ## Notes / gotchas
 

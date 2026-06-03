@@ -106,6 +106,52 @@ public class MailHandlersTests
     }
 
     [Fact]
+    public async Task Read_emits_read_window_with_body_zeny_and_item()
+    {
+        var (reg, mail, pc, session) = Build();
+        var msg = new MailMessageData { MailId = 77, SenderName = "Alice", Title = "T", Body = "Hello there", Zeny = 1234, Opened = false };
+        msg.Items.Add(new MailAttachmentItem { NameId = 501, Amount = 3, Identify = 1, Refine = 5, Card0 = 4001 });
+        mail.ReadResult = msg;
+        var h = new MailReadHandler(reg, mail, NullLogger<MailReadHandler>.Instance);
+
+        await h.HandleAsync(session, Cz(new CZ_REQ_READ_MAIL(), ("OpenType", (byte)0), ("MailId", 77L)));
+
+        var b = Outbound(session).Single(x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_ACK_READ_RODEX);
+        Assert.Equal(b.Length, b[2] | (b[3] << 8));               // length field == actual size
+        Assert.Equal(0, b[4]);                                    // opentype
+        Assert.Equal(77L, BitConverter.ToInt64(b, 5));            // mailId
+        var textLen = BitConverter.ToUInt16(b, 13);
+        Assert.Equal(1234L, BitConverter.ToInt64(b, 15));         // zeny
+        Assert.Equal(1, b[23]);                                   // itemCnt
+        Assert.Equal("Hello there", ReadCString(b, 24, textLen)); // body (null-terminated)
+        var io = 24 + textLen;                                    // first item sub begins after the body
+        Assert.Equal(3, BitConverter.ToInt16(b, io));             // count
+        Assert.Equal(501u, BitConverter.ToUInt32(b, io + 2));     // itemId
+    }
+
+    [Fact]
+    public void ReadWindow_packet_size_matches_written_bytes()
+    {
+        var msg = new MailMessageData { MailId = 1, Body = "body", Zeny = 5 };
+        msg.Items.Add(new MailAttachmentItem { NameId = 909, Amount = 1 });
+        msg.Items.Add(new MailAttachmentItem { NameId = 910, Amount = 2 });
+        var p = MailReadHandler.BuildRead(0, msg, catalog: null);
+        Assert.Equal(p.GetSize(), Serialize(p).Length);
+    }
+
+    [Fact]
+    public async Task Refresh_resends_the_list()
+    {
+        var (reg, mail, pc, session) = Build();
+        mail.Inbox.Add(new MailMessageData { MailId = 1, SenderName = "X", Title = "A" });
+        var h = new MailRefreshHandler(reg, mail, NullLogger<MailRefreshHandler>.Instance);
+
+        await h.HandleAsync(session, new CZ_REQ_REFRESH_MAIL_LIST());
+
+        Assert.Contains((ushort)PacketHeader.ZC_ACK_MAIL_LIST, SentIds(session));
+    }
+
+    [Fact]
     public void MailList_packet_size_matches_written_bytes()
     {
         var list = MailOpenHandler.BuildList(new[]
@@ -175,6 +221,7 @@ public class MailHandlersTests
         public bool GetOk; public int LastGetId;
         public readonly List<MailMessageData> Inbox = new();
         public bool Opened;
+        public MailMessageData? ReadResult;
 
         public Task<bool> DeleteMailAsync(PlayerEntity pc, long mailId, CancellationToken ct = default)
         { LastDeleteId = mailId; return Task.FromResult(DeleteOk); }
@@ -193,7 +240,7 @@ public class MailHandlersTests
         public Task<IReadOnlyList<MailMessageData>> RequestInboxAsync(PlayerEntity pc, CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<MailMessageData>>(Inbox);
         public Task<MailMessageData?> ReadMailAsync(PlayerEntity pc, long mailId, CancellationToken ct = default)
-            => Task.FromResult<MailMessageData?>(null);
+            => Task.FromResult(ReadResult);
     }
 
     private sealed class FakeEntities : IEntityRegistry
