@@ -1,6 +1,6 @@
 # FEATURE-01 — Mob-death observer hub
 
-> **Epic:** Gameplay-Observers · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Gameplay-Observers · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** FEATURE-03, FEATURE-04, FEATURE-07
 > **Related:** PACKET-* (client packets for kill-count UI / MVP announce are a separate epic)
 
