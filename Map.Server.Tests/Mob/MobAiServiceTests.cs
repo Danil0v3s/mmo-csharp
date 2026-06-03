@@ -30,6 +30,66 @@ public class MobAiServiceTests
         Assert.Equal(closePc.Id, mob.Attack!.TargetId);
     }
 
+    // ---- MOBAI-04: line-of-sight gate on the aggressive scan ----
+
+    [Fact]
+    public void Wall_blocked_pc_is_not_aggroed()
+    {
+        var path = new StubPath(losClear: false); // every line blocked
+        var ctx = Build(path);
+        var mob = ctx.AddAggressiveMob(50, 50, range2: 10);
+        ctx.AddPlayer(52, 50, 1); // in view (dist 2) but LOS-blocked
+
+        ctx.Ai.Tick(0);
+
+        Assert.Null(mob.Attack); // wall between → no aggro through it
+    }
+
+    [Fact]
+    public void In_los_pc_is_aggroed()
+    {
+        var path = new StubPath(losClear: true);
+        var ctx = Build(path);
+        var mob = ctx.AddAggressiveMob(50, 50, range2: 10);
+        var pc = ctx.AddPlayer(52, 50, 1);
+
+        ctx.Ai.Tick(0);
+
+        Assert.NotNull(mob.Attack);
+        Assert.Equal(pc.Id, mob.Attack!.TargetId);
+    }
+
+    [Fact]
+    public void Closest_in_los_wins_over_a_nearer_wall_blocked_pc()
+    {
+        var nearer = ((short)52, (short)50);
+        // LOS clear for everyone EXCEPT the nearer PC's cell (it's behind a wall).
+        var path = new StubPath((x1, y1) => !(x1 == nearer.Item1 && y1 == nearer.Item2));
+        var ctx = Build(path);
+        var mob = ctx.AddAggressiveMob(50, 50, range2: 10);
+        ctx.AddPlayer(nearer.Item1, nearer.Item2, 1); // dist 2, wall-blocked
+        var fartherClear = ctx.AddPlayer(55, 50, 2);   // dist 5, LOS-clear
+
+        ctx.Ai.Tick(0);
+
+        Assert.NotNull(mob.Attack);
+        Assert.Equal(fartherClear.Id, mob.Attack!.TargetId); // reachable target chosen
+    }
+
+    [Fact]
+    public void Null_path_service_falls_back_to_distance_only()
+    {
+        // No IPathService (the large existing test suite path) → LOS treated as clear.
+        var ctx = Build(paths: null);
+        var mob = ctx.AddAggressiveMob(50, 50, range2: 10);
+        var pc = ctx.AddPlayer(52, 50, 1);
+
+        ctx.Ai.Tick(0);
+
+        Assert.NotNull(mob.Attack);
+        Assert.Equal(pc.Id, mob.Attack!.TargetId);
+    }
+
     [Fact]
     public void Passive_Mob_Does_Not_Engage()
     {
@@ -118,7 +178,7 @@ public class MobAiServiceTests
         Assert.NotNull(mob.Attack);
     }
 
-    private static TestContext Build()
+    private static TestContext Build(Map.Server.Pathing.IPathService? paths = null)
     {
         const string mapName = "test_map";
         var map = new MapData(mapName, 200, 200, new byte[200 * 200]);
@@ -142,7 +202,7 @@ public class MobAiServiceTests
         var attack = new AttackService(entities, damage, movement, NullLogger<AttackService>.Instance);
         var sc = new StatusChangeService(damage, entities,
             new StatusEffectRegistry(), NullLogger<StatusChangeService>.Instance);
-        var ai = new MobAiService(entities, attack, NullLogger<MobAiService>.Instance, sc: sc);
+        var ai = new MobAiService(entities, attack, NullLogger<MobAiService>.Instance, sc: sc, paths: paths);
         return new TestContext(ai, entities, ids, sc, (uint)mapName.GetHashCode());
     }
 
@@ -228,5 +288,25 @@ public class MobAiServiceTests
         public Core.Database.Entities.ItemEntity? GetByAegisName(string n) => null;
         public IEnumerable<Core.Database.Entities.ItemEntity> All() => Array.Empty<Core.Database.Entities.ItemEntity>();
         public void Reload() { }
+    }
+
+    // MOBAI-04 — stub IPathService whose PathSearchLong (the LOS check) is driven by a predicate
+    // over the destination cell. Only PathSearchLong is exercised by the aggressive scan.
+    private sealed class StubPath : Map.Server.Pathing.IPathService
+    {
+        private readonly Func<short, short, bool> _los;
+        public StubPath(bool losClear) => _los = (_, _) => losClear;
+        public StubPath(Func<short, short, bool> los) => _los = los;
+
+        public bool PathSearchLong(uint mapId, short x0, short y0, short x1, short y1) => _los(x1, y1);
+
+        public int Distance(short x0, short y0, short x1, short y1) => Math.Max(Math.Abs(x0 - x1), Math.Abs(y0 - y1));
+        public int DistanceClient(short x0, short y0, short x1, short y1) => Distance(x0, y0, x1, y1);
+        public bool CheckDistance(short x0, short y0, short x1, short y1, int range) => Distance(x0, y0, x1, y1) <= range;
+        public bool CheckDistanceClient(short x0, short y0, short x1, short y1, int range) => CheckDistance(x0, y0, x1, y1, range);
+        public bool DirectionDiagonal(int dir) => false;
+        public int DirectionOpposite(int dir) => dir;
+        public bool PathSearch(uint mapId, short x0, short y0, short x1, short y1, byte flag) => true;
+        public (short x, short y) BlownPos(uint mapId, short x, short y, int direction, int count) => (x, y);
     }
 }

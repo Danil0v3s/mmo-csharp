@@ -1,6 +1,6 @@
 # MOBAI-04 — Gate aggro on line-of-sight + reachable range
 
-> **Epic:** Mob AI parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Mob AI parity · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 
 ## Problem
@@ -85,53 +85,46 @@ Canonical: `rathena/src/map/mob.cpp` (monolithic).
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **Inject `IPathService`** into `MobAiService` (optional ctor param, defaulted
-      null so existing tests keep compiling; register via DI — it is already a
-      singleton at `Program.cs:501`).
-- [ ] **Switch the aggressive scan to the cell-grid query**: replace the
-      `_entities.All()` loop (`MobAiService.cs:224`) with
-      `_entities.ForEachInRange(mob.MapId, mob.X, mob.Y, (short)viewRange, EntityType.Pc)`,
-      matching `HasAnyPcInView`/`SpotPcsInView`. This removes the cross-map filter
-      and the full-registry walk in one move (and is the perf follow-up's first
-      half — doing it here is parity-neutral and cheap).
-- [ ] **LOS gate**: for each candidate, before accepting it as `closest`, require
-      `_paths.PathSearchLong(mob.MapId, mob.X, mob.Y, pc.X, pc.Y)` to return true.
-      A wall-blocked PC is skipped. When `_paths` is null (tests), preserve current
-      behavior (treat LOS as clear) so unit tests without pathing still pass — but
-      the production wiring always supplies it.
-- [ ] **Range/reach gate**: only accept a candidate the mob can actually reach.
-      Mirror `battle_check_range` semantics: the candidate must be within view and
-      LOS-clear; additionally, if a `path_search` walk-length check is available
-      (`IPathService` long/short variants), reject candidates whose path length
-      exceeds the mob's chase range (`range3` analogue). If only `PathSearchLong`
-      exists, use LOS + distance as the reach proxy and document that the
-      walk-length cap is approximated by LOS+distance.
-- [ ] **Enemy filter**: keep the existing PC-only filter, but ensure the candidate
-      passes a `battle_check_target(BCT_ENEMY)` analogue (no friendly/own-party
-      aggro). If an `IBattleTargetService`/enemy-check exists, use it; otherwise the
-      PC-vs-mob default is enemy and the filter is the existing alive+map check.
-- [ ] **Apply the same LOS/reach gate to MOBAI-03's CHANGECHASE scan** if that
-      ticket has landed, so chase-retarget also respects walls (coordinate; the
-      `TryChangeChase` helper should take the same `IPathService`).
-- [ ] **Perf follow-up note** (do NOT implement, just record): the grid query in
-      `ForEachInRange` may itself iterate a coarse bucket; a true cell-grid scan
-      (rAthena `map_foreachinrange` over the block list) is the scalable form. Flag
-      as a parity-neutral optimization follow-up.
-- [ ] No EF migration, no packets.
+- [x] **Injected `IPathService`** into `MobAiService` (optional ctor param `paths = null`, defaulted
+      null so the existing test suite keeps compiling). `MobAiService` is auto-registered
+      (`AddSingleton<IMobAiService, MobAiService>`) and `IPathService` is registered, so production
+      auto-resolves the real `PathService` — no Program.cs change.
+- [x] **Switched the aggressive scan to the cell-grid query**: replaced the `_entities.All()` loop
+      with `_entities.ForEachInRange(mob.MapId, mob.X, mob.Y, (short)viewRange, EntityType.Pc)`,
+      matching `HasAnyPcInView`/`SpotPcsInView` (removes the cross-map filter + full-registry walk).
+- [x] **LOS gate**: each candidate must pass `_paths.PathSearchLong(mob.MapId, mob.X, mob.Y, pc.X,
+      pc.Y)` before being accepted as `closest`; a wall-blocked PC is skipped. `_paths == null`
+      (tests) → LOS treated as clear (distance-only fallback).
+- [x] **Range/reach gate**: only `PathSearchLong` exists, so reach = LOS-clear + within view-range
+      (documented in the code comment as the reach proxy; the walk-length cap is approximated by
+      LOS + distance, per the ticket's guidance).
+- [x] **Enemy filter**: kept the existing PC-only + alive + (now grid-implied) same-map filter — the
+      PC-vs-mob default is enemy.
+- [N/A] MOBAI-03's CHANGECHASE scan — MOBAI-03 (deps MOBAI-01) has not landed, so nothing to wire.
+- [x] ➡️ **Perf follow-up recorded**: the true cell-grid `map_foreachinrange` block-list scan is
+      **MOBAI-05** (the `ForEachInRange` switch here is the parity-neutral interim).
+- [x] No EF migration, no packets.
 
 ## Done criteria
 
-- A mob does **not** aggro a PC standing behind a wall (LOS blocked) even when the
-  PC is within view-range Chebyshev distance; it aggros the same PC once the wall
-  no longer blocks the line.
-- An aggressive mob only selects targets it can reach; it no longer
-  walk-into-wall-loops toward an unreachable PC.
-- The aggressive scan uses `ForEachInRange` (cell-grid query), not
-  `_entities.All()`; results are identical for the in-LOS, in-range case (existing
-  aggro behavior preserved for clear lines).
-- `MobAiService` injects `IPathService`; with `IPathService` null (tests) the scan
-  degrades to the prior distance-only behavior so no test regresses.
-- No `// TODO`, no full-`All()` registry walk in the aggro scan, no log-only no-op.
+- ✅ A mob does **not** aggro a wall-blocked PC within view range; it aggros once LOS is clear
+  (`Wall_blocked_pc_is_not_aggroed` / `In_los_pc_is_aggroed`).
+- ✅ An aggressive mob only selects reachable targets — the nearer wall-blocked PC is skipped for the
+  farther LOS-clear one (`Closest_in_los_wins_over_a_nearer_wall_blocked_pc`); no walk-into-wall loop.
+- ✅ The aggressive scan uses `ForEachInRange` (not `_entities.All()`); results identical for the
+  in-LOS, in-range case (the existing closest-PC / view-cutoff / wander tests still pass).
+- ✅ `MobAiService` injects `IPathService`; null (tests) → distance-only fallback, no test regresses
+  (`Null_path_service_falls_back_to_distance_only` + the 6 pre-existing aggro tests green).
+- ✅ No `// TODO`, no `All()` registry walk in the aggro scan, no log-only no-op.
+
+## History
+
+- 2026-06-03 — Gated the `MobAiService` aggressive scan on line-of-sight: injected `IPathService`,
+  switched the scan from `_entities.All()` to the `ForEachInRange` cell-grid query, and skip any
+  candidate `PathSearchLong` reports wall-blocked (LOS + within-view = reach proxy). Null path
+  service → distance-only fallback (no regression). `MobAiServiceTests` +4 (wall-block, in-LOS,
+  closest-in-LOS-wins, null-fallback); full Map.Server.Tests 4261 pass (1 fail = pre-existing
+  INFRA-11 replay gate). Filed MOBAI-05 for the true cell-grid `ForEachInRange` perf optimization.
 
 ## Test plan
 

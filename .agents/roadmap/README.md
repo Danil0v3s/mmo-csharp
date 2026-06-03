@@ -294,7 +294,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | MOBAI-01 | Slave/master coupling in the AI tick |
 | MOBAI-02 | MVP behavior (skill priority, hp announce, drop tier) |
 | MOBAI-03 | Change-target mode handling (melee/chase/weak/random) |
-| MOBAI-04 | Aggro LOS / `battle_check_range` (mob aggros through walls today) |
+| MOBAI-04 | ✅ Gate aggro on line-of-sight + reachable range (no aggro-through-walls) |
+| MOBAI-05 | True cell-grid range query for the mob scans (perf) — split from MOBAI-04 |
 
 ## Doc cleanup
 

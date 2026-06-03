@@ -30,6 +30,9 @@ public sealed class MobAiService : IMobAiService
     private readonly IMobChangeTargetService _changeTarget;
     private readonly IMobRandomWalkService? _wander;
     private readonly IStatusChangeService? _sc;
+    // MOBAI-04 — line-of-sight gate for the aggressive scan (rAthena path_search_long /
+    // status_check_visible). Null in tests → the scan degrades to distance-only (no LOS gate).
+    private readonly Map.Server.Pathing.IPathService? _paths;
     private readonly Random _rng;
     private readonly Dictionary<EntityId, long> _lastThink = new();
 
@@ -45,7 +48,8 @@ public sealed class MobAiService : IMobAiService
         IMobLooterService? looter = null,
         IMobChangeTargetService? changeTarget = null,
         IMobRandomWalkService? wander = null,
-        IStatusChangeService? sc = null)
+        IStatusChangeService? sc = null,
+        Map.Server.Pathing.IPathService? paths = null)
     {
         _entities = entities;
         _attack = attack;
@@ -54,6 +58,7 @@ public sealed class MobAiService : IMobAiService
         _changeTarget = changeTarget ?? new MobChangeTargetService();
         _wander = wander;
         _sc = sc;
+        _paths = paths;
         _rng = rng ?? Random.Shared;
 
         // Default to the standard evaluator set so existing tests don't
@@ -219,20 +224,26 @@ public sealed class MobAiService : IMobAiService
                 : Math.Max(1, mob.DbEntry.SkillRange);
             if (viewRange <= 0) viewRange = 12; // rAthena default mob view = 12.
 
+            // MOBAI-04 — cell-grid range query (rAthena map_foreachinallrange over view_range),
+            // replacing the full-registry `_entities.All()` walk. Same PC + alive + distance filter.
             PlayerEntity? closest = null;
             int closestDist = int.MaxValue;
-            foreach (var other in _entities.All())
+            foreach (var other in _entities.ForEachInRange(mob.MapId, mob.X, mob.Y, (short)viewRange, EntityType.Pc))
             {
                 if (other is not PlayerEntity pc) continue;
-                if (pc.MapId != mob.MapId) continue;
                 if (pc.Hp <= 0) continue;
                 var dist = Math.Max(Math.Abs(pc.X - mob.X), Math.Abs(pc.Y - mob.Y));
                 if (dist > viewRange) continue;
-                if (dist < closestDist)
-                {
-                    closestDist = dist;
-                    closest = pc;
-                }
+                if (dist >= closestDist) continue;
+                // MOBAI-04 — line-of-sight gate (rAthena mob_ai_sub_hard_activesearch's
+                // status_check_skilluse / ACTIVEPATHSEARCH path_search): skip a wall-blocked PC so
+                // the mob doesn't aggro through terrain and walk-into-wall-loop. LOS + within-view
+                // is the reach proxy (PathSearchLong is the shootable Bresenham check). With no
+                // path service (tests) LOS is treated as clear — distance-only fallback.
+                if (_paths != null && !_paths.PathSearchLong(mob.MapId, mob.X, mob.Y, pc.X, pc.Y))
+                    continue;
+                closestDist = dist;
+                closest = pc;
             }
 
             if (closest == null)
