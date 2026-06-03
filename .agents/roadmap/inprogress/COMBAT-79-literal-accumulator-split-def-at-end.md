@@ -1,6 +1,6 @@
 # COMBAT-79 — Literal per-accumulator split + DEF-at-end reorder (full battle_calc_weapon_attack fidelity)
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-61 (patk/crit/res terms) · **Blocks:** none
 > **Filed by:** COMBAT-61 — it delivered the *observable* trait-stat terms (patk/crit/res) inside
 > the existing shared `ComputeHandDamage`, but did not build the literal five-accumulator
