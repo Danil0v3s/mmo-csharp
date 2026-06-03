@@ -23,8 +23,10 @@ public interface IVendingService
     /// <summary>rAthena <c>vending_vendinglistreq</c> — client clicked a stall.</summary>
     void VendingListReq(PlayerEntity buyer, int vendorAccountId);
 
-    /// <summary>rAthena <c>vending_purchasereq</c>.</summary>
-    void PurchaseReq(PlayerEntity buyer, int vendorAccountId, IReadOnlyList<(short index, short qty)> items);
+    /// <summary>rAthena <c>vending_purchasereq</c> — transfer zeny (minus tax) + items from the
+    /// vendor cart to the buyer. <paramref name="venderId"/> is the per-open stall id (anti-desync).
+    /// Returns true on a completed purchase, false (no transfer) on any gate failure.</summary>
+    bool PurchaseReq(PlayerEntity buyer, int vendorAccountId, long venderId, IReadOnlyList<(short index, short qty)> items);
 
     /// <summary>rAthena <c>vending_search</c>.</summary>
     bool Search(PlayerEntity searcher, int nameId);

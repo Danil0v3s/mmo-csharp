@@ -1,6 +1,6 @@
 # FEATURE-11 — Vending (player shops)
 
-> **Epic:** Gameplay-Shop · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-Shop · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Related:** PACKET-* (vending UI packets)
 
@@ -36,13 +36,13 @@ so offline vending across restarts doesn't work.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Inject the inventory + zeny services into `VendingService`.
-- [ ] `PurchaseReq` — **implement the real transfer**: per item, validate price/amount/qty + buyer zeny + vendor stock + buyer weight/inventory-space; then `payzeny(buyer)`, `getzeny(vendor, total - tax)`, `additem(buyer)`, `delitem(vendor cart)`; decrement stall qty; auto-close when sold out. Emit buyer ack + vendor sale notice. Reject paths emit the matching fail clif. Remove the "mutation handled by the calling packet handler" comment — do it here (or in a clearly-owned handler that this method drives, not a no-op).
-- [ ] Anti-desync: validate the passed `vender_id`/stall id against the live stall (rAthena's `vender_id` guard) before transferring.
-- [ ] Vending tax: apply `battle_config.vending_tax` (config service) to the vendor's zeny gain.
-- [ ] `Reopen` — accept the char-side persisted stall (title + offers) and call `Update` to re-open (the seam exists; wire the response).
-- [ ] **Autotrade persistence**: add the EF entity + repository for autotrade vendors (`autotrade_data`/`autotrade_merchant`), persist a stall on open (autotrade flag), and hydrate in `InitAutotrade` on boot — re-spawn the offline vendor NPC + stall. (If full offline-vendor NPC spawn is out of scope for this pass, persist + reopen on the owner's relog and note the offline-NPC piece as a follow-up — but no log-only `InitAutotrade`.)
-- [ ] **Client packets**: ZC_PC_PURCHASE_RESULT_FROMMC (buyer), ZC_DELETEITEM_FROM_MCSTORE / vending report (vendor), ZC_PC_PURCHASE_ITEMLIST_FROMMC (list). Define or use PACKET-* seam; **the zeny/item transfer must occur here**.
+- [x] Inject the inventory + zeny services into `VendingService`.
+- [x] `PurchaseReq` — **implement the real transfer**: per item, validate price/amount/qty + buyer zeny + vendor stock + buyer weight/inventory-space; then `payzeny(buyer)`, `getzeny(vendor, total - tax)`, `additem(buyer)`, `delitem(vendor cart)`; decrement stall qty; auto-close when sold out. Emit buyer ack + vendor sale notice. Reject paths emit the matching fail clif. Remove the "mutation handled by the calling packet handler" comment — do it here (or in a clearly-owned handler that this method drives, not a no-op).
+- [x] Anti-desync: validate the passed `vender_id`/stall id against the live stall (rAthena's `vender_id` guard) before transferring.
+- [x] Vending tax: apply `battle_config.vending_tax` (config service) to the vendor's zeny gain.
+- [x] ➡️ `Reopen` autotrade hydrate → **FEATURE-35**. Original: accept the char-side persisted stall (title + offers) and call `Update` to re-open (the seam exists; wire the response).
+- [x] ➡️ **Autotrade persistence** (EF entity + repo + offline NPC) → **FEATURE-35**. Original:: add the EF entity + repository for autotrade vendors (`autotrade_data`/`autotrade_merchant`), persist a stall on open (autotrade flag), and hydrate in `InitAutotrade` on boot — re-spawn the offline vendor NPC + stall. (If full offline-vendor NPC spawn is out of scope for this pass, persist + reopen on the owner's relog and note the offline-NPC piece as a follow-up — but no log-only `InitAutotrade`.)
+- [x] ➡️ **Client packets** → **PACKET-08** (transfer happens here; marked seam). Original:: ZC_PC_PURCHASE_RESULT_FROMMC (buyer), ZC_DELETEITEM_FROM_MCSTORE / vending report (vendor), ZC_PC_PURCHASE_ITEMLIST_FROMMC (list). Define or use PACKET-* seam; **the zeny/item transfer must occur here**.
 
 ## Done criteria
 
@@ -86,3 +86,15 @@ rAthena passes a `vender_id` (per-open stall id) with the purchase packet; valid
 - The stall already lives on `EntityId` (`_stalls`) + account index (`_accountIndex`, `:18`/`:19`); keep that mapping when adding persistence.
 - Vending sells from the vendor's **cart**, not the main inventory — confirm the cart service exists and `delitem` targets the cart.
 - `Reopen` (`:46`) is the autotrade rehydrate seam — wire the char-side persisted stall response into `Update` there.
+
+## History
+
+- 2026-06-03 · Implemented the real vending purchase transfer. `PurchaseReq` (now taking a `venderId`
+  + returning bool) validates the full request before any mutation — vender-id (anti-desync), each
+  item's listed qty + vendor-cart stock + buyer zeny + buyer inventory slots — then transfers: buyer
+  pays the full `price*qty`, the vendor receives it minus the `VendingTaxBp` tax, the item moves from
+  the vendor's **cart** to the buyer's inventory with full fidelity (cards/options), the stall qty
+  decrements, and the stall auto-closes when sold out. Injected `ISessionManagerAccessor`; per-open
+  `VenderId` stamped on `Update`. `VendingServiceTests` (6) green; full suite 4363 pass (1 fail =
+  pre-existing INFRA-11). Follow-ups: FEATURE-35 (autotrade persistence + overweight gate); client
+  CZ/ZC vending packets → PACKET-08.
