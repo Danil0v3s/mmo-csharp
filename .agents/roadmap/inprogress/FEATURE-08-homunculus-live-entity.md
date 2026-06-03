@@ -1,6 +1,6 @@
 # FEATURE-08 — Homunculus live entity
 
-> **Epic:** Gameplay-Companion · **Status:** ❌ Not started · **Size:** XL · **Player-visible:** yes
+> **Epic:** Gameplay-Companion · **Status:** 🚧 In progress · **Size:** XL · **Player-visible:** yes
 > **Depends on:** FEATURE-02 (homun save), FEATURE-01 (kill credit/intimacy) · **Blocks:** none
 > **Related:** PACKET-* (homun UI / HP-bar / skill-window packets)
 
