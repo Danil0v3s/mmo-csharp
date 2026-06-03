@@ -1,6 +1,6 @@
 # GP-PARTY — Party works end-to-end
 
-> **Epic:** gameplay · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** GP-MVPFAME (kill-credit fan-out), GP-QUEST/ACHIEVE (party objectives)
 
 ## The deliverable
