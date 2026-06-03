@@ -79,6 +79,11 @@ public interface IIntifService
     int QuestSave(PlayerEntity pc);
     int QuestRequest(int charId);
 
+    /// <summary>Awaitable load-on-enter: fetch the char-side quest log, hydrate it onto
+    /// <paramref name="pc"/>, then push the quest window (<c>quest_pc_login</c>). Used by the
+    /// LoadEndAck spawn cascade so quests exist on the entity and render at session start.</summary>
+    Task QuestRequestAsync(PlayerEntity pc, CancellationToken ct = default);
+
     // -- achievement --
     int AchievementSave(PlayerEntity pc);
     int AchievementRequest(int charId);

@@ -242,6 +242,7 @@ public enum PacketHeader : short
     ZC_MAPPROPERTY_R2     = 0x099b,        // clif_map_property, 8B
     ZC_NAVIGATION_TO      = 0x08e2,        // clif_navigateTo (PACKETVER ≥ 20111010), 27B
     // Quest UI (GP-QUEST). Modern (PACKETVER ≥ 20150513) clif_quest_* set.
+    ZC_ALL_QUEST_LIST     = 0x09f8,        // clif_quest_send_list (login snapshot): <len>.W <count>.L then per-quest 15B + per-obj 44B (incl target+current+name).
     ZC_ADD_QUEST          = 0x09f9,        // clif_quest_add primary: fixed 143B (header 17 + 3×42 objective slots).
     ZC_ADD_QUEST_MISSION  = 0x08fe,        // clif_quest_add mission secondary: <len>.W then per-obj questIndex.L mobId.L target.W current.W.
     ZC_DEL_QUEST          = 0x02b4,        // clif_quest_delete: <quest_id>.L, 6B.

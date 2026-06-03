@@ -320,6 +320,7 @@ public class PartyJoinReqAckHandlerTests
         public int AuctionBid(int charId, uint auctionId, int bid, string bidder) => 0;
         public int QuestSave(PlayerEntity pc) => 0;
         public int QuestRequest(int charId) => 0;
+        public System.Threading.Tasks.Task QuestRequestAsync(Map.Server.Entities.PlayerEntity pc, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.CompletedTask;
         public int AchievementSave(PlayerEntity pc) => 0;
         public int AchievementRequest(int charId) => 0;
         public System.Threading.Tasks.Task QuestSaveAsync(PlayerEntity pc, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.CompletedTask;

@@ -57,6 +57,31 @@ public class QuestEmitTests
         Assert.Equal(0, BitConverter.ToInt16(mission, 14));           // current
     }
 
+    [Fact]
+    public void PcLogin_emits_all_quest_list_snapshot_with_live_counts()
+    {
+        var (svc, pc, session) = Build(new QuestDbEntity { QuestId = 1000, Mob1 = "PORING", Count1 = 3 });
+        svc.Add(pc, 1000);
+        svc.UpdateMobObjective(pc, "PORING"); // count 0 → 1, so the snapshot must carry current=1
+
+        var active = svc.PcLogin(pc);
+        Assert.Equal(1, active);
+
+        var b = Outbound(session).Single(x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_ALL_QUEST_LIST);
+        Assert.Equal(b.Length, BitConverter.ToUInt16(b, 2));   // len field == actual
+        Assert.Equal(1, BitConverter.ToInt32(b, 4));           // quest count
+        // quest row at offset 8: quest_id.L state.B timeDiff.L time.L numObj.W (15B)
+        Assert.Equal(1000, BitConverter.ToInt32(b, 8));        // quest id
+        Assert.Equal(1, b[12]);                                // state = active
+        Assert.Equal(1, BitConverter.ToInt16(b, 21));          // numObjectives
+        // objective at offset 23: questIndex.L effect.L mob_id.L minLv.W maxLv.W current.W target.W name.24
+        Assert.Equal(1_000_000, BitConverter.ToInt32(b, 23));  // quest index = id*1000 + 0
+        Assert.Equal(1002, BitConverter.ToInt32(b, 31));       // resolved mob id (PORING)
+        Assert.Equal(1, BitConverter.ToInt16(b, 39));          // current (live count after one kill)
+        Assert.Equal(3, BitConverter.ToInt16(b, 41));          // target
+        Assert.Equal("Poring", ReadCString(b, 43, 24));        // resolved mob name
+    }
+
     private static string ReadCString(byte[] b, int off, int width)
     {
         var end = off; while (end < off + width && b[end] != 0) end++;

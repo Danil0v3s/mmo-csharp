@@ -26,17 +26,18 @@ public class NotifyActorInitHandler(
     Map.Server.Items.IItemCatalog itemCatalog,
     Map.Server.Inventory.IItemHookDispatcher hookDispatcher,
     Map.Server.Inventory.IComboDispatcher comboDispatcher,
+    Map.Server.Services.Intif.IIntifService intif,
     ILogger<NotifyActorInitHandler> logger
 ) : IPacketHandler<MapSessionData, CZ_NOTIFY_ACTORINIT>
 {
-    public Task HandleAsync(MapSessionData session, CZ_NOTIFY_ACTORINIT packet)
+    public async Task HandleAsync(MapSessionData session, CZ_NOTIFY_ACTORINIT packet)
     {
         if (session.AuthState != MapAuthState.Authenticated)
         {
             logger.LogWarning(
                 "CZ_NOTIFY_ACTORINIT on session {SessionId} in unexpected state {State} — ignoring",
                 session.SessionId, session.AuthState);
-            return Task.CompletedTask;
+            return;
         }
 
         if (session.CharacterId is not { } charId
@@ -45,7 +46,7 @@ public class NotifyActorInitHandler(
         {
             logger.LogError("Session {SessionId} reached actor-init without bound character info", session.SessionId);
             session.Disconnect(DisconnectReason.PacketHandlerError);
-            return Task.CompletedTask;
+            return;
         }
 
         // Defensive: if a stale entity exists for this char_id (crash recovery
@@ -217,10 +218,14 @@ public class NotifyActorInitHandler(
         // client is order-tolerant for the open-bag UI here.
         inventory.SendInventoryList(session);
 
+        // FEATURE-20 / GP-QUEST — load the char-side quest log onto the live
+        // entity and push the quest window (rAthena quest_pc_login). Mirrors the
+        // intif_request_questlog → mapif_parse_loadquestreq → clif_quest_send_list
+        // chain that runs at the tail of pc_authok.
+        await intif.QuestRequestAsync(player);
+
         logger.LogInformation(
             "Player {Name} (char {CharId}) spawned at ({X},{Y}) on map 0x{MapId:X8}",
             player.Name, charId, player.X, player.Y, mapId);
-
-        return Task.CompletedTask;
     }
 }

@@ -28,6 +28,7 @@ public class NotifyActorInitHandlerTests
             new StatusCalcService(), new NoOpPcDeathService(),
             new NoOpInventoryService(), new NoOpItemCatalog(),
             new NoOpItemHookDispatcher(), new NoOpComboDispatcher(),
+            new Map.Server.Tests.Fakes.NoOpIntifService(),
             NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
@@ -57,6 +58,7 @@ public class NotifyActorInitHandlerTests
             new StatusCalcService(), new NoOpPcDeathService(),
             new NoOpInventoryService(), new NoOpItemCatalog(),
             new NoOpItemHookDispatcher(), new NoOpComboDispatcher(),
+            new Map.Server.Tests.Fakes.NoOpIntifService(),
             NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());
@@ -94,6 +96,7 @@ public class NotifyActorInitHandlerTests
             new StatusCalcService(), new NoOpPcDeathService(),
             new NoOpInventoryService(), new NoOpItemCatalog(),
             new NoOpItemHookDispatcher(), new NoOpComboDispatcher(),
+            new Map.Server.Tests.Fakes.NoOpIntifService(),
             NullLogger<NotifyActorInitHandler>.Instance);
 
         await handler.HandleAsync(session, new CZ_NOTIFY_ACTORINIT());

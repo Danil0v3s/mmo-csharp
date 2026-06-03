@@ -487,6 +487,19 @@ public sealed class IntifService : IIntifService
         return 1;
     }
 
+    /// <summary>FEATURE-20 — awaitable quest load-on-enter: round-trip the char-side quest log,
+    /// <see cref="Map.Server.Quest.IQuestService.Hydrate"/> it onto the live entity, then
+    /// <see cref="Map.Server.Quest.IQuestService.PcLogin"/> to push <c>ZC_ALL_QUEST_LIST</c>. A null
+    /// char-IPC response (server down) hydrates an empty log — the client still gets an empty list,
+    /// matching rAthena's "no quests" snapshot.</summary>
+    public async Task QuestRequestAsync(PlayerEntity pc, CancellationToken ct = default)
+    {
+        if (_questService == null) return;
+        var resp = _questIpc != null ? await _questIpc.QuestLoadAsync(pc.CharacterId, ct) : null;
+        _questService.Hydrate(pc, resp?.Quests ?? (IEnumerable<Core.Server.IPC.QuestEntryData>)Array.Empty<Core.Server.IPC.QuestEntryData>());
+        _questService.PcLogin(pc);
+    }
+
     /// <summary>
     /// T5.4c — rAthena <c>intif_achievement_save</c> (intif.cpp:2125).
     /// T7.1 — now dispatches a real per-achievement snapshot via

@@ -45,8 +45,10 @@ element/level/map) and immediate-on-mutation save are missing.
 
 ## Scope — every layer
 
-- [ ] **Load on enter**: wire quest load → hydrate `MapSessionData` → `PcLogin` so quests
-      exist on the entity at session start (archive FEATURE-20).
+- [x] **Load on enter**: wire quest load → hydrate `MapSessionData` → `PcLogin` so quests
+      exist on the entity at session start (archive FEATURE-20). *(turn 3 — `IntifService.QuestRequestAsync`
+      round-trips the char-side log, hydrates onto the live entity, emits `ZC_ALL_QUEST_LIST`; called
+      from `NotifyActorInitHandler` LoadEndAck after the inventory list.)*
 - [ ] **Service**: objective filters (any-mob + race/size/element/level/map) on
       `UpdateMobObjective` (archive FEATURE-21); immediate persistence on every mutation
       (add/delete/objective tick/status) — `chrif_save` parity (archive FEATURE-22).
@@ -97,6 +99,21 @@ element/level/map) and immediate-on-mutation save are missing.
   (setquest→Add→appears) → kill (UPDATE ticks) → complete/delete (DEL).** Remaining (next turns →
   done): the login `ZC_ALL_QUEST_LIST` snapshot + load-on-enter + `CZ_ACTIVE_QUEST` toggle + objective
   filters (FEATURE-21) + immediate-save (FEATURE-22).
+
+- **2026-06-03 (turn 3)** — Login snapshot + load-on-enter landed. New `ZC_ALL_QUEST_LIST`
+  (0x09f8, modern PACKETVER ≥ 20150513 / `clif_quest_send_list`): variable `<len>.W <count>.L` then
+  per-quest 15B (`quest_id.L state.B timeDiff.L time.L numObj.W`) + per-obj 44B (`questIndex.L effect.L
+  mob_id.L minLv.W maxLv.W current.W target.W name.24`) — self-contained (carries live count + target +
+  mob display name, no companion mission packet). `QuestService.PcLogin` now builds the snapshot from
+  `pc.QuestLog` (mob id/name via `IMobDb`, Poring fallback) and pushes it. Load-on-enter wired:
+  `IIntifService.QuestRequestAsync(pc)` awaits `QuestLoadAsync` → `QuestService.Hydrate` →
+  `PcLogin`, called from `NotifyActorInitHandler` (LoadEndAck) right after the inventory list — mirrors
+  rAthena's `intif_request_questlog` → `clif_quest_send_list` at the tail of `pc_authok`. New shared
+  test fake `NoOpIntifService`. `QuestEmitTests` now 4 (login snapshot asserts count/state/index/mob
+  id/live-count/target/name at exact offsets); full suite 4433 pass (1 = standing replay-fixture).
+  **Reachable now: enter map → quest window populates from the persisted log with live progress;**
+  accept → appears; kill → ticks; complete/delete → removed. Remaining (next turns → done):
+  `CZ_ACTIVE_QUEST` toggle handler + objective filters (FEATURE-21) + immediate-save (FEATURE-22).
 
 ## Notes / gotchas
 

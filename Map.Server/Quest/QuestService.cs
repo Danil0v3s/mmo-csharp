@@ -148,8 +148,55 @@ public sealed class QuestService : IQuestService
     {
         var active = 0;
         foreach (var q in pc.QuestLog) if (q.State != QComplete) active++;
-        // PACKET-10 owns ZC_ALL_QUEST_LIST / ZC_ALL_QUEST_MISSION; this is the post-hydrate push seam.
+        EmitList(pc);
         return active;
+    }
+
+    /// <summary>rAthena <c>clif_quest_send_list</c> — push the whole quest log on enter so the client
+    /// renders the quest window populated. Self-contained: each objective carries live count + target
+    /// + mob display name (no companion mission packet needed for the snapshot).</summary>
+    private void EmitList(PlayerEntity pc)
+    {
+        var session = _sessions?.GetByEntityId(pc.Id);
+        if (session == null) return;
+
+        var quests = new List<Core.Server.Packets.Out.ZC.AllQuestEntry>();
+        foreach (var q in pc.QuestLog)
+        {
+            var cat = GetCatalogEntry((uint)q.QuestId);
+            var objs = new List<Core.Server.Packets.Out.ZC.AllQuestObjective>();
+            if (cat != null)
+            {
+                for (byte i = 0; i < 3; i++)
+                {
+                    var target = ObjectiveTarget(cat, i);
+                    if (target <= 0) continue;
+                    var aegis = i switch { 0 => cat.Mob1, 1 => cat.Mob2, 2 => cat.Mob3, _ => null };
+                    var mob = aegis != null ? _mobDb?.GetByAegisName(aegis) : null;
+                    var mobId = mob?.Id ?? 1002; // MOBID_PORING fallback (rAthena)
+                    var name = mob?.Name ?? aegis ?? string.Empty;
+                    var current = (short)(i < q.Counts.Length ? q.Counts[i] : 0);
+                    objs.Add(new Core.Server.Packets.Out.ZC.AllQuestObjective
+                    {
+                        QuestIndex = q.QuestId * 1000 + i,
+                        MobId = mobId,
+                        Current = current,
+                        Target = (short)target,
+                        MobName = name,
+                    });
+                }
+            }
+            quests.Add(new Core.Server.Packets.Out.ZC.AllQuestEntry
+            {
+                QuestId = q.QuestId,
+                State = (byte)q.State,
+                TimeDiff = 0,
+                Time = (uint)Math.Max(0, q.TimeUnix),
+                Objectives = objs,
+            });
+        }
+
+        session.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_ALL_QUEST_LIST { Quests = quests });
     }
 
     /// <summary>FEATURE-03 — rAthena <c>quest_update_objective_sub</c>: add <paramref name="delta"/>

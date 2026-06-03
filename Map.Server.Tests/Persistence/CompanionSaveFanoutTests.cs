@@ -157,6 +157,7 @@ public class CompanionSaveFanoutTests
         public int AuctionClose(int charId, uint auctionId) => 0;
         public int AuctionBid(int charId, uint auctionId, int bid, string bidder) => 0;
         public int QuestRequest(int charId) => 0;
+        public System.Threading.Tasks.Task QuestRequestAsync(Map.Server.Entities.PlayerEntity pc, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.CompletedTask;
         public int AchievementRequest(int charId) => 0;
         public int PetCreate(PlayerEntity master, int classId, int nameId, byte rename, int eggItemId, byte intimate, byte hungry, char gender, string petName) => 0;
         public int RequestPetInfo(int petId, int accountId, byte flag) => 0;
