@@ -1,6 +1,6 @@
 # MOBAI-04 — Gate aggro on line-of-sight + reachable range
 
-> **Epic:** Mob AI parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Mob AI parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 
 ## Problem
