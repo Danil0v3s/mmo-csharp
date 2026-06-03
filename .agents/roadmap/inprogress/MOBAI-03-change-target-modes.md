@@ -1,6 +1,6 @@
 # MOBAI-03 — Change-target mode bits driven from the hard-AI tick
 
-> **Epic:** Mob AI parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Mob AI parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** MOBAI-01 (slave-lost-target feeds the same scan) · **Blocks:** none
 
 ## Problem
