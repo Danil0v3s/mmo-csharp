@@ -867,7 +867,9 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-89 — re-apply Cri (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val2); }));
 
         // SC_IMPOSITIO (PR_IMPOSITIO MANUS) — rAthena status.cpp:11622-11623
         // val2 = 5·val1 (WATK + MATK increase, flat).  Consumer
@@ -1253,7 +1255,9 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
             },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-89 — re-apply Batk (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2); }));
 
         // SC_PARRYING — Val2 = 20+Val1*3 (Block chance %). rAthena
         // status.cpp:case SC_PARRYING. Block roll lives on the combat
@@ -1782,7 +1786,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2);
             },
             OnEnd: (target, sc) => { target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2); },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-89 — re-apply Batk (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2); }));
 
         // SC_VIOLENTGALE — Val2 = Val1*3 (Flee bonus). CalcFlag: Flee.
         Register(StatusType.Violentgale, new StatusEffectHandler(
@@ -1792,7 +1798,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
             },
             OnEnd: (target, sc) => { target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2); },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-89 — re-apply Flee (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2); }));
 
         // SC_ARMOR — Val2 = 8 (AspdRate bonus). CalcFlag: AspdRate.
         Register(StatusType.Armor, new StatusEffectHandler(
@@ -1860,7 +1868,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val2);
             },
             OnEnd: (target, sc) => { target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val2); },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-89 — re-apply Hit (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val2); }));
 
         // SC_MERC_SPUP — Val2 = 5*Val1 (MaxSP bonus %).
         Register(StatusType.MercSpup, new StatusEffectHandler(
@@ -1982,7 +1992,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2);
             },
             OnEnd: (target, sc) => { target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2); },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-89 — re-apply Batk (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2); }));
 
         // SC_GRANITIC_ARMOR — Val2 = 2*Val1 dmg reduction %,
         //                     Val3 = 6*Val1 dmg-on-end %,
@@ -2089,7 +2101,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
             },
             OnEnd: (target, sc) => { target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2); },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-89 — re-apply Flee (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2); }));
 
         // SC__LAZINESS — Val2 = 10+10*Val1 cast increase, Val3 = 10*Val1 flee reduction.
         Register(StatusType.Laziness, new StatusEffectHandler(
@@ -2100,7 +2114,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val3);
             },
             OnEnd: (target, sc) => { target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val3); },
-            Flags: debuff));
+            Flags: debuff,
+            // COMBAT-89 — re-apply Flee (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val3); }));
 
         // SC_SWINGDANCE — Val3 = 3*Val1 + Val2 (walk speed + ASPD reduction).
         Register(StatusType.Swingdance, new StatusEffectHandler(
@@ -2153,7 +2169,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
             },
             OnEnd: (target, sc) => { target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2); },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-89 — re-apply Flee (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2); }));
 
         // SC_POWER_OF_GAIA — Val2 = 33 (Def + speed rate), Val3 = 20 (HP rate).
         Register(StatusType.PowerOfGaia, new StatusEffectHandler(
@@ -2212,7 +2230,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
             },
             OnEnd: (target, sc) => { target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2); },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-89 — re-apply Flee (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2); }));
 
         // SC_TOXIN_OF_MANDARA — Val2 = 15*Val1 (resistance reduction %).
         Register(StatusType.ToxinOfMandara, new StatusEffectHandler(
@@ -2258,7 +2278,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val2);
             },
             OnEnd: (target, sc) => { target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val2); },
-            Flags: debuff));
+            Flags: debuff,
+            // COMBAT-89 — re-apply Hit (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val2); }));
 
         // SC_MAGIC_POISON — Val2 = 50 (element resistance reduction %).
         Register(StatusType.MagicPoison, new StatusEffectHandler(
@@ -2291,7 +2313,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
             },
             OnEnd: (target, sc) => { target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2); },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-89 — re-apply Flee (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2); }));
 
         // SC_EMERGENCY_MOVE — Val2 = 25 (movement speed increase %).
         Register(StatusType.EmergencyMove, new StatusEffectHandler(
@@ -2945,7 +2969,9 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-89 — re-apply Batk (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1); }));
 
         // SC-05 — SC_PYROTECHNIC_OPTION: fixed Val2 = 60 equip-Atk, NOT +Val1
         // Batk. Applied flat to WatkMin/Max. (The earlier Val2-only stub
@@ -2988,7 +3014,9 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-89 — re-apply Batk (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1); }));
 
         // Wave 58 — SC_ShinkirouCall: +Val1 to listed CalcFlag fields.
         Register(StatusType.ShinkirouCall, new StatusEffectHandler(
@@ -3184,7 +3212,9 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val1);
             },
-            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh,
+            // COMBAT-89 — re-apply Flee (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val1); }));
 
         // Wave 58 — SC_TinderBreaker2: -Val1 to listed CalcFlag fields.
         Register(StatusType.TinderBreaker2, new StatusEffectHandler(
@@ -3196,7 +3226,9 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val1);
             },
-            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh,
+            // COMBAT-89 — re-apply Flee (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val1); }));
 
         // Wave 58 — SC_ToxinOfMandara: -Val1 to listed CalcFlag fields.
         Register(StatusType.ToxinOfMandara, new StatusEffectHandler(
@@ -3520,7 +3552,9 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-89 — re-apply Batk (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2); }));
 
         // SC_FLEET (TK_SEVENWIND? — actually a buff status) — rAthena
         // status.cpp:11328-11331: val2 = 30*val1 ASPD%, val3 = 5+5*val1
@@ -3838,7 +3872,9 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Paralysis, new StatusEffectHandler(
             OnStart: (target, sc, _) => { target.Stats.Def2 = (short)Math.Max(0, target.Stats.Def2 - sc.Val1); },
             OnEnd: (target, sc) => { target.Stats.Def2 = (short)Math.Min(short.MaxValue, target.Stats.Def2 + sc.Val1); },
-            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh,
+            // COMBAT-89 — re-apply Def2 (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Def2 = (short)Math.Max(0, target.Stats.Def2 - sc.Val1); }));
 
         // Wave 57 — SC_IZAYOI: +Val1 Batk per CalcFlag; cast-time half
         // still on SkillCastTimingService.
@@ -3908,11 +3944,15 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Stripweapon, new StatusEffectHandler(
             OnStart: (target, sc, _) => { target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1); },
             OnEnd: (target, sc) => { target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1); },
-            Flags: stripFlags));
+            Flags: stripFlags,
+            // COMBAT-89 — re-apply Batk (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1); }));
         Register(StatusType.Stripshield, new StatusEffectHandler(
             OnStart: (target, sc, _) => { target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1); },
             OnEnd: (target, sc) => { target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1); },
-            Flags: stripFlags));
+            Flags: stripFlags,
+            // COMBAT-89 — re-apply Def (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1); }));
         Register(StatusType.Striparmor, new StatusEffectHandler(
             OnStart: (target, sc, _) => { target.Stats.Vit = (short)Math.Max(0, target.Stats.Vit - sc.Val1); },
             OnEnd: (target, sc) => { target.Stats.Vit = (short)Math.Min(short.MaxValue, target.Stats.Vit + sc.Val1); },
@@ -4256,7 +4296,9 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-89 — re-apply Cri (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val2); }));
 
         // SC_HALLUCINATIONWALK (GC_HALLUCINATIONWALK) — status.cpp:11530-11534
         // val2 = 50*val1 Flee (physical evasion), val3 = 10*val1 (magical
@@ -4273,7 +4315,9 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-89 — re-apply Flee (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2); }));
 
         // SC_MARSHOFABYSS (WL_MARSHOFABYSS) — status.cpp:11535-11541
         // val2 = 3*val1 (PC) Agi+Dex reduction, val3 = 10*val1 move slow.
@@ -6977,7 +7021,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Def = ClampShort(target.Stats.Def + sc.Val3);
             },
             OnEnd: (target, sc) => target.Stats.Def = ClampShort(target.Stats.Def - sc.Val3),
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-89 — re-apply Def (CalcPc resets it each recalc).
+            OnRecalc: (target, sc) => { target.Stats.Def = ClampShort(target.Stats.Def + sc.Val3); }));
 
         // SC_PROMOTE_HEALTH_RESERCH (status.cpp:12316) —
         // val3 = 1000*val2 - 500 + lv*10/3 (MaxHp fixed). val2 is the

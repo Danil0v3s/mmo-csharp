@@ -46,6 +46,32 @@ public class Combat53BespokeRefoldTests
     [InlineData(StatusType.Echosong, CalcStatField.Def, 5)]
     [InlineData(StatusType.Symphonyoflover, CalcStatField.Mdef, 5)]
     [InlineData(StatusType.Adrenaline, CalcStatField.Hit, 5)]
+    // COMBAT-89 — bespoke OnRecalc tail (clean single-derived-field batch). Buffs add, debuffs
+    // subtract; both observable off the non-zero bases (Str/Agi/Dex/EquipDef) in Inputs().
+    [InlineData(StatusType.Aurablade, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.Chattering, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.Bloodlust, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.Pyroclastic, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.ShieldspellAtk, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.Volcano, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.Explosionspirits, CalcStatField.Cri, 5)]
+    [InlineData(StatusType.Laudaramus, CalcStatField.Cri, 5)]
+    [InlineData(StatusType.Grooming, CalcStatField.Flee, 5)]
+    [InlineData(StatusType.Hallucinationwalk, CalcStatField.Flee, 5)]
+    [InlineData(StatusType.NpcHallucinationwalk, CalcStatField.Flee, 5)]
+    [InlineData(StatusType.OveredBoost, CalcStatField.Flee, 5)]
+    [InlineData(StatusType.Violentgale, CalcStatField.Flee, 5)]
+    [InlineData(StatusType.Zephyr, CalcStatField.Flee, 5)]
+    [InlineData(StatusType.MercHitup, CalcStatField.Hit, 5)]
+    [InlineData(StatusType.Prestige, CalcStatField.Def, 5)]
+    // debuffs (subtract from the non-zero base)
+    [InlineData(StatusType.Illusiondoping, CalcStatField.Hit, 5)]
+    [InlineData(StatusType.Laziness, CalcStatField.Flee, 5)]
+    [InlineData(StatusType.Paralysis, CalcStatField.Def2, 5)]
+    [InlineData(StatusType.Stripshield, CalcStatField.Def, 5)]
+    [InlineData(StatusType.Stripweapon, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.TinderBreaker, CalcStatField.Flee, 5)]
+    [InlineData(StatusType.TinderBreaker2, CalcStatField.Flee, 5)]
     public void Bespoke_derived_mod_survives_recalc_and_is_idempotent(
         StatusType type, CalcStatField field, int val1)
     {
@@ -151,6 +177,7 @@ public class Combat53BespokeRefoldTests
         CalcStatField.Hit => pc.Stats.Hit,
         CalcStatField.Cri => pc.Stats.Cri,
         CalcStatField.Mdef => pc.Stats.Mdef,
+        CalcStatField.Def2 => pc.Stats.Def2,
         _ => throw new ArgumentOutOfRangeException(nameof(f)),
     };
 

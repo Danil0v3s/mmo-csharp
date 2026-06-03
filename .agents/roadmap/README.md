@@ -171,6 +171,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-108 | AL_WARP Blue Gemstone requirement (cast check + selection consume) — split from COMBAT-86 |
 | COMBAT-109 | General bMagicAtkEle equip bonus (magic_atk_ele by skill element) — split from COMBAT-87 |
 | COMBAT-110 | Movement cast-lock: block move while casting unless SA_FREECAST/LG_EXEEDBREAK — split from COMBAT-88 |
+| COMBAT-111 | Bespoke OnRecalc remainder: multi-field / +AspdRate / +primary / +trait / primary-coupled — split from COMBAT-89 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |
