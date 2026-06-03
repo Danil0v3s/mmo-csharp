@@ -96,6 +96,10 @@ public sealed class BattleStats
     public ushort Amotion;       // attack motion (animation); ASPD-derived
     public ushort ClientAmotion; // client-side amotion (display)
     public ushort Adelay;        // attack delay (between swings)
+    // COMBAT-70 — SA_FREECAST attack delay used while the PC is mid-cast (status.cpp:6156:
+    // amotion·5·(lv+10)/100 applied to the ASPD base before the amotion conversion).
+    // Precomputed in CalcPc; equals Adelay for PCs without SA_FREECAST; 0 for non-PCs.
+    public ushort FreecastAdelay;
     public ushort Dmotion;       // damage motion
 
     // --- Combat numbers (status_data.hit / flee / cri / flee2 / def2 / mdef2) ---

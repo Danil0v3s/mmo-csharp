@@ -24,13 +24,18 @@ public sealed class AttackService : IAttackService, IAttackStopper
     private readonly Inventory.IAmmoService? _ammo;
     private readonly ILogger<AttackService> _logger;
 
+    // COMBAT-70 — consulted to detect "mid-cast" so a SA_FREECAST attacker uses its
+    // freecast-adjusted attack delay (Stats.FreecastAdelay) while casting.
+    private readonly Map.Server.Skills.ISkillCastService? _cast;
+
     public AttackService(
         IEntityRegistry entities,
         IDamageService damage,
         IMovementService movement,
         ILogger<AttackService> logger,
         IStatusChangeService? sc = null,
-        Inventory.IAmmoService? ammo = null)
+        Inventory.IAmmoService? ammo = null,
+        Map.Server.Skills.ISkillCastService? cast = null)
     {
         _entities = entities;
         _damage = damage;
@@ -38,6 +43,21 @@ public sealed class AttackService : IAttackService, IAttackStopper
         _sc = sc;
         _ammo = ammo;
         _logger = logger;
+        _cast = cast;
+    }
+
+    /// <summary>
+    /// COMBAT-70 — the attack delay to schedule the next swing with. While a PC with
+    /// SA_FREECAST is mid-cast, this is the precomputed <see cref="BattleStats.FreecastAdelay"/>
+    /// (the `5*(lv+10)%` ASPD-base scale, status.cpp:6156); otherwise the normal
+    /// <see cref="BattleStats.Adelay"/>. Non-PCs (FreecastAdelay 0) always use Adelay.
+    /// </summary>
+    internal int NextSwingDelay(Entity entity)
+    {
+        if (entity is PlayerEntity && entity.Stats.FreecastAdelay > 0
+            && _cast != null && _cast.IsCasting(entity.Id))
+            return entity.Stats.FreecastAdelay;
+        return entity.Stats.Adelay;
     }
 
     public bool StartAttack(Entity source, EntityId targetId, bool continuous)
@@ -164,7 +184,7 @@ public sealed class AttackService : IAttackService, IAttackStopper
             // matching rAthena keeping the unit_attack timer alive).
             if (entity is PlayerEntity shooter && _ammo?.HasUsableAmmo(shooter) == false)
             {
-                state.AttackableTick = nowTick + Math.Max(1, (int)entity.Stats.Adelay);
+                state.AttackableTick = nowTick + Math.Max(1, NextSwingDelay(entity));
                 if (!state.Continuous) StopAttack(entity);
                 continue;
             }
@@ -177,7 +197,7 @@ public sealed class AttackService : IAttackService, IAttackStopper
             if (entity is PlayerEntity ammoUser) _ammo?.ConsumeAmmo(ammoUser);
             state.HasSwung = true;
             // Schedule next swing at tick + adelay (rAthena unit.cpp:3024).
-            state.AttackableTick = nowTick + Math.Max(1, (int)entity.Stats.Adelay);
+            state.AttackableTick = nowTick + Math.Max(1, NextSwingDelay(entity));
 
             // Stop walking momentarily on swing (rAthena: unit_set_walkdelay
             // with amotion freezes movement). Implemented by killing the

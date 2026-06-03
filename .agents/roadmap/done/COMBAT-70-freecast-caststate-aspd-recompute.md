@@ -1,6 +1,6 @@
 # COMBAT-70 — FREECAST cast-state ASPD recompute trigger
 
-> **Epic:** combat · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** combat · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-50 (the FREECAST amotion formula) · **Blocks:** none
 > **Filed by:** COMBAT-50 — the cast-state trigger that makes the FREECAST formula take effect live.
 
@@ -27,17 +27,23 @@ and restored when it ends — i.e. attacking-while-casting must use the FREECAST
 
 ## Scope — every sub-system that must be touched
 
-- [ ] On cast start (the `ud.skilltimer` equivalent), recompute the caster's amotion with
-      `freecastLv = LearnedSkills[SA_FREECAST]` (and restore on cast end), OR apply the FREECAST
-      factor at the attack-schedule point in `AttackService` when the attacker is mid-cast + has
-      SA_FREECAST.
-- [ ] Confirm a Free-Cast caster can actually attack/move while casting (the precondition for the
-      modifier to matter).
+- [x] Precompute the freecast-adjusted attack delay in `CalcPc` (`BattleStats.FreecastAdelay` =
+      `RenewalPcAmotion(…, freecastLv = LearnedSkills[SA_FREECAST]) * 2`) so the `5*(lv+10)%`
+      scale hits the **ASPD base** (not the final adelay — the conversion is non-linear);
+      `AttackService.Tick` swaps `Adelay → FreecastAdelay` via `NextSwingDelay` when the attacker
+      `IsCasting`. This is the "attack-schedule point" approach (no recalc-trigger / restore /
+      double-application). OveredBoost overrides both delays.
+- [x] Confirmed a Free-Cast caster can attack while casting: `StartCast` does **not** stop the
+      caster's `AttackState`, so the auto-attack continues through the cast and now uses the
+      freecast delay — the modifier is live, not dormant.
 
 ## Done criteria
 
 - ➡️ from COMBAT-50: a Free-Cast caster mid-cast attacks at the reduced amotion end-to-end (not
-  just via the `RenewalPcAmotion(freecastLv:)` unit path), and returns to normal when the cast ends.
+  just via the `RenewalPcAmotion(freecastLv:)` unit path), and returns to normal when the cast
+  ends. ✅ Combat70FreecastTests (5).
+- Discovered adjacent gap: the C# auto-attack loop has no cast-lock, so non-FREECAST casters can
+  also attack while casting (rAthena blocks them). ➡️ COMBAT-88.
 
 ## Test plan
 
@@ -48,3 +54,15 @@ and restored when it ends — i.e. attacking-while-casting must use the FREECAST
 
 - COMBAT-50 supplies the formula; this ticket only supplies the cast-state trigger / attack-loop
   integration. Watch for double-application if both a recompute and an attack-time factor are added.
+
+## History
+
+- 2026-06-03 · Made the SA_FREECAST amotion modifier take effect live. CalcPc now precomputes
+  `BattleStats.FreecastAdelay` via a second pass through `RenewalPcAmotion` with the learned
+  freecast level (the `5*(lv+10)%` scale must hit the ASPD base before the non-linear
+  ASPD→amotion conversion, so a flat factor on the final adelay would be wrong); `AttackService`
+  gained an optional `ISkillCastService` and a `NextSwingDelay` that swaps to `FreecastAdelay`
+  while `IsCasting`. Confirmed `StartCast` doesn't stop the caster's auto-attack, so the effect is
+  live. Combat70FreecastTests (5); Combat+Status suite 831 green, full suite 4093 pass (1 fail =
+  pre-existing INFRA-11 replay gate). Filed COMBAT-88 (cast-lock: block non-FREECAST attack/move
+  while casting — an adjacent gap discovered here).

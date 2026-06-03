@@ -300,14 +300,26 @@ public sealed class StatusCalcService : IStatusCalcService
             aspdBase, s.Dex, s.Agi, inputs.WeaponType,
             aspdRate2: eq?.FlatAspdRate ?? 0, aspdAddVal: eq?.FlatAspd ?? 0,
             fixedSc: fixedSc, rateSc: rateSc, fixAspd: fixAspd, skillVal: skillVal);
+        // COMBAT-70 — precompute the SA_FREECAST-adjusted amotion (the `5*(lv+10)%` ASPD-base
+        // scale applies only while mid-cast; AttackService selects it via FreecastAdelay). The
+        // factor must hit the ASPD base inside RenewalPcAmotion, not the final adelay, so it is a
+        // second pass through the same formula.
+        var freecastLv = player.LearnedSkills.GetValueOrDefault(SkillIds.SA_FREECAST);
+        var fcAmotion = freecastLv > 0
+            ? RenewalPcAmotion(aspdBase, s.Dex, s.Agi, inputs.WeaponType,
+                aspdRate2: eq?.FlatAspdRate ?? 0, aspdAddVal: eq?.FlatAspd ?? 0,
+                fixedSc: fixedSc, rateSc: rateSc, fixAspd: fixAspd, skillVal: skillVal, freecastLv: freecastLv)
+            : amotion;
         // COMBAT-50 — SC_OVERED_BOOST (status_calc_fix_aspd) overrides the final
-        // amotion to a fixed ASPD (val3): amotion = AMOTION_ZERO_ASPD − val3·10.
+        // amotion to a fixed ASPD (val3): amotion = AMOTION_ZERO_ASPD − val3·10. Overrides both
+        // the normal and the freecast amotion (rAthena fix_aspd is the last word).
         if (_sc?.Get(player, StatusType.OveredBoost) is { Val3: > 0 } ob)
-            amotion = Math.Clamp(2000 - ob.Val3 * 10, 95, 4000);
+            amotion = fcAmotion = Math.Clamp(2000 - ob.Val3 * 10, 95, 4000);
         s.Amotion = (ushort)amotion;
         s.ClientAmotion = s.Amotion;
         // adelay = AMOTION_DIVIDER_PC * amotion (status.cpp:6175).
         s.Adelay = (ushort)Math.Clamp(amotion * 2, 1, ushort.MaxValue);
+        s.FreecastAdelay = (ushort)Math.Clamp(fcAmotion * 2, 1, ushort.MaxValue);
         // dmotion = cap(800 - 4*agi, 400, 800) (status.cpp:6593).
         s.Dmotion = (ushort)RenewalPcDmotion(s.Agi);
 
