@@ -1,6 +1,6 @@
 # COMBAT-93 — Reconcile SkillFailCause with rAthena e_useskill_fail_cause wire values
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Filed by:** COMBAT-76 — it needed the correct wire values for NEED_MORE_BULLET /
 > NEED_EQUIPMENT_KUNAI and found the rest of the enum is renumbered wrong.
