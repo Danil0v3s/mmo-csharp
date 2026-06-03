@@ -35,6 +35,17 @@ public class Combat53BespokeRefoldTests
     [InlineData(StatusType.Windwalk, CalcStatField.Flee, 5)]
     [InlineData(StatusType.Blind, CalcStatField.Hit, 1)]
     [InlineData(StatusType.Gatlingfever, CalcStatField.Batk, 5)]
+    // COMBAT-72 — pure-derived tail batch (same survives+idempotent contract).
+    [InlineData(StatusType.Humming, CalcStatField.Hit, 3)]
+    [InlineData(StatusType.Fortune, CalcStatField.Cri, 2)]
+    [InlineData(StatusType.Assumptio, CalcStatField.Def, 3)]
+    [InlineData(StatusType.Moonlitserenade, CalcStatField.Batk, 10)]
+    [InlineData(StatusType.Whistle, CalcStatField.Flee, 5)]
+    [InlineData(StatusType.Drumbattle, CalcStatField.Def, 5)]
+    [InlineData(StatusType.Impositio, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.Echosong, CalcStatField.Def, 5)]
+    [InlineData(StatusType.Symphonyoflover, CalcStatField.Mdef, 5)]
+    [InlineData(StatusType.Adrenaline, CalcStatField.Hit, 5)]
     public void Bespoke_derived_mod_survives_recalc_and_is_idempotent(
         StatusType type, CalcStatField field, int val1)
     {
@@ -85,6 +96,7 @@ public class Combat53BespokeRefoldTests
         CalcStatField.Flee => pc.Stats.Flee,
         CalcStatField.Hit => pc.Stats.Hit,
         CalcStatField.Cri => pc.Stats.Cri,
+        CalcStatField.Mdef => pc.Stats.Mdef,
         _ => throw new ArgumentOutOfRangeException(nameof(f)),
     };
 

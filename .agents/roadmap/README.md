@@ -149,6 +149,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-86 | AL_WARP deferred requirement-consume + cancel-refund (SKILL_NOCONSUME_REQ) — split from COMBAT-67 |
 | COMBAT-87 | Renewal SC_BASILICA effects: offensive element buff + NoAttack caster state — split from COMBAT-68 |
 | COMBAT-88 | Cast-lock: block attack/move while casting unless SA_FREECAST — split from COMBAT-70 |
+| COMBAT-89 | Bespoke OnRecalc tail (~73 handlers) + primary-coupled sub-class — split from COMBAT-72 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

@@ -310,7 +310,11 @@ public sealed class StatusEffectRegistry
                 var hit = sc.Val1 * 3 + 5;
                 target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - hit);
                 target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val3);
-            }));
+            },
+            // COMBAT-72 — re-apply Hit (CalcPc resets Hit to 0). AspdRate is NOT reset by
+            // CalcPc (scope-3 guard) → left out to avoid double-counting.
+            OnRecalc: (target, sc) =>
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + (sc.Val1 * 3 + 5))));
 
         // SC_TWOHANDQUICKEN — Val2 = 300 (+ 20*(val1-10) for boss-cast
         // higher levels) ASPD increase.  Also grants +Hit (val1*2,
@@ -369,7 +373,10 @@ public sealed class StatusEffectRegistry
             OnEnd: (target, sc) =>
             {
                 target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val2);
-            }));
+            },
+            // COMBAT-72 — re-apply the snapshot Def (CalcPc rebuilds Def from equip each recalc).
+            OnRecalc: (target, sc) =>
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val2)));
 
         // NS-3 wave 5e: Autoguard / Strip* / Hiding / Overthrust / Aeterna /
         // Impositio / Aspersio NoOpHandler() placeholders removed.
@@ -887,7 +894,16 @@ public sealed class StatusEffectRegistry
                 target.Stats.MatkMax = (ushort)Math.Max(0, target.Stats.MatkMax - sc.Val2);
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-72 — re-apply Watk/Matk/Batk (all reset by CalcPc each recalc).
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.WatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMax + sc.Val2);
+                target.Stats.MatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMax + sc.Val2);
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val2);
+            }));
 
         // SC_ADORAMUS (AB_ADORAMUS) — Blind-like debuff plus Agi drop.
         // rAthena: applies SC_BLIND alongside; we mirror the Agi drop
@@ -1119,7 +1135,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2);
                 target.Stats.Flee2 = (short)Math.Max(0, target.Stats.Flee2 - sc.Val3);
             },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-72 — re-apply Flee/Flee2 (CalcPc resets both to 0 each recalc).
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
+                target.Stats.Flee2 = (short)Math.Min(short.MaxValue, target.Stats.Flee2 + sc.Val3);
+            }));
 
         // SC_ASSNCROS (BA_ASSASSINCROSS) — ASPD song. rAthena status.cpp:10736:
         // val2 = val1 < 10 ? val1*2 - 1 : 20 (AspdRate +Val2). status.yml
@@ -1148,7 +1170,10 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val2);
             },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-72 — re-apply the snapshot Hit (CalcPc resets Hit to 0 each recalc).
+            OnRecalc: (target, sc) =>
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val2)));
 
         // SC_DONTFORGETME — Val2 = 1+30*Val1 (ASPD penalty), Val3 = 5+2*Val1
         // (Movement speed adjustment %).  rAthena consumer status_calc_aspd:
@@ -1187,7 +1212,10 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val2);
             },
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-72 — re-apply the snapshot Cri (CalcPc resets Cri to 0 each recalc).
+            OnRecalc: (target, sc) =>
+                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val2)));
 
         // SC_SERVICE4U — Val2 = MaxSP % bonus (9+Val1 capped at 20),
         //                Val3 = 5+Val1 (SP cost reduction %).
@@ -2781,7 +2809,10 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-72 — re-apply Batk (CalcPc resets Batk to 0 each recalc).
+            OnRecalc: (target, sc) =>
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1)));
 
         // Wave 58 — SC_Nen: +Val1 to listed CalcFlag fields.
         Register(StatusType.Nen, new StatusEffectHandler(
@@ -4029,7 +4060,14 @@ public sealed class StatusEffectRegistry
                 target.Stats.WatkMax = (ushort)Math.Max(0, target.Stats.WatkMax - sc.Val2);
                 target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val3);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // COMBAT-72 — re-apply Watk + Def (CalcPc rebuilds both each recalc).
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.WatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMax + sc.Val2);
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val3);
+            }));
 
         // ---- Festival / Bard non-stat songs (combat-side reads) ----
 
@@ -6844,7 +6882,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Mdef = ClampShort(target.Stats.Mdef + sc.Val3);
             },
             OnEnd: (target, sc) => target.Stats.Mdef = ClampShort(target.Stats.Mdef - sc.Val3),
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-72 — re-apply Mdef (CalcPc rebuilds Mdef from equip each recalc).
+            OnRecalc: (target, sc) => target.Stats.Mdef = ClampShort(target.Stats.Mdef + sc.Val3)));
 
         // SC_ECHOSONG (status.cpp:12061) — val3 = 6*val1 + val2 + jobLv/4 (Def).
         Register(StatusType.Echosong, new StatusEffectHandler(
@@ -6858,7 +6898,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Def = ClampShort(target.Stats.Def + sc.Val3);
             },
             OnEnd: (target, sc) => target.Stats.Def = ClampShort(target.Stats.Def - sc.Val3),
-            Flags: buff));
+            Flags: buff,
+            // COMBAT-72 — re-apply Def (CalcPc rebuilds Def from equip each recalc).
+            OnRecalc: (target, sc) => target.Stats.Def = ClampShort(target.Stats.Def + sc.Val3)));
 
         // SC_GLOOMYDAY (status.cpp:12084) — val2 = 20+5*val1 (Flee-),
         // val3 = 15+5*val1 (AspdRate-). Both negative on target.

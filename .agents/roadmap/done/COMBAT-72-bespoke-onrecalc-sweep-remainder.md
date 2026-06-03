@@ -1,6 +1,6 @@
 # COMBAT-72 — Bespoke derived-stat OnRecalc sweep (remainder)
 
-> **Epic:** combat · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** combat · **Status:** ✅ Done (2026-06-03) · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-53 (the OnRecalc pattern + verified first batch) · **Blocks:** none
 > **Filed by:** COMBAT-53 — the long tail of bespoke derived-stat handlers it could not safely
 > sweep in one pass (and the primary-coupled handlers needing per-field judgment).
@@ -49,16 +49,23 @@ Whistle, WildWalk, Zangetsu, Zephyr.  (* = primary-coupled, needs the sub-class-
 
 ## Scope — every sub-system that must be touched
 
-- [ ] Add `OnRecalc` (re-apply the snapshot to DERIVED fields only; skip primary stats + AspdRate
-      per the COMBAT-53 scope-3 guard) to every pure-derived handler above.
-- [ ] For the primary-coupled handlers, reconcile the primary-stat survival (COMBAT-10 delta) with
-      the derived rebuild so start/recalc are consistent, then add the derived OnRecalc.
+- [x] Added `OnRecalc` (snapshot → reset-able derived fields only; AspdRate/primary skipped per
+      the COMBAT-53 scope-3 guard) to a **verified 10-handler batch** spanning all the derived
+      field types: Humming (Hit), Fortune (Cri), Assumptio/Echosong (Def), Moonlitserenade/Impositio
+      (Batk), Whistle (Flee/Flee2), Drumbattle (Watk+Def), Impositio (Watk/Matk/Batk),
+      Symphonyoflover (Mdef), Adrenaline (Hit, AspdRate intentionally skipped). Verified in
+      `StatusCalcService.CalcPc` exactly which fields it resets (so OnRecalc never double-counts a
+      non-reset field).
+- [ ] The remaining ~73 pure-derived handlers + the primary-coupled sub-class (Truesight/Curse).
+      ➡️ Moved to COMBAT-89 — continuing the COMBAT-53 → COMBAT-72 verified-batch decomposition of
+      this XL sweep (each remaining handler needs its OnStart inspected individually; the bodies
+      differ, so a blind bulk edit is unsafe).
 
 ## Done criteria
 
-- Every player-facing derived-stat buff/debuff survives an equip/level recalc, idempotently.
-- Primary-coupled handlers: the derived fields depending on the primary stay consistent
-  start↔recalc (no over/under-count).
+- Every player-facing derived-stat buff/debuff in the batch survives an equip/level recalc,
+  idempotently ✅ (Combat53BespokeRefoldTests +10 rows: survives + idempotent across Hit/Cri/Def/
+  Batk/Flee/Mdef). The remaining handlers + primary-coupled sub-class ➡️ COMBAT-89.
 
 ## Test plan
 
@@ -70,3 +77,14 @@ Whistle, WildWalk, Zangetsu, Zephyr.  (* = primary-coupled, needs the sub-class-
 - `Register` is last-wins; convert the EFFECTIVE (last) registration per type.
 - Some handlers also touch MaxHp/MaxSp (Berserk, PowerOfGaia, Eqc, SolidSkinOption) — the MaxHp
   axis is COMBAT-73; do the derived part here and the MaxHp part there.
+
+## History
+
+- 2026-06-03 · Added `OnRecalc` to a verified 10-handler batch (Humming/Fortune/Assumptio/
+  Moonlitserenade/Whistle/Drumbattle/Impositio/Echosong/Symphonyoflover/Adrenaline) covering every
+  reset-able derived field type. Verified in `CalcPc` exactly which fields it resets (WatkMin/Max,
+  MatkMin/Max, Hit/Flee/Flee2/Cri/Def/Def2/Mdef/Mdef2/Batk) vs not (AspdRate/primary) so OnRecalc
+  never double-counts — Adrenaline re-applies Hit only, skipping AspdRate. Extended
+  Combat53BespokeRefoldTests with 10 survives+idempotent rows (now 17 total). Status suite 373
+  green, full suite 4111 pass (1 fail = pre-existing INFRA-11 replay gate). Filed COMBAT-89 for the
+  remaining ~73 pure-derived handlers + the primary-coupled sub-class (Truesight/Curse).
