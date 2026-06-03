@@ -112,6 +112,54 @@ public class Combat65UnbreakableIntravisionSpeedTests
         Assert.Equal(112, pc.Stats.Speed);
     }
 
+    // ---- COMBAT-84: speed-table tail ----
+
+    [Fact]
+    public void Slow_tail_wedding_adds_100_percent_slowdown()
+        => Assert.Equal(300, SpeedWith((sc, pc) => sc.Start(pc, StatusType.Wedding, 1, 0, 0, 0, 60_000))); // 150*200/100
+
+    [Fact]
+    public void Slow_tail_suiton_reads_val3()
+        => Assert.Equal(225, SpeedWith((sc, pc) => sc.Start(pc, StatusType.Suiton, 0, 0, val3: 50, 0, 60_000))); // 150*150/100
+
+    [Fact]
+    public void Slow_tail_jointbeat_ankle_break_is_50()
+        => Assert.Equal(225, SpeedWith((sc, pc) => sc.Start(pc, StatusType.Jointbeat, 0, val2: 0x01, 0, 0, 60_000)));
+
+    [Fact]
+    public void Marsh_of_abyss_clamps_the_slowdown_to_150()
+        // val3 200 → slow 200 → speed_rate 300, clamped to 150 → 150*150/100 = 225 (not 450).
+        => Assert.Equal(225, SpeedWith((sc, pc) => sc.Start(pc, StatusType.Marshofabyss, 0, 0, val3: 200, 0, 60_000)));
+
+    [Fact]
+    public void Fast_tail_hovering_speeds_up_10()
+        => Assert.Equal(135, SpeedWith((sc, pc) => sc.Start(pc, StatusType.Hovering, 1, 0, 0, 0, 60_000))); // 150*90/100
+
+    [Fact]
+    public void Fast_tail_avoid_reads_val2()
+        => Assert.Equal(105, SpeedWith((sc, pc) => sc.Start(pc, StatusType.Avoid, 0, val2: 30, 0, 0, 60_000))); // 150*70/100
+
+    [Fact]
+    public void Hiding_with_tunnel_drive_uses_the_early_branch()
+        // tunnel-drive 5 → slow 120-30 = 90 → speed_rate 190 → 150*190/100 = 285.
+        => Assert.Equal(285, SpeedWith((sc, pc) =>
+        {
+            pc.LearnedSkills[SkillIds.RG_TUNNELDRIVE] = 5;
+            sc.Start(pc, StatusType.Hiding, 1, 0, 0, 0, 60_000);
+        }));
+
+    [Fact]
+    public void Paralyse_val3_1_adds_50_percent_before_the_rate()
+        => Assert.Equal(225, SpeedWith((sc, pc) => sc.Start(pc, StatusType.Paralyse, 0, 0, val3: 1, 0, 60_000))); // 150 + 75
+
+    [Fact]
+    public void Walkspeed_override_divides_by_val1()
+        => Assert.Equal(75, SpeedWith((sc, pc) => sc.Start(pc, StatusType.Walkspeed, val1: 200, 0, 0, 0, 60_000))); // 150*100/200
+
+    [Fact]
+    public void Armor_floors_speed_at_200()
+        => Assert.Equal(200, SpeedWith((sc, pc) => sc.Start(pc, StatusType.Armor, 1, 0, 0, 0, 60_000)));
+
     // ---- helpers ----
 
     private static readonly PcBaseInputs SpeedInputs = new(

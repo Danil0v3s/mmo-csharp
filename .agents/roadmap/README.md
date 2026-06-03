@@ -165,6 +165,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-102 | bSetDefRace/bSetMDefRace (set target DEF/MDEF vs race) — split from COMBAT-83 |
 | COMBAT-103 | bStateNoRecoverRace (on-hit no-recover by race) — split from COMBAT-83 |
 | COMBAT-104 | bAddEffOnSkill (on-skill status proc) — split from COMBAT-83 |
+| COMBAT-105 | status_calc_speed early-return branches: freecast/ExceedBreak + mado gear — split from COMBAT-84 |
+| COMBAT-106 | status_calc_speed: Dancing-lesson song penalty + TF_MISS assassin speedup — split from COMBAT-84 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

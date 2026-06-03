@@ -639,15 +639,65 @@ public sealed class StatusCalcService : IStatusCalcService
 
         int speedRate = 100;
 
-        // --- SLOW phase: speed_rate += max(slowdown %) (status.cpp:7815) ---
-        int slow = 0;
-        if (Has(StatusType.DecreaseAgi))   slow = Math.Max(slow, 25);
-        if (Has(StatusType.Quagmire))      slow = Math.Max(slow, 50);
-        if (Has(StatusType.Curse))         slow = Math.Max(slow, 300);
-        slow = Math.Max(slow, Val(StatusType.Slowdown, e => e.Val1));      // Slow Potion
-        slow = Math.Max(slow, Val(StatusType.Dontforgetme, e => e.Val3));
-        if (itemSpeedDelta > 0) slow = Math.Max(slow, itemSpeedDelta);     // permanent item slowdown
+        // --- SLOW phase: speed_rate += slow (status.cpp:7830). The Hiding+TunnelDrive and
+        //     ChaseWalk(val3<0) early branches REPLACE the big slow chain (rAthena if/else-if/else). ---
+        int tunnelDrive = pc.LearnedSkills.GetValueOrDefault(SkillIds.RG_TUNNELDRIVE);
+        int slow;
+        if (Has(StatusType.Hiding) && tunnelDrive > 0)
+        {
+            slow = 120 - 6 * tunnelDrive;
+        }
+        else if (sc.Get(pc, StatusType.Chasewalk) is { Val3: < 0 } cw)
+        {
+            slow = cw.Val3;
+        }
+        else
+        {
+            slow = 0;
+            // Renewal song/dance fatigue (Ensemble Fatigue). The Longing/Dancing-lesson penalty
+            // (DC_DANCINGLESSON + SC_SPIRIT SL_BARDDANCER) is COMBAT-106.
+            slow = Math.Max(slow, Val(StatusType.Ensemblefatigue, e => e.Val2));
+            if (Has(StatusType.DecreaseAgi))   slow = Math.Max(slow, 25);
+            // Quagmire / HallucinationWalk post-delay / GloomyDay(val4) → 50.
+            if (Has(StatusType.Quagmire) || Has(StatusType.HallucinationwalkPostdelay)
+                || sc.Get(pc, StatusType.Gloomyday) is { Val4: not 0 }) slow = Math.Max(slow, 50);
+            slow = Math.Max(slow, Val(StatusType.Dontforgetme, e => e.Val3));
+            if (Has(StatusType.Curse))         slow = Math.Max(slow, 300);
+            slow = Math.Max(slow, Val(StatusType.Chasewalk, e => e.Val3));
+            if (Has(StatusType.Wedding))       slow = Math.Max(slow, 100);
+            // Joint Beat (status.hpp:2909): BREAK_ANKLE 0x01 → 50, BREAK_KNEE 0x04 → 30.
+            if (sc.Get(pc, StatusType.Jointbeat) is { } jb)
+                slow = Math.Max(slow, ((jb.Val2 & 0x01) != 0 ? 50 : 0) + ((jb.Val2 & 0x04) != 0 ? 30 : 0));
+            // Cloaking in HIDE mode (val4&1 == 0): val1<3 → 300, else 30-3*val1.
+            if (sc.Get(pc, StatusType.Cloaking) is { } ck && (ck.Val4 & 1) == 0)
+                slow = Math.Max(slow, ck.Val1 < 3 ? 300 : 30 - 3 * ck.Val1);
+            if (sc.Get(pc, StatusType.Gospel) is { Val4: 4 }) slow = Math.Max(slow, 75); // BCT_ENEMY
+            slow = Math.Max(slow, Val(StatusType.Slowdown, e => e.Val1));      // Slow Potion
+            if (Has(StatusType.Gatlingfever))  slow = Math.Max(slow, 100);
+            slow = Math.Max(slow, Val(StatusType.Suiton, e => e.Val3));
+            if (Has(StatusType.Swoo))          slow = Math.Max(slow, 300);
+            if (Has(StatusType.Freezing))      slow = Math.Max(slow, 30);
+            slow = Math.Max(slow, Val(StatusType.Marshofabyss, e => e.Val3));
+            if (sc.Get(pc, StatusType.Camouflage) is { Val1: > 2 } cf) slow = Math.Max(slow, 25 * (5 - cf.Val1));
+            if (Has(StatusType.Stealthfield))  slow = Math.Max(slow, 20);
+            if (Has(StatusType.Laziness))      slow = Math.Max(slow, 25);
+            slow = Math.Max(slow, Val(StatusType.RockCrusherAtk, e => e.Val2));
+            slow = Math.Max(slow, Val(StatusType.PowerOfGaia, e => e.Val2));
+            slow = Math.Max(slow, Val(StatusType.MelonBomb, e => e.Val2));
+            if (Has(StatusType.Rebound))       slow = Math.Max(slow, 25);
+            slow = Math.Max(slow, Val(StatusType.BTrap, e => e.Val3));
+            slow = Math.Max(slow, Val(StatusType.Catnippowder, e => e.Val3));
+            slow = Math.Max(slow, Val(StatusType.SpSha, e => e.Val2));
+            if (Has(StatusType.Creatingstar))  slow = Math.Max(slow, 90);
+            if (Has(StatusType.Shieldchainrush)) slow = Math.Max(slow, 20);
+            if (Has(StatusType.Groundgravity)) slow = Math.Max(slow, 20);
+            if (Has(StatusType.ShadowClock))   slow = Math.Max(slow, 30);
+            if (itemSpeedDelta > 0) slow = Math.Max(slow, itemSpeedDelta);    // permanent item slowdown
+        }
         speedRate += slow;
+
+        // Marsh of Abyss clamps the slowdown total (status.cpp:7916).
+        if (Has(StatusType.Marshofabyss) && speedRate > 150) speedRate = 150;
 
         // --- FAST phase: speed_rate -= max(speedup %), floor 40 (status.cpp:7918) ---
         int fast = 0;
@@ -655,17 +705,38 @@ public sealed class StatusCalcService : IStatusCalcService
         if (Has(StatusType.IncreaseAgi))   fast = Math.Max(fast, 25);
         fast = Math.Max(fast, 2 * Val(StatusType.Windwalk, e => e.Val1));
         if (Has(StatusType.Cartboost))     fast = Math.Max(fast, 20);
+        // Cloaking in MOVE mode (val4&1 == 1): val1>=10 → 25, else 3*val1-3.
+        if (sc.Get(pc, StatusType.Cloaking) is { } ckm && (ckm.Val4 & 1) == 1)
+            fast = Math.Max(fast, ckm.Val1 >= 10 ? 25 : 3 * ckm.Val1 - 3);
         if (Has(StatusType.Berserk))       fast = Math.Max(fast, 25);
         if (Has(StatusType.Run))           fast = Math.Max(fast, 55);
+        fast = Math.Max(fast, Val(StatusType.Avoid, e => e.Val2));
+        fast = Math.Max(fast, Val(StatusType.Invincible, e => e.Val3));
+        fast = Math.Max(fast, Val(StatusType.Cloakingexceed, e => e.Val3));
+        if (sc.Get(pc, StatusType.Paralyse) is { Val3: 0 }) fast = Math.Max(fast, 50);
+        if (Has(StatusType.Hovering))      fast = Math.Max(fast, 10);
+        fast = Math.Max(fast, Val(StatusType.GnCartboost, e => e.Val2));
+        fast = Math.Max(fast, Val(StatusType.Swingdance, e => e.Val3));
+        fast = Math.Max(fast, Val(StatusType.WindStepOption, e => e.Val2));
         if (Has(StatusType.FullThrottle))  fast = Math.Max(fast, 25);
+        fast = Math.Max(fast, Val(StatusType.Arclousedash, e => e.Val3));
+        fast = Math.Max(fast, Val(StatusType.DoramWalkspeed, e => e.Val1));
+        if (Has(StatusType.Rushwindmill))  fast = Math.Max(fast, 25);
+        fast = Math.Max(fast, Val(StatusType.EmergencyMove, e => e.Val2));
+        if (Has(StatusType.JawaiiSerenade)) fast = Math.Max(fast, 25);
+        fast = Math.Max(fast, Val(StatusType.WildWalk, e => e.Val2));
         if (itemSpeedDelta < 0) fast = Math.Max(fast, -itemSpeedDelta);    // permanent item speedup
         speedRate -= fast;
         if (speedRate < 40) speedRate = 40;
 
+        // --- final speed (status.cpp:7977). Paralyse(val3==1) +50% BEFORE the rate multiply. ---
+        if (sc.Get(pc, StatusType.Paralyse) is { Val3: 1 }) speed += speed * 50 / 100;
         if (speedRate != 100) speed = speed * speedRate / 100;
-        // Fixed-speed overrides (status.cpp:7982).
         if (Has(StatusType.Steelbody)) speed = 200;
         if (Has(StatusType.Defender))  speed = Math.Max(speed, 200);
+        if (Has(StatusType.Armor))     speed = Math.Max(speed, 200);
+        // SC_WALKSPEED (ChangeSpeed): speed*100/val1.
+        if (sc.Get(pc, StatusType.Walkspeed) is { Val1: > 0 } ws) speed = speed * 100 / ws.Val1;
 
         return (ushort)Math.Clamp(speed, MinWalk, MaxWalk);
     }

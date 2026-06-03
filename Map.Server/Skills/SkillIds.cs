@@ -947,6 +947,7 @@ public static class SkillIds
     public const ushort RA_WUGSTRIKE = 2243;
     public const ushort RETURN_TO_ELDICASTES = 2534;
     public const ushort RG_BACKSTAP = 212;
+    public const ushort RG_TUNNELDRIVE = 213;
     public const ushort RG_CLEANER = 222;
     public const ushort RG_CLOSECONFINE = 1005;
     public const ushort RG_GRAFFITI = 220;
