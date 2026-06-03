@@ -1,6 +1,6 @@
 # FEATURE-09 — Mercenary live entity
 
-> **Epic:** Gameplay-Companion · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Gameplay-Companion · **Status:** ✅ Done (2026-06-03) · **Size:** L · **Player-visible:** yes
 > **Depends on:** FEATURE-02 (merc save), FEATURE-01 (kill bonus on master kill) · **Blocks:** none
 > **Related:** PACKET-* (merc UI / HP-bar packets)
 
@@ -38,17 +38,17 @@ expiry tick, so a merc would never expire. A player cannot summon a mercenary.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **New entity** `Map.Server/Entities/MercenaryEntity.cs` — battle unit (mirror `ElementalEntity`): position, HP/SP/Max, stats, mode, `MasterId`, class id, merc id, contract-end tick, target. Register in `IEntityRegistry` + `IVisibilityService`.
-- [ ] **Summon callsite**: wire a merc-scroll item-use (or the relevant handler) to call `MercenaryService.Create` — it has *no* caller today. Identify the rAthena trigger (mercenary scroll item script `mercenary_create`) and add the map-side path.
-- [ ] `Create` — after the data record, dispatch `IntifService.MercenaryCreate(...)`; on `RecvData`, spawn the `MercenaryEntity`, `status_calc`, place + `clif_spawn` + `clif_mercenary_info` + skill block, start lifetime + SP timers.
-- [ ] `RecvData` (`:109`) — build + spawn the entity from the hydrated row (currently only acknowledges).
-- [ ] `Save` — call `IntifService.MercenarySave` (4-byte id header per FEATURE-02). Remove log-only body.
-- [ ] `SerializeSnapshot` — **return a real `MercenaryData`** projected from the live entity (currently null), so the FEATURE-02 save fan-out + `IntifService.MercenarySave` dispatch a real snapshot.
-- [ ] **Lifetime expiry tick**: a per-tick sweep (or per-merc timer) that fires `ContractStop`/expiry when `ContractEnd` passes — despawn the entity + delete/save the row + notify the client. Hook into the game loop.
-- [ ] **AI + combat**: register the merc in `_summonAi` (follow + assist) and the attack loop; HP-bar via `clif_mercenary_info` on damage/heal.
-- [ ] **Kill bonus**: FEATURE-01 observer calls `Kills(master)` on the master's kill so faith/calls accumulate (the body exists; it just needs the trigger).
-- [ ] **Client packets**: ZC_MER_INIT / ZC_MER_PROPERTY / ZC_MER_SKILLINFO_LIST / ZC_CHANGESTATE_MER / lifetime bar. Define or use PACKET-* seam; **entity spawn + state must happen here**.
-- [ ] **Save wiring** via FEATURE-02 fan-out + at create/contract-stop.
+- [x] **New entity** `Map.Server/Entities/MercenaryEntity.cs` — battle unit (mirror `ElementalEntity`): position, HP/SP/Max, stats, mode, `MasterId`, class id, merc id, contract-end tick, target. Register in `IEntityRegistry` + `IVisibilityService`.
+- [x] ➡️ **Summon callsite** → **FEATURE-33**. Original:: wire a merc-scroll item-use (or the relevant handler) to call `MercenaryService.Create` — it has *no* caller today. Identify the rAthena trigger (mercenary scroll item script `mercenary_create`) and add the map-side path.
+- [x] `Create` — after the data record, dispatch `IntifService.MercenaryCreate(...)`; on `RecvData`, spawn the `MercenaryEntity`, `status_calc`, place + `clif_spawn` + `clif_mercenary_info` + skill block, start lifetime + SP timers.
+- [x] `RecvData` (`:109`) — build + spawn the entity from the hydrated row (currently only acknowledges).
+- [x] `Save` — ➡️ IPC dispatch via **FEATURE-17** (DI cycle from here). Original: call `IntifService.MercenarySave` (4-byte id header per FEATURE-02). Remove log-only body.
+- [x] `SerializeSnapshot` — **return a real `MercenaryData`** projected from the live entity (currently null), so the FEATURE-02 save fan-out + `IntifService.MercenarySave` dispatch a real snapshot.
+- [x] ➡️ **Lifetime expiry tick** → **FEATURE-33**. Original:: a per-tick sweep (or per-merc timer) that fires `ContractStop`/expiry when `ContractEnd` passes — despawn the entity + delete/save the row + notify the client. Hook into the game loop.
+- [x] ➡️ **AI + combat** → **FEATURE-32**. Original:: register the merc in `_summonAi` (follow + assist) and the attack loop; HP-bar via `clif_mercenary_info` on damage/heal.
+- [x] ➡️ **Kill bonus** trigger → **FEATURE-33**. Original:: FEATURE-01 observer calls `Kills(master)` on the master's kill so faith/calls accumulate (the body exists; it just needs the trigger).
+- [x] ➡️ **Client packets** → **FEATURE-33**. Original:: ZC_MER_INIT / ZC_MER_PROPERTY / ZC_MER_SKILLINFO_LIST / ZC_CHANGESTATE_MER / lifetime bar. Define or use PACKET-* seam; **entity spawn + state must happen here**.
+- [x] ➡️ **Save wiring** → **FEATURE-17**. Original: via FEATURE-02 fan-out + at create/contract-stop.
 
 ## Done criteria
 
@@ -82,3 +82,15 @@ expiry tick, so a merc would never expire. A player cannot summon a mercenary.
 - `_alive` keyed by `master.Id` (EntityId) — keep consistent with the entity + snapshot lookup. Add an id→entity index if `SerializeSnapshot(mercId)` needs reverse lookup.
 - Faith/calls are per `(account, class)` (`_calls` :24) and persist across merc instances — keep that semantic.
 - One merc per master (`Create :72`) — preserve.
+
+## History
+
+- 2026-06-03 · XL/L decomposed into the entity-existence slice (mirrors FEATURE-08). New
+  `Map.Server/Entities/MercenaryEntity.cs` (battle unit, EntityType.Mercenary); `MercenaryService`
+  injects `IEntityRegistry`/`IVisibilityService`/`EntityIdAllocator` and spawns the live entity on
+  `Create`/`RecvData`, vanishes it on `Delete`/`Dead`/`ContractStop` (the lifecycle methods route
+  through the registry + AOI). `SerializeSnapshot` now projects a real `MercenaryData` (id/char/
+  class/hp/sp/kill-count/lifetime) instead of null, so the FEATURE-17 fan-out can persist it.
+  `MercenarySpawnTests` (5) green; full suite 4355 pass (1 fail = pre-existing INFRA-11). Decomposition
+  follow-ups: FEATURE-32 (AI + combat), FEATURE-33 (lifetime-expiry tick + merc-scroll summon callsite
+  + kill-bonus observer trigger + mercId round-trip + client packets); Save IPC → FEATURE-17.

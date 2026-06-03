@@ -24,15 +24,45 @@ public sealed class MercenaryService : IMercenaryService
     private readonly Dictionary<(int accountId, int classId), int> _calls = new();
     private readonly IServiceScopeFactory? _scopes;
     private readonly ILogger<MercenaryService> _logger;
+    // FEATURE-09 — spatial entity wiring (optional so the light test ctor keeps working).
+    private readonly IEntityRegistry? _entities;
+    private readonly Map.Server.Visibility.IVisibilityService? _visibility;
+    private readonly EntityIdAllocator? _ids;
 
-    public MercenaryService(IServiceScopeFactory scopes, ILogger<MercenaryService> logger)
+    public MercenaryService(IServiceScopeFactory scopes, ILogger<MercenaryService> logger,
+        IEntityRegistry? entities = null, Map.Server.Visibility.IVisibilityService? visibility = null,
+        EntityIdAllocator? ids = null)
     {
         _scopes = scopes;
         _logger = logger;
+        _entities = entities;
+        _visibility = visibility;
+        _ids = ids;
         Reload();
     }
 
     public MercenaryService(ILogger<MercenaryService> logger) { _logger = logger; }
+
+    /// <summary>FEATURE-09 test seam — seed catalog rows + (optionally) stamp a merc id for a live merc.</summary>
+    internal void SeedCatalogForTest(params MercenaryDbEntity[] entries)
+    {
+        foreach (var e in entries) _catalog[e.MercId] = e;
+    }
+
+    internal void SetMercIdForTest(PlayerEntity master, int mercId)
+    {
+        if (_alive.TryGetValue(master.Id, out var live)) live.MercId = mercId;
+    }
+
+    /// <summary>FEATURE-09 test ctor — wires the spatial deps without a DB reload.</summary>
+    internal MercenaryService(ILogger<MercenaryService> logger, IEntityRegistry entities,
+        Map.Server.Visibility.IVisibilityService visibility, EntityIdAllocator ids)
+    {
+        _logger = logger;
+        _entities = entities;
+        _visibility = visibility;
+        _ids = ids;
+    }
 
     /// <summary>Catalog lookup by merc id.</summary>
     public MercenaryDbEntity? GetCatalogEntry(uint mercId)
@@ -75,20 +105,58 @@ public sealed class MercenaryService : IMercenaryService
             _logger.LogWarning("mercenary_create: unknown class {Class}", classId);
             return false;
         }
+        var cat = _catalog.GetValueOrDefault((uint)classId);
         var live = new LiveMerc
         {
+            CharacterId = master.CharacterId,
             ClassId = classId,
-            Hp = 1,
-            Sp = 0,
+            MaxHp = cat?.Hp ?? 1,
+            MaxSp = cat?.Sp ?? 0,
+            Hp = cat?.Hp ?? 1,
+            Sp = cat?.Sp ?? 0,
             ContractEnd = DateTime.UtcNow.AddMilliseconds(lifetimeMs),
             Faith = 0,
             KillCount = 0,
         };
         _alive[master.Id] = live;
         ContractInit(master);
+        SpawnEntity(master, live);
         _logger.LogInformation("mercenary_create: master={Master} class={Class} lifetime={Ms}ms",
             master.Name, classId, lifetimeMs);
         return true;
+    }
+
+    // ----- FEATURE-09 spatial helpers -----
+
+    /// <summary>Spawn the live merc entity adjacent to the master + notify the AOI.</summary>
+    private void SpawnEntity(PlayerEntity master, LiveMerc live)
+    {
+        if (_entities == null || _ids == null) return; // headless / test-light path
+        if (live.Entity != null && _entities.Get(live.Entity.Id) != null) return;
+
+        var entity = new Map.Server.Entities.MercenaryEntity(_ids.NextMob(), live.MercId, live.ClassId,
+            master.Id, master.MapId, master.X, master.Y)
+        {
+            MaxHp = Math.Max(1, live.MaxHp),
+            MaxSp = Math.Max(0, live.MaxSp),
+            ContractEndTick = Environment.TickCount64
+                + (long)Math.Max(0, (live.ContractEnd - DateTime.UtcNow).TotalMilliseconds),
+        };
+        entity.Hp = live.Hp > 0 ? Math.Min(live.Hp, entity.MaxHp) : entity.MaxHp;
+        entity.Sp = Math.Min(live.Sp, entity.MaxSp);
+        live.Entity = entity;
+        _entities.Add(entity);
+        _visibility?.NotifySpawnedToArea(entity);
+        // PACKET-* (merc UI / HP-bar): clif_mercenary_info / skillblock emit seam → FEATURE-33.
+    }
+
+    /// <summary>Remove the live merc entity from the world (delete / contract stop / death).</summary>
+    private void VanishEntity(LiveMerc live, Core.Server.Packets.Out.ZC.VanishReason reason)
+    {
+        if (live.Entity == null) return;
+        _visibility?.NotifyVanishedToArea(live.Entity, reason);
+        _entities?.Remove(live.Entity.Id);
+        live.Entity = null;
     }
 
     public bool Dead(PlayerEntity master)
@@ -102,23 +170,30 @@ public sealed class MercenaryService : IMercenaryService
     public int Delete(PlayerEntity master, byte reason)
     {
         if (!_alive.Remove(master.Id, out var live)) return 0;
+        VanishEntity(live, Core.Server.Packets.Out.ZC.VanishReason.Outsight);
         _logger.LogInformation("mercenary_delete: master={Master} reason={Reason}", master.Name, reason);
         return live.ClassId;
     }
 
+    /// <summary>FEATURE-09 — rAthena <c>mercenary_recv_data</c>: the char-hydrated merc row arrived;
+    /// build + spawn the live <see cref="MercenaryEntity"/> into the world. Returns true when a record
+    /// exists.</summary>
     public bool RecvData(PlayerEntity master)
     {
-        // Char-server unmarshalling lives in MercenaryRecvDataHandler.
-        // Once it lands, this method is called with the hydrated
-        // record. For now just acknowledge the canonical entry.
-        return _alive.ContainsKey(master.Id);
+        if (!_alive.TryGetValue(master.Id, out var live)) return false;
+        SpawnEntity(master, live);
+        return true;
     }
 
+    /// <summary>FEATURE-09 — mercenary_save. ➡️ The <c>IntifService.MercenarySave</c> dispatch rides the
+    /// FEATURE-17 companion save fan-out (Phase B) — a direct IIntifService inject here is a DI cycle
+    /// (IntifService already depends on IMercenaryService for the snapshot). <see cref="SerializeSnapshot"/>
+    /// now returns a real payload so that fan-out can persist it.</summary>
     public void Save(PlayerEntity master)
     {
         if (!_alive.TryGetValue(master.Id, out var live)) return;
-        _logger.LogDebug("mercenary_save: master={Master} class={Class} hp={Hp}/{MaxHp}",
-            master.Name, live.ClassId, live.Hp, live.Hp);
+        _logger.LogDebug("mercenary_save: master={Master} class={Class} hp={Hp}/{MaxHp} (persists via FEATURE-17 fan-out)",
+            master.Name, live.ClassId, live.Hp, live.MaxHp);
     }
 
     public int GetCalls(int classId)
@@ -195,23 +270,41 @@ public sealed class MercenaryService : IMercenaryService
     }
 
     /// <inheritdoc />
+    /// <summary>FEATURE-09 — project the live merc matching <paramref name="mercId"/> onto the IPC
+    /// <see cref="Core.Server.IPC.MercenaryData"/> for the save fan-out (rAthena <c>intif_mercenary_save</c>
+    /// shape). Null when no live merc has that id.</summary>
     public Core.Server.IPC.MercenaryData? SerializeSnapshot(int mercId)
     {
-        // T7.3 — canonical entry point. Same shape as HomunculusService:
-        // when the per-master Create / RecvData paths land their
-        // _aliveByMercId map, this lookup projects the merc onto
-        // MercenaryData. Returning null today means "no live entity,
-        // skip dispatch."
+        foreach (var live in _alive.Values)
+        {
+            if (live.MercId != mercId) continue;
+            return new Core.Server.IPC.MercenaryData
+            {
+                MercenaryId = live.MercId,
+                CharacterId = live.CharacterId,
+                ClassId = live.ClassId,
+                Hp = live.Hp,
+                Sp = live.Sp,
+                KillCount = live.KillCount,
+                LifeTime = (long)Math.Max(0, (live.ContractEnd - DateTime.UtcNow).TotalMilliseconds),
+            };
+        }
         return null;
     }
 
     private sealed class LiveMerc
     {
+        public int MercId;        // FEATURE-09 — char-assigned id (0 until the create round-trip lands → FEATURE-33).
+        public int CharacterId;   // master's char id (for the save snapshot).
         public int ClassId;
         public int Hp;
         public int Sp;
+        public int MaxHp;
+        public int MaxSp;
         public DateTime ContractEnd;
         public int Faith;
         public int KillCount;
+        // FEATURE-09 — the live in-world entity (null while not spawned).
+        public Map.Server.Entities.MercenaryEntity? Entity;
     }
 }

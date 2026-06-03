@@ -226,7 +226,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | FEATURE-06 | ✅ Auction map-side wiring |
 | FEATURE-07 | ✅ Pet lifecycle (catch roll, egg create, hatch, persistence) |
 | FEATURE-08 | ✅ Homunculus live entity — entity/lifecycle slice (AI/growth/hunger split) |
-| FEATURE-09 | Mercenary live entity (summon + lifetime tick + persistence) |
+| FEATURE-09 | ✅ Mercenary live entity — entity/lifecycle slice (AI/lifetime/packets split) |
 | FEATURE-10 | Elemental persistence + lifetime despawn |
 | FEATURE-11 | Vending real transfer + autotrade persistence |
 | FEATURE-12 | Buying store real implementation |
@@ -248,6 +248,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | FEATURE-29 | Homunculus AI + combat — split from FEATURE-08 |
 | FEATURE-30 | Homunculus growth + exp table — split from FEATURE-08 |
 | FEATURE-31 | Homunculus hunger timer + client packets — split from FEATURE-08 |
+| FEATURE-32 | Mercenary AI + combat — split from FEATURE-09 |
+| FEATURE-33 | Mercenary lifetime expiry + summon + kill-bonus + packets — split from FEATURE-09 |
 
 ### `scripting/` — NPC scripting runtime + content
 | Ticket | Title |
