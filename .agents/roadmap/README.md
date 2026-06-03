@@ -224,7 +224,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | FEATURE-04 | ✅ Achievement service real implementation |
 | FEATURE-05 | ✅ Mail / RODEX service (attach/zeny/return + IPC) |
 | FEATURE-06 | ✅ Auction map-side wiring |
-| FEATURE-07 | Pet lifecycle (catch roll, egg create, hatch, persistence) |
+| FEATURE-07 | ✅ Pet lifecycle (catch roll, egg create, hatch, persistence) |
 | FEATURE-08 | Homunculus live entity (spawn + AI + growth + persistence) |
 | FEATURE-09 | Mercenary live entity (summon + lifetime tick + persistence) |
 | FEATURE-10 | Elemental persistence + lifetime despawn |
@@ -243,6 +243,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | FEATURE-24 | Non-battle achievement triggers (level/job/zeny/etc.) — split from FEATURE-04 |
 | FEATURE-25 | Mail attachment overweight gate + rental-expiry — split from FEATURE-05 |
 | FEATURE-26 | Auction full-item fidelity (cards/options) + search-type bucketing — split from FEATURE-06 |
+| FEATURE-27 | Pet egg pet_id binding + create→get-egg round-trip — split from FEATURE-07 |
+| FEATURE-28 | Pet combat: auto-skill dispatch + loot bag — split from FEATURE-07 |
 
 ### `scripting/` — NPC scripting runtime + content
 | Ticket | Title |

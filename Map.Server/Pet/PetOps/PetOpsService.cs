@@ -36,7 +36,13 @@ public sealed class PetOpsService : IPetOpsService
     private readonly Map.Server.Mob.IMobDb? _mobDb;
     private readonly Map.Server.Items.IItemCatalog? _items;
     private readonly Map.Server.Services.Intif.IIntifService? _intif;
+    // FEATURE-07 — egg/hatch inventory access.
+    private readonly Map.Server.Status.ISessionManagerAccessor? _sessions;
+    private readonly Map.Server.Inventory.IInventoryService? _inventory;
     private readonly Random _rng;
+
+    // FEATURE-07 — egg item id → pet class id (built lazily from pet_db + mob_db).
+    private Dictionary<uint, int>? _eggToClass;
 
     public PetOpsService(
         IServiceScopeFactory scopes,
@@ -46,6 +52,8 @@ public sealed class PetOpsService : IPetOpsService
         Map.Server.Mob.IMobDb? mobDb = null,
         Map.Server.Items.IItemCatalog? items = null,
         Map.Server.Services.Intif.IIntifService? intif = null,
+        Map.Server.Status.ISessionManagerAccessor? sessions = null,
+        Map.Server.Inventory.IInventoryService? inventory = null,
         Random? rng = null)
     {
         _scopes = scopes;
@@ -55,20 +63,28 @@ public sealed class PetOpsService : IPetOpsService
         _mobDb = mobDb;
         _items = items;
         _intif = intif;
+        _sessions = sessions;
+        _inventory = inventory;
         _rng = rng ?? Random.Shared;
         Reload();
     }
 
     public PetOpsService(ILogger<PetOpsService> logger) { _logger = logger; _rng = Random.Shared; }
 
-    /// <summary>FEATURE-01 test ctor — wires the catch-roll deps without triggering a DB reload.</summary>
+    /// <summary>FEATURE-01/07 test ctor — wires the egg/catch deps without triggering a DB reload.</summary>
     internal PetOpsService(ILogger<PetOpsService> logger, Map.Server.Mob.IMobDb? mobDb,
-        Map.Server.Items.IItemCatalog? items, Map.Server.Services.Intif.IIntifService? intif, Random? rng)
+        Map.Server.Items.IItemCatalog? items, Map.Server.Services.Intif.IIntifService? intif, Random? rng,
+        Map.Server.Status.ISessionManagerAccessor? sessions = null,
+        Map.Server.Inventory.IInventoryService? inventory = null,
+        IPetService? pet = null)
     {
         _logger = logger;
         _mobDb = mobDb;
         _items = items;
         _intif = intif;
+        _sessions = sessions;
+        _inventory = inventory;
+        _pet = pet;
         _rng = rng ?? Random.Shared;
     }
 
@@ -92,22 +108,41 @@ public sealed class PetOpsService : IPetOpsService
         return true;
     }
 
+    /// <summary>FEATURE-07 — rAthena <c>pet_create_egg</c> (pet.cpp): a hatchable egg item resolves to
+    /// a pet class via pet_db; dispatch <c>intif_create_pet</c> so the char side inserts a fresh pet
+    /// row (the egg item is then granted on the <see cref="GetEgg"/> response). Returns false when the
+    /// egg item maps to no pet.</summary>
     public bool CreateEgg(PlayerEntity master, int itemId)
     {
-        // rAthena pet_create_egg — bounce to char-server via intif
-        // (intif_create_pet). The caller (item-use handler) consumes
-        // the egg item; here we acknowledge the request shape.
-        _logger.LogInformation("pet_create_egg: master={Master} egg={Item}", master.Name, itemId);
+        var classId = EggItemToClass((uint)itemId);
+        if (classId == 0 || _intif == null)
+        {
+            _logger.LogInformation("pet_create_egg: master={Master} egg={Item} is not a pet egg", master.Name, itemId);
+            return false;
+        }
+        var pet = _mobDb?.Get(classId);
+        var petAegis = pet?.AegisName;
+        var cat = petAegis != null ? GetCatalogEntry(petAegis) : null;
+        var intimacy = (byte)Math.Clamp(cat?.IntimacyStart ?? 250, 0, 255);
+        var hungry = (byte)Math.Clamp(cat?.Fullness ?? MaxHunger, 0, 100);
+        _intif.PetCreate(master, classId: classId, nameId: itemId, rename: 0, eggItemId: itemId,
+            intimate: intimacy, hungry: hungry, gender: '\0', petName: pet?.Name ?? string.Empty);
+        _logger.LogInformation("pet_create_egg: {Master} created pet class {Class} from egg {Item}",
+            master.Name, classId, itemId);
         return true;
     }
 
+    /// <summary>FEATURE-07 — rAthena <c>pet_get_egg</c>: the char side created the pet row; grant the
+    /// egg item to the master's inventory so it can be hatched. ➡️ Binding the returned pet_id into the
+    /// egg's card slots (so a saved pet's intimacy survives a re-egg) is FEATURE-27.</summary>
     public bool GetEgg(PlayerEntity master, int classId, int itemId, byte gender)
     {
-        // rAthena pet_get_egg — char-server returned the new egg row;
-        // grant the egg item to the master's inventory (handler-side).
-        _logger.LogInformation("pet_get_egg: master={Master} class={Class} egg={Item}",
-            master.Name, classId, itemId);
-        return true;
+        var session = _sessions?.GetByEntityId(master.Id);
+        if (session == null || _inventory == null) return false;
+        var ok = _inventory.GiveItem(session, (uint)itemId, 1);
+        _logger.LogInformation("pet_get_egg: {Master} received egg {Item} for class {Class} (ok={Ok})",
+            master.Name, itemId, classId, ok);
+        return ok;
     }
 
     public bool ReturnEgg(PlayerEntity master)
@@ -120,11 +155,14 @@ public sealed class PetOpsService : IPetOpsService
         return true;
     }
 
+    /// <summary>FEATURE-07 — rAthena <c>pet_egg_search</c>: the inventory slot (ServerIndex) of the
+    /// egg item <paramref name="eggId"/>, or -1 if the master doesn't hold it.</summary>
     public int EggSearch(PlayerEntity master, int eggId)
     {
-        // rAthena pet_egg_search — scan inventory for the egg item id.
-        // Inventory lookup lives outside this service; we surface the
-        // result shape (returning -1 = not found is rAthena's contract).
+        var inv = _sessions?.GetByEntityId(master.Id)?.Inventory;
+        if (inv == null) return -1;
+        foreach (var i in inv)
+            if (i.NameId == (uint)eggId && i.Amount > 0) return i.ServerIndex;
         return -1;
     }
 
@@ -136,16 +174,35 @@ public sealed class PetOpsService : IPetOpsService
         return 0;
     }
 
+    /// <summary>FEATURE-07 — rAthena <c>pet_birth_process</c>: hatch the selected egg into a live pet.
+    /// Resolves the egg item at the selected inventory slot → pet class (pet_db) → consumes the egg →
+    /// <see cref="IPetService.Summon"/>. Returns 0 on hatch, -1 on any failure.</summary>
     public int BirthProcess(PlayerEntity master)
     {
-        // rAthena pet_birth_process — hatch egg → live pet. Real spawn
-        // goes through IPetService.Summon(master, classId, name).
         var slot = master.PetCatchTargetClass;
         if (slot < 0 || _pet == null) return -1;
         master.PetCatchTargetClass = -1;
-        // The hatched pet's class id comes from the egg row (inventory
-        // lookup at the handler); here we just clear the selected slot
-        // marker. Real Summon happens in the item-use handler.
+
+        var session = _sessions?.GetByEntityId(master.Id);
+        var inv = session?.Inventory;
+        if (inv == null) return -1;
+
+        var egg = inv.FirstOrDefault(i => i.ServerIndex == slot && i.Amount > 0);
+        if (egg == null) return -1;
+        var classId = EggItemToClass(egg.NameId);
+        if (classId == 0) return -1;
+
+        // Consume the egg item, then hatch the live pet (the hunger timer is already running in
+        // PetService.Tick). PACKET-03 owns clif_send_petdata — see the pet-UI follow-up.
+        egg.Amount -= 1;
+        if (egg.Amount == 0)
+        {
+            if (egg.Id > 0) session!.RemovedInventoryIds.Add(egg.Id);
+            inv.Remove(egg);
+        }
+        var mob = _mobDb?.Get(classId);
+        _pet.Summon(master, classId, mob?.Name ?? string.Empty, eggItemId: (int)egg.NameId);
+        _logger.LogInformation("pet_birth_process: {Master} hatched pet class {Class}", master.Name, classId);
         return 0;
     }
 
@@ -436,4 +493,29 @@ public sealed class PetOpsService : IPetOpsService
     /// <summary>Catalog lookup by mob Aegis name (e.g. "PORING").</summary>
     public PetDbEntity? GetCatalogEntry(string mobAegis)
         => _catalog.TryGetValue(mobAegis, out var v) ? v : null;
+
+    /// <summary>FEATURE-07 test seam — force a rebuild of the egg→class index after seeding.</summary>
+    internal void InvalidateEggIndexForTest() => _eggToClass = null;
+
+    /// <summary>FEATURE-07 — resolve a hatchable egg item id to its pet class id (0 = not a pet egg),
+    /// via the pet_db <c>EggItem</c> → <c>MobAegis</c> → mob class chain.</summary>
+    private int EggItemToClass(uint eggItemId)
+    {
+        EnsureEggIndex();
+        return _eggToClass!.TryGetValue(eggItemId, out var c) ? c : 0;
+    }
+
+    private void EnsureEggIndex()
+    {
+        if (_eggToClass != null) return;
+        _eggToClass = new Dictionary<uint, int>();
+        foreach (var (mobAegis, cat) in _catalog)
+        {
+            if (string.IsNullOrEmpty(cat.EggItem)) continue;
+            var eggItem = _items?.GetByAegisName(cat.EggItem);
+            var mob = _mobDb?.GetByAegisName(mobAegis);
+            if (eggItem == null || mob == null) continue;
+            _eggToClass[eggItem.Id] = mob.Id;
+        }
+    }
 }

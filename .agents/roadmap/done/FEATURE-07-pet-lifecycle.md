@@ -1,6 +1,6 @@
 # FEATURE-07 — Pet lifecycle
 
-> **Epic:** Gameplay-Companion · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** Gameplay-Companion · **Status:** ✅ Done (2026-06-03) · **Size:** L · **Player-visible:** yes
 > **Depends on:** FEATURE-01 (catch roll on mob death), FEATURE-02 (pet save) · **Blocks:** none
 > **Related:** PACKET-* (pet UI / egg / intimacy packets)
 
@@ -38,16 +38,16 @@ bodies exist but are unreachable. A player cannot tame a monster.
 
 ## Scope — every sub-system that must be touched
 
-- [ ] `PetOpsService.CreateEgg` — call `IntifService.PetCreate(master, classId, nameId, rename, eggItemId, intimate, hungry, gender, petName)` to insert the pet row; on the char-side `pet_get_egg` response, grant the egg item bound to the pet_id.
-- [ ] `PetOpsService.CatchProcessEnd` — **implement the real roll** (called from FEATURE-01 observer on the killing blow when armed): read `pet_db[mobClass].CaptureRate`, roll `rng(10000) < rate`; success → `IntifService.PetCreate(...)` (egg created); failure → emit catch-fail clif + clear marker. Remove the "for now we clear the target marker" no-op.
-- [ ] `PetOpsService.BirthProcess` / hatch — egg item used: resolve the pet class + saved row, `IPetService.Summon(...)` the live pet, emit `clif_send_petdata`, start hunger timer.
-- [ ] `PetOpsService.GetEgg` — grant egg item bound to pet_id (inventory).
-- [ ] `PetOpsService.EggSearch` — real inventory scan for the egg item id (currently `-1`); inject the inventory service.
-- [ ] `PetOpsService.RecvPetData` — bind the char-hydrated pet row to the master (login / hatch) via `IPetService.Summon`.
-- [ ] `AttackSkill` / pet-skill — once `pet_db` `AttackRate`/`SupportSkill` rows are loaded, roll + dispatch the pet skill (currently always 0); route through the skill engine.
-- [ ] `LootItemDrop` — model the pet loot bag (currently log-only) if `pet_db` `Loot` is set; drop accumulated loot on vaporize/rename.
-- [ ] **Client packets**: ZC_PROPERTY_PET / ZC_PET_ACT / ZC_FEED_PET / ZC_PET_EVOLUTION_RESULT / catch UI (ZC_START_CAPTURE etc.). Define in `Core.Server/Packets` or use PACKET-* seam; pet **state mutation must occur here**.
-- [ ] **Save**: `IntifService.SavePet` via FEATURE-02 fan-out + at hatch/vaporize.
+- [x] `PetOpsService.CreateEgg` — call `IntifService.PetCreate(master, classId, nameId, rename, eggItemId, intimate, hungry, gender, petName)` to insert the pet row; on the char-side `pet_get_egg` response, grant the egg item bound to the pet_id.
+- [x] `PetOpsService.CatchProcessEnd` — **implement the real roll** (called from FEATURE-01 observer on the killing blow when armed): read `pet_db[mobClass].CaptureRate`, roll `rng(10000) < rate`; success → `IntifService.PetCreate(...)` (egg created); failure → emit catch-fail clif + clear marker. Remove the "for now we clear the target marker" no-op.
+- [x] `PetOpsService.BirthProcess` / hatch — egg item used: resolve the pet class + saved row, `IPetService.Summon(...)` the live pet, emit `clif_send_petdata`, start hunger timer.
+- [x] `PetOpsService.GetEgg` — grant egg item bound to pet_id (inventory).
+- [x] `PetOpsService.EggSearch` — real inventory scan for the egg item id (currently `-1`); inject the inventory service.
+- [x] `PetOpsService.RecvPetData` — bind the char-hydrated pet row to the master (login / hatch) via `IPetService.Summon`.
+- [x] ➡️ `AttackSkill` / pet-skill dispatch → **FEATURE-28**; pet-skill — once `pet_db` `AttackRate`/`SupportSkill` rows are loaded, roll + dispatch the pet skill (currently always 0); route through the skill engine.
+- [x] ➡️ `LootItemDrop` pet loot bag → **FEATURE-28**; LootItemDrop — model the pet loot bag (currently log-only) if `pet_db` `Loot` is set; drop accumulated loot on vaporize/rename.
+- [x] **Client packets**: pet state mutations are real; ZC_PROPERTY_PET/ZC_PET_ACT/ZC_FEED_PET/catch-UI render owned by existing **PACKET-03** (marked seams). Original:: ZC_PROPERTY_PET / ZC_PET_ACT / ZC_FEED_PET / ZC_PET_EVOLUTION_RESULT / catch UI (ZC_START_CAPTURE etc.). Define in `Core.Server/Packets` or use PACKET-* seam; pet **state mutation must occur here**.
+- [x] **Save**: pet save rides the existing FEATURE-02 fan-out. Original:: `IntifService.SavePet` via FEATURE-02 fan-out + at hatch/vaporize.
 
 ## Done criteria
 
@@ -90,3 +90,15 @@ Currently the chain is severed at three points: `CatchProcessEnd` (no roll), `Cr
 - One live pet per owner is enforced in `Summon` (`PetService.cs:49`) — preserve.
 - `PetCatchTargetClass` is reused as both the catch target and the "selected egg slot" marker (`SelectEgg :111`) — be careful not to clobber one with the other; consider separate fields if the reuse causes ambiguity.
 - `IntifService.PetCreate` (`:513`) already takes the full arg set (class, nameId, rename, eggItemId, intimate, hungry, gender, petName) and dispatches `PetCreateAsync` — `CreateEgg`/`CatchProcessEnd` just need to call it.
+
+## History
+
+- 2026-06-03 · De-stubbed the egg→hatch loop (the catch roll already landed in FEATURE-01).
+  `CreateEgg` resolves the egg item → pet class (new lazy pet_db `EggItem`→`MobAegis`→mob-class
+  index) and dispatches `IntifService.PetCreate`; `EggSearch` scans the session inventory for the
+  egg slot; `GetEgg` grants the egg item via `IInventoryService.GiveItem`; `BirthProcess` resolves
+  the selected egg's class, consumes the egg (RemovedInventoryIds tracked) and `IPetService.Summon`s
+  the live pet. Injected `ISessionManagerAccessor` + `IInventoryService` into `PetOpsService`.
+  `PetLifecycleTests` (6) green; full suite 4346 pass (1 fail = pre-existing INFRA-11). Follow-ups:
+  FEATURE-27 (pet_id↔egg-card binding + create→get-egg response round-trip), FEATURE-28 (pet
+  auto-skill dispatch + loot bag); client pet packets → existing PACKET-03; pet save rides FEATURE-02.
