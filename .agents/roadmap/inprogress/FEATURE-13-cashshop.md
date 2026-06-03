@@ -1,6 +1,6 @@
 # FEATURE-13 — Cash shop
 
-> **Epic:** Gameplay-Shop · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-Shop · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Related:** PACKET-* (cash-shop UI packets)
 
