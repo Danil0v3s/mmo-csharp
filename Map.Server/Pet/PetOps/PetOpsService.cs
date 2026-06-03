@@ -39,6 +39,7 @@ public sealed class PetOpsService : IPetOpsService
     // FEATURE-07 — egg/hatch inventory access.
     private readonly Map.Server.Status.ISessionManagerAccessor? _sessions;
     private readonly Map.Server.Inventory.IInventoryService? _inventory;
+    private readonly IPetClientService? _client;
     private readonly Random _rng;
 
     // FEATURE-07 — egg item id → pet class id (built lazily from pet_db + mob_db).
@@ -54,6 +55,7 @@ public sealed class PetOpsService : IPetOpsService
         Map.Server.Services.Intif.IIntifService? intif = null,
         Map.Server.Status.ISessionManagerAccessor? sessions = null,
         Map.Server.Inventory.IInventoryService? inventory = null,
+        IPetClientService? client = null,
         Random? rng = null)
     {
         _scopes = scopes;
@@ -65,6 +67,7 @@ public sealed class PetOpsService : IPetOpsService
         _intif = intif;
         _sessions = sessions;
         _inventory = inventory;
+        _client = client;
         _rng = rng ?? Random.Shared;
         Reload();
     }
@@ -76,7 +79,9 @@ public sealed class PetOpsService : IPetOpsService
         Map.Server.Items.IItemCatalog? items, Map.Server.Services.Intif.IIntifService? intif, Random? rng,
         Map.Server.Status.ISessionManagerAccessor? sessions = null,
         Map.Server.Inventory.IInventoryService? inventory = null,
-        IPetService? pet = null)
+        IPetService? pet = null,
+        IPetClientService? client = null,
+        IEntityRegistry? entities = null)
     {
         _logger = logger;
         _mobDb = mobDb;
@@ -85,6 +90,8 @@ public sealed class PetOpsService : IPetOpsService
         _sessions = sessions;
         _inventory = inventory;
         _pet = pet;
+        _client = client;
+        _entities = entities;
         _rng = rng ?? Random.Shared;
     }
 
@@ -223,6 +230,9 @@ public sealed class PetOpsService : IPetOpsService
         if (pet.Hunger >= MaxHunger) return -2; // already full
         pet.Hunger = (ushort)Math.Min(MaxHunger, pet.Hunger + FoodHungerStep);
         pet.Intimacy = (ushort)Math.Min(MaxIntimacy, pet.Intimacy + 10);
+        // rAthena pet_food → clif_send_petdata(HUNGER) + clif_send_petdata(INTIMACY).
+        _client?.SendPetData(master, pet, Core.Server.Packets.Out.ZC.PetDataType.Hunger, pet.Hunger);
+        _client?.SendPetData(master, pet, Core.Server.Packets.Out.ZC.PetDataType.Intimacy, pet.Intimacy);
         return 1;
     }
 
@@ -245,8 +255,9 @@ public sealed class PetOpsService : IPetOpsService
         var pet = GetLivePet(master);
         if (pet == null) return;
         pet.Intimacy = (ushort)Math.Clamp(pet.Intimacy + delta, 0, MaxIntimacy);
-        // rAthena: if intimacy reaches 0, pet runs away.
-        if (pet.Intimacy == 0) _pet?.Recall(master);
+        // rAthena: if intimacy reaches 0, pet runs away; else push the new intimacy to the client.
+        if (pet.Intimacy == 0) { _pet?.Recall(master); return; }
+        _client?.SendPetData(master, pet, Core.Server.Packets.Out.ZC.PetDataType.Intimacy, pet.Intimacy);
     }
 
     // ----- Combat / target -----
@@ -345,18 +356,38 @@ public sealed class PetOpsService : IPetOpsService
 
     public int Menu(PlayerEntity master, int choice)
     {
-        // rAthena pet_menu: 0=feed, 1=rename, 2=return-egg, 3=unequip
+        // rAthena pet_menu (pet.cpp:1422): 0=pet information, 1=feed, 2=performance, 3=return to egg,
+        // 4=unequip accessory. Gate: a hatched, non-runaway pet (intimate > PET_INTIMATE_NONE).
         var pet = GetLivePet(master);
-        if (pet == null) return -1;
+        if (pet == null || pet.Intimacy == 0) return 1; // rAthena returns 1 on "lost the pet already"
         switch (choice)
         {
-            case 0: return Food(master);
-            case 1: /* client opens rename dialog */ return 0;
-            case 2: return ReturnEgg(master) ? 0 : -1;
-            case 3: pet.EquipItemId = 0; return 0;
+            case 0: // pet information → resend the status panel
+                _client?.SendPetStatus(master, pet);
+                return 0;
+            case 1: // feed
+                return Food(master);
+            case 2: // performance — clif_pet_performance (a randomised act number broadcast)
+                _client?.SendPetData(master, pet, Core.Server.Packets.Out.ZC.PetDataType.Performance, PerformanceNumber(pet));
+                return 0;
+            case 3: // return to egg
+                return ReturnEgg(master) ? 0 : -1;
+            case 4: // unequip accessory
+                if (pet.EquipItemId != 0)
+                {
+                    pet.EquipItemId = 0;
+                    _client?.SendPetData(master, pet, Core.Server.Packets.Out.ZC.PetDataType.Accessory, 0);
+                }
+                return 0;
             default: return -1;
         }
     }
+
+    /// <summary>rAthena <c>clif_send_petdata(PERFORMANCE)</c> band: 1..3 normal (4 if the pet has a
+    /// special performance) gated by intimacy. We don't roll randomly here (deterministic for tests);
+    /// the client renders the act, so the exact pick is cosmetic.</summary>
+    private static int PerformanceNumber(Map.Server.Entities.PetEntity pet)
+        => pet.Intimacy > 900 ? 3 : pet.Intimacy > 750 ? 2 : 1;
 
     public int EquipItem(PlayerEntity master, int inventoryIndex)
     {

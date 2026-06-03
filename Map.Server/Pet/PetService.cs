@@ -24,6 +24,7 @@ public sealed class PetService : IPetService
     private readonly IStatusCalcService _statusCalc;
     private readonly IVisibilityService _visibility;
     private readonly EntityIdAllocator _ids;
+    private readonly IPetClientService? _client;
     private readonly ILogger<PetService> _logger;
     private readonly Dictionary<int, EntityId> _ownerToPet = new();
     private long _nextHungerTick;
@@ -34,13 +35,15 @@ public sealed class PetService : IPetService
         IStatusCalcService statusCalc,
         IVisibilityService visibility,
         EntityIdAllocator ids,
-        ILogger<PetService> logger)
+        ILogger<PetService> logger,
+        IPetClientService? client = null)
     {
         _entities = entities;
         _mobDb = mobDb;
         _statusCalc = statusCalc;
         _visibility = visibility;
         _ids = ids;
+        _client = client;
         _logger = logger;
     }
 
@@ -61,6 +64,10 @@ public sealed class PetService : IPetService
         _entities.Add(pet);
         _ownerToPet[owner.CharacterId] = pet.Id;
         _visibility.NotifySpawnedToArea(pet);
+        // rAthena pc_setpet → clif_send_petdata(INIT) + clif_send_petstatus: the pet panel appears on
+        // the owner's client as the egg hatches / pet re-summons.
+        _client?.SendPetData(owner, pet, Core.Server.Packets.Out.ZC.PetDataType.Init, 0);
+        _client?.SendPetStatus(owner, pet);
         _logger.LogInformation(
             "Pet {Pet} (class {Class}) summoned for owner {Char}",
             pet.Id.Value, petClassId, owner.CharacterId);

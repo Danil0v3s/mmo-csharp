@@ -453,6 +453,7 @@ builder.Services.AddSingleton<Map.Server.Mob.IMobAiService, Map.Server.Mob.MobAi
 builder.Services.AddSingleton<Map.Server.Mob.ISummonAiService, Map.Server.Mob.SummonAiService>();
 
 // Pet system (pet.cpp). Hunger / intimacy ticks; egg-hatch + capture.
+builder.Services.AddSingleton<Map.Server.Pet.IPetClientService, Map.Server.Pet.PetClientService>();
 builder.Services.AddSingleton<Map.Server.Pet.IPetService, Map.Server.Pet.PetService>();
 
 // EXP service (pc.cpp:8314 pc_gainexp). Awards base + job EXP on mob

@@ -249,6 +249,11 @@ public enum PacketHeader : short
     CZ_ACTIVE_QUEST       = 0x02b6,        // clif_parse_questStateAck: <quest_id>.L <active>.B, 7B (client toggles tracking).
     ZC_ACTIVE_QUEST       = 0x02b7,        // clif_quest_update_status: <quest_id>.L <active>.B, 7B (server confirms state).
     ZC_UPDATE_MISSION_HUNT = 0x09fa,       // clif_quest_update_objective: <len>.W <count>.W then per-obj questId.L questIndex.L target.W current.W, variable.
+
+    // Pet (GP-PET). rAthena pet.cpp / clif.cpp pet packet set.
+    CZ_COMMAND_PET        = 0x01a1,        // clif_parse_PetMenu: <type>.B, 3B (0=info 1=feed 2=performance 3=return 4=unequip).
+    ZC_PROPERTY_PET       = 0x01a2,        // clif_send_petstatus: <name>.24 <renamed>.B <level>.W <hunger>.W <intimacy>.W <accessory>.W <class>.W, 37B.
+    ZC_CHANGESTATE_PET    = 0x01a4,        // clif_send_petdata: <type>.B <GID>.L <data>.L, 11B (intimacy/hunger/accessory/... update).
     ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B
     ZC_STATE_CHANGE3      = 0x0229,        // clif_changeoption — option (effect-state) bitmask 32-bit, 15B
     ZC_SPIRITS            = 0x01d0,        // clif_spiritball — Monk sphere / Sura / servant / abyss count, 8B

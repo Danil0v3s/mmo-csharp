@@ -46,7 +46,12 @@ public sealed class PetEntity : MobEntity
     public int AutoLootMax { get; set; }
 
     /// <summary>Display name override; falls back to mob_db Name + a "'s pet" suffix in clients.</summary>
-    public string PetName { get; init; } = string.Empty;
+    public string PetName { get; set; } = string.Empty;
+
+    /// <summary>True once the pet has been renamed (rAthena <c>s_pet.rename_flag</c>): a renamed pet
+    /// can't be renamed again unless <c>battle_config.pet_rename</c> is on. Drives the
+    /// <c>ZC_PROPERTY_PET</c> "modified" byte.</summary>
+    public bool RenameFlag { get; set; }
 
     public PetEntity(EntityId id, MobDbEntry dbEntry, uint mapId, short x, short y)
         : base(id, dbEntry.Id, dbEntry.AegisName, mapId, x, y)

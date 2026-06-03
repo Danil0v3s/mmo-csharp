@@ -46,13 +46,20 @@ persistence round-trip are incomplete.
 
 ## Scope — every layer
 
-- [ ] **CZ handlers**: try-capture, pet-menu (hatch/feed/rename/return/equip), pet emotion.
-- [ ] **Service**: verify catch/hatch at HEAD; bind the hatched pet to a pet_id stored on the
-      egg card (archive FEATURE-27); feed → intimacy/hunger; rename; return-to-egg.
+- [~] **CZ handlers**: pet-menu (`CZ_COMMAND_PET` 0x01a1 → `PetMenuHandler` → `Menu`, turn 1).
+      Remaining: try-capture (`CZ_TRYCAPTURE_MONSTER`), hatch (egg-use → `BirthProcess`), rename
+      (`CZ_RENAME_PET`), select-egg (`CZ_SELECT_PETEGG`), pet emotion (`CZ_PET_ACT`).
+- [~] **Service**: feed → intimacy/hunger + emit (turn 1); `Menu` corrected to rAthena mapping
+      (0=info/1=feed/2=performance/3=return/4=unequip — was wrong) + runaway gate. Remaining: verify
+      catch/hatch at HEAD; bind the hatched pet to a pet_id stored on the egg card (archive FEATURE-27);
+      rename.
 - [ ] **Combat/loot**: pet AI auto-skill dispatch + loot pickup bag (archive FEATURE-28).
 - [ ] **Persistence**: pet row (class/name/intimacy/hunger/equip) load on hatch / save on
       mutate + logout; egg card carries pet_id across logout.
-- [ ] **ZC emits**: capture roulette, send-egg, pet data (intimacy/hunger/name), emotion.
+- [~] **ZC emits**: pet status (`ZC_PROPERTY_PET` 0x01a2) + pet data
+      (`ZC_CHANGESTATE_PET` 0x01a4: intimacy/hunger/accessory/performance) via new `IPetClientService`,
+      wired into `Summon`/`Food`/`SetIntimate`/`Menu` (turn 1). Remaining: capture roulette
+      (`ZC_TRYCAPTURE_MONSTER`), send-egg, emotion (`ZC_PET_ACT`).
 
 ## Done criteria
 
@@ -69,7 +76,29 @@ persistence round-trip are incomplete.
 - Persistence round-trip (hatch → mutate → reload → equal).
 - Live: tame → hatch → feed → rename → return.
 
+## Progress log (multi-turn vertical)
+
+- **2026-06-04 (turn 1)** — Pet-menu client bridge. New pet packets `CZ_COMMAND_PET` (0x01a1, 3B
+  `<type>.B`), `ZC_PROPERTY_PET` (0x01a2, 37B status panel: name/renamed/level/hunger/intimacy/
+  accessory/class), `ZC_CHANGESTATE_PET` (0x01a4, 11B `<type>.B <GID>.L <data>.L`, `PetDataType`
+  enum = rAthena `e_changestate_pet`). New `IPetClientService`/`PetClientService` emit hub (mirrors
+  `IPartyClientService`, routes via `ISessionManagerAccessor`) with `SendPetStatus` +
+  `SendPetData`. `PetMenuHandler` → `PetOpsService.Menu`. **Fixed a parity bug**: `Menu`'s mapping
+  was wrong (was 0=feed/1=rename/2=return/3=unequip); corrected to rAthena `pet_menu` (pet.cpp:1422):
+  0=info(send status)/1=feed/2=performance/3=return-to-egg/4=unequip, with the
+  `intimate <= PET_INTIMATE_NONE` runaway gate (returns 1). Emits wired: `Summon` →
+  `clif_send_petdata(INIT)` + `clif_send_petstatus`; `Food` → HUNGER + INTIMACY changestate;
+  `SetIntimate` → INTIMACY; `Menu` info/performance/unequip. Added `PetEntity.RenameFlag` (drives the
+  status "modified" byte) + made `PetName` settable. `PetMenuEmitTests` (6: status panel offsets,
+  feed hunger+intimacy changestate, return→recall, unequip, runaway-reject, handler routing); full
+  suite 4450 pass (1 = standing replay-fixture).
+- **Remaining (next turns → done):** capture flow (`CZ_TRYCAPTURE_MONSTER` → roulette → send-egg),
+  hatch (egg item-use → `BirthProcess` + emit), rename (`CZ_RENAME_PET` → char-side uniqueness),
+  select-egg + emotion CZ/ZC, pet combat/loot (FEATURE-28), persistence binding pet_id↔egg-card +
+  round-trip (FEATURE-27). The loop resumes this card.
+
 ## Notes / gotchas
 
 - The egg→pet-class index is lazy `pet_db EggItem→MobAegis→class` (archive FEATURE-07).
 - Loyalty intimacy thresholds gate the stat bonus — match `pet_db` intimacy bands.
+- Pet GID on the wire = `PetEntity.Id.Value` (same id the AOI spawn packet uses).
