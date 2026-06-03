@@ -116,6 +116,25 @@ public class MapSessionData(
     public List<int> RemovedInventoryIds { get; } = new();
 
     /// <summary>
+    /// COMBAT-94 — rAthena <c>clif_delitem</c> (<c>ZC_DELETE_ITEM_FROM_BODY</c>, 0x07fa): tell the
+    /// owning client to decrement the shown stack at <paramref name="serverIndex"/> by
+    /// <paramref name="count"/> immediately on a consume. The shared delitem helper for every
+    /// partial-consume path (ammo, item use, requirement payment) — a full-slot removal still rides
+    /// the periodic <see cref="RemovedInventoryIds"/> sync. <paramref name="reason"/> is the rAthena
+    /// delete-type (0 = Normal, 1 = used for a skill). No-op for a zero count.
+    /// </summary>
+    public void NotifyItemConsumed(int serverIndex, uint count, byte reason)
+    {
+        if (count == 0) return;
+        EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_DELETE_ITEM_FROM_BODY
+        {
+            DeleteType = reason,
+            Index = (ushort)(serverIndex + 2),       // client inventory index = server slot + 2
+            Amount = (ushort)System.Math.Min(count, ushort.MaxValue),
+        });
+    }
+
+    /// <summary>
     /// Per-character cart inventory loaded alongside the regular
     /// inventory. Null until <c>pc_setcart</c> activates one;
     /// remains null for characters without the cart skill. Items

@@ -75,6 +75,13 @@ public sealed class ItemUseService : IItemUseService
             if (item.Id > 0) session.RemovedInventoryIds.Add(item.Id);
             inv.RemoveAt(slotIndex);
         }
+        else
+        {
+            // COMBAT-94 — partial decrement: update the client's shown count immediately
+            // (rAthena pc_useitem → pc_delitem reason 0 = Normal). A full removal rides the
+            // RemovedInventoryIds sync above.
+            session.NotifyItemConsumed(item.ServerIndex, 1, reason: 0);
+        }
         _logger.LogDebug(
             "Char {Char} used item {Aegis} (slot {Slot}, path={Path}); {Remaining} left",
             user.CharacterId, row.NameAegis, slotIndex,

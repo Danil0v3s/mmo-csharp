@@ -133,6 +133,13 @@ public sealed class AmmoService : IAmmoService
             if (ammo.Id > 0) session.RemovedInventoryIds.Add(ammo.Id);
             inv.RemoveAt(slot);
         }
+        else
+        {
+            // COMBAT-94 — partial decrement: tell the client the new count immediately
+            // (rAthena battle_consume_ammo → pc_delitem reason 1 = "used for a skill"). A full
+            // removal (amount == 0) still rides the RemovedInventoryIds sync above.
+            session.NotifyItemConsumed(ammo.ServerIndex, take, reason: 1);
+        }
         return true;
     }
 

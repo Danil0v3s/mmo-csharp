@@ -149,6 +149,7 @@ public enum PacketHeader : short
     ZC_ADD_ITEM_TO_STORE = 0x00f4,         // <index>.W <amount>.L <nameid>.W <id>.B <atb>.B <rfn>.B <c1>.W <c2>.W <c3>.W <c4>.W (21B).
     CZ_MOVE_ITEM_FROM_STORE_TO_BODY = 0x0365, // <index>.W <amount>.L (8B). Take from storage.
     ZC_DELETE_ITEM_FROM_STORE = 0x00f6,    // <index>.W <amount>.L (8B). Server confirms removal.
+    ZC_DELETE_ITEM_FROM_BODY = 0x07fa,     // <deleteType>.W <index>.W <amount>.W (8B). clif_delitem — decrement inventory stack.
     CZ_CLOSE_STORE = 0x00f7,               // (2B). Player closed window.
     ZC_CLOSE_STORE = 0x00f8,               // (2B). Server ack.
     ZC_NOTIFY_STOREITEM_COUNTINFO = 0x00f2,// <current>.W <max>.W (6B). Storage capacity HUD.
