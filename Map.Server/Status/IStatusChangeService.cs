@@ -97,6 +97,15 @@ public interface IStatusChangeService
     void ReapplyDerivedStatMods(Entity target) { }
 
     /// <summary>
+    /// COMBAT-73 — re-apply every active SC's MaxHp/MaxSp contribution after
+    /// <c>StatusCalcService.CalcPc</c> rebuilds the HP/SP pool (status_calc_maxhp_pc /
+    /// _maxsp_pc), so a +MaxHP/+MaxSP buff survives an equip/level recalc. Runs AFTER the
+    /// MaxHp/MaxSp block (a separate pass from <see cref="ReapplyDerivedStatMods"/>); the caller
+    /// re-clamps current Hp/Sp to the new max. Default no-op for test doubles.
+    /// </summary>
+    void ReapplyMaxHpSpMods(Entity target) { }
+
+    /// <summary>
     /// Tick all active SCs across all entities — expires elapsed ones,
     /// fires periodic effects (Poison DoT etc.) per their PeriodMs.
     /// Pumped from the map game loop.

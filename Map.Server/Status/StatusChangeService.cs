@@ -302,6 +302,15 @@ public sealed class StatusChangeService : IStatusChangeService
             _effects.Get(sc.Type)?.OnRecalc?.Invoke(target, sc);
     }
 
+    // COMBAT-73 — the MaxHp/MaxSp re-fold pass (runs after CalcPc's MaxHp/MaxSp block).
+    public void ReapplyMaxHpSpMods(Entity target)
+    {
+        if (!_active.TryGetValue(target.Id, out var perEntity) || perEntity.Count == 0) return;
+        var snapshot = new List<StatusChange>(perEntity.Values);
+        foreach (var sc in snapshot)
+            _effects.Get(sc.Type)?.OnRecalcPool?.Invoke(target, sc);
+    }
+
     public void Tick(long nowTick)
     {
         if (_active.Count == 0) return;

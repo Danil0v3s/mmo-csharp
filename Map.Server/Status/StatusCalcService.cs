@@ -250,8 +250,13 @@ public sealed class StatusCalcService : IStatusCalcService
         }
         s.MaxHp = maxHp;
         s.MaxSp = maxSp;
-        if (s.Hp <= 0 || s.Hp > maxHp) s.Hp = maxHp;
-        if (s.Sp <= 0 || s.Sp > maxSp) s.Sp = maxSp;
+        // COMBAT-73 — re-fold active SC MaxHp/MaxSp mods onto the freshly-rebuilt pool
+        // (status_calc_maxhp_pc / _maxsp_pc), THEN re-clamp current Hp/Sp to the new max
+        // (against s.MaxHp/s.MaxSp, which the re-fold may have raised/lowered). A +MaxHP buff
+        // adds headroom without clobbering current Hp; a -MaxHP debuff re-caps Hp down.
+        _sc?.ReapplyMaxHpSpMods(player);
+        if (s.Hp <= 0 || s.Hp > s.MaxHp) s.Hp = s.MaxHp;
+        if (s.Sp <= 0 || s.Sp > s.MaxSp) s.Sp = s.MaxSp;
 
         // Speed / amotion / adelay — COMBAT-09: renewal status_base_amotion_pc
         // (status.cpp:2310) + the PC conversion in status_calc_bl_main

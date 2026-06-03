@@ -87,6 +87,60 @@ public class Combat53BespokeRefoldTests
         Assert.Equal(rebuilt, pc.Stats.Mdef2); // idempotent
     }
 
+    // COMBAT-73 — MaxHp SC mods survive a recalc via the OnRecalcPool pass (runs after the
+    // MaxHp block), recomputed on the rebuilt pool, without clobbering current Hp.
+    [Theory]
+    [InlineData(StatusType.Epiclesis, 2)]    // Val2 = 5*Val1  → +10%
+    [InlineData(StatusType.GtRevitalize, 5)] // Val2 = 2*Val1  → +10%
+    [InlineData(StatusType.FirmFaith, 5)]    // Val2 = 2*Val1  → +10%
+    [InlineData(StatusType.Lunarstance, 8)]  // Val2 = 2+Val1  → +10%
+    [InlineData(StatusType.FriggSong, 2)]    // Val2 = 5*Val1  → +10%
+    [InlineData(StatusType.Forceofvanguard, 1)] // Val2 = 8+12*Val1 = 20% → +20%
+    public void MaxHp_buff_survives_recalc_and_does_not_clobber_hp(StatusType type, int val1)
+    {
+        var (calc, sc) = Build();
+        var pc = NewPc();
+        calc.CalcPc(pc, Inputs());
+        var baseMax = pc.Stats.MaxHp;
+        pc.Stats.Hp = baseMax / 2;                 // mid-HP — must not be clobbered
+        var curHp = pc.Stats.Hp;
+
+        sc.Start(pc, type, val1: val1, 0, 0, 0, durationMs: 60_000);
+        var afterStart = pc.Stats.MaxHp;
+        Assert.True(afterStart > baseMax);          // the buff raised MaxHp
+        Assert.Equal(curHp, pc.Stats.Hp);           // OnStart didn't touch current Hp
+
+        calc.CalcPc(pc, Inputs());                  // a recalc would wipe MaxHp without OnRecalcPool
+        Assert.Equal(afterStart, pc.Stats.MaxHp);   // re-folded onto the rebuilt pool
+        Assert.Equal(curHp, pc.Stats.Hp);           // current Hp preserved (added headroom)
+
+        calc.CalcPc(pc, Inputs());                  // idempotent
+        Assert.Equal(afterStart, pc.Stats.MaxHp);
+    }
+
+    [Fact]
+    public void MaxSp_buff_survives_recalc_without_clobbering_current_sp() // COMBAT-73
+    {
+        var (calc, sc) = Build();
+        var pc = NewPc();
+        calc.CalcPc(pc, Inputs());
+        var baseMax = pc.Stats.MaxSp;
+        pc.Stats.Sp = baseMax / 2;
+        var curSp = pc.Stats.Sp;
+
+        sc.Start(pc, StatusType.MercSpup, val1: 5, 0, 0, 0, durationMs: 60_000); // Val2 = 5*Val1 = 25%
+        var afterStart = pc.Stats.MaxSp;
+        Assert.True(afterStart > baseMax);
+        Assert.Equal(curSp, pc.Stats.Sp);
+
+        calc.CalcPc(pc, Inputs());
+        Assert.Equal(afterStart, pc.Stats.MaxSp);
+        Assert.Equal(curSp, pc.Stats.Sp);
+
+        calc.CalcPc(pc, Inputs());
+        Assert.Equal(afterStart, pc.Stats.MaxSp);
+    }
+
     // ---- helpers ----
 
     private static int Read(PlayerEntity pc, CalcStatField f) => f switch
