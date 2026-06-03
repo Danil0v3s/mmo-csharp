@@ -79,6 +79,60 @@ public class MailHandlersTests
         AssertAck(session, PacketHeader.ZC_ACK_ZENY_FROM_MAIL, expectedResult: 0);
     }
 
+    [Fact]
+    public async Task Open_emits_inbox_list_and_sets_opened()
+    {
+        var (reg, mail, pc, session) = Build();
+        mail.Inbox.Add(new MailMessageData { MailId = 10, SenderName = "Alice", SenderAccountId = 9, Title = "Hello", Zeny = 500, Opened = false });
+        var withItem = new MailMessageData { MailId = 11, SenderName = "Bob", SenderAccountId = 8, Title = "Hi", Opened = true };
+        withItem.Items.Add(new MailAttachmentItem { NameId = 501, Amount = 1 });
+        mail.Inbox.Add(withItem);
+        var h = new MailOpenHandler(reg, mail, NullLogger<MailOpenHandler>.Instance);
+
+        await h.HandleAsync(session, new CZ_OPEN_MAILBOX());
+
+        Assert.True(mail.Opened);
+        // The outbound queue stores already-serialized wire bytes.
+        var bytes = Outbound(session).Single(b => (ushort)(b[0] | (b[1] << 8)) == (ushort)PacketHeader.ZC_ACK_MAIL_LIST);
+        // header(2) + len(2) + unknown(1) then per-mail. Verify header/len + the first mail's fields.
+        Assert.Equal(bytes.Length, bytes[2] | (bytes[3] << 8));   // length field == actual size
+        Assert.Equal(1, bytes[4]);                                // "unknown" = 1
+        // first mail entry starts at byte 5: type.B id.Q read.B flags.B sender.24 deletion.L titleLen.W title
+        Assert.Equal(0, bytes[5]);                                // type = normal
+        Assert.Equal(10L, BitConverter.ToInt64(bytes, 6));        // mailId
+        Assert.Equal(0, bytes[14]);                               // read = false
+        Assert.Equal(2, bytes[15]);                               // flags = ZENY (0x2)
+        Assert.Equal("Alice", ReadCString(bytes, 16, 24));        // sender (24-byte field)
+    }
+
+    [Fact]
+    public void MailList_packet_size_matches_written_bytes()
+    {
+        var list = MailOpenHandler.BuildList(new[]
+        {
+            new MailMessageData { MailId = 1, SenderName = "X", Title = "TitleA" },
+            new MailMessageData { MailId = 2, SenderName = "LongerName", Title = "Another title here" },
+        });
+        var bytes = Serialize(list);
+        Assert.Equal(list.GetSize(), bytes.Length);               // GetSize is exact (no over/under-run)
+    }
+
+    private static byte[] Serialize(Core.Server.Packets.OutgoingPacket p)
+    {
+        using var ms = new MemoryStream();
+        using var w = new BinaryWriter(ms);
+        p.WritePacket(w);
+        w.Flush();
+        return ms.ToArray();
+    }
+
+    private static string ReadCString(byte[] b, int off, int width)
+    {
+        var end = off;
+        while (end < off + width && b[end] != 0) end++;
+        return System.Text.Encoding.ASCII.GetString(b, off, end - off);
+    }
+
     // --- helpers ---
 
     private static (FakeEntities reg, FakeMail mail, PlayerEntity pc, MapSessionData session) Build()
@@ -119,13 +173,15 @@ public class MailHandlersTests
     {
         public bool DeleteOk; public long LastDeleteId;
         public bool GetOk; public int LastGetId;
+        public readonly List<MailMessageData> Inbox = new();
+        public bool Opened;
 
         public Task<bool> DeleteMailAsync(PlayerEntity pc, long mailId, CancellationToken ct = default)
         { LastDeleteId = mailId; return Task.FromResult(DeleteOk); }
         public Task<bool> GetAttachmentAsync(PlayerEntity pc, int mailId, CancellationToken ct = default)
         { LastGetId = mailId; return Task.FromResult(GetOk); }
 
-        public int OpenMail(PlayerEntity pc) => 0;
+        public int OpenMail(PlayerEntity pc) { Opened = true; return 0; }
         public void Clear(PlayerEntity pc) { }
         public Task<bool> SendAsync(PlayerEntity pc, string recipientName, string title, string body, CancellationToken ct = default) => Task.FromResult(false);
         public bool SetAttachment(PlayerEntity pc, int inventoryIndex, int amount) => false;
@@ -135,7 +191,7 @@ public class MailHandlersTests
         public void DeliveryFail(PlayerEntity pc) { }
         public void RefreshRemainingAmount(PlayerEntity pc) { }
         public Task<IReadOnlyList<MailMessageData>> RequestInboxAsync(PlayerEntity pc, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<MailMessageData>>(Array.Empty<MailMessageData>());
+            => Task.FromResult<IReadOnlyList<MailMessageData>>(Inbox);
         public Task<MailMessageData?> ReadMailAsync(PlayerEntity pc, long mailId, CancellationToken ct = default)
             => Task.FromResult<MailMessageData?>(null);
     }

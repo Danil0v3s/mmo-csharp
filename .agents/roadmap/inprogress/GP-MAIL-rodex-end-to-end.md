@@ -102,15 +102,24 @@ reading, and taking attachments all do nothing on the client.
   `MailGetItemHandler` / `MailGetZenyHandler` wire CZ → `IMailService.DeleteMailAsync` /
   `GetAttachmentAsync` → ZC ack (auto-discovered via `[PacketHandler]` + reflection registration).
   `MailHandlersTests` (5) green; full suite 4403 pass (1 = standing replay-fixture).
-- **Remaining (next turns):** (1) the **inbox-list + read-window** ZC render — `ZC_ACK_MAIL_LIST`
-  (0x0ac2 era) + `ZC_ACK_READ_RODEX`, the two complex variable-length packets (nested per-mail +
-  per-attachment), + their CZ requests (open-mailbox/refresh/next, read). (2) the **compose/send**
-  path — begin-write, add/remove-item, send, check-receiver-name CZ + acks. (3) **separated
-  zeny-only / item-only partial claims** — the current get-zeny/get-item both settle the whole
-  attachment via the combined char-side RPC; the true partial claim needs a char-side
-  partial-settle path (noted in `MailGetZenyHandler`). (4) **rental-expiry on take** — needs an
-  `expire_time` field on the `MailAttachmentItem` proto + char-side. All are layers of THIS vertical
-  (no separate tickets); the loop resumes this card.
+- **2026-06-03 (turn 3)** — Inbox-list render landed. Corrected a mislabeled packet: the project's
+  `ZC_MAIL_NEW_NOTIFY` (0x0ac2, a 5-byte "Real layout TBD" stub, unreferenced) is actually the RODEX
+  **inbox list** — renamed the header to `ZC_ACK_MAIL_LIST` and removed the stub (the real new-mail
+  notify is `ZC_NOTIFY_UNREADMAIL`/0x09e7, already present). New variable-length `ZC_ACK_MAIL_LIST`
+  renders the modern (PACKETVER ≥ 20170419) `clif_Mail_refreshinbox` layout (per-mail: type/id/read/
+  flags[TEXT|ZENY|ITEM|NPC]/sender[24]/deletion/titleLen/title). New `CZ_OPEN_MAILBOX` (0x0ac0) +
+  `MailOpenHandler` flips MailOpened, calls `RequestInboxAsync`, maps the persisted rows → the list
+  packet, emits it. `MailHandlersTests` now 7 (2 new: open emits the list with correct
+  header/length/fields; a packet-size==written-bytes wire-consistency check). Full suite 4405 pass
+  (1 = standing replay-fixture). Core.Server + Tools.PacketReplay still build.
+- **Remaining (next turns):** (1) the **read-window** ZC render — `ZC_ACK_READ_RODEX` (body text +
+  the nested per-attachment item sub-struct: cards/options/grade/location) + the `CZ_REQ_READ_MAIL`
+  handler. (2) `CZ_REQ_REFRESH_MAIL_LIST` / next-page handlers (header added; trivial — reuse
+  `MailOpenHandler`'s list build). (3) the **compose/send** path — begin-write, add/remove-item,
+  send, check-receiver-name CZ + acks. (4) **separated zeny-only / item-only partial claims** (needs
+  a char-side partial-settle path; noted in `MailGetZenyHandler`). (5) **rental-expiry on take**
+  (needs an `expire_time` field on the `MailAttachmentItem` proto + char-side). All are layers of
+  THIS vertical (no separate tickets); the loop resumes this card.
 
 ## Notes / gotchas
 
