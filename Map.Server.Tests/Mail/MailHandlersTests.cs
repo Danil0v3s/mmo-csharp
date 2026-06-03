@@ -130,6 +130,67 @@ public class MailHandlersTests
     }
 
     [Fact]
+    public async Task BeginWrite_clears_draft_and_acks()
+    {
+        var (reg, mail, pc, session) = Build();
+        var h = new MailBeginWriteHandler(reg, mail);
+
+        await h.HandleAsync(session, Cz(new CZ_REQ_OPEN_WRITE_MAIL(), ("ReceiveName", "Bob")));
+
+        Assert.True(mail.Opened);
+        Assert.True(mail.Cleared);
+        var b = Outbound(session).Single(x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_ACK_OPEN_WRITE_MAIL);
+        Assert.Equal(1, b[26]);                          // result = ok (after header(2) + name(24))
+        Assert.Equal("Bob", ReadCString(b, 2, 24));      // echoed receive name
+    }
+
+    [Fact]
+    public async Task CheckName_returns_charid_when_found_and_zero_when_not()
+    {
+        var (reg, mail, pc, session) = Build();
+        mail.CheckFound = true; mail.CheckCharId = 4242;
+        var h = new MailCheckNameHandler(reg, mail);
+
+        await h.HandleAsync(session, Cz(new CZ_CHECKNAME(), ("Name", "Alice")));
+        var b = Outbound(session).Single(x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_CHECKNAME);
+        Assert.Equal(4242, BitConverter.ToInt32(b, 2));
+
+        var (reg2, mail2, _, s2) = Build();
+        mail2.CheckFound = false;
+        await new MailCheckNameHandler(reg2, mail2).HandleAsync(s2, Cz(new CZ_CHECKNAME(), ("Name", "Ghost")));
+        var b2 = Outbound(s2).Single(x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_CHECKNAME);
+        Assert.Equal(0, BitConverter.ToInt32(b2, 2));    // not found
+    }
+
+    [Fact]
+    public async Task Send_pushes_zeny_and_acks_result()
+    {
+        var (reg, mail, pc, session) = Build();
+        mail.SendOk = true;
+        var h = new MailSendHandler(reg, mail, NullLogger<MailSendHandler>.Instance);
+
+        await h.HandleAsync(session, Cz(new CZ_REQ_SEND_MAIL(), ("Receiver", "Bob"), ("Zeny", 5000L), ("Title", "Hi"), ("Body", "yo")));
+
+        Assert.Equal("Bob", mail.LastSendTo);
+        Assert.Equal(5000L, mail.LastSendZeny);          // the packet zeny reached the draft
+        var b = Outbound(session).Single(x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_WRITE_MAIL_RESULT);
+        Assert.Equal(0, b[2]);                           // success
+
+        mail.SendOk = false;
+        ClearOut(session);
+        await h.HandleAsync(session, Cz(new CZ_REQ_SEND_MAIL(), ("Receiver", "Bob"), ("Zeny", 0L), ("Title", "Hi"), ("Body", "yo")));
+        var bf = Outbound(session).Single(x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_WRITE_MAIL_RESULT);
+        Assert.Equal(1, bf[2]);                          // failed
+    }
+
+    private static void ClearOut(MapSessionData session)
+    {
+        var f = typeof(Core.Server.Network.ClientSession).GetField("_outgoingPackets",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (f?.GetValue(session) is System.Collections.Concurrent.ConcurrentQueue<byte[]> q) q.Clear();
+    }
+
+    [Fact]
     public void ReadWindow_packet_size_matches_written_bytes()
     {
         var msg = new MailMessageData { MailId = 1, Body = "body", Zeny = 5 };
@@ -220,17 +281,22 @@ public class MailHandlersTests
         public bool DeleteOk; public long LastDeleteId;
         public bool GetOk; public int LastGetId;
         public readonly List<MailMessageData> Inbox = new();
-        public bool Opened;
+        public bool Opened; public bool Cleared;
         public MailMessageData? ReadResult;
+        public bool SendOk; public string? LastSendTo; public long LastSendZeny;
+        public bool CheckFound; public long CheckCharId;
 
         public Task<bool> DeleteMailAsync(PlayerEntity pc, long mailId, CancellationToken ct = default)
         { LastDeleteId = mailId; return Task.FromResult(DeleteOk); }
         public Task<bool> GetAttachmentAsync(PlayerEntity pc, int mailId, CancellationToken ct = default)
         { LastGetId = mailId; return Task.FromResult(GetOk); }
+        public Task<(bool Found, long CharId)> CheckReceiverAsync(string name, CancellationToken ct = default)
+            => Task.FromResult((CheckFound, CheckCharId));
 
         public int OpenMail(PlayerEntity pc) { Opened = true; return 0; }
-        public void Clear(PlayerEntity pc) { }
-        public Task<bool> SendAsync(PlayerEntity pc, string recipientName, string title, string body, CancellationToken ct = default) => Task.FromResult(false);
+        public void Clear(PlayerEntity pc) { Cleared = true; }
+        public Task<bool> SendAsync(PlayerEntity pc, string recipientName, string title, string body, CancellationToken ct = default)
+        { LastSendTo = recipientName; LastSendZeny = pc.MailDraftZeny; return Task.FromResult(SendOk); }
         public bool SetAttachment(PlayerEntity pc, int inventoryIndex, int amount) => false;
         public bool RemoveItem(PlayerEntity pc, int inventoryIndex) => false;
         public bool RemoveZeny(PlayerEntity pc, long amount) => false;

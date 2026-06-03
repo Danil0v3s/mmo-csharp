@@ -231,6 +231,14 @@ public sealed class MailService : IMailService
         return ok;
     }
 
+    /// <inheritdoc />
+    public async Task<(bool Found, long CharId)> CheckReceiverAsync(string name, CancellationToken ct = default)
+    {
+        if (_mailIpc == null || string.IsNullOrWhiteSpace(name)) return (false, 0);
+        var resp = await _mailIpc.MailReceiverCheckAsync(name, ct);
+        return resp is { Success: true } ? (true, resp.CharacterId) : (false, 0);
+    }
+
     // --- weight helpers (mirror the cash-shop / PlayerWeightStatusService pattern) ---
 
     private long CurrentWeight(IReadOnlyList<InventoryItem> inv)

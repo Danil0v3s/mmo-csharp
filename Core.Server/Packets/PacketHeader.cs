@@ -255,6 +255,13 @@ public enum PacketHeader : short
     ZC_ACK_ITEM_FROM_MAIL = 0x09f4,        // clif_mail_getattachment ack (item): MailID.Q opentype.B result.B, 12B
     CZ_REQ_DELETE_MAIL    = 0x09f5,        // clif_parse_Mail_delete: opentype.B MailID.Q, 11B
     ZC_ACK_DELETE_MAIL    = 0x09f6,        // clif_mail_delete ack: opentype.B MailID.Q, 11B
+    // RODEX compose/send path (GP-MAIL).
+    CZ_REQ_OPEN_WRITE_MAIL = 0x0a08,       // RODEX begin write (clif_parse_Mail_beginwrite): receiveName.24B, 26B
+    ZC_ACK_OPEN_WRITE_MAIL = 0x0a12,       // RODEX begin-write ack (rodexopenwrite): receiveName.24B result.B, 27B
+    CZ_CHECKNAME          = 0x0a13,        // RODEX receiver-name check (clif_parse_Mail_Receiver_Check): Name.24B, 26B
+    ZC_CHECKNAME          = 0x0a14,        // RODEX receiver-name ack (clif_Mail_Receiver_Ack): charId.L class.W baseLevel.W, 10B
+    CZ_REQ_SEND_MAIL      = 0x0a6e,        // RODEX send (clif_parse_Mail_send), variable
+    ZC_WRITE_MAIL_RESULT  = 0x09ed,        // RODEX send result (rodexwriteresult): result.B, 3B
     ZC_LONGLONGPAR_CHANGE = 0x0acb,        // clif_longlongpar_change for SP_BASEEXP/JOBEXP at PACKETVER ≥ 20170830, 12B
     ZC_OVERWEIGHT_PERCENT = 0x0ade,        // pc_updateweightstatus, 6B
     ZC_INVENTORY_START    = 0x0b08,        // clif_inventorystart, variable

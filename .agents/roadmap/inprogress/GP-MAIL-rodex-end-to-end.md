@@ -121,16 +121,25 @@ reading, and taking attachments all do nothing on the client.
   `MailRefreshHandler` re-emits the list (reuses `MailOpenHandler.BuildList`). `MailHandlersTests`
   now 10 (3 new: read window decodes body/zeny/item + length, read-window size==written-bytes,
   refresh resends list). Full suite 4408 pass (1 = standing replay-fixture).
-- **Remaining (next turns):** (1) the **compose/send** packet path — begin-write (`CZ_REQ_OPEN_WRITE_MAIL`),
-  add/remove item (`CZ_REQ_ADD_ITEM_TO_MAIL`/remove), check-receiver-name (`CZ_CHECKNAME`), send
-  (`CZ_REQ_SEND_MAIL`, variable) + their ZC acks → the existing `SendAsync`/`SetAttachment`/
-  `RemoveItem`. (2) **separated zeny-only / item-only partial claims** (needs a char-side
-  partial-settle path; noted in `MailGetZenyHandler`). (3) **rental-expiry on take** (needs an
-  `expire_time` field on the `MailAttachmentItem` proto + char-side). (4) read-window item display
-  hints `viewSprite`/`location` default to 0 (faithful for the read preview — the client renders
-  from the item id; `type` is resolved). All are layers of THIS vertical (no separate tickets); the
-  loop resumes this card. Once the compose/send path lands, the full open→write→send→read→claim→
-  delete loop is reachable and the card moves to done.
+- **2026-06-03 (turn 5)** — Compose/send (text + zeny) landed. New CZ `CZ_REQ_OPEN_WRITE_MAIL`
+  (0x0a08), `CZ_CHECKNAME` (0x0a13), `CZ_REQ_SEND_MAIL` (0x0a6e, variable) + ZC
+  `ZC_ACK_OPEN_WRITE_MAIL` (0x0a12), `ZC_CHECKNAME` (0x0a14), `ZC_WRITE_MAIL_RESULT` (0x09ed) —
+  layouts from rAthena `clif_parse_Mail_beginwrite`/`Receiver_Check`/`send`. Handlers:
+  `MailBeginWriteHandler` (open + `Clear` + ack), `MailCheckNameHandler` (`CheckReceiverAsync` →
+  charId, 0 = not found), `MailSendHandler` (pushes the packet zeny → `SendAsync` →
+  validate/debit/dispatch → result). New `IMailService.CheckReceiverAsync` wraps the receiver-check
+  RPC. `MailHandlersTests` now 13 (3 new: begin-write clears+acks, check-name found/not-found, send
+  pushes zeny + acks success/fail). Full suite 4411 pass (1 = standing replay-fixture).
+  **A player can now compose + send a text+zeny mail end-to-end.**
+- **Remaining (1 turn → done):** the **item-attachment compose** path — `CZ_REQ_ADD_ITEM_TO_MAIL`
+  (0x0a04, stages an inventory item via `SetAttachment`) + `CZ_REQ_REMOVE_ITEM_MAIL` (0x0a06) + the
+  complex `ZC_ACK_ADD_ITEM_RODEX` confirmation packet (full item struct: cards/options/weight/
+  location/grade — template = the read-window item sub-struct already built) + `ZC_ACK_REMOVE_ITEM_MAIL`.
+  Then the full open→write→attach-item→send→read→claim→delete loop is reachable and **the card moves
+  to done**. Smaller remainders also tracked: (a) separated zeny-only/item-only partial claims (char
+  partial-settle); (b) rental-expiry on take (`expire_time` proto field); (c) read-window item
+  `viewSprite`/`location` display hints (default 0 — faithful, the client renders from the item id).
+  All are layers of THIS vertical (no separate tickets).
 
 ## Notes / gotchas
 

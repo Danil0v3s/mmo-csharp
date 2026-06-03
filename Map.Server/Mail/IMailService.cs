@@ -57,4 +57,8 @@ public interface IMailService
     /// <summary>rAthena <c>clif_parse_Mail_delete</c> → <c>intif_Mail_delete</c> — delete one mail.
     /// Rejects (false) if the mail still has unclaimed attachments (rAthena gate).</summary>
     Task<bool> DeleteMailAsync(PlayerEntity pc, long mailId, CancellationToken ct = default);
+
+    /// <summary>rAthena <c>clif_parse_Mail_Receiver_Check</c> → <c>intif_mail_checkreceiver</c> —
+    /// resolve a recipient name char-side. Returns (found, charId); charId 0 ⇒ no such character.</summary>
+    Task<(bool Found, long CharId)> CheckReceiverAsync(string name, CancellationToken ct = default);
 }
