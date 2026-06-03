@@ -1,6 +1,6 @@
 # COMBAT-69 — SG_DEVIL max-job-level ASPD clause (Star Gladiator path)
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** COMBAT-50 (the skill-val ASPD seam) · **Blocks:** none
 > **Filed by:** COMBAT-50 — the `|| pc_is_maxjoblv` half of the SG_DEVIL gate it could not cleanly resolve.
 
