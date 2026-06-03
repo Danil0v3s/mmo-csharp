@@ -65,6 +65,10 @@ public sealed class EquipBonusBundle
     /// <summary>Bitmask of classes whose DEF is ignored
     /// (<c>bonus bIgnoreDefClass, c</c> / SP_IGNORE_DEF_CLASS → <c>1&lt;&lt;class</c>).</summary>
     public int IgnoreDefClass { get; set; }
+    /// <summary>COMBAT-77 — per-race % of the target's physical <c>Res</c> ignored
+    /// (<c>bonus2 bIgnoreResRace, r, n</c> / SP_IGNORE_RES_RACE → <c>ignore_res_by_race[race] += n</c>).
+    /// The combat reader sums <c>[race] + [RC_ALL]</c> (the <see cref="BattleRace.All"/> slot).</summary>
+    public int[] IgnoreResRace { get; } = new int[RaceSize];
 
     // COMBAT-22 — per-skill bonus2 maps (skillId → value).
     /// <summary>Per-skill bonus damage % (<c>bonus2 bSkillAtk, sk, n</c> /
@@ -269,6 +273,7 @@ public sealed class EquipBonusBundle
         Array.Clear(MagicAddRace); Array.Clear(CritAddRace);
         Array.Clear(MagicAddEle); Array.Clear(MagicAddSize); Array.Clear(MagicAddClass);
         IgnoreDefRace = IgnoreDefClass = 0;
+        Array.Clear(IgnoreResRace);
         SkillAtk.Clear(); SubSkillAtk.Clear(); SkillHeal.Clear(); SkillVarCastrate.Clear(); SkillFixCastrate.Clear();
         HpVanishRate = HpVanishPer = SpVanishRate = SpVanishPer = 0;
         SkillVarCast.Clear(); SkillFixCast.Clear();

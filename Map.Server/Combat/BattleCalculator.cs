@@ -21,6 +21,10 @@ namespace Map.Server.Combat;
 /// </summary>
 public sealed class BattleCalculator : IBattleCalculator
 {
+    // COMBAT-77 — battle_config.max_res_mres_ignored (config/battle/player.json: 50). The
+    // cap on the attacker's combined Res/MRes-ignore % (battle.cpp:7838).
+    private const int MaxResMresIgnored = 50;
+
     private readonly Random _rng;
     private readonly IBattleCardService? _cards;
     // COMBAT-59 — explicit SC (tests inject `sc:`) OR a lazy seam that breaks the
@@ -436,14 +440,35 @@ public sealed class BattleCalculator : IBattleCalculator
             if (pyro != null && pyro.Val2 > 0) damage += pyro.Val2;
         }
 
-        // COMBAT-61 — Res trait-stat physical reduction (battle.cpp:7845):
-        // `damage = damage * (5000 + res) / (5000 + 10*res)`, applied per hand
-        // when the target's Res > 0. Unlike patk/crit this sits OUTSIDE the
-        // `if (sd)` block in rAthena, so it reduces mob attacks too (no
-        // srcIsPc gate). The ignore_res refinement (bIgnoreRes by race,
-        // SC_A_TELUM/SC_POTENT_VENOM) is not yet modeled — ➡️ COMBAT-77.
+        // COMBAT-61/77 — Res trait-stat physical reduction (battle.cpp:7820-7846):
+        // `damage = damage * (5000 + res) / (5000 + 10*res)`, applied per hand when the
+        // target's Res > 0. Unlike patk/crit this sits OUTSIDE the `if (sd)` block in
+        // rAthena, so it reduces mob attacks too (no srcIsPc gate).
         if (t.Res > 0 && damage > 0)
-            damage = damage * (5000L + t.Res) / (5000L + 10L * t.Res);
+        {
+            // COMBAT-77 — first lower the EFFECTIVE res by the attacker's res-ignore %:
+            // ignore_res_by_race[targetRace] + ignore_res_by_race[RC_ALL]
+            //   + SC_A_TELUM.val2 + SC_POTENT_VENOM.val2, clamped to max_res_mres_ignored.
+            int res = t.Res;
+            int ignoreRes = 0;
+            if (srcIsPc && (source as PlayerEntity)?.EquipBonuses is { IgnoreResRace: var irr })
+            {
+                var raceIdx = (int)t.Race;
+                if (raceIdx >= 0 && raceIdx < irr.Length) ignoreRes += irr[raceIdx];
+                ignoreRes += irr[(int)Map.Server.Status.BattleRace.All];
+            }
+            if (_sc != null)
+            {
+                var telum = _sc.Get(source, Map.Server.Status.StatusType.ATelum);
+                if (telum != null && telum.Val2 > 0) ignoreRes += telum.Val2;
+                var venom = _sc.Get(source, Map.Server.Status.StatusType.PotentVenom);
+                if (venom != null && venom.Val2 > 0) ignoreRes += venom.Val2;
+            }
+            // battle_config.max_res_mres_ignored (config/battle/player.json, default 50).
+            if (ignoreRes > MaxResMresIgnored) ignoreRes = MaxResMresIgnored;
+            if (ignoreRes > 0) res -= res * ignoreRes / 100;
+            damage = damage * (5000L + res) / (5000L + 10L * res);
+        }
 
         // Floor to 1 (battle_min_damage).
         if (damage < 1) damage = 1;

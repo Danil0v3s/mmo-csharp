@@ -277,6 +277,9 @@ public static class BonusScriptExtractor
         {
             case "addrace": Add(b.AddRace, ParseRace(idxToken), v); break;
             case "subrace": Add(b.SubRace, ParseRace(idxToken), v); break;
+            // COMBAT-77 — bonus2 bIgnoreResRace, r, n (SP_IGNORE_RES_RACE): n% of the target's
+            // physical Res ignored vs race r. RC_All → the All slot (summed by the combat reader).
+            case "ignoreresrace": Add(b.IgnoreResRace, ParseRace(idxToken), v); break;
             case "addele":  Add(b.AddEle, ParseElement(idxToken), v); break;
             case "subele":  Add(b.SubEle, ParseElement(idxToken), v); break;
             case "addsize": Add(b.AddSize, ParseSize(idxToken), v); break;

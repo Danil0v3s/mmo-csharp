@@ -155,6 +155,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-92 | Real skill_db Requirements column loader (fold curated ammo/Inf2 overlays) — split from COMBAT-76 |
 | COMBAT-93 | Reconcile SkillFailCause with rAthena e_useskill_fail_cause wire values — split from COMBAT-76 |
 | COMBAT-94 | Immediate inventory amount-update packet on consume (ammo + items) — split from COMBAT-76 |
+| COMBAT-95 | Magic-side MRes reduction curve + ignore (by race + SC_A_VITA) — split from COMBAT-77 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |
