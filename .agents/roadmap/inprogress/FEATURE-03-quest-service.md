@@ -1,6 +1,6 @@
 # FEATURE-03 — Quest service
 
-> **Epic:** Gameplay-Quest · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Gameplay-Quest · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** FEATURE-01 (mob-death observer drives objective updates), FEATURE-02 (save) · **Blocks:** none
 > **Related:** PACKET-* (ZC quest UI packets share the packet epic)
 
