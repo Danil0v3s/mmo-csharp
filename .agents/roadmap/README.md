@@ -169,6 +169,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-106 | status_calc_speed: Dancing-lesson song penalty + TF_MISS assassin speedup — split from COMBAT-84 |
 | COMBAT-107 | Remaining UF_* placement rules (NoOverlap / PathCheck / NoFootSet) — split from COMBAT-85 |
 | COMBAT-108 | AL_WARP Blue Gemstone requirement (cast check + selection consume) — split from COMBAT-86 |
+| COMBAT-109 | General bMagicAtkEle equip bonus (magic_atk_ele by skill element) — split from COMBAT-87 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

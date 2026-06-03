@@ -68,8 +68,9 @@ public sealed class AttackService : IAttackService, IAttackStopper
         if (target.MapId != source.MapId) return false;
         if (!IsAttackable(target)) return false;
         // rAthena unit_attack: pc_cant_act gates the source. STONE / FREEZE
-        // / STUN / SLEEP all refuse the attack at unit.cpp:2615.
-        if (!source.CanAct(_sc)) return false;
+        // / STUN / SLEEP all refuse the attack at unit.cpp:2615. COMBAT-87 — also the
+        // NoAttack state (SC_BASILICA) refuses auto-attack (casting still works).
+        if (!source.CanAttack(_sc)) return false;
 
         // Wave 71 / Track D — maintain rAthena unit_counttargeted by
         // bumping the new target's Targeters and dropping the old.
@@ -148,9 +149,10 @@ public sealed class AttackService : IAttackService, IAttackStopper
                 continue;
             }
             // rAthena unit_attack_timer guards on pc_cant_act / status_check
-            // each tick. SC_FREEZE etc. acquired mid-fight stops the swing
-            // train but keeps the AttackState so it resumes on SC end.
-            if (!entity.CanAct(_sc))
+            // each tick. SC_FREEZE etc. (or COMBAT-87 SC_BASILICA NoAttack) acquired
+            // mid-fight stops the swing train but keeps the AttackState so it resumes
+            // on SC end.
+            if (!entity.CanAttack(_sc))
             {
                 continue;
             }

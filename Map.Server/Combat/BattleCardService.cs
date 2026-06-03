@@ -118,6 +118,12 @@ public sealed class BattleCardService : IBattleCardService
             }
             int eleAdd = IdxAll(isMagic ? ab.MagicAddEle : ab.AddEle, tEle, (int)BattleElement.All)
                          + (ranged ? IdxAll(ab.ArrowAddEle, tEle, (int)BattleElement.All) : 0);
+            // COMBAT-87 — SC_BASILICA (renewal) right/left_weapon addele[Dark/Undead] += val1*5
+            // (status.cpp:4771): the caster's WEAPON does +val1*5% vs Dark/Undead targets. Read live
+            // from the attacker's SC (leak-free, no OnRecalc into the equip bundle).
+            if (!isMagic && (tEle == (int)BattleElement.Dark || tEle == (int)BattleElement.Undead)
+                && Sc?.Get(src, StatusType.Basilica) is { Val1: > 0 } basi)
+                eleAdd += basi.Val1 * 5;
             cardfix = cardfix * (100 + eleAdd) / 100;
             cardfix = cardfix * (100 + IdxAll(isMagic ? ab.MagicAddSize : ab.AddSize, tSize, (int)BattleSize.All)) / 100;
             cardfix = cardfix * (100 + IdxAll(isMagic ? ab.MagicAddClass : ab.AddClass, tClass, (int)Inventory.BattleClassFlag.All)) / 100;

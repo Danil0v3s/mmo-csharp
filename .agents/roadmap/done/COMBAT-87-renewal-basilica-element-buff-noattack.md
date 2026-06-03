@@ -1,6 +1,6 @@
 # COMBAT-87 — Renewal SC_BASILICA effects: offensive element buff + NoAttack caster state
 
-> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-68 · **Blocks:** none
 > **Filed by:** COMBAT-68 — it corrected the premise (renewal Basilica is NOT a cell-immunity
 > sanctuary) and applies the `SC_BASILICA` self-buff, but the SC's two real renewal effects
@@ -37,18 +37,23 @@ does not implement — the C# `StatusType.Basilica` SC is currently an inert mar
 
 ## Scope — every sub-system that must be touched
 
-- [ ] An SC→element-fold seam so `SC_BASILICA` can contribute `addele[Dark/Undead]` +
-      `magic_addele[Holy]` per recalc without leaking (fold during `BuildBundle`, or a separate
-      SC-element array summed in `BattleCardService.CalcCardFix`).
-- [ ] Register `StatusType.Basilica` with the element-buff `OnRecalc`/fold (val1·5 weapon
-      Dark/Undead, val1·3 magic Holy).
-- [ ] A `CanAttack` gate (or a `NoAttack` state set) consulted by the auto-attack path; add
-      `SC_BASILICA` to it (still allow casting to re-toggle Basilica).
+- [x] SC→element seam: chose the **leak-free combat-time read** (the ticket's sanctioned alternative
+      "a separate SC-element … summed in `BattleCardService.CalcCardFix`") over an OnRecalc that would
+      leak into the un-reset equip bundle. The weapon Dark/Undead buff is read in `CalcCardFix`; the
+      Holy magic buff in `CalcMagicAttack` — both straight off the live `SC_BASILICA.Val1`, so they
+      vanish the instant the SC ends (no accumulation).
+- [x] No registry `OnRecalc` needed — the SC stays a marker (applied by COMBAT-68's `Basilica.cs`);
+      its effects are consumed at combat/attack time (val1·5 weapon Dark/Undead in CalcCardFix, val1·3
+      Holy magic in CalcMagicAttack). ➡️ The general equip `bMagicAtkEle` seam (not Basilica-specific)
+      is **COMBAT-109**.
+- [x] Added `EntityActionGates.CanAttack` (= `CanAct` && no `SC_BASILICA`); wired it into the
+      auto-attack entry + per-tick swing guard in `AttackService` (casting still uses `CanCastSkill`).
 
 ## Done criteria
 
-- A Basilica caster's weapon does +`val1*5`% vs Dark/Undead targets and +`val1*3`% Holy magic.
-- The Basilica caster cannot auto-attack while the SC is up (but can re-cast to cancel it).
+- ✅ A Basilica caster's weapon does +`val1*5`% vs Dark/Undead targets (lv5 → +25%) and +`val1*3`%
+  Holy magic (lv5 → +15%); both clear on SC end with no leak.
+- ✅ The Basilica caster cannot auto-attack while the SC is up but can still cast (re-cast cancels it).
 
 ## Test plan
 
@@ -61,3 +66,16 @@ does not implement — the C# `StatusType.Basilica` SC is currently an inert mar
 - The SC→element-fold seam is the crux (no existing pattern) — it likely benefits other SCs
   (endow/weapon-property), so design it generally. Coordinate with the SC-magnitude tickets.
 - Pre-renewal Basilica (the PVP-block sanctuary + SC_BASILICA_CELL) is explicitly NOT in scope.
+
+## History
+
+- 2026-06-03 — Implemented the renewal SC_BASILICA effects via leak-free combat-time SC reads (not
+  an OnRecalc, which the ticket itself flagged would leak into the un-reset equip bundle): the weapon
+  `addele[Dark/Undead] += val1*5` buff folds into the offensive ele term in `BattleCardService.CalcCardFix`,
+  the `magic_atk_ele[Holy] += val1*3` buff into `BattleCalculator.CalcMagicAttack` (keyed on the resolved
+  Holy skill element) — both read straight off the live SC so they clear instantly on end. Added
+  `EntityActionGates.CanAttack` (CanAct && no SC_BASILICA) and wired it into the auto-attack entry +
+  per-tick swing guard in `AttackService` (casting still uses CanCastSkill, so the caster can re-cast to
+  cancel). Combat87BasilicaTests (4: weapon Dark/Undead +25%, no-leak on end, Holy magic +15%, NoAttack
+  gate). Full suite 4180 pass (1 fail = pre-existing INFRA-11 replay gate). Filed COMBAT-109 (the general
+  equip `bMagicAtkEle` seam, adjacent to the targeted Basilica Holy read).

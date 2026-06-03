@@ -753,6 +753,10 @@ public sealed class BattleCalculator : IBattleCalculator
         // weapon element when no resolver is wired.
         var atkEle = _elements?.GetMagicElement(source, skillId, skillLevel)
             ?? (s.WeaponElement == 0 ? BattleElement.Neutral : (BattleElement)s.WeaponElement);
+        // COMBAT-87 — SC_BASILICA (renewal) magic_atk_ele[Holy] += val1*3 (status.cpp:4777): the
+        // caster's HOLY-element magic does +val1*3%. Read live from the SC (leak-free, no OnRecalc).
+        if (atkEle == BattleElement.Holy && _sc?.Get(source, StatusType.Basilica) is { Val1: > 0 } basiM)
+            damage += damage * (basiM.Val1 * 3) / 100;
         damage = damage * ElementTable.GetRate(atkEle, t.DefenseElement, t.ElementLevel) / 100;
         if (damage < 0) damage = 0;
 

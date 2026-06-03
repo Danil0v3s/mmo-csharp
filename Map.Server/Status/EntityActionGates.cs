@@ -36,6 +36,20 @@ public static class EntityActionGates
     }
 
     /// <summary>
+    /// COMBAT-87 — <see cref="CanAct"/> plus the <c>NoAttack</c> caster state: a few SCs let the
+    /// entity still cast (to re-toggle the SC) but forbid auto-attacking. Renewal SC_BASILICA
+    /// (db/re/status.yml <c>States: NoAttack</c>) is the one we model — the Basilica caster cannot
+    /// auto-attack while it is up, but can re-cast HP_BASILICA to cancel it. Consulted by the
+    /// auto-attack path; the skill path keeps using <see cref="CanCastSkill"/>/<see cref="CanAct"/>.
+    /// </summary>
+    public static bool CanAttack(this Entity entity, IStatusChangeService? sc)
+    {
+        if (!entity.CanAct(sc)) return false;
+        if (sc != null && sc.Get(entity, StatusType.Basilica) != null) return false;
+        return true;
+    }
+
+    /// <summary>
     /// Subset of <see cref="CanAct"/> tailored to skill use. rAthena
     /// <c>status_check_skilluse</c> adds Silence and Confusion to the
     /// OPT1 set — Silence blocks magic, Confusion blocks targeting.
