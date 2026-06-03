@@ -1,47 +1,99 @@
-# <TICKET-ID> — <Short title>
+# <TICKET-ID> — <Capability, stated as a player outcome>
 
-> **Epic:** <epic> · **Status:** ❌ Not started · **Size:** S/M/L/XL · **Player-visible:** yes/no
-> **Depends on:** <ticket ids or "none"> · **Blocks:** <ticket ids or "none">
+> **Epic:** <gameplay/combat/status/skills/scripting/infra/mobai> · **Status:** ❌ Not started · **Size:** S/M/L/XL · **Player-visible:** yes/no
+> **Depends on:** <ticket ids or "none"> · **Unlocks:** <ticket ids or "none">
 
-## Problem
+## The deliverable (definition of done, in one sentence)
 
-What is wrong / missing today, in plain terms, and why it matters for a player.
-State the *current C# behavior* concretely (quote the offending method/return value).
+> A player can **<do the thing>** against the live client, and it **survives logout**.
 
-## Current state (C#)
+A ticket is a **vertical slice**: it owns the capability end-to-end across every layer
+it needs (data → persistence → service → IPC → client packets → client-observable
+behaviour). It is NOT "the service method" or "the packet" — those are *layers of this
+ticket*, not separate tickets. If you cannot make the player-outcome true without
+touching another layer, that layer is in scope here. Do not split a layer out into a
+follow-up; build it.
 
-- `path/to/File.cs:line` — what it does now (e.g. "returns `false` unconditionally").
-- List every relevant file + method. Be exhaustive — a dev should not have to re-discover the surface.
+## Player story / why it matters
+
+What the player does, step by step, and what's broken today that stops them. Be concrete:
+"Open the cash shop → pick Bubble Gum → it's free / errors / nothing happens because …".
+
+## Current state — what exists vs. what's missing (per layer)
+
+A table so the implementer knows exactly what to reuse vs. build. Cite files + lines.
+
+| Layer | Exists? | Where / what's missing |
+|---|---|---|
+| Data / seed (`*_db`, YAML→SQL) | ☐/partial/✅ | `Core.Database/...`, importer converter, seed file |
+| Entity + EF migration | ☐/✅ | `Core.Database/Entities/...` |
+| Repository | ☐/✅ | `Core.Database/Repositories/...` |
+| Service logic | ☐/partial/✅ | `Map.Server/.../XService.cs` — what's real, what returns 0/false |
+| Persistence IPC (proto + char RPC) | ☐/✅ | `*.proto`, `IntifService`, char-side handler |
+| Client → map packet (CZ handler) | ☐/✅ | `Core.Server/Packets/In/...`, `Map.Server/Handlers/...` |
+| Map → client packet (ZC emit) | ☐/✅ | `Core.Server/Packets/Out/...`, emit site |
+| Game-loop / observer / lifecycle wiring | ☐/✅ | tick hook, observer registration |
+
+> If a row says ✅ from earlier work, **verify it still holds at HEAD and that it's
+> actually reached end-to-end** — "service exists" means nothing if no packet calls it.
 
 ## rAthena reference (source of truth)
 
-- `rathena/src/map/<file>.cpp:<fn>` — the correct behavior, summarized.
-- Quote the key formula / state transition / packet shape.
-- Note the monolithic-switch caveat: the canonical source is `skill.cpp`/`battle.cpp`/`status.cpp`
-  switch arms (the `rathena-fork/src/map/skills/...` split-file paths in some C# docstrings do not exist
-  in this checkout).
+Per layer, the canonical `rathena/src/...` functions. The map-side switch arms live in
+the monolithic `clif.cpp` (packet parse/emit), `<feature>.cpp` (logic), `intif.cpp`
+(inter-server), `char/...` (persistence). Quote the key validation gates, state
+transitions, packet shapes, and formulas. Note where this C# port intentionally
+diverges (and why).
 
-## Scope — every sub-system that must be touched
+## Dependencies — and how to satisfy them
 
-Enumerate EVERY piece so the implementer does not create a stub or defer:
-- [ ] Entity / field additions (with EF migration if persisted)
-- [ ] Repository / DB loader
-- [ ] Service method bodies (name each)
-- [ ] Packet definitions (Core.Server/Packets) + handlers (Map.Server/Handlers)
-- [ ] IPC proto + char-side RPC (if persisted state)
-- [ ] Wiring into the game loop / observer / lifecycle
-- [ ] Client-visible packets (ZC_*) emitted
+For each dependency, say whether it's a **prerequisite ticket** (must land first) or a
+**foundation pattern** (build it here, following an existing example):
+- `<DEP-ID>` — prerequisite; this ticket is blocked until it's done. Why.
+- Packet-bridge pattern — foundation; add the CZ handler + ZC emit yourself following
+  the ~39 existing handlers (e.g. `Map.Server/Handlers/<example>.cs`). Not a separate ticket.
+- Persistence-IPC pattern — foundation; wire the save/load IPC following `IntifService` +
+  an existing char-side RPC. Not a separate ticket.
 
-## Done criteria
+## Scope — every layer this capability needs (build all of it)
 
-- Concrete, testable acceptance conditions (numbers match rAthena for cases X/Y/Z).
-- No `// TODO`, no `data-pending`, no log-only no-op left in the touched files.
+Group the checklist by layer so nothing is silently dropped. Each box ships real behaviour.
+- [ ] **Data**: …
+- [ ] **Entity + migration**: …
+- [ ] **Repository / loader**: …
+- [ ] **Service**: … (every method, real bodies)
+- [ ] **Persistence**: load on enter, save on mutate + logout (no in-memory-only state)
+- [ ] **CZ handler(s)**: `[PacketHandler]` + `IPacketHandler<TSession,TPacket>`
+- [ ] **ZC emit(s)**: the client-visible packets
+- [ ] **Wiring**: game-loop / observer / DI
+- [ ] **Client-observable behaviour**: the thing the player sees
 
-## Test plan
+## Done criteria (player-observable + survives logout)
 
-- Unit/regression tests to add (file + what they pin).
-- Manual/live-client check if applicable.
+Concrete, end-to-end, testable. Each bullet is something a player or an integration test
+can observe — not "the method returns the right value".
+- The player can <X> against the live client.
+- It persists: relog → state intact.
+- rAthena-exact numbers for cases A/B/C.
+- No layer left as a stub / log-only / `return 0` — and no NEW follow-up ticket carrying
+  a layer this capability needs.
+
+## Test plan (cross-layer)
+
+- Unit/regression for the service + formula numbers.
+- Handler test for the CZ packet → service path.
+- Persistence round-trip (save → reload → equal).
+- Manual/live-client checklist for the full player story.
 
 ## Notes / gotchas
 
-- Anything discovered during the audit that will trip the implementer.
+Anything that'll trip the implementer (DI cycles, timezone, escrow ordering, etc.).
+
+---
+
+### When you finish
+
+Flip Status → `✅ Done (<date>)`, append a `## History` line, add a TIMELINE Progress-log
+line, `git mv` to `done/`. **Filing a follow-up is only legitimate for a genuinely
+NEW capability you discovered — never for a layer this ticket already needed.** If you
+catch yourself writing "service landed, packets → later", you have not finished the ticket.
