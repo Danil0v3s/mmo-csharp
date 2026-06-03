@@ -1,6 +1,6 @@
 # COMBAT-75 — SC_KAGEMUSYA ratio bonus across the Ninja/Kagerou skill arms
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Filed by:** COMBAT-57 — the KO_JYUMONJIKIRI arm's KAGEMUSYA bonus (one of 11), out of that ticket's scope.
 
