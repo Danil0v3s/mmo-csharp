@@ -99,11 +99,12 @@ public enum SkillUnitFlag : uint
     NoKnockback       = 1u << 12,
     RangedSingleUnit  = 1u << 13,
     CrazyWeedImmune   = 1u << 14,
-    Removed           = 1u << 15,
-    HiddenTrap        = 1u << 16,
-    /// <summary>COMBAT-47 — UF_NOLP: the skill ignores Land Protector (may be placed
-    /// on an SA_LANDPROTECTOR cell). Loading it from skill_db is COMBAT-66.</summary>
-    NoLandProtector   = 1u << 17,
+    RemovedByFireRain = 1u << 15,  // UF_REMOVEDBYFIRERAIN
+    // COMBAT-85 — re-aligned to rAthena e_skill_unit_flag (skill.hpp): UF_KNOCKBACKGROUP (17)
+    // was missing, so HiddenTrap (18) sat one bit low. NoLandProtector (a COMBAT-47 placeholder)
+    // is removed — the Land Protector exemption is SkillInf2.IgnoreLandProtector (COMBAT-66).
+    KnockbackGroup    = 1u << 16,  // UF_KNOCKBACKGROUP
+    HiddenTrap        = 1u << 17,  // UF_HIDDENTRAP
 }
 
 /// <summary>

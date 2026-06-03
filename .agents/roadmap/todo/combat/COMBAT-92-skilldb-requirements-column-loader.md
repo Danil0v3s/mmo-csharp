@@ -36,6 +36,7 @@ a data-driven load. A real loader would import the YAML `Requirements` block onc
       to `SkillDbEntity` + an EF migration; extend `Tools.RathenaImporter` to emit them from the YAML.
 - [ ] Populate them in `SkillDbLoader.FromEntity`; retire `CuratedAmmo` (and fold `CuratedInf2`)
       once the column load covers them — keep behavior identical (assert via the existing tests).
+- [ ] Include the `Unit.Flag` block too (COMBAT-85 currently loads it via a `CuratedUnitFlags` overlay) — fold that overlay into the column load.
 - [ ] Re-seed `seed_skill_db.sql`.
 
 ## Done criteria

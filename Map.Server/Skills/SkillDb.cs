@@ -503,6 +503,27 @@ public sealed class SkillDb : ISkillDb
             [SkillIds.GS_CRACKER] = (AmmoArrow | AmmoDagger | AmmoBullet | AmmoShell | AmmoGrenade | AmmoShuriken | AmmoKunai | AmmoCannonball | AmmoThrow, 1),
         };
 
+    /// <summary>
+    /// COMBAT-85 — curated <c>Unit.Flag</c> overlay scanned from <c>db/re/skill_db.yml</c>, for the
+    /// ground-unit skills that have a C# unit handler. The SQL skill_db loader doesn't surface the
+    /// Unit block; this populates <see cref="SkillDefinition.UnitFlags"/> until the real column loader
+    /// lands (COMBAT-92). Consumed by the UF_NOREITERATION place-gate (and available to the UF_*
+    /// placement rules generally).
+    /// </summary>
+    private static readonly IReadOnlyDictionary<ushort, SkillUnitFlag> CuratedUnitFlags =
+        new Dictionary<ushort, SkillUnitFlag>
+        {
+            [SkillIds.MG_SAFETYWALL]       = SkillUnitFlag.NoEnemy | SkillUnitFlag.NoReiteration,
+            [SkillIds.AL_PNEUMA]           = SkillUnitFlag.NoEnemy | SkillUnitFlag.NoReiteration | SkillUnitFlag.RangedSingleUnit,
+            [SkillIds.PR_SANCTUARY]        = SkillUnitFlag.NoOverlap | SkillUnitFlag.PathCheck,
+            [SkillIds.WZ_STORMGUST]        = SkillUnitFlag.NoOverlap | SkillUnitFlag.PathCheck,
+            [SkillIds.SA_LANDPROTECTOR]    = SkillUnitFlag.PathCheck | SkillUnitFlag.RemovedByFireRain,
+            // Ranger traps: NoReiteration + NoFootSet + RemovedByFireRain + HiddenTrap (HT_-family flags).
+            [SkillIds.RA_CLUSTERBOMB]      = SkillUnitFlag.NoReiteration | SkillUnitFlag.NoFootSet | SkillUnitFlag.RemovedByFireRain | SkillUnitFlag.HiddenTrap,
+            [SkillIds.RA_FIRINGTRAP]       = SkillUnitFlag.NoReiteration | SkillUnitFlag.NoFootSet | SkillUnitFlag.HiddenTrap,
+            [SkillIds.RA_ICEBOUNDTRAP]     = SkillUnitFlag.NoReiteration | SkillUnitFlag.NoFootSet | SkillUnitFlag.HiddenTrap,
+        };
+
     /// <inheritdoc />
     public void LoadingFinished()
     {
@@ -525,6 +546,15 @@ public sealed class SkillDb : ISkillDb
             for (var lv = 1; lv <= levels; lv++) qtyArr[lv] = qty;
             if (def.AmmoTypeMask != mask || def.AmmoQuantity.Length != qtyArr.Length)
                 _byId[id] = def with { AmmoTypeMask = mask, AmmoQuantity = qtyArr };
+        }
+
+        // COMBAT-85 — fold the curated Unit.Flag bitmask (OR-merge, idempotent). Same
+        // overlay pattern as Inf2/Ammo until a real skill_db Requirements/Unit column loader
+        // lands (COMBAT-92). Drives the UF_NOREITERATION place-gate in SkillUnitService.
+        foreach (var (id, flags) in CuratedUnitFlags)
+        {
+            if (_byId.TryGetValue(id, out var def) && (def.UnitFlags & flags) != flags)
+                _byId[id] = def with { UnitFlags = def.UnitFlags | flags };
         }
 
         if (_byId.Count > MaxSkillSoftCap)

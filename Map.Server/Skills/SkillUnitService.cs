@@ -76,6 +76,17 @@ public sealed class SkillUnitService : ISkillUnitService
             return null;
         }
 
+        // COMBAT-85 — UF_NOREITERATION (rAthena skill.cpp:488 skill_check_unit_range): a
+        // non-reiterable ground skill cannot be placed where a unit of the SAME skill already
+        // exists within range — it does not stack. The cast already paid SP (no refund), matching
+        // rAthena's clif_skill_fail return.
+        if ((_db?.GetUnitFlag(skillId, SkillUnitFlag.NoReiteration) ?? false)
+            && HasSameSkillUnitInRange(skillId, caster.MapId, centerX, centerY, (short)h.Radius(skillLevel)))
+        {
+            _logger.LogDebug("SkillUnitService.Place: skill {Skill} blocked by NoReiteration (overlapping unit)", skillId);
+            return null;
+        }
+
         var now = Environment.TickCount64;
         var startAt = delayMs > 0 ? now + delayMs : 0;
         var group = new SkillUnitGroup
@@ -112,6 +123,26 @@ public sealed class SkillUnitService : ISkillUnitService
         }
         _groups.Add(group);
         return group;
+    }
+
+    /// <summary>
+    /// COMBAT-85 — true if a live unit of <paramref name="skillId"/> already exists within
+    /// Chebyshev <paramref name="radius"/> of the placement center (rAthena
+    /// <c>skill_check_unit_range</c>). Used by the UF_NOREITERATION place-gate.
+    /// </summary>
+    private bool HasSameSkillUnitInRange(ushort skillId, uint mapId, short cx, short cy, short radius)
+    {
+        for (var i = 0; i < _groups.Count; i++)
+        {
+            var g = _groups[i];
+            if (g.SkillId != skillId || g.MapId != mapId) continue;
+            foreach (var u in g.Units)
+            {
+                if (u.Removed) continue;
+                if (Math.Abs(u.X - cx) <= radius && Math.Abs(u.Y - cy) <= radius) return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>Inline square-radius generator used when ISkillLayoutService is not wired.</summary>
