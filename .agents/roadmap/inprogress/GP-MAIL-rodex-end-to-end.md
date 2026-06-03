@@ -1,6 +1,6 @@
 # GP-MAIL — RODEX mail works end-to-end
 
-> **Epic:** gameplay · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** GP-AUCTION (shares attachment/escrow patterns)
 
 ## The deliverable (definition of done)
