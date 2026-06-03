@@ -1,6 +1,6 @@
 # COMBAT-81 — Cardfix race2 (bAddRace2/bSubRace2) + status_get_race2 classifier
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-63 · **Blocks:** none
 > **Filed by:** COMBAT-63 — race2 needs a new mob-classification axis + data source, separate
 > from the element-debuff + distinct-magic-array work that landed there.
