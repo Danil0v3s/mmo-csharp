@@ -3,11 +3,16 @@ using Map.Server.Entities;
 namespace Map.Server.Skills.Behaviors.Ninja;
 
 /// <summary>
-/// KO_BAKURETSU — Kunai Explosion. Manual port of
-/// <c>rathena-fork/src/map/skills/ninja/kunaiexplosion.cpp</c>.
-/// Recursive splash; ratio uses NJ_TOBIDOUGU level * (50 + dex/4) * lv
-/// * 4 / 10 plus 10 * jobLv plus Kagemusya multiplier. Partner-skill
-/// + Kagemusya scaling are TODO.
+/// KO_BAKURETSU — Kunai Explosion. rAthena <c>battle_calc_attack_skill_ratio</c>
+/// KO_BAKURETSU arm (battle.cpp:5663): ratio <c>-100 + NJ_TOBIDOUGU*(50 + dex/4)*lv*4/10</c>,
+/// <c>RE_LVL_DMOD(120)</c>, then <c>+10*job_level</c> (post-dmod), then the SC_KAGEMUSYA multiply.
+///
+/// <para>The real <c>pc_checkskill(NJ_TOBIDOUGU)</c> factor (currently hardcoded 1), the
+/// post-dmod <c>10*job_level</c> placement, and the SC_KAGEMUSYA multiply are tracked in
+/// <b>COMBAT-91</b>: this splash arm's damage path
+/// (<see cref="RecursiveDamageSplashSkillImpl.SplashDamage"/>) is not yet wired to a
+/// ratio-scaled value, so none of the ratio refinements (incl. COMBAT-75's KAGEMUSYA close)
+/// are reachable here until that lands.</para>
 /// </summary>
 public sealed class KunaiExplosion : RecursiveDamageSplashSkillImpl
 {

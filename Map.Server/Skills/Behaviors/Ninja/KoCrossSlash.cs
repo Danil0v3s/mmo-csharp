@@ -33,6 +33,12 @@ public sealed class KoCrossSlash : WeaponSkillImpl
     protected override int CalculateSkillRatioPostDmod(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext? ctx)
         => ctx?.Sc?.Get(target, StatusType.Jyumonjikiri) != null ? skillLevel * src.Level : 0;
 
+    // COMBAT-75 — rAthena closes this arm with the SC_KAGEMUSYA caster multiply
+    // `skillratio += skillratio * val2/100` (battle.cpp:5644), applied AFTER the
+    // SC_JYUMONJIKIRI post-dmod add above, so it scales the full running ratio.
+    protected override int CalculateSkillRatioPostDmodMultiply(int ratio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext? ctx)
+        => ApplyKagemusyaRatio(ratio, src, ctx);
+
     // COMBAT-57 — position shift: the caster repositions to a cell offset from the
     // target (by the caster→target direction), slide-broadcasts (clif_blown), then
     // strikes (skill.cpp:7128). If the move is blocked, no strike. With UnitOps

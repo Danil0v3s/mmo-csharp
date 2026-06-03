@@ -106,6 +106,33 @@ public abstract class SkillImpl
         => 0;
 
     /// <summary>
+    /// COMBAT-75 — a MULTIPLICATIVE ratio step applied AFTER <c>RE_LVL_DMOD</c> and
+    /// the post-DMOD additions (<see cref="CalculateSkillRatioPostDmod"/>), mirroring
+    /// the rAthena arms that close their <c>battle_calc_attack_skill_ratio</c> case
+    /// with <c>skillratio += skillratio * X / 100</c> — i.e. a multiply of the FULL
+    /// running ratio (base + dmod + the post-dmod adds). Receives the running ratio
+    /// and returns the new ratio; default: unchanged. The canonical case is the
+    /// SC_KAGEMUSYA (Shadow Warrior) caster bonus on KO_JYUMONJIKIRI (battle.cpp:5644),
+    /// KO_HUUMARANKA (5650), KO_BAKURETSU (5667). Reuse <see cref="ApplyKagemusyaRatio"/>.
+    /// </summary>
+    protected virtual int CalculateSkillRatioPostDmodMultiply(int ratio, Entity src, Entity target, ushort skillLevel, SkillBehaviorContext? ctx)
+        => ratio;
+
+    /// <summary>
+    /// COMBAT-75 — the shared SC_KAGEMUSYA caster ratio bonus
+    /// (<c>ratio += ratio * KAGEMUSYA.val2 / 100</c>, rAthena battle.cpp; val2 = 20,
+    /// status.cpp:11980). No-op without the SC, or without <paramref name="ctx"/> (the
+    /// ctx-less funnel has no behavior context to read the caster's SC) — matching the
+    /// other ctx-gated SC ratio reads. Applied as the last ratio step so it scales the
+    /// full running ratio, exactly as rAthena's <c>skillratio += skillratio * val2/100</c>.
+    /// </summary>
+    protected static int ApplyKagemusyaRatio(int ratio, Entity src, SkillBehaviorContext? ctx)
+    {
+        var ka = ctx?.Sc?.Get(src, StatusType.Kagemusya);
+        return ka != null ? ratio + ratio * ka.Val2 / 100 : ratio;
+    }
+
+    /// <summary>
     /// rAthena <c>battle_calc_skill_constant_addition</c> (battle.cpp:6606).
     /// A FLAT additive (not a percent) applied <b>after</b> the skill ratio
     /// and before cardfix/defense — rAthena <c>ATK_ADD(... constant ...)</c>
@@ -268,6 +295,10 @@ public abstract class WeaponSkillImpl : SkillImpl
         // COMBAT-57 — post-RE_LVL_DMOD ratio additions (unscaled), e.g. the
         // SC_JYUMONJIKIRI bonus added after the macro in rAthena.
         ratio += CalculateSkillRatioPostDmod(src, target, skillLevel, ctx);
+        // COMBAT-75 — multiplicative ratio close (after the post-dmod adds), e.g. the
+        // SC_KAGEMUSYA caster bonus `skillratio += skillratio * val2/100` on the
+        // Ninja/Kagerou arms. Scales the full running ratio.
+        ratio = CalculateSkillRatioPostDmodMultiply(ratio, src, target, skillLevel, ctx);
         var raw = swing.Total * ratio / 100
                   + CalculateSkillConstantAddition(src, target, skillLevel);
         // COMBAT-22 — bonus2 bSkillAtk: per-skill % damage applied after the
