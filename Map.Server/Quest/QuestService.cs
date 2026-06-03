@@ -19,6 +19,7 @@ public sealed class QuestService : IQuestService
     private readonly Dictionary<uint, QuestDbEntity> _catalog = new();
     private readonly IServiceScopeFactory? _scopes;
     private readonly Map.Server.Status.ISessionManagerAccessor? _sessions;
+    private readonly Map.Server.Mob.IMobDb? _mobDb;
     private readonly ILogger<QuestService> _logger;
 
     // rAthena e_quest_state.
@@ -29,19 +30,21 @@ public sealed class QuestService : IQuestService
     internal Func<DateTimeOffset> Clock { get; set; } = () => DateTimeOffset.Now;
 
     public QuestService(IServiceScopeFactory scopes, ILogger<QuestService> logger,
-        Map.Server.Status.ISessionManagerAccessor? sessions = null)
+        Map.Server.Status.ISessionManagerAccessor? sessions = null, Map.Server.Mob.IMobDb? mobDb = null)
     {
         _scopes = scopes;
         _logger = logger;
         _sessions = sessions;
+        _mobDb = mobDb;
         Reload();
     }
 
     public QuestService(ILogger<QuestService> logger) { _logger = logger; }
 
-    /// <summary>Test seam — inject a session accessor for the ZC-emit paths.</summary>
-    internal QuestService(ILogger<QuestService> logger, Map.Server.Status.ISessionManagerAccessor sessions)
-    { _logger = logger; _sessions = sessions; }
+    /// <summary>Test seam — inject a session accessor (+ optional mob DB) for the ZC-emit paths.</summary>
+    internal QuestService(ILogger<QuestService> logger, Map.Server.Status.ISessionManagerAccessor sessions,
+        Map.Server.Mob.IMobDb? mobDb = null)
+    { _logger = logger; _sessions = sessions; _mobDb = mobDb; }
 
     /// <summary>
     /// FEATURE-03 — rAthena <c>quest_add</c> (quest.cpp:587): accept a quest. Fails (-1) on unknown
@@ -67,8 +70,7 @@ public sealed class QuestService : IQuestService
             Counts = new int[ObjectiveCount(cat)],
             TimeUnix = QuestTime.ParseTimeUnix(cat.TimeLimit, now.ToUnixTimeSeconds(), now),
         });
-        // PACKET-10 owns ZC_ADD_QUEST + ZC_UPDATE_MISSION_HUNT; the log entry mutated here persists
-        // via the FEATURE-02 quest-save fan-out.
+        EmitAdd(pc, questId); // the log entry persists via the FEATURE-02 quest-save fan-out
         return 0;
     }
 
@@ -91,7 +93,8 @@ public sealed class QuestService : IQuestService
             Counts = new int[ObjectiveCount(newCat)],
             TimeUnix = QuestTime.ParseTimeUnix(newCat.TimeLimit, now.ToUnixTimeSeconds(), now),
         };
-        // PACKET-10: ZC_DEL_QUEST(old) + ZC_ADD_QUEST(new) emit seam.
+        EmitDelete(pc, oldQuestId);
+        EmitAdd(pc, newQuestId);
         return 0;
     }
 
@@ -224,6 +227,46 @@ public sealed class QuestService : IQuestService
     }
 
     // --- client emits (GP-QUEST) ---
+
+    /// <summary>rAthena <c>clif_quest_add</c> — tell the client a quest was accepted, with its
+    /// objectives (mob id + display name + target + current). Resolves mob aegis → id/name via the
+    /// mob DB; a missing mob falls back to Poring (rAthena: 0 can't be sent).</summary>
+    private void EmitAdd(PlayerEntity pc, int questId)
+    {
+        var session = _sessions?.GetByEntityId(pc.Id);
+        if (session == null) return;
+        var cat = GetCatalogEntry((uint)questId);
+        var idx = IndexOf(pc, questId);
+        if (cat == null || idx < 0) return;
+        var q = pc.QuestLog[idx];
+
+        var primary = new List<Core.Server.Packets.Out.ZC.AddQuestObjective>();
+        var mission = new List<Core.Server.Packets.Out.ZC.MissionObjective>();
+        for (byte i = 0; i < 3; i++)
+        {
+            var target = ObjectiveTarget(cat, i);
+            if (target <= 0) continue;
+            var aegis = i switch { 0 => cat.Mob1, 1 => cat.Mob2, 2 => cat.Mob3, _ => null };
+            var mob = aegis != null ? _mobDb?.GetByAegisName(aegis) : null;
+            var mobId = mob?.Id ?? 1002; // MOBID_PORING fallback (rAthena)
+            var name = mob?.Name ?? aegis ?? string.Empty;
+            var current = (short)(i < q.Counts.Length ? q.Counts[i] : 0);
+            var questIndex = questId * 1000 + i;
+            primary.Add(new Core.Server.Packets.Out.ZC.AddQuestObjective { QuestIndex = questIndex, MobId = mobId, Current = current, MobName = name });
+            mission.Add(new Core.Server.Packets.Out.ZC.MissionObjective(mobId, questIndex, (short)target, current));
+        }
+
+        session.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_ADD_QUEST
+        {
+            QuestId = questId,
+            State = (byte)q.State,
+            TimeDiff = 0,
+            Time = (uint)Math.Max(0, q.TimeUnix),
+            Objectives = primary,
+        });
+        if (mission.Count > 0)
+            session.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_ADD_QUEST_MISSION { Objectives = mission });
+    }
 
     /// <summary>rAthena <c>clif_quest_delete</c> — tell the client to drop the quest from its log.</summary>
     private void EmitDelete(PlayerEntity pc, int questId)

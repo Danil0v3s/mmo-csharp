@@ -88,6 +88,15 @@ element/level/map) and immediate-on-mutation save are missing.
   `UpdateMobObjective`, archive FEATURE-21). (6) **immediate-save** on mutation (archive FEATURE-22).
   All are layers of THIS vertical; the loop resumes this card. Live-client wire validation is the
   project's standing deferred pass.
+- **2026-06-03 (turn 2)** — Quest-appears (ADD) landed. Injected `IMobDb` into `QuestService`; new
+  `ZC_ADD_QUEST` (0x09f9, fixed 143B: header 17 + 3×42 objective slots, zero-padded unused) +
+  `ZC_ADD_QUEST_MISSION` (0x08fe, variable mission counts). `EmitAdd` resolves each objective's mob
+  aegis → id + display name via `IMobDb` (Poring fallback for a missing mob, rAthena parity), wired
+  into `Add` + `Change`. `QuestEmitTests` now 3 (Add verifies the 143B primary + the mission
+  secondary). Full suite 4432 pass (1 = standing replay-fixture). **In-session loop reachable: accept
+  (setquest→Add→appears) → kill (UPDATE ticks) → complete/delete (DEL).** Remaining (next turns →
+  done): the login `ZC_ALL_QUEST_LIST` snapshot + load-on-enter + `CZ_ACTIVE_QUEST` toggle + objective
+  filters (FEATURE-21) + immediate-save (FEATURE-22).
 
 ## Notes / gotchas
 
