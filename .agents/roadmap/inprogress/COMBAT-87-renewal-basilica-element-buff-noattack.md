@@ -1,6 +1,6 @@
 # COMBAT-87 — Renewal SC_BASILICA effects: offensive element buff + NoAttack caster state
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-68 · **Blocks:** none
 > **Filed by:** COMBAT-68 — it corrected the premise (renewal Basilica is NOT a cell-immunity
 > sanctuary) and applies the `SC_BASILICA` self-buff, but the SC's two real renewal effects
