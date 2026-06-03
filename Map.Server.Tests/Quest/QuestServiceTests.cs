@@ -22,6 +22,9 @@ public class QuestServiceTests
     private static QuestDbEntity Quest(uint id, string mob = "PORING", int count = 2, string time = "")
         => new() { QuestId = id, Mob1 = mob, Count1 = count, TimeLimit = time };
 
+    private static QuestMobContext Mob(string aegis, int level = 1, string race = "Formless", string size = "Small", string element = "Neutral")
+        => new(1002, aegis, level, race, size, element);
+
     // --- Add / Delete / Change ---
 
     [Fact]
@@ -105,12 +108,86 @@ public class QuestServiceTests
         var (svc, pc) = Build(catalog: Quest(1000, mob: "PORING", count: 1));
         svc.Add(pc, 1000);
 
-        svc.UpdateMobObjective(pc, "LUNATIC"); // wrong mob
+        svc.UpdateMobObjective(pc, Mob("LUNATIC")); // wrong mob
         Assert.Equal(0, pc.QuestLog[0].Counts[0]);
 
-        svc.UpdateMobObjective(pc, "PORING");
+        svc.UpdateMobObjective(pc, Mob("PORING"));
         Assert.Equal(1, pc.QuestLog[0].Counts[0]);
         Assert.Equal(2, pc.QuestLog[0].State); // auto-complete
+    }
+
+    // --- FEATURE-21: any-mob objective filters (race / size / element / level / location / allow-list) ---
+
+    [Fact]
+    public void AnyMob_race_filter_counts_only_matching_race()
+    {
+        // Mob1 empty (mob_id == 0) → filtered objective: kill 2 Fish-type.
+        var (svc, pc) = Build(catalog: new QuestDbEntity { QuestId = 2000, Count1 = 2, Race1 = "Fish" });
+        svc.Add(pc, 2000);
+
+        svc.UpdateMobObjective(pc, Mob("MARINA", race: "Plant")); // wrong race
+        Assert.Equal(0, pc.QuestLog[0].Counts[0]);
+
+        svc.UpdateMobObjective(pc, Mob("MARINA", race: "Fish")); // matches
+        Assert.Equal(1, pc.QuestLog[0].Counts[0]);
+    }
+
+    [Fact]
+    public void AnyMob_min_level_filter_excludes_low_level_mobs()
+    {
+        var (svc, pc) = Build(catalog: new QuestDbEntity { QuestId = 2001, Count1 = 5, Race1 = "DemiHuman", MinLevel1 = 140 });
+        svc.Add(pc, 2001);
+
+        svc.UpdateMobObjective(pc, Mob("X", level: 100, race: "DemiHuman")); // under MinLevel
+        Assert.Equal(0, pc.QuestLog[0].Counts[0]);
+
+        svc.UpdateMobObjective(pc, Mob("X", level: 150, race: "DemiHuman")); // at/above
+        Assert.Equal(1, pc.QuestLog[0].Counts[0]);
+    }
+
+    [Fact]
+    public void AnyMob_size_and_element_filters_apply()
+    {
+        var (svc, pc) = Build(catalog: new QuestDbEntity { QuestId = 2002, Count1 = 3, Size1 = "Large", Element1 = "Water" });
+        svc.Add(pc, 2002);
+
+        svc.UpdateMobObjective(pc, Mob("A", size: "Large", element: "Fire"));  // wrong element
+        svc.UpdateMobObjective(pc, Mob("B", size: "Small", element: "Water")); // wrong size
+        Assert.Equal(0, pc.QuestLog[0].Counts[0]);
+
+        svc.UpdateMobObjective(pc, Mob("C", size: "Large", element: "Water")); // both match
+        Assert.Equal(1, pc.QuestLog[0].Counts[0]);
+    }
+
+    [Fact]
+    public void AnyMob_allow_list_counts_only_listed_mobs()
+    {
+        var (svc, pc) = Build(catalog: new QuestDbEntity { QuestId = 2003, Count1 = 4, MobsAllowed1 = "ILL_MUNAK|ILL_SOHEE" });
+        svc.Add(pc, 2003);
+
+        svc.UpdateMobObjective(pc, Mob("PORING"));    // not in list
+        Assert.Equal(0, pc.QuestLog[0].Counts[0]);
+
+        svc.UpdateMobObjective(pc, Mob("ILL_SOHEE")); // listed
+        Assert.Equal(1, pc.QuestLog[0].Counts[0]);
+    }
+
+    [Fact]
+    public void AnyMob_location_filter_matches_player_map()
+    {
+        var svc = new QuestService(NullLogger<QuestService>.Instance);
+        svc.SeedCatalogForTest(new QuestDbEntity { QuestId = 2004, Count1 = 2, Location1 = "prontera" });
+        // Player on prontera (MapId is the name hash, mirroring the production Name2MapId).
+        var onPront = new PlayerEntity(1, 1, "P", Guid.NewGuid(), (uint)"prontera".GetHashCode(), 50, 50) { Hp = 1, MaxHp = 1 };
+        var elsewhere = new PlayerEntity(2, 2, "Q", Guid.NewGuid(), (uint)"payon".GetHashCode(), 50, 50) { Hp = 1, MaxHp = 1 };
+        svc.Add(onPront, 2004);
+        svc.Add(elsewhere, 2004);
+
+        svc.UpdateMobObjective(elsewhere, Mob("ANY")); // wrong map
+        Assert.Equal(0, elsewhere.QuestLog[0].Counts[0]);
+
+        svc.UpdateMobObjective(onPront, Mob("ANY"));   // on the quest's location
+        Assert.Equal(1, onPront.QuestLog[0].Counts[0]);
     }
 
     // --- Check query codes ---

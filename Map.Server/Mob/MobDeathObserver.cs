@@ -65,12 +65,17 @@ public sealed class MobDeathObserver : IMobDeathObserver
         if (mob.DbEntry.MvpExp > 0 || mob.DbEntry.MvpDrops.Count > 0)
             AwardMvp(mob, dmgLog, killer);
 
-        // 3. Quest + 4. achievement objectives — per contributing PC.
-        var aegis = mob.DbEntry.AegisName ?? string.Empty;
+        // 3. Quest + 4. achievement objectives — per contributing PC. FEATURE-21: pass the mob's
+        // full matching context (id/aegis/level/race/size/element) so any-mob filter objectives
+        // (race/size/element/level/location) resolve, not just aegis-specific ones.
+        var db = mob.DbEntry;
+        var questMob = new Map.Server.Quest.QuestMobContext(
+            MobId: db.Id, Aegis: db.AegisName ?? string.Empty, Level: db.Level,
+            Race: db.Race, Size: db.Size, Element: db.Element);
         var achievementMatch = _achievement.MobExists(mob.ClassId);
         foreach (var pc in contributors)
         {
-            _quest.UpdateMobObjective(pc, aegis);
+            _quest.UpdateMobObjective(pc, questMob);
             if (achievementMatch)
                 _achievement.UpdateObjective(pc, (byte)AchievementGroup.Battle, 0, mob.ClassId);
         }

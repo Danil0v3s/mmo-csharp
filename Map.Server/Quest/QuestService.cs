@@ -241,9 +241,8 @@ public sealed class QuestService : IQuestService
     }
 
     /// <inheritdoc />
-    public void UpdateMobObjective(PlayerEntity pc, string mobAegis)
+    public void UpdateMobObjective(PlayerEntity pc, QuestMobContext mob)
     {
-        if (string.IsNullOrEmpty(mobAegis)) return;
         foreach (var q in pc.QuestLog)
         {
             if (q.State != QActive) continue; // Q_ACTIVE only (rAthena skips Q_COMPLETE)
@@ -253,9 +252,9 @@ public sealed class QuestService : IQuestService
             var changed = false;
             for (byte i = 0; i < 3; i++)
             {
-                if (!ObjectiveMobMatches(cat, i, mobAegis)) continue;
                 var target = ObjectiveTarget(cat, i);
                 if (target <= 0) continue;
+                if (!ObjectiveMatches(cat, i, mob, pc)) continue;
                 EnsureCounts(q, i + 1);
                 if (q.Counts[i] >= target) continue;
                 q.Counts[i]++;
@@ -373,10 +372,12 @@ public sealed class QuestService : IQuestService
 
     private static int ObjectiveCount(Core.Database.Entities.QuestDbEntity cat)
     {
+        // FEATURE-21: an objective exists iff its Count > 0 — whether mob-specific (MobN set) or an
+        // any-mob filter (MobN empty). Mirrors rAthena's compacted objectives vector.
         var n = 0;
-        if (!string.IsNullOrEmpty(cat.Mob1)) n++;
-        if (!string.IsNullOrEmpty(cat.Mob2)) n++;
-        if (!string.IsNullOrEmpty(cat.Mob3)) n++;
+        if (cat.Count1 > 0) n++;
+        if (cat.Count2 > 0) n++;
+        if (cat.Count3 > 0) n++;
         return n;
     }
 
@@ -399,17 +400,59 @@ public sealed class QuestService : IQuestService
         return null;
     }
 
-    private static bool ObjectiveMobMatches(Core.Database.Entities.QuestDbEntity cat, byte index, string mobAegis)
+    /// <summary>FEATURE-21 — rAthena <c>quest_update_objective</c> per-objective match (quest.cpp:771).
+    /// A mob-specific objective matches by aegis (<c>mob_id == md->mob_id</c>). An any-mob objective
+    /// (empty <c>MobN</c>, i.e. <c>mob_id == 0</c>) must pass all of: min/max level, race, size,
+    /// element, location, and the optional allow-list — the 7-check gate.</summary>
+    private static bool ObjectiveMatches(Core.Database.Entities.QuestDbEntity cat, byte index, QuestMobContext mob, PlayerEntity pc)
     {
-        var mob = index switch { 0 => cat.Mob1, 1 => cat.Mob2, 2 => cat.Mob3, _ => null };
-        return !string.IsNullOrEmpty(mob) && string.Equals(mob, mobAegis, StringComparison.OrdinalIgnoreCase);
+        var name = index switch { 0 => cat.Mob1, 1 => cat.Mob2, 2 => cat.Mob3, _ => null };
+        if (!string.IsNullOrEmpty(name))
+            return string.Equals(name, mob.Aegis, StringComparison.OrdinalIgnoreCase);
+
+        // any-mob (mob_id == 0) — all checks must pass.
+        var minLv = index switch { 0 => cat.MinLevel1, 1 => cat.MinLevel2, 2 => cat.MinLevel3, _ => 0 };
+        var maxLv = index switch { 0 => cat.MaxLevel1, 1 => cat.MaxLevel2, 2 => cat.MaxLevel3, _ => 0 };
+        if (!(minLv == 0 || minLv <= mob.Level)) return false;
+        if (!(maxLv == 0 || maxLv >= mob.Level)) return false;
+
+        var race = index switch { 0 => cat.Race1, 1 => cat.Race2, 2 => cat.Race3, _ => null };
+        var size = index switch { 0 => cat.Size1, 1 => cat.Size2, 2 => cat.Size3, _ => null };
+        var element = index switch { 0 => cat.Element1, 1 => cat.Element2, 2 => cat.Element3, _ => null };
+        if (!FilterAll(race, mob.Race)) return false;
+        if (!FilterAll(size, mob.Size)) return false;
+        if (!FilterAll(element, mob.Element)) return false;
+
+        // Location: empty = any map. rAthena also allows the instance source map (instance_src_map);
+        // that branch is unreachable until GP-INSTANCE lands → GP-QUEST-FILTER-INSTANCE.
+        var loc = index switch { 0 => cat.Location1, 1 => cat.Location2, 2 => cat.Location3, _ => null };
+        if (!string.IsNullOrEmpty(loc) && (uint)loc.GetHashCode() != pc.MapId) return false;
+
+        // Allow-list (MapMobTargets): if present, only the listed aegis names count.
+        var allowed = index switch { 0 => cat.MobsAllowed1, 1 => cat.MobsAllowed2, 2 => cat.MobsAllowed3, _ => null };
+        if (!string.IsNullOrEmpty(allowed) && !AllowedContains(allowed, mob.Aegis)) return false;
+
+        return true;
+    }
+
+    /// <summary>An "All"/empty filter matches anything; otherwise the mob attribute must equal it.</summary>
+    private static bool FilterAll(string? filter, string mobValue)
+        => string.IsNullOrEmpty(filter)
+           || filter.Equals("All", StringComparison.OrdinalIgnoreCase)
+           || filter.Equals(mobValue, StringComparison.OrdinalIgnoreCase);
+
+    private static bool AllowedContains(string pipeDelimited, string aegis)
+    {
+        foreach (var n in pipeDelimited.Split('|', StringSplitOptions.RemoveEmptyEntries))
+            if (n.Equals(aegis, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
     }
 
     private static int ObjectiveTarget(Core.Database.Entities.QuestDbEntity cat, byte index) => index switch
     {
-        0 => string.IsNullOrEmpty(cat.Mob1) ? 0 : cat.Count1,
-        1 => string.IsNullOrEmpty(cat.Mob2) ? 0 : cat.Count2,
-        2 => string.IsNullOrEmpty(cat.Mob3) ? 0 : cat.Count3,
+        0 => cat.Count1 > 0 ? cat.Count1 : 0,
+        1 => cat.Count2 > 0 ? cat.Count2 : 0,
+        2 => cat.Count3 > 0 ? cat.Count3 : 0,
         _ => 0,
     };
 

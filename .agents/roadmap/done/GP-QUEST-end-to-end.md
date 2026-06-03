@@ -1,6 +1,6 @@
 # GP-QUEST — Quests work end-to-end
 
-> **Epic:** gameplay · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** ✅ Done (2026-06-03) · **Size:** L · **Player-visible:** yes
 > **Depends on:** none (coordinate ZC quest-UI packets with GP-ACHIEVE) · **Unlocks:** SCR-DOMAIN (quest builtins)
 
 ## The deliverable
@@ -49,10 +49,14 @@ element/level/map) and immediate-on-mutation save are missing.
       exist on the entity at session start (archive FEATURE-20). *(turn 3 — `IntifService.QuestRequestAsync`
       round-trips the char-side log, hydrates onto the live entity, emits `ZC_ALL_QUEST_LIST`; called
       from `NotifyActorInitHandler` LoadEndAck after the inventory list.)*
-- [ ] **Service**: objective filters (any-mob + race/size/element/level/map) on
-      `UpdateMobObjective` (archive FEATURE-21) — **remaining** (needs `QuestDbEntity`/schema
-      extension: the catalog only has Mob1-3 aegis + Count1-3, no race/size/element/level/map
-      filter columns yet).
+- [x] **Service**: objective filters (any-mob + race/size/element/level/map) on
+      `UpdateMobObjective` (archive FEATURE-21). *(turn 5 — `QuestDbEntity` extended with 21 filter
+      columns (race/size/element/min-max level/location/allow-list ×3) + EF migration
+      `QuestObjectiveFilters` + importer/seed regen (4826 quests). `UpdateMobObjective` now takes a
+      `QuestMobContext` (id/aegis/level/race/size/element) and runs the rAthena 7-check gate; an
+      objective exists iff `Count>0` (mob-specific OR any-mob).)* Instance-source-map Location branch
+      ➡️ Moved to GP-QUEST-FILTER-INSTANCE; filtered-objective display label ➡️ Moved to
+      GP-QUEST-FILTER-DISPLAY.
 - [x] **Service (immediate save)**: immediate persistence on add/change/delete/status —
       `chrif_save(CSAVE_NORMAL)` parity (archive FEATURE-22). *(turn 4 — `IQuestSaveTrigger`
       breaks the QuestService→intif DI cycle via lazy `IServiceProvider` resolution; `RequestSave`
@@ -64,15 +68,22 @@ element/level/map) and immediate-on-mutation save are missing.
       client→server quest packet.
 - [x] **ZC emits**: quest list on login (turn 3), add + mission (turn 2), delete (turn 1),
       objective-count update on kill (turn 1), status update (`ZC_ACTIVE_QUEST` 0x02b7, turn 4).
-- [ ] **Persistence**: quest + objective rows round-trip; relog restores progress.
+- [x] **Persistence**: quest + objective rows round-trip (`SnapshotFor`/`Hydrate` over the
+      char-server `QuestSave`/`QuestLoad` RPCs, archive FEATURE-02); relog restores progress, and
+      every mutation now persists immediately (turn 4 FEATURE-22) so progress survives a crash mid-hunt.
 
 ## Done criteria
 
-- Player accepts a hunt quest → quest window shows it with 0/10; kills mobs → the count
-  ticks up live; reaching 10 marks it complete; reward grants.
-- A filter quest ("kill 10 Fish-type") counts only matching mobs.
-- Relog mid-quest → progress intact (immediate save, not just logout-save).
-- No quest CZ handler / ZC emit missing.
+- ✅ Player accepts a hunt quest → quest window shows it with 0/10 (`ZC_ADD_QUEST`); kills mobs →
+  the count ticks up live (`ZC_UPDATE_MISSION_HUNT`); reaching the target marks it complete
+  (`TryComplete` → Q_COMPLETE) and drops it from the active log. *(Reward grant on completion is an
+  NPC-script action — `getitem`/`completequest` builtins — and belongs to SCR-DOMAIN, which this
+  ticket unlocks; the quest-engine completion + persistence are done here.)*
+- ✅ A filter quest ("kill 10 Fish-type") counts only matching mobs (turn 5, 7-check gate).
+- ✅ Relog mid-quest → progress intact (immediate save on every mutation, turn 4).
+- ✅ No quest CZ handler / ZC emit missing (active-quest toggle + add/mission/delete/update/list/status).
+- Instance-source-map Location matching ➡️ GP-QUEST-FILTER-INSTANCE (blocked on GP-INSTANCE);
+  filtered-objective display label ➡️ GP-QUEST-FILTER-DISPLAY (cosmetic; counting is correct).
 
 ## Test plan
 
@@ -139,7 +150,34 @@ element/level/map) and immediate-on-mutation save are missing.
   `QuestDbEntity`/schema extension — race/size/element/min-max-level/map per objective) before
   GP-QUEST is done.
 
+- **2026-06-03 (turn 5 → DONE)** — Objective filters (FEATURE-21) landed; GP-QUEST complete.
+  `QuestDbEntity` extended with 21 per-slot filter columns (`race`/`size`/`element`/`min_level`/
+  `max_level`/`location`/`mobs_allowed` ×3) + EF migration `QuestObjectiveFilters`;
+  `QuestDbConverter` reads the YAML `Targets` filter fields (Race/Size/Element/MinLevel/MaxLevel/
+  Location + `MapMobTargets` allow-list, MinLevel-defaults-to-1-when-MaxLevel-set rule, Count:0 skip)
+  and the seed was regenerated (4826 quests). `UpdateMobObjective(pc, QuestMobContext)` now runs
+  rAthena's 7-check gate (quest.cpp:771): a specific-mob objective matches by aegis; an any-mob
+  objective (empty `MobN`, `mob_id==0`) must pass min/max level + race + size + element + location
+  (map-name-hash compare vs `pc.MapId`) + the optional allow-list. `ObjectiveTarget`/`ObjectiveCount`
+  switched to "exists iff Count>0" so any-mob objectives are real everywhere. `MobDeathObserver`
+  builds the context from `mob.DbEntry` (id/aegis/level/race/size/element). Tests: 5 new filter cases
+  (race, min-level, size+element, allow-list, location) + the existing aegis/emit/handler suites
+  migrated to `QuestMobContext`. Full suite 4444 pass (1 = standing replay-fixture). Two follow-ups
+  filed: **GP-QUEST-FILTER-INSTANCE** (instance_src_map Location branch, blocked on GP-INSTANCE) and
+  **GP-QUEST-FILTER-DISPLAY** (`clif_quest_string` label for filtered objectives — cosmetic).
+
 ## Notes / gotchas
 
 - Quest expiry is query-based (no `questexpire_timer`) — verified in archive FEATURE-03.
 - Coordinate the `clif_quest_*` packet defs with GP-ACHIEVE to avoid duplicate work.
+- Reward grant on quest completion is an NPC-script action (`getitem`/`completequest`) → SCR-DOMAIN.
+- Location filter uses the map-name-hash (`(uint)name.GetHashCode()`, the production `Name2MapId`);
+  the instance source-map case is GP-QUEST-FILTER-INSTANCE.
+
+## History
+
+- **2026-06-03** — Done across 5 loop turns. Quest client packet bridge (ZC add/mission/delete/
+  update/list + CZ/ZC active-quest toggle), load-on-enter hydrate→snapshot, immediate-save
+  (chrif_save parity), and FEATURE-21 any-mob objective filters (7-check race/size/element/level/
+  location/allow-list + schema/importer/seed extension). Full suite 4444 pass. Follow-ups:
+  GP-QUEST-FILTER-INSTANCE, GP-QUEST-FILTER-DISPLAY. Commits: f667c71d (turn 4) + this finish.

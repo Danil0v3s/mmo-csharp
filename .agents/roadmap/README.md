@@ -79,7 +79,9 @@ this ticket already needed.** "Service landed, packets later" is not done.
 | GP-HOMUN | Homunculus works end-to-end (summon/feed/AI/combat/growth/hunger/skill) | FEATURE-08/29/30/31, PACKET-04 |
 | GP-MERC | Mercenary works end-to-end (summon/AI/combat/lifetime) | FEATURE-09/32/33, PACKET-05 |
 | GP-ELEM | Elemental works end-to-end (summon/AI/lifetime/persist) | FEATURE-10/34 |
-| GP-QUEST | Quests work end-to-end (accept/track/complete/UI/persist) | FEATURE-03/20/21/22, PACKET-10 |
+| GP-QUEST | ✅ Quests end-to-end (accept/track/live-count/complete/UI/login-snapshot/toggle/immediate-save + any-mob filters; instance-loc→GP-QUEST-FILTER-INSTANCE, label→GP-QUEST-FILTER-DISPLAY) | FEATURE-03/20/21/22, PACKET-10 |
+| GP-QUEST-FILTER-INSTANCE | Quest Location filter honours instance source map (needs GP-INSTANCE) — split from GP-QUEST |
+| GP-QUEST-FILTER-DISPLAY | Descriptive label for filtered quest objectives (clif_quest_string) — split from GP-QUEST |
 | GP-ACHIEVE | Achievements work end-to-end (triggers/progress/reward/title/UI) | FEATURE-04/23/24, PACKET-10 |
 | GP-VEND | Vending works end-to-end (open/browse/buy/autotrade) | FEATURE-11/35, PACKET-08 |
 | GP-BUYSTORE | Buying store works end-to-end | FEATURE-12/36, PACKET-08 |

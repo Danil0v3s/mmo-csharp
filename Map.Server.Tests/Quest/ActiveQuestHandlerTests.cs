@@ -86,7 +86,7 @@ public class ActiveQuestHandlerTests
         public int PcLogin(PlayerEntity pc) => 0;
         public int UpdateObjectiveSub(PlayerEntity pc, int questId, byte index, int delta) => 0;
         public void UpdateObjective(PlayerEntity pc, int questId, byte index, int delta) { }
-        public void UpdateMobObjective(PlayerEntity pc, string mobAegis) { }
+        public void UpdateMobObjective(PlayerEntity pc, Map.Server.Quest.QuestMobContext mob) { }
         public Core.Database.Entities.QuestDbEntity? GetCatalogEntry(uint questId) => null;
         public void Reload() { }
         public IReadOnlyList<Core.Server.IPC.QuestEntryData> SnapshotFor(PlayerEntity pc) => Array.Empty<Core.Server.IPC.QuestEntryData>();

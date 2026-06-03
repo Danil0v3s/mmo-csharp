@@ -49,12 +49,32 @@ public class QuestDbEntityConfiguration : IEntityTypeConfiguration<QuestDbEntity
         b.Property(e => e.QuestId).HasColumnName("quest_id");
         b.Property(e => e.Title).HasColumnName("title").HasMaxLength(255);
         b.Property(e => e.TimeLimit).HasColumnName("time_limit").HasMaxLength(64);
-        b.Property(e => e.Mob1).HasColumnName("mob1").HasMaxLength(64);
-        b.Property(e => e.Count1).HasColumnName("count1");
-        b.Property(e => e.Mob2).HasColumnName("mob2").HasMaxLength(64);
-        b.Property(e => e.Count2).HasColumnName("count2");
-        b.Property(e => e.Mob3).HasColumnName("mob3").HasMaxLength(64);
-        b.Property(e => e.Count3).HasColumnName("count3");
+        ConfigureObjective(b, 1, e => e.Mob1, e => e.Count1, e => e.Race1, e => e.Size1, e => e.Element1, e => e.MinLevel1, e => e.MaxLevel1, e => e.Location1, e => e.MobsAllowed1);
+        ConfigureObjective(b, 2, e => e.Mob2, e => e.Count2, e => e.Race2, e => e.Size2, e => e.Element2, e => e.MinLevel2, e => e.MaxLevel2, e => e.Location2, e => e.MobsAllowed2);
+        ConfigureObjective(b, 3, e => e.Mob3, e => e.Count3, e => e.Race3, e => e.Size3, e => e.Element3, e => e.MinLevel3, e => e.MaxLevel3, e => e.Location3, e => e.MobsAllowed3);
+    }
+
+    private static void ConfigureObjective(
+        EntityTypeBuilder<QuestDbEntity> b, int i,
+        System.Linq.Expressions.Expression<Func<QuestDbEntity, string?>> mob,
+        System.Linq.Expressions.Expression<Func<QuestDbEntity, int>> count,
+        System.Linq.Expressions.Expression<Func<QuestDbEntity, string?>> race,
+        System.Linq.Expressions.Expression<Func<QuestDbEntity, string?>> size,
+        System.Linq.Expressions.Expression<Func<QuestDbEntity, string?>> element,
+        System.Linq.Expressions.Expression<Func<QuestDbEntity, int>> minLevel,
+        System.Linq.Expressions.Expression<Func<QuestDbEntity, int>> maxLevel,
+        System.Linq.Expressions.Expression<Func<QuestDbEntity, string?>> location,
+        System.Linq.Expressions.Expression<Func<QuestDbEntity, string?>> mobsAllowed)
+    {
+        b.Property(mob).HasColumnName($"mob{i}").HasMaxLength(64);
+        b.Property(count).HasColumnName($"count{i}");
+        b.Property(race).HasColumnName($"race{i}").HasMaxLength(32);
+        b.Property(size).HasColumnName($"size{i}").HasMaxLength(32);
+        b.Property(element).HasColumnName($"element{i}").HasMaxLength(32);
+        b.Property(minLevel).HasColumnName($"min_level{i}");
+        b.Property(maxLevel).HasColumnName($"max_level{i}");
+        b.Property(location).HasColumnName($"location{i}").HasMaxLength(64);
+        b.Property(mobsAllowed).HasColumnName($"mobs_allowed{i}").HasMaxLength(255);
     }
 }
 

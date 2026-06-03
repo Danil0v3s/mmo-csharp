@@ -21,7 +21,7 @@ public class QuestEmitTests
         var (svc, pc, session) = Build(new QuestDbEntity { QuestId = 1000, Mob1 = "PORING", Count1 = 3 });
         svc.Add(pc, 1000);
 
-        svc.UpdateMobObjective(pc, "PORING"); // count 0 → 1
+        svc.UpdateMobObjective(pc, Mob("PORING")); // count 0 → 1
 
         var b = Outbound(session).Single(x => (ushort)(x[0] | (x[1] << 8)) == (ushort)PacketHeader.ZC_UPDATE_MISSION_HUNT);
         Assert.Equal(b.Length, BitConverter.ToUInt16(b, 2));      // len field == actual
@@ -62,7 +62,7 @@ public class QuestEmitTests
     {
         var (svc, pc, session) = Build(new QuestDbEntity { QuestId = 1000, Mob1 = "PORING", Count1 = 3 });
         svc.Add(pc, 1000);
-        svc.UpdateMobObjective(pc, "PORING"); // count 0 → 1, so the snapshot must carry current=1
+        svc.UpdateMobObjective(pc, Mob("PORING")); // count 0 → 1, so the snapshot must carry current=1
 
         var active = svc.PcLogin(pc);
         Assert.Equal(1, active);
@@ -148,6 +148,9 @@ public class QuestEmitTests
     }
 
     // --- helpers ---
+
+    /// <summary>A specific-mob kill context (level/race/etc irrelevant to the aegis-match branch).</summary>
+    private static QuestMobContext Mob(string aegis) => new(1002, aegis, 1, "Formless", "Small", "Neutral");
 
     private static (QuestService svc, PlayerEntity pc, MapSessionData session) Build(params QuestDbEntity[] catalog)
         => Build(null, catalog);
