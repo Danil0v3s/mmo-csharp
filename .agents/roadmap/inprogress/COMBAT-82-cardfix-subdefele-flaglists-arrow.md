@@ -1,6 +1,6 @@
 # COMBAT-82 — Cardfix remainder: SubDefEle + magic_subsize + flag-matched subele2/subrace3 + arrow arrays
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-63 · **Blocks:** none
 > **Filed by:** COMBAT-63 — the defensive/flag-matched/arrow cardfix arrays, each a distinct
 > new bonus surface beyond the element-debuff + distinct-magic-array work that landed there.
