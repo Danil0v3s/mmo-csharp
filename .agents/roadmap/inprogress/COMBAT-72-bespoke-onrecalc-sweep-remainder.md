@@ -1,6 +1,6 @@
 # COMBAT-72 — Bespoke derived-stat OnRecalc sweep (remainder)
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-53 (the OnRecalc pattern + verified first batch) · **Blocks:** none
 > **Filed by:** COMBAT-53 — the long tail of bespoke derived-stat handlers it could not safely
 > sweep in one pass (and the primary-coupled handlers needing per-field judgment).
