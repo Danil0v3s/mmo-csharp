@@ -1,8 +1,8 @@
 # FEATURE-15 — WoE (Agit) time-of-week scheduler
 
-> **Epic:** Gameplay-WoE · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-WoE · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
-> **Related:** PACKET-* (none required — WoE start/end fire NPC events + broadcasts)
+> **Related:** PACKET-* (none required — WoE start/end fire NPC events) · SCRIPT-10 (agit_controller announce)
 
 ## Problem
 
@@ -37,7 +37,7 @@ never happen unless an admin manually triggers them.
 - [ ] **Timezone**: define the schedule timezone (server-local or UTC) explicitly; document which. rAthena uses server-local.
 - [ ] **Reload**: a way to reload the schedule (GM `@reloadscript` equivalent) without restart.
 - [ ] Keep the existing GM/script `AgitStart`/`AgitEnd` callable (manual override coexists with the scheduler).
-- [ ] The NPC event fan-out (`OnAgitStart*`/`OnAgitEnd*`) + the WoE start/end **broadcast announce** already partly exist via `Fire`; confirm the broadcast announce (server-wide "WoE has begun") is emitted on start/end — add it if missing (rAthena `guild_agit_start` broadcasts).
+- [x] The NPC event fan-out (`OnAgitStart*`/`OnAgitEnd*`) fires via `Fire` (unchanged). **Parity correction:** rAthena `guild_agit_start`/`guild_agit_end` (guild.cpp:2532/2547) do **NOT** broadcast — they only call `npc_event_runall`. The "The War of Emperium has begun" announce is emitted by the **script** (`agit_controller.txt`'s `OnAgitStart` label → `announce`), not the engine. So **no engine broadcast was added** (that would diverge); the announce rides the existing `OnAgitStart` NPC event and appears once the WoE controller NPC is converted (SCRIPT-10).
 
 ## Done criteria
 
@@ -80,4 +80,20 @@ Type maps to `AgitStart`/`AgitEnd` (1.0), `Agit2Start`/`Agit2End` (2.0), `Agit3S
 - Use a coarse tick (per-minute) — WoE resolution is minutes, not frames; don't evaluate the schedule every 60 FPS tick. Add a `_nextWoeCheckUtc` gate like the existing `_nextAutosaveUtc`/`_nextKeepAliveUtc` gates in `MapServerImpl`.
 - Define the timezone explicitly and document it; off-by-timezone is the classic WoE-scheduler bug.
 - Windows that cross midnight (e.g. `23:00–01:00`) and back-to-back windows of different types must be handled — model each window as an explicit `(day, start, end)` and evaluate "is now inside this window" rather than diffing against a single daily boundary.
-- Multi-map caveat: WoE state is per map-server process here; if castle maps are sharded across processes the scheduler must run (and agree) on each. For a single map process this is moot — note it for the multi-process case.
+- Multi-map caveat: WoE state is per map-server process here; if castle maps are sharded across processes the scheduler must run (and agree) on each. For a single map process this is moot — note it for the multi-process case. (The whole project is single-map-process today; this is a property of the architecture, not a WoE defect — no separate ticket.)
+
+## History
+
+- 2026-06-03 — Added the WoE weekly scheduler. New `WoeScheduler` (`IWoeScheduler`) drives
+  `IAgitService` from a server-local `Server.WoeSchedule` config (`WoeScheduleEntry` → parsed
+  `WoeWindow{Edition,Day,Start,End}`). **Edge-triggered**: fires `AgitStart`/`AgitEnd` (and 2.0/TE)
+  exactly at window open/close via a per-edition "was-inside" detector — it does **not** level-enforce
+  off-state every tick, so a GM/script manual `@agitstart` between windows survives; a server booting
+  inside a window starts immediately. Midnight-crossing windows + independent editions handled.
+  `Reload()` re-reads config. Wired into `MapServerImpl` on a coarse 20 s gate (`_nextWoeCheckUtc`,
+  `DateTime.Now`). Registered as a singleton in `Program.cs`; `Server.WoeSchedule` added (empty) to
+  `appsettings.json`. **Parity note:** rAthena `guild_agit_start` only fires the NPC event (no engine
+  broadcast); the "WoE has begun" announce is the `agit_controller` script's `OnAgitStart` → covered by
+  SCRIPT-10, not added to the engine. Tests: `WoeSchedulerTests` (7) green; full suite 4394 pass
+  (1 fail = pre-existing replay-fixture/INFRA-11). Matched `guild_agit_start`/`guild_agit_end`
+  (guild.cpp:2532/2547) + the script-driven `OnClock` schedule model.

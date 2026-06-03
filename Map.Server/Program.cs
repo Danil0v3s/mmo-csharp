@@ -597,6 +597,10 @@ builder.Services.AddSingleton<Map.Server.Spawn.NpcOps.INpcOpsService, Map.Server
 builder.Services.AddSingleton<Map.Server.Movement.UnitOps.IUnitOpsService, Map.Server.Movement.UnitOps.UnitOpsService>();
 builder.Services.AddSingleton<Map.Server.World.MapOps.IMapOpsService, Map.Server.World.MapOps.MapOpsService>();
 builder.Services.AddSingleton<Map.Server.Agit.IAgitService, Map.Server.Agit.AgitService>();
+builder.Services.AddSingleton<Map.Server.Agit.IWoeScheduler>(sp => new Map.Server.Agit.WoeScheduler(
+    sp.GetRequiredService<Map.Server.Agit.IAgitService>(),
+    sp.GetRequiredService<ILogger<Map.Server.Agit.WoeScheduler>>(),
+    sp.GetRequiredService<MapServerConfiguration>()));
 // DBR-1f: guild_skill_tree_db (10 entries) + requirement_db (37 prereqs)
 // cache. Replaces the stale hardcoded SkillMaxLevels dict in GuildService.
 builder.Services.AddSingleton<Map.Server.Guild.IGuildSkillTreeService, Map.Server.Guild.GuildSkillTreeService>();

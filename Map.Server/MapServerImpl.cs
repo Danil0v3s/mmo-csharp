@@ -46,6 +46,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private readonly Elemental.IElementalService? _elemental;
     // FEATURE-14 — instance idle/keep lifecycle sweep.
     private readonly Instance.IInstanceService? _instance;
+    // FEATURE-15 — WoE weekly schedule (coarse per-minute check).
+    private readonly Agit.IWoeScheduler? _woeScheduler;
     private readonly ScriptHost _scriptHost;
     private readonly INpcSpawnService _npcSpawn;
     private readonly Scripting.INpcRegistry _scriptRegistry;
@@ -58,6 +60,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
     private DateTime _nextKeepAliveUtc = DateTime.MinValue;
     private DateTime _nextUserCountSyncUtc = DateTime.MinValue;
     private DateTime _nextAutosaveUtc = DateTime.MinValue;
+    private DateTime _nextWoeCheckUtc = DateTime.MinValue;
     private volatile bool _registered;
     private volatile bool _addressSynced;
     private int _lastReportedUserCount = -1;
@@ -94,7 +97,8 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         Persistence.IPlayerStateService playerState,
         ILoggerFactory loggerFactory,
         Elemental.IElementalService? elemental = null,
-        Instance.IInstanceService? instance = null)
+        Instance.IInstanceService? instance = null,
+        Agit.IWoeScheduler? woeScheduler = null)
         : base("MapServer", configuration, logger, packetSystem, sessionManager)
     {
         _handlerRegistry = new PacketHandlerRegistry(serviceProvider, logger);
@@ -117,6 +121,7 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         _pet = pet;
         _elemental = elemental;
         _instance = instance;
+        _woeScheduler = woeScheduler;
         _scriptHost = scriptHost;
         _npcSpawn = npcSpawn;
         _scriptRegistry = scriptRegistry;
@@ -318,6 +323,13 @@ public class MapServerImpl : GameLoopServer, IServerReadiness
         // FEATURE-10 — elemental lifetime expiry (rAthena elemental_summon_end).
         _elemental?.Tick(nowTick);
         _instance?.Tick(nowTick);
+        // FEATURE-15 — WoE schedule on a coarse cadence (server-local time); WoE resolution is
+        // minutes, so don't evaluate every frame.
+        if (_woeScheduler != null && DateTime.UtcNow >= _nextWoeCheckUtc)
+        {
+            _nextWoeCheckUtc = DateTime.UtcNow.AddSeconds(20);
+            _woeScheduler.Tick(DateTime.Now);
+        }
         // Continuous-attack swings (rAthena unit_attack_timer).
         _attackService.Tick(nowTick);
         // Skill cast-timer resolution (rAthena skill_castend_id).

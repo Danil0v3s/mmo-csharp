@@ -75,4 +75,30 @@ public class MapServerConfiguration : ServerConfiguration
     {
         "Welcome to rAthena! Enjoy! Please report any bugs you find."
     };
+
+    /// <summary>
+    /// FEATURE-15 — WoE (Agit) weekly schedule, in **server-local** time. Each entry is one
+    /// recurring window; the <see cref="Map.Server.Agit.IWoeScheduler"/> auto-starts/ends the matching
+    /// WoE edition at the window edges. Empty = no auto-WoE (GM/script start/end only).
+    /// </summary>
+    public List<WoeScheduleEntry> WoeSchedule { get; set; } = new();
+}
+
+/// <summary>
+/// One recurring WoE window from <c>Server.WoeSchedule</c>. Strings so it binds cleanly from JSON;
+/// parsed by <see cref="Map.Server.Agit.WoeWindow.TryParse"/>.
+/// </summary>
+public sealed class WoeScheduleEntry
+{
+    /// <summary>WoE edition: "1.0" / "FE", "2.0" / "SE", or "TE".</summary>
+    public string Type { get; set; } = "1.0";
+
+    /// <summary>Day of week the window opens, e.g. "Saturday".</summary>
+    public string Day { get; set; } = "";
+
+    /// <summary>Window open time-of-day, "HH:mm" (24h, server-local).</summary>
+    public string Start { get; set; } = "";
+
+    /// <summary>Window close time-of-day, "HH:mm". May be ≤ Start to cross midnight.</summary>
+    public string End { get; set; } = "";
 }
