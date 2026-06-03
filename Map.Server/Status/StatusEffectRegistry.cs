@@ -5669,7 +5669,12 @@ public sealed class StatusEffectRegistry
         Register(StatusType.Crescivebolt, PresenceMarker(StatusFlagDefaults.For(StatusType.Crescivebolt) is var f378 && f378 != ScfFlag.None ? f378 : defaultBuff));  // SC_CRESCIVEBOLT: presence-only per rAthena db/re/status.yml:7902
         Register(StatusType.Calamitygale, PresenceMarker(StatusFlagDefaults.For(StatusType.Calamitygale) is var f379 && f379 != ScfFlag.None ? f379 : defaultBuff));  // SC_CALAMITYGALE: presence-only per rAthena db/re/status.yml:7905
         Register(StatusType.Mediale, PresenceMarker(StatusFlagDefaults.For(StatusType.Mediale) is var f380 && f380 != ScfFlag.None ? f380 : defaultBuff));  // SC_MEDIALE: presence-only per rAthena db/re/status.yml:7911
-        Register(StatusType.AVita, PresenceMarker(StatusFlagDefaults.For(StatusType.AVita) is var f381 && f381 != ScfFlag.None ? f381 : defaultBuff));  // SC_A_VITA: presence-only per rAthena db/re/status.yml:7917
+        // SC_A_VITA (status.cpp:12471) — Val2 = 5*Val1 MRes-pierce % (mirrors SC_A_TELUM; consumed by
+        // CalcMagicAttack's MRes-ignore in COMBAT-95). Materialize Val2 so the combat reader sees it.
+        Register(StatusType.AVita, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = 5 * sc.Val1; },
+            OnEnd: (_, _) => { },
+            Flags: StatusFlagDefaults.For(StatusType.AVita) is var f381 && f381 != ScfFlag.None ? f381 : defaultBuff));  // SC_A_VITA per rAthena db/re/status.yml:7917
         Register(StatusType.AxeStomp, PresenceMarker(StatusFlagDefaults.For(StatusType.AxeStomp) is var f383 && f383 != ScfFlag.None ? f383 : defaultBuff));  // SC_AXE_STOMP: presence-only per rAthena db/re/status.yml:7964
         Register(StatusType.AMachine, PresenceMarker(StatusFlagDefaults.For(StatusType.AMachine) is var f384 && f384 != ScfFlag.None ? f384 : defaultBuff));  // SC_A_MACHINE: presence-only per rAthena db/re/status.yml:7967
         Register(StatusType.AbrBattleWarior, PresenceMarker(StatusFlagDefaults.For(StatusType.AbrBattleWarior) is var f385 && f385 != ScfFlag.None ? f385 : defaultBuff));  // SC_ABR_BATTLE_WARIOR: presence-only per rAthena db/re/status.yml:7982

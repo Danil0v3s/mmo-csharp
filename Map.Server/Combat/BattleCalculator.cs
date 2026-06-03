@@ -760,6 +760,28 @@ public sealed class BattleCalculator : IBattleCalculator
         damage = damage * ElementTable.GetRate(atkEle, t.DefenseElement, t.ElementLevel) / 100;
         if (damage < 0) damage = 0;
 
+        // COMBAT-95 — MRes trait-stat magic reduction (battle.cpp:9278, renewal): mirrors the
+        // physical Res curve and is calculated BEFORE MDEF. `damage * (5000+mres) / (5000+10*mres)`,
+        // with the effective MRes first lowered by the attacker's ignore %: ignore_mres_by_race
+        // [targetRace] + [RC_ALL] (PC equip, bonus2 bIgnoreMResRace) + SC_A_VITA.val2, clamped to
+        // battle_config.max_res_mres_ignored. Outside any sd-gate so it reduces NPC magic too.
+        if (t.Mres > 0 && damage > 0)
+        {
+            int mres = t.Mres;
+            int ignoreMres = 0;
+            if ((source as PlayerEntity)?.EquipBonuses is { IgnoreMResRace: var imr })
+            {
+                var raceIdx = (int)t.Race;
+                if (raceIdx >= 0 && raceIdx < imr.Length) ignoreMres += imr[raceIdx];
+                ignoreMres += imr[(int)Map.Server.Status.BattleRace.All];
+            }
+            var vita = _sc?.Get(source, StatusType.AVita);
+            if (vita != null && vita.Val2 > 0) ignoreMres += vita.Val2;
+            if (ignoreMres > MaxResMresIgnored) ignoreMres = MaxResMresIgnored;
+            if (ignoreMres > 0) mres -= mres * ignoreMres / 100;
+            damage = damage * (5000L + mres) / (5000L + 10L * mres);
+        }
+
         // MDEF reduction (renewal: dmg * (1000+10*mdef) / (1000+10*(mdef+mdef2)))
         // — falls back to simple sub when mdef stats are 0.
         int mdef = t.Mdef;

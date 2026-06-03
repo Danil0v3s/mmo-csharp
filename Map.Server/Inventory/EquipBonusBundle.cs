@@ -69,6 +69,10 @@ public sealed class EquipBonusBundle
     /// (<c>bonus2 bIgnoreResRace, r, n</c> / SP_IGNORE_RES_RACE → <c>ignore_res_by_race[race] += n</c>).
     /// The combat reader sums <c>[race] + [RC_ALL]</c> (the <see cref="BattleRace.All"/> slot).</summary>
     public int[] IgnoreResRace { get; } = new int[RaceSize];
+    /// <summary>COMBAT-95 — per-race % of the target's magic <c>MRes</c> ignored
+    /// (<c>bonus2 bIgnoreMResRace, r, n</c> / SP_IGNORE_MRES_RACE → <c>ignore_mres_by_race[race] += n</c>).
+    /// Mirrors <see cref="IgnoreResRace"/>; the magic reader sums <c>[race] + [RC_ALL]</c>.</summary>
+    public int[] IgnoreMResRace { get; } = new int[RaceSize];
 
     // COMBAT-81 — race2 (RaceGroups) cardfix folds: bonus2 bAddRace2/bSubRace2/bMagicAddRace2.
     private const int Race2Size = (int)Status.BattleRace2.Max;
@@ -302,6 +306,7 @@ public sealed class EquipBonusBundle
         Array.Clear(MagicAddEle); Array.Clear(MagicAddSize); Array.Clear(MagicAddClass);
         IgnoreDefRace = IgnoreDefClass = 0;
         Array.Clear(IgnoreResRace);
+        Array.Clear(IgnoreMResRace);
         Array.Clear(AddRace2); Array.Clear(SubRace2); Array.Clear(MagicAddRace2);
         Array.Clear(MagicSubDefEle); Array.Clear(MagicSubSize); Array.Clear(ArrowAddRace); Array.Clear(ArrowAddEle);
         SubEle2.Clear(); SubRace3.Clear();

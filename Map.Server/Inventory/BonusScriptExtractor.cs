@@ -295,6 +295,9 @@ public static class BonusScriptExtractor
             // COMBAT-77 — bonus2 bIgnoreResRace, r, n (SP_IGNORE_RES_RACE): n% of the target's
             // physical Res ignored vs race r. RC_All → the All slot (summed by the combat reader).
             case "ignoreresrace": Add(b.IgnoreResRace, ParseRace(idxToken), v); break;
+            // COMBAT-95 — bonus2 bIgnoreMResRace, r, n (SP_IGNORE_MRES_RACE): n% of the target's
+            // magic MRes ignored vs race r. RC_All → the All slot (summed by the magic reader).
+            case "ignoremresrace": Add(b.IgnoreMResRace, ParseRace(idxToken), v); break;
             // COMBAT-81 — bonus2 bAddRace2/bSubRace2/bMagicAddRace2, RC2_X, n: race2 (RaceGroups)
             // cardfix folds (SP_ADDRACE2 / SP_SUBRACE2 / SP_MAGIC_ADDRACE2). Indexed by RC2_* token.
             case "addrace2":      Add(b.AddRace2,      (int)Map.Server.Status.Race2Map.FromToken(idxToken), v); break;
