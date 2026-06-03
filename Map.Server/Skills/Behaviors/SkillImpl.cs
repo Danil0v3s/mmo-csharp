@@ -171,6 +171,23 @@ public abstract class SkillImpl
         => (src.Level > 99 && divisor > 0) ? (int)((long)ratio * src.Level / divisor) : ratio;
 
     /// <summary>
+    /// COMBAT-78/96 — the ÷200 skill <c>crit_atk_rate</c> bump (battle.cpp:7787): on a critical
+    /// swing a skill adds <c>dmg * bCritAtkRate / 200</c> (vs the auto-attack ÷100). The
+    /// <paramref name="swing"/> must have been built skill-aware
+    /// (<c>CalcWeaponAttack(src, target, SkillId)</c>) so the ÷100 bump is NOT already in it.
+    /// Used by <see cref="ComputeSkillDamage"/> and by the bypass plugins that compute
+    /// <c>swing × ratio</c> directly (ArrowShower, MagnumBreak, DoubleStrafe, ChainCrushCombo,
+    /// EarthShaker). PC sources only; no-op without a critical or a <c>bCritAtkRate</c> bonus.
+    /// </summary>
+    protected static long ApplySkillCritAtkRate(long dmg, Entity src, Map.Server.Combat.BattleDamage swing)
+    {
+        if (swing.IsCritical && src is PlayerEntity critPc
+            && critPc.EquipBonuses is { CritAtkRate: var car } && car != 0)
+            dmg += dmg * car / 200;
+        return dmg;
+    }
+
+    /// <summary>
     /// rAthena <c>SKILL_ALTDMG_FLAG</c> — set on the secondary path-AoE
     /// hit pass when a skill re-fires through <c>skill_attack_area</c>.
     /// Plugins consult this on the miscflag-aware ratio overload to
@@ -242,13 +259,10 @@ public abstract class SkillImpl
         ratio = CalculateSkillRatioPostDmodMultiply(ratio, src, target, skillLevel, ctx);
         var raw = swing.Total * ratio / 100
                   + CalculateSkillConstantAddition(src, target, skillLevel);
-        // COMBAT-78 — crit_atk_rate ÷200 skill variant (battle.cpp:7787). When the swing
-        // resolved critical, a skill applies the caster's bonus bCritAtkRate with the ÷200
-        // divisor (vs the auto-attack ÷100), after the skill ratio. The swing was built via
-        // the skill-aware CalcWeaponAttack(skillId) so the ÷100 bump is NOT already in it.
-        if (swing.IsCritical && src is PlayerEntity critPc
-            && critPc.EquipBonuses is { CritAtkRate: var car } && car != 0)
-            raw += raw * car / 200;
+        // COMBAT-78/96 — crit_atk_rate ÷200 skill variant (battle.cpp:7787), after the skill ratio.
+        // The swing was built via the skill-aware CalcWeaponAttack(skillId) so the ÷100 bump is NOT
+        // already in it. Shared with the bypass plugins via ApplySkillCritAtkRate.
+        raw = ApplySkillCritAtkRate(raw, src, swing);
         // COMBAT-22 — bonus2 bSkillAtk: per-skill % damage applied after the
         // ratio/constant (rAthena pc_skillatk_bonus, battle.cpp:7729 — after DEF,
         // ATK_ADDRATE). Weapon-skill lane; the magic lane applies it in

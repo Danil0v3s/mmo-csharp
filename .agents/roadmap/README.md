@@ -156,7 +156,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-93 | ✅ Reconcile SkillFailCause with rAthena e_useskill_fail_cause wire values |
 | COMBAT-94 | ✅ Immediate inventory amount-update packet on consume (ZC_DELETE_ITEM_FROM_BODY) — ammo + item |
 | COMBAT-95 | ✅ Magic-side MRes reduction curve + ignore (race + SC_A_VITA) — split from COMBAT-77 |
-| COMBAT-96 | Route swing-bypass weapon plugins through the ÷200 skill crit_atk_rate — split from COMBAT-78 |
+| COMBAT-96 | ✅ Route swing-bypass weapon plugins through the ÷200 skill crit_atk_rate — split from COMBAT-78 |
 | COMBAT-97 | PC five-accumulator damage parts (element split + ×2 status + percentAtk) — split from COMBAT-79 |
 | COMBAT-98 | race2 cardfix: melee per-group multiply + pet race2 — split from COMBAT-81 |
 | COMBAT-99 | Thread the real BF_* damage flag into CalcCardFix (skill/normal + skill range) — split from COMBAT-82 |
@@ -174,6 +174,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-111 | Bespoke OnRecalc remainder: multi-field / +AspdRate / +primary / +trait / primary-coupled — split from COMBAT-89 |
 | COMBAT-112 | Recursive-splash victims skip ApplyWeaponSkillPlantZone (plant clamp / GvG-BG / SC_INVINCIBLE) — split from COMBAT-91 |
 | COMBAT-113 | skill_db Requirements: Weapon-type mask + RequiredState columns (+ e_require_state map) — split from COMBAT-92 |
+| COMBAT-114 | Skill crit-eligibility (most skills don't crit) — skill_db crit flag — split from COMBAT-96 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

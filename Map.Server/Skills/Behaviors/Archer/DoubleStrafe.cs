@@ -17,9 +17,10 @@ public sealed class DoubleStrafe : SkillImpl
         var rate = 90 + 10 * skillLevel;
         for (var hit = 0; hit < 2; hit++)
         {
-            var swing = ctx.Battle.CalcWeaponAttack(src, target);
-            var dmg = (int)Math.Clamp(swing.Total * rate / 100, 0, int.MaxValue);
-            ctx.Damage.ApplyDamage(target, dmg, src);
+            // COMBAT-96 — skill-aware swing + the ÷200 skill crit_atk_rate bump (battle.cpp:7787).
+            var swing = ctx.Battle.CalcWeaponAttack(src, target, SkillId);
+            var raw = ApplySkillCritAtkRate((long)swing.Total * rate / 100, src, swing);
+            ctx.Damage.ApplyDamage(target, (int)Math.Clamp(raw, 0, int.MaxValue), src);
         }
     }
 }

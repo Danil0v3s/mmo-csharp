@@ -17,8 +17,9 @@ public sealed class ArrowShower : RecursiveDamageSplashSkillImpl
 
     public override long SplashDamage(Entity src, Entity victim, ushort skillLevel, SkillBehaviorContext ctx)
     {
-        var swing = ctx.Battle.CalcWeaponAttack(src, victim);
+        // COMBAT-96 — skill-aware swing + the ÷200 skill crit_atk_rate bump (battle.cpp:7787).
+        var swing = ctx.Battle.CalcWeaponAttack(src, victim, SkillId);
         var rate = 75 + 5 * skillLevel;
-        return swing.Total * rate / 100;
+        return ApplySkillCritAtkRate((long)swing.Total * rate / 100, src, swing);
     }
 }

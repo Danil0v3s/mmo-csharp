@@ -28,8 +28,9 @@ public sealed class MagnumBreak : RecursiveDamageSplashSkillImpl
         // flat 120 + 20*lv used the wrong base and ignored the inner/outer split.
         var dist = Math.Max(Math.Abs(src.X - victim.X), Math.Abs(src.Y - victim.Y));
         var rate = dist <= 1 ? 100 + 20 * skillLevel : 100 + 10 * skillLevel;
-        var swing = ctx.Battle.CalcWeaponAttack(src, victim);
-        return swing.Total * rate / 100;
+        // COMBAT-96 — skill-aware swing + the ÷200 skill crit_atk_rate bump (battle.cpp:7787).
+        var swing = ctx.Battle.CalcWeaponAttack(src, victim, SkillId);
+        return ApplySkillCritAtkRate((long)swing.Total * rate / 100, src, swing);
     }
 
     public override void CastendDamageId(Entity src, Entity target, ushort skillLevel, SkillBehaviorContext ctx)

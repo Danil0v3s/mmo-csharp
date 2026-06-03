@@ -64,9 +64,11 @@ public sealed class EarthShaker : WeaponSkillImpl
             || ctx.Sc.Get(target, StatusType.Shadowform) != null);
         if (hidden)
         {
-            var swing = ctx.Battle.CalcWeaponAttack(src, target);
+            // COMBAT-96 — skill-aware swing + the ÷200 skill crit_atk_rate bump (battle.cpp:7787).
+            var swing = ctx.Battle.CalcWeaponAttack(src, target, SkillId);
             var ratio = 100 + (-100 + 300 * skillLevel) + 3 * src.Stats.Str;
-            var dmg = (int)Math.Clamp((long)swing.Total * ratio / 100, 0, int.MaxValue);
+            var raw = ApplySkillCritAtkRate((long)swing.Total * ratio / 100, src, swing);
+            var dmg = (int)Math.Clamp(raw, 0, int.MaxValue);
             ctx.Damage.ApplyDamage(target, dmg, src);
             ApplyAdditionalEffects(src, target, skillLevel, ctx);
         }
