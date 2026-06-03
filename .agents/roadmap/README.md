@@ -159,6 +159,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | COMBAT-96 | Route swing-bypass weapon plugins through the ÷200 skill crit_atk_rate — split from COMBAT-78 |
 | COMBAT-97 | PC five-accumulator damage parts (element split + ×2 status + percentAtk) — split from COMBAT-79 |
 | COMBAT-98 | race2 cardfix: melee per-group multiply + pet race2 — split from COMBAT-81 |
+| COMBAT-99 | Thread the real BF_* damage flag into CalcCardFix (skill/normal + skill range) — split from COMBAT-82 |
 
 ### `status/` — status-change engine depth
 | Ticket | Title |

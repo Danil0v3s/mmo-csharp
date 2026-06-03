@@ -160,6 +160,16 @@ public sealed class ScriptedBonusHost
             var dur = (uint)Math.Max(0, ToInt(args[3]));
             if (sc != StatusType.None)
                 _bundle.AddEffWhenHit.Add(new AddEffEntry(sc, rate, dur));
+            return;
+        }
+        // COMBAT-82 — flag-matched defensive resist: bonus3 bSubEle,e,n,bf / bSubRace,r,n,bf.
+        if (string.Equals(key, "SubEle", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "SubRace", StringComparison.OrdinalIgnoreCase))
+        {
+            var idx = args[1]?.ToString() ?? "";
+            var rate = ToInt(args[2]);
+            var flag = args[3] is string fs ? BattleFlags.FromToken(fs) : ToInt(args[3]);
+            BonusScriptExtractor.ApplyFlagMatchedBonus3(_bundle, key, idx, rate, flag);
         }
     }
 

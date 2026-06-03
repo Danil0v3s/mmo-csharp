@@ -79,6 +79,20 @@ public sealed class EquipBonusBundle
     /// <summary>Per-race2 % MAGIC damage vs the target's race2 group(s) (<c>bMagicAddRace2</c>).</summary>
     public int[] MagicAddRace2 { get; } = new int[Race2Size];
 
+    // COMBAT-82 — cardfix remainder arrays + flag-matched lists.
+    /// <summary>MAGIC-only defensive resist by the attacker's def-element (<c>bonus2 bMagicSubDefEle</c>).</summary>
+    public int[] MagicSubDefEle { get; } = new int[ElementSize];
+    /// <summary>MAGIC-only defensive resist by the attacker's size (<c>bonus2 bMagicSubSize</c>).</summary>
+    public int[] MagicSubSize { get; } = new int[SizeArrSize];
+    /// <summary>Offensive race % that applies only on a ranged/arrow swing (<c>bonus2 bArrowAddRace</c>).</summary>
+    public int[] ArrowAddRace { get; } = new int[RaceSize];
+    /// <summary>Offensive element % that applies only on a ranged/arrow swing (<c>bonus2 bArrowAddEle</c>).</summary>
+    public int[] ArrowAddEle { get; } = new int[ElementSize];
+    /// <summary>Flag-matched defensive element resist (<c>bonus3 bSubEle, e, n, bf</c>): (ele, BF_* flag, rate).</summary>
+    public List<(int Ele, int Flag, int Rate)> SubEle2 { get; } = new();
+    /// <summary>Flag-matched defensive race resist (<c>bonus3 bSubRace, r, n, bf</c>): (race, BF_* flag, rate).</summary>
+    public List<(int Race, int Flag, int Rate)> SubRace3 { get; } = new();
+
     // COMBAT-22 — per-skill bonus2 maps (skillId → value).
     /// <summary>Per-skill bonus damage % (<c>bonus2 bSkillAtk, sk, n</c> /
     /// SP_SKILL_ATK). Applied after DEF for the matching skill in
@@ -284,6 +298,8 @@ public sealed class EquipBonusBundle
         IgnoreDefRace = IgnoreDefClass = 0;
         Array.Clear(IgnoreResRace);
         Array.Clear(AddRace2); Array.Clear(SubRace2); Array.Clear(MagicAddRace2);
+        Array.Clear(MagicSubDefEle); Array.Clear(MagicSubSize); Array.Clear(ArrowAddRace); Array.Clear(ArrowAddEle);
+        SubEle2.Clear(); SubRace3.Clear();
         SkillAtk.Clear(); SubSkillAtk.Clear(); SkillHeal.Clear(); SkillVarCastrate.Clear(); SkillFixCastrate.Clear();
         HpVanishRate = HpVanishPer = SpVanishRate = SpVanishPer = 0;
         SkillVarCast.Clear(); SkillFixCast.Clear();

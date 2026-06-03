@@ -175,6 +175,21 @@ public static class BonusScriptExtractor
     internal static void ApplyIndexedBonus(EquipBonusBundle b, string key, string idxToken, int v)
         => ApplyIndexed(b, key, idxToken, v);
 
+    /// <summary>
+    /// COMBAT-82 — flag-matched <c>bonus3 bSubEle, e, n, bf</c> / <c>bonus3 bSubRace, r, n, bf</c>
+    /// (the defensive resist gated on a BF_* damage flag). <paramref name="flag"/> is the already-
+    /// resolved BF_* int; rAthena's <c>pc_bonus_subele</c> defaulting fills the unspecified masks.
+    /// </summary>
+    internal static void ApplyFlagMatchedBonus3(EquipBonusBundle b, string key, string idxToken, int rate, int flag)
+    {
+        flag = Map.Server.Status.BattleFlags.Default(flag);
+        switch (key.ToLowerInvariant())
+        {
+            case "subele":  { var e = ParseElement(idxToken); if (e >= 0) b.SubEle2.Add((e, flag, rate)); break; }
+            case "subrace": { var r = ParseRace(idxToken);    if (r >= 0) b.SubRace3.Add((r, flag, rate)); break; }
+        }
+    }
+
     private static void ApplyFlat(EquipBonusBundle b, string key, int v)
     {
         // Case-insensitive comparison; we lower-case the key for the switch.
@@ -285,6 +300,11 @@ public static class BonusScriptExtractor
             case "addrace2":      Add(b.AddRace2,      (int)Map.Server.Status.Race2Map.FromToken(idxToken), v); break;
             case "subrace2":      Add(b.SubRace2,      (int)Map.Server.Status.Race2Map.FromToken(idxToken), v); break;
             case "magicaddrace2": Add(b.MagicAddRace2, (int)Map.Server.Status.Race2Map.FromToken(idxToken), v); break;
+            // COMBAT-82 — cardfix remainder bonus2 forms.
+            case "magicsubdefele": Add(b.MagicSubDefEle, ParseElement(idxToken), v); break;
+            case "magicsubsize":   Add(b.MagicSubSize,   ParseSize(idxToken),    v); break;
+            case "arrowaddele":    Add(b.ArrowAddEle,    ParseElement(idxToken), v); break;
+            case "arrowaddrace":   Add(b.ArrowAddRace,   ParseRace(idxToken),    v); break;
             case "addele":  Add(b.AddEle, ParseElement(idxToken), v); break;
             case "subele":  Add(b.SubEle, ParseElement(idxToken), v); break;
             case "addsize": Add(b.AddSize, ParseSize(idxToken), v); break;

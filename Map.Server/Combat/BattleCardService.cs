@@ -93,12 +93,16 @@ public sealed class BattleCardService : IBattleCardService
         if (src is PlayerEntity pc && pc.EquipBonuses is { } ab)
         {
             int cardfix = 1000;
+            // COMBAT-82 — arrow_addrace/arrow_addele apply only on a ranged (arrow) weapon swing
+            // (battle.cpp:886-890), folded into the offensive race/ele categories.
+            bool ranged = !isMagic && pc.Stats.AttackRange > 2;
             // COMBAT-21/63 — magic reads its own per-category arrays (magic_addrace/
             // magic_addele/magic_addsize/magic_addclass); weapon/misc use the weapon
             // addrace/addele/addsize/addclass. rAthena keeps the two sets distinct.
             int raceAdd = isMagic
                 ? IdxAll(ab.MagicAddRace, tRace, (int)BattleRace.All)
-                : IdxAll(ab.AddRace, tRace, (int)BattleRace.All);
+                : IdxAll(ab.AddRace, tRace, (int)BattleRace.All)
+                  + (ranged ? IdxAll(ab.ArrowAddRace, tRace, (int)BattleRace.All) : 0);
             // COMBAT-81 — race2 (RaceGroups) fold, summed across the target's groups. rAthena folds
             // it INTO the race multiply for magic (battle.cpp:795) and as its OWN category for weapon
             // (910/936).
@@ -112,7 +116,9 @@ public sealed class BattleCardService : IBattleCardService
                 cardfix = cardfix * (100 + raceAdd) / 100;
                 if (race2Add != 0) cardfix = cardfix * (100 + race2Add) / 100;
             }
-            cardfix = cardfix * (100 + IdxAll(isMagic ? ab.MagicAddEle : ab.AddEle, tEle, (int)BattleElement.All)) / 100;
+            int eleAdd = IdxAll(isMagic ? ab.MagicAddEle : ab.AddEle, tEle, (int)BattleElement.All)
+                         + (ranged ? IdxAll(ab.ArrowAddEle, tEle, (int)BattleElement.All) : 0);
+            cardfix = cardfix * (100 + eleAdd) / 100;
             cardfix = cardfix * (100 + IdxAll(isMagic ? ab.MagicAddSize : ab.AddSize, tSize, (int)BattleSize.All)) / 100;
             cardfix = cardfix * (100 + IdxAll(isMagic ? ab.MagicAddClass : ab.AddClass, tClass, (int)Inventory.BattleClassFlag.All)) / 100;
             if (!isMagic)
@@ -147,9 +153,28 @@ public sealed class BattleCardService : IBattleCardService
             int aClass = (ss.Mode & MobMode.Mvp) != 0
                 ? (int)Inventory.BattleClassFlag.Boss : (int)Inventory.BattleClassFlag.Normal;
 
-            cardfix = cardfix * (100 - IdxAll(db.SubEle, aEle, (int)BattleElement.All)) / 100;
-            cardfix = cardfix * (100 - Idx(db.SubSize, aSize)) / 100;
-            cardfix = cardfix * (100 - IdxAll(db.SubRace, aRace, (int)BattleRace.All)) / 100;
+            // COMBAT-82 — the actual attack's BF_* flag for the flag-matched lists. WeaponMask from the
+            // lane (BattleAttackType == BF_WEAPON/MAGIC/MISC bits); RangeMask from the attacker's range;
+            // SkillMask = both (the skill/normal discriminator isn't threaded — see COMBAT-99).
+            int attackFlag = (int)attackType
+                | (ss.AttackRange > 2 ? BattleFlags.Long : BattleFlags.Short)
+                | BattleFlags.Skill | BattleFlags.Normal;
+
+            // Element: card subele + flag-matched subele2; magic also adds magic_subdefele
+            // (keyed on the ATTACKER's defense element, battle.cpp:829-830/836).
+            int eleFix = IdxAll(db.SubEle, aEle, (int)BattleElement.All)
+                         + FlagMatchedEle(db.SubEle2, aEle, attackFlag);
+            if (isMagic) eleFix += IdxAll(db.MagicSubDefEle, (int)ss.DefenseElement, (int)BattleElement.All);
+            cardfix = cardfix * (100 - eleFix) / 100;
+
+            // Size: card subsize + magic_subsize (magic only, battle.cpp:839).
+            int sizeFix = Idx(db.SubSize, aSize) + (isMagic ? IdxAll(db.MagicSubSize, aSize, (int)BattleSize.All) : 0);
+            cardfix = cardfix * (100 - sizeFix) / 100;
+
+            // Race: card subrace + flag-matched subrace3 (battle.cpp:846-855).
+            int raceFix = IdxAll(db.SubRace, aRace, (int)BattleRace.All)
+                          + FlagMatchedRace(db.SubRace3, aRace, attackFlag);
+            cardfix = cardfix * (100 - raceFix) / 100;
             // COMBAT-81 — race2 reduction from the ATTACKER's race2 group(s) (battle.cpp:843).
             int sub2 = SumRace2(src, db.SubRace2);
             if (sub2 != 0) cardfix = cardfix * (100 - sub2) / 100;
@@ -169,6 +194,37 @@ public sealed class BattleCardService : IBattleCardService
     /// COMBAT-81 — sum a per-race2 bonus array over <paramref name="e"/>'s race2 set
     /// (rAthena <c>status_get_race2</c>: mobs only). Non-mob entities have no race2 → 0.
     /// </summary>
+    /// <summary>
+    /// COMBAT-82 — sum the flag-matched defensive element list (rAthena <c>subele2</c>, battle.cpp:820):
+    /// entries whose element is the attack element (or ELE_ALL) AND whose BF_* flag matches the attack.
+    /// </summary>
+    private static int FlagMatchedEle(System.Collections.Generic.List<(int Ele, int Flag, int Rate)> list, int aEle, int attackFlag)
+    {
+        int sum = 0;
+        for (int i = 0; i < list.Count; i++)
+        {
+            var it = list[i];
+            if (it.Ele != (int)BattleElement.All && it.Ele != aEle) continue;
+            if (!BattleFlags.Matches(it.Flag, attackFlag)) continue;
+            sum += it.Rate;
+        }
+        return sum;
+    }
+
+    /// <summary>COMBAT-82 — flag-matched defensive race list (rAthena <c>subrace3</c>, battle.cpp:847).</summary>
+    private static int FlagMatchedRace(System.Collections.Generic.List<(int Race, int Flag, int Rate)> list, int aRace, int attackFlag)
+    {
+        int sum = 0;
+        for (int i = 0; i < list.Count; i++)
+        {
+            var it = list[i];
+            if (it.Race != (int)BattleRace.All && it.Race != aRace) continue;
+            if (!BattleFlags.Matches(it.Flag, attackFlag)) continue;
+            sum += it.Rate;
+        }
+        return sum;
+    }
+
     private static int SumRace2(Entity e, int[] arr)
     {
         if (e is not Entities.MobEntity m) return 0;
