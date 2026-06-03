@@ -1,6 +1,6 @@
 # COMBAT-89 — Bespoke OnRecalc tail (~73 handlers) + primary-coupled sub-class
 
-> **Epic:** Combat parity · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Combat parity · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** COMBAT-72 (the verified batch + reaffirmed pattern) · **Blocks:** none
 > **Filed by:** COMBAT-72 — it added `OnRecalc` to a 10-handler verified batch; the long tail and
 > the primary-coupled handlers remain (continuing the COMBAT-53 → COMBAT-72 decomposition).
