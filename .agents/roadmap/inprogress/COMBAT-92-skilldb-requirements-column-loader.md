@@ -1,6 +1,6 @@
 # COMBAT-92 — Real skill_db Requirements column loader (fold curated ammo/Inf2 overlays)
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** M · **Player-visible:** no (infra)
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** no (infra)
 > **Depends on:** COMBAT-76 (ammo overlay), COMBAT-62 (Inf2 overlay) · **Blocks:** none
 > **Filed by:** COMBAT-76 — it loaded the per-skill ammo mask/qty via a curated overlay
 > (the COMBAT-62 pattern) rather than a real skill_db column, since the SQL `skill_db`
