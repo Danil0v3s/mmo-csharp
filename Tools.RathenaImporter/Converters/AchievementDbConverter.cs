@@ -46,9 +46,22 @@ public sealed class AchievementDbConverter : IYamlToSqlConverter
                 }
             }
 
+            // FEATURE-04 — the first completion reward (item + amount + title). The bonus Script
+            // reward is deferred to the scripting epic.
+            string rewardItem = ""; int rewardAmount = 0, rewardTitleId = 0;
+            // Rewards is a single mapping ({ Item, Amount, Script, TitleId }), not a list.
+            if (row.Get("Rewards") is YamlDotNet.RepresentationModel.YamlMappingNode rewards)
+            {
+                rewardItem = rewards.Str("Item") ?? "";
+                rewardAmount = rewards.Int("Amount") ?? (rewardItem.Length > 0 ? 1 : 0);
+                rewardTitleId = rewards.Int("TitleId") ?? 0;
+            }
+
             sb.AppendLine(SqlEmit.Replace("achievement_db",
-                new[] { "achievement_id", "group_name", "name", "score", "dependents", "targets" },
-                new object?[] { (uint)id.Value, grp, name, score, dep, targetSb.ToString() }));
+                new[] { "achievement_id", "group_name", "name", "score", "dependents", "targets",
+                    "reward_item", "reward_amount", "reward_title_id" },
+                new object?[] { (uint)id.Value, grp, name, score, dep, targetSb.ToString(),
+                    rewardItem, rewardAmount, rewardTitleId }));
             n++;
         }
         return Task.FromResult(SqlEmit.Header(Name, SourceYamlPath, n) + sb);

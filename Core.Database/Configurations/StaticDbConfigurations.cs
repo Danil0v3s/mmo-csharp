@@ -99,6 +99,9 @@ public class AchievementDbEntityConfiguration : IEntityTypeConfiguration<Achieve
         b.Property(e => e.Score).HasColumnName("score");
         b.Property(e => e.Dependents).HasColumnName("dependents").HasMaxLength(255);
         b.Property(e => e.Targets).HasColumnName("targets").HasColumnType("text");
+        b.Property(e => e.RewardItem).HasColumnName("reward_item").HasMaxLength(64);
+        b.Property(e => e.RewardAmount).HasColumnName("reward_amount");
+        b.Property(e => e.RewardTitleId).HasColumnName("reward_title_id");
     }
 }
 

@@ -221,7 +221,7 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | FEATURE-01 | ✅ Mob-death observer hub (quest + achievement + pet-catch + MVP) |
 | FEATURE-02 | ✅ Companion/quest/achievement save wiring (Phase A: quest+achievement+pet) — Phase B → FEATURE-17 |
 | FEATURE-03 | ✅ Quest service real implementation |
-| FEATURE-04 | Achievement service real implementation |
+| FEATURE-04 | ✅ Achievement service real implementation |
 | FEATURE-05 | Mail / RODEX service (attach/zeny/return + IPC) |
 | FEATURE-06 | Auction map-side wiring |
 | FEATURE-07 | Pet lifecycle (catch roll, egg create, hatch, persistence) |
@@ -239,6 +239,8 @@ formulas) → **SCRIPT-01..03** (NPC runtime) → the rest in parallel.
 | FEATURE-20 | Wire quest/achievement load → Hydrate → PcLogin on session enter — split from FEATURE-03 |
 | FEATURE-21 | Quest any-mob + filter objectives (race/size/element/level/map) — split from FEATURE-03 |
 | FEATURE-22 | Immediate quest persistence on mutation (chrif_save parity) — split from FEATURE-03 |
+| FEATURE-23 | Achievement script integration (conditions + reward scripts) — split from FEATURE-04 |
+| FEATURE-24 | Non-battle achievement triggers (level/job/zeny/etc.) — split from FEATURE-04 |
 
 ### `scripting/` — NPC scripting runtime + content
 | Ticket | Title |
