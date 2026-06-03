@@ -1,6 +1,6 @@
 # FEATURE-14 — Instance lifecycle
 
-> **Epic:** Gameplay-Instance · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** Gameplay-Instance · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Blocks:** none
 > **Related:** PACKET-* (instance UI / timer packets)
 
