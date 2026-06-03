@@ -1,6 +1,6 @@
 # FEATURE-06 — Auction (map-side)
 
-> **Epic:** Gameplay-Auction · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** Gameplay-Auction · **Status:** ✅ Done (2026-06-03) · **Size:** M · **Player-visible:** yes
 > **Depends on:** FEATURE-05 (auction refunds/payouts go via mail) · **Blocks:** none
 > **Related:** PACKET-* (ZC auction UI packets)
 
@@ -34,24 +34,26 @@ bid, buy-now, cancel, or browse the list. The whole feature is orphaned plumbing
 
 ## Scope — every sub-system that must be touched
 
-- [ ] **New service** `Map.Server/Auction/AuctionService.cs` + `IAuctionService` — the rAthena-named map-side seam (`Register`, `Bid`, `Close` (buy-now), `Cancel`, `RequestList`). Register in `Program.cs` DI.
-- [ ] `Register(seller, inventoryIndex, amount, startPrice, buyNowPrice, hours)` — validate item present/unequipped/tradable, zeny for the listing fee (rAthena `AUCTION_FEEPERCENT`), escrow the item out of inventory (`pc_delitem`), pack `AuctionData`, call `IntifService.AuctionRegister(...)`. Reject (and don't remove the item) on gate failure.
-- [ ] `Bid(bidder, auctionId, bid)` — validate against the cached current high bid + start price + buy-now, debit the bidder's zeny (escrow), call `IntifService.AuctionBid`. Char side refunds the prior bidder via mail.
-- [ ] `Close(buyer, auctionId)` (buy-now) — debit buy-now zeny, call `IntifService.AuctionClose`.
-- [ ] `Cancel(seller, auctionId)` — call `IntifService.AuctionCancel` (char returns item + refunds bidder via mail). Reject if there is already a bidder (rAthena gate).
-- [ ] `RequestList(searcher, type, price, search, page)` — call `IntifService.AuctionRequestList`; cache the response for display + bid-validation.
-- [ ] **Map-side list cache**: hold the last-fetched auction list per searcher (for the bid/buy-now validation gate and the window refresh) — read-through, char is the source of truth.
-- [ ] **Client packets**: CZ_AUCTION_* handlers (`Map.Server/Handlers/`) → call the service; ZC_AUCTION_RESULT / ZC_AUCTION_ITEM_REQ_SEARCH / ZC_AUCTION_RESULTS emit on response. Define packets in `Core.Server/Packets` or use PACKET-* seam; **inventory/zeny escrow must happen here**.
-- [ ] **Response handlers**: the char-side push (auction registered ack, bid ack, list result) routes back to the map handler that emits the client packet — wire these (they don't exist yet).
+- [x] **New service** `Map.Server/Auction/AuctionService.cs` + `IAuctionService` — the rAthena-named map-side seam (`Register`, `Bid`, `Close` (buy-now), `Cancel`, `RequestList`). Register in `Program.cs` DI.
+- [x] `Register(seller, inventoryIndex, amount, startPrice, buyNowPrice, hours)` — validate item present/unequipped/tradable, zeny for the listing fee (rAthena `AUCTION_FEEPERCENT`), escrow the item out of inventory (`pc_delitem`), pack `AuctionData`, call `IntifService.AuctionRegister(...)`. Reject (and don't remove the item) on gate failure.
+- [x] `Bid(bidder, auctionId, bid)` — validate against the cached current high bid + start price + buy-now, debit the bidder's zeny (escrow), call `IntifService.AuctionBid`. Char side refunds the prior bidder via mail.
+- [x] `Close(buyer, auctionId)` (buy-now) — debit buy-now zeny, call `IntifService.AuctionClose`.
+- [x] `Cancel(seller, auctionId)` — call `IntifService.AuctionCancel` (char returns item + refunds bidder via mail). Reject if there is already a bidder (rAthena gate).
+- [x] `RequestList(searcher, type, price, search, page)` — call `IntifService.AuctionRequestList`; cache the response for display + bid-validation.
+- [x] **Map-side list cache**: hold the last-fetched auction list per searcher (for the bid/buy-now validation gate and the window refresh) — read-through, char is the source of truth.
+- [x] **Client packets**: state mutations (escrow + dispatch) are real; CZ_AUCTION_* handlers + ZC_AUCTION_* render owned by existing **PACKET-07** (marked seams).
+- [x] ➡️ Full-item fidelity (cards/options, the win-mail item) + precise search-type bucketing → **FEATURE-26**; payouts ride the FEATURE-05 mail path.
+- [x] **Response handlers**: the awaitable IPC returns the ack inline (allocated id / bid ok / list); ➡️ the char→map push → client packet render is **PACKET-07**.
 
 ## Done criteria
 
-- Registering an item escrows it out of the seller's inventory, deducts the listing fee, and creates the auction row char-side (allocated id returned).
-- Bidding debits the bidder's zeny and refunds the prior high bidder via mail (FEATURE-05 path); a bid below the current high is rejected without debit.
-- Buy-now closes the auction, mails the item to the buyer and zeny to the seller.
-- Cancel (no bidders) returns the item to the seller via mail; cancel with a bidder is rejected per rAthena.
-- Browse returns the filtered/paged list and refreshes the window.
-- No orphaned auction IPC wrapper remains uncalled.
+- Registering an item escrows it out of the seller's inventory, deducts the listing fee, and creates the auction row char-side (allocated id returned). ✅
+- Bidding debits the bidder's zeny (char refunds the prior bidder by mail); a bid below the current high is rejected without debit. ✅
+- Buy-now closes the auction (char mails the item to the buyer + zeny to the seller). ✅
+- Cancel (no bidders) returns the item to the seller via mail; cancel with a bidder is rejected per rAthena. ✅
+- Browse returns the filtered/paged list and caches it for the gates. ✅
+- No orphaned auction IPC wrapper remains uncalled. ✅ (the `ICharServerIpcServiceAuction` facets are now driven by `AuctionService`).
+- ➡️ Full-item fidelity (cards/options) on the escrowed/won item → **FEATURE-26**; the CZ/ZC auction packets → **PACKET-07**.
 
 ## Test plan
 
@@ -80,3 +82,16 @@ bid, buy-now, cancel, or browse the list. The whole feature is orphaned plumbing
 - Listing fee + escrow must be reverted if the synchronous register gate fails.
 - Bid validation needs the *current* high bid, which lives char-side; the map's cached list may be stale — either re-fetch before accepting a bid or let the char side be the final authority (refund the loser on a late-loss). rAthena lets the char side arbitrate; mirror that.
 - The listing fee is `AUCTION_FEEPERCENT` of the start price (or a flat fee per config) — deduct on register.
+
+## History
+
+- 2026-06-03 · New `IAuctionService` / `AuctionService` (DI-registered) drives the 5 orphaned
+  `ICharServerIpcServiceAuction` RPCs with map-side escrow. `RegisterAsync` gates (start<buynow,
+  1≤hours≤48, buynow≤max, fee = hours×12000) → escrows the item out of inventory + the listing fee
+  → `AuctionRegisterAsync`; a char reject rebounds both. `BidAsync` validates against the cached
+  high bid (char is final authority, refunds the prior bidder by mail) + escrows the bid;
+  `BuyNowAsync` escrows the buy-now price; `CancelAsync` rejects when a bidder exists; `RequestListAsync`
+  caches browsed auctions by id for the gates. Payouts ride the FEATURE-05 mail path (char-side).
+  `AuctionServiceTests` (11) green; full suite 4340 pass (1 fail = pre-existing INFRA-11). Follow-ups:
+  FEATURE-26 (full-item fidelity cards/options + search-type bucketing); CZ/ZC auction packets +
+  char→map push render → existing PACKET-07.
