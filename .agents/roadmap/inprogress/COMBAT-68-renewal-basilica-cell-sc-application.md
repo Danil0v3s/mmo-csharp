@@ -1,6 +1,6 @@
 # COMBAT-68 — Renewal Basilica ground-unit + cell-basilica SC_BASILICA_CELL application
 
-> **Epic:** combat · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** combat · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** COMBAT-49 (the SC_BASILICA_CELL damage-immunity check) · **Blocks:** none
 > **Filed by:** COMBAT-49 — the cell-apply path that makes the immunity reachable in prod.
 
