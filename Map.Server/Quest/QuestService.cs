@@ -18,6 +18,7 @@ public sealed class QuestService : IQuestService
 {
     private readonly Dictionary<uint, QuestDbEntity> _catalog = new();
     private readonly IServiceScopeFactory? _scopes;
+    private readonly Map.Server.Status.ISessionManagerAccessor? _sessions;
     private readonly ILogger<QuestService> _logger;
 
     // rAthena e_quest_state.
@@ -27,14 +28,20 @@ public sealed class QuestService : IQuestService
     /// injectable so Add time-limits + PLAYTIME expiry are deterministic in tests.</summary>
     internal Func<DateTimeOffset> Clock { get; set; } = () => DateTimeOffset.Now;
 
-    public QuestService(IServiceScopeFactory scopes, ILogger<QuestService> logger)
+    public QuestService(IServiceScopeFactory scopes, ILogger<QuestService> logger,
+        Map.Server.Status.ISessionManagerAccessor? sessions = null)
     {
         _scopes = scopes;
         _logger = logger;
+        _sessions = sessions;
         Reload();
     }
 
     public QuestService(ILogger<QuestService> logger) { _logger = logger; }
+
+    /// <summary>Test seam — inject a session accessor for the ZC-emit paths.</summary>
+    internal QuestService(ILogger<QuestService> logger, Map.Server.Status.ISessionManagerAccessor sessions)
+    { _logger = logger; _sessions = sessions; }
 
     /// <summary>
     /// FEATURE-03 — rAthena <c>quest_add</c> (quest.cpp:587): accept a quest. Fails (-1) on unknown
@@ -126,7 +133,7 @@ public sealed class QuestService : IQuestService
         var idx = IndexOf(pc, questId);
         if (idx < 0) return -1;
         pc.QuestLog.RemoveAt(idx);
-        // PACKET-10: ZC_DEL_QUEST emit seam; removal persists via the quest-save fan-out.
+        EmitDelete(pc, questId); // removal persists via the quest-save fan-out
         return 0;
     }
 
@@ -173,6 +180,7 @@ public sealed class QuestService : IQuestService
         if (UpdateObjectiveSub(pc, questId, index, delta) < 0) return;
         if (before.Counts[index] == prior) return; // already capped — no change
         TryComplete(before, GetCatalogEntry((uint)questId)!);
+        EmitUpdate(pc, questId);
     }
 
     /// <inheritdoc />
@@ -196,9 +204,11 @@ public sealed class QuestService : IQuestService
                 q.Counts[i]++;
                 changed = true;
             }
-            if (changed) TryComplete(q, cat);
-            // ZC_UPDATE_MISSION_HUNT client emit is owned by PACKET-10 (see QUEST-UI follow-up);
-            // the count + state mutated here rides the existing QuestSaveAsync fan-out.
+            if (changed)
+            {
+                TryComplete(q, cat);
+                EmitUpdate(pc, q.QuestId); // live hunt-count tick to the client
+            }
         }
     }
 
@@ -211,6 +221,35 @@ public sealed class QuestService : IQuestService
         pc.QuestLog[idx].State = status;
         // PACKET-10: ZC_UPDATE_MISSION_HUNT (status<complete) / ZC_DEL_QUEST (complete) emit seam.
         return 0;
+    }
+
+    // --- client emits (GP-QUEST) ---
+
+    /// <summary>rAthena <c>clif_quest_delete</c> — tell the client to drop the quest from its log.</summary>
+    private void EmitDelete(PlayerEntity pc, int questId)
+        => _sessions?.GetByEntityId(pc.Id)?.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_DEL_QUEST { QuestId = questId });
+
+    /// <summary>rAthena <c>clif_quest_update_objective</c> — push the live hunt counts (target +
+    /// current per objective) for an active quest so the tracker ticks up.</summary>
+    private void EmitUpdate(PlayerEntity pc, int questId)
+    {
+        var session = _sessions?.GetByEntityId(pc.Id);
+        if (session == null) return;
+        var cat = GetCatalogEntry((uint)questId);
+        var idx = IndexOf(pc, questId);
+        if (cat == null || idx < 0) return;
+        var q = pc.QuestLog[idx];
+
+        var objs = new List<Core.Server.Packets.Out.ZC.MissionObjective>();
+        for (byte i = 0; i < 3; i++)
+        {
+            var target = ObjectiveTarget(cat, i);
+            if (target <= 0) continue;
+            var current = i < q.Counts.Length ? q.Counts[i] : 0;
+            objs.Add(new Core.Server.Packets.Out.ZC.MissionObjective(questId, questId * 1000 + i, (short)target, (short)current));
+        }
+        if (objs.Count == 0) return;
+        session.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_UPDATE_MISSION_HUNT { Objectives = objs });
     }
 
     // --- objective + lookup helpers ---

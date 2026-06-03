@@ -70,6 +70,25 @@ element/level/map) and immediate-on-mutation save are missing.
 - Persistence round-trip mid-progress.
 - Live: accept → hunt → complete → reward.
 
+## Progress log (multi-turn vertical)
+
+- **2026-06-03 (turn 1)** — Quest client-emit infrastructure + the live hunt-counter + delete. The
+  quest service was logic-complete (Add/Change/Check/Delete/UpdateObjective/UpdateMobObjective/
+  UpdateStatus on `pc.QuestLog`) with explicit "PACKET-10 owns the emit" seams; this turn wired the
+  emits. Injected `ISessionManagerAccessor` into `QuestService`; new `ZC_DEL_QUEST` (0x02b4) +
+  `ZC_UPDATE_MISSION_HUNT` (modern 0x09fa: per-obj questId/questIndex/target/current — no mob-name
+  string needed) + `EmitDelete`/`EmitUpdate` helpers wired into `Delete`, `UpdateObjective`, and
+  `UpdateMobObjective`. A mob kill now ticks the hunt counter on the client; deleting a quest removes
+  it from the log. `QuestEmitTests` (2) green; full suite 4431 pass (1 = standing replay-fixture).
+- **Remaining (next turns → done):** (1) **`ZC_ADD_QUEST`** (the quest appears — the modern
+  0x09f9 + 0x8fe form with the mob display-name per objective, needs `IMobDb` for the name + id) +
+  wire into `Add`/`Change`. (2) **`ZC_ALL_QUEST_LIST`/`ZC_ALL_QUEST_MISSION`** on login (PcLogin push,
+  the full snapshot). (3) **load-on-enter** wiring (hydrate → PcLogin emit). (4) **CZ_ACTIVE_QUEST**
+  toggle handler. (5) **objective filters** (any-mob + race/size/element/level/map on
+  `UpdateMobObjective`, archive FEATURE-21). (6) **immediate-save** on mutation (archive FEATURE-22).
+  All are layers of THIS vertical; the loop resumes this card. Live-client wire validation is the
+  project's standing deferred pass.
+
 ## Notes / gotchas
 
 - Quest expiry is query-based (no `questexpire_timer`) — verified in archive FEATURE-03.

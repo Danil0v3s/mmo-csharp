@@ -241,6 +241,9 @@ public enum PacketHeader : short
     ZC_QUEST_NOTIFY_EFFECT = 0x0446,       // clif_quest_show_event (NPC quest icon), 14B
     ZC_MAPPROPERTY_R2     = 0x099b,        // clif_map_property, 8B
     ZC_NAVIGATION_TO      = 0x08e2,        // clif_navigateTo (PACKETVER ≥ 20111010), 27B
+    // Quest UI (GP-QUEST). Modern (PACKETVER ≥ 20150513) clif_quest_* set.
+    ZC_DEL_QUEST          = 0x02b4,        // clif_quest_delete: <quest_id>.L, 6B.
+    ZC_UPDATE_MISSION_HUNT = 0x09fa,       // clif_quest_update_objective: <len>.W <count>.W then per-obj questId.L questIndex.L target.W current.W, variable.
     ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B
     ZC_STATE_CHANGE3      = 0x0229,        // clif_changeoption — option (effect-state) bitmask 32-bit, 15B
     ZC_SPIRITS            = 0x01d0,        // clif_spiritball — Monk sphere / Sura / servant / abyss count, 8B
