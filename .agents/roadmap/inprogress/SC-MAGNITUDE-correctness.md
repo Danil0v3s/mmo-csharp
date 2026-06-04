@@ -111,6 +111,18 @@
   completeness probe again: `SnapshotStats` now includes `MatkMin/MatkMax` (a Matk-only handler was
   otherwise read as a silent no-op, same class of gap as the turn-5 Watk fix). 2 tests
   (`DoramMatk_addsFlatMatk_byVal1_notBatk` + `_isConverted`); full suite 4577 pass (1 = standing replay-fixture).
+- **2026-06-04 (turn 7)** — Fixed two **MATK SCs that were mis-applied to Batk** (physical base ATK), so
+  they did nothing for magic damage and the wrong magnitude for physical: **SC_IZAYOI** (`matk += 25*Val1`,
+  status.cpp:7237 — was `+Val1 Batk`) and **SC_SOULFAIRY** (`matk += Val2`, Val2 = 10*Val1, status.cpp:7223
+  — was `+Val1 Batk`). Both now target MatkMin/MatkMax with the rAthena magnitude. These were already
+  *off* the generator-default worklist (they had bespoke-but-wrong handlers), so the **count stays 138** —
+  but two real magic-vs-physical bugs are gone. Method for finding them: cross-referenced every SC in
+  rAthena `status_calc_matk` against the C# `StatusCalcFlagDefaults`/handler mapping; the matk→Batk
+  mis-maps are genuine bugs (a Batk bonus is invisible to magic), whereas watk→Batk maps are functionally
+  equivalent for flat post-calc bonuses (total ATK unchanged) and were left alone. Remaining matk→Batk
+  candidates (ClimaxDesHu, Moonlitserenade, Zangetsu, FireInsignia) carry elemental/job-level/dual-stat
+  complications — deferred to a deliberate pass. 2 tests (`Izayoi_addsMatk_by25xVal1_notBatk`,
+  `Soulfairy_addsMatk_byVal2_10xVal1_notBatk`); full suite 4579 pass (1 = standing replay-fixture).
 
 ## Notes
 

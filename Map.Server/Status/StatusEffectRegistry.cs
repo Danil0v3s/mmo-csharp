@@ -4080,9 +4080,21 @@ public sealed class StatusEffectRegistry
 
         // Wave 57 — SC_IZAYOI: +Val1 Batk per CalcFlag; cast-time half
         // still on SkillCastTimingService.
+        // SC_IZAYOI (KO_IZAYOI) — matk += 25*Val1 (status.cpp:7237). This is a MAGIC bonus: the prior
+        // handler added Val1 to Batk (physical base ATK) — wrong stat AND wrong magnitude (it did nothing
+        // for magic damage). Cast-time semantics still live on SkillCastTimingService.
         Register(StatusType.Izayoi, new StatusEffectHandler(
-            OnStart: (target, sc, _) => { target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1); },
-            OnEnd: (target, sc) => { target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1); },
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 25 * sc.Val1;
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax + sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin - sc.Val2);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax - sc.Val2);
+            },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // ---- (d) Weapon endow family: combat-marker overrides ----
@@ -4233,14 +4245,20 @@ public sealed class StatusEffectRegistry
             },
             Flags: soulLink2));
 
+        // SC_SOULFAIRY (SOA_SOUL_OF_FAIRY) — Val2 = 10*Val1 → matk (status.cpp:7223; Val3 = cast-time
+        // reduction, on the cast service). MAGIC bonus: the prior handler added Val1 to Batk (physical) —
+        // wrong stat AND wrong magnitude.
         Register(StatusType.Soulfairy, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 10 * sc.Val1;
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax + sc.Val2);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin - sc.Val2);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax - sc.Val2);
             },
             Flags: soulLink2));
 

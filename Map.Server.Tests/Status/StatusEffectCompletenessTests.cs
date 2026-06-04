@@ -97,7 +97,8 @@ public class StatusEffectCompletenessTests
             // hook semantics still live on the visibility service.
 
             // ---- Cast-time markers — Wave 57: real OnStart bodies
-            // applied (Paralysis: -Val1 Def2; Izayoi: +Val1 Batk).
+            // applied (Paralysis: -Val1 Def2; Izayoi: +25*Val1 Matk — SC-MAGNITUDE
+            // turn 7 corrected it from the earlier wrong +Val1 Batk).
             // Cast-time semantics still on SkillCastTimingService.
 
             // ---- Weapon-element endow — Wave 53: real OnStart bodies

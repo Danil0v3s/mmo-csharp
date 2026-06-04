@@ -263,6 +263,46 @@ public class SC02CalcFlagAllTests
     public void DoramMatk_isConverted_notGeneratorDefault()
         => Assert.DoesNotContain(StatusType.DoramMatk, _reg.GeneratedStatModDefaultTypes);
 
+    // ---- SC-MAGNITUDE: MATK SCs previously mis-applied to Batk (physical) — fixed to Matk ----
+
+    [Fact]
+    public void Izayoi_addsMatk_by25xVal1_notBatk()
+    {
+        // status.cpp:7237 — matk += 25*val1. Was wrongly +Val1 to Batk (did nothing for magic).
+        var mob = FreshMob();           // MatkMin=200, MatkMax=240
+        mob.Stats.Batk = 100;
+        var sc = new StatusChange { Type = StatusType.Izayoi, Val1 = 3 };
+
+        Apply(StatusType.Izayoi, sc, mob);
+        Assert.Equal(75, sc.Val2);              // 25*3
+        Assert.Equal(275, mob.Stats.MatkMin);   // +75
+        Assert.Equal(315, mob.Stats.MatkMax);
+        Assert.Equal(100, mob.Stats.Batk);      // physical untouched
+
+        _reg.Get(StatusType.Izayoi)!.OnEnd!(mob, sc);
+        Assert.Equal(200, mob.Stats.MatkMin);
+        Assert.Equal(240, mob.Stats.MatkMax);
+    }
+
+    [Fact]
+    public void Soulfairy_addsMatk_byVal2_10xVal1_notBatk()
+    {
+        // status.cpp:7223 — matk += val2; val2 = 10*val1. Was wrongly +Val1 to Batk.
+        var mob = FreshMob();
+        mob.Stats.Batk = 100;
+        var sc = new StatusChange { Type = StatusType.Soulfairy, Val1 = 5 };
+
+        Apply(StatusType.Soulfairy, sc, mob);
+        Assert.Equal(50, sc.Val2);              // 10*5
+        Assert.Equal(250, mob.Stats.MatkMin);   // +50
+        Assert.Equal(290, mob.Stats.MatkMax);
+        Assert.Equal(100, mob.Stats.Batk);      // physical untouched
+
+        _reg.Get(StatusType.Soulfairy)!.OnEnd!(mob, sc);
+        Assert.Equal(200, mob.Stats.MatkMin);
+        Assert.Equal(240, mob.Stats.MatkMax);
+    }
+
     [Theory]
     // ATKUP/FLEEUP/HPUP converted this turn; HITUP/SPUP already converted by COMBAT-73/89 — none of the
     // SC_MERC_* stat-bonus cluster should remain on the generator-default worklist.
