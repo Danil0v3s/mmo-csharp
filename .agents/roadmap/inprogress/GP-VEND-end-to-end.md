@@ -1,6 +1,6 @@
 # GP-VEND — Vending works end-to-end
 
-> **Epic:** gameplay · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** GP-BUYSTORE (shared shop packet patterns)
 
 ## The deliverable
