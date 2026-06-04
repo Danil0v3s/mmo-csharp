@@ -123,6 +123,18 @@
   candidates (ClimaxDesHu, Moonlitserenade, Zangetsu, FireInsignia) carry elemental/job-level/dual-stat
   complications — deferred to a deliberate pass. 2 tests (`Izayoi_addsMatk_by25xVal1_notBatk`,
   `Soulfairy_addsMatk_byVal2_10xVal1_notBatk`); full suite 4579 pass (1 = standing replay-fixture).
+- **2026-06-04 (turn 8)** — Fixed **SC_SHIELDSPELL_ATK** (LG_SHIELDSPELL lv3): Val2 = 150 flat added to
+  **both Watk and Matk** (status.cpp:7139/:7227; status.yml CalcFlags Watk+Matk) — the prior handler added
+  Val1 (=skill level) to **Batk** only. **Plus a systemic fix:** while verifying the recalc path I found
+  that CalcPc *rebuilds* MatkMin/Max from base stats every recalc (StatusCalcService:533/540), so any
+  Matk handler **without an OnRecalc re-apply silently loses its bonus** after the first CalcPc. That
+  affected the turn-6/7 conversions (DoramMatk/Izayoi/Soulfairy) **and** the pre-existing **Incmatkrate** —
+  all four were missing OnRecalc. Added OnRecalc to all of them (Incmatkrate recomputes its % on the
+  rebuilt base; the flat ones re-add their delta). ShieldspellAtk got both Watk+Matk OnRecalc. Worklist
+  unchanged (**138** — all off-worklist), but five magic/atk buffs now actually persist. Adjusted the
+  Combat53 refold theory (its Batk-only `Read()` infra can't observe Watk/Matk) and added recalc-survival
+  coverage in SC02. 3 tests (`ShieldspellAtk_addsFlat150_toWatkAndMatk_notBatk` + recalc assert,
+  `FlatMatk_survivesRecalc_viaOnRecalc` theory); full suite 4582 pass (1 = standing replay-fixture).
 
 ## Notes
 

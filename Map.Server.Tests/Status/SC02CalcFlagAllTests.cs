@@ -303,6 +303,59 @@ public class SC02CalcFlagAllTests
         Assert.Equal(240, mob.Stats.MatkMax);
     }
 
+    // ---- SC-MAGNITUDE: SC_SHIELDSPELL_ATK — Val2 = 150 flat to BOTH Watk and Matk ----
+
+    [Fact]
+    public void ShieldspellAtk_addsFlat150_toWatkAndMatk_notBatk()
+    {
+        // status.cpp:7139 watk += val2, :7227 matk += val2, start arm val2 = 150 (skill level was the
+        // wrong source). Was +Val1 (=3) to Batk only.
+        var mob = FreshMob();
+        mob.Stats.WatkMin = 300; mob.Stats.WatkMax = 340; mob.Stats.Batk = 100;
+        var sc = new StatusChange { Type = StatusType.ShieldspellAtk, Val1 = 3 };
+
+        Apply(StatusType.ShieldspellAtk, sc, mob);
+        Assert.Equal(150, sc.Val2);
+        Assert.Equal(450, mob.Stats.WatkMin);   // +150
+        Assert.Equal(490, mob.Stats.WatkMax);
+        Assert.Equal(350, mob.Stats.MatkMin);   // +150
+        Assert.Equal(390, mob.Stats.MatkMax);
+        Assert.Equal(100, mob.Stats.Batk);      // base ATK untouched
+
+        // OnRecalc must re-apply both Watk and Matk (CalcPc rebuilds both from base each recalc).
+        Apply(StatusType.ShieldspellAtk, sc, mob);     // re-start for the recalc check
+        mob.Stats.WatkMin = 300; mob.Stats.WatkMax = 340; mob.Stats.MatkMin = 200; mob.Stats.MatkMax = 240;
+        _reg.Get(StatusType.ShieldspellAtk)!.OnRecalc!(mob, sc);
+        Assert.Equal(450, mob.Stats.WatkMin);
+        Assert.Equal(350, mob.Stats.MatkMin);
+
+        _reg.Get(StatusType.ShieldspellAtk)!.OnEnd!(mob, sc);
+        Assert.Equal(300, mob.Stats.WatkMin);
+        Assert.Equal(200, mob.Stats.MatkMin);
+    }
+
+    // ---- SC-MAGNITUDE: flat-Matk handlers must survive a CalcPc recalc (re-apply via OnRecalc) ----
+
+    [Theory]
+    [InlineData(StatusType.DoramMatk, 99, 99)]   // matk += Val1
+    [InlineData(StatusType.Izayoi, 3, 75)]        // matk += 25*Val1
+    [InlineData(StatusType.Soulfairy, 5, 50)]     // matk += 10*Val1
+    public void FlatMatk_survivesRecalc_viaOnRecalc(StatusType t, int val1, int expectedDelta)
+    {
+        var mob = FreshMob();                 // MatkMin=200, MatkMax=240
+        var h = _reg.Get(t)!;
+        var sc = new StatusChange { Type = t, Val1 = val1 };
+        h.OnStart(mob, sc, null);
+        Assert.Equal(200 + expectedDelta, mob.Stats.MatkMin);
+
+        // Simulate CalcPc rebuilding MatkMin/Max from base (wipes the buff)…
+        mob.Stats.MatkMin = 200; mob.Stats.MatkMax = 240;
+        Assert.NotNull(h.OnRecalc);
+        h.OnRecalc!(mob, sc);                 // …then the derived-reapply pass restores it.
+        Assert.Equal(200 + expectedDelta, mob.Stats.MatkMin);
+        Assert.Equal(240 + expectedDelta, mob.Stats.MatkMax);
+    }
+
     [Theory]
     // ATKUP/FLEEUP/HPUP converted this turn; HITUP/SPUP already converted by COMBAT-73/89 — none of the
     // SC_MERC_* stat-bonus cluster should remain on the generator-default worklist.

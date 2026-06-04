@@ -52,7 +52,8 @@ public class Combat53BespokeRefoldTests
     [InlineData(StatusType.Chattering, CalcStatField.Batk, 5)]
     [InlineData(StatusType.Bloodlust, CalcStatField.Batk, 5)]
     [InlineData(StatusType.Pyroclastic, CalcStatField.Batk, 5)]
-    [InlineData(StatusType.ShieldspellAtk, CalcStatField.Batk, 5)]
+    // SC-MAGNITUDE turn 8: ShieldspellAtk moved off Batk to Watk+Matk (val2=150), which this Batk-only
+    // Read() infra can't observe — recalc survival is covered by SC02CalcFlagAllTests instead.
     [InlineData(StatusType.Volcano, CalcStatField.Batk, 5)]
     [InlineData(StatusType.Explosionspirits, CalcStatField.Cri, 5)]
     [InlineData(StatusType.Laudaramus, CalcStatField.Cri, 5)]

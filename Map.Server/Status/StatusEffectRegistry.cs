@@ -1359,8 +1359,7 @@ public sealed class StatusEffectRegistry
 
         // SC_DORAM_MATK (SU_SPIRITOFLAND) — matk += Val1 (status.cpp:7215). Val1 carries the caster's
         // base_level (skill.cpp:13020/14749), so this is a flat MATK add. The generator wrongly mapped it
-        // to Batk (a +Val1 to base ATK); convert to the real MATK target. Mirrors the Incmatkrate Matk
-        // pattern (no OnRecalc — MatkMin/Max are not on the CalcPc derived-reapply field set).
+        // to Batk (a +Val1 to base ATK); convert to the real MATK target.
         Register(StatusType.DoramMatk, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
@@ -1372,7 +1371,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin - sc.Val1);
                 target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax - sc.Val1);
             },
-            Flags: buff));
+            Flags: buff,
+            // CalcPc rebuilds MatkMin/Max from base stats each recalc — re-apply the flat add.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin + sc.Val1);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax + sc.Val1);
+            }));
 
         // SC_SERVICE4U — Val2 = MaxSP % bonus (9+Val1 capped at 20),
         //                Val3 = 5+Val1 (SP cost reduction %).
@@ -3203,18 +3208,34 @@ public sealed class StatusEffectRegistry
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
 
         // Wave 58 — SC_ShieldspellAtk: +Val1 to listed CalcFlag fields.
+        // SC_SHIELDSPELL_ATK (LG_SHIELDSPELL lv3) — Val2 = 150 flat, added to BOTH watk and matk
+        // (status.cpp:7139 watk, :7227 matk; start arm :11796 val2=150; status.yml CalcFlags Watk+Matk).
+        // The prior handler added Val1 (=skill level, 3) to Batk only — wrong stat and wrong magnitude.
         Register(StatusType.ShieldspellAtk, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
-                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                if (sc.Val2 == 0) sc.Val2 = 150;
+                target.Stats.WatkMin = ClampUShort(target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = ClampUShort(target.Stats.WatkMax + sc.Val2);
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax + sc.Val2);
             },
             OnEnd: (target, sc) =>
             {
-                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
+                target.Stats.WatkMin = ClampUShort(target.Stats.WatkMin - sc.Val2);
+                target.Stats.WatkMax = ClampUShort(target.Stats.WatkMax - sc.Val2);
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin - sc.Val2);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax - sc.Val2);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
-            // COMBAT-89 — re-apply Batk (CalcPc resets it each recalc).
-            OnRecalc: (target, sc) => { target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1); }));
+            // CalcPc rebuilds both Watk and Matk each recalc — re-apply both.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.WatkMin = ClampUShort(target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = ClampUShort(target.Stats.WatkMax + sc.Val2);
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax + sc.Val2);
+            }));
 
         // Wave 58 — SC_ShinkirouCall: +Val1 to listed CalcFlag fields.
         Register(StatusType.ShinkirouCall, new StatusEffectHandler(
@@ -4095,7 +4116,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin - sc.Val2);
                 target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // CalcPc rebuilds MatkMin/Max each recalc — re-apply.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax + sc.Val2);
+            }));
 
         // ---- (d) Weapon endow family: combat-marker overrides ----
         //
@@ -4260,7 +4287,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin - sc.Val2);
                 target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax - sc.Val2);
             },
-            Flags: soulLink2));
+            Flags: soulLink2,
+            // CalcPc rebuilds MatkMin/Max each recalc — re-apply.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax + sc.Val2);
+            }));
 
         Register(StatusType.Soulcold, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
@@ -4428,7 +4461,16 @@ public sealed class StatusEffectRegistry
                 target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin - sc.Val2);
                 target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax - sc.Val3);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // CalcPc rebuilds MatkMin/Max from base each recalc, wiping the % buff — recompute the
+            // percent on the rebuilt base and re-apply (re-snapshot the delta for a clean OnEnd).
+            OnRecalc: (target, sc) =>
+            {
+                sc.Val2 = target.Stats.MatkMin * sc.Val1 / 100;
+                sc.Val3 = target.Stats.MatkMax * sc.Val1 / 100;
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax + sc.Val3);
+            }));
 
         // ---- ASPD potions (fixed magnitudes per potion tier) ----
 
