@@ -135,6 +135,17 @@
   Combat53 refold theory (its Batk-only `Read()` infra can't observe Watk/Matk) and added recalc-survival
   coverage in SC02. 3 tests (`ShieldspellAtk_addsFlat150_toWatkAndMatk_notBatk` + recalc assert,
   `FlatMatk_survivesRecalc_viaOnRecalc` theory); full suite 4582 pass (1 = standing replay-fixture).
+- **2026-06-04 (turn 9)** — Generalised the turn-8 finding into a **full audit**: scripted a scan of every
+  handler touching WatkMin/Max or MatkMin/Max and flagged those without an `OnRecalc` (Watk/Matk are NOT in
+  the generator's derived-reapply field set, yet CalcPc rebuilds them, so a bespoke handler silently loses
+  its bonus on recalc). Found 9 genuine cases; fixed **8** inline by adding the matching OnRecalc:
+  the seven **element-spirit option** SCs — Aquaplay/Blast/Chilly/Cooler (MATK += Val2) and
+  Heater/Pyrotechnic/Tropic (Watk += Val2) — plus **Sunstance** (Batk+Watk percent, re-applied on the
+  rebuilt base). The 9th, **SC_INSPIRATION**, mixes derived (Batk/MATK) with primary-stat and MaxHp%
+  contributions that need per-field recalc-persistence analysis ➡️ filed **SC-INSPIRATION-RECALC** (rule 3).
+  Worklist unchanged (**138** — all off-worklist), but eight more Watk/Matk buffs now persist across recalc.
+  8 tests (`MatkOption_/WatkOption_survivesRecalc_viaOnRecalc` theories + `Sunstance_watkPercent_…`); full
+  suite 4590 pass (1 = standing replay-fixture).
 
 ## Notes
 

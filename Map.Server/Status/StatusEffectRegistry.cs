@@ -2667,7 +2667,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.MatkMin = (ushort)Math.Max(0, target.Stats.MatkMin - sc.Val2);
                 target.Stats.MatkMax = (ushort)Math.Max(0, target.Stats.MatkMax - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // CalcPc rebuilds MatkMin/Max each recalc — re-apply.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.MatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMax + sc.Val2);
+            }));
 
         // SC-06 — SC_BANDING (Royal Guard): Val2 = banded RG party-member count
         // (rAthena skill_banding_count, status.cpp:11798); the Def/Atk aggregate
@@ -2694,7 +2700,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.MatkMin = (ushort)Math.Max(0, target.Stats.MatkMin - sc.Val2);
                 target.Stats.MatkMax = (ushort)Math.Max(0, target.Stats.MatkMax - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // CalcPc rebuilds MatkMin/Max each recalc — re-apply.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.MatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMax + sc.Val2);
+            }));
 
         // Wave 58 — SC_Bloodylust: +Val1 to listed CalcFlag fields.
         Register(StatusType.Bloodylust, new StatusEffectHandler(
@@ -2726,7 +2738,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.MatkMin = (ushort)Math.Max(0, target.Stats.MatkMin - sc.Val2);
                 target.Stats.MatkMax = (ushort)Math.Max(0, target.Stats.MatkMax - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // CalcPc rebuilds MatkMin/Max each recalc — re-apply.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.MatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMax + sc.Val2);
+            }));
 
         // Wave 58 — SC_CircleOfFireOption: +Val1 to listed CalcFlag fields.
         Register(StatusType.CircleOfFireOption, new StatusEffectHandler(
@@ -2764,7 +2782,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.MatkMin = (ushort)Math.Max(0, target.Stats.MatkMin - sc.Val2);
                 target.Stats.MatkMax = (ushort)Math.Max(0, target.Stats.MatkMax - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // CalcPc rebuilds MatkMin/Max each recalc — re-apply.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.MatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMin + sc.Val2);
+                target.Stats.MatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.MatkMax + sc.Val2);
+            }));
 
         // SC-05 — SC_CURSED_SOIL_OPTION: fixed Val2 = 10 (% MaxHP rate), NOT
         // +Val1 flat MaxHp. The weapon→Earth element change (Val3 = ELE_EARTH)
@@ -2917,7 +2941,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.WatkMin = (ushort)Math.Max(0, target.Stats.WatkMin - sc.Val2);
                 target.Stats.WatkMax = (ushort)Math.Max(0, target.Stats.WatkMax - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // CalcPc rebuilds WatkMin/Max each recalc — re-apply.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.WatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMax + sc.Val2);
+            }));
 
         // Wave 58 — SC_HolyS: +Val1 to listed CalcFlag fields.
         Register(StatusType.HolyS, new StatusEffectHandler(
@@ -3191,7 +3221,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.WatkMin = (ushort)Math.Max(0, target.Stats.WatkMin - sc.Val2);
                 target.Stats.WatkMax = (ushort)Math.Max(0, target.Stats.WatkMax - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // CalcPc rebuilds WatkMin/Max each recalc — re-apply.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.WatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMax + sc.Val2);
+            }));
 
         // Wave 58 — SC_Rushwindmill: +Val1 to listed CalcFlag fields.
         Register(StatusType.Rushwindmill, new StatusEffectHandler(
@@ -3399,7 +3435,15 @@ public sealed class StatusEffectRegistry
                 s.WatkMin = (ushort)Math.Max(0, s.WatkMin - s.WatkMin * sc.Val2 / (100 + sc.Val2));
                 s.WatkMax = (ushort)Math.Max(0, s.WatkMax - s.WatkMax * sc.Val2 / (100 + sc.Val2));
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // CalcPc rebuilds Batk/Watk from base each recalc — re-apply the % on the rebuilt (= base) values.
+            OnRecalc: (target, sc) =>
+            {
+                var s = target.Stats;
+                s.Batk = (ushort)Math.Min(ushort.MaxValue, s.Batk + s.Batk * sc.Val2 / 100);
+                s.WatkMin = (ushort)Math.Min(ushort.MaxValue, s.WatkMin + s.WatkMin * sc.Val2 / 100);
+                s.WatkMax = (ushort)Math.Min(ushort.MaxValue, s.WatkMax + s.WatkMax * sc.Val2 / 100);
+            }));
 
         // Wave 58 — SC_Swingdance: +Val1 to listed CalcFlag fields.
         Register(StatusType.Swingdance, new StatusEffectHandler(
@@ -3479,7 +3523,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.WatkMin = (ushort)Math.Max(0, target.Stats.WatkMin - sc.Val2);
                 target.Stats.WatkMax = (ushort)Math.Max(0, target.Stats.WatkMax - sc.Val2);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // CalcPc rebuilds WatkMin/Max each recalc — re-apply.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.WatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMax + sc.Val2);
+            }));
 
         // Wave 58 — SC_WaterBarrier: +Val1 to listed CalcFlag fields.
         Register(StatusType.WaterBarrier, new StatusEffectHandler(

@@ -115,6 +115,7 @@ this ticket already needed.** "Service landed, packets later" is not done.
 | SC-MAGNITUDE | SC magnitudes correct (CalcFlags mis-map + generator-default review) | SC-10/11/18/19/20 |
 | SC-CONSUMERS | Starved SC consumer reads wired | SC-12/13/14/15 |
 | SC-FAMILIES | Sorcerer/Star-Emperor/Soul/Bard bespoke effects | SC-16/17 |
+| SC-INSPIRATION-RECALC | SC_INSPIRATION Batk/MATK/stat/MaxHp buffs survive a CalcPc recalc (filed from SC-MAGNITUDE turn 9) | — |
 | SC-IMMUNE | ✅ Effect-resist cards (bResEff in GetScDef) + weapon-swap status_change_refresh + cached nostatus map-id lookup; companion calc→SC-COMPANION-CALC | SC-21/22 |
 | SC-COMPANION-CALC | Homun/merc/elem recompute derived stats (MaxHp) on level-up — split from SC-IMMUNE, blocked on GP-HOMUN/MERC/ELEM |
 

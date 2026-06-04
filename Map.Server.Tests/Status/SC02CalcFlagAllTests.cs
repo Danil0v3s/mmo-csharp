@@ -336,6 +336,70 @@ public class SC02CalcFlagAllTests
 
     // ---- SC-MAGNITUDE: flat-Matk handlers must survive a CalcPc recalc (re-apply via OnRecalc) ----
 
+    // ---- SC-MAGNITUDE turn 9: element-spirit option + Sunstance Watk/Matk buffs must survive recalc ----
+
+    [Theory]
+    // Each option SC adds its fixed Val2 to MatkMin/Max; OnRecalc must re-apply after CalcPc rebuilds it.
+    [InlineData(StatusType.AquaplayOption, 40)]
+    [InlineData(StatusType.BlastOption, 20)]
+    [InlineData(StatusType.ChillyAirOption, 120)]
+    [InlineData(StatusType.CoolerOption, 80)]
+    public void MatkOption_survivesRecalc_viaOnRecalc(StatusType t, int expectedVal2)
+    {
+        var mob = FreshMob();                 // MatkMin=200, MatkMax=240
+        var h = _reg.Get(t)!;
+        var sc = new StatusChange { Type = t };
+        h.OnStart(mob, sc, null);
+        Assert.Equal(expectedVal2, sc.Val2);
+        Assert.Equal(200 + expectedVal2, mob.Stats.MatkMin);
+
+        mob.Stats.MatkMin = 200; mob.Stats.MatkMax = 240;  // simulate CalcPc rebuild
+        Assert.NotNull(h.OnRecalc);
+        h.OnRecalc!(mob, sc);
+        Assert.Equal(200 + expectedVal2, mob.Stats.MatkMin);
+        Assert.Equal(240 + expectedVal2, mob.Stats.MatkMax);
+    }
+
+    [Theory]
+    // Each option SC adds its fixed Val2 to WatkMin/Max; OnRecalc must re-apply after CalcPc rebuilds it.
+    [InlineData(StatusType.HeaterOption, 120)]
+    [InlineData(StatusType.PyrotechnicOption, 60)]
+    [InlineData(StatusType.TropicOption, 180)]
+    public void WatkOption_survivesRecalc_viaOnRecalc(StatusType t, int expectedVal2)
+    {
+        var mob = FreshMob();
+        mob.Stats.WatkMin = 300; mob.Stats.WatkMax = 340;
+        var h = _reg.Get(t)!;
+        var sc = new StatusChange { Type = t };
+        h.OnStart(mob, sc, null);
+        Assert.Equal(expectedVal2, sc.Val2);
+        Assert.Equal(300 + expectedVal2, mob.Stats.WatkMin);
+
+        mob.Stats.WatkMin = 300; mob.Stats.WatkMax = 340;  // simulate CalcPc rebuild
+        Assert.NotNull(h.OnRecalc);
+        h.OnRecalc!(mob, sc);
+        Assert.Equal(300 + expectedVal2, mob.Stats.WatkMin);
+        Assert.Equal(340 + expectedVal2, mob.Stats.WatkMax);
+    }
+
+    [Fact]
+    public void Sunstance_watkPercent_survivesRecalc_viaOnRecalc()
+    {
+        var mob = FreshMob();
+        mob.Stats.WatkMin = 1000; mob.Stats.WatkMax = 1000; mob.Stats.Batk = 1000;
+        var sc = new StatusChange { Type = StatusType.Sunstance, Val1 = 8 };  // Val2 = 2+8 = 10%
+        var h = _reg.Get(StatusType.Sunstance)!;
+        h.OnStart(mob, sc, null);
+        Assert.Equal(10, sc.Val2);
+        Assert.Equal(1100, mob.Stats.WatkMin);   // +10%
+
+        mob.Stats.WatkMin = 1000; mob.Stats.WatkMax = 1000; mob.Stats.Batk = 1000;  // rebuild
+        Assert.NotNull(h.OnRecalc);
+        h.OnRecalc!(mob, sc);
+        Assert.Equal(1100, mob.Stats.WatkMin);   // % re-applied on rebuilt base
+        Assert.Equal(1100, mob.Stats.Batk);
+    }
+
     [Theory]
     [InlineData(StatusType.DoramMatk, 99, 99)]   // matk += Val1
     [InlineData(StatusType.Izayoi, 3, 75)]        // matk += 25*Val1
