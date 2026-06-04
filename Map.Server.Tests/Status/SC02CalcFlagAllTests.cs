@@ -336,6 +336,107 @@ public class SC02CalcFlagAllTests
 
     // ---- SC-MAGNITUDE: flat-Matk handlers must survive a CalcPc recalc (re-apply via OnRecalc) ----
 
+    // ---- SC-DERIVED-RECALC: the per-field-care handlers (percent / coupling / pool) survive recalc ----
+
+    [Fact]
+    public void GtChange_batkPercent_survivesRecalc()
+    {
+        var mob = FreshMob();
+        mob.Stats.Batk = 1000;
+        var h = _reg.Get(StatusType.GtChange)!;
+        var sc = new StatusChange { Type = StatusType.GtChange, Val1 = 10 };  // Val2 = 80
+        h.OnStart(mob, sc, null);
+        Assert.Equal(1800, mob.Stats.Batk);          // +80% of 1000
+        mob.Stats.Batk = 1000;                        // rebuild
+        h.OnRecalc!(mob, sc);
+        Assert.Equal(1800, mob.Stats.Batk);          // % re-applied on rebuilt base
+    }
+
+    [Fact]
+    public void Fleet_batkPercent_survivesRecalc()
+    {
+        var mob = FreshMob();
+        mob.Stats.Batk = 1000;
+        var h = _reg.Get(StatusType.Fleet)!;
+        var sc = new StatusChange { Type = StatusType.Fleet, Val1 = 5 };       // 30%
+        h.OnStart(mob, sc, null);
+        Assert.Equal(1300, mob.Stats.Batk);
+        mob.Stats.Batk = 1000;
+        h.OnRecalc!(mob, sc);
+        Assert.Equal(1300, mob.Stats.Batk);
+    }
+
+    [Fact]
+    public void Magicpower_smatkPercent_survivesRecalc()
+    {
+        var mob = FreshMob();
+        mob.Stats.Smatk = 200;
+        var h = _reg.Get(StatusType.Magicpower)!;
+        var sc = new StatusChange { Type = StatusType.Magicpower, Val1 = 5 };  // 25%
+        h.OnStart(mob, sc, null);
+        Assert.Equal(250, mob.Stats.Smatk);
+        mob.Stats.Smatk = 200;
+        h.OnRecalc!(mob, sc);
+        Assert.Equal(250, mob.Stats.Smatk);
+    }
+
+    [Fact]
+    public void Truesight_criHit_survivesRecalc_statsRideParamBase()
+    {
+        var mob = FreshMob();
+        mob.Stats.Cri = 30; mob.Stats.Hit = 80;
+        var h = _reg.Get(StatusType.Truesight)!;
+        var sc = new StatusChange { Type = StatusType.Truesight, Val1 = 5 };   // Val2=50 Cri, Val3=15 Hit
+        h.OnStart(mob, sc, null);
+        Assert.Equal(80, mob.Stats.Cri); Assert.Equal(95, mob.Stats.Hit);
+        mob.Stats.Cri = 30; mob.Stats.Hit = 80;                                // CalcPc rebuild (Cri/Hit only)
+        h.OnRecalc!(mob, sc);
+        Assert.Equal(80, mob.Stats.Cri); Assert.Equal(95, mob.Stats.Hit);     // re-applied; +5 stats not double-counted
+    }
+
+    [Fact]
+    public void Neutralbarrier_defMdefPercent_survivesRecalc()
+    {
+        var mob = FreshMob();
+        mob.Stats.Def = 100; mob.Stats.Mdef = 50;
+        var h = _reg.Get(StatusType.Neutralbarrier)!;
+        var sc = new StatusChange { Type = StatusType.Neutralbarrier, Val1 = 5 };  // Val2 = 35%
+        h.OnStart(mob, sc, null);
+        Assert.Equal(135, mob.Stats.Def); Assert.Equal(67, mob.Stats.Mdef);   // +35% / +35%(17)
+        mob.Stats.Def = 100; mob.Stats.Mdef = 50;
+        h.OnRecalc!(mob, sc);
+        Assert.Equal(135, mob.Stats.Def); Assert.Equal(67, mob.Stats.Mdef);
+    }
+
+    [Fact]
+    public void Berserk_batkFleeDefZero_survivesRecalc_andRestoresOnEnd()
+    {
+        var mob = FreshMob();
+        mob.Stats.MaxHp = 1000; mob.Stats.Hp = 1000; mob.Stats.Batk = 200; mob.Stats.Flee = 100;
+        mob.Stats.Def = 80; mob.Stats.Def2 = 20; mob.Stats.Mdef = 40; mob.Stats.Mdef2 = 10;
+        var h = _reg.Get(StatusType.Berserk)!;
+        var sc = new StatusChange { Type = StatusType.Berserk, Val1 = 1 };
+        h.OnStart(mob, sc, null);
+        Assert.Equal(400, mob.Stats.Batk);           // +200
+        Assert.Equal(50, mob.Stats.Flee);            // halved
+        Assert.Equal(0, mob.Stats.Def);              // zeroed
+
+        // CalcPc rebuilds Batk/Flee/Def/Def2/Mdef/Mdef2 to base; OnRecalc re-applies Berserk's axes.
+        mob.Stats.Batk = 200; mob.Stats.Flee = 100;
+        mob.Stats.Def = 80; mob.Stats.Def2 = 20; mob.Stats.Mdef = 40; mob.Stats.Mdef2 = 10;
+        h.OnRecalc!(mob, sc);
+        Assert.Equal(400, mob.Stats.Batk);
+        Assert.Equal(50, mob.Stats.Flee);
+        Assert.Equal(0, mob.Stats.Def); Assert.Equal(0, mob.Stats.Mdef);
+
+        // OnEnd restores the re-snapshotted base (the rebuilt values).
+        h.OnEnd!(mob, sc);
+        Assert.Equal(200, mob.Stats.Batk);
+        Assert.Equal(100, mob.Stats.Flee);
+        Assert.Equal(80, mob.Stats.Def); Assert.Equal(20, mob.Stats.Def2);
+        Assert.Equal(40, mob.Stats.Mdef); Assert.Equal(10, mob.Stats.Mdef2);
+    }
+
     // ---- SC-DERIVED-RECALC: subtract-debuffs re-apply their reduction on recalc (zero-base on a PC,
     //      so tested on a mob with a set base) ----
 

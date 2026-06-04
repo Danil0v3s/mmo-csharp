@@ -116,6 +116,17 @@ public class Combat53BespokeRefoldTests
     [InlineData(StatusType.AbyssSlayer, CalcStatField.Patk, 5)]
     [InlineData(StatusType.TemporaryCommunion, CalcStatField.Hplus, 5)]
     [InlineData(StatusType.SunComfort, CalcStatField.Def2, 5)]
+    // batch 5 — soul/song Patk/Smatk/Res buffs (the += form the earlier audit missed)
+    [InlineData(StatusType.Competentia, CalcStatField.Patk, 5)]
+    [InlineData(StatusType.MusicalInterlude, CalcStatField.Res, 5)]
+    [InlineData(StatusType.JawaiiSerenade, CalcStatField.Smatk, 5)]
+    [InlineData(StatusType.PronMarch, CalcStatField.Patk, 5)]
+    [InlineData(StatusType.SpellEnchanting, CalcStatField.Smatk, 5)]
+    [InlineData(StatusType.HiddenCard, CalcStatField.Smatk, 5)]
+    [InlineData(StatusType.TalismanOfWarrior, CalcStatField.Patk, 5)]
+    [InlineData(StatusType.TalismanOfMagician, CalcStatField.Smatk, 5)]
+    [InlineData(StatusType.TFifthGod, CalcStatField.Smatk, 5)]
+    [InlineData(StatusType.BlessingOfMCreatures, CalcStatField.Patk, 5)]
     // ToxinOfMandara (Res−) and Curse (Batk−) are subtract-debuffs whose PC base is 0 here, so the
     // CalcPc-integrated assert can't move them — covered by mob-based unit tests in SC02CalcFlagAllTests.
     public void Bespoke_derived_mod_survives_recalc_and_is_idempotent(

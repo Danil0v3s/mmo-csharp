@@ -1,6 +1,6 @@
 # SC-DERIVED-RECALC — bespoke SC handlers re-apply derived-stat mods after a recalc
 
-> **Epic:** status · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** status · **Status:** ✅ Done (2026-06-04) · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** none
 
 ## The deliverable (definition of done, in one sentence)
@@ -97,3 +97,13 @@ Need per-field care (percent / primary-stat coupling / MaxHp pool):
   deltas; all 10 verified in the Combat53 theory. Full suite 4649 pass (1 = standing replay-fixture).
   **Only the 6 per-field-care handlers remain** (GtChange/Fleet/Magicpower/Truesight/Berserk/Neutralbarrier —
   percent-of-base, primary-stat coupling, or MaxHp-pool axes).
+- 2026-06-04 (turn 15) — **DONE.** Batch 5: the 6 per-field-care handlers — GtChange/Fleet (Batk %),
+  Magicpower (Smatk %), Neutralbarrier (Def/Mdef %) recompute the % on the rebuilt base + re-snapshot;
+  Truesight re-applies Cri+Hit only (the +5 base stats ride the COMBAT-10 param-base delta); Berserk
+  re-applies +200 Batk / half-Flee / zeroed Def·Def2·Mdef·Mdef2 (mirroring its bit-packed snapshots, so
+  OnEnd still restores), with MaxHp on its existing OnRecalcPool. Then a **tightened audit** (catching the
+  `Stats.X += v` form the first scan missed) found **10 more** soul/song Patk/Smatk/Res buffs
+  (Competentia, MusicalInterlude, JawaiiSerenade, PronMarch, SpellEnchanting, HiddenCard, TalismanOfWarrior,
+  TalismanOfMagician, TFifthGod, BlessingOfMCreatures) — all given OnRecalc re-applying their Val2 snapshot.
+  **Final audit: 0 bespoke handlers modify a CalcPc-reset field without an OnRecalc.** 6 unit tests +
+  10 Combat53 theory cases (107 total in the refold theory); full suite 4665 pass (1 = standing replay-fixture).
