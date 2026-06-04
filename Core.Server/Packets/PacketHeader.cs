@@ -283,6 +283,12 @@ public enum PacketHeader : short
     ZC_BUYING_STORE_ENTRY     = 0x0814,    // clif_buyingstore_entry: <maker AID>.L <store name>.80, 86B (store sign on-map).
     CZ_REQ_CLOSE_BUYING_STORE = 0x0815,    // clif_parse_ReqCloseBuyingStore: header only, 2B.
     ZC_DISAPPEAR_BUYING_STORE_ENTRY = 0x0816, // clif_buyingstore_disappear_entry: <maker AID>.L, 6B.
+    CZ_REQ_CLICK_TO_BUYING_STORE = 0x0817, // clif_parse_ReqClickBuyingStore: <buyer AID>.L, 6B (view a store).
+    ZC_ACK_ITEMLIST_BUYING_STORE = 0x0818, // clif_buyingstore_itemlist: <len>.W <AID>.L <storeId>.L <limit>.L {price.L amount.W type.B nameId.W}*.
+    CZ_REQ_TRADE_BUYING_STORE = 0x0819,    // clif_parse_ReqTradeBuyingStore: <len>.W <AID>.L <storeId>.L {index.W nameId.W amount.W}* (sell in).
+    ZC_UPDATE_ITEM_FROM_BUYING_STORE = 0x081b, // clif_buyingstore_update_item: <nameId>.W <amount>.W <limit>.L, 10B (buyer side).
+    ZC_ITEM_DELETE_BUYING_STORE = 0x081c,  // clif_buyingstore_delete_item: <index>.W <amount>.W <price>.L, 10B (seller side).
+    ZC_FAILED_TRADE_BUYING_STORE_TO_SELLER = 0x0824, // clif_buyingstore_trade_failed_seller: <result>.W <nameId>.W, 6B.
     ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B
     ZC_STATE_CHANGE3      = 0x0229,        // clif_changeoption — option (effect-state) bitmask 32-bit, 15B
     ZC_SPIRITS            = 0x01d0,        // clif_spiritball — Monk sphere / Sura / servant / abyss count, 8B

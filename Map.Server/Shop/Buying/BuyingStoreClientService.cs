@@ -44,4 +44,16 @@ public sealed class BuyingStoreClientService : IBuyingStoreClientService
 
     public void OpenFailed(PlayerEntity buyer, BuyingStoreOpenResult result)
         => _sessions.GetByEntityId(buyer.Id)?.EnqueuePacket(new ZC_FAILED_OPEN_BUYING_STORE { Result = result });
+
+    public void SendVisitorList(PlayerEntity visitor, int ownerAccountId, uint storeId, int zenyLimit, IReadOnlyList<BuyingStoreEntry> items)
+        => _sessions.GetByEntityId(visitor.Id)?.EnqueuePacket(new ZC_ACK_ITEMLIST_BUYING_STORE
+        { AccountId = (uint)ownerAccountId, StoreId = storeId, ZenyLimit = zenyLimit, Items = items });
+
+    public void SendSellerDelete(PlayerEntity seller, short clientIndex, short amount, int price)
+        => _sessions.GetByEntityId(seller.Id)?.EnqueuePacket(new ZC_ITEM_DELETE_BUYING_STORE
+        { Index = clientIndex, Amount = amount, Price = price });
+
+    public void SendSellerFail(PlayerEntity seller, BuyStoreSellResult result, short nameId)
+        => _sessions.GetByEntityId(seller.Id)?.EnqueuePacket(new ZC_FAILED_TRADE_BUYING_STORE_TO_SELLER
+        { Result = result, NameId = nameId });
 }

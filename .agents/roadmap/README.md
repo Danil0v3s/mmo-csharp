@@ -92,7 +92,7 @@ this ticket already needed.** "Service landed, packets later" is not done.
 | GP-VEND | ✅ Vending end-to-end (open/own-list/stall-sign/browse/buy/sold-out-close) — overweight→GP-VEND-OVERWEIGHT, autotrade→GP-AUTOTRADE-RUNTIME | FEATURE-11/35, PACKET-08 |
 | GP-VEND-OVERWEIGHT | Buyer over the weight limit is refused (needs weight system exposed) — split from GP-VEND |
 | GP-AUTOTRADE-RUNTIME | Offline autotrade vendors/buyers stay open + sellable across logout (headless on-map presence) — shared by GP-VEND + GP-BUYSTORE |
-| GP-BUYSTORE | Buying store works end-to-end | FEATURE-12/36, PACKET-08 |
+| GP-BUYSTORE | ✅ Buying store end-to-end (open/escrow/own-list/stall-sign/click-view/sell-in-trade/close-refund) — search→INF-SEARCHSTORE, autotrade→GP-AUTOTRADE-RUNTIME | FEATURE-12/36, PACKET-08 |
 | GP-CASHSHOP | Cash shop works end-to-end (catalog/buy/points-persist/sale/UI) | FEATURE-13/37/38/39, PACKET-08 |
 | GP-INSTANCE | Instances work end-to-end (create/enter/populated maps/lifecycle/UI) | FEATURE-14, INFRA-12, PACKET-09 |
 | GP-WOE | WoE works end-to-end (scheduler✅ + castles + Emperium + guardians) | FEATURE-15, COMBAT-80 |

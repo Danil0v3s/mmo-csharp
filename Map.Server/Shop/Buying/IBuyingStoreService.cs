@@ -20,6 +20,10 @@ public interface IBuyingStoreService
     /// <summary>rAthena <c>buyingstore_close</c>.</summary>
     void Close(PlayerEntity buyer);
 
+    /// <summary>rAthena <c>buyingstore_open</c> (the click-to-view path) — a visitor clicked the store;
+    /// send them its offers + id + escrow limit (<c>clif_buyingstore_itemlist</c>).</summary>
+    void VisitorListReq(PlayerEntity visitor, int buyerAccountId);
+
     /// <summary>rAthena <c>buyingstore_reopen</c>.</summary>
     void Reopen(PlayerEntity buyer);
 

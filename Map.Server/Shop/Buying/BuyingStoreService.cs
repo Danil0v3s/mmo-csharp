@@ -2,6 +2,7 @@ using Map.Server.Entities;
 using Map.Server.Inventory;
 using Map.Server.Status;
 using Microsoft.Extensions.Logging;
+using R = Core.Server.Packets.Out.ZC.BuyStoreSellResult;
 
 namespace Map.Server.Shop.Buying;
 
@@ -22,16 +23,28 @@ public sealed class BuyingStoreService : IBuyingStoreService
     private readonly ISessionManagerAccessor? _sessions;
     private readonly IBuyingStoreClientService? _client;
     private readonly Map.Server.Items.IItemCatalog? _items;
+    private readonly IEntityRegistry? _entities;
     private readonly ILogger<BuyingStoreService> _logger;
     private uint _nextStoreId = 1;
 
     public BuyingStoreService(ILogger<BuyingStoreService> logger, ISessionManagerAccessor? sessions = null,
-        IBuyingStoreClientService? client = null, Map.Server.Items.IItemCatalog? items = null)
+        IBuyingStoreClientService? client = null, Map.Server.Items.IItemCatalog? items = null,
+        IEntityRegistry? entities = null)
     {
         _logger = logger;
         _sessions = sessions;
         _client = client;
         _items = items;
+        _entities = entities;
+    }
+
+    /// <summary>rAthena <c>buyingstore_open</c> (the click path) — send the store's offers to a visitor.</summary>
+    public void VisitorListReq(PlayerEntity visitor, int buyerAccountId)
+    {
+        if (!_accountIndex.TryGetValue(buyerAccountId, out var bid)) return;
+        if (!_stalls.TryGetValue(bid, out var stall)) return;
+        _client?.SendVisitorList(visitor, buyerAccountId, stall.StoreId,
+            (int)Math.Min(stall.ZenyHeld, int.MaxValue), BuildEntries(stall));
     }
 
     /// <summary>rAthena <c>buyingstore_setup</c> — gate + seed the stall slot (no escrow yet; that
@@ -132,7 +145,7 @@ public sealed class BuyingStoreService : IBuyingStoreService
     {
         if (!_accountIndex.TryGetValue(buyerAccountId, out var bid)) return false;
         if (!_stalls.TryGetValue(bid, out var stall)) return false;
-        if (stall.StoreId != storeId) return false; // stale store id
+        if (stall.StoreId != storeId) { _client?.SendSellerFail(seller, R.DealFailed, 0); return false; } // stale store id
 
         var sellerSession = _sessions?.GetByEntityId(seller.Id);
         var buyerSession = _sessions?.GetByAccountId(buyerAccountId);
@@ -150,31 +163,42 @@ public sealed class BuyingStoreService : IBuyingStoreService
         {
             if (amount <= 0) return false;
             var sellerItem = FindBySlot(sellerInv, idx);
-            if (sellerItem == null || sellerItem.Equip != 0 || sellerItem.Amount < (uint)amount) return false;
+            if (sellerItem == null || sellerItem.Equip != 0 || sellerItem.Amount < (uint)amount)
+            { _client?.SendSellerFail(seller, R.DealFailed, (short)(sellerItem?.NameId ?? 0)); return false; }
             var offerSlot = -1;
             for (var i = 0; i < stall.Offers.Count; i++)
                 if (stall.Offers[i].nameId == (int)sellerItem.NameId && offerLeft[i] >= amount) { offerSlot = i; break; }
-            if (offerSlot < 0) return false; // no live offer wants this item/amount
+            if (offerSlot < 0) { _client?.SendSellerFail(seller, R.OverCount, (short)sellerItem.NameId); return false; } // not wanted / too many
             var total = (long)stall.Offers[offerSlot].price * amount;
-            if (total > heldRemaining) return false; // escrow can't cover it
+            if (total > heldRemaining) { _client?.SendSellerFail(seller, R.BuyerLacksZeny, (short)sellerItem.NameId); return false; } // escrow short
             heldRemaining -= total;
             offerLeft[offerSlot] -= amount;
             if (FindMergeable(buyerInv, sellerItem) == null) buyerFreshSlots++;
             plan.Add((sellerItem, offerSlot, amount, total));
         }
-        if (buyerInv.Count + buyerFreshSlots > MaxInventory) return false; // buyer can't hold the goods
+        if (buyerInv.Count + buyerFreshSlots > MaxInventory) return false; // buyer can't hold the goods (rAthena: silent)
 
-        // Pass 2 — transfer (all-or-nothing).
+        // Pass 2 — transfer (all-or-nothing) + emit the trade feedback.
+        var buyerEntity = _entities?.Get(stall.BuyerId) as PlayerEntity;
         foreach (var (sellerItem, offerSlot, amount, total) in plan)
         {
-            DebitSlot(sellerSession, sellerInv, sellerItem, amount);   // seller loses the item
-            CreditItem(buyerInv, sellerItem, amount);                  // buyer gains it
+            var sellerClientIdx = (short)(sellerItem.ServerIndex + 2);
+            var price = stall.Offers[offerSlot].price;
+            DebitSlot(sellerSession, sellerInv, sellerItem, amount);     // seller loses the item
+            var bought = CreditItem(buyerInv, sellerItem, amount);       // buyer gains it
             sellerSession.CharacterData.Zeny = (uint)((long)sellerSession.CharacterData.Zeny + total); // seller paid from escrow
             stall.ZenyHeld -= total;
-            var (nid, amt, price) = stall.Offers[offerSlot];
-            stall.Offers[offerSlot] = (nid, (short)(amt - amount), price);
+            var (nid, amt, p) = stall.Offers[offerSlot];
+            stall.Offers[offerSlot] = (nid, (short)(amt - amount), p);
+
+            // Seller: item removed from the bag (rAthena clif_buyingstore_delete_item).
+            _client?.SendSellerDelete(seller, sellerClientIdx, (short)amount, price);
+            // Buyer: store-list update (remaining offer + escrow) + the bought item appears.
+            buyerSession.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_UPDATE_ITEM_FROM_BUYING_STORE
+            { NameId = (short)nid, Amount = (short)(amt - amount), ZenyLimit = (int)Math.Min(stall.ZenyHeld, int.MaxValue) });
+            EmitPickup(buyerSession, bought, sellerItem.NameId, amount);
         }
-        // PACKET-* (CZ/ZC buying-store): ZC_UPDATE_ITEM_FROM_BUYING_STORE + delete emit seam.
+        EmitZeny(sellerSession, (int)sellerSession.CharacterData.Zeny); // seller's gained zeny
         _logger.LogInformation("buyingstore_trade: {Seller} sold {N} item(s) into acc {Buyer}'s store (held {Held})",
             seller.Name, plan.Count, buyerAccountId, stall.ZenyHeld);
 
@@ -184,9 +208,25 @@ public sealed class BuyingStoreService : IBuyingStoreService
             _stalls.Remove(bid);
             _accountIndex.Remove(buyerAccountId);
             Refund(stall, buyerSession);
+            if (buyerSession.CharacterData != null) EmitZeny(buyerSession, (int)buyerSession.CharacterData.Zeny);
+            if (buyerEntity != null) _client?.CloseStore(buyerEntity); // remove the store sign
         }
         return true;
     }
+
+    private void EmitPickup(Map.Server.MapSessionData buyerSession, InventoryItem bought, uint nameId, int qty)
+        => buyerSession.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_ITEM_PICKUP_ACK
+        {
+            Index = (short)(bought.ServerIndex + 2),
+            Count = (short)qty,
+            NameId = nameId,
+            IsIdentified = (byte)(bought.Identified ? 1 : 0),
+            IsDamaged = (byte)bought.Attribute,
+            Card0 = bought.Card0, Card1 = bought.Card1, Card2 = bought.Card2, Card3 = bought.Card3,
+            Type = _items != null ? Map.Server.Inventory.ItemTypeCodes.FromDbString(_items.Get(nameId)?.Type) : (byte)0,
+            RefiningLevel = bought.Refine,
+            Result = 0,
+        });
 
     public bool Search(PlayerEntity searcher, int nameId)
     {
@@ -239,20 +279,22 @@ public sealed class BuyingStoreService : IBuyingStoreService
         return null;
     }
 
-    private static void CreditItem(List<InventoryItem> inv, InventoryItem src, int qty)
+    private static InventoryItem CreditItem(List<InventoryItem> inv, InventoryItem src, int qty)
     {
         var mergeable = FindMergeable(inv, src);
-        if (mergeable != null) { mergeable.Amount += (uint)qty; return; }
+        if (mergeable != null) { mergeable.Amount += (uint)qty; return mergeable; }
         var nextSlot = 0;
         foreach (var i in inv) if (i.ServerIndex >= nextSlot) nextSlot = i.ServerIndex + 1;
-        inv.Add(new InventoryItem
+        var slot = new InventoryItem
         {
             ServerIndex = nextSlot, NameId = src.NameId, Amount = (uint)qty,
             Identified = src.Identified, Refine = src.Refine, Attribute = src.Attribute,
             Card0 = src.Card0, Card1 = src.Card1, Card2 = src.Card2, Card3 = src.Card3,
             Options = (ItemOption[])src.Options.Clone(), ExpireTime = src.ExpireTime,
             Bound = src.Bound, UniqueId = src.UniqueId, EnchantGrade = src.EnchantGrade,
-        });
+        };
+        inv.Add(slot);
+        return slot;
     }
 
     private static void DebitSlot(Map.Server.MapSessionData session, List<InventoryItem> inv, InventoryItem item, int qty)
