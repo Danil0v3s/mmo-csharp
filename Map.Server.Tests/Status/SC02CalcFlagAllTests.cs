@@ -419,12 +419,51 @@ public class SC02CalcFlagAllTests
         Assert.Equal(40, mob.Stats.Luk);            // exact restore via Val2 snapshot
     }
 
+    [Fact]
+    public void Swordclan_adds1StrVit_and30Hp10Sp_flat()
+    {
+        var mob = FreshMob();   // Str=Vit=50, MaxHp=1000
+        mob.Stats.MaxSp = 200; mob.Stats.Sp = 200;
+        var sc = new StatusChange { Type = StatusType.Swordclan, Val1 = 1 };
+        Apply(StatusType.Swordclan, sc, mob);
+        Assert.Equal(51, mob.Stats.Str);
+        Assert.Equal(51, mob.Stats.Vit);
+        Assert.Equal(1030, mob.Stats.MaxHp);   // +30 flat (NOT +Val1)
+        Assert.Equal(210, mob.Stats.MaxSp);    // +10 flat
+
+        // OnRecalcPool re-applies the flat pool adds after CalcPc rebuilds.
+        mob.Stats.MaxHp = 1000; mob.Stats.MaxSp = 200;
+        _reg.Get(StatusType.Swordclan)!.OnRecalcPool!(mob, sc);
+        Assert.Equal(1030, mob.Stats.MaxHp);
+        Assert.Equal(210, mob.Stats.MaxSp);
+
+        _reg.Get(StatusType.Swordclan)!.OnEnd!(mob, sc);
+        Assert.Equal(50, mob.Stats.Str);
+        Assert.Equal(1000, mob.Stats.MaxHp);
+    }
+
+    [Fact]
+    public void Crossbowclan_targetsAgiDex_notVit()
+    {
+        // rAthena: Crossbowclan = Agi+1, Dex+1 (the C# StatusCalcFlagDefaults had Vit — wrong).
+        var mob = FreshMob();
+        var sc = new StatusChange { Type = StatusType.Crossbowclan, Val1 = 1 };
+        Apply(StatusType.Crossbowclan, sc, mob);
+        Assert.Equal(51, mob.Stats.Agi);
+        Assert.Equal(51, mob.Stats.Dex);
+        Assert.Equal(50, mob.Stats.Vit);   // untouched
+    }
+
     [Theory]
     [InlineData(StatusType.Battleorders)]
     [InlineData(StatusType.AllStatDown)]
     [InlineData(StatusType.Stomachache)]
     [InlineData(StatusType.Cheerup)]
     [InlineData(StatusType.BananaBomb)]
+    [InlineData(StatusType.Swordclan)]
+    [InlineData(StatusType.Arcwandclan)]
+    [InlineData(StatusType.Goldenmaceclan)]
+    [InlineData(StatusType.Crossbowclan)]
     public void PrimaryStatFix_isConverted_notGeneratorDefault(StatusType t)
         => Assert.DoesNotContain(t, _reg.GeneratedStatModDefaultTypes);
 

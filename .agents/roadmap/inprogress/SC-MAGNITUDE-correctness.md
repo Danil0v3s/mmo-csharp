@@ -194,6 +194,13 @@
   generator does as flat +Val1 — deferred (needs the percent-pool OnRecalcPool pattern). SC_CLIMAX_CRYIMP
   (def+300/mdef+100 + elemental) and the absolute-set SCs (SC_DEFSET/SC_ETERNALCHAOS set Def to a value)
   remain as distinct non-+Val1 axes.
+- **2026-06-04 (turn 19)** — Converted the **four clan-membership buffs** (Sword/Arcwand/Goldenmace/Crossbow
+  Clan) via a shared `RegisterClanBuff` helper: flat +1 to two base stats + **flat +30 MaxHp / +10 MaxSp**
+  (status.cpp:3132/:3288 — both in the FLAT pool accumulator, NOT the percent one as turn-18 guessed; per-stat
+  +1 at :6564-6912). The generator's +Val1 gave the +1 stats correctly (clan SC is level 1) but only +1 to
+  MaxHp/MaxSp (should be +30/+10), and the C# `StatusCalcFlagDefaults` had **Crossbowclan's 2nd stat wrong**
+  (Vit; rAthena is Dex), now fixed. Stats survive recalc via the param-base delta; the flat pool adds use
+  OnRecalcPool. Worklist 141 → 137. 3 tests; full suite 4681 pass (1 = standing replay-fixture).
 
 ## Notes
 

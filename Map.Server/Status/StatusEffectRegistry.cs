@@ -1388,6 +1388,17 @@ public sealed class StatusEffectRegistry
                 target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val2),
             Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
 
+        // SC_{SWORD,ARCWAND,GOLDENMACE,CROSSBOW}CLAN — clan-membership buffs: flat +1 to two base stats
+        // + flat +30 MaxHp + flat +10 MaxSp (status.cpp:3132 maxhp bonus, :3288 maxsp bonus — both in the
+        // FLAT accumulator block, not the percent one; per-stat +1 at :6564-6912). The generator did
+        // +Val1 to all listed fields — fine for the +1 stats (clan SC is level 1) but it added only +1 to
+        // MaxHp/MaxSp (should be +30/+10) and mis-mapped Crossbowclan's 2nd stat (Vit → should be Dex).
+        // Stats survive recalc via the COMBAT-10 param-base delta; the flat pool adds need OnRecalcPool.
+        RegisterClanBuff(StatusType.Swordclan, s => s.Str, (s, v) => s.Str = v, s => s.Vit, (s, v) => s.Vit = v);
+        RegisterClanBuff(StatusType.Arcwandclan, s => s.IntStat, (s, v) => s.IntStat = v, s => s.Dex, (s, v) => s.Dex = v);
+        RegisterClanBuff(StatusType.Goldenmaceclan, s => s.IntStat, (s, v) => s.IntStat = v, s => s.Luk, (s, v) => s.Luk = v);
+        RegisterClanBuff(StatusType.Crossbowclan, s => s.Agi, (s, v) => s.Agi = v, s => s.Dex, (s, v) => s.Dex = v);
+
         // SC_GUARD_STANCE (IG_GUARD_STANCE) — Val2 = 50+50*Val1 (DEF increase), Val3 = 50*Val1
         // (Watk decrease). rAthena status.cpp:12445; status.yml CalcFlags: Watk + Def. The +Val1
         // generator default would add +Val1 to both Watk and Def (wrong sign + wrong magnitude).
@@ -7255,6 +7266,41 @@ public sealed class StatusEffectRegistry
             return;
         }
         _handlers[type] = handler;
+    }
+
+    // SC-MAGNITUDE — the four clan-membership buffs share a body: flat +1 to two base stats + flat
+    // +30 MaxHp / +10 MaxSp (status.cpp clan arms). Stats survive recalc via the COMBAT-10 param-base
+    // delta; the flat pool adds are re-applied through OnRecalcPool after CalcPc rebuilds the pool.
+    private void RegisterClanBuff(StatusType type,
+        Func<BattleStats, short> get1, Action<BattleStats, short> set1,
+        Func<BattleStats, short> get2, Action<BattleStats, short> set2)
+    {
+        Register(type, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var s = target.Stats;
+                set1(s, (short)Math.Min(short.MaxValue, get1(s) + 1));
+                set2(s, (short)Math.Min(short.MaxValue, get2(s) + 1));
+                s.MaxHp += 30;
+                s.MaxSp += 10;
+            },
+            OnEnd: (target, sc) =>
+            {
+                var s = target.Stats;
+                set1(s, (short)Math.Max(0, get1(s) - 1));
+                set2(s, (short)Math.Max(0, get2(s) - 1));
+                s.MaxHp = Math.Max(1, s.MaxHp - 30);
+                s.MaxSp = Math.Max(1, s.MaxSp - 10);
+                if (s.Hp > s.MaxHp) s.Hp = s.MaxHp;
+                if (s.Sp > s.MaxSp) s.Sp = s.MaxSp;
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            OnRecalcPool: (target, _) =>
+            {
+                var s = target.Stats;
+                s.MaxHp += 30;
+                s.MaxSp += 10;
+            }));
     }
 
     public StatusEffectHandler? Get(StatusType type) => _handlers.GetValueOrDefault(type);
