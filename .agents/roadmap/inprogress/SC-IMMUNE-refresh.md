@@ -1,6 +1,6 @@
 # SC-IMMUNE — Immunity matrix + refresh/spread wiring
 
-> **Epic:** status · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** status · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** none
 
 ## The deliverable
