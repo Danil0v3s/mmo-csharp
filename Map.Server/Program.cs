@@ -549,6 +549,7 @@ builder.Services.AddSingleton<Map.Server.Logging.IGameLogService, Map.Server.Log
 // Mid-tier files (vending / buyingstore / mercenary / quest /
 // elemental / guild storage / achievement / instance / channel /
 // party booking / homunculus / battleground).
+builder.Services.AddSingleton<Map.Server.Shop.Vending.IVendingClientService, Map.Server.Shop.Vending.VendingClientService>();
 builder.Services.AddSingleton<Map.Server.Shop.Vending.IVendingService, Map.Server.Shop.Vending.VendingService>();
 builder.Services.AddSingleton<Map.Server.Shop.Buying.IBuyingStoreService, Map.Server.Shop.Buying.BuyingStoreService>();
 builder.Services.AddSingleton<Map.Server.Mercenary.IMercenaryService, Map.Server.Mercenary.MercenaryService>();

@@ -262,6 +262,13 @@ public enum PacketHeader : short
     ZC_PET_ACT            = 0x01aa,        // clif_pet_emotion: <GID>.L <data>.L, 10B (broadcast pet emotion to area).
     ZC_PROPERTY_PET       = 0x01a2,        // clif_send_petstatus: <name>.24 <renamed>.B <level>.W <hunger>.W <intimacy>.W <accessory>.W <class>.W, 37B.
     ZC_CHANGESTATE_PET    = 0x01a4,        // clif_send_petdata: <type>.B <GID>.L <data>.L, 11B (intimacy/hunger/accessory/... update).
+
+    // Vending (GP-VEND). rAthena vending.cpp / clif.cpp player-shop set.
+    CZ_REQ_OPENSTORE2     = 0x01b2,        // clif_parse_OpenVending: <len>.W <name>.80 <flag>.B then {index.W amount.W price.L}* (open stall from cart).
+    CZ_REQ_CLOSESTORE     = 0x012e,        // clif_parse_CloseVending: header only, 2B.
+    ZC_STORE_ENTRY        = 0x0131,        // clif_showvendingboard: <maker AID>.L <store name>.80, 86B (stall sign on-map).
+    ZC_DISAPPEAR_ENTRY    = 0x0132,        // clif_closevendingboard: <owner id>.L, 6B (stall sign removed).
+    ZC_ACK_OPENSTORE2     = 0x0a28,        // clif_openvending_ack: <result>.B, 3B (0=success).
     ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B
     ZC_STATE_CHANGE3      = 0x0229,        // clif_changeoption — option (effect-state) bitmask 32-bit, 15B
     ZC_SPIRITS            = 0x01d0,        // clif_spiritball — Monk sphere / Sura / servant / abyss count, 8B

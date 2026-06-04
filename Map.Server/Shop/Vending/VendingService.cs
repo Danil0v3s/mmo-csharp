@@ -19,6 +19,7 @@ public sealed class VendingService : IVendingService
     private readonly Dictionary<EntityId, Stall> _stalls = new();
     private readonly Dictionary<int, EntityId> _accountIndex = new();
     private readonly ISessionManagerAccessor? _sessions;
+    private readonly IVendingClientService? _client;
     private readonly ILogger<VendingService> _logger;
     private long _nextVenderId = 1;
 
@@ -26,10 +27,12 @@ public sealed class VendingService : IVendingService
     /// vendor's zeny gain is reduced by it. Internal-settable for tests.</summary>
     internal long VendingTaxBp { get; set; } = 0;
 
-    public VendingService(ILogger<VendingService> logger, ISessionManagerAccessor? sessions = null)
+    public VendingService(ILogger<VendingService> logger, ISessionManagerAccessor? sessions = null,
+        IVendingClientService? client = null)
     {
         _logger = logger;
         _sessions = sessions;
+        _client = client;
     }
 
     /// <summary>rAthena <c>vending_openvending</c> — open (or refresh) the stall, stamping a fresh
@@ -48,12 +51,17 @@ public sealed class VendingService : IVendingService
             MapId = vendor.MapId,
         };
         _accountIndex[vendor.AccountId] = vendor.Id;
+        // rAthena vending_openvending → clif_openvending (ack) + clif_showvendingboard (stall sign).
+        _client?.OpenStall(vendor, title);
     }
 
     public void CloseVending(PlayerEntity vendor)
     {
         if (_stalls.Remove(vendor.Id))
+        {
             _accountIndex.Remove(vendor.AccountId);
+            _client?.CloseStall(vendor); // rAthena clif_closevendingboard
+        }
     }
 
     /// <summary>rAthena <c>vending_reopen</c> — auto-trade reopen at login. ➡️ The char-side persisted

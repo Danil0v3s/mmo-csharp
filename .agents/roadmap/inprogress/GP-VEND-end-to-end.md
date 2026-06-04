@@ -43,14 +43,16 @@ the overweight gate are missing.
 
 ## Scope — every layer
 
-- [ ] **CZ handlers**: open-store (with cart item/price list), close-store, vending-list-req
-      (click a stall), purchase-from-MC.
+- [~] **CZ handlers**: open-store (`CZ_REQ_OPENSTORE2` 0x01b2 → `OpenStoreHandler`, offers validated
+      against the cart) + close-store (`CZ_REQ_CLOSESTORE` 0x012e → `CloseStoreHandler`) — turn 1.
+      Remaining: vending-list-req (click a stall) + purchase-from-MC.
 - [ ] **Service**: verify `PurchaseReq` at HEAD; add the **buyer-overweight gate**.
-- [ ] **ZC emits**: stall sign on-map (vendor name), vending item list, purchase result,
-      buyer/vendor item-amount updates.
+- [~] **ZC emits**: stall sign on-map (`ZC_STORE_ENTRY` 0x0131, AOI) + open ack (`ZC_ACK_OPENSTORE2`
+      0x0a28) + stall-disappear (`ZC_DISAPPEAR_ENTRY` 0x0132) via new `IVendingClientService` — turn 1.
+      Remaining: vending item list, purchase result, buyer/vendor item-amount updates.
 - [ ] **Persistence**: autotrade — persist the open stall + offers; respawn an autotrade
       vendor NPC at the saved map/cell on boot (`vending_reopen`).
-- [ ] **Wiring**: vendor sit/stall state + AOI broadcast of the stall.
+- [x] **Wiring**: AOI broadcast of the stall sign (turn 1, `IVisibilityService.SendToArea` AreaWos).
 
 ## Done criteria
 
@@ -66,7 +68,26 @@ the overweight gate are missing.
 - Persistence: autotrade rehydrate round-trip.
 - Live: open → buy → sold-out close → autotrade relog.
 
+## Progress log (multi-turn vertical)
+
+- **2026-06-04 (turn 1)** — Open + close + stall sign. New packets `CZ_REQ_OPENSTORE2` (0x01b2, variable
+  `<name>.80 <flag>.B {index.W amount.W price.L}*`), `CZ_REQ_CLOSESTORE` (0x012e), `ZC_STORE_ENTRY`
+  (0x0131, 86B stall sign), `ZC_DISAPPEAR_ENTRY` (0x0132), `ZC_ACK_OPENSTORE2` (0x0a28). New
+  `IVendingClientService`/`VendingClientService` (stall sign → area-WOS via `IVisibilityService`, open
+  ack → vendor session) wired into `VendingService.Update`/`CloseVending`. `OpenStoreHandler` parses the
+  offers, converts the cart client index → server index, validates each against the live cart (held +
+  in-stock + price ≥ 0), and opens via `Update`; an empty name / no valid offers doesn't open.
+  `CloseStoreHandler` tears the stall down. `VendingOpenCloseTests` (6: offer validation/index-convert,
+  empty-name + no-valid-offer rejects, close routing, stall-sign+ack emit, disappear emit); full suite
+  4486 pass (1 = standing replay-fixture).
+- **Remaining (next turns → done):** vending-list-req (buyer clicks a stall → the item list,
+  `ZC_PC_PURCHASE_ITEMLIST_FROMMC`) + purchase (`CZ_PC_PURCHASE_ITEMLIST_FROMMC` → `PurchaseReq` +
+  result/item-update emits) + the vendor's own-list on open (`ZC_PC_PURCHASE_MYITEMLIST`) + the
+  buyer-overweight gate + autotrade persistence (FEATURE-35). The loop resumes this card.
+
 ## Notes / gotchas
 
 - `VendingTaxBp` basis-points const already in the service; per-open `VenderId` anti-desync.
 - Cart is `session.Cart`; build `InventoryItem` with full fidelity on transfer (archive FEATURE-11).
+- The wire offer index is the cart **client** index (server cart index + 2) — `OpenStoreHandler`
+  converts it before storing so `PurchaseReq`'s `FindBySlot(cart, serverIndex)` matches.
