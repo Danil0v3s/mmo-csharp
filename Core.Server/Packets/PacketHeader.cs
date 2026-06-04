@@ -299,6 +299,20 @@ public enum PacketHeader : short
     ZC_PC_BUY_CASHITEM_RESULT = 0x0849,    // clif_cashshop_result: <itemId>.L <result>.W <cashPoints>.L <kafraPoints>.L, 16B.
     ZC_NOTIFY_BARGAIN_SALE_SELLING = 0x09b2, // clif_sale_start: <itemId>.L <remainingTime>.L, 10B (active sale on login).
     ZC_ACK_COUNT_BARGAIN_SALE_ITEM = 0x09c4, // clif_sale_amount: <itemId>.L <amount>.L, 10B (sale remaining stock).
+    // Auction house (clif_parse_Auction_* / clif_Auction_*).
+    CZ_AUCTION_CREATE         = 0x024b,    // clif_parse_Auction_cancelreg: <type>.W, 4B (0=open/create, 1=cancel reg tab).
+    CZ_AUCTION_ADD_ITEM       = 0x024c,    // clif_parse_Auction_setitem: <index>.W <amount>.L, 8B (stage item; index = server+2).
+    CZ_AUCTION_ADD            = 0x024d,    // clif_parse_Auction_register: <nowMoney>.L <maxMoney>.L <hours>.W, 12B (register).
+    CZ_AUCTION_CANCEL         = 0x024e,    // clif_parse_Auction_cancel: <auctionId>.L, 6B.
+    CZ_AUCTION_BUY            = 0x024f,    // clif_parse_Auction_bid: <auctionId>.L <money>.L, 10B (bid).
+    ZC_AUCTION_RESULT         = 0x0250,    // clif_Auction_message: <flag>.B, 3B (status-code message).
+    CZ_AUCTION_ITEM_SEARCH    = 0x0251,    // clif_parse_Auction_search: <type>.W <auctionId>.L <text>.24 <page>.W, 32B.
+    ZC_AUCTION_ITEM_REQ_SEARCH = 0x0252,   // clif_Auction_results: <len>.W <pages>.L <count>.L {83B entry}* (browse results).
+    ZC_ACK_AUCTION_ADD_ITEM   = 0x0256,    // clif_Auction_setitem: <index>.W <result>.B, 5B (stage ack).
+    CZ_AUCTION_REQ_MY_INFO    = 0x025c,    // clif_parse_Auction_buysell: <type>.W, 4B (0=my selling, 1=my buying).
+    CZ_AUCTION_REQ_MY_SELL_STOP = 0x025d,  // clif_parse_Auction_close: <auctionId>.L, 6B (buy-now / end).
+    ZC_AUCTION_ACK_MY_SELL_STOP = 0x025e,  // clif_Auction_close: <result>.W, 4B (rAthena writes 0x25d for client-compat; 0x25e is the canonical ack opcode, byte-exact deferred to live-client pass).
+    ZC_AUCTION_OPENWINDOW     = 0x025f,    // clif_Auction_openwindow: <flag>.L, 6B.
     ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B
     ZC_STATE_CHANGE3      = 0x0229,        // clif_changeoption — option (effect-state) bitmask 32-bit, 15B
     ZC_SPIRITS            = 0x01d0,        // clif_spiritball — Monk sphere / Sura / servant / abyss count, 8B

@@ -180,4 +180,14 @@ public class MapSessionData(
     /// set by the open request, cleared by close.
     /// </summary>
     public bool CashShopOpen { get; set; }
+
+    /// <summary>
+    /// Server inventory index of the item staged for auction (-1 = none).
+    /// Mirrors rAthena <c>sd-&gt;auction.index</c> — set by the auction
+    /// set-item request, consumed by register, cleared on cancel-reg.
+    /// </summary>
+    public int AuctionStageIndex { get; set; } = -1;
+
+    /// <summary>Amount staged for auction (always 1). Mirrors <c>sd-&gt;auction.amount</c>.</summary>
+    public int AuctionStageAmount { get; set; }
 }

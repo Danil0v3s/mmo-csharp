@@ -87,7 +87,7 @@ public sealed class AuctionService : IAuctionService
                 fee, seller.Name);
             return 0;
         }
-        // PACKET-07: ZC_AUCTION_RESULT(register ok) emit seam.
+        // GP-AUCTION: AuctionRegisterHandler emits clif_Auction_message(confirmation) on the id>0 return.
         _logger.LogInformation("auction_register: {Seller} listed item {Item} (start {Start}, buynow {Buy}, {Hours}h, fee {Fee})",
             seller.Name, data.ItemId, startPrice, buyNowPrice, hours, fee);
         return resp.Auction?.AuctionId ?? 0;
@@ -116,7 +116,7 @@ public sealed class AuctionService : IAuctionService
             session.CharacterData.Zeny = (uint)((long)session.CharacterData.Zeny + bid); // rebound
             return false;
         }
-        // PACKET-07: ZC_AUCTION_RESULT(bid ok) seam. The char side mails the prior bidder their refund.
+        // GP-AUCTION: AuctionBidHandler emits clif_Auction_message; the char side mails the prior bidder their refund.
         _logger.LogInformation("auction_bid: {Bidder} bid {Bid}z on #{Id}", bidder.Name, bid, auctionId);
         return true;
     }
@@ -138,7 +138,7 @@ public sealed class AuctionService : IAuctionService
             session.CharacterData.Zeny = (uint)((long)session.CharacterData.Zeny + auction.BuyNow);
             return false;
         }
-        // PACKET-07: ZC_AUCTION_RESULT(buy ok) seam. Char mails the item to the buyer + zeny to the seller.
+        // GP-AUCTION: AuctionCloseHandler emits clif_Auction_close; char-side item/zeny delivery is turn 2.
         _logger.LogInformation("auction_buynow: {Buyer} bought #{Id} for {Price}z", buyer.Name, auctionId, auction.BuyNow);
         return true;
     }
@@ -152,7 +152,7 @@ public sealed class AuctionService : IAuctionService
 
         var resp = await _ipc.AuctionCancelAsync(seller.CharacterId, auctionId, ct);
         if (resp is not { Success: true }) return false;
-        // PACKET-07: ZC_AUCTION_RESULT(cancel ok) seam. Char returns the item to the seller by mail.
+        // GP-AUCTION: AuctionCancelHandler emits clif_Auction_message; char-side item return is turn 2.
         _logger.LogInformation("auction_cancel: {Seller} cancelled #{Id}", seller.Name, auctionId);
         return true;
     }
@@ -167,7 +167,7 @@ public sealed class AuctionService : IAuctionService
             // Cache each browsed auction so the bid/buy-now/cancel gates can read the current price/bidder.
             foreach (var a in resp.Auctions) _cached[a.AuctionId] = a;
         }
-        // PACKET-07: ZC_AUCTION_ITEM_REQ_SEARCH / ZC_AUCTION_RESULTS render seam.
+        // GP-AUCTION: AuctionSearch/ReqMyInfo handlers render clif_Auction_results from this response.
         return resp;
     }
 
