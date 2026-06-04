@@ -158,6 +158,7 @@ public class NotifyActorInitHandlerTests
         public Task LoadAsync(MapSessionData session, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public void SendInventoryList(MapSessionData session) { }
         public bool GiveItem(MapSessionData session, uint nameId, int amount) => true;
+        public bool GiveItemWithCards(MapSessionData session, uint nameId, int amount, uint card0, uint card1, uint card2, uint card3) => GiveItem(session, nameId, amount);
     }
 
     private sealed class NoOpPcDeathService : Map.Server.Combat.IPcDeathService

@@ -290,6 +290,9 @@ public class MobDeathObserverTests
         public int PetCreateCalls; public int LastPetClass;
         public int PetCreate(PlayerEntity master, int classId, int nameId, byte rename, int eggItemId, byte intimate, byte hungry, char gender, string petName)
         { PetCreateCalls++; LastPetClass = classId; return 1; }
+        public System.Threading.Tasks.Task<int> PetCreateAsync(PlayerEntity master, int classId, int eggItemId, byte intimate, byte hungry, string petName, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.FromResult(0);
+        public System.Threading.Tasks.Task<Core.Server.IPC.PetData?> PetLoadAsync(int petId, int accountId, int charId, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.FromResult<Core.Server.IPC.PetData?>(null);
+
 
         // ---- remainder of the interface (unused) ----
         public int QuestSave(PlayerEntity pc) => 0;

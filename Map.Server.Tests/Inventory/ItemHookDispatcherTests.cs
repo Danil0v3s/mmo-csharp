@@ -206,5 +206,6 @@ public class ItemHookDispatcherTests
         public Task LoadAsync(MapSessionData s, CancellationToken ct = default) => Task.CompletedTask;
         public void SendInventoryList(MapSessionData s) { }
         public bool GiveItem(MapSessionData s, uint nameId, int amount) => true;
+        public bool GiveItemWithCards(MapSessionData session, uint nameId, int amount, uint card0, uint card1, uint card2, uint card3) => GiveItem(session, nameId, amount);
     }
 }

@@ -208,6 +208,7 @@ public class CashShopServiceTests
         public FakeInventory(IItemCatalog items) => _items = items;
         public Task LoadAsync(MapSessionData session, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public void SendInventoryList(MapSessionData session) { }
+        public bool GiveItemWithCards(MapSessionData session, uint nameId, int amount, uint card0, uint card1, uint card2, uint card3) => GiveItem(session, nameId, amount);
         public bool GiveItem(MapSessionData session, uint nameId, int amount)
         {
             if (amount <= 0 || session.Inventory == null) return false;

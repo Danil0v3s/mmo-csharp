@@ -82,6 +82,7 @@ public class PetLootDepositTests
         public readonly List<(uint NameId, int Amount)> Gives = new();
         public bool GiveItem(MapSessionData session, uint nameId, int amount)
         { if (!Accept) return false; Gives.Add((nameId, amount)); return true; }
+        public bool GiveItemWithCards(MapSessionData session, uint nameId, int amount, uint card0, uint card1, uint card2, uint card3) => GiveItem(session, nameId, amount);
         public System.Threading.Tasks.Task LoadAsync(MapSessionData session, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.CompletedTask;
         public void SendInventoryList(MapSessionData session) { }
     }

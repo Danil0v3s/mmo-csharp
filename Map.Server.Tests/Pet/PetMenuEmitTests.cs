@@ -181,7 +181,7 @@ public class PetMenuEmitTests
         // unused surface
         public bool DataInit(PlayerEntity master, byte flag) => false;
         public bool CreateEgg(PlayerEntity master, int itemId) => false;
-        public bool GetEgg(PlayerEntity master, int classId, int itemId, byte gender) => false;
+        public bool GetEgg(PlayerEntity master, int classId, int eggItemId, int petId) => false;
         public bool ReturnEgg(PlayerEntity master) => false;
         public int EggSearch(PlayerEntity master, int eggId) => -1;
         public int SelectEgg(PlayerEntity master, short eggIndex) => 0;

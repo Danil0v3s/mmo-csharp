@@ -15,7 +15,9 @@ public interface IPetOpsService
     /// <summary>rAthena <c>pet_create_egg</c>.</summary>
     bool CreateEgg(PlayerEntity master, int itemId);
     /// <summary>rAthena <c>pet_get_egg</c>.</summary>
-    bool GetEgg(PlayerEntity master, int classId, int itemId, byte gender);
+    /// <summary>rAthena <c>pet_get_egg</c> — grant the egg item for a freshly created pet, binding the
+    /// returned <paramref name="petId"/> into the egg's card slots (CARD0_PET).</summary>
+    bool GetEgg(PlayerEntity master, int classId, int eggItemId, int petId);
     /// <summary>rAthena <c>pet_return_egg</c>.</summary>
     bool ReturnEgg(PlayerEntity master);
     /// <summary>rAthena <c>pet_egg_search</c>.</summary>

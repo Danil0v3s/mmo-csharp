@@ -144,16 +144,17 @@ public sealed class PetOpsService : IPetOpsService
         return true;
     }
 
-    /// <summary>FEATURE-07 — rAthena <c>pet_get_egg</c>: the char side created the pet row; grant the
-    /// egg item to the master's inventory so it can be hatched. ➡️ Binding the returned pet_id into the
-    /// egg's card slots (so a saved pet's intimacy survives a re-egg) is FEATURE-27.</summary>
-    public bool GetEgg(PlayerEntity master, int classId, int itemId, byte gender)
+    /// <summary>FEATURE-07/27 — rAthena <c>pet_get_egg</c>: the char side created the pet row; grant the
+    /// egg item to the master's inventory with the returned <paramref name="petId"/> bound into the
+    /// egg's card slots (CARD0_PET) so the saved pet's intimacy/hunger/name survive being re-hatched.</summary>
+    public bool GetEgg(PlayerEntity master, int classId, int eggItemId, int petId)
     {
         var session = _sessions?.GetByEntityId(master.Id);
         if (session == null || _inventory == null) return false;
-        var ok = _inventory.GiveItem(session, (uint)itemId, 1);
-        _logger.LogInformation("pet_get_egg: {Master} received egg {Item} for class {Class} (ok={Ok})",
-            master.Name, itemId, classId, ok);
+        var (c0, c1, c2) = PetEggCard.Bind(petId);
+        var ok = _inventory.GiveItemWithCards(session, (uint)eggItemId, 1, c0, c1, c2, 0);
+        _logger.LogInformation("pet_get_egg: {Master} received egg {Item} (pet {Pet}, class {Class}, ok={Ok})",
+            master.Name, eggItemId, petId, classId, ok);
         return ok;
     }
 
@@ -569,10 +570,21 @@ public sealed class PetOpsService : IPetOpsService
         var petName = _mobDb?.Get(mob.ClassId)?.Name ?? aegis;
         var intimacy = (byte)Math.Clamp(pet.IntimacyStart ?? 250, 0, 255);
         var hungry = (byte)Math.Clamp(pet.Fullness ?? MaxHunger, 0, 100);
-        _intif?.PetCreate(master, classId: mob.ClassId, nameId: eggId, rename: 0, eggItemId: eggId,
-            intimate: intimacy, hungry: hungry, gender: '\0', petName: petName);
+        // rAthena intif_create_pet → (char) mapif_pet_created → pet_get_egg: create the row, then grant
+        // the egg bound to the returned pet_id. Async (the char round-trip lands after this tick).
+        _ = CreateAndGrantEggAsync(master, mob.ClassId, eggId, intimacy, hungry, petName ?? string.Empty);
         _logger.LogInformation("pet_catch_process_end: {Master} caught {Aegis} (rate={Rate}/10000, hp%={Hp}) → egg {Egg}",
             master.Name, aegis, rate, hpPct, eggId);
+    }
+
+    /// <summary>FEATURE-27 — create the pet row char-side and, on success, grant the egg bound to the
+    /// new pet_id (rAthena's <c>intif_create_pet</c> → <c>pet_get_egg</c> callback).</summary>
+    private async Task CreateAndGrantEggAsync(PlayerEntity master, int classId, int eggItemId, byte intimacy, byte hungry, string petName)
+    {
+        if (_intif == null) return;
+        var petId = await _intif.PetCreateAsync(master, classId, eggItemId, intimacy, hungry, petName);
+        if (petId > 0) GetEgg(master, classId, eggItemId, petId);
+        else _logger.LogWarning("pet catch: PetCreate returned no pet_id for {Master} (class {Class})", master.Name, classId);
     }
 
     /// <summary>rAthena <c>clif_pet_roulette(sd, false)</c> — the catch attempt failed.</summary>

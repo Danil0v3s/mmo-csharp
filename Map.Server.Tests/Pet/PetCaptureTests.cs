@@ -213,8 +213,8 @@ public class PetCaptureTests
     {
         public int PetCreateCalls;
         public int LastClass;
-        public override int PetCreate(PlayerEntity master, int classId, int nameId, byte rename, int eggItemId, byte intimate, byte hungry, char gender, string petName)
-        { PetCreateCalls++; LastClass = classId; return 1; }
+        public override System.Threading.Tasks.Task<int> PetCreateAsync(PlayerEntity master, int classId, int eggItemId, byte intimate, byte hungry, string petName, System.Threading.CancellationToken ct = default)
+        { PetCreateCalls++; LastClass = classId; return System.Threading.Tasks.Task.FromResult(100); }
     }
 
     private sealed class NoOpVisibility : IVisibilityService

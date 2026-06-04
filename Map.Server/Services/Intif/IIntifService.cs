@@ -96,6 +96,14 @@ public interface IIntifService
 
     // -- pet / homun / merc --
     int PetCreate(PlayerEntity master, int classId, int nameId, byte rename, int eggItemId, byte intimate, byte hungry, char gender, string petName);
+
+    /// <summary>Awaitable pet create: the char server inserts the pet row and returns its new pet_id
+    /// (0 on failure / no IPC). The caller binds that id into the granted egg's card slots.</summary>
+    Task<int> PetCreateAsync(PlayerEntity master, int classId, int eggItemId, byte intimate, byte hungry, string petName, CancellationToken ct = default);
+
+    /// <summary>Awaitable pet load: fetch the saved <see cref="Core.Server.IPC.PetData"/> for a bound
+    /// pet_id (null on failure / no IPC), so a hatched egg restores the pet's intimacy/hunger/name.</summary>
+    Task<Core.Server.IPC.PetData?> PetLoadAsync(int petId, int accountId, int charId, CancellationToken ct = default);
     int RequestPetInfo(int petId, int accountId, byte flag);
     int SavePet(int petId);
     Task SavePetAsync(int petId, CancellationToken ct = default);

@@ -42,4 +42,11 @@ public interface IInventoryService
     /// Returns <c>true</c> on success.
     /// </summary>
     bool GiveItem(MapSessionData session, uint nameId, int amount);
+
+    /// <summary>
+    /// Add a single card-bound item instance (a forged/created/pet item) to the inventory. Always a
+    /// fresh non-stackable slot carrying the given card slots — rAthena <c>pc_additem</c> never merges
+    /// card-bound specials. Used to grant a pet egg whose <c>card[0..2]</c> hold the bound pet_id.
+    /// </summary>
+    bool GiveItemWithCards(MapSessionData session, uint nameId, int amount, uint card0, uint card1, uint card2, uint card3);
 }

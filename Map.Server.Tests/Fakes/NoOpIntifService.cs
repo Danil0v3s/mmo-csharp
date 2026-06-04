@@ -68,6 +68,8 @@ public class NoOpIntifService : IIntifService
     public Task AchievementSaveAsync(PlayerEntity pc, CancellationToken ct = default) => Task.CompletedTask;
 
     public virtual int PetCreate(PlayerEntity master, int classId, int nameId, byte rename, int eggItemId, byte intimate, byte hungry, char gender, string petName) => 0;
+    public virtual Task<int> PetCreateAsync(PlayerEntity master, int classId, int eggItemId, byte intimate, byte hungry, string petName, CancellationToken ct = default) => Task.FromResult(0);
+    public virtual Task<Core.Server.IPC.PetData?> PetLoadAsync(int petId, int accountId, int charId, CancellationToken ct = default) => Task.FromResult<Core.Server.IPC.PetData?>(null);
     public int RequestPetInfo(int petId, int accountId, byte flag) => 0;
     public int SavePet(int petId) => 0;
     public Task SavePetAsync(int petId, CancellationToken ct = default) => Task.CompletedTask;

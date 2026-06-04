@@ -80,7 +80,7 @@ public class PetLifecycleTests
     public void GetEgg_grants_the_egg_item()
     {
         var (svc, pc, _, _, inv, _) = Build();
-        Assert.True(svc.GetEgg(pc, (int)PoringClass, (int)EggItemId, gender: 0));
+        Assert.True(svc.GetEgg(pc, (int)PoringClass, (int)EggItemId, petId: 777));
         Assert.Equal(1, inv.GiveCalls);
         Assert.Equal(EggItemId, inv.LastNameId);
     }
@@ -117,6 +117,7 @@ public class PetLifecycleTests
         public Task LoadAsync(MapSessionData session, CancellationToken ct = default) => Task.CompletedTask;
         public void SendInventoryList(MapSessionData session) { }
         public bool GiveItem(MapSessionData session, uint nameId, int amount) { GiveCalls++; LastNameId = nameId; return true; }
+        public bool GiveItemWithCards(MapSessionData session, uint nameId, int amount, uint card0, uint card1, uint card2, uint card3) => GiveItem(session, nameId, amount);
     }
 
     private sealed class FakePet : IPetService
@@ -158,6 +159,8 @@ public class PetLifecycleTests
         public int PetCreateCalls; public int LastClass;
         public int PetCreate(PlayerEntity master, int classId, int nameId, byte rename, int eggItemId, byte intimate, byte hungry, char gender, string petName)
         { PetCreateCalls++; LastClass = classId; return 1; }
+        public System.Threading.Tasks.Task<int> PetCreateAsync(PlayerEntity master, int classId, int eggItemId, byte intimate, byte hungry, string petName, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.FromResult(0);
+        public System.Threading.Tasks.Task<Core.Server.IPC.PetData?> PetLoadAsync(int petId, int accountId, int charId, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.FromResult<Core.Server.IPC.PetData?>(null);
 
         // ---- remainder unused ----
         public int QuestSave(PlayerEntity pc) => 0;

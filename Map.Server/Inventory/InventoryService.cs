@@ -228,6 +228,62 @@ public sealed class InventoryService : IInventoryService
         return true;
     }
 
+    public bool GiveItemWithCards(MapSessionData session, uint nameId, int amount, uint card0, uint card1, uint card2, uint card3)
+    {
+        if (amount <= 0) return false;
+        var items = session.Inventory;
+        if (items is null)
+        {
+            _logger.LogWarning("GiveItemWithCards({NameId}) before LoadAsync ran — refusing", nameId);
+            return false;
+        }
+        var entry = _itemCatalog.Get(nameId);
+        if (entry == null)
+        {
+            _logger.LogWarning("GiveItemWithCards: unknown item id {NameId}", nameId);
+            return false;
+        }
+        var type = ItemTypeCodes.FromDbString(entry.Type);
+
+        // Card-bound specials never merge (rAthena itemdb_isspecial) — always a fresh slot.
+        var slot = AppendNewSlot(items, nameId, type);
+        slot.Amount = (uint)amount;
+        slot.Card0 = card0;
+        slot.Card1 = card1;
+        slot.Card2 = card2;
+        slot.Card3 = card3;
+
+        session.EnqueuePacket(new ZC_ITEM_PICKUP_ACK
+        {
+            Index = (short)(slot.ServerIndex + 2),
+            Count = (short)amount,
+            NameId = nameId,
+            IsIdentified = (byte)(slot.Identified ? 1 : 0),
+            IsDamaged = 0,
+            Card0 = slot.Card0,
+            Card1 = slot.Card1,
+            Card2 = slot.Card2,
+            Card3 = slot.Card3,
+            Location = 0,
+            Type = type,
+            Result = 0,
+            HireExpireDate = (int)slot.ExpireTime,
+            BindOnEquipType = 0,
+            Favorite = slot.Favorite,
+            Look = 0,
+            RefiningLevel = slot.Refine,
+            EnchantGrade = slot.EnchantGrade,
+        });
+
+        if (_weightStatus != null && _entityRegistry != null
+            && session.EntityId is { } eid
+            && _entityRegistry.Get(eid) is PlayerEntity pc)
+        {
+            _weightStatus.UpdateWeightStatus(pc);
+        }
+        return true;
+    }
+
     private static bool StacksWith(InventoryItem slot, uint nameId)
     {
         // Naive stack key — same nameid + identified + no cards + no refine

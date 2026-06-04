@@ -555,6 +555,27 @@ public sealed class IntifService : IIntifService
         return 1;
     }
 
+    /// <summary>FEATURE-27 — awaitable <c>intif_create_pet</c>: the char server inserts the pet row and
+    /// returns its pet_id, which the catch flow binds into the granted egg's card slots.</summary>
+    public async Task<int> PetCreateAsync(PlayerEntity master, int classId, int eggItemId, byte intimate, byte hungry, string petName, CancellationToken ct = default)
+    {
+        if (_petIpc == null) return 0;
+        var resp = await _petIpc.PetCreateAsync(
+            accountId: master.AccountId, characterId: master.CharacterId, classId: classId, level: 1,
+            eggItemId: eggItemId, equipItemId: 0, intimacy: intimate, hungry: hungry,
+            renameFlag: 0, incubate: false, name: petName ?? string.Empty, cancellationToken: ct);
+        return resp is { Success: true } ? resp.PetId : 0;
+    }
+
+    /// <summary>FEATURE-27 — awaitable <c>intif_request_petdata</c>: load a saved pet by its bound
+    /// pet_id so a hatched egg restores the pet's intimacy/hunger/name.</summary>
+    public async Task<Core.Server.IPC.PetData?> PetLoadAsync(int petId, int accountId, int charId, CancellationToken ct = default)
+    {
+        if (_petIpc == null) return null;
+        var resp = await _petIpc.PetLoadAsync(accountId: accountId, characterId: charId, petId: petId, cancellationToken: ct);
+        return resp is { Success: true, NoInfo: false } ? resp.Pet : null;
+    }
+
     /// <summary>
     /// T7.2 — rAthena <c>intif_request_petdata</c> (intif.cpp:1370).
     /// Pulls a saved pet by id (after egg-hatch / login). Char-side

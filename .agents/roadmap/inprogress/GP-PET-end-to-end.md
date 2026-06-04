@@ -56,14 +56,21 @@ persistence round-trip are incomplete.
       (0=info/1=feed/2=performance/3=return/4=unequip — was wrong) + runaway gate. Remaining: verify
       catch/hatch at HEAD; bind the hatched pet to a pet_id stored on the egg card (archive FEATURE-27);
       rename.
-- [~] **Combat/loot**: loot pickup bag landed (turn 5 — `SummonAiService` pet-loot step:
+- [x] **Combat/loot**: loot pickup bag landed (turn 5 — `SummonAiService` pet-loot step:
       `pet_ai_sub_hard` loot branch — a looter pet (`AutoLootMax > 0`, bag not full, near master, no
       enemy target) hunts floor items via `IMobLooterService.FindNearestLoot`, walks onto them, picks
       into `PetEntity.LootItems`; `PetOpsService.LootItemDrop` deposits the bag to the owner on
-      `ReturnEgg` — `pet_lootitem_drop`). Follow + assist already work via the generic summon AI.
-      **Remaining**: pet AI auto-skill dispatch (`pet_attackskill` — needs the pet_db skill data).
-- [ ] **Persistence**: pet row (class/name/intimacy/hunger/equip) load on hatch / save on
-      mutate + logout; egg card carries pet_id across logout.
+      `ReturnEgg` — `pet_lootitem_drop`). Follow + assist work via the generic summon AI. Pet AI
+      auto-skill dispatch (`pet_attackskill`) ➡️ Moved to **GP-PET-AUTOSKILL** — the pet's attack skill
+      is set only by the `petskillattack` **script** command, so it's genuinely blocked on the
+      scripting runtime (SCR-DOMAIN), not deferrable inline.
+- [~] **Persistence**: pet row save on mutate + logout (archive FEATURE-02 save fan-out). **Write side
+      landed (turn 6)**: the catch now awaits the char-side pet row create (`PetCreateAsync` → pet_id)
+      and grants the egg bound to that pet_id in its card slots (`CARD0_PET`, `PetEggCard` + the new
+      card-aware `IInventoryService.GiveItemWithCards`) — `pet_get_egg`. This also fixed a bug where the
+      catch created the char row but never granted the player an egg (`GetEgg` was orphaned).
+      **Remaining**: the hatch READ side — read the egg's bound pet_id → `PetLoadAsync` → hatch with the
+      persisted intimacy/hunger/name (relog round-trip).
 - [x] **ZC emits**: pet status (`ZC_PROPERTY_PET` 0x01a2) + pet data
       (`ZC_CHANGESTATE_PET` 0x01a4: intimacy/hunger/accessory/performance) via new `IPetClientService`,
       wired into `Summon`/`Food`/`SetIntimate`/`Menu` (turn 1); capture cursor (`ZC_START_CAPTURE`
@@ -152,9 +159,20 @@ persistence round-trip are incomplete.
   new `PetLootDepositTests` (3: deliver+clear, keep-undeliverable, ReturnEgg-deposits). Full suite
   4474 pass (1 = standing replay-fixture). **Filed GP-PET-LOOT-OVERFLOW** (rAthena ground-drop on full
   inventory + 10s re-loot cooldown).
-- **Remaining (next turns → done):** pet AI auto-skill dispatch (`pet_attackskill`, FEATURE-28 combat
-  half — needs pet_db skill data), persistence binding pet_id↔egg-card + round-trip (FEATURE-27). The
-  loop resumes this card.
+- **2026-06-04 (turn 6)** — FEATURE-27 write side + auto-skill triage. Auto-skill (`pet_attackskill`)
+  is set only by the `petskillattack` script command → **filed GP-PET-AUTOSKILL** (genuinely blocked on
+  SCR-DOMAIN; the only GP-PET piece that needs scripting). Then the pet_id↔egg-card **write** path:
+  new `PetEggCard` (rAthena `CARD0_PET` 0x0100 + low/high pet_id words), card-aware
+  `IInventoryService.GiveItemWithCards` (never-merge fresh slot), awaitable `IIntifService.PetCreateAsync`
+  (→ pet_id) + `PetLoadAsync`. `CatchProcessEnd` success now `CreateAndGrantEggAsync` → awaits the char
+  pet-row create → `GetEgg(master, class, eggItem, petId)` grants the egg bound to the pet_id —
+  **fixing a bug where the catch created the char row but never gave the player an egg** (`GetEgg` was
+  orphaned, `PetCreate` discarded the returned pet_id). Tests: new `PetEggBindingTests` (3: card
+  round-trip, plain-item null, GetEgg-binds), `PetCaptureTests` updated to the async create path;
+  full suite 4477 pass (1 = standing replay-fixture).
+- **Remaining (next turn → done):** the hatch READ side — read the egg's bound pet_id → `PetLoadAsync`
+  → hatch with persisted intimacy/hunger/name (relog round-trip). Then GP-PET is done. The loop resumes
+  this card.
 
 ## Notes / gotchas
 
