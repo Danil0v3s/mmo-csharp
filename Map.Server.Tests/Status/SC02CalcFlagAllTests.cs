@@ -150,6 +150,26 @@ public class SC02CalcFlagAllTests
     public void GuardStance_isConverted_notGeneratorDefault()
         => Assert.DoesNotContain(StatusType.GuardStance, _reg.GeneratedStatModDefaultTypes);
 
+    // ---- SC-MAGNITUDE: SC_HISS (status.cpp:12301) — flat +50 Flee2, NOT +Val1 ----
+
+    [Fact]
+    public void Hiss_addsFlat50PerfectDodge()
+    {
+        var mob = FreshMob();
+        mob.Stats.Flee2 = 30;
+        var sc = new StatusChange { Type = StatusType.Hiss, Val1 = 3 };
+
+        Apply(StatusType.Hiss, sc, mob);
+        Assert.Equal(80, mob.Stats.Flee2); // 30 + flat 50 (NOT +Val1=3)
+
+        _reg.Get(StatusType.Hiss)!.OnEnd!(mob, sc);
+        Assert.Equal(30, mob.Stats.Flee2);
+    }
+
+    [Fact]
+    public void Hiss_isConverted_notGeneratorDefault()
+        => Assert.DoesNotContain(StatusType.Hiss, _reg.GeneratedStatModDefaultTypes);
+
     // ---- the reclassified SCs are no longer in the CalcFlag generator table ----
 
     [Theory]

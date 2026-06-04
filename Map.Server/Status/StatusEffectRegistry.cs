@@ -1261,6 +1261,22 @@ public sealed class StatusEffectRegistry
                 target.Stats.WatkMax = (ushort)Math.Max(0, target.Stats.WatkMax - sc.Val3);
             }));
 
+        // SC_HISS (SU_HISS) — Val2 = 50 (flat Perfect Dodge / Flee2). rAthena status.cpp:12301;
+        // status.yml CalcFlag Flee2. The +Val1 generator default is the wrong magnitude (should be a
+        // flat 50, not Val1). The skill separately applies SC_DORAM_WALKSPEED — not this SC's effect.
+        Register(StatusType.Hiss, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 50;
+                target.Stats.Flee2 = (short)Math.Min(short.MaxValue, target.Stats.Flee2 + sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+                target.Stats.Flee2 = (short)Math.Max(0, target.Stats.Flee2 - sc.Val2),
+            Flags: buff,
+            // CalcPc resets Flee2 each recalc — re-apply (same pattern as Whistle's perfect-dodge half).
+            OnRecalc: (target, sc) =>
+                target.Stats.Flee2 = (short)Math.Min(short.MaxValue, target.Stats.Flee2 + sc.Val2)));
+
         // SC_SERVICE4U — Val2 = MaxSP % bonus (9+Val1 capped at 20),
         //                Val3 = 5+Val1 (SP cost reduction %).
         // status.yml CalcFlag table also reads all 6 base stats — wrong.

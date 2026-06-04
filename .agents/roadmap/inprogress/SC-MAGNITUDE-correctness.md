@@ -70,6 +70,16 @@
   skill sets Val1 directly). So the genuinely-clean-convertible subset is small and largely exhausted;
   the remaining tail needs deliberate per-SC work + some infrastructure (a MoveSpeed% field) — a long,
   human-paced grind rather than a fast bulk sweep.
+- **2026-06-04 (turn 3)** — Converted **SC_HISS** (SU_HISS): flat +50 Perfect Dodge (Flee2), replacing
+  the wrong +Val1 default (status.cpp:12301; status.yml CalcFlag Flee2). Worklist 144 → 143. 2 tests
+  (`SC02CalcFlagAllTests.Hiss_*`); full suite 4565 pass (1 = standing replay-fixture). **Clean-convertible
+  subset now exhausted:** Hiss was the last simple single-real-stat SC in the val2-arm subset. The
+  movement-speed cluster (GnCartboost/Catnippowder/Arclousedash/Walkspeed/DoramWalkspeed) is blocked on a
+  missing MoveSpeed% field ➡️ filed **SC-MOVESPEED-FIELD**; the rest of the 143 are correctly-default,
+  tick/state machines, or use unmodeled 4th-job trait stats (P.ATK/S.MATK/Spl). **Honest status:** the
+  structural work + every clean conversion are done; closing the worklist further requires the MoveSpeed%
+  infra + 4th-job-stat modeling (separate tickets) — SC-MAGNITUDE has reached the limit of what an
+  autonomous sweep can faithfully convert.
 
 ## Notes
 
