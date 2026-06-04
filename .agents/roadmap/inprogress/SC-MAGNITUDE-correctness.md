@@ -1,6 +1,6 @@
 # SC-MAGNITUDE — SC magnitudes correct (CalcFlags mis-map + generator-default review)
 
-> **Epic:** status · **Status:** ❌ Not started · **Size:** L · **Player-visible:** yes
+> **Epic:** status · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** SC-FAMILIES
 
 ## The deliverable
