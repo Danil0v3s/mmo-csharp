@@ -1234,6 +1234,33 @@ public sealed class StatusEffectRegistry
             OnRecalc: (target, sc) =>
                 target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val2)));
 
+        // SC_GUARD_STANCE (IG_GUARD_STANCE) — Val2 = 50+50*Val1 (DEF increase), Val3 = 50*Val1
+        // (Watk decrease). rAthena status.cpp:12445; status.yml CalcFlags: Watk + Def. The +Val1
+        // generator default would add +Val1 to both Watk and Def (wrong sign + wrong magnitude).
+        Register(StatusType.GuardStance, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 50 + 50 * sc.Val1;
+                if (sc.Val3 == 0) sc.Val3 = 50 * sc.Val1;
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val2);
+                target.Stats.WatkMin = (ushort)Math.Max(0, target.Stats.WatkMin - sc.Val3);
+                target.Stats.WatkMax = (ushort)Math.Max(0, target.Stats.WatkMax - sc.Val3);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Max(short.MinValue, target.Stats.Def - sc.Val2);
+                target.Stats.WatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMin + sc.Val3);
+                target.Stats.WatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMax + sc.Val3);
+            },
+            Flags: buff,
+            // CalcPc resets Def + Watk each recalc — re-apply the stance's +DEF/−Watk.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val2);
+                target.Stats.WatkMin = (ushort)Math.Max(0, target.Stats.WatkMin - sc.Val3);
+                target.Stats.WatkMax = (ushort)Math.Max(0, target.Stats.WatkMax - sc.Val3);
+            }));
+
         // SC_SERVICE4U — Val2 = MaxSP % bonus (9+Val1 capped at 20),
         //                Val3 = 5+Val1 (SP cost reduction %).
         // status.yml CalcFlag table also reads all 6 base stats — wrong.

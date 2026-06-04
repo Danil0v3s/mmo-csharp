@@ -58,6 +58,18 @@
   Fleet/Spearquicken/…) are already converted; the 145 remainder is the hard/bespoke tail. 6 prune-guard
   tests (`SC07GeneratorAuditTests.OverriddenSc_IsPrunedFromGeneratorDefaultWorklist`); full suite 4561 pass
   (1 = standing replay-fixture). The loop resumes this card to convert the 145 remainder per-SC.
+- **2026-06-04 (turn 2)** — Per-SC conversion + an audit of the 145 remainder. Converted **SC_GUARD_STANCE**
+  (IG_GUARD_STANCE): Val2 = 50+50·Val1 (DEF↑), Val3 = 50·Val1 (Watk↓) — a real-stat handler replacing the
+  generator's wrong +Val1-to-both default (status.cpp:12445; status.yml CalcFlags Watk+Def). Worklist
+  145 → 144. 2 tests (`SC02CalcFlagAllTests.GuardStance_*`); full suite 4563 pass (1 = standing replay-fixture).
+  **Audit of the remaining 144:** only ~29 have a `status_change_start` val2 arm at all; of those, most are
+  (a) tick/state machines (Gospel/Basilica/Run/Dancing/Insignia/Rebound), (b) blocked on a missing C#
+  field — there is **no real MoveSpeed% stat** (the codebase uses an AspdRate proxy), so the speed SCs
+  (GnCartboost/Catnippowder/Arclousedash/…) can't be faithfully converted, or (c) use 4th-job stats
+  (P.ATK/S.MATK) not yet modeled. The rest of the 144 are **correctly** served by the +Val1 default (their
+  skill sets Val1 directly). So the genuinely-clean-convertible subset is small and largely exhausted;
+  the remaining tail needs deliberate per-SC work + some infrastructure (a MoveSpeed% field) — a long,
+  human-paced grind rather than a fast bulk sweep.
 
 ## Notes
 

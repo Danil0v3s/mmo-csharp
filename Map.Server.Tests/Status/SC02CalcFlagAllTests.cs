@@ -126,6 +126,30 @@ public class SC02CalcFlagAllTests
         Assert.Equal(400, mob.Stats.Batk);     // 200 + 200
     }
 
+    // ---- SC-MAGNITUDE: SC_GUARD_STANCE (status.cpp:12445) — +DEF, −Watk (not +Val1 to both) ----
+
+    [Fact]
+    public void GuardStance_raisesDef_andLowersWatk_byTheRealFormula()
+    {
+        var mob = FreshMob();
+        mob.Stats.Def = 100; mob.Stats.WatkMin = 300; mob.Stats.WatkMax = 340;
+        var sc = new StatusChange { Type = StatusType.GuardStance, Val1 = 3 };
+
+        Apply(StatusType.GuardStance, sc, mob);
+        Assert.Equal(100 + (50 + 50 * 3), mob.Stats.Def);   // +Val2 = +200 → 300
+        Assert.Equal(300 - 50 * 3, mob.Stats.WatkMin);      // −Val3 = −150 → 150
+        Assert.Equal(340 - 50 * 3, mob.Stats.WatkMax);
+
+        _reg.Get(StatusType.GuardStance)!.OnEnd!(mob, sc);
+        Assert.Equal(100, mob.Stats.Def);                   // restored
+        Assert.Equal(300, mob.Stats.WatkMin);
+        Assert.Equal(340, mob.Stats.WatkMax);
+    }
+
+    [Fact]
+    public void GuardStance_isConverted_notGeneratorDefault()
+        => Assert.DoesNotContain(StatusType.GuardStance, _reg.GeneratedStatModDefaultTypes);
+
     // ---- the reclassified SCs are no longer in the CalcFlag generator table ----
 
     [Theory]
