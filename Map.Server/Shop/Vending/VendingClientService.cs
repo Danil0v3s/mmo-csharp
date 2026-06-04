@@ -52,4 +52,8 @@ public sealed class VendingClientService : IVendingClientService
     public void SendVendorReport(PlayerEntity vendor, short clientIndex, short amount)
         => _sessions.GetByEntityId(vendor.Id)?.EnqueuePacket(new ZC_DELETEITEM_FROM_MCSTORE
         { Index = clientIndex, Amount = amount });
+
+    public void SendMyItemList(PlayerEntity vendor, IReadOnlyList<VendingListEntry> items)
+        => _sessions.GetByEntityId(vendor.Id)?.EnqueuePacket(new ZC_PC_PURCHASE_MYITEMLIST
+        { OwnerId = (uint)vendor.Id.Value, Items = items });
 }

@@ -274,6 +274,7 @@ public enum PacketHeader : short
     ZC_PC_PURCHASE_ITEMLIST_FROMMC = 0x0133, // clif_vendinglist: <len>.W <AID>.L then per-item 22B (the price list).
     ZC_PC_PURCHASE_RESULT_FROMMC = 0x0135, // clif_buyvending: <index>.W <amount>.W <result>.B, 7B.
     ZC_DELETEITEM_FROM_MCSTORE = 0x0137,   // clif_vendingreport: <index>.W <amount>.W, 6B (vendor sale notice).
+    ZC_PC_PURCHASE_MYITEMLIST = 0x0136,    // clif_openvending: <len>.W <owner id>.L then per-item 22B (the vendor's own shop list).
     ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B
     ZC_STATE_CHANGE3      = 0x0229,        // clif_changeoption — option (effect-state) bitmask 32-bit, 15B
     ZC_SPIRITS            = 0x01d0,        // clif_spiritball — Monk sphere / Sura / servant / abyss count, 8B

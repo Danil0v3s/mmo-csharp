@@ -11,7 +11,7 @@ namespace Map.Server.Shop.Vending;
 /// real buyer↔vendor transfer on purchase (FEATURE-11): zeny (minus the vending tax) + the item from
 /// the vendor's <b>cart</b> to the buyer's inventory, all-or-nothing. Each open stamps a
 /// <c>VenderId</c> so a stale client packet can't buy at old prices. Autotrade persistence
-/// (offline-vendor row + NPC respawn) is FEATURE-35.
+/// (offline-vendor row + NPC respawn) is GP-AUTOTRADE-RUNTIME.
 /// </summary>
 public sealed class VendingService : IVendingService
 {
@@ -57,35 +57,19 @@ public sealed class VendingService : IVendingService
             MapId = vendor.MapId,
         };
         _accountIndex[vendor.AccountId] = vendor.Id;
-        // rAthena vending_openvending → clif_openvending (ack) + clif_showvendingboard (stall sign).
+        // rAthena vending_openvending → clif_openvending (the vendor's own item list + ack) +
+        // clif_showvendingboard (the stall sign on-map).
+        var vendorCart = _sessions?.GetByEntityId(vendor.Id)?.Cart;
+        if (vendorCart != null)
+            _client?.SendMyItemList(vendor, BuildListEntries(_stalls[vendor.Id], vendorCart));
         _client?.OpenStall(vendor, title);
     }
 
-    public void CloseVending(PlayerEntity vendor)
+    /// <summary>Build the per-item price-list rows for a stall from its offers + the vendor's cart
+    /// (resolving each item's type/identify/refine/cards). Shared by the vendor's own-list (open) and
+    /// the buyer's vending list (browse).</summary>
+    private List<Core.Server.Packets.Out.ZC.VendingListEntry> BuildListEntries(Stall stall, List<InventoryItem> vendorCart)
     {
-        if (_stalls.Remove(vendor.Id))
-        {
-            _accountIndex.Remove(vendor.AccountId);
-            _client?.CloseStall(vendor); // rAthena clif_closevendingboard
-        }
-    }
-
-    /// <summary>rAthena <c>vending_reopen</c> — auto-trade reopen at login. ➡️ The char-side persisted
-    /// stall hydrate is FEATURE-35; this stays the wire seam the response calls <see cref="Update"/> on.</summary>
-    public void Reopen(PlayerEntity vendor)
-        => _logger.LogInformation("vending_reopen: autotrade rehydrate for {Vendor} (persistence → FEATURE-35)", vendor.Name);
-
-    /// <summary>rAthena <c>vending_vendinglistreq</c> — the buyer clicked a stall: stamp the viewed
-    /// vender id on the buyer (anti-desync) and send the shop's price list (<c>clif_vendinglist</c>).</summary>
-    public void VendingListReq(PlayerEntity buyer, int vendorAccountId)
-    {
-        if (!_accountIndex.TryGetValue(vendorAccountId, out var vid)) return;
-        if (!_stalls.TryGetValue(vid, out var stall)) return;
-        var vendorCart = _sessions?.GetByAccountId(vendorAccountId)?.Cart;
-        if (vendorCart == null) return;
-
-        buyer.VendedId = stall.VenderId; // rAthena sd->vended_id
-
         var entries = new List<Core.Server.Packets.Out.ZC.VendingListEntry>();
         foreach (var (idx, qty, price) in stall.Items)
         {
@@ -108,7 +92,34 @@ public sealed class VendingService : IVendingService
                 Card3 = (short)cartItem.Card3,
             });
         }
-        _client?.SendVendingList(buyer, vendorAccountId, entries);
+        return entries;
+    }
+
+    public void CloseVending(PlayerEntity vendor)
+    {
+        if (_stalls.Remove(vendor.Id))
+        {
+            _accountIndex.Remove(vendor.AccountId);
+            _client?.CloseStall(vendor); // rAthena clif_closevendingboard
+        }
+    }
+
+    /// <summary>rAthena <c>vending_reopen</c> — auto-trade reopen at login. ➡️ The char-side persisted
+    /// stall hydrate is GP-AUTOTRADE-RUNTIME; this stays the wire seam the response calls <see cref="Update"/> on.</summary>
+    public void Reopen(PlayerEntity vendor)
+        => _logger.LogInformation("vending_reopen: autotrade rehydrate for {Vendor} (persistence → GP-AUTOTRADE-RUNTIME)", vendor.Name);
+
+    /// <summary>rAthena <c>vending_vendinglistreq</c> — the buyer clicked a stall: stamp the viewed
+    /// vender id on the buyer (anti-desync) and send the shop's price list (<c>clif_vendinglist</c>).</summary>
+    public void VendingListReq(PlayerEntity buyer, int vendorAccountId)
+    {
+        if (!_accountIndex.TryGetValue(vendorAccountId, out var vid)) return;
+        if (!_stalls.TryGetValue(vid, out var stall)) return;
+        var vendorCart = _sessions?.GetByAccountId(vendorAccountId)?.Cart;
+        if (vendorCart == null) return;
+
+        buyer.VendedId = stall.VenderId; // rAthena sd->vended_id
+        _client?.SendVendingList(buyer, vendorAccountId, BuildListEntries(stall, vendorCart));
     }
 
     /// <summary>
@@ -223,9 +234,9 @@ public sealed class VendingService : IVendingService
         => _stalls.Count > 0;
 
     /// <summary>rAthena <c>vending_autotrade_init</c> — boot hydrate of offline autotrade vendors.
-    /// ➡️ The persisted-vendor loader (EF entity + repo + NPC respawn) is FEATURE-35.</summary>
+    /// ➡️ The persisted-vendor loader (EF entity + repo + NPC respawn) is GP-AUTOTRADE-RUNTIME.</summary>
     public void InitAutotrade()
-        => _logger.LogInformation("vending_autotrade_init: 0 offline vendors hydrated (persistence → FEATURE-35)");
+        => _logger.LogInformation("vending_autotrade_init: 0 offline vendors hydrated (persistence → GP-AUTOTRADE-RUNTIME)");
 
     /// <summary>FEATURE-11 test seam — the current vender id of a stall (the value the buyer's purchase
     /// packet must echo back).</summary>

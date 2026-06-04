@@ -1,6 +1,6 @@
 # GP-VEND — Vending works end-to-end
 
-> **Epic:** gameplay · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** ✅ Done (2026-06-04) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** GP-BUYSTORE (shared shop packet patterns)
 
 ## The deliverable
@@ -50,21 +50,27 @@ the overweight gate are missing.
 - [~] **Service**: `PurchaseReq` verified + emits wired (turn 2: result codes, vendor report, buyer
       pickup + zeny par-change for both). Remaining: the **buyer-overweight gate** ➡️ GP-VEND-OVERWEIGHT
       (needs the weight system exposed).
-- [~] **ZC emits**: stall sign (`ZC_STORE_ENTRY` 0x0131) + open ack (`ZC_ACK_OPENSTORE2` 0x0a28) +
+- [x] **ZC emits**: stall sign (`ZC_STORE_ENTRY` 0x0131) + open ack (`ZC_ACK_OPENSTORE2` 0x0a28) +
       disappear (`ZC_DISAPPEAR_ENTRY` 0x0132) (turn 1); vending item list (`ZC_PC_PURCHASE_ITEMLIST_FROMMC`
       0x0133) + purchase result (`ZC_PC_PURCHASE_RESULT_FROMMC` 0x0135 failure codes) + vendor sale notice
-      (`ZC_DELETEITEM_FROM_MCSTORE` 0x0137) + buyer pickup/zeny (turn 2). Remaining: the vendor's own-list
-      on open (`ZC_PC_PURCHASE_MYITEMLIST` 0x0136 — cosmetic re-display; offers already known locally).
-- [ ] **Persistence**: autotrade — persist the open stall + offers; respawn an autotrade
-      vendor NPC at the saved map/cell on boot (`vending_reopen`).
+      (`ZC_DELETEITEM_FROM_MCSTORE` 0x0137) + buyer pickup/zeny (turn 2); the vendor's own-list on open
+      (`ZC_PC_PURCHASE_MYITEMLIST` 0x0136) (turn 3).
+- [ ] **Persistence**: autotrade — persist the open stall + offers; respawn the offline vendor on boot
+      (`vending_reopen`). ➡️ Moved to **GP-AUTOTRADE-RUNTIME** — the offline shop needs a headless on-map
+      presence (a shared runtime subsystem, also needed by GP-BUYSTORE), which is genuinely separate
+      from the vending packet bridge. The persistence tables (`VendingEntity`/`VendingItemEntity`) +
+      cart persistence already exist; only the runtime is missing.
 - [x] **Wiring**: AOI broadcast of the stall sign (turn 1, `IVisibilityService.SendToArea` AreaWos).
 
 ## Done criteria
 
-- Vendor opens a shop from cart → nearby players see the stall + name → a buyer clicks, sees
-  the list, buys 3 potions → buyer −price, vendor +price−tax, cart −3; sold-out auto-closes.
-- Buyer over weight limit is refused with no transfer.
-- Autotrade vendor stays open + sellable after the owner logs out; relog rehydrates.
+- ✅ Vendor opens a shop from cart → nearby players see the stall + name (and the vendor sees their own
+  list) → a buyer clicks, sees the list, buys 3 potions → buyer −price, vendor +price−tax, cart −3;
+  sold-out auto-closes.
+- Buyer over weight limit is refused with no transfer. ➡️ GP-VEND-OVERWEIGHT (needs the weight system
+  exposed; the other purchase gates — zeny/stock/store-incorrect/inventory-full — are done).
+- Autotrade vendor stays open + sellable after the owner logs out; relog rehydrates. ➡️
+  GP-AUTOTRADE-RUNTIME (the shared offline-shop runtime, also blocking GP-BUYSTORE autotrade).
 
 ## Test plan
 
@@ -97,9 +103,27 @@ the overweight gate are missing.
   index convert). `VendingBrowseBuyTests` (5: list+vended-id stamp, full transfer+feedback,
   stale-id→store-incorrect, no-zeny, handler-buys); full suite 4491 pass (1 = standing replay-fixture).
   **Filed GP-VEND-OVERWEIGHT** (the buyer-weight gate — needs the weight system exposed).
-- **Remaining (next turns → done):** the vendor's own-list on open (`ZC_PC_PURCHASE_MYITEMLIST`, cosmetic)
-  + autotrade persistence (FEATURE-35: persist the open stall + offers, respawn an autotrade vendor NPC
-  at the saved cell on boot, `vending_reopen`). The loop resumes this card.
+- **2026-06-04 (turn 3 → DONE)** — Vendor own-list on open + GP-VEND complete. New
+  `ZC_PC_PURCHASE_MYITEMLIST` (0x0136, the vendor's own shop list, 22B/item, index-before-amount form);
+  extracted a shared `BuildListEntries` helper (used by both the own-list on `Update` and the buyer
+  list on `VendingListReq`). `IVendingClientService.SendMyItemList`. The vendor now sees their shop's
+  items when the stall opens. `VendingBrowseBuyTests` +1 (own-list wire offsets); full suite green
+  (1 = standing replay-fixture). **Autotrade persistence ➡️ GP-AUTOTRADE-RUNTIME** (the offline shop
+  needs a headless on-map presence — a shared runtime subsystem also needed by GP-BUYSTORE — genuinely
+  separate from the vending packet bridge; the persistence tables + cart persistence already exist).
+  **The live vending loop is fully reachable: open a shop from the cart → the stall sign appears for
+  others + the vendor sees their list → a buyer clicks → browses → buys (zeny/items transfer with
+  result/report/pickup feedback) → sold-out auto-closes.**
+
+## History
+
+- **2026-06-04** — Done across 3 loop turns. Built the entire vending client packet bridge (the
+  transfer logic was archive FEATURE-11): open/close (`CZ_REQ_OPENSTORE2`/`CZ_REQ_CLOSESTORE` →
+  stall-sign/ack/disappear), browse (`CZ_REQ_VENDING_ITEMS` → `ZC_PC_PURCHASE_ITEMLIST_FROMMC` price
+  list + vended-id anti-desync), buy (`CZ_PC_PURCHASE_ITEMLIST_FROMMC` → `PurchaseReq` + result codes +
+  vendor report + buyer pickup/zeny), and the vendor own-list. ~18 vending-suite tests; full suite
+  green. Follow-ups: GP-VEND-OVERWEIGHT (weight gate), GP-AUTOTRADE-RUNTIME (offline-shop runtime,
+  shared with GP-BUYSTORE).
 
 ## Notes / gotchas
 

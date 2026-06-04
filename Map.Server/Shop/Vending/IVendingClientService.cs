@@ -31,4 +31,8 @@ public interface IVendingClientService
     /// <summary>rAthena <c>clif_vendingreport</c> (ZC_DELETEITEM_FROM_MCSTORE) — tell the vendor an item
     /// was bought from their shop.</summary>
     void SendVendorReport(PlayerEntity vendor, short clientIndex, short amount);
+
+    /// <summary>rAthena <c>clif_openvending</c> (ZC_PC_PURCHASE_MYITEMLIST) — send the vendor their own
+    /// shop's item list when the stall opens.</summary>
+    void SendMyItemList(PlayerEntity vendor, IReadOnlyList<Core.Server.Packets.Out.ZC.VendingListEntry> items);
 }

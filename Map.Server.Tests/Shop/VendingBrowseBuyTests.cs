@@ -26,6 +26,21 @@ public class VendingBrowseBuyTests
     private const uint Potion = 501;
 
     [Fact]
+    public void Opening_a_shop_sends_the_vendor_their_own_item_list()
+    {
+        var ctx = Build();
+        ctx.Open(("MyShop", 0, qty: 10, price: 100));
+
+        var own = ctx.Outbound(ctx.VendorSession)
+            .Single(x => Header(x) == (ushort)PacketHeader.ZC_PC_PURCHASE_MYITEMLIST);
+        Assert.Equal((uint)ctx.Vendor.Id.Value, BitConverter.ToUInt32(own, 4)); // owner id
+        // entry at offset 8: price.L index.W amount.W (MYITEMLIST order)
+        Assert.Equal(100, BitConverter.ToInt32(own, 8));
+        Assert.Equal(2, BitConverter.ToInt16(own, 12));   // client index = server 0 + 2
+        Assert.Equal(10, BitConverter.ToInt16(own, 14));  // amount
+    }
+
+    [Fact]
     public void VendingListReq_stamps_vended_id_and_sends_price_list()
     {
         var ctx = Build();
