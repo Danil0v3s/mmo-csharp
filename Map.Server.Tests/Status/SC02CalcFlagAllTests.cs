@@ -372,9 +372,25 @@ public class SC02CalcFlagAllTests
         Assert.Equal(50, mob.Stats.Str);    // restored
     }
 
+    [Fact]
+    public void Stomachache_subtractsVal1_fromAllSix_notAdds()
+    {
+        // status.cpp:6561-6907 — all six base stats −= val1 (food-poison debuff). Generator added +Val1.
+        var mob = FreshMob();   // all = 50
+        var sc = new StatusChange { Type = StatusType.Stomachache, Val1 = 7 };
+        Apply(StatusType.Stomachache, sc, mob);
+        Assert.Equal(43, mob.Stats.Str);    // 50 − 7 (reduced)
+        Assert.Equal(43, mob.Stats.Agi);
+        Assert.Equal(43, mob.Stats.Luk);
+
+        _reg.Get(StatusType.Stomachache)!.OnEnd!(mob, sc);
+        Assert.Equal(50, mob.Stats.Str);
+    }
+
     [Theory]
     [InlineData(StatusType.Battleorders)]
     [InlineData(StatusType.AllStatDown)]
+    [InlineData(StatusType.Stomachache)]
     public void PrimaryStatFix_isConverted_notGeneratorDefault(StatusType t)
         => Assert.DoesNotContain(t, _reg.GeneratedStatModDefaultTypes);
 

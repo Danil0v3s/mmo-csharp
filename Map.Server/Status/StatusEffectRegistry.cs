@@ -1321,6 +1321,33 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
 
+        // SC_STOMACHACHE (food-poisoning debuff) — all six base stats −= Val1 (status.cpp:6561-6907
+        // str/agi/vit/int/dex/luk −= val1; Val2 = 8 is the SP-drain tick, not a stat). The generator's
+        // +Val1 is the wrong SIGN (it buffs the stats the debuff should cut). Primary stats survive recalc
+        // via the COMBAT-10 param-base delta, so no OnRecalc.
+        Register(StatusType.Stomachache, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var s = target.Stats;
+                s.Str = (short)Math.Max(0, s.Str - sc.Val1);
+                s.Agi = (short)Math.Max(0, s.Agi - sc.Val1);
+                s.Vit = (short)Math.Max(0, s.Vit - sc.Val1);
+                s.IntStat = (short)Math.Max(0, s.IntStat - sc.Val1);
+                s.Dex = (short)Math.Max(0, s.Dex - sc.Val1);
+                s.Luk = (short)Math.Max(0, s.Luk - sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                var s = target.Stats;
+                s.Str = (short)Math.Min(short.MaxValue, s.Str + sc.Val1);
+                s.Agi = (short)Math.Min(short.MaxValue, s.Agi + sc.Val1);
+                s.Vit = (short)Math.Min(short.MaxValue, s.Vit + sc.Val1);
+                s.IntStat = (short)Math.Min(short.MaxValue, s.IntStat + sc.Val1);
+                s.Dex = (short)Math.Min(short.MaxValue, s.Dex + sc.Val1);
+                s.Luk = (short)Math.Min(short.MaxValue, s.Luk + sc.Val1);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
         // SC_GUARD_STANCE (IG_GUARD_STANCE) — Val2 = 50+50*Val1 (DEF increase), Val3 = 50*Val1
         // (Watk decrease). rAthena status.cpp:12445; status.yml CalcFlags: Watk + Def. The +Val1
         // generator default would add +Val1 to both Watk and Def (wrong sign + wrong magnitude).

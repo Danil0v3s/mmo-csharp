@@ -177,6 +177,14 @@
   remainder still hides wrong-sign debuffs and absolute-set SCs (SC_DEFSET/SC_ETERNALCHAOS set Def to an
   absolute value, not +Val1 — a different bespoke axis); the StatusCalcFlagDefaults-vs-consumer audit is the
   productive seam for future turns.
+- **2026-06-04 (turn 17)** — Continued the wrong-sign audit (grepped every `stat -= sc->getSCE(SC_…)` in
+  rAthena's `status_calc_*` and intersected with the generator-default set). Converted **SC_STOMACHACHE**
+  (food-poison: all six base stats −= Val1, status.cpp:6561-6907 — generator *added* +Val1, wrong sign).
+  Worklist 144 → 143. 2 tests; full suite 4671 pass (1 = standing replay-fixture). Most other subtract-SCs
+  already have bespoke handlers (GuardStance/HeatBarrel/WaterBarrier/Adoramus/Quagmire/Marionette/…);
+  **SC_KYOUGAKU** (6 stats −Val2) and **SC_C_MARKER** (Flee −Val3) remain generator-default+wrong-sign but
+  their reduction magnitude is set by the casting skill (not the SC start-arm) and isn't determinable from
+  status.cpp alone — deferred within this card pending the skill-side formula.
 
 ## Notes
 
