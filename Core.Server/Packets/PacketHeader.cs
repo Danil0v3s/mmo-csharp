@@ -275,6 +275,14 @@ public enum PacketHeader : short
     ZC_PC_PURCHASE_RESULT_FROMMC = 0x0135, // clif_buyvending: <index>.W <amount>.W <result>.B, 7B.
     ZC_DELETEITEM_FROM_MCSTORE = 0x0137,   // clif_vendingreport: <index>.W <amount>.W, 6B (vendor sale notice).
     ZC_PC_PURCHASE_MYITEMLIST = 0x0136,    // clif_openvending: <len>.W <owner id>.L then per-item 22B (the vendor's own shop list).
+
+    // Buying store (GP-BUYSTORE). rAthena buyingstore.cpp / clif.cpp "I'll pay X for Y" set.
+    CZ_REQ_OPEN_BUYING_STORE  = 0x0811,    // clif_parse_ReqOpenBuyingStore: <len>.W <zenyLimit>.L <result>.B <name>.80 {nameId.W amount.W price.L}*.
+    ZC_FAILED_OPEN_BUYING_STORE = 0x0812,  // clif_buyingstore_open_failed: <result>.W <weight>.L, 8B.
+    ZC_MYITEMLIST_BUYING_STORE = 0x0813,   // clif_buyingstore_myitemlist: <len>.W <AID>.L <zenyLimit>.L {price.L amount.W type.B nameId.W}*.
+    ZC_BUYING_STORE_ENTRY     = 0x0814,    // clif_buyingstore_entry: <maker AID>.L <store name>.80, 86B (store sign on-map).
+    CZ_REQ_CLOSE_BUYING_STORE = 0x0815,    // clif_parse_ReqCloseBuyingStore: header only, 2B.
+    ZC_DISAPPEAR_BUYING_STORE_ENTRY = 0x0816, // clif_buyingstore_disappear_entry: <maker AID>.L, 6B.
     ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B
     ZC_STATE_CHANGE3      = 0x0229,        // clif_changeoption — option (effect-state) bitmask 32-bit, 15B
     ZC_SPIRITS            = 0x01d0,        // clif_spiritball — Monk sphere / Sura / servant / abyss count, 8B

@@ -20,13 +20,18 @@ public sealed class BuyingStoreService : IBuyingStoreService
     private readonly Dictionary<EntityId, BuyStall> _stalls = new();
     private readonly Dictionary<int, EntityId> _accountIndex = new();
     private readonly ISessionManagerAccessor? _sessions;
+    private readonly IBuyingStoreClientService? _client;
+    private readonly Map.Server.Items.IItemCatalog? _items;
     private readonly ILogger<BuyingStoreService> _logger;
     private uint _nextStoreId = 1;
 
-    public BuyingStoreService(ILogger<BuyingStoreService> logger, ISessionManagerAccessor? sessions = null)
+    public BuyingStoreService(ILogger<BuyingStoreService> logger, ISessionManagerAccessor? sessions = null,
+        IBuyingStoreClientService? client = null, Map.Server.Items.IItemCatalog? items = null)
     {
         _logger = logger;
         _sessions = sessions;
+        _client = client;
+        _items = items;
     }
 
     /// <summary>rAthena <c>buyingstore_setup</c> — gate + seed the stall slot (no escrow yet; that
@@ -52,36 +57,64 @@ public sealed class BuyingStoreService : IBuyingStoreService
     public bool Update(PlayerEntity buyer, string title, long zenyLimit,
         IReadOnlyList<(int nameId, short amount, int price)> offers)
     {
-        if (offers.Count > MaxOffers || zenyLimit < 0 || zenyLimit > MaxZenyLimit) return false;
+        if (offers.Count > MaxOffers || zenyLimit < 0 || zenyLimit > MaxZenyLimit || offers.Count == 0)
+        { _client?.OpenFailed(buyer, Core.Server.Packets.Out.ZC.BuyingStoreOpenResult.Failed); return false; }
         var s = _stalls.GetValueOrDefault(buyer.Id);
         if (s == null) { Open(buyer, 0); s = _stalls.GetValueOrDefault(buyer.Id); }
-        if (s == null) return false;
+        if (s == null) { _client?.OpenFailed(buyer, Core.Server.Packets.Out.ZC.BuyingStoreOpenResult.Failed); return false; }
 
         if (!s.Escrowed && zenyLimit > 0)
         {
             var session = _sessions?.GetByEntityId(buyer.Id);
-            if (session?.CharacterData == null) return false;
+            if (session?.CharacterData == null) { _client?.OpenFailed(buyer, Core.Server.Packets.Out.ZC.BuyingStoreOpenResult.Failed); return false; }
             if ((long)session.CharacterData.Zeny < zenyLimit) // rAthena: buyer must back the full limit
             {
                 Close(buyer);
+                _client?.OpenFailed(buyer, Core.Server.Packets.Out.ZC.BuyingStoreOpenResult.Failed);
                 return false;
             }
             session.CharacterData.Zeny = (uint)((long)session.CharacterData.Zeny - zenyLimit);
             s.ZenyHeld = zenyLimit;
             s.Escrowed = true;
+            EmitZeny(session, (int)session.CharacterData.Zeny); // escrow held — show the buyer's new zeny
         }
         s.Title = title;
         s.Offers = offers.ToList();
         s.X = buyer.X; s.Y = buyer.Y; s.MapId = buyer.MapId;
+
+        // rAthena buyingstore_create → clif_buyingstore_myitemlist + clif_buyingstore_entry.
+        _client?.OpenStore(buyer, (int)Math.Min(s.ZenyHeld, int.MaxValue), title, BuildEntries(s));
         return true;
     }
+
+    /// <summary>Build the owner's offer rows from the stall (item type via the catalog).</summary>
+    private List<Core.Server.Packets.Out.ZC.BuyingStoreEntry> BuildEntries(BuyStall s)
+    {
+        var entries = new List<Core.Server.Packets.Out.ZC.BuyingStoreEntry>();
+        foreach (var (nameId, amount, price) in s.Offers)
+            entries.Add(new Core.Server.Packets.Out.ZC.BuyingStoreEntry
+            {
+                Price = price,
+                Amount = amount,
+                ItemType = _items != null ? Map.Server.Inventory.ItemTypeCodes.FromDbString(_items.Get((uint)nameId)?.Type) : (byte)0,
+                NameId = (short)nameId,
+            });
+        return entries;
+    }
+
+    private static void EmitZeny(Map.Server.MapSessionData session, int zeny)
+        => session.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_PAR_CHANGE
+        { VarId = Core.Server.Packets.SpId.SP_ZENY, Value = zeny });
 
     /// <summary>FEATURE-12 — close + **refund the buyer's unspent escrow** (rAthena buyingstore_close).</summary>
     public void Close(PlayerEntity buyer)
     {
         if (!_stalls.Remove(buyer.Id, out var stall)) return;
         _accountIndex.Remove(buyer.AccountId);
-        Refund(stall, _sessions?.GetByEntityId(buyer.Id));
+        var session = _sessions?.GetByEntityId(buyer.Id);
+        Refund(stall, session);
+        if (session?.CharacterData != null) EmitZeny(session, (int)session.CharacterData.Zeny); // show refunded zeny
+        _client?.CloseStore(buyer); // rAthena clif_buyingstore_disappear_entry
     }
 
     public void Reopen(PlayerEntity buyer)

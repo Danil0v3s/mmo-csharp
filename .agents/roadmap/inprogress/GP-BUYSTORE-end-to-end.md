@@ -41,14 +41,18 @@ edges are missing.
 
 ## Scope — every layer
 
-- [ ] **CZ handlers**: open/create (offers + zeny limit), close, click-to-store (view),
-      trade (sell items in), search.
-- [ ] **Service**: verify `Update`/`Trade`/`Close` at HEAD; seller-overweight is moot (seller
-      loses items) but enforce the **buyer free-slot gate** (already partly there — verify).
-- [ ] **ZC emits**: store sign on-map, my-item-list (owner), item list (visitor), trade
-      result, item-amount updates, fail codes.
-- [ ] **Persistence**: autotrade — persist offers + the held-escrow amount; respawn the
-      buyer NPC + re-escrow on boot.
+- [~] **CZ handlers**: open/create (`CZ_REQ_OPEN_BUYING_STORE` 0x0811 → `OpenBuyingStoreHandler`,
+      escrow) + close (`CZ_REQ_CLOSE_BUYING_STORE` 0x0815 → `CloseBuyingStoreHandler`) — turn 1.
+      Remaining: click-to-store (view) + trade (sell items in) + search.
+- [~] **Service**: `Update` (escrow) + `Close` (refund) verified + emits wired (turn 1). Remaining:
+      verify `Trade` + the buyer free-slot gate at HEAD (turn 2).
+- [~] **ZC emits**: store sign (`ZC_BUYING_STORE_ENTRY` 0x0814, AOI) + my-item-list owner
+      (`ZC_MYITEMLIST_BUYING_STORE` 0x0813) + open-fail (`ZC_FAILED_OPEN_BUYING_STORE` 0x0812) +
+      disappear (`ZC_DISAPPEAR_BUYING_STORE_ENTRY` 0x0816) + escrow/refund zeny par-change — turn 1.
+      Remaining: visitor item list, trade result, item-amount updates.
+- [ ] **Persistence**: autotrade — persist offers + the held-escrow amount; respawn the offline buyer
+      on boot. ➡️ Moved to **GP-AUTOTRADE-RUNTIME** (the shared offline-shop headless runtime, filed by
+      GP-VEND — the same subsystem; the persistence tables already exist).
 
 ## Done criteria
 
@@ -65,7 +69,25 @@ edges are missing.
 - Persistence: autotrade escrow rehydrate.
 - Live: open → sell-in → close-refund → autotrade relog.
 
+## Progress log (multi-turn vertical)
+
+- **2026-06-04 (turn 1)** — Open + close + store sign. New packets `CZ_REQ_OPEN_BUYING_STORE` (0x0811,
+  variable `<zenyLimit>.L <result>.B <name>.80 {nameId.W amount.W price.L}*`), `CZ_REQ_CLOSE_BUYING_STORE`
+  (0x0815), `ZC_BUYING_STORE_ENTRY` (0x0814 store sign), `ZC_DISAPPEAR_BUYING_STORE_ENTRY` (0x0816),
+  `ZC_MYITEMLIST_BUYING_STORE` (0x0813 owner list), `ZC_FAILED_OPEN_BUYING_STORE` (0x0812). New
+  `IBuyingStoreClientService`/`BuyingStoreClientService` (store sign → area-WOS, owner list/fail →
+  buyer session) wired into `Update`/`Close`. The buyer's `Update` now emits the owner list + store
+  sign + the escrow zeny par-change on success (or the open-fail on a rejection); `Close` emits the
+  refund zeny par-change + the disappear. `OpenBuyingStoreHandler` parses the offers (name id/amount/
+  price); `CloseBuyingStoreHandler` tears down. `BuyingStoreOpenCloseTests` (4: escrow+owner-list+sign,
+  insufficient-zeny→fail, close-refunds+disappear, handler routing); full suite 4496 pass (1 = standing
+  replay-fixture).
+- **Remaining (next turns → done):** click-to-store (visitor item list, `ZC_ITEMLIST_BUYING_STORE`) +
+  trade (`CZ_REQ_TRADE_BUYING_STORE` → `Trade` + update/result emits) + search; autotrade persistence
+  ➡️ GP-AUTOTRADE-RUNTIME (shared with GP-VEND). The loop resumes this card.
+
 ## Notes / gotchas
 
 - Escrow is held on the stall (`ZenyHeld`), decremented per trade, refunded on close (archive FEATURE-12).
 - Per-open `StoreId` anti-desync token the seller echoes back.
+- Buying-store offers are by `nameId` (not a cart slot), unlike vending — no client/server index convert.
