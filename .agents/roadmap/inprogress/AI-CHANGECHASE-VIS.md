@@ -1,6 +1,6 @@
 # AI-CHANGECHASE-VIS — changechase honours the target visibility gate
 
-> **Epic:** mobai · **Status:** ❌ Not started · **Size:** S · **Player-visible:** partial
+> **Epic:** mobai · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** partial
 > **Depends on:** none · **Unlocks:** none
 
 ## The deliverable
