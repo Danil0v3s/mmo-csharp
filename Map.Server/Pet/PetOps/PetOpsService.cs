@@ -159,9 +159,11 @@ public sealed class PetOpsService : IPetOpsService
 
     public bool ReturnEgg(PlayerEntity master)
     {
-        // rAthena pet_return_egg — pack the live pet back into its egg item.
+        // rAthena pet_return_egg — pack the live pet back into its egg item. Hand any accumulated loot
+        // bag to the owner first (rAthena pet_lootitem_drop runs on the way out).
         var pet = GetLivePet(master);
         if (pet == null) return false;
+        LootItemDrop(master);
         _pet?.Recall(master);
         _logger.LogInformation("pet_return_egg: master={Master}", master.Name);
         return true;
@@ -451,12 +453,29 @@ public sealed class PetOpsService : IPetOpsService
 
     // ----- Loot / bonuses -----
 
-    public void LootItemDrop(PlayerEntity master, int amount)
+    /// <summary>rAthena <c>pet_lootitem_drop</c> (pet.cpp): hand the pet's accumulated loot bag back to
+    /// the owner's inventory. Items that fit are added (and removed from the bag); items that don't fit
+    /// (full/overweight bag) stay in the loot bag rather than vanish — rAthena instead drops them on the
+    /// ground (➡️ GP-PET-LOOT-OVERFLOW).</summary>
+    public void LootItemDrop(PlayerEntity master)
     {
-        // rAthena pet_lootitem_drop — pet drops accumulated loot bag
-        // on rename / vaporize. PetEntity doesn't model a loot bag
-        // (the IMobLooterService runs at the mob layer); we just log.
-        _logger.LogDebug("pet_lootitem_drop: master={Master} dropped {Amt}", master.Name, amount);
+        var pet = GetLivePet(master);
+        if (pet == null || pet.LootItems.Count == 0) return;
+        var session = _sessions?.GetByEntityId(master.Id);
+        if (session == null || _inventory == null) return;
+
+        var delivered = 0;
+        for (var i = pet.LootItems.Count - 1; i >= 0; i--)
+        {
+            var slot = pet.LootItems[i];
+            if (_inventory.GiveItem(session, (uint)slot.ItemId, slot.Amount))
+            {
+                pet.LootItems.RemoveAt(i);
+                delivered++;
+            }
+        }
+        if (delivered > 0)
+            _logger.LogInformation("pet_lootitem_drop: {Master} received {N} looted item(s)", master.Name, delivered);
     }
 
     public void ClearSupportBonuses(PlayerEntity master)

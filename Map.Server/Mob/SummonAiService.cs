@@ -29,6 +29,7 @@ public sealed class SummonAiService : ISummonAiService
     private readonly IEntityRegistry _entities;
     private readonly IAttackService _attack;
     private readonly IMovementService _movement;
+    private readonly IMobLooterService? _looter;
     private readonly ILogger<SummonAiService> _logger;
     private readonly Dictionary<EntityId, long> _lastThink = new();
 
@@ -36,11 +37,13 @@ public sealed class SummonAiService : ISummonAiService
         IEntityRegistry entities,
         IAttackService attack,
         IMovementService movement,
-        ILogger<SummonAiService> logger)
+        ILogger<SummonAiService> logger,
+        IMobLooterService? looter = null)
     {
         _entities = entities;
         _attack = attack;
         _movement = movement;
+        _looter = looter;
         _logger = logger;
     }
 
@@ -74,6 +77,34 @@ public sealed class SummonAiService : ISummonAiService
             if (master.Attack is { } masterAttack && entity.Attack == null)
             {
                 _attack.StartAttack(entity, masterAttack.TargetId, continuous: true);
+            }
+
+            // 3. Pet loot pickup — rAthena pet_ai_sub_hard loot branch (pet.cpp:1819-1870). Only a
+            // looter pet (AutoLootMax > 0, bag not full) that is near its master and not engaged with
+            // an enemy hunts floor items: walk onto the item, then pick it into the loot bag.
+            if (entity is PetEntity pet && _looter != null && entity.Attack == null
+                && pet.AutoLootMax > 0 && pet.LootItems.Count < pet.AutoLootMax
+                && dist <= FollowDistance)
+            {
+                var loot = _looter.FindNearestLoot(pet, IMobLooterService.DefaultLootRange);
+                if (loot != null)
+                {
+                    var lootDist = Math.Max(Math.Abs(loot.X - pet.X), Math.Abs(loot.Y - pet.Y));
+                    if (lootDist <= 1)
+                    {
+                        if (_entities.Get(loot.Id) == loot)
+                        {
+                            _entities.Remove(loot.Id);
+                            pet.LootItems.Add(new MobLootSlot(loot.ItemId, loot.Amount, pet.ClassId));
+                            _logger.LogDebug("pet {Pet} looted item {Item} x{Amt} (bag {N}/{Max})",
+                                pet.Id.Value, loot.ItemId, loot.Amount, pet.LootItems.Count, pet.AutoLootMax);
+                        }
+                    }
+                    else if (entity.Walk == null)
+                    {
+                        _movement.TryStartWalk(pet, loot.X, loot.Y);
+                    }
+                }
             }
         }
 

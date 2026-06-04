@@ -56,6 +56,64 @@ public class SummonAiServiceTests
         Assert.Null(ctx.Entities.Get(summon.Id));
     }
 
+    [Fact]
+    public void LooterPet_AdjacentItem_PicksItIntoBag()
+    {
+        var ctx = Build();
+        var master = ctx.AddPlayer(50, 50);
+        var pet = ctx.AddLooterPet(master.Id, 51, 50, autoLootMax: 10);
+        var item = ctx.AddFloorItem(51, 51); // adjacent to the pet
+
+        ctx.Ai.Tick(nowTick: 0);
+
+        Assert.Null(ctx.Entities.Get(item.Id));        // floor item removed
+        Assert.Single(pet.LootItems);                  // into the bag
+        Assert.Equal(909, pet.LootItems[0].ItemId);
+    }
+
+    [Fact]
+    public void LooterPet_DistantItem_WalksTowardIt()
+    {
+        var ctx = Build();
+        var master = ctx.AddPlayer(50, 50);
+        var pet = ctx.AddLooterPet(master.Id, 51, 50, autoLootMax: 10);
+        ctx.AddFloorItem(53, 50); // a few cells away, within loot range
+
+        ctx.Ai.Tick(nowTick: 0);
+
+        Assert.NotNull(pet.Walk);                       // walking to fetch it
+        Assert.Empty(pet.LootItems);
+    }
+
+    [Fact]
+    public void LooterPet_FullBag_DoesNotLoot()
+    {
+        var ctx = Build();
+        var master = ctx.AddPlayer(50, 50);
+        var pet = ctx.AddLooterPet(master.Id, 51, 50, autoLootMax: 1);
+        pet.LootItems.Add(new MobLootSlot(501, 1, pet.ClassId)); // already at cap
+        var item = ctx.AddFloorItem(51, 51);
+
+        ctx.Ai.Tick(nowTick: 0);
+
+        Assert.NotNull(ctx.Entities.Get(item.Id));      // left on the floor
+        Assert.Single(pet.LootItems);
+    }
+
+    [Fact]
+    public void NonLooterPet_IgnoresFloorItems()
+    {
+        var ctx = Build();
+        var master = ctx.AddPlayer(50, 50);
+        var pet = ctx.AddLooterPet(master.Id, 51, 50, autoLootMax: 0); // not a looter
+        var item = ctx.AddFloorItem(51, 51);
+
+        ctx.Ai.Tick(nowTick: 0);
+
+        Assert.NotNull(ctx.Entities.Get(item.Id));
+        Assert.Empty(pet.LootItems);
+    }
+
     private static TestContext Build()
     {
         const string mapName = "test_map";
@@ -77,7 +135,8 @@ public class SummonAiServiceTests
         var damage = new DamageService(visibility, mobSpawn, entities,
             new BattleCalculator(new Random(0)), NullLogger<DamageService>.Instance);
         var attack = new AttackService(entities, damage, movement, NullLogger<AttackService>.Instance);
-        var ai = new SummonAiService(entities, attack, movement, NullLogger<SummonAiService>.Instance);
+        var looter = new MobLooterService(entities, NullLogger<MobLooterService>.Instance);
+        var ai = new SummonAiService(entities, attack, movement, NullLogger<SummonAiService>.Instance, looter);
         return new TestContext(ai, entities, ids, (uint)mapName.GetHashCode());
     }
 
@@ -112,6 +171,20 @@ public class SummonAiServiceTests
             new StatusCalcService().CalcMob(mob);
             Entities.Add(mob);
             return mob;
+        }
+        public PetEntity AddLooterPet(EntityId masterId, short x, short y, int autoLootMax)
+        {
+            var db = new MobDbEntry { Id = 1002, AegisName = "PORING", Name = "Poring", Hp = 100 };
+            var pet = new PetEntity(Ids.NextMob(), db, MapId, x, y) { MasterId = masterId, AutoLootMax = autoLootMax };
+            new StatusCalcService().CalcMob(pet);
+            Entities.Add(pet);
+            return pet;
+        }
+        public FloorItemEntity AddFloorItem(short x, short y, int itemId = 909, short amount = 1)
+        {
+            var fi = new FloorItemEntity(Ids.NextMob(), itemId, amount, MapId, x, y, 0, 0, 0);
+            Entities.Add(fi);
+            return fi;
         }
     }
 

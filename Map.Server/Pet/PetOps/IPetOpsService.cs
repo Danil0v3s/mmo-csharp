@@ -61,7 +61,7 @@ public interface IPetOpsService
     /// <summary>rAthena <c>pet_set_intimate</c>.</summary>
     void SetIntimate(PlayerEntity master, int delta);
     /// <summary>rAthena <c>pet_lootitem_drop</c>.</summary>
-    void LootItemDrop(PlayerEntity master, int amount);
+    void LootItemDrop(PlayerEntity master);
     /// <summary>rAthena <c>pet_clear_support_bonuses</c>.</summary>
     void ClearSupportBonuses(PlayerEntity master);
     /// <summary>rAthena <c>pet_addautobonus</c>.</summary>

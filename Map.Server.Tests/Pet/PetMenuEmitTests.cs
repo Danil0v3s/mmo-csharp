@@ -202,7 +202,7 @@ public class PetMenuEmitTests
         public int EquipItem(PlayerEntity master, int inventoryIndex) => 0;
         public int ScCheck(PlayerEntity master, int statusType) => 0;
         public void SetIntimate(PlayerEntity master, int delta) { }
-        public void LootItemDrop(PlayerEntity master, int amount) { }
+        public void LootItemDrop(PlayerEntity master) { }
         public void ClearSupportBonuses(PlayerEntity master) { }
         public bool AddAutoBonus(PlayerEntity master, string bonus, int rate, int duration, ushort flag) => false;
         public void DelAutoBonus(PlayerEntity master) { }

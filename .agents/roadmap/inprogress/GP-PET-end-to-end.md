@@ -56,7 +56,12 @@ persistence round-trip are incomplete.
       (0=info/1=feed/2=performance/3=return/4=unequip — was wrong) + runaway gate. Remaining: verify
       catch/hatch at HEAD; bind the hatched pet to a pet_id stored on the egg card (archive FEATURE-27);
       rename.
-- [ ] **Combat/loot**: pet AI auto-skill dispatch + loot pickup bag (archive FEATURE-28).
+- [~] **Combat/loot**: loot pickup bag landed (turn 5 — `SummonAiService` pet-loot step:
+      `pet_ai_sub_hard` loot branch — a looter pet (`AutoLootMax > 0`, bag not full, near master, no
+      enemy target) hunts floor items via `IMobLooterService.FindNearestLoot`, walks onto them, picks
+      into `PetEntity.LootItems`; `PetOpsService.LootItemDrop` deposits the bag to the owner on
+      `ReturnEgg` — `pet_lootitem_drop`). Follow + assist already work via the generic summon AI.
+      **Remaining**: pet AI auto-skill dispatch (`pet_attackskill` — needs the pet_db skill data).
 - [ ] **Persistence**: pet row (class/name/intimacy/hunger/equip) load on hatch / save on
       mutate + logout; egg card carries pet_id across logout.
 - [x] **ZC emits**: pet status (`ZC_PROPERTY_PET` 0x01a2) + pet data
@@ -136,8 +141,20 @@ persistence round-trip are incomplete.
   full suite 4467 pass (1 = standing replay-fixture). **Filed GP-PET-RENAME-NAMEPKT** (over-head BL_PET
   name refresh on rename — needs the 0x0095 short name packet; cosmetic). Rename persistence
   (cross-relog) rides FEATURE-27.
-- **Remaining (next turns → done):** pet combat/loot (FEATURE-28: AI auto-skill + loot bag),
-  persistence binding pet_id↔egg-card + round-trip (FEATURE-27). The loop resumes this card.
+- **2026-06-04 (turn 5)** — Pet loot bag (FEATURE-28 loot half). `SummonAiService` gained the
+  `pet_ai_sub_hard` loot branch: a looter pet (`AutoLootMax > 0`, `LootItems.Count < AutoLootMax`,
+  within follow range of master, not engaged with an enemy) finds the nearest floor item via the
+  existing `IMobLooterService.FindNearestLoot`, walks onto it, and picks it into the inherited
+  `MobEntity.LootItems` bag. `PetOpsService.LootItemDrop` rewritten from a log-only stub to the real
+  `pet_lootitem_drop`: deposits each bag item to the owner's inventory (`GiveItem`), keeping
+  un-addable items in the bag rather than losing them; wired into `ReturnEgg` (deposit before recall).
+  Tests: `SummonAiServiceTests` +4 (adjacent-pickup, walk-to-distant, full-bag-skip, non-looter-skip),
+  new `PetLootDepositTests` (3: deliver+clear, keep-undeliverable, ReturnEgg-deposits). Full suite
+  4474 pass (1 = standing replay-fixture). **Filed GP-PET-LOOT-OVERFLOW** (rAthena ground-drop on full
+  inventory + 10s re-loot cooldown).
+- **Remaining (next turns → done):** pet AI auto-skill dispatch (`pet_attackskill`, FEATURE-28 combat
+  half — needs pet_db skill data), persistence binding pet_id↔egg-card + round-trip (FEATURE-27). The
+  loop resumes this card.
 
 ## Notes / gotchas
 
