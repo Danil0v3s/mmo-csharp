@@ -735,7 +735,12 @@ public sealed class StatusEffectRegistry
                 if (sc.Val3 > 0)
                     target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val3);
             },
-            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val3);
+            }));
 
         // SC_WINDWALK — +Flee + MoveSpeed boost. rAthena status.cpp:10985
         // sets val2 = (val1+1)/2 (Flee bonus 1/1/2/2/3/3/4/4/5/5).
@@ -2400,7 +2405,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val2);
                 target.Stats.Mdef = (short)Math.Max(0, target.Stats.Mdef - sc.Val3);
             },
-            Flags: buff));
+            Flags: buff,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val2);
+                target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val3);
+            }));
 
         // SC_OVERED_BOOST — Val2 = 400+40*Val1 flee bonus,
         //                   Val3 = 180+2*Val1 ASPD bonus,
@@ -2542,8 +2553,10 @@ public sealed class StatusEffectRegistry
                 if (sc.Val4 > 0) target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
             },
             Flags: buff,
-            // COMBAT-73 — re-apply the MaxHp % on the rebuilt pool. (The Res derived re-fold is
-            // the COMBAT-89 axis.)
+            // SC-DERIVED-RECALC — the Res derived re-fold (CalcPc rebuilds Res each recalc).
+            OnRecalc: (target, sc) =>
+                target.Stats.Res = (short)Math.Min(short.MaxValue, target.Stats.Res + sc.Val3),
+            // COMBAT-73 — re-apply the MaxHp % on the rebuilt pool.
             OnRecalcPool: (target, sc) =>
             {
                 var hpDelta = target.Stats.MaxHp * sc.Val2 / 100;
@@ -3286,7 +3299,12 @@ public sealed class StatusEffectRegistry
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
                 target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            }));
 
         // Wave 58 — SC_ShieldspellAtk: +Val1 to listed CalcFlag fields.
         // SC_SHIELDSPELL_ATK (LG_SHIELDSPELL lv3) — Val2 = 150 flat, added to BOTH watk and matk
@@ -3514,7 +3532,12 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            }));
 
         // Wave 58 — SC_TinderBreaker: -Val1 to listed CalcFlag fields.
         Register(StatusType.TinderBreaker, new StatusEffectHandler(
@@ -3554,7 +3577,12 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Res = (short)Math.Min(short.MaxValue, target.Stats.Res + sc.Val1);
             },
-            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Res = (short)Math.Max(0, target.Stats.Res - sc.Val1);
+            }));
 
         // SC-05 — SC_TROPIC_OPTION: fixed Val2 = 180 equip-Atk, NOT +Val1 Batk.
         // Val3 = MG_FIREBOLT autocast-on-attack is SC-16.
@@ -4169,7 +4197,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.Mdef = (short)Math.Max(0, target.Stats.Mdef - sc.Val1);
                 target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
+                target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val1);
+            }));
 
         // Wave 55 — Saturdaynightfever: -Val1 to Hit/Flee per CalcFlag
         // (debuff). The heal-suppress side still lives on StatusOpsService.
@@ -4351,7 +4385,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
                 target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val1);
             },
-            Flags: soulLink2));
+            Flags: soulLink2,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val1);
+            }));
 
         Register(StatusType.Soulgolem, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
@@ -4364,7 +4404,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
                 target.Stats.Mdef = (short)Math.Max(0, target.Stats.Mdef - sc.Val1);
             },
-            Flags: soulLink2));
+            Flags: soulLink2,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
+                target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val1);
+            }));
 
         Register(StatusType.Soulenergy, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
@@ -4375,7 +4421,12 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
             },
-            Flags: soulLink2));
+            Flags: soulLink2,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1);
+            }));
 
         // SC_SOULFAIRY (SOA_SOUL_OF_FAIRY) — Val2 = 10*Val1 → matk (status.cpp:7223; Val3 = cast-time
         // reduction, on the cast service). MAGIC bonus: the prior handler added Val1 to Batk (physical) —
@@ -4982,7 +5033,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
                 target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val1);
             },
-            Flags: ccDebuff));
+            Flags: ccDebuff,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
+                target.Stats.Mdef = (short)Math.Max(0, target.Stats.Mdef - sc.Val1);
+            }));
         Register(StatusType.Freeze, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
@@ -4994,7 +5051,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
                 target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val1);
             },
-            Flags: ccDebuff));
+            Flags: ccDebuff,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
+                target.Stats.Mdef = (short)Math.Max(0, target.Stats.Mdef - sc.Val1);
+            }));
 
         var combatBuff = ScfFlag.Buff | ScfFlag.RemoveOnLogout;
         // SC_MAGNIFICAT (AL_MAGNIFICAT) — +50% SP regen renewal.
@@ -7349,7 +7412,12 @@ public sealed class StatusEffectRegistry
                 target.Stats.Flee = ClampShort(target.Stats.Flee + sc.Val2);
             },
             OnEnd: (target, sc) => target.Stats.Flee = ClampShort(target.Stats.Flee - sc.Val2),
-            Flags: buff));
+            Flags: buff,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
+            }));
 
         // SC_STAR_COMFORT (status.cpp:11639) — val2 = (lv + dex + luk) (AspdRate).
         Register(StatusType.StarComfort, new StatusEffectHandler(
@@ -7409,7 +7477,12 @@ public sealed class StatusEffectRegistry
                 target.Stats.Flee = ClampShort(target.Stats.Flee + sc.Val2);
                 target.Stats.AspdRate = ClampShort(target.Stats.AspdRate + sc.Val3);
             },
-            Flags: debuff));
+            Flags: debuff,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2);
+            }));
 
         // SC_PRESTIGE (status.cpp:12144) — val3 = (val1*15 + 10*defenderLv)*lv/100
         // approximated with defenderLv=5 (the max). Adds Def.
@@ -7566,7 +7639,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.Def = ClampShort(target.Stats.Def - sc.Val2);
                 target.Stats.Mdef = ClampShort(target.Stats.Mdef - sc.Val3);
             },
-            Flags: buff));
+            Flags: buff,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val2);
+                target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val3);
+            }));
 
         // SC_STONEHARDSKIN (status.cpp:11835) — Def/Mdef += val1 (where val1 was
         // pre-computed by the caster as jobLv * pc_checkskill(RK_RUNEMASTERY)/4
@@ -7582,7 +7661,13 @@ public sealed class StatusEffectRegistry
                 target.Stats.Def = ClampShort(target.Stats.Def - sc.Val1);
                 target.Stats.Mdef = ClampShort(target.Stats.Mdef - sc.Val1);
             },
-            Flags: buff));
+            Flags: buff,
+            // SC-DERIVED-RECALC — re-apply reset field(s) after CalcPc rebuild.
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1);
+                target.Stats.Mdef = (short)Math.Min(short.MaxValue, target.Stats.Mdef + sc.Val1);
+            }));
 
         // SC_GIANTGROWTH (status.cpp:11858) — flat +30 STR (NOT +Val1).
         // Already has a Register higher up (line ~1020), but the existing

@@ -90,6 +90,23 @@ public class Combat53BespokeRefoldTests
     [InlineData(StatusType.Eqc, CalcStatField.Def2, 5)]
     [InlineData(StatusType.PowerOfGaia, CalcStatField.Def, 5)]
     [InlineData(StatusType.SolidSkinOption, CalcStatField.Def, 5)]
+    // batch 3 — flat reset-field re-application
+    [InlineData(StatusType.Rushwindmill, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.TelekinesisIntense, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.Soulenergy, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.MoonComfort, CalcStatField.Flee, 5)]
+    [InlineData(StatusType.Gloomyday, CalcStatField.Flee, 5)]
+    [InlineData(StatusType.Soulfalcon, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.Stone, CalcStatField.Def, 5)]
+    [InlineData(StatusType.Freeze, CalcStatField.Def, 5)]
+    [InlineData(StatusType.Steelbody, CalcStatField.Def, 5)]
+    [InlineData(StatusType.Soulgolem, CalcStatField.Mdef, 5)]
+    [InlineData(StatusType.StoneWall, CalcStatField.Def, 5)]
+    [InlineData(StatusType.Armorchange, CalcStatField.Mdef, 5)]
+    [InlineData(StatusType.Stonehardskin, CalcStatField.Def, 5)]
+    [InlineData(StatusType.FirmFaith, CalcStatField.Res, 5)]
+    // ToxinOfMandara (Res−) and Curse (Batk−) are subtract-debuffs whose PC base is 0 here, so the
+    // CalcPc-integrated assert can't move them — covered by mob-based unit tests in SC02CalcFlagAllTests.
     public void Bespoke_derived_mod_survives_recalc_and_is_idempotent(
         StatusType type, CalcStatField field, int val1)
     {

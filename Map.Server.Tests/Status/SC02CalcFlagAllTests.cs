@@ -336,6 +336,42 @@ public class SC02CalcFlagAllTests
 
     // ---- SC-MAGNITUDE: flat-Matk handlers must survive a CalcPc recalc (re-apply via OnRecalc) ----
 
+    // ---- SC-DERIVED-RECALC: subtract-debuffs re-apply their reduction on recalc (zero-base on a PC,
+    //      so tested on a mob with a set base) ----
+
+    [Fact]
+    public void ToxinOfMandara_resReduction_survivesRecalc()
+    {
+        var mob = FreshMob();
+        mob.Stats.Res = 100;
+        var h = _reg.Get(StatusType.ToxinOfMandara)!;
+        var sc = new StatusChange { Type = StatusType.ToxinOfMandara, Val1 = 5 };
+        h.OnStart(mob, sc, null);
+        Assert.Equal(95, mob.Stats.Res);             // −Val1
+
+        mob.Stats.Res = 100;                          // simulate CalcPc rebuild
+        Assert.NotNull(h.OnRecalc);
+        h.OnRecalc!(mob, sc);
+        Assert.Equal(95, mob.Stats.Res);             // reduction re-applied
+    }
+
+    [Fact]
+    public void Curse_batkQuarterDrop_survivesRecalc()
+    {
+        var mob = FreshMob();
+        mob.Stats.Batk = 400;
+        var h = _reg.Get(StatusType.Curse)!;
+        var sc = new StatusChange { Type = StatusType.Curse, Val1 = 1 };
+        h.OnStart(mob, sc, null);
+        Assert.Equal(100, sc.Val3);                  // Batk/4 snapshot
+        Assert.Equal(300, mob.Stats.Batk);           // −Val3
+
+        mob.Stats.Batk = 400;                         // simulate CalcPc rebuild
+        Assert.NotNull(h.OnRecalc);
+        h.OnRecalc!(mob, sc);
+        Assert.Equal(300, mob.Stats.Batk);           // drop re-applied (uses the snapshot, not re-quartered)
+    }
+
     // ---- SC-MAGNITUDE turn 9: element-spirit option + Sunstance Watk/Matk buffs must survive recalc ----
 
     [Theory]

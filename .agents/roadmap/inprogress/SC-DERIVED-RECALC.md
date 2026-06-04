@@ -28,17 +28,14 @@ ticket sweeps the generator-reapply-set fields (Def/Hit/Flee/Cri/Batk/…) for b
 
 | Layer | Exists? | Where / what's missing |
 |---|---|---|
-| Service logic | partial | `Map.Server/Status/StatusEffectRegistry.cs` — the handlers below modify a reset field in OnStart with no OnRecalc. **Batch 1 done** (turn 11): Fear, Cloaking. **Batch 2 done** (turn 12): Zangetsu, Madnesscancel, Signumcrucis, GoldeneFerse, Flashcombo, PowerfulFaith, Soulshadow, HeatBarrel, Eqc, PowerOfGaia, SolidSkinOption. |
+| Service logic | partial | `Map.Server/Status/StatusEffectRegistry.cs` — the handlers below modify a reset field in OnStart with no OnRecalc. **Batch 1** (turn 11): Fear, Cloaking. **Batch 2** (turn 12): Zangetsu, Madnesscancel, Signumcrucis, GoldeneFerse, Flashcombo, PowerfulFaith, Soulshadow, HeatBarrel, Eqc, PowerOfGaia, SolidSkinOption. **Batch 3** (turn 13): Rushwindmill, TelekinesisIntense, Soulenergy, ToxinOfMandara, MoonComfort, Gloomyday, Soulfalcon, Stone, Freeze, Steelbody, Soulgolem, StoneWall, Armorchange, Stonehardskin, Curse, FirmFaith. |
 
-### Remaining handlers (final registration, reset-field, no OnRecalc) — ~32 left
+### Remaining handlers (final registration, reset-field, no OnRecalc) — ~11 flat + 5 careful
 
-Flat reset-field (clean, do next): Curse[Batk], DragonicAura[Hit,Patk], Fling[Def,Def2],
-Neutralbarrier[Def,Mdef], StoneWall[Def,Mdef], FirmFaith[Res], Bloodylust[Batk,Def,Def2],
-Rushwindmill[Batk], TelekinesisIntense[Batk], ToxinOfMandara[Res], WaterBarrier[Batk,Flee],
-Steelbody[Def,Mdef], Saturdaynightfever[Flee,Hit], Soulfalcon[Batk,Hit], Soulgolem[Def,Mdef],
-Soulenergy[Batk], Twohandquicken[Cri,Hit], Stone[Def,Mdef], Freeze[Def,Mdef], DMachine[Def,Res],
-AbyssSlayer[Patk,Smatk,Hit], TemporaryCommunion[Patk,Smatk,Hplus], SunComfort[Def2],
-MoonComfort[Flee], Gloomyday[Flee], Armorchange[Def,Mdef], Stonehardskin[Def,Mdef].
+Flat reset-field (clean, do next): DragonicAura[Hit,Patk], Fling[Def,Def2], Neutralbarrier[Def,Mdef %],
+Bloodylust[Batk,Def,Def2], WaterBarrier[Batk,Flee], Saturdaynightfever[Flee,Hit],
+Twohandquicken[Cri,Hit], DMachine[Def,Res], AbyssSlayer[Patk,Smatk,Hit],
+TemporaryCommunion[Patk,Smatk,Hplus], SunComfort[Def2].
 
 Need per-field care (percent / primary-stat coupling / MaxHp pool): GtChange[Batk %],
 Fleet[Batk %], Magicpower[Smatk %], Truesight[Cri,Hit — +5 Luk feeds Cri], Berserk[Batk + Flee/2
@@ -87,3 +84,10 @@ Fleet[Batk %], Magicpower[Smatk %], Truesight[Cri,Hit — +5 Luk feeds Cri], Ber
   own passes). Also extended the `Combat53BespokeRefoldTests.Read()` helper to cover Patk/Smatk/Res/Mres/
   Hplus/Crate/Flee2/Mdef2 so these fields are testable. All 11 verified in the Combat53 theory; full suite
   4605 pass (1 = standing replay-fixture). ~32 remain.
+- 2026-06-04 (turn 13) — **Batch 3**: 16 more flat reset-field handlers — Rushwindmill/TelekinesisIntense/
+  Soulenergy (Batk), ToxinOfMandara/FirmFaith (Res), MoonComfort/Gloomyday (Flee), Soulfalcon (Batk+Hit),
+  Stone/Freeze/Steelbody/Soulgolem/StoneWall/Armorchange/Stonehardskin (Def/Mdef pairs), Curse (Batk−Batk/4).
+  Done via a scripted per-handler OnRecalc injection (located each by name, mirrored its OnStart deltas) +
+  a manual FirmFaith edit (it already had an OnRecalcPool). 14 verified in the Combat53 theory; the two
+  subtract-debuffs whose PC base is 0 (ToxinOfMandara Res−, Curse Batk−) got mob-based unit tests in SC02
+  instead. Full suite 4639 pass (1 = standing replay-fixture). ~11 flat + 5 careful remain.
