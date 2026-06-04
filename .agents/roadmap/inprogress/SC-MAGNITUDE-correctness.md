@@ -80,6 +80,17 @@
   structural work + every clean conversion are done; closing the worklist further requires the MoveSpeed%
   infra + 4th-job-stat modeling (separate tickets) — SC-MAGNITUDE has reached the limit of what an
   autonomous sweep can faithfully convert.
+- **2026-06-04 (turn 4)** — Corrected the turn-3 MoveSpeed premise + fixed SC_GN_CARTBOOST. The movement
+  speed system is **not** missing — `StatusCalcService.ComputeScSpeed` (status_calc_speed) already
+  implements the full SC speed_rate accumulator and CalcPc overwrites `BattleStats.Speed` with it; it
+  reads each speed SC's real magnitude directly (GnCartboost.Val2@718, Catnippowder.Val3, Arclousedash.Val3,
+  DoramWalkspeed.Val1@723, Walkspeed.Val1@739). So the `Speed`-CalcFlag generator stat-mod is redundant
+  (immediately overwritten), not blocked-on-infra → **deleted the false-premise SC-MOVESPEED-FIELD ticket.**
+  Fixed **SC_GN_CARTBOOST**: its OnStart now sets Val2 = 50/75/100 by level so ComputeScSpeed has a value
+  (the +Val1 generator default never set Val2, so the speed-up read 0 — the bonus was broken). Worklist
+  143 → 142. (DoramWalkspeed/Walkspeed stay generator-default: their +Val1-to-Speed is harmlessly
+  overwritten, and the Register no-downgrade-to-NoOp guard blocks converting them to presence-only.)
+  3 tests + a completeness-allowlist entry; full suite 4567 pass (1 = standing replay-fixture).
 
 ## Notes
 

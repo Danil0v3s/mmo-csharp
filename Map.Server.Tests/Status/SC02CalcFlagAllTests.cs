@@ -170,6 +170,22 @@ public class SC02CalcFlagAllTests
     public void Hiss_isConverted_notGeneratorDefault()
         => Assert.DoesNotContain(StatusType.Hiss, _reg.GeneratedStatModDefaultTypes);
 
+    // ---- SC-MAGNITUDE: SC_GN_CARTBOOST — Val2 by level for the speed calc (effect in ComputeScSpeed) ----
+
+    [Fact]
+    public void GnCartboost_setsVal2ByLevel_forTheSpeedCalc()
+    {
+        // status.cpp:11939 — Val2 = 50 (<3) / 75 (3-4) / 100 (≥5). ComputeScSpeed reads Val2; the +Val1
+        // generator default never set Val2 (so the speed-up read 0). This OnStart fixes that.
+        var sc = new StatusChange { Type = StatusType.GnCartboost, Val1 = 3 };
+        Apply(StatusType.GnCartboost, sc, FreshMob());
+        Assert.Equal(75, sc.Val2);
+    }
+
+    [Fact]
+    public void GnCartboost_isConverted_notGeneratorDefault()
+        => Assert.DoesNotContain(StatusType.GnCartboost, _reg.GeneratedStatModDefaultTypes);
+
     // ---- the reclassified SCs are no longer in the CalcFlag generator table ----
 
     [Theory]

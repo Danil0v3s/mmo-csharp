@@ -73,6 +73,11 @@ public class StatusEffectCompletenessTests
     private static readonly IReadOnlyDictionary<StatusType, string> _behaviorElsewhereAllowlist =
         new Dictionary<StatusType, string>
         {
+            // ---- SC-MAGNITUDE: SC_GN_CARTBOOST — its OnStart sets Val2 (50/75/100 by level) for the
+            //      movement-speed calc; the actual speed-up is applied by StatusCalcService.ComputeScSpeed
+            //      (status_calc_speed), not a BattleStats stat-mod, so OnStart changes no stat directly. ----
+            [StatusType.GnCartboost] = "speed effect in ComputeScSpeed (reads the Val2 this OnStart sets)",
+
             // ---- DoT SCs: behavior is in OnPeriodic, not OnStart. ----
             // [StatusType.Poison] — Wave 56: removed; OnPeriodic tick body satisfies the gate
             // [StatusType.Burning] — Wave 56: removed; OnPeriodic tick body satisfies the gate

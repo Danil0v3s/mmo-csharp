@@ -1277,6 +1277,22 @@ public sealed class StatusEffectRegistry
             OnRecalc: (target, sc) =>
                 target.Stats.Flee2 = (short)Math.Min(short.MaxValue, target.Stats.Flee2 + sc.Val2)));
 
+        // SC-MAGNITUDE — the movement-speed cluster. status.yml tags these `CalcFlags: Speed`, so the
+        // generator synthesized a `+Val1` to BattleStats.Speed — but the REAL movement-speed magnitude
+        // lives in StatusCalcService.ComputeScSpeed (status_calc_speed), which CalcPc uses to overwrite
+        // BattleStats.Speed every recalc. The stat-mod was therefore redundant + immediately wiped.
+        // Convert them off the generic synthesis: the speed effect stays in ComputeScSpeed.
+
+        // SC_GN_CARTBOOST — Val2 = 50/75/100 by level (movement-speed % up). ComputeScSpeed reads Val2;
+        // set it here so the bonus is actually present (the +Val1 generator default never set Val2, so the
+        // speed-up read 0). status.cpp:11939. No stat-mod body — the speed effect lives in ComputeScSpeed.
+        Register(StatusType.GnCartboost, new StatusEffectHandler(
+            OnStart: (_, sc, _) => { if (sc.Val2 == 0) sc.Val2 = sc.Val1 < 3 ? 50 : sc.Val1 < 5 ? 75 : 100; },
+            OnEnd: _NoOpEnd, Flags: buff));
+        // (SC_DORAM_WALKSPEED / SC_WALKSPEED stay generator-default: ComputeScSpeed reads their Val1
+        // directly, and the synthesised +Val1-to-Speed is harmlessly overwritten by CalcPc each recalc —
+        // a real Register here would be blocked by the no-downgrade-to-NoOp guard anyway.)
+
         // SC_SERVICE4U — Val2 = MaxSP % bonus (9+Val1 capped at 20),
         //                Val3 = 5+Val1 (SP cost reduction %).
         // status.yml CalcFlag table also reads all 6 base stats — wrong.
