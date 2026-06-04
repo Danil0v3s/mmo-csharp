@@ -185,6 +185,15 @@
   **SC_KYOUGAKU** (6 stats −Val2) and **SC_C_MARKER** (Flee −Val3) remain generator-default+wrong-sign but
   their reduction magnitude is set by the casting skill (not the SC start-arm) and isn't determinable from
   status.cpp alone — deferred within this card pending the skill-side formula.
+- **2026-06-04 (turn 18)** — Fixed-magnitude audit (grepped `stat ±= <constant>` SC arms in `status_calc_*`).
+  Converted **SC_CHEERUP** (flat +3 to all six base stats — generator used +Val1) and **SC_BANANA_BOMB**
+  (flat −75 Luk, status.cpp:6907 — generator *added* +Val1, wrong sign+magnitude; snapshots the actual
+  reduction in Val2 so the OnEnd restore is exact when Luk < 75). Worklist 143 → 141. 3 tests; full suite
+  4675 pass (1 = standing replay-fixture). The clan SCs (Arcwand/Crossbow/Goldenmace/Swordclan) are
+  generator-default with a +1-stat part that's coincidentally right but a MaxHp/MaxSp **percent** bonus the
+  generator does as flat +Val1 — deferred (needs the percent-pool OnRecalcPool pattern). SC_CLIMAX_CRYIMP
+  (def+300/mdef+100 + elemental) and the absolute-set SCs (SC_DEFSET/SC_ETERNALCHAOS set Def to a value)
+  remain as distinct non-+Val1 axes.
 
 ## Notes
 

@@ -1348,6 +1348,46 @@ public sealed class StatusEffectRegistry
             },
             Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
 
+        // SC_CHEERUP (CG_SPECIALSINGER / cheer) — flat +3 to all six base stats (status.cpp:6566+
+        // str/agi/vit/int/dex/luk += 3). The generator's +Val1 (= skill level) is the wrong magnitude.
+        // Primary stats survive recalc via the COMBAT-10 param-base delta, so no OnRecalc.
+        Register(StatusType.Cheerup, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var s = target.Stats;
+                s.Str = (short)Math.Min(short.MaxValue, s.Str + 3);
+                s.Agi = (short)Math.Min(short.MaxValue, s.Agi + 3);
+                s.Vit = (short)Math.Min(short.MaxValue, s.Vit + 3);
+                s.IntStat = (short)Math.Min(short.MaxValue, s.IntStat + 3);
+                s.Dex = (short)Math.Min(short.MaxValue, s.Dex + 3);
+                s.Luk = (short)Math.Min(short.MaxValue, s.Luk + 3);
+            },
+            OnEnd: (target, sc) =>
+            {
+                var s = target.Stats;
+                s.Str = (short)Math.Max(0, s.Str - 3);
+                s.Agi = (short)Math.Max(0, s.Agi - 3);
+                s.Vit = (short)Math.Max(0, s.Vit - 3);
+                s.IntStat = (short)Math.Max(0, s.IntStat - 3);
+                s.Dex = (short)Math.Max(0, s.Dex - 3);
+                s.Luk = (short)Math.Max(0, s.Luk - 3);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_BANANA_BOMB — flat −75 Luk (status.cpp:6907 luk -= 75). The generator's +Val1 is the wrong
+        // SIGN (a buff where rAthena cuts Luk) and magnitude. Snapshot the actual reduction in Val2 so the
+        // OnEnd restore is exact even when Luk < 75 (the 0-clamp would otherwise over-restore).
+        Register(StatusType.BananaBomb, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                var before = target.Stats.Luk;
+                target.Stats.Luk = (short)Math.Max(0, before - 75);
+                sc.Val2 = before - target.Stats.Luk;
+            },
+            OnEnd: (target, sc) =>
+                target.Stats.Luk = (short)Math.Min(short.MaxValue, target.Stats.Luk + sc.Val2),
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
         // SC_GUARD_STANCE (IG_GUARD_STANCE) — Val2 = 50+50*Val1 (DEF increase), Val3 = 50*Val1
         // (Watk decrease). rAthena status.cpp:12445; status.yml CalcFlags: Watk + Def. The +Val1
         // generator default would add +Val1 to both Watk and Def (wrong sign + wrong magnitude).

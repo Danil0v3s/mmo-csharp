@@ -387,10 +387,44 @@ public class SC02CalcFlagAllTests
         Assert.Equal(50, mob.Stats.Str);
     }
 
+    [Fact]
+    public void Cheerup_addsFlat3_toAllSixStats()
+    {
+        var mob = FreshMob();   // all = 50
+        var sc = new StatusChange { Type = StatusType.Cheerup, Val1 = 1 };
+        Apply(StatusType.Cheerup, sc, mob);
+        Assert.Equal(53, mob.Stats.Str);
+        Assert.Equal(53, mob.Stats.Vit);
+        Assert.Equal(53, mob.Stats.Luk);
+        _reg.Get(StatusType.Cheerup)!.OnEnd!(mob, sc);
+        Assert.Equal(50, mob.Stats.Str);
+    }
+
+    [Fact]
+    public void BananaBomb_subtracts75Luk_andRestoresExactly()
+    {
+        var mob = FreshMob();
+        mob.Stats.Luk = 100;
+        var sc = new StatusChange { Type = StatusType.BananaBomb, Val1 = 1 };
+        Apply(StatusType.BananaBomb, sc, mob);
+        Assert.Equal(25, mob.Stats.Luk);            // 100 − 75
+        _reg.Get(StatusType.BananaBomb)!.OnEnd!(mob, sc);
+        Assert.Equal(100, mob.Stats.Luk);
+
+        // Luk < 75: the snapshot makes the restore exact (no over-restore from the 0-clamp).
+        mob.Stats.Luk = 40;
+        Apply(StatusType.BananaBomb, sc, mob);
+        Assert.Equal(0, mob.Stats.Luk);             // clamped
+        _reg.Get(StatusType.BananaBomb)!.OnEnd!(mob, sc);
+        Assert.Equal(40, mob.Stats.Luk);            // exact restore via Val2 snapshot
+    }
+
     [Theory]
     [InlineData(StatusType.Battleorders)]
     [InlineData(StatusType.AllStatDown)]
     [InlineData(StatusType.Stomachache)]
+    [InlineData(StatusType.Cheerup)]
+    [InlineData(StatusType.BananaBomb)]
     public void PrimaryStatFix_isConverted_notGeneratorDefault(StatusType t)
         => Assert.DoesNotContain(t, _reg.GeneratedStatModDefaultTypes);
 
