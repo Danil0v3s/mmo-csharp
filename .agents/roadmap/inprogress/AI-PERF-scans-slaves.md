@@ -1,6 +1,6 @@
 # AI-PERF — Cell-grid range scans + full slave coupling
 
-> **Epic:** mobai · **Status:** ❌ Not started · **Size:** M · **Player-visible:** partial
+> **Epic:** mobai · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** partial
 > **Depends on:** none · **Unlocks:** none
 
 ## The deliverable
