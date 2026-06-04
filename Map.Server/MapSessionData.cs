@@ -173,4 +173,11 @@ public class MapSessionData(
     /// list packet goes out, cleared on result.
     /// </summary>
     public int? OpenShopNpcId { get; set; }
+
+    /// <summary>
+    /// True while the player has the cash-shop UI open (the "cash shop"
+    /// button path). Mirrors rAthena <c>sd-&gt;state.cashshop_open</c> —
+    /// set by the open request, cleared by close.
+    /// </summary>
+    public bool CashShopOpen { get; set; }
 }

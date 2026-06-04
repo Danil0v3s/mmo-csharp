@@ -218,29 +218,71 @@ public sealed class ItemCashRenormConverter : IYamlToSqlConverter
     public string SourceYamlPath => "db/item_cash.yml";
     public string OutputSqlPath => "Core.Database/Seeds/Scripts/seed_item_cash.sql";
 
+    /// <summary>
+    /// Project default cash catalog. rAthena ships <c>db/item_cash.yml</c> (and its
+    /// <c>db/import/item_cash.yml</c> + <c>import-tmpl</c>) with an <b>empty</b> body — the cash shop
+    /// is deployment content each server owner fills in their import file, so there is nothing to
+    /// import upstream. To keep the cash shop a populated, playable feature (GP-CASHSHOP), this
+    /// converter falls back to a representative catalog of items that exist in our item_db seed,
+    /// priced in #CASHPOINTS, spread across the standard tabs (with a discounted Sale-tab entry).
+    /// Any rows present in the upstream YAML take precedence + are appended.
+    /// </summary>
+    private static readonly (string Tab, string Aegis, int Price)[] DefaultCatalog =
+    {
+        ("New",          "Bubble_Gum",          800),
+        ("New",          "Battle_Manual",       500),
+        ("Hot",          "Token_Of_Siegfried", 1000),
+        ("Hot",          "Glass_Of_Illusion",   400),
+        ("Limited",      "Convex_Mirror",       300),
+        ("Scrolls",      "Spark_Candy",         250),
+        ("Consumables",  "White_Potion",        100),
+        ("Consumables",  "Blue_Potion",         120),
+        ("Consumables",  "Yggdrasilberry",      800),
+        ("Other",        "Anodyne",             200),
+        // Sale tab carries its own (discounted) price — buying via Sale during an active sale
+        // window charges this lower amount (findItemInTab(SALE)). Half the New-tab Bubble_Gum price.
+        ("Sale",         "Bubble_Gum",          400),
+    };
+
     public Task<string> ConvertAsync(string rathenaRoot, CancellationToken ct = default)
     {
         var body = YamlHelpers.LoadBody(Path.Combine(rathenaRoot, SourceYamlPath));
-        var sb = new StringBuilder();
-        var n = 0;
+
+        // (tab → ordered list of (aegis, price)); preserve tab insertion order.
+        var tabs = new List<string>();
+        var entries = new Dictionary<string, List<(string aegis, int price)>>(StringComparer.OrdinalIgnoreCase);
+        void Add(string tab, string aegis, int price)
+        {
+            if (!entries.TryGetValue(tab, out var list)) { list = new(); entries[tab] = list; tabs.Add(tab); }
+            list.RemoveAll(e => string.Equals(e.aegis, aegis, StringComparison.OrdinalIgnoreCase));
+            list.Add((aegis, price));
+        }
+
+        // Project default catalog first (upstream is empty by design)...
+        foreach (var (tab, aegis, price) in DefaultCatalog) Add(tab, aegis, price);
+        // ...then any upstream rows override / extend it.
         foreach (var row in body.Rows())
         {
             var tab = row.Str("Tab");
             if (string.IsNullOrEmpty(tab)) continue;
-            sb.AppendLine(SqlEmit.Replace("item_cash_db",
-                new[] { "tab" }, new object?[] { tab }));
-            n++;
             foreach (var entry in row.Rows("Items"))
             {
                 var aegis = entry.Str("Item");
-                var price = entry.Int("Price") ?? 0;
                 if (string.IsNullOrEmpty(aegis)) continue;
+                Add(tab, aegis, entry.Int("Price") ?? 0);
+            }
+        }
+
+        var sb = new StringBuilder();
+        foreach (var tab in tabs)
+        {
+            sb.AppendLine(SqlEmit.Replace("item_cash_db", new[] { "tab" }, new object?[] { tab }));
+            foreach (var (aegis, price) in entries[tab])
                 sb.AppendLine(SqlEmit.Replace("item_cash_entry_db",
                     new[] { "tab", "item_aegis", "price" },
                     new object?[] { tab, aegis, price }));
-            }
         }
-        return Task.FromResult(SqlEmit.Header(Name, SourceYamlPath, n) + sb);
+        return Task.FromResult(SqlEmit.Header(Name, SourceYamlPath + " + project default catalog", tabs.Count) + sb);
     }
 }
 

@@ -5,8 +5,8 @@ namespace Map.Server.Shop.Cash;
 /// <summary>
 /// Result of a cash-shop purchase, mirroring rAthena
 /// <c>e_CASHSHOP_ACK</c> (clif.hpp:78). The map server resolves the
-/// per-condition code; the ZC ack/result packet emit consumes it
-/// (PACKET seam → PACKET-08).
+/// per-condition code; <c>BuyCashItemHandler</c> maps it to the
+/// <c>CASHSHOP_RESULT_*</c> wire code and emits <c>ZC_PC_BUY_CASHITEM_RESULT</c>.
 /// </summary>
 public enum CashShopResult : byte
 {
@@ -48,6 +48,15 @@ public interface ICashShopService
     /// <see cref="CashShopResult"/> (<see cref="CashShopResult.Success"/> on a completed purchase) —
     /// no mutation happens on any rejection (all-or-nothing).</summary>
     CashShopResult BuyList(PlayerEntity pc, int kafraPay, IReadOnlyList<(int itemId, int qty, byte tab)> items);
+
+    /// <summary>rAthena <c>clif_cashshop_list</c> — the loaded catalog grouped by tab (only non-empty
+    /// tabs), for the <c>ZC_ACK_SCHEDULER_CASHITEM</c> emit. Each tab carries its (itemId, price) rows;
+    /// the Sale tab carries the discounted prices.</summary>
+    IReadOnlyList<(int tab, IReadOnlyList<(uint itemId, int price)> items)> CatalogTabs();
+
+    /// <summary>rAthena <c>sale_notify_login</c> data — each currently-active sale as
+    /// (itemId, remaining stock, seconds until it ends), for the login sale-banner emit.</summary>
+    IReadOnlyList<(int itemId, int amount, int remainingSeconds)> ActiveSaleNotifications();
 
     /// <summary>rAthena <c>CashShopDatabase::parseBodyNode</c> — (re)load the cashshop catalog.</summary>
     void Reload();

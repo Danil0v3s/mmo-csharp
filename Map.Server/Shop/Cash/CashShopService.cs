@@ -17,8 +17,9 @@ namespace Map.Server.Shop.Cash;
 /// kafra-then-cash point split, grants the items, and decrements consumed sale stock — all
 /// or nothing. The sale-window timer machinery is unchanged.
 ///
-/// The CZ buy request handler + the ZC ack/result/cash-point-list/sale-list packet emits are the
-/// PACKET-08 seam (cash-shop client packets); this service is the parity-faithful core they drive.
+/// The cash-shop client packets (open/list/buy-result/sale-banner) are emitted via
+/// <see cref="ICashShopClientService"/>, driven by the CZ handlers + <see cref="SaleNotifyLogin"/>
+/// (GP-CASHSHOP). Account-bound point persistence across logout is the remaining vertical slice.
 /// </summary>
 public sealed class CashShopService : ICashShopService, IDisposable
 {
@@ -54,19 +55,22 @@ public sealed class CashShopService : ICashShopService, IDisposable
     private readonly IItemCatalog? _items;
     private readonly ISessionManagerAccessor? _sessions;
     private readonly IInventoryService? _inventory;
+    private readonly ICashShopClientService? _client;
 
     public CashShopService(
         ILogger<CashShopService> logger,
         IServiceScopeFactory? scopes = null,
         IItemCatalog? items = null,
         ISessionManagerAccessor? sessions = null,
-        IInventoryService? inventory = null)
+        IInventoryService? inventory = null,
+        ICashShopClientService? client = null)
     {
         _logger = logger;
         _scopes = scopes;
         _items = items;
         _sessions = sessions;
         _inventory = inventory;
+        _client = client;
         Reload();
     }
 
@@ -221,17 +225,43 @@ public sealed class CashShopService : ICashShopService, IDisposable
     }
 
     /// <summary>rAthena <c>sale_notify_login</c> — surface the active-sale list to a logging-in
-    /// player. The data half (the active sale snapshot) is real; the ZC_NOTIFY_BARGAIN_SALE list
-    /// packet emit is the PACKET-08 seam.</summary>
+    /// player: per active sale, <c>clif_sale_start</c> (item + remaining time) + <c>clif_sale_amount</c>
+    /// (remaining stock).</summary>
     public void SaleNotifyLogin(PlayerEntity pc)
     {
-        var active = ActiveSales();
-        // PACKET-08: emit ZC_ACK_SCHEDULER_CASHITEM / clif_sale_amount for each entry to `pc`.
-        _logger.LogDebug("sale_notify_login: {N} active sale(s) for {Pc}", active.Count, pc.Name);
+        var sales = ActiveSaleNotifications();
+        if (sales.Count > 0) _client?.SendActiveSales(pc, sales);
+        _logger.LogDebug("sale_notify_login: {N} active sale(s) for {Pc}", sales.Count, pc.Name);
+    }
+
+    /// <summary>rAthena <c>clif_cashshop_list</c> source — the loaded catalog grouped by tab
+    /// (only non-empty tabs), ordered by tab index.</summary>
+    public IReadOnlyList<(int tab, IReadOnlyList<(uint itemId, int price)> items)> CatalogTabs()
+    {
+        var result = new List<(int, IReadOnlyList<(uint, int)>)>();
+        foreach (var tab in _catalog.Keys.OrderBy(k => k))
+        {
+            var dict = _catalog[tab];
+            if (dict.Count == 0) continue;
+            result.Add((tab, dict.Select(kv => (kv.Key, kv.Value)).ToList()));
+        }
+        return result;
+    }
+
+    /// <summary>rAthena <c>sale_notify_login</c> data — each active sale as
+    /// (itemId, remaining stock, seconds until end).</summary>
+    public IReadOnlyList<(int itemId, int amount, int remainingSeconds)> ActiveSaleNotifications()
+    {
+        var now = DateTime.UtcNow;
+        var list = new List<(int, int, int)>();
+        foreach (var s in _sales.Values)
+            if (s.Active)
+                list.Add((s.ItemId, s.Amount, (int)Math.Max(0, (s.EndAt - now).TotalSeconds)));
+        return list;
     }
 
     /// <summary>FEATURE-13 — the currently-active sale snapshot (item id + discounted price +
-    /// remaining stock). Real data the PACKET-08 sale-list emit + tests consume.</summary>
+    /// remaining stock). Real data the sale-list emit + tests consume.</summary>
     public IReadOnlyList<(int itemId, int price, int amount)> ActiveSales()
     {
         var list = new List<(int, int, int)>();

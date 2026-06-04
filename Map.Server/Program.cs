@@ -541,6 +541,7 @@ builder.Services.AddSingleton<Map.Server.Pathing.IPathService, Map.Server.Pathin
 builder.Services.AddSingleton<Map.Server.Mail.IMailService, Map.Server.Mail.MailService>();
 // FEATURE-06 — map-side auction service (escrow + char-side dispatch; payouts via mail).
 builder.Services.AddSingleton<Map.Server.Auction.IAuctionService, Map.Server.Auction.AuctionService>();
+builder.Services.AddSingleton<Map.Server.Shop.Cash.ICashShopClientService, Map.Server.Shop.Cash.CashShopClientService>();
 builder.Services.AddSingleton<Map.Server.Shop.Cash.ICashShopService, Map.Server.Shop.Cash.CashShopService>();
 builder.Services.AddSingleton<Map.Server.Trade.Wire.ITradeWireService, Map.Server.Trade.Wire.TradeWireService>();
 builder.Services.AddSingleton<Map.Server.Navi.INaviService, Map.Server.Navi.NaviService>();

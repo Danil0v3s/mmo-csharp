@@ -93,7 +93,9 @@ this ticket already needed.** "Service landed, packets later" is not done.
 | GP-VEND-OVERWEIGHT | Buyer over the weight limit is refused (needs weight system exposed) — split from GP-VEND |
 | GP-AUTOTRADE-RUNTIME | Offline autotrade vendors/buyers stay open + sellable across logout (headless on-map presence) — shared by GP-VEND + GP-BUYSTORE |
 | GP-BUYSTORE | ✅ Buying store end-to-end (open/escrow/own-list/stall-sign/click-view/sell-in-trade/close-refund) — search→INF-SEARCHSTORE, autotrade→GP-AUTOTRADE-RUNTIME | FEATURE-12/36, PACKET-08 |
-| GP-CASHSHOP | Cash shop works end-to-end (catalog/buy/points-persist/sale/UI) | FEATURE-13/37/38/39, PACKET-08 |
+| GP-CASHSHOP | 🚧 Cash shop end-to-end (catalog/open/browse/buy/sale-price + login sale banner; points-persist→turn 2, slot-code→GP-CASHSHOP-SLOT-WEIGHT-CODE, sale-scheduler→GP-CASHSHOP-SALE-BANNER) | FEATURE-13/37/38/39, PACKET-08 |
+| GP-CASHSHOP-SLOT-WEIGHT-CODE | Cash-shop buy reports slot-full (5) vs over-weight (4) distinctly — split from GP-CASHSHOP |
+| GP-CASHSHOP-SALE-BANNER | Timed limited-time-sale scheduling + live banner/countdown/refresh (@sale + sales table) — split from GP-CASHSHOP |
 | GP-INSTANCE | Instances work end-to-end (create/enter/populated maps/lifecycle/UI) | FEATURE-14, INFRA-12, PACKET-09 |
 | GP-WOE | WoE works end-to-end (scheduler✅ + castles + Emperium + guardians) | FEATURE-15, COMBAT-80 |
 | GP-MVPFAME | MVP rewards + fame ranking + Taekwon ranker end-to-end | FEATURE-16/18/19 |

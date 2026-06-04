@@ -1,6 +1,8 @@
 using Core.Database.Entities;
 using Core.Database.Repositories.Api;
 using Core.Server.Packets;
+using Core.Server.Packets.In.CZ;
+using Core.Server.Packets.Out.ZC;
 using Map.Server;
 using Map.Server.Entities;
 using Map.Server.Inventory;
@@ -28,22 +30,33 @@ public class CashShopServiceTests
     private const int TabNew = 0;
     private const int TabSale = 8;
 
-    private sealed record Ctx(CashShopService Svc, PlayerEntity Pc, MapSessionData Session);
+    private sealed record Ctx(CashShopService Svc, PlayerEntity Pc, MapSessionData Session,
+        FakeSessions Sessions, ICashShopClientService Client);
 
     private static Ctx Build(int cash = 100_000, int kafra = 0, IServiceScopeFactory? scopes = null)
     {
         var sessions = new FakeSessions();
         var items = new FakeItems();
         var inv = new FakeInventory(items);
+        var client = new CashShopClientService(sessions, NullLogger<CashShopClientService>.Instance);
 
         var pc = new PlayerEntity(1, Acc, "Buyer", Guid.NewGuid(), 1, 50, 50) { Hp = 1, MaxHp = 1, CashPoints = cash, KafraPoints = kafra };
         var session = NewSession(pc);
         session.Inventory = new List<InventoryItem>();
         sessions.Register(pc.Id, Acc, session);
 
-        var svc = new CashShopService(NullLogger<CashShopService>.Instance, scopes, items, sessions, inv);
-        return new Ctx(svc, pc, session);
+        var svc = new CashShopService(NullLogger<CashShopService>.Instance, scopes, items, sessions, inv, client);
+        return new Ctx(svc, pc, session, sessions, client);
     }
+
+    private static IReadOnlyList<byte[]> Outbound(MapSessionData s)
+    {
+        var f = typeof(Core.Server.Network.ClientSession).GetField("_outgoingPackets",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        return f?.GetValue(s) is System.Collections.Concurrent.ConcurrentQueue<byte[]> q ? q.ToArray() : Array.Empty<byte[]>();
+    }
+
+    private static ushort Hdr(byte[] b) => (ushort)(b[0] | (b[1] << 8));
 
     [Fact]
     public void BuyList_debits_cash_points_and_grants_item()
@@ -167,6 +180,170 @@ public class CashShopServiceTests
         var r = c.Svc.BuyList(c.Pc, kafraPay: 0, new[] { ((int)PotionId, 1, (byte)TabNew) });
         Assert.Equal(CashShopResult.Success, r);
         Assert.Equal(100_000 - 1000, c.Pc.CashPoints);
+    }
+
+    // --- packet bridge (open / list / buy / close / sale notify) ---
+
+    private static EntityRegistry Registry(PlayerEntity pc)
+    {
+        var reg = new EntityRegistry(new BridgeWorld());
+        reg.Add(pc);
+        return reg;
+    }
+
+    [Fact]
+    public async Task OpenHandler_sends_balances_and_flags_open()
+    {
+        var c = Build(cash: 5000, kafra: 250);
+        c.Session.AuthState = MapAuthState.Spawned;
+        var h = new Map.Server.Handlers.Shop.OpenCashShopHandler(Registry(c.Pc), c.Client, NullLogger<Map.Server.Handlers.Shop.OpenCashShopHandler>.Instance);
+
+        var p = new CZ_SE_CASHSHOP_OPEN();
+        typeof(CZ_SE_CASHSHOP_OPEN).GetProperty("Tab")!.SetValue(p, 3);
+        await h.HandleAsync(c.Session, p);
+
+        Assert.True(c.Session.CashShopOpen);
+        var open = Outbound(c.Session).Single(x => Hdr(x) == (ushort)PacketHeader.ZC_SE_CASHSHOP_OPEN);
+        Assert.Equal(5000, BitConverter.ToInt32(open, 2));   // cashPoints
+        Assert.Equal(250, BitConverter.ToInt32(open, 6));    // kafraPoints
+        Assert.Equal(3, BitConverter.ToInt32(open, 10));     // tab
+    }
+
+    [Fact]
+    public async Task ListHandler_sends_one_packet_per_nonempty_tab()
+    {
+        var c = Build();
+        c.Session.AuthState = MapAuthState.Spawned;
+        c.Svc.SeedCatalogForTest(TabNew, (PotionId, 1000));
+        c.Svc.SeedCatalogForTest(TabSale, (PotionId, 700));
+        var h = new Map.Server.Handlers.Shop.CashShopListHandler(Registry(c.Pc), c.Svc, c.Client, NullLogger<Map.Server.Handlers.Shop.CashShopListHandler>.Instance);
+
+        await h.HandleAsync(c.Session, new CZ_REQ_CASHSHOP_ITEMLIST());
+
+        var lists = Outbound(c.Session).Where(x => Hdr(x) == (ushort)PacketHeader.ZC_ACK_SCHEDULER_CASHITEM).ToList();
+        Assert.Equal(2, lists.Count); // New + Sale
+        // each packet: type.W len.W count.W tabNum.W {itemId.L price.L}
+        var newTab = lists.Single(x => BitConverter.ToInt16(x, 6) == TabNew);
+        Assert.Equal(1, BitConverter.ToInt16(newTab, 4));            // count
+        Assert.Equal(PotionId, BitConverter.ToUInt32(newTab, 8));    // itemId
+        Assert.Equal(1000, BitConverter.ToInt32(newTab, 12));        // price
+    }
+
+    [Fact]
+    public async Task ListHandler_emits_active_sale_banner()
+    {
+        var c = Build();
+        c.Session.AuthState = MapAuthState.Spawned;
+        c.Svc.SeedCatalogForTest(TabSale, (PotionId, 700));
+        c.Svc.SaleAddItem((int)PotionId, amount: 4, DateTime.UtcNow.AddMinutes(-1), DateTime.UtcNow.AddHours(1));
+        var h = new Map.Server.Handlers.Shop.CashShopListHandler(Registry(c.Pc), c.Svc, c.Client, NullLogger<Map.Server.Handlers.Shop.CashShopListHandler>.Instance);
+
+        await h.HandleAsync(c.Session, new CZ_REQ_CASHSHOP_ITEMLIST());
+
+        var selling = Outbound(c.Session).Single(x => Hdr(x) == (ushort)PacketHeader.ZC_NOTIFY_BARGAIN_SALE_SELLING);
+        Assert.Equal(PotionId, BitConverter.ToUInt32(selling, 2));
+        var amount = Outbound(c.Session).Single(x => Hdr(x) == (ushort)PacketHeader.ZC_ACK_COUNT_BARGAIN_SALE_ITEM);
+        Assert.Equal(4, BitConverter.ToInt32(amount, 6)); // remaining stock
+    }
+
+    [Fact]
+    public async Task BuyHandler_buys_and_reports_success_with_balances()
+    {
+        var c = Build(cash: 5000);
+        c.Session.AuthState = MapAuthState.Spawned;
+        c.Svc.SeedCatalogForTest(TabNew, (PotionId, 1000));
+        var h = new Map.Server.Handlers.Shop.BuyCashItemHandler(Registry(c.Pc), c.Svc, c.Client, NullLogger<Map.Server.Handlers.Shop.BuyCashItemHandler>.Instance);
+
+        await h.HandleAsync(c.Session, BuyPacket(kafra: 0, ((int)PotionId, 2, (short)TabNew)));
+
+        Assert.Equal(5000 - 2000, c.Pc.CashPoints);
+        Assert.Equal(2u, c.Session.Inventory!.Single(i => i.NameId == PotionId).Amount);
+        var res = Outbound(c.Session).Single(x => Hdr(x) == (ushort)PacketHeader.ZC_PC_BUY_CASHITEM_RESULT);
+        Assert.Equal(PotionId, BitConverter.ToUInt32(res, 2));                        // itemId
+        Assert.Equal((ushort)CashShopBuyResult.Success, BitConverter.ToUInt16(res, 6)); // result
+        Assert.Equal(3000, BitConverter.ToInt32(res, 8));                            // cashPoints after
+    }
+
+    [Fact]
+    public async Task BuyHandler_insufficient_points_reports_shortage_no_mutation()
+    {
+        var c = Build(cash: 100);
+        c.Session.AuthState = MapAuthState.Spawned;
+        c.Svc.SeedCatalogForTest(TabNew, (PotionId, 1000));
+        var h = new Map.Server.Handlers.Shop.BuyCashItemHandler(Registry(c.Pc), c.Svc, c.Client, NullLogger<Map.Server.Handlers.Shop.BuyCashItemHandler>.Instance);
+
+        await h.HandleAsync(c.Session, BuyPacket(kafra: 0, ((int)PotionId, 2, (short)TabNew)));
+
+        Assert.Equal(100, c.Pc.CashPoints);
+        Assert.Empty(c.Session.Inventory!);
+        var res = Outbound(c.Session).Single(x => Hdr(x) == (ushort)PacketHeader.ZC_PC_BUY_CASHITEM_RESULT);
+        Assert.Equal((ushort)CashShopBuyResult.ShortageCash, BitConverter.ToUInt16(res, 6));
+    }
+
+    [Fact]
+    public async Task BuyHandler_while_trading_reports_pc_state()
+    {
+        var c = Build(cash: 5000);
+        c.Session.AuthState = MapAuthState.Spawned;
+        c.Session.Trade = new Map.Server.Trade.TradeState { SelfCharId = 1, PartnerCharId = 2 };
+        c.Svc.SeedCatalogForTest(TabNew, (PotionId, 1000));
+        var h = new Map.Server.Handlers.Shop.BuyCashItemHandler(Registry(c.Pc), c.Svc, c.Client, NullLogger<Map.Server.Handlers.Shop.BuyCashItemHandler>.Instance);
+
+        await h.HandleAsync(c.Session, BuyPacket(kafra: 0, ((int)PotionId, 1, (short)TabNew)));
+
+        Assert.Equal(5000, c.Pc.CashPoints);
+        var res = Outbound(c.Session).Single(x => Hdr(x) == (ushort)PacketHeader.ZC_PC_BUY_CASHITEM_RESULT);
+        Assert.Equal((ushort)CashShopBuyResult.PcState, BitConverter.ToUInt16(res, 6));
+    }
+
+    [Fact]
+    public async Task CloseHandler_clears_open_flag()
+    {
+        var c = Build();
+        c.Session.CashShopOpen = true;
+        var h = new Map.Server.Handlers.Shop.CloseCashShopHandler(NullLogger<Map.Server.Handlers.Shop.CloseCashShopHandler>.Instance);
+        await h.HandleAsync(c.Session, new CZ_REQ_CLOSE_CASHSHOP());
+        Assert.False(c.Session.CashShopOpen);
+    }
+
+    [Fact]
+    public void CatalogTabs_returns_only_nonempty_tabs_ordered()
+    {
+        var c = Build();
+        c.Svc.SeedCatalogForTest(TabSale, (PotionId, 700));
+        c.Svc.SeedCatalogForTest(TabNew, (PotionId, 1000), (SwordId, 5000));
+        var tabs = c.Svc.CatalogTabs();
+        Assert.Equal(new[] { TabNew, TabSale }, tabs.Select(t => t.tab).ToArray()); // ordered by tab index
+        Assert.Equal(2, tabs.First(t => t.tab == TabNew).items.Count);
+    }
+
+    [Fact]
+    public void Default_catalog_seed_is_non_empty()
+    {
+        // The importer falls back to the project default catalog because upstream item_cash.yml ships
+        // empty; the generated seed must contain catalog rows so the shop is populated.
+        var path = Path.Combine(AppContext.BaseDirectory, "Seeds", "Scripts", "seed_item_cash.sql");
+        Assert.True(File.Exists(path), $"seed not found at {path}");
+        var sql = File.ReadAllText(path);
+        Assert.Contains("`item_cash_entry_db`", sql, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static CZ_PC_BUY_CASHITEM_LIST BuyPacket(int kafra, params (int itemId, int amount, short tab)[] lines)
+    {
+        var p = new CZ_PC_BUY_CASHITEM_LIST();
+        typeof(CZ_PC_BUY_CASHITEM_LIST).GetProperty("KafraPoints")!.SetValue(p, kafra);
+        typeof(CZ_PC_BUY_CASHITEM_LIST).GetProperty("Lines")!.SetValue(p,
+            (IReadOnlyList<CashBuyLine>)lines.Select(l => new CashBuyLine(l.itemId, l.amount, l.tab)).ToList());
+        return p;
+    }
+
+    private sealed class BridgeWorld : Map.Server.World.IMapWorldRegistry
+    {
+        private readonly Map.Server.World.MapData _map = new("test_map", 200, 200, new byte[200 * 200]);
+        public Map.Server.World.MapData? Get(string name) => _map;
+        public IEnumerable<Map.Server.World.MapData> All => new[] { _map };
+        public int TotalCells => _map.CellCount;
+        public bool Contains(string name) => true;
     }
 
     // --- helpers / fakes ---

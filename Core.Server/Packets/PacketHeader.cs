@@ -289,6 +289,16 @@ public enum PacketHeader : short
     ZC_UPDATE_ITEM_FROM_BUYING_STORE = 0x081b, // clif_buyingstore_update_item: <nameId>.W <amount>.W <limit>.L, 10B (buyer side).
     ZC_ITEM_DELETE_BUYING_STORE = 0x081c,  // clif_buyingstore_delete_item: <index>.W <amount>.W <price>.L, 10B (seller side).
     ZC_FAILED_TRADE_BUYING_STORE_TO_SELLER = 0x0824, // clif_buyingstore_trade_failed_seller: <result>.W <nameId>.W, 6B.
+    // Cash shop (the "cash shop" button path — cashshop.cpp / clif_cashshop_*).
+    CZ_SE_CASHSHOP_OPEN       = 0x0b6d,    // clif_parse_cashshop_open_request: <tab>.L, 6B (open the cash shop UI).
+    ZC_SE_CASHSHOP_OPEN       = 0x0a2b,    // clif_cashshop_open: <cashPoints>.L <kafraPoints>.L <tab>.L, 14B (balances). (0x0b6e variant collides with HC_REFUSE_MAKECHAR; 0x0a2b is the identical-layout 20140730 opcode.)
+    CZ_REQ_CASHSHOP_ITEMLIST  = 0x08c9,    // clif_parse_cashshop_list_request: header only, 2B (request the catalog).
+    ZC_ACK_SCHEDULER_CASHITEM = 0x08ca,    // clif_cashshop_list: <len>.W <count>.W <tabNum>.W {itemId.L price.L}* (one per tab).
+    CZ_REQ_CLOSE_CASHSHOP     = 0x084a,    // clif_parse_cashshop_close: header only, 2B.
+    CZ_PC_BUY_CASHITEM_LIST   = 0x0848,    // clif_parse_cashshop_buy: <len>.W <count>.W <kafraPoints>.L {itemId.L amount.L tab.W}*.
+    ZC_PC_BUY_CASHITEM_RESULT = 0x0849,    // clif_cashshop_result: <itemId>.L <result>.W <cashPoints>.L <kafraPoints>.L, 16B.
+    ZC_NOTIFY_BARGAIN_SALE_SELLING = 0x09b2, // clif_sale_start: <itemId>.L <remainingTime>.L, 10B (active sale on login).
+    ZC_ACK_COUNT_BARGAIN_SALE_ITEM = 0x09c4, // clif_sale_amount: <itemId>.L <amount>.L, 10B (sale remaining stock).
     ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B
     ZC_STATE_CHANGE3      = 0x0229,        // clif_changeoption — option (effect-state) bitmask 32-bit, 15B
     ZC_SPIRITS            = 0x01d0,        // clif_spiritball — Monk sphere / Sura / servant / abyss count, 8B
