@@ -186,6 +186,71 @@ public class SC02CalcFlagAllTests
     public void GnCartboost_isConverted_notGeneratorDefault()
         => Assert.DoesNotContain(StatusType.GnCartboost, _reg.GeneratedStatModDefaultTypes);
 
+    // ---- SC-MAGNITUDE: the SC_MERC_* cluster — Val2 formulas, real per-stat targets ----
+
+    [Fact]
+    public void MercAtkup_addsWatk_byVal2_15xVal1_notBatk()
+    {
+        // status.cpp:7119 — watk += val2; val2 = 15*val1. (Generator wrongly used Batk.)
+        var mob = FreshMob();
+        mob.Stats.WatkMin = 300; mob.Stats.WatkMax = 340; mob.Stats.Batk = 100;
+        var sc = new StatusChange { Type = StatusType.MercAtkup, Val1 = 4 };
+
+        Apply(StatusType.MercAtkup, sc, mob);
+        Assert.Equal(60, sc.Val2);                  // 15*4
+        Assert.Equal(360, mob.Stats.WatkMin);       // +60
+        Assert.Equal(400, mob.Stats.WatkMax);
+        Assert.Equal(100, mob.Stats.Batk);          // Batk untouched
+
+        _reg.Get(StatusType.MercAtkup)!.OnEnd!(mob, sc);
+        Assert.Equal(300, mob.Stats.WatkMin);       // restored
+        Assert.Equal(340, mob.Stats.WatkMax);
+    }
+
+    [Fact]
+    public void MercFleeup_addsFlee_byVal2_15xVal1()
+    {
+        var mob = FreshMob();
+        mob.Stats.Flee = 90;
+        var sc = new StatusChange { Type = StatusType.MercFleeup, Val1 = 5 };
+
+        Apply(StatusType.MercFleeup, sc, mob);
+        Assert.Equal(75, sc.Val2);                  // 15*5
+        Assert.Equal(165, mob.Stats.Flee);
+
+        _reg.Get(StatusType.MercFleeup)!.OnEnd!(mob, sc);
+        Assert.Equal(90, mob.Stats.Flee);
+    }
+
+    [Fact]
+    public void MercHpup_raisesMaxHpByPercent_andHealsFull()
+    {
+        // status.cpp:3160 maxhp bonus += val2 (=5*val1, a %); :12910 status_percent_heal(bl,100,0).
+        var mob = FreshMob();
+        mob.Stats.MaxHp = 1000; mob.Stats.Hp = 400;
+        var sc = new StatusChange { Type = StatusType.MercHpup, Val1 = 5 };
+
+        Apply(StatusType.MercHpup, sc, mob);
+        Assert.Equal(25, sc.Val2);                  // 5*5 %
+        Assert.Equal(1250, mob.Stats.MaxHp);        // +25% of 1000
+        Assert.Equal(1250, mob.Stats.Hp);           // healed full
+
+        _reg.Get(StatusType.MercHpup)!.OnEnd!(mob, sc);
+        Assert.Equal(1000, mob.Stats.MaxHp);        // pool restored
+        Assert.Equal(1000, mob.Stats.Hp);           // Hp clamped down to new max
+    }
+
+    [Theory]
+    // ATKUP/FLEEUP/HPUP converted this turn; HITUP/SPUP already converted by COMBAT-73/89 — none of the
+    // SC_MERC_* stat-bonus cluster should remain on the generator-default worklist.
+    [InlineData(StatusType.MercAtkup)]
+    [InlineData(StatusType.MercHitup)]
+    [InlineData(StatusType.MercFleeup)]
+    [InlineData(StatusType.MercHpup)]
+    [InlineData(StatusType.MercSpup)]
+    public void MercCluster_isConverted_notGeneratorDefault(StatusType t)
+        => Assert.DoesNotContain(t, _reg.GeneratedStatModDefaultTypes);
+
     // ---- the reclassified SCs are no longer in the CalcFlag generator table ----
 
     [Theory]

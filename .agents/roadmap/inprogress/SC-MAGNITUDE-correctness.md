@@ -91,6 +91,16 @@
   143 → 142. (DoramWalkspeed/Walkspeed stay generator-default: their +Val1-to-Speed is harmlessly
   overwritten, and the Register no-downgrade-to-NoOp guard blocks converting them to presence-only.)
   3 tests + a completeness-allowlist entry; full suite 4567 pass (1 = standing replay-fixture).
+- **2026-06-04 (turn 5)** — Converted the **mercenary stat-bonus cluster** (the clean Val2-formula SCs):
+  **SC_MERC_ATKUP** (Val2 = 15·Val1 → Watk, status.cpp:7119 — the generator had wrongly mapped it to
+  **Batk**), **SC_MERC_FLEEUP** (Val2 = 15·Val1 → Flee, :7418), and **SC_MERC_HPUP** (Val2 = 5·Val1
+  MaxHP-%, heals full HP on apply — :3160/:12910, percent-pool pattern mirroring Service4u/Epiclesis).
+  Worklist **142 → 139**. (SC_MERC_HITUP and SC_MERC_SPUP were already converted by COMBAT-73/89, so they
+  were never on the worklist — verified, not re-done.) Also fixed an **incomplete completeness probe**:
+  `StatusEffectCompletenessTests.SnapshotStats` omitted `WatkMin/WatkMax`, so any Watk-only handler read
+  as a silent no-op — added the two fields (a Watk-only stat-mod is now detected). 4 tests
+  (`MercAtkup/MercFleeup/MercHpup_*` + the 5-way `MercCluster_isConverted` theory); full suite 4575 pass
+  (1 = standing replay-fixture).
 
 ## Notes
 

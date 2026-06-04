@@ -1293,6 +1293,70 @@ public sealed class StatusEffectRegistry
         // directly, and the synthesised +Val1-to-Speed is harmlessly overwritten by CalcPc each recalc —
         // a real Register here would be blocked by the no-downgrade-to-NoOp guard anyway.)
 
+        // SC-MAGNITUDE — the mercenary stat-bonus cluster (SC_MERC_*). rAthena status.cpp:11441-11448 sets
+        // each Val2; the per-stat calc arms read it. The +Val1 generator defaults are the wrong magnitude
+        // (and SC_MERC_ATKUP was mapped to Batk, not Watk). Convert ATKUP/FLEEUP/HPUP here to their real
+        // Val2 formula. (MERC_HITUP and MERC_SPUP were already converted by COMBAT-73/89 below.)
+
+        // SC_MERC_ATKUP — Val2 = 15*Val1 → Watk (status.cpp:7119; status.yml CalcFlag Watk).
+        Register(StatusType.MercAtkup, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 15 * sc.Val1;
+                target.Stats.WatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMax + sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.WatkMin = (ushort)Math.Max(0, target.Stats.WatkMin - sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Max(0, target.Stats.WatkMax - sc.Val2);
+            },
+            Flags: buff,
+            // CalcPc resets Watk each recalc — re-apply (same pattern as GuardStance).
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.WatkMin = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMin + sc.Val2);
+                target.Stats.WatkMax = (ushort)Math.Min(ushort.MaxValue, target.Stats.WatkMax + sc.Val2);
+            }));
+
+        // SC_MERC_FLEEUP — Val2 = 15*Val1 → Flee (status.cpp:7418; status.yml CalcFlag Flee).
+        Register(StatusType.MercFleeup, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 15 * sc.Val1;
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+                target.Stats.Flee = (short)Math.Max(short.MinValue, target.Stats.Flee - sc.Val2),
+            Flags: buff,
+            OnRecalc: (target, sc) =>
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2)));
+
+        // SC_MERC_HPUP — Val2 = 5*Val1 (MaxHP % bonus); heals full HP on apply
+        // (status.cpp:3160 maxhp bonus, :12910 status_percent_heal(bl,100,0)). Percent-pool pattern mirrors
+        // Service4u: snapshot the delta in Val4 for clean reversal; OnRecalcPool re-applies on the rebuilt pool.
+        Register(StatusType.MercHpup, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0) sc.Val2 = 5 * sc.Val1;
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = delta;
+                target.Stats.MaxHp += delta;
+                target.Stats.Hp = target.Stats.MaxHp; // status_percent_heal(bl,100,0)
+            },
+            OnEnd: (target, sc) =>
+            {
+                if (sc.Val4 > 0) target.Stats.MaxHp = Math.Max(1, target.Stats.MaxHp - sc.Val4);
+                if (target.Stats.Hp > target.Stats.MaxHp) target.Stats.Hp = target.Stats.MaxHp;
+            },
+            Flags: buff,
+            OnRecalcPool: (target, sc) =>
+            {
+                var delta = target.Stats.MaxHp * sc.Val2 / 100;
+                sc.Val4 = delta;
+                target.Stats.MaxHp += delta;
+            }));
+
         // SC_SERVICE4U — Val2 = MaxSP % bonus (9+Val1 capped at 20),
         //                Val3 = 5+Val1 (SP cost reduction %).
         // status.yml CalcFlag table also reads all 6 base stats — wrong.
