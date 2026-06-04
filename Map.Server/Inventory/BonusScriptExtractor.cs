@@ -351,9 +351,23 @@ public static class BonusScriptExtractor
             // negative = faster). bonus2 bSkillVariableCast / bSkillFixedCast.
             case "skillvariablecast": AddSkillMap(b.SkillVarCast, idxToken, v); break;
             case "skillfixedcast":    AddSkillMap(b.SkillFixCast, idxToken, v); break;
+            // SC-IMMUNE — bonus2 bResEff, eff, n: per-status effect-resistance (rAthena SP_RESEFF →
+            // sd->reseff). Read by GetScDef to cut the SC landing rate (+ duration on renewal).
+            case "reseff": { var sc = ParseEffSc(idxToken); if (sc != Map.Server.Status.StatusType.None) b.ResEff[sc] = b.ResEff.GetValueOrDefault(sc) + v; break; }
             // bAddRace2, bIgnoreDefRate, bSubDefEle, ... — race2 classification
             // + flag-matched lists land in COMBAT-43.
         }
+    }
+
+    /// <summary>SC-IMMUNE — resolve a <c>bResEff</c> effect token (<c>Eff_Stun</c> / numeric SC id /
+    /// bare enum name) to a <see cref="Map.Server.Status.StatusType"/>. Mirrors ScriptedBonusHost.</summary>
+    private static Map.Server.Status.StatusType ParseEffSc(string token)
+    {
+        if (string.IsNullOrEmpty(token)) return Map.Server.Status.StatusType.None;
+        if (int.TryParse(token, out var n))
+            return n >= 0 && n < 2000 ? (Map.Server.Status.StatusType)n : Map.Server.Status.StatusType.None;
+        var name = token.StartsWith("Eff_", StringComparison.OrdinalIgnoreCase) ? token[4..] : token;
+        return Enum.TryParse<Map.Server.Status.StatusType>(name, ignoreCase: true, out var sc) ? sc : Map.Server.Status.StatusType.None;
     }
 
     private static void AddShort(short[] arr, int idx, short v)

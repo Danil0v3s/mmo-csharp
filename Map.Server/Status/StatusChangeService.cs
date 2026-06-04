@@ -236,10 +236,16 @@ public sealed class StatusChangeService : IStatusChangeService
         int tickDef = scDef; // tick_def == -1 → use sc_def.
         int tickDef2 = e.TickDef2Ms;
 
+        // SC-IMMUNE — PC item effect-resistance (bonus2 bResEff → sd->reseff), per-status %, applied
+        // to the rate (and, renewal, to the duration). rAthena status_get_sc_def.
+        int resEff = ResEffFor(target, type);
+
         // Natural rate resistance.
         if ((flag & ScStartFlag.NoRateDef) == 0)
         {
             rate -= rate * scDef / 10000;
+            // Item resistance only applies to rate% (rAthena: after sc_def, before Aegis rounding).
+            if (resEff > 0) rate -= rate * resEff / 10000;
             // Aegis accuracy rounding (round up to the next multiple of 10).
             if (rate > 0 && rate % 10 != 0) rate += 10 - rate % 10;
         }
@@ -249,11 +255,17 @@ public sealed class StatusChangeService : IStatusChangeService
         if ((flag & ScStartFlag.NoTickDef) == 0)
         {
             tick -= tick * tickDef / 10000;
+            if (resEff > 0) tick -= tick * resEff / 10000; // renewal: item resist also cuts duration.
             tick -= tickDef2; // negative tickDef2 lengthens — faithful to rAthena.
         }
         if (tick < 1) tick = 1; // status.yml min_duration floor (default).
         return (rate, tick);
     }
+
+    /// <summary>SC-IMMUNE — the target's summed PC effect-resistance for <paramref name="type"/>
+    /// (<c>bonus2 bResEff</c> card/item bonus, in 1/100%). 0 for non-PCs or no matching bonus.</summary>
+    private static int ResEffFor(Entity target, StatusType type)
+        => target is PlayerEntity pc && pc.EquipBonuses.ResEff.TryGetValue(type, out var v) ? v : 0;
 
     public bool End(Entity target, StatusType type)
     {

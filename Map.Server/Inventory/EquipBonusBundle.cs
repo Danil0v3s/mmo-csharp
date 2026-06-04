@@ -97,6 +97,11 @@ public sealed class EquipBonusBundle
     /// <summary>Flag-matched defensive race resist (<c>bonus3 bSubRace, r, n, bf</c>): (race, BF_* flag, rate).</summary>
     public List<(int Race, int Flag, int Rate)> SubRace3 { get; } = new();
 
+    /// <summary>SC-IMMUNE — per-status effect-resistance from cards/items (<c>bonus2 bResEff, eff, n</c>):
+    /// StatusType → resistance in 1/100% (5000 = 50%). Read by <c>GetScDef</c> to reduce the SC landing
+    /// rate (and, renewal, its duration). rAthena <c>sd->reseff</c>.</summary>
+    public Dictionary<Map.Server.Status.StatusType, int> ResEff { get; } = new();
+
     // COMBAT-22 — per-skill bonus2 maps (skillId → value).
     /// <summary>Per-skill bonus damage % (<c>bonus2 bSkillAtk, sk, n</c> /
     /// SP_SKILL_ATK). Applied after DEF for the matching skill in
@@ -309,7 +314,7 @@ public sealed class EquipBonusBundle
         Array.Clear(IgnoreMResRace);
         Array.Clear(AddRace2); Array.Clear(SubRace2); Array.Clear(MagicAddRace2);
         Array.Clear(MagicSubDefEle); Array.Clear(MagicSubSize); Array.Clear(ArrowAddRace); Array.Clear(ArrowAddEle);
-        SubEle2.Clear(); SubRace3.Clear();
+        SubEle2.Clear(); SubRace3.Clear(); ResEff.Clear();
         SkillAtk.Clear(); SubSkillAtk.Clear(); SkillHeal.Clear(); SkillVarCastrate.Clear(); SkillFixCastrate.Clear();
         HpVanishRate = HpVanishPer = SpVanishRate = SpVanishPer = 0;
         HpVanishFlag = SpVanishFlag = 0;

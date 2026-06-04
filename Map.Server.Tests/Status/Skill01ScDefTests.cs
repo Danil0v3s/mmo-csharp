@@ -44,6 +44,54 @@ public class Skill01ScDefTests
         Assert.True(rHigh < rLow);
     }
 
+    // ---- SC-IMMUNE: bResEff effect-resist cards ----
+
+    [Fact]
+    public void EffectResistCard_ReducesScRateAndDuration()
+    {
+        var ctx = Build();
+        var src = ctx.AddPlayer(1, 100, 100); src.Level = 50;
+        var plain = ctx.AddPlayer(2, 100, 100); plain.Level = 50; plain.Stats.Vit = 1;
+        var resist = ctx.AddPlayer(3, 100, 100); resist.Level = 50; resist.Stats.Vit = 1;
+        resist.EquipBonuses.ResEff[StatusType.Stun] = 5000; // bonus2 bResEff, Eff_Stun, 5000 → 50%
+
+        var (rPlain, dPlain) = ctx.Service.GetScDef(src, plain, StatusType.Stun, 3000, 3000, ScStartFlag.None);
+        var (rResist, dResist) = ctx.Service.GetScDef(src, resist, StatusType.Stun, 3000, 3000, ScStartFlag.None);
+
+        Assert.Equal(2970, rPlain);    // vit*100 sc_def only: 3000 - 30
+        Assert.Equal(1490, rResist);   // + 50% item resist: 2970 → 1485 → Aegis-rounded up to 1490
+        Assert.True(dResist < dPlain); // renewal: item resistance also cuts the duration
+    }
+
+    [Fact]
+    public void EffectResistCard_OnlyAffectsTheMatchingSc()
+    {
+        var ctx = Build();
+        var src = ctx.AddPlayer(1, 100, 100); src.Level = 50;
+        var t = ctx.AddPlayer(2, 100, 100); t.Level = 50; t.Stats.Vit = 1;
+        t.EquipBonuses.ResEff[StatusType.Stun] = 5000; // resist Stun only
+        var noCard = ctx.AddPlayer(3, 100, 100); noCard.Level = 50; noCard.Stats.Vit = 1; // identical, no card
+
+        var (rStun, _) = ctx.Service.GetScDef(src, t, StatusType.Stun, 3000, 3000, ScStartFlag.None);
+        var (rStunPlain, _) = ctx.Service.GetScDef(src, noCard, StatusType.Stun, 3000, 3000, ScStartFlag.None);
+        var (rSleepCarded, _) = ctx.Service.GetScDef(src, t, StatusType.Sleep, 3000, 3000, ScStartFlag.None);
+        var (rSleepPlain, _) = ctx.Service.GetScDef(src, noCard, StatusType.Sleep, 3000, 3000, ScStartFlag.None);
+
+        Assert.True(rStun < rStunPlain);          // the Stun card resists Stun
+        Assert.Equal(rSleepPlain, rSleepCarded);  // …but does NOT affect Sleep
+    }
+
+    [Fact]
+    public void BResEff_bonus_parses_into_the_reseff_map()
+    {
+        var b = new Map.Server.Inventory.EquipBonusBundle();
+        Map.Server.Inventory.BonusScriptExtractor.ApplyIndexedBonus(b, "ResEff", "Eff_Stun", 5000);
+        Map.Server.Inventory.BonusScriptExtractor.ApplyIndexedBonus(b, "ResEff", "Eff_Stun", 1000); // stacks
+        Map.Server.Inventory.BonusScriptExtractor.ApplyIndexedBonus(b, "ResEff", "Eff_Poison", 2000);
+        Assert.Equal(6000, b.ResEff[StatusType.Stun]);
+        Assert.Equal(2000, b.ResEff[StatusType.Poison]);
+    }
+
     [Fact]
     public void Freeze_ResistedByMdef()
     {
