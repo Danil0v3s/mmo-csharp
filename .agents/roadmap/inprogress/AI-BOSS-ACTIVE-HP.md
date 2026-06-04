@@ -1,6 +1,6 @@
 # AI-BOSS-ACTIVE-HP — boss mobs stay active at range + show their HP bar
 
-> **Epic:** mobai · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** mobai · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** none
 
 ## The deliverable
