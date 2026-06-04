@@ -531,6 +531,19 @@ public sealed class IntifService : IIntifService
         return 1;
     }
 
+    /// <summary>GP-ACHIEVE — awaitable achievement load-on-enter: round-trip the char-side achievement
+    /// log, <see cref="Map.Server.Achievement.IAchievementService.Hydrate"/> it onto the live entity,
+    /// then <see cref="Map.Server.Achievement.IAchievementService.PcLogin"/> to push
+    /// <c>ZC_ALL_ACH_LIST</c>. A null char-IPC response (server down) hydrates an empty log — the client
+    /// still renders an empty achievement window, matching rAthena's "no achievements" snapshot.</summary>
+    public async Task AchievementRequestAsync(PlayerEntity pc, CancellationToken ct = default)
+    {
+        if (_achievementService == null) return;
+        var resp = _questIpc != null ? await _questIpc.AchievementLoadAsync(pc.CharacterId, ct) : null;
+        _achievementService.Hydrate(pc, resp?.Achievements ?? (IEnumerable<Core.Server.IPC.AchievementEntryData>)Array.Empty<Core.Server.IPC.AchievementEntryData>());
+        _achievementService.PcLogin(pc);
+    }
+
     /// <summary>
     /// T7.2 — rAthena <c>intif_create_pet</c> (intif.cpp:1342). Asks the
     /// char server to insert a new pet row + assign a pet_id. The

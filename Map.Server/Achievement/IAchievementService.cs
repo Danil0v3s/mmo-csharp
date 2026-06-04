@@ -34,8 +34,21 @@ public interface IAchievementService
     void ReloadDb();
     /// <summary>rAthena <c>achievement_level</c>.</summary>
     int Level(PlayerEntity pc);
+    /// <summary>GP-ACHIEVE — rAthena <c>achievement_data.total_score</c>.</summary>
+    int TotalScore(PlayerEntity pc);
+    /// <summary>GP-ACHIEVE — rAthena <c>achievement_level</c>: level + bar exp/expNext + total score.</summary>
+    (int Level, int Exp, int ExpNext, int TotalScore) LevelInfo(PlayerEntity pc);
     /// <summary>rAthena <c>AchievementDatabase::mobexists</c>.</summary>
     bool MobExists(int mobId);
+
+    /// <summary>GP-ACHIEVE — rAthena <c>clif_achievement_list_all</c>: push the full achievement window on
+    /// login (called after the achievement log is hydrated).</summary>
+    void PcLogin(PlayerEntity pc);
+    /// <summary>GP-ACHIEVE — rAthena <c>clif_achievement_update</c>: emit one achievement's progress.</summary>
+    void EmitUpdate(PlayerEntity pc, int achievementId);
+    /// <summary>GP-ACHIEVE — rAthena <c>clif_parse_change_title</c>: equip an earned achievement title
+    /// (or clear it with id ≤ 0). Returns true when applied. Emits <c>ZC_ACK_CHANGE_TITLE</c>.</summary>
+    bool SetTitle(PlayerEntity pc, int titleId);
 
     /// <summary>
     /// T7.1 — serialize the PC's achievement progress into the gRPC

@@ -4560,6 +4560,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             Ap = character.Ap,
             MaxAp = character.MaxAp,
             PartyId = character.PartyId,
+            TitleId = character.TitleId,
         };
     }
 

@@ -109,7 +109,28 @@ public class AchievementServiceTests
     // --- reward + titles ---
 
     [Fact]
-    public void Reward_grants_item_once_and_is_idempotent()
+    public void Completion_does_not_auto_grant_reward_until_claimed()
+    {
+        // rAthena parity: achievement_update_achievement flags completion + sends clif_achievement_update
+        // but does NOT grant the reward — that is the manual claim (CZ_REQ_ACH_REWARD → check_reward).
+        var items = new FakeItems();
+        var inv = new FakeInventory();
+        var sessions = new FakeSessions();
+        var svc = new AchievementService(NullLogger<AchievementService>.Instance, mobDb: null,
+            sessions: sessions, items: items, inventory: inv);
+        svc.SeedCatalogForTest(Battle1(70001, count: 1, rewardItem: "WHITE_POTION"));
+        var pc = Pc();
+        sessions.Register(pc);
+
+        svc.UpdateObjective(pc, (byte)Battle, 0, 1031); // completes, but no auto-reward
+
+        Assert.True(pc.AchievementLog.Single().CompletedUnix > 0);
+        Assert.Equal(0, pc.AchievementLog.Single().RewardedUnix);   // not yet rewarded
+        Assert.Equal(0, inv.GiveCalls);                             // no item granted on completion
+    }
+
+    [Fact]
+    public void CheckReward_grants_item_once_and_is_idempotent()
     {
         var items = new FakeItems();
         var inv = new FakeInventory();
@@ -120,22 +141,43 @@ public class AchievementServiceTests
         var pc = Pc();
         sessions.Register(pc);
 
-        svc.UpdateObjective(pc, (byte)Battle, 0, 1031); // completes → auto CheckReward → GetReward
+        svc.UpdateObjective(pc, (byte)Battle, 0, 1031); // completes
+        svc.CheckReward(pc, 70001);                     // manual claim → grant
 
         Assert.Equal(1, inv.GiveCalls);
         Assert.True(pc.AchievementLog.Single().RewardedUnix > 0);
 
-        svc.GetReward(pc, 70001); // second claim — idempotent
+        svc.CheckReward(pc, 70001); // second claim — idempotent
         Assert.Equal(1, inv.GiveCalls);
     }
 
     [Fact]
-    public void GetTitles_returns_earned_titles()
+    public void CheckReward_on_incomplete_achievement_does_not_grant()
+    {
+        var items = new FakeItems();
+        var inv = new FakeInventory();
+        var sessions = new FakeSessions();
+        var svc = new AchievementService(NullLogger<AchievementService>.Instance, mobDb: null,
+            sessions: sessions, items: items, inventory: inv);
+        svc.SeedCatalogForTest(Battle1(70001, count: 2, rewardItem: "WHITE_POTION"));
+        var pc = Pc();
+        sessions.Register(pc);
+
+        svc.UpdateObjective(pc, (byte)Battle, 0, 1031); // 1 of 2 — not complete
+        svc.CheckReward(pc, 70001);                     // claim rejected (not completed)
+
+        Assert.Equal(0, inv.GiveCalls);
+        Assert.Equal(0, pc.AchievementLog.Single().RewardedUnix);
+    }
+
+    [Fact]
+    public void GetTitles_returns_earned_titles_after_claim()
     {
         var svc = Svc(Battle1(70001, count: 1, rewardTitle: 1000), Battle1(70002, count: 1, rewardTitle: 0));
         var pc = Pc();
-        // Complete + reward both (no reward deps wired → item grant skipped, RewardedUnix set).
-        svc.UpdateObjective(pc, (byte)Battle, 0, 1031); // 70001 (mob 1031) completes + rewards
+        // Complete + claim both (no item reward wired → grant only stamps RewardedUnix).
+        svc.UpdateObjective(pc, (byte)Battle, 0, 1031); // 70001 (mob 1031) completes
+        svc.CheckReward(pc, 70001);                     // manual claim grants the title
         Assert.Contains(1000, svc.GetTitles(pc));
         Assert.DoesNotContain(0, svc.GetTitles(pc)); // title 0 not a real title
     }

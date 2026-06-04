@@ -88,6 +88,13 @@ public interface IIntifService
     int AchievementSave(PlayerEntity pc);
     int AchievementRequest(int charId);
 
+    /// <summary>GP-ACHIEVE — awaitable load-on-enter: fetch the char-side achievement log, hydrate it
+    /// onto <paramref name="pc"/>, then push the achievement window (<c>clif_achievement_list_all</c>).
+    /// Used by the LoadEndAck spawn cascade so achievements exist on the entity and render at session
+    /// start (mirrors rAthena's intif_request_achievementlist → mapif_load_achievements tail of
+    /// pc_authok).</summary>
+    Task AchievementRequestAsync(PlayerEntity pc, CancellationToken ct = default);
+
     // FEATURE-02 — awaitable save variants for the game-loop save fan-out: the final-save
     // (logout) path awaits these so the char-server row lands before the session is torn down.
     // The int wrappers above stay the fire-and-forget autosave path (they delegate to these).

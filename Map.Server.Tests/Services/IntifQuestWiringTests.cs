@@ -66,6 +66,27 @@ public class IntifQuestWiringTests
         Assert.Equal(7L, fake.AchievementLoadCalls[0]);
     }
 
+    [Fact]
+    public async Task AchievementRequestAsync_hydrates_log_from_ipc_response()
+    {
+        // GP-ACHIEVE — load-on-enter: the char-side achievement rows round-trip onto the entity.
+        var loaded = new Core.Server.IPC.AchievementLoadResponse { Success = true };
+        loaded.Achievements.Add(new Core.Server.IPC.AchievementEntryData
+        {
+            AchievementId = 70001, CompletedUnix = 123, RewardedUnix = 0, Score = 10,
+        });
+        var fake = new RecordingQuestIpc { AchievementLoadResult = loaded };
+        var ach = new Map.Server.Achievement.AchievementService(NullLogger<Map.Server.Achievement.AchievementService>.Instance);
+        var intif = new IntifService(NullLogger<IntifService>.Instance, questIpc: fake, achievementService: ach);
+        var pc = MakePc(charId: 7);
+
+        await intif.AchievementRequestAsync(pc);
+
+        Assert.Single(pc.AchievementLog);
+        Assert.Equal(70001, pc.AchievementLog[0].AchievementId);
+        Assert.Equal(123, pc.AchievementLog[0].CompletedUnix);
+    }
+
     private static PlayerEntity MakePc(int charId) =>
         new(charId, charId, $"P{charId}", Guid.NewGuid(), mapId: 1, x: 0, y: 0);
 
@@ -76,6 +97,7 @@ public class IntifQuestWiringTests
         public List<long> QuestLoadCalls { get; } = new();
         public List<long> AchievementSaveCalls { get; } = new();
         public List<long> AchievementLoadCalls { get; } = new();
+        public Core.Server.IPC.AchievementLoadResponse? AchievementLoadResult { get; set; }
 
         public Task<Core.Server.IPC.QuestLoadResponse?> QuestLoadAsync(long characterId,
             CancellationToken cancellationToken = default)
@@ -96,7 +118,7 @@ public class IntifQuestWiringTests
             CancellationToken cancellationToken = default)
         {
             AchievementLoadCalls.Add(characterId);
-            return Task.FromResult<Core.Server.IPC.AchievementLoadResponse?>(null);
+            return Task.FromResult(AchievementLoadResult);
         }
 
         public Task<Core.Server.IPC.AchievementSaveResponse?> AchievementSaveAsync(long characterId,

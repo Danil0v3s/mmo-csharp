@@ -61,8 +61,9 @@ public class NoOpIntifService : IIntifService
     public int QuestRequest(int charId) => 0;
     public Task QuestRequestAsync(PlayerEntity pc, CancellationToken ct = default) => Task.CompletedTask;
 
-    public int AchievementSave(PlayerEntity pc) => 0;
+    public virtual int AchievementSave(PlayerEntity pc) => 0;
     public int AchievementRequest(int charId) => 0;
+    public Task AchievementRequestAsync(PlayerEntity pc, CancellationToken ct = default) => Task.CompletedTask;
 
     public Task QuestSaveAsync(PlayerEntity pc, CancellationToken ct = default) => Task.CompletedTask;
     public Task AchievementSaveAsync(PlayerEntity pc, CancellationToken ct = default) => Task.CompletedTask;

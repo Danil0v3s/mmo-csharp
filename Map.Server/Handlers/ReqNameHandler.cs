@@ -46,8 +46,10 @@ public class ReqNameHandler(
                 {
                     Gid = (uint)pc.Id.Value,
                     CharName = pc.Name,
-                    // Party / guild / position / title left empty until
-                    // the social subsystems land.
+                    // GP-ACHIEVE — the equipped achievement title rides the name block (rAthena
+                    // clif_name → titleId). Party / guild / position remain empty until those
+                    // social subsystems land.
+                    TitleId = (uint)Math.Max(0, pc.TitleId),
                 });
                 break;
 

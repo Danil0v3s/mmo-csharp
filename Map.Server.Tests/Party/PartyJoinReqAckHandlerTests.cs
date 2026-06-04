@@ -323,6 +323,7 @@ public class PartyJoinReqAckHandlerTests
         public System.Threading.Tasks.Task QuestRequestAsync(Map.Server.Entities.PlayerEntity pc, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.CompletedTask;
         public int AchievementSave(PlayerEntity pc) => 0;
         public int AchievementRequest(int charId) => 0;
+        public Task AchievementRequestAsync(PlayerEntity pc, CancellationToken ct = default) => Task.CompletedTask;
         public System.Threading.Tasks.Task QuestSaveAsync(PlayerEntity pc, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.CompletedTask;
         public System.Threading.Tasks.Task AchievementSaveAsync(PlayerEntity pc, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.CompletedTask;
         public System.Threading.Tasks.Task SavePetAsync(int petId, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.CompletedTask;

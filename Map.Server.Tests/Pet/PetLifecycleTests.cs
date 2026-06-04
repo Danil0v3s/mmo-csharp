@@ -213,6 +213,7 @@ public class PetLifecycleTests
         public int QuestRequest(int charId) => 0;
         public System.Threading.Tasks.Task QuestRequestAsync(Map.Server.Entities.PlayerEntity pc, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.CompletedTask;
         public int AchievementRequest(int charId) => 0;
+        public Task AchievementRequestAsync(PlayerEntity pc, CancellationToken ct = default) => Task.CompletedTask;
         public int RequestPetInfo(int petId, int accountId, byte flag) => 0;
         public int DeletePet(int petId) => 0;
         public int HomunculusCreate(int accountId, byte[] data) => 0;

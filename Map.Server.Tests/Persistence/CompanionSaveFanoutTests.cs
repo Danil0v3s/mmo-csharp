@@ -159,6 +159,7 @@ public class CompanionSaveFanoutTests
         public int QuestRequest(int charId) => 0;
         public System.Threading.Tasks.Task QuestRequestAsync(Map.Server.Entities.PlayerEntity pc, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.CompletedTask;
         public int AchievementRequest(int charId) => 0;
+        public Task AchievementRequestAsync(PlayerEntity pc, CancellationToken ct = default) => Task.CompletedTask;
         public int PetCreate(PlayerEntity master, int classId, int nameId, byte rename, int eggItemId, byte intimate, byte hungry, char gender, string petName) => 0;
         public System.Threading.Tasks.Task<int> PetCreateAsync(PlayerEntity master, int classId, int eggItemId, byte intimate, byte hungry, string petName, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.FromResult(0);
         public System.Threading.Tasks.Task<Core.Server.IPC.PetData?> PetLoadAsync(int petId, int accountId, int charId, System.Threading.CancellationToken ct = default) => System.Threading.Tasks.Task.FromResult<Core.Server.IPC.PetData?>(null);

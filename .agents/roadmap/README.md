@@ -88,7 +88,9 @@ this ticket already needed.** "Service landed, packets later" is not done.
 | GP-QUEST | ✅ Quests end-to-end (accept/track/live-count/complete/UI/login-snapshot/toggle/immediate-save + any-mob filters; instance-loc→GP-QUEST-FILTER-INSTANCE, label→GP-QUEST-FILTER-DISPLAY) | FEATURE-03/20/21/22, PACKET-10 |
 | GP-QUEST-FILTER-INSTANCE | Quest Location filter honours instance source map (needs GP-INSTANCE) — split from GP-QUEST |
 | GP-QUEST-FILTER-DISPLAY | Descriptive label for filtered quest objectives (clif_quest_string) — split from GP-QUEST |
-| GP-ACHIEVE | Achievements work end-to-end (triggers/progress/reward/title/UI) | FEATURE-04/23/24, PACKET-10 |
+| GP-ACHIEVE | ✅ Achievements end-to-end (mob-kill trigger/progress/manual-reward-claim/title-equip+name-block/login-window/persistence) — non-battle trigger completion→GP-ACHIEVE-NONBATTLE-TRIGGERS, reward script→GP-ACHIEVE-REWARD-SCRIPT (both SCR-PLAYER) | FEATURE-04, PACKET-10 |
+| GP-ACHIEVE-NONBATTLE-TRIGGERS | Level/job/zeny/… achievements complete from script conditions (needs SCR-PLAYER) — split from GP-ACHIEVE |
+| GP-ACHIEVE-REWARD-SCRIPT | Scripted achievement rewards run on claim (needs SCR-PLAYER) — split from GP-ACHIEVE |
 | GP-VEND | ✅ Vending end-to-end (open/own-list/stall-sign/browse/buy/sold-out-close) — overweight→GP-VEND-OVERWEIGHT, autotrade→GP-AUTOTRADE-RUNTIME | FEATURE-11/35, PACKET-08 |
 | GP-VEND-OVERWEIGHT | Buyer over the weight limit is refused (needs weight system exposed) — split from GP-VEND |
 | GP-AUTOTRADE-RUNTIME | Offline autotrade vendors/buyers stay open + sellable across logout (headless on-map presence) — shared by GP-VEND + GP-BUYSTORE |

@@ -414,6 +414,16 @@ public sealed class PlayerEntity : Entity
     /// </summary>
     public List<Map.Server.Achievement.AchievementEntry> AchievementLog { get; } = new();
 
+    /// <summary>
+    /// GP-ACHIEVE — the currently equipped achievement title id (rAthena
+    /// <c>sd-&gt;status.title_id</c>). 0 = none. Shown over the character name and
+    /// persisted on the char row (round-trips via <c>CharacterDataResponse.title_id</c>).
+    /// The set of *owned* titles is derived on demand from rewarded achievements
+    /// (<see cref="Map.Server.Achievement.IAchievementService.GetTitles"/>) — only the
+    /// equipped id is stored.
+    /// </summary>
+    public int TitleId { get; set; }
+
     // ----- GM atcommand flags (AT-C wave) -----
     // Most of these are toggle/state fields that atcommands set on the
     // PC. They live here so the wire layer can read them without a
