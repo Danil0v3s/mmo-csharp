@@ -38,6 +38,35 @@ public class DamageServiceTests
     }
 
     [Fact]
+    public void ApplyDamage_BroadcastsMonsterHpBar_WhenBelowMax()
+    {
+        var ctx = NewContext();
+        var caller = ctx.AddPlayer(50, 50, 1);
+        var mob = ctx.AddMob(52, 50, hp: 100);
+        mob.MaxHp = 100;
+
+        ctx.Service.ApplyDamage(mob, 30, caller);
+
+        var bar = ctx.Dispatcher.Sent.Select(s => s.packet).OfType<ZC_HP_INFO>().First();
+        Assert.Equal((uint)mob.Id.Value, bar.Id);
+        Assert.Equal(70, bar.Hp);   // 100 - 30
+        Assert.Equal(100, bar.MaxHp);
+    }
+
+    [Fact]
+    public void ApplyDamage_KillingBlow_DoesNotBroadcastHpBar()
+    {
+        var ctx = NewContext();
+        var caller = ctx.AddPlayer(50, 50, 1);
+        var mob = ctx.AddMob(52, 50, hp: 20);
+        mob.MaxHp = 100;
+
+        ctx.Service.ApplyDamage(mob, 50, caller); // overkill → hp 0
+
+        Assert.DoesNotContain(ctx.Dispatcher.Sent.Select(s => s.packet), p => p is ZC_HP_INFO);
+    }
+
+    [Fact]
     public void ApplyDamage_ClampsToRemainingHp()
     {
         var ctx = NewContext();

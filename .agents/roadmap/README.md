@@ -157,7 +157,7 @@ this ticket already needed.** "Service landed, packets later" is not done.
 | Ticket | Outcome | Absorbs |
 |---|---|---|
 | AI-MVP | ✅ MVP bosses behave like MVPs — mob_skill_db loader feeds the skill picker (priority/hp-announce-chat/summon/heal/teleport) + MVP drop tier; this unblocks ALL mob skills, not just MVPs. Boss active-radius+HP-bar→AI-BOSS-ACTIVE-HP | MOBAI-02 |
-| AI-BOSS-ACTIVE-HP | Boss wider active radius + floating boss-HP bar — split from AI-MVP |
+| AI-BOSS-ACTIVE-HP | ✅ Boss/mob active-window (mob_active_time/boss_active_time — stay hard after PC leaves view) + floating mob HP bar (ZC_HP_INFO) — split from AI-MVP |
 | AI-PERF | Cell-grid range scans + full slave coupling | MOBAI-05/06/07 |
 
 ## Selection order

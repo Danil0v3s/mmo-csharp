@@ -10,6 +10,10 @@ namespace Map.Server.Combat;
 
 public sealed class DamageService : IDamageService
 {
+    /// <summary>rAthena <c>battle_config.monster_hp_bars_info</c> — default 1 (the floating mob HP bar
+    /// is shown to nearby players). AI-BOSS-ACTIVE-HP.</summary>
+    private const bool MonsterHpBarsInfo = true;
+
     private readonly IVisibilityService _visibility;
     // Narrow seam — see IMobDeathSink. Taking the full IMobSpawnService here
     // re-introduces the spawn → movement → warp → setpos → attack → damage
@@ -330,6 +334,22 @@ public sealed class DamageService : IDamageService
         }
 
         BroadcastAct(target, source, actual, action, hits, damage2);
+
+        // AI-BOSS-ACTIVE-HP — the floating monster HP bar (rAthena clif_monster_hp_bar, gated by
+        // battle_config.monster_hp_bars_info, default on). After a mob takes damage and its HP has
+        // dropped below max, broadcast ZC_HP_INFO to nearby players so they see the boss/mob's
+        // remaining HP. Skipped when the mob is already at 0 (the death path handles vanish).
+        if (MonsterHpBarsInfo && actual > 0 && target is MobEntity hpBarMob)
+        {
+            var (hp, maxHp) = GetHp(hpBarMob);
+            if (hp > 0 && hp < maxHp)
+                _visibility.SendToArea(hpBarMob, new Core.Server.Packets.Out.ZC.ZC_HP_INFO
+                {
+                    Id = (uint)hpBarMob.Id.Value,
+                    Hp = (int)Math.Clamp(hp, 0, int.MaxValue),
+                    MaxHp = (int)Math.Clamp(maxHp, 1, int.MaxValue),
+                });
+        }
 
         // P0.3 — SC post-resolve reflect / sacrifice consumers. Read the
         // target's reflect SCs and feed back a slice of the dealt damage

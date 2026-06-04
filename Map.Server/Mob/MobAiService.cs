@@ -22,6 +22,13 @@ public sealed class MobAiService : IMobAiService
     /// <summary>rAthena MIN_MOBTHINKTIME — minimum gap between AI ticks per mob.</summary>
     private const int MinThinkTimeMs = 100;
 
+    /// <summary>rAthena <c>battle_config.mob_active_time</c> / <c>boss_active_time</c> (battle.cpp
+    /// default 5000 each). After the last PC leaves a mob's view, the mob keeps running its hard AI
+    /// (full skill/target/chase logic) for this long — bosses (<c>MD_STATUSIMMUNE</c>) use the boss
+    /// value so they can be tuned to stay active longer than trash mobs. AI-BOSS-ACTIVE-HP.</summary>
+    private const long MobActiveTimeMs = 5000;
+    private const long BossActiveTimeMs = 5000;
+
     private readonly IEntityRegistry _entities;
     private readonly IAttackService _attack;
     private readonly IMovementService? _movement;
@@ -38,6 +45,8 @@ public sealed class MobAiService : IMobAiService
     private readonly Map.Server.Spawn.IMobDeathSink? _death;
     private readonly Random _rng;
     private readonly Dictionary<EntityId, long> _lastThink = new();
+    // AI-BOSS-ACTIVE-HP — rAthena md->last_pcneartime: the tick a PC was last in this mob's view.
+    private readonly Dictionary<EntityId, long> _lastPcNear = new();
 
     public MobAiService(
         IEntityRegistry entities,
@@ -139,7 +148,11 @@ public sealed class MobAiService : IMobAiService
             // MOBAI-01 — a mob with a master always runs the hard path (it stays on rAthena's
             // active list) so the slave-coupling pass follows its master even when the master is
             // kited away from any PC.
-            if (mob.MasterId == null && !HasAnyPcInView(mob))
+            var pcInView = HasAnyPcInView(mob);
+            // AI-BOSS-ACTIVE-HP — record the last tick a PC was in view (rAthena md->last_pcneartime).
+            if (pcInView) _lastPcNear[mob.Id] = nowTick;
+
+            if (ShouldRunLazy(mob, pcInView, nowTick))
             {
                 TickLazy(mob, nowTick);
                 continue;
@@ -148,7 +161,7 @@ public sealed class MobAiService : IMobAiService
             // lazy AI keeps animating even after the PCs walk out of
             // range (rAthena mob.cpp:1959, mob_add_spotted from the
             // per-PC hard-AI scan).
-            SpotPcsInView(mob);
+            if (pcInView) SpotPcsInView(mob);
 
             // T5.1d — rAthena mob.cpp:1864 OPT1 / SCF_MOBLOSETARGET
             // gate. If the mob is under an immobilizing SC (Stone /
@@ -337,7 +350,7 @@ public sealed class MobAiService : IMobAiService
         if (_lastThink.Count > 0 && (nowTick & 0x1FFF) == 0) // every ~8s
         {
             var stale = _lastThink.Keys.Where(id => _entities.Get(id) is not MobEntity).ToList();
-            foreach (var id in stale) _lastThink.Remove(id);
+            foreach (var id in stale) { _lastThink.Remove(id); _lastPcNear.Remove(id); }
         }
     }
 
@@ -406,6 +419,22 @@ public sealed class MobAiService : IMobAiService
     /// only on hard-AI ticks (lazy ticks prune via
     /// <see cref="MobSpotted.Clean"/>).
     /// </summary>
+    /// <summary>
+    /// AI-BOSS-ACTIVE-HP — the lazy-vs-hard gate (rAthena <c>mob_ai_sub_lazy</c>). A mob runs the
+    /// hard AI when it has a master (slave coupling) or a PC is currently in view; otherwise it goes
+    /// lazy <b>unless</b> a PC was in view within <c>mob_active_time</c> (<c>boss_active_time</c> for
+    /// <c>MD_STATUSIMMUNE</c> bosses) ms — keeping it active briefly after the player steps out of view.
+    /// </summary>
+    internal bool ShouldRunLazy(MobEntity mob, bool pcInView, long nowTick)
+    {
+        if (mob.MasterId != null || pcInView) return false;
+        var activeTime = (mob.Stats.Mode & MobMode.StatusImmune) != 0 ? BossActiveTimeMs : MobActiveTimeMs;
+        var stayActive = activeTime > 0
+            && _lastPcNear.TryGetValue(mob.Id, out var nearAt)
+            && nowTick - nearAt < activeTime;
+        return !stayActive;
+    }
+
     private void SpotPcsInView(MobEntity mob)
     {
         var viewRange = mob.DbEntry?.ChaseRange > 0

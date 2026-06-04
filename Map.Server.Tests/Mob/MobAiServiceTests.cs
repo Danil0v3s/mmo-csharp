@@ -30,6 +30,48 @@ public class MobAiServiceTests
         Assert.Equal(closePc.Id, mob.Attack!.TargetId);
     }
 
+    // ---- AI-BOSS-ACTIVE-HP: mob_active_time / boss_active_time ----
+
+    [Fact]
+    public void Mob_stays_on_the_hard_path_briefly_after_the_pc_leaves_view()
+    {
+        var ctx = Build();
+        var mob = ctx.AddAggressiveMob(50, 50, range2: 10);
+        ctx.AddPlayer(52, 50, 1); // in view
+
+        ctx.Ai.Tick(200);         // PC in view → records last_pcneartime=200, runs hard
+        Assert.NotNull(mob.Attack); // acquired a target → was on the hard path
+
+        // PC has now left view: within mob_active_time (5000 ms) the mob keeps running hard…
+        Assert.False(ctx.Ai.ShouldRunLazy(mob, pcInView: false, nowTick: 1000));
+        // …and only after the window elapses does it drop to lazy.
+        Assert.True(ctx.Ai.ShouldRunLazy(mob, pcInView: false, nowTick: 200 + 5001));
+        // A PC back in view is always hard.
+        Assert.False(ctx.Ai.ShouldRunLazy(mob, pcInView: true, nowTick: 9_999_999));
+    }
+
+    [Fact]
+    public void Mob_with_no_recent_pc_contact_goes_lazy_at_once()
+    {
+        var ctx = Build();
+        var mob = ctx.AddAggressiveMob(50, 50, range2: 10);
+        // never had a PC in view → no last_pcneartime → lazy immediately.
+        Assert.True(ctx.Ai.ShouldRunLazy(mob, pcInView: false, nowTick: 1000));
+    }
+
+    [Fact]
+    public void Boss_mob_uses_the_boss_active_window()
+    {
+        var ctx = Build();
+        var boss = ctx.AddBossMob(50, 50);
+        ctx.AddPlayer(52, 50, 1);
+
+        ctx.Ai.Tick(200); // PC in view → records last_pcneartime for the boss
+        // The MD_STATUSIMMUNE branch keeps the boss active within boss_active_time.
+        Assert.False(ctx.Ai.ShouldRunLazy(boss, pcInView: false, nowTick: 1000));
+        Assert.True(ctx.Ai.ShouldRunLazy(boss, pcInView: false, nowTick: 200 + 5001));
+    }
+
     // ---- MOBAI-04: line-of-sight gate on the aggressive scan ----
 
     [Fact]
@@ -350,6 +392,26 @@ public class MobAiServiceTests
                 },
             };
             var origin = new MobSpawnEntry { MapId = MapId, MobClassId = 1002 };
+            var mob = new MobEntity(Ids.NextMob(), db, origin, MapId, x, y);
+            new StatusCalcService().CalcMob(mob);
+            Entities.Add(mob);
+            return mob;
+        }
+
+        // AI-BOSS-ACTIVE-HP — an MVP/boss mob (MD_STATUSIMMUNE) for the boss-active-window test.
+        public MobEntity AddBossMob(short x, short y)
+        {
+            var db = new MobDbEntry
+            {
+                Id = 1373, AegisName = "LORD_OF_DEATH", Name = "Lord of Death",
+                Hp = 3_000_000, ChaseRange = 12, AttackRange = 2,
+                Modes = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Aggressive"] = true, ["CanAttack"] = true, ["CanMove"] = true,
+                    ["StatusImmune"] = true, ["Mvp"] = true,
+                },
+            };
+            var origin = new MobSpawnEntry { MapId = MapId, MobClassId = 1373 };
             var mob = new MobEntity(Ids.NextMob(), db, origin, MapId, x, y);
             new StatusCalcService().CalcMob(mob);
             Entities.Add(mob);

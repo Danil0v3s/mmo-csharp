@@ -313,6 +313,7 @@ public enum PacketHeader : short
     CZ_AUCTION_REQ_MY_SELL_STOP = 0x025d,  // clif_parse_Auction_close: <auctionId>.L, 6B (buy-now / end).
     ZC_AUCTION_ACK_MY_SELL_STOP = 0x025e,  // clif_Auction_close: <result>.W, 4B (rAthena writes 0x25d for client-compat; 0x25e is the canonical ack opcode, byte-exact deferred to live-client pass).
     ZC_AUCTION_OPENWINDOW     = 0x025f,    // clif_Auction_openwindow: <flag>.L, 6B.
+    ZC_HP_INFO                = 0x0977,     // clif_monster_hp_bar: <id>.L <hp>.L <maxHP>.L, 14B (floating mob HP bar).
     ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B
     ZC_STATE_CHANGE3      = 0x0229,        // clif_changeoption — option (effect-state) bitmask 32-bit, 15B
     ZC_SPIRITS            = 0x01d0,        // clif_spiritball — Monk sphere / Sura / servant / abyss count, 8B
