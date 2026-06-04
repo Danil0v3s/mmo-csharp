@@ -1,6 +1,6 @@
 # AI-MVP — MVP bosses behave like MVPs
 
-> **Epic:** mobai · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** mobai · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** none
 
 ## The deliverable
