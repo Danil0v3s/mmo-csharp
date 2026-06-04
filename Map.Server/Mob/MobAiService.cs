@@ -331,16 +331,18 @@ public sealed class MobAiService : IMobAiService
                     _attack.StartAttack(mob, closest.Id, continuous: true);
                 }
             }
-            // MOBAI-03 — MD_CHANGECHASE (mob.cpp:1881): a chasing mob (RUSH/FOLLOW) switches to an
-            // enemy already in its melee reach. Exclusive `else if` with the aggressive scan (a mob
-            // that ran the active search does not also changechase). Gated by the FSM matrix
-            // (CanChangeTarget — Rush requires MD_CHANGETARGETCHASE; Follow always allows).
+            // MOBAI-07 — MD_CHANGECHASE (mob.cpp:1882 → mob_ai_sub_hard_changechase, mob.cpp:1348): a
+            // chasing mob (RUSH/FOLLOW) switches to an enemy already in its melee reach. rAthena sets
+            // this target DIRECTLY (`md->target_id = bl->id`) — it does NOT run `mob_can_changetarget`,
+            // because the in-reach-while-chasing case is its own dedicated switch. `TryChangeChase`
+            // already applies rAthena's changechase gates (is-enemy + in-rhw-range). Exclusive `else if`
+            // with the aggressive scan (a mob that ran the active search does not also changechase).
             else if ((mode & MobMode.ChangeChase) != 0
                      && (mob.SkillState == MobSkillState.Rush || mob.SkillState == MobSkillState.Follow))
             {
                 var reach = (short)Math.Min(viewRange, Math.Max(1, (int)mob.Stats.AttackRange));
                 var newTarget = _changeTarget.TryChangeChase(mob, reach);
-                if (newTarget != null && _changeTarget.CanChangeTarget(mob, newTarget))
+                if (newTarget != null)
                     mob.TargetId = (int)newTarget.Id.Value;
             }
         }

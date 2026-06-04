@@ -169,6 +169,23 @@ public class MobAiServiceTests
     }
 
     [Fact]
+    public void Idle_slave_inherits_a_non_pc_master_target()
+    {
+        // MOBAI-06 — rAthena mob_ai_sub_hard_slavemob inherits the master's target whatever its type,
+        // so a slave joins the master against a MOB target (e.g. a player-summoned slave helping its
+        // master attack a monster) — not only a mob-master's slaves piling onto a PC.
+        var ctx = Build();
+        var master = ctx.AddAggressiveMob(50, 50, range2: 10);
+        var enemyMob = ctx.AddPassiveMob(80, 80);   // a MOB the master is engaging, far from the slave
+        master.TargetId = (int)enemyMob.Id.Value;
+        var slave = ctx.AddSlaveMob(51, 50, master, aggressive: false, range2: 3); // adjacent
+
+        ctx.Ai.Tick(400); // past MIN_MOBLINKTIME
+
+        Assert.Equal((int)enemyMob.Id.Value, slave.TargetId); // inherited the non-PC target (was PC-only before)
+    }
+
+    [Fact]
     public void Slave_dies_when_its_master_is_gone()
     {
         var ctx = Build();

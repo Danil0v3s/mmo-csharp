@@ -80,9 +80,12 @@ public sealed class SlaveMobService : ISlaveMobService
         }
 
         // 3. Target inheritance — only when idle, throttled to one per MIN_MOBLINKTIME (300ms).
+        // MOBAI-06 — rAthena mob_ai_sub_hard_slavemob inherits the master's target whatever its type
+        // (BL_PC or BL_MOB), so a player-mastered slave joins the master against a MOB target too — not
+        // only a mob-master's slaves piling onto a PC. The inherited id is the master's own enemy.
         if (slave.TargetId == 0 && nowTick - slave.LastLinkTime >= MinMobLinkTime
             && ResolveMasterTarget(master) is { } tid
-            && _entities.Get(tid) is PlayerEntity enemy && enemy.Hp > 0 && enemy.MapId == slave.MapId)
+            && _entities.Get(tid) is { } enemy && Alive(enemy) && enemy.MapId == slave.MapId)
         {
             slave.TargetId = (int)tid.Value;
             slave.LastLinkTime = nowTick;

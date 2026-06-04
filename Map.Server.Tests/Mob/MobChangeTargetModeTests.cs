@@ -85,6 +85,25 @@ public class MobChangeTargetModeTests
     }
 
     [Fact]
+    public void ChangeChase_in_rush_switches_directly_without_the_changetargetchase_bit()
+    {
+        // MOBAI-07 — rAthena mob_ai_sub_hard_changechase sets the in-reach enemy DIRECTLY
+        // (md->target_id = bl->id); it does NOT run mob_can_changetarget. So a RUSH-state mob with
+        // MD_CHANGECHASE switches even though it lacks MD_CHANGETARGETCHASE (which the normal
+        // can-change-target gate would require for the RUSH state).
+        var ctx = Build();
+        var mob = ctx.AddMob(50, 50, level: 30, "CanAttack", "CanMove", "ChangeChase"); // no ChangeTargetChase
+        var far = ctx.AddPlayer(55, 50, 1, level: 30);   // the original chase target (dist 5)
+        var near = ctx.AddPlayer(51, 50, 2, level: 30);  // steps into melee reach (dist 1)
+        mob.TargetId = far.Id.Value;
+        mob.SkillState = MobSkillState.Rush;
+
+        ctx.Ai.Tick(1000);
+
+        Assert.Equal(near.Id.Value, mob.TargetId); // switched directly despite no ChangeTargetChase bit
+    }
+
+    [Fact]
     public void Without_ChangeChase_bit_keeps_chasing_original_target()
     {
         var ctx = Build();
