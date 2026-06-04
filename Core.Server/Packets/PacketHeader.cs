@@ -269,6 +269,11 @@ public enum PacketHeader : short
     ZC_STORE_ENTRY        = 0x0131,        // clif_showvendingboard: <maker AID>.L <store name>.80, 86B (stall sign on-map).
     ZC_DISAPPEAR_ENTRY    = 0x0132,        // clif_closevendingboard: <owner id>.L, 6B (stall sign removed).
     ZC_ACK_OPENSTORE2     = 0x0a28,        // clif_openvending_ack: <result>.B, 3B (0=success).
+    CZ_REQ_VENDING_ITEMS  = 0x0130,        // clif_parse_VendingListReq: <vendor AID>.L, 6B (click a stall).
+    CZ_PC_PURCHASE_ITEMLIST_FROMMC = 0x0134, // clif_parse_PurchaseReq: <len>.W <AID>.L {amount.W index.W}* (buy).
+    ZC_PC_PURCHASE_ITEMLIST_FROMMC = 0x0133, // clif_vendinglist: <len>.W <AID>.L then per-item 22B (the price list).
+    ZC_PC_PURCHASE_RESULT_FROMMC = 0x0135, // clif_buyvending: <index>.W <amount>.W <result>.B, 7B.
+    ZC_DELETEITEM_FROM_MCSTORE = 0x0137,   // clif_vendingreport: <index>.W <amount>.W, 6B (vendor sale notice).
     ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B
     ZC_STATE_CHANGE3      = 0x0229,        // clif_changeoption — option (effect-state) bitmask 32-bit, 15B
     ZC_SPIRITS            = 0x01d0,        // clif_spiritball — Monk sphere / Sura / servant / abyss count, 8B

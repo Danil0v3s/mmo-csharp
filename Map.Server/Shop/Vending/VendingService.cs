@@ -2,6 +2,7 @@ using Map.Server.Entities;
 using Map.Server.Inventory;
 using Map.Server.Status;
 using Microsoft.Extensions.Logging;
+using R = Core.Server.Packets.Out.ZC.VendPurchaseResult;
 
 namespace Map.Server.Shop.Vending;
 
@@ -20,6 +21,8 @@ public sealed class VendingService : IVendingService
     private readonly Dictionary<int, EntityId> _accountIndex = new();
     private readonly ISessionManagerAccessor? _sessions;
     private readonly IVendingClientService? _client;
+    private readonly Map.Server.Items.IItemCatalog? _items;
+    private readonly IEntityRegistry? _entities;
     private readonly ILogger<VendingService> _logger;
     private long _nextVenderId = 1;
 
@@ -28,11 +31,14 @@ public sealed class VendingService : IVendingService
     internal long VendingTaxBp { get; set; } = 0;
 
     public VendingService(ILogger<VendingService> logger, ISessionManagerAccessor? sessions = null,
-        IVendingClientService? client = null)
+        IVendingClientService? client = null, Map.Server.Items.IItemCatalog? items = null,
+        IEntityRegistry? entities = null)
     {
         _logger = logger;
         _sessions = sessions;
         _client = client;
+        _items = items;
+        _entities = entities;
     }
 
     /// <summary>rAthena <c>vending_openvending</c> — open (or refresh) the stall, stamping a fresh
@@ -69,8 +75,41 @@ public sealed class VendingService : IVendingService
     public void Reopen(PlayerEntity vendor)
         => _logger.LogInformation("vending_reopen: autotrade rehydrate for {Vendor} (persistence → FEATURE-35)", vendor.Name);
 
+    /// <summary>rAthena <c>vending_vendinglistreq</c> — the buyer clicked a stall: stamp the viewed
+    /// vender id on the buyer (anti-desync) and send the shop's price list (<c>clif_vendinglist</c>).</summary>
     public void VendingListReq(PlayerEntity buyer, int vendorAccountId)
-        => _ = _accountIndex.TryGetValue(vendorAccountId, out _);
+    {
+        if (!_accountIndex.TryGetValue(vendorAccountId, out var vid)) return;
+        if (!_stalls.TryGetValue(vid, out var stall)) return;
+        var vendorCart = _sessions?.GetByAccountId(vendorAccountId)?.Cart;
+        if (vendorCart == null) return;
+
+        buyer.VendedId = stall.VenderId; // rAthena sd->vended_id
+
+        var entries = new List<Core.Server.Packets.Out.ZC.VendingListEntry>();
+        foreach (var (idx, qty, price) in stall.Items)
+        {
+            if (qty <= 0) continue;
+            var cartItem = FindBySlot(vendorCart, idx);
+            if (cartItem == null) continue;
+            entries.Add(new Core.Server.Packets.Out.ZC.VendingListEntry
+            {
+                Price = price,
+                Amount = qty,
+                Index = (short)(idx + 2), // client index
+                ItemType = _items != null ? Map.Server.Inventory.ItemTypeCodes.FromDbString(_items.Get(cartItem.NameId)?.Type) : (byte)0,
+                NameId = (short)cartItem.NameId,
+                Identified = (byte)(cartItem.Identified ? 1 : 0),
+                Damaged = (byte)cartItem.Attribute,
+                Refine = cartItem.Refine,
+                Card0 = (short)cartItem.Card0,
+                Card1 = (short)cartItem.Card1,
+                Card2 = (short)cartItem.Card2,
+                Card3 = (short)cartItem.Card3,
+            });
+        }
+        _client?.SendVendingList(buyer, vendorAccountId, entries);
+    }
 
     /// <summary>
     /// FEATURE-11 — rAthena <c>vending_purchasereq</c>: the real trade. Validates the vender id
@@ -84,7 +123,7 @@ public sealed class VendingService : IVendingService
     {
         if (!_accountIndex.TryGetValue(vendorAccountId, out var vid)) return false;
         if (!_stalls.TryGetValue(vid, out var stall)) return false;
-        if (stall.VenderId != venderId) return false; // stale stall id — anti-desync
+        if (stall.VenderId != venderId) { Fail(buyer, 0, 0, R.StoreIncorrect); return false; } // anti-desync
 
         var buyerSession = _sessions?.GetByEntityId(buyer.Id);
         var vendorSession = _sessions?.GetByAccountId(vendorAccountId);
@@ -98,45 +137,79 @@ public sealed class VendingService : IVendingService
         long grandTotal = 0;
         foreach (var (idx, qty) in items)
         {
+            var clientIdx = (short)(idx + 2);
             if (qty <= 0) return false;
             var slot = stall.Items.FindIndex(it => it.index == idx);
-            if (slot < 0) return false;
+            if (slot < 0) { Fail(buyer, clientIdx, qty, R.OutOfStock); return false; } // picked a non-listed item
             var (_, listedQty, price) = stall.Items[slot];
-            if (listedQty < qty || price < 0) return false;
+            if (price < 0) return false;
             var cartItem = FindBySlot(vendorCart, idx);
-            if (cartItem == null || cartItem.Amount < (uint)qty) return false; // vendor no longer holds it
+            if (listedQty < qty || cartItem == null || cartItem.Amount < (uint)qty)
+            { Fail(buyer, clientIdx, listedQty > 0 ? listedQty : (short)0, R.OutOfStock); return false; } // not enough stock
             grandTotal += (long)price * qty;
+            if (grandTotal < 0 || (long)buyerSession.CharacterData.Zeny < grandTotal)
+            { Fail(buyer, clientIdx, qty, R.NoZeny); return false; } // can't afford
             plan.Add((slot, cartItem, qty, price));
         }
-        if (grandTotal < 0 || (long)buyerSession.CharacterData.Zeny < grandTotal) return false; // can't afford
 
         var freshSlots = plan.Count(p => FindMergeable(buyerInv, p.cartItem) == null);
-        if (buyerInv.Count + freshSlots > MaxInventory) return false; // buyer inventory full
+        if (buyerInv.Count + freshSlots > MaxInventory) return false; // buyer inventory full (rAthena: silent)
 
         // Pass 2 — transfer (all-or-nothing).
         var tax = grandTotal * VendingTaxBp / 10000;
         buyerSession.CharacterData.Zeny = (uint)((long)buyerSession.CharacterData.Zeny - grandTotal);
         vendorSession.CharacterData.Zeny = (uint)((long)vendorSession.CharacterData.Zeny + (grandTotal - tax));
 
+        var vendorEntity = _entities?.Get(stall.VendorId) as PlayerEntity;
         foreach (var (slot, cartItem, qty, _) in plan)
         {
-            CreditBuyer(buyerInv, cartItem, qty);
+            var nameId = cartItem.NameId;
+            var bought = CreditBuyer(buyerInv, cartItem, qty);
             DebitCart(vendorSession, vendorCart, cartItem, qty);
             var (k, listedQty, price) = stall.Items[slot];
             stall.Items[slot] = (k, (short)(listedQty - qty), price);
+
+            // Buyer sees the new item; the vendor gets the sale notice (rAthena clif_vendingreport).
+            EmitPickup(buyerSession, bought, nameId, qty);
+            if (vendorEntity != null) _client?.SendVendorReport(vendorEntity, (short)(k + 2), (short)qty);
         }
+
+        // Zeny updates (rAthena pc_payzeny / pc_getzeny send the SP_ZENY par-change).
+        EmitZeny(buyerSession, (int)buyerSession.CharacterData.Zeny);
+        EmitZeny(vendorSession, (int)vendorSession.CharacterData.Zeny);
 
         // Auto-close when every listed item is sold out (rAthena vending_closevending).
         if (stall.Items.All(it => it.qty <= 0))
         {
             _stalls.Remove(vid);
             _accountIndex.Remove(vendorAccountId);
+            if (vendorEntity != null) _client?.CloseStall(vendorEntity);
         }
-        // PACKET-* (CZ/ZC vending): ZC_PC_PURCHASE_RESULT_FROMMC (buyer) + vendor sale notice emit seam.
         _logger.LogInformation("vending_purchasereq: {Buyer} bought {N} item(s) for {Total}z (tax {Tax}) from acc {Vendor}",
             buyer.Name, plan.Count, grandTotal, tax, vendorAccountId);
         return true;
     }
+
+    private void Fail(PlayerEntity buyer, short clientIndex, short amount, R result)
+        => _client?.SendPurchaseResult(buyer, clientIndex, amount, result);
+
+    private static void EmitZeny(Map.Server.MapSessionData session, int zeny)
+        => session.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_PAR_CHANGE
+        { VarId = Core.Server.Packets.SpId.SP_ZENY, Value = zeny });
+
+    private void EmitPickup(Map.Server.MapSessionData buyerSession, InventoryItem bought, uint nameId, int qty)
+        => buyerSession.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_ITEM_PICKUP_ACK
+        {
+            Index = (short)(bought.ServerIndex + 2),
+            Count = (short)qty,
+            NameId = nameId,
+            IsIdentified = (byte)(bought.Identified ? 1 : 0),
+            IsDamaged = (byte)bought.Attribute,
+            Card0 = bought.Card0, Card1 = bought.Card1, Card2 = bought.Card2, Card3 = bought.Card3,
+            Type = _items != null ? Map.Server.Inventory.ItemTypeCodes.FromDbString(_items.Get(nameId)?.Type) : (byte)0,
+            RefiningLevel = bought.Refine,
+            Result = 0,
+        });
 
     public bool Search(PlayerEntity searcher, int nameId)
     {
@@ -177,20 +250,24 @@ public sealed class VendingService : IVendingService
         return null;
     }
 
-    private static void CreditBuyer(List<InventoryItem> inv, InventoryItem src, int qty)
+    /// <summary>Add the bought item to the buyer (merge if stackable, else a fresh slot). Returns the
+    /// slot it landed in so the caller can emit the pickup ack against the right index.</summary>
+    private static InventoryItem CreditBuyer(List<InventoryItem> inv, InventoryItem src, int qty)
     {
         var mergeable = FindMergeable(inv, src);
-        if (mergeable != null) { mergeable.Amount += (uint)qty; return; }
+        if (mergeable != null) { mergeable.Amount += (uint)qty; return mergeable; }
         var nextSlot = 0;
         foreach (var i in inv) if (i.ServerIndex >= nextSlot) nextSlot = i.ServerIndex + 1;
-        inv.Add(new InventoryItem
+        var slot = new InventoryItem
         {
             ServerIndex = nextSlot, NameId = src.NameId, Amount = (uint)qty,
             Identified = src.Identified, Refine = src.Refine, Attribute = src.Attribute,
             Card0 = src.Card0, Card1 = src.Card1, Card2 = src.Card2, Card3 = src.Card3,
             Options = (ItemOption[])src.Options.Clone(), ExpireTime = src.ExpireTime,
             Bound = src.Bound, UniqueId = src.UniqueId, EnchantGrade = src.EnchantGrade,
-        });
+        };
+        inv.Add(slot);
+        return slot;
     }
 
     private static void DebitCart(Map.Server.MapSessionData session, List<InventoryItem> cart, InventoryItem cartItem, int qty)

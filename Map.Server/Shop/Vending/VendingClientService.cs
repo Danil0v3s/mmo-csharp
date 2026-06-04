@@ -40,4 +40,16 @@ public sealed class VendingClientService : IVendingClientService
 
     public void OpenAck(PlayerEntity vendor, byte result)
         => _sessions.GetByEntityId(vendor.Id)?.EnqueuePacket(new ZC_ACK_OPENSTORE2 { Result = result });
+
+    public void SendVendingList(PlayerEntity buyer, int ownerAccountId, IReadOnlyList<VendingListEntry> items)
+        => _sessions.GetByEntityId(buyer.Id)?.EnqueuePacket(new ZC_PC_PURCHASE_ITEMLIST_FROMMC
+        { OwnerAccountId = (uint)ownerAccountId, Items = items });
+
+    public void SendPurchaseResult(PlayerEntity buyer, short clientIndex, short amount, VendPurchaseResult result)
+        => _sessions.GetByEntityId(buyer.Id)?.EnqueuePacket(new ZC_PC_PURCHASE_RESULT_FROMMC
+        { Index = clientIndex, Amount = amount, Result = result });
+
+    public void SendVendorReport(PlayerEntity vendor, short clientIndex, short amount)
+        => _sessions.GetByEntityId(vendor.Id)?.EnqueuePacket(new ZC_DELETEITEM_FROM_MCSTORE
+        { Index = clientIndex, Amount = amount });
 }

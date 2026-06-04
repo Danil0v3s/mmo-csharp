@@ -43,13 +43,18 @@ the overweight gate are missing.
 
 ## Scope — every layer
 
-- [~] **CZ handlers**: open-store (`CZ_REQ_OPENSTORE2` 0x01b2 → `OpenStoreHandler`, offers validated
-      against the cart) + close-store (`CZ_REQ_CLOSESTORE` 0x012e → `CloseStoreHandler`) — turn 1.
-      Remaining: vending-list-req (click a stall) + purchase-from-MC.
-- [ ] **Service**: verify `PurchaseReq` at HEAD; add the **buyer-overweight gate**.
-- [~] **ZC emits**: stall sign on-map (`ZC_STORE_ENTRY` 0x0131, AOI) + open ack (`ZC_ACK_OPENSTORE2`
-      0x0a28) + stall-disappear (`ZC_DISAPPEAR_ENTRY` 0x0132) via new `IVendingClientService` — turn 1.
-      Remaining: vending item list, purchase result, buyer/vendor item-amount updates.
+- [x] **CZ handlers**: open-store (`CZ_REQ_OPENSTORE2` 0x01b2 → `OpenStoreHandler`) + close-store
+      (`CZ_REQ_CLOSESTORE` 0x012e → `CloseStoreHandler`) — turn 1; vending-list-req
+      (`CZ_REQ_VENDING_ITEMS` 0x0130 → `VendingListReqHandler`) + purchase-from-MC
+      (`CZ_PC_PURCHASE_ITEMLIST_FROMMC` 0x0134 → `PurchaseFromMcHandler`) — turn 2.
+- [~] **Service**: `PurchaseReq` verified + emits wired (turn 2: result codes, vendor report, buyer
+      pickup + zeny par-change for both). Remaining: the **buyer-overweight gate** ➡️ GP-VEND-OVERWEIGHT
+      (needs the weight system exposed).
+- [~] **ZC emits**: stall sign (`ZC_STORE_ENTRY` 0x0131) + open ack (`ZC_ACK_OPENSTORE2` 0x0a28) +
+      disappear (`ZC_DISAPPEAR_ENTRY` 0x0132) (turn 1); vending item list (`ZC_PC_PURCHASE_ITEMLIST_FROMMC`
+      0x0133) + purchase result (`ZC_PC_PURCHASE_RESULT_FROMMC` 0x0135 failure codes) + vendor sale notice
+      (`ZC_DELETEITEM_FROM_MCSTORE` 0x0137) + buyer pickup/zeny (turn 2). Remaining: the vendor's own-list
+      on open (`ZC_PC_PURCHASE_MYITEMLIST` 0x0136 — cosmetic re-display; offers already known locally).
 - [ ] **Persistence**: autotrade — persist the open stall + offers; respawn an autotrade
       vendor NPC at the saved map/cell on boot (`vending_reopen`).
 - [x] **Wiring**: AOI broadcast of the stall sign (turn 1, `IVisibilityService.SendToArea` AreaWos).
@@ -80,10 +85,21 @@ the overweight gate are missing.
   `CloseStoreHandler` tears the stall down. `VendingOpenCloseTests` (6: offer validation/index-convert,
   empty-name + no-valid-offer rejects, close routing, stall-sign+ack emit, disappear emit); full suite
   4486 pass (1 = standing replay-fixture).
-- **Remaining (next turns → done):** vending-list-req (buyer clicks a stall → the item list,
-  `ZC_PC_PURCHASE_ITEMLIST_FROMMC`) + purchase (`CZ_PC_PURCHASE_ITEMLIST_FROMMC` → `PurchaseReq` +
-  result/item-update emits) + the vendor's own-list on open (`ZC_PC_PURCHASE_MYITEMLIST`) + the
-  buyer-overweight gate + autotrade persistence (FEATURE-35). The loop resumes this card.
+- **2026-06-04 (turn 2)** — Browse + buy. New packets `CZ_REQ_VENDING_ITEMS` (0x0130 click-a-stall),
+  `CZ_PC_PURCHASE_ITEMLIST_FROMMC` (0x0134 buy, `{amount.W index.W}*`), `ZC_PC_PURCHASE_ITEMLIST_FROMMC`
+  (0x0133 price list, 22B/item), `ZC_PC_PURCHASE_RESULT_FROMMC` (0x0135 result), `ZC_DELETEITEM_FROM_MCSTORE`
+  (0x0137 vendor sale notice). `PlayerEntity.VendedId` (rAthena `sd->vended_id` anti-desync).
+  `VendingService.VendingListReq` builds the price list from the stall offers + vendor cart (item type
+  via `IItemCatalog`), stamps the buyer's VendedId, and emits it. `PurchaseReq` (transfer already real,
+  FEATURE-11) now emits the rAthena result codes on failure (store-incorrect / no-zeny / out-of-stock),
+  the vendor sale report + the buyer item-pickup + SP_ZENY par-change for both on success, and the
+  stall-disappear when sold out. New `VendingListReqHandler` + `PurchaseFromMcHandler` (client→server
+  index convert). `VendingBrowseBuyTests` (5: list+vended-id stamp, full transfer+feedback,
+  stale-id→store-incorrect, no-zeny, handler-buys); full suite 4491 pass (1 = standing replay-fixture).
+  **Filed GP-VEND-OVERWEIGHT** (the buyer-weight gate — needs the weight system exposed).
+- **Remaining (next turns → done):** the vendor's own-list on open (`ZC_PC_PURCHASE_MYITEMLIST`, cosmetic)
+  + autotrade persistence (FEATURE-35: persist the open stall + offers, respawn an autotrade vendor NPC
+  at the saved cell on boot, `vending_reopen`). The loop resumes this card.
 
 ## Notes / gotchas
 

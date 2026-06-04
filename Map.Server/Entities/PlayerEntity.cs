@@ -486,6 +486,11 @@ public sealed class PlayerEntity : Entity
     /// <summary>rAthena <c>sd-&gt;pd-&gt;bonus</c> — pet support bonus script entries.</summary>
     public List<(string Script, int Rate, int Duration, ushort Flag)> PetAutoBonus { get; } = new();
 
+    /// <summary>rAthena <c>sd-&gt;vended_id</c> — the vender id of the vending stall this player is
+    /// currently browsing. Stamped on a vending-list request; the buyer's purchase packet is validated
+    /// against it so a stall that reopened (new offers/prices) can't be bought at stale prices.</summary>
+    public long VendedId { get; set; }
+
     /// <summary>rAthena <c>sd-&gt;state.pc_loaded</c> latch. Set true after
     /// <c>pc_scdata_received</c> completes (SC restore + rentals sweep);
     /// gameplay code reads this to gate "is the player fully ready"

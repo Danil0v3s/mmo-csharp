@@ -89,7 +89,8 @@ this ticket already needed.** "Service landed, packets later" is not done.
 | GP-QUEST-FILTER-INSTANCE | Quest Location filter honours instance source map (needs GP-INSTANCE) — split from GP-QUEST |
 | GP-QUEST-FILTER-DISPLAY | Descriptive label for filtered quest objectives (clif_quest_string) — split from GP-QUEST |
 | GP-ACHIEVE | Achievements work end-to-end (triggers/progress/reward/title/UI) | FEATURE-04/23/24, PACKET-10 |
-| GP-VEND | Vending works end-to-end (open/browse/buy/autotrade) | FEATURE-11/35, PACKET-08 |
+| GP-VEND | 🚧 Vending works end-to-end (open/browse/buy/autotrade) — overweight→GP-VEND-OVERWEIGHT | FEATURE-11/35, PACKET-08 |
+| GP-VEND-OVERWEIGHT | Buyer over the weight limit is refused (needs weight system exposed) — split from GP-VEND |
 | GP-BUYSTORE | Buying store works end-to-end | FEATURE-12/36, PACKET-08 |
 | GP-CASHSHOP | Cash shop works end-to-end (catalog/buy/points-persist/sale/UI) | FEATURE-13/37/38/39, PACKET-08 |
 | GP-INSTANCE | Instances work end-to-end (create/enter/populated maps/lifecycle/UI) | FEATURE-14, INFRA-12, PACKET-09 |
