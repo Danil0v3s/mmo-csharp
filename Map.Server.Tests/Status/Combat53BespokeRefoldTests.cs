@@ -105,6 +105,17 @@ public class Combat53BespokeRefoldTests
     [InlineData(StatusType.Armorchange, CalcStatField.Mdef, 5)]
     [InlineData(StatusType.Stonehardskin, CalcStatField.Def, 5)]
     [InlineData(StatusType.FirmFaith, CalcStatField.Res, 5)]
+    // batch 4 — multi-field flat reset-field re-application
+    [InlineData(StatusType.DragonicAura, CalcStatField.Hit, 5)]
+    [InlineData(StatusType.Fling, CalcStatField.Def, 5)]
+    [InlineData(StatusType.Bloodylust, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.WaterBarrier, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.Saturdaynightfever, CalcStatField.Hit, 5)]
+    [InlineData(StatusType.Twohandquicken, CalcStatField.Cri, 5)]
+    [InlineData(StatusType.DMachine, CalcStatField.Def, 5)]
+    [InlineData(StatusType.AbyssSlayer, CalcStatField.Patk, 5)]
+    [InlineData(StatusType.TemporaryCommunion, CalcStatField.Hplus, 5)]
+    [InlineData(StatusType.SunComfort, CalcStatField.Def2, 5)]
     // ToxinOfMandara (Res−) and Curse (Batk−) are subtract-debuffs whose PC base is 0 here, so the
     // CalcPc-integrated assert can't move them — covered by mob-based unit tests in SC02CalcFlagAllTests.
     public void Bespoke_derived_mod_survives_recalc_and_is_idempotent(

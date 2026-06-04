@@ -30,16 +30,15 @@ ticket sweeps the generator-reapply-set fields (Def/Hit/Flee/Cri/Batk/…) for b
 |---|---|---|
 | Service logic | partial | `Map.Server/Status/StatusEffectRegistry.cs` — the handlers below modify a reset field in OnStart with no OnRecalc. **Batch 1** (turn 11): Fear, Cloaking. **Batch 2** (turn 12): Zangetsu, Madnesscancel, Signumcrucis, GoldeneFerse, Flashcombo, PowerfulFaith, Soulshadow, HeatBarrel, Eqc, PowerOfGaia, SolidSkinOption. **Batch 3** (turn 13): Rushwindmill, TelekinesisIntense, Soulenergy, ToxinOfMandara, MoonComfort, Gloomyday, Soulfalcon, Stone, Freeze, Steelbody, Soulgolem, StoneWall, Armorchange, Stonehardskin, Curse, FirmFaith. |
 
-### Remaining handlers (final registration, reset-field, no OnRecalc) — ~11 flat + 5 careful
+### Remaining handlers — only the 6 per-field-care ones left
 
-Flat reset-field (clean, do next): DragonicAura[Hit,Patk], Fling[Def,Def2], Neutralbarrier[Def,Mdef %],
-Bloodylust[Batk,Def,Def2], WaterBarrier[Batk,Flee], Saturdaynightfever[Flee,Hit],
-Twohandquicken[Cri,Hit], DMachine[Def,Res], AbyssSlayer[Patk,Smatk,Hit],
-TemporaryCommunion[Patk,Smatk,Hplus], SunComfort[Def2].
-
-Need per-field care (percent / primary-stat coupling / MaxHp pool): GtChange[Batk %],
-Fleet[Batk %], Magicpower[Smatk %], Truesight[Cri,Hit — +5 Luk feeds Cri], Berserk[Batk + Flee/2
-+ ×3 MaxHp pool].
+Need per-field care (percent / primary-stat coupling / MaxHp pool):
+- GtChange[Batk %] — Batk += Batk·Val2/100 (recompute on rebuilt base in OnRecalc).
+- Fleet[Batk %] — Batk += Batk·(5+5·Val1)/100, re-snapshot Val3.
+- Magicpower[Smatk %] — Smatk += Smatk·5·Val1/100; Combat53 idempotency won't fit (percent-of-current); use a unit test.
+- Truesight[Cri,Hit] — the +5 Luk feeds Cri on rebuild, so the strict idempotency assert won't fit; OnRecalc re-applies Cri(Val2)+Hit(Val3); verify with a unit test.
+- Berserk[Batk + Flee/2 + ×3 MaxHp pool] — Batk += 200 + Flee snapshot (Val4); MaxHp via OnRecalcPool (already?). Careful multi-axis.
+- Neutralbarrier[Def,Mdef %] — Def += Def·Val2/100 snapshot Val3/Val4; recompute on rebuilt base.
 
 ## rAthena reference (source of truth)
 
@@ -91,3 +90,10 @@ Fleet[Batk %], Magicpower[Smatk %], Truesight[Cri,Hit — +5 Luk feeds Cri], Ber
   a manual FirmFaith edit (it already had an OnRecalcPool). 14 verified in the Combat53 theory; the two
   subtract-debuffs whose PC base is 0 (ToxinOfMandara Res−, Curse Batk−) got mob-based unit tests in SC02
   instead. Full suite 4639 pass (1 = standing replay-fixture). ~11 flat + 5 careful remain.
+- 2026-06-04 (turn 14) — **Batch 4**: the last 10 flat (multi-field) reset-field handlers — DragonicAura
+  (Patk+Hit), Fling (Def−/Def2−), Bloodylust (Def+Def2+Batk), WaterBarrier (Batk+Flee), Saturdaynightfever
+  (Hit−/Flee−), Twohandquicken (Hit+Cri, recomputed), DMachine (Def+Res), AbyssSlayer (Patk+Smatk+Hit),
+  TemporaryCommunion (Patk+Smatk+Hplus), SunComfort (Def2). All re-apply only their snapshotted reset-field
+  deltas; all 10 verified in the Combat53 theory. Full suite 4649 pass (1 = standing replay-fixture).
+  **Only the 6 per-field-care handlers remain** (GtChange/Fleet/Magicpower/Truesight/Berserk/Neutralbarrier —
+  percent-of-base, primary-stat coupling, or MaxHp-pool axes).
