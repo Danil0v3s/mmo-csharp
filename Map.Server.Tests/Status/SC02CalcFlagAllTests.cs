@@ -467,6 +467,52 @@ public class SC02CalcFlagAllTests
     public void PrimaryStatFix_isConverted_notGeneratorDefault(StatusType t)
         => Assert.DoesNotContain(t, _reg.GeneratedStatModDefaultTypes);
 
+    // ---- SC-MAGNITUDE: absolute DEF-override SCs (force the value, restore the rebuilt base on end) ----
+
+    [Fact]
+    public void Eternalchaos_zeroesDefAndDef2_andRestoresBaseOnEnd()
+    {
+        var mob = FreshMob();
+        mob.Stats.Def = 100; mob.Stats.Def2 = 50;
+        var h = _reg.Get(StatusType.Eternalchaos)!;
+        var sc = new StatusChange { Type = StatusType.Eternalchaos, Val1 = 1 };
+        h.OnStart(mob, sc, null);
+        Assert.Equal(0, mob.Stats.Def);
+        Assert.Equal(0, mob.Stats.Def2);
+
+        // recalc rebuilds Def/Def2 from equip; OnRecalc re-snapshots + re-forces 0.
+        mob.Stats.Def = 120; mob.Stats.Def2 = 60;   // (e.g. new armour equipped)
+        h.OnRecalc!(mob, sc);
+        Assert.Equal(0, mob.Stats.Def);
+        Assert.Equal(0, mob.Stats.Def2);
+
+        h.OnEnd!(mob, sc);
+        Assert.Equal(120, mob.Stats.Def);           // restores the last rebuilt base, not the stale 100
+        Assert.Equal(60, mob.Stats.Def2);
+    }
+
+    [Fact]
+    public void Barrier_setsDefAndMdef_to100()
+    {
+        var mob = FreshMob();
+        mob.Stats.Def = 30; mob.Stats.Mdef = 20;
+        var h = _reg.Get(StatusType.Barrier)!;
+        var sc = new StatusChange { Type = StatusType.Barrier, Val1 = 1 };
+        h.OnStart(mob, sc, null);
+        Assert.Equal(100, mob.Stats.Def);
+        Assert.Equal(100, mob.Stats.Mdef);
+        h.OnEnd!(mob, sc);
+        Assert.Equal(30, mob.Stats.Def);
+        Assert.Equal(20, mob.Stats.Mdef);
+    }
+
+    [Theory]
+    [InlineData(StatusType.Eternalchaos)]
+    [InlineData(StatusType.Barrier)]
+    [InlineData(StatusType.Keeping)]
+    public void DefOverride_isConverted_notGeneratorDefault(StatusType t)
+        => Assert.DoesNotContain(t, _reg.GeneratedStatModDefaultTypes);
+
     // ---- SC-DERIVED-RECALC: the per-field-care handlers (percent / coupling / pool) survive recalc ----
 
     [Fact]

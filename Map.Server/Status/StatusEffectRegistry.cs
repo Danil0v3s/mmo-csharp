@@ -1399,6 +1399,16 @@ public sealed class StatusEffectRegistry
         RegisterClanBuff(StatusType.Goldenmaceclan, s => s.IntStat, (s, v) => s.IntStat = v, s => s.Luk, (s, v) => s.Luk = v);
         RegisterClanBuff(StatusType.Crossbowclan, s => s.Agi, (s, v) => s.Agi = v, s => s.Dex, (s, v) => s.Dex = v);
 
+        // Absolute DEF-override SCs — rAthena's status_calc_def/def2/mdef *return* a fixed value for these,
+        // overriding the whole calc (status.cpp:7521 Eternalchaos→0/0, :7526 Barrier→100 def + :7697 →100 mdef,
+        // :7527 Keeping→90 def). The generator's +Val1 is completely wrong (it adds, it doesn't override).
+        // CalcPc rebuilds Def/Def2/Mdef from equip each recalc, so the override is re-forced via OnRecalc;
+        // OnEnd restores the last-snapshotted rebuilt base. (SC_DEFSET/SC_MDEFSET use a skill-set Val1 the C#
+        // skill side doesn't populate yet — deferred, like Kyougaku/C_Marker.)
+        RegisterDefOverride(StatusType.Eternalchaos, ScfFlag.Debuff | ScfFlag.RemoveOnRefresh, 0, '2', 0);
+        RegisterDefOverride(StatusType.Barrier, ScfFlag.Buff | ScfFlag.RemoveOnLogout, 100, 'm', 100);
+        RegisterDefOverride(StatusType.Keeping, ScfFlag.Buff | ScfFlag.RemoveOnLogout, 90, '-', 0);
+
         // SC_GUARD_STANCE (IG_GUARD_STANCE) — Val2 = 50+50*Val1 (DEF increase), Val3 = 50*Val1
         // (Watk decrease). rAthena status.cpp:12445; status.yml CalcFlags: Watk + Def. The +Val1
         // generator default would add +Val1 to both Watk and Def (wrong sign + wrong magnitude).
@@ -7301,6 +7311,31 @@ public sealed class StatusEffectRegistry
                 s.MaxHp += 30;
                 s.MaxSp += 10;
             }));
+    }
+
+    // SC-MAGNITUDE — absolute DEF/DEF2/MDEF override SCs. CalcPc rebuilds these from equip each recalc, so
+    // OnStart/OnRecalc snapshot the rebuilt base (Val3 = def, Val4 = the second field) then force the absolute
+    // value; OnEnd restores the last snapshot. `second`: 'm' = also override Mdef, '2' = also Def2, '-' = none.
+    private void RegisterDefOverride(StatusType type, ScfFlag flags, short defVal, char second, short secondVal)
+    {
+        void Override(Entity target, StatusChange sc)
+        {
+            var s = target.Stats;
+            sc.Val3 = s.Def; s.Def = defVal;
+            if (second == 'm') { sc.Val4 = s.Mdef; s.Mdef = secondVal; }
+            else if (second == '2') { sc.Val4 = s.Def2; s.Def2 = secondVal; }
+        }
+        Register(type, new StatusEffectHandler(
+            OnStart: (target, sc, _) => Override(target, sc),
+            OnEnd: (target, sc) =>
+            {
+                var s = target.Stats;
+                s.Def = (short)sc.Val3;
+                if (second == 'm') s.Mdef = (short)sc.Val4;
+                else if (second == '2') s.Def2 = (short)sc.Val4;
+            },
+            Flags: flags,
+            OnRecalc: (target, sc) => Override(target, sc)));
     }
 
     public StatusEffectHandler? Get(StatusType type) => _handlers.GetValueOrDefault(type);

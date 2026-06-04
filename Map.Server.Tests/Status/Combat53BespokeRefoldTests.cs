@@ -127,6 +127,11 @@ public class Combat53BespokeRefoldTests
     [InlineData(StatusType.TalismanOfMagician, CalcStatField.Smatk, 5)]
     [InlineData(StatusType.TFifthGod, CalcStatField.Smatk, 5)]
     [InlineData(StatusType.BlessingOfMCreatures, CalcStatField.Patk, 5)]
+    // batch 6 — absolute DEF-override SCs (force Def to a fixed value each recalc).
+    // (Barrier→100 isn't here: this test PC's base Def is coincidentally 100, so it can't "move" — it's
+    //  covered by the Barrier_setsDefAndMdef_to100 unit test instead.)
+    [InlineData(StatusType.Eternalchaos, CalcStatField.Def, 1)]   // Def → 0
+    [InlineData(StatusType.Keeping, CalcStatField.Def, 1)]        // Def → 90
     // ToxinOfMandara (Res−) and Curse (Batk−) are subtract-debuffs whose PC base is 0 here, so the
     // CalcPc-integrated assert can't move them — covered by mob-based unit tests in SC02CalcFlagAllTests.
     public void Bespoke_derived_mod_survives_recalc_and_is_idempotent(

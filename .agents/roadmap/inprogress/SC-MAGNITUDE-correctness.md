@@ -201,6 +201,15 @@
   MaxHp/MaxSp (should be +30/+10), and the C# `StatusCalcFlagDefaults` had **Crossbowclan's 2nd stat wrong**
   (Vit; rAthena is Dex), now fixed. Stats survive recalc via the param-base delta; the flat pool adds use
   OnRecalcPool. Worklist 141 → 137. 3 tests; full suite 4681 pass (1 = standing replay-fixture).
+- **2026-06-04 (turn 20)** — Converted the **absolute-DEF-override** cluster via a shared `RegisterDefOverride`
+  helper: **SC_ETERNALCHAOS** (Def=0, Def2=0), **SC_BARRIER** (Def=100, Mdef=100), **SC_KEEPING** (Def=90).
+  rAthena's status_calc_def/def2/mdef *return* a fixed value for these (status.cpp:7521/7526/7527/:7697),
+  overriding the whole calc — the generator's +Val1 adds instead of overriding. The helper snapshots the
+  CalcPc-rebuilt base (Val3=def, Val4=second field) and re-forces the absolute value on OnStart+OnRecalc;
+  OnEnd restores the last snapshot (so it returns to the *current* equip-based def, not a stale one).
+  Worklist 137 → 134. 5 tests; full suite 4688 pass (1 = standing replay-fixture). **SC_DEFSET/SC_MDEFSET**
+  (Def/Mdef = skill-set Val1) remain deferred — like Kyougaku/C_Marker, their magnitude is populated by the
+  casting skill, which the C# skill side doesn't set yet.
 
 ## Notes
 
