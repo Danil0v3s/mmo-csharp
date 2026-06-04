@@ -101,6 +101,16 @@
   as a silent no-op — added the two fields (a Watk-only stat-mod is now detected). 4 tests
   (`MercAtkup/MercFleeup/MercHpup_*` + the 5-way `MercCluster_isConverted` theory); full suite 4575 pass
   (1 = standing replay-fixture).
+- **2026-06-04 (turn 6)** — Converted **SC_DORAM_MATK** (SU_SPIRITOFLAND): `matk += Val1` (status.cpp:7215;
+  Val1 carries the caster base_level per skill.cpp:13020/14749). The generator had it mapped to **Batk**
+  (wrong stat) — converted to a flat MATK add on MatkMin/MatkMax, mirroring the Incmatkrate pattern.
+  Worklist **139 → 138**. (Audited the rest of the Doram/summoner-song cluster: SC_DORAM_FLEE2 `flee2+=Val1`
+  and the regular DoramFlee2/Flee2 mapping are **correctly** generator-served; SC_CHATTERING is already
+  off-worklist with a deliberate Batk mapping pinned by COMBAT-53; the song SCs Moonlitserenade/Echosong/
+  Symphony use job-level-dependent Val3 formulas — left for a deliberate pass.) Also extended the
+  completeness probe again: `SnapshotStats` now includes `MatkMin/MatkMax` (a Matk-only handler was
+  otherwise read as a silent no-op, same class of gap as the turn-5 Watk fix). 2 tests
+  (`DoramMatk_addsFlatMatk_byVal1_notBatk` + `_isConverted`); full suite 4577 pass (1 = standing replay-fixture).
 
 ## Notes
 

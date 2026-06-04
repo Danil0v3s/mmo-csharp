@@ -240,6 +240,29 @@ public class SC02CalcFlagAllTests
         Assert.Equal(1000, mob.Stats.Hp);           // Hp clamped down to new max
     }
 
+    // ---- SC-MAGNITUDE: SC_DORAM_MATK (status.cpp:7215) — matk += Val1, NOT Batk += Val1 ----
+
+    [Fact]
+    public void DoramMatk_addsFlatMatk_byVal1_notBatk()
+    {
+        var mob = FreshMob();           // MatkMin=200, MatkMax=240
+        mob.Stats.Batk = 100;
+        var sc = new StatusChange { Type = StatusType.DoramMatk, Val1 = 99 }; // Val1 = caster base_level
+
+        Apply(StatusType.DoramMatk, sc, mob);
+        Assert.Equal(299, mob.Stats.MatkMin);   // +99
+        Assert.Equal(339, mob.Stats.MatkMax);
+        Assert.Equal(100, mob.Stats.Batk);      // Batk untouched (generator had wrongly used it)
+
+        _reg.Get(StatusType.DoramMatk)!.OnEnd!(mob, sc);
+        Assert.Equal(200, mob.Stats.MatkMin);   // restored
+        Assert.Equal(240, mob.Stats.MatkMax);
+    }
+
+    [Fact]
+    public void DoramMatk_isConverted_notGeneratorDefault()
+        => Assert.DoesNotContain(StatusType.DoramMatk, _reg.GeneratedStatModDefaultTypes);
+
     [Theory]
     // ATKUP/FLEEUP/HPUP converted this turn; HITUP/SPUP already converted by COMBAT-73/89 — none of the
     // SC_MERC_* stat-bonus cluster should remain on the generator-default worklist.

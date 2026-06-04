@@ -419,7 +419,7 @@ public class StatusEffectCompletenessTests
             s.Pow, s.Sta, s.Wis, s.Spl, s.Con, s.Crt,
             s.Hit, s.Flee, s.Flee2, s.Cri,
             s.Def, s.Def2, s.Mdef, s.Mdef2,
-            s.WatkMin, s.WatkMax,
+            s.WatkMin, s.WatkMax, s.MatkMin, s.MatkMax,
             s.Batk, s.AspdRate, s.Patk, s.Smatk, s.Res, s.Mres,
             s.Hplus, s.Crate,
             s.MaxHp, s.Hp, s.MaxSp, s.Sp,

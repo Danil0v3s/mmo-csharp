@@ -1357,6 +1357,23 @@ public sealed class StatusEffectRegistry
                 target.Stats.MaxHp += delta;
             }));
 
+        // SC_DORAM_MATK (SU_SPIRITOFLAND) — matk += Val1 (status.cpp:7215). Val1 carries the caster's
+        // base_level (skill.cpp:13020/14749), so this is a flat MATK add. The generator wrongly mapped it
+        // to Batk (a +Val1 to base ATK); convert to the real MATK target. Mirrors the Incmatkrate Matk
+        // pattern (no OnRecalc — MatkMin/Max are not on the CalcPc derived-reapply field set).
+        Register(StatusType.DoramMatk, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin + sc.Val1);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax + sc.Val1);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.MatkMin = ClampUShort(target.Stats.MatkMin - sc.Val1);
+                target.Stats.MatkMax = ClampUShort(target.Stats.MatkMax - sc.Val1);
+            },
+            Flags: buff));
+
         // SC_SERVICE4U — Val2 = MaxSP % bonus (9+Val1 capped at 20),
         //                Val3 = 5+Val1 (SP cost reduction %).
         // status.yml CalcFlag table also reads all 6 base stats — wrong.
