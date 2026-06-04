@@ -36,6 +36,19 @@ public class SC07GeneratorAuditTests
         Assert.DoesNotContain(StatusType.Fear, Reg.GeneratedStatModDefaultTypes);
     }
 
+    [Theory]
+    // SC-MAGNITUDE — SCs converted by the post-generator override waves (Wave 32/60/61) must be pruned
+    // from the worklist. Before the prune they were over-reported as still-default (their override runs
+    // AFTER the generator added them). Each of these has a real rAthena Val2/Val3 magnitude handler.
+    [InlineData(StatusType.Fortune)]      // val2 = val1*10 (Cri)
+    [InlineData(StatusType.Whistle)]      // val2 = 18+2*val1 (Flee), val3 = (val1+1)/2 (Flee2)
+    [InlineData(StatusType.Humming)]      // val2 = 4*val1 (Hit)
+    [InlineData(StatusType.Dontforgetme)] // val2 = 1+30*val1 (Aspd), val3 = 5+2*val1 (Speed)
+    [InlineData(StatusType.Assncros)]     // val2 = val1<10 ? val1*2-1 : 20 (AspdRate)
+    [InlineData(StatusType.Truesight)]    // val2 = 10*val1 (Cri), val3 = 3*val1 (Hit)
+    public void OverriddenSc_IsPrunedFromGeneratorDefaultWorklist(StatusType type)
+        => Assert.DoesNotContain(type, Reg.GeneratedStatModDefaultTypes);
+
     // ---- Fear: fixed 20% Hit + Flee REDUCTION (not +Val1) ----
 
     [Fact]

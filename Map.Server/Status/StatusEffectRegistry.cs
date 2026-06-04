@@ -1084,6 +1084,12 @@ public sealed class StatusEffectRegistry
         // default with the canonical rAthena formula AND mutates the
         // listed CalcFlag fields with the proper magnitude.
         RegisterWave61BespokeGeneratorOverrides();
+
+        // SC-MAGNITUDE — the override waves above (Wave 32/60/61 + the bespoke formula methods) replace
+        // the generator's +Val1 synthesis for the SCs they cover, but ran AFTER the generator added
+        // those types to the worklist. Prune them now so the generator-default worklist reflects only
+        // the SCs still served by the generic synthesis (the genuine rAthena-magnitude review remainder).
+        PruneOverriddenGeneratedTypes();
     }
 
     /// <summary>
@@ -6394,7 +6400,7 @@ public sealed class StatusEffectRegistry
             // review guard; converting an SC to an explicit Register() removes
             // it from this set (the explicit body wins at line 6057).
             _generatedStatModTypes.Add(type);
-            _handlers[type] = new StatusEffectHandler(
+            var synthesized = new StatusEffectHandler(
                 OnStart: (target, sc, _) => ApplyCalcFlagDelta(target, sc, fields, sign: +1),
                 OnEnd:   (target, sc)    => ApplyCalcFlagDelta(target, sc, fields, sign: -1),
                 Flags: defaultFlags,
@@ -6403,8 +6409,24 @@ public sealed class StatusEffectRegistry
                 // the COMBAT-10 delta, so derivedOnly skips them to avoid a
                 // double-count). Covers the bulk SCB_BATK/DEF2/HIT/FLEE/CRI set.
                 OnRecalc: (target, sc)   => ApplyCalcFlagDelta(target, sc, fields, sign: +1, derivedOnly: true));
+            // SC-MAGNITUDE — remember the synthesized handler so a later bespoke override (Wave 32/60/61)
+            // can be detected and pruned from the generator-default worklist (which must shrink to the
+            // genuinely-still-default set, not over-report already-converted SCs).
+            _synthesizedHandlers[type] = synthesized;
+            _handlers[type] = synthesized;
         }
     }
+
+    /// <summary>SC-MAGNITUDE — the handler the generator synthesized for each worklist SC, captured so
+    /// the post-override prune can tell "still default" from "bespoke-overridden".</summary>
+    private readonly Dictionary<StatusType, StatusEffectHandler> _synthesizedHandlers = new();
+
+    /// <summary>SC-MAGNITUDE — drop from the generator-default worklist every SC whose handler a later
+    /// bespoke override replaced, so <see cref="GeneratedStatModDefaultTypes"/> reflects only the SCs
+    /// still served by the generic <c>+Val1</c> synthesis (the rAthena-magnitude review remainder).</summary>
+    private void PruneOverriddenGeneratedTypes()
+        => _generatedStatModTypes.RemoveAll(t =>
+            !_synthesizedHandlers.TryGetValue(t, out var synth) || !ReferenceEquals(_handlers.GetValueOrDefault(t), synth));
 
     /// <summary>
     /// Apply a Val1-scaled delta to every <see cref="CalcStatField"/>
