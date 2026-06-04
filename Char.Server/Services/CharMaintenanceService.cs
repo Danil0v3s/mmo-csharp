@@ -47,6 +47,7 @@ public sealed class CharMaintenanceService : ICharMaintenanceService
     private DateTime _nextMailDeleteUtc = DateTime.MinValue;
     private DateTime _nextClanCleanupUtc = DateTime.MinValue;
     private DateTime _nextOnlineCleanupUtc = DateTime.MinValue;
+    private DateTime _nextAuctionExpiryUtc = DateTime.MinValue;
 
     public CharMaintenanceService(
         IServiceScopeFactory scopes,
@@ -83,6 +84,11 @@ public sealed class CharMaintenanceService : ICharMaintenanceService
             _nextOnlineCleanupUtc = now.AddMinutes(10);
             await TickOnlineCleanupAsync(ct);
         }
+        if (now >= _nextAuctionExpiryUtc)
+        {
+            _nextAuctionExpiryUtc = now.AddMinutes(1);
+            await TickAuctionExpiryAsync(ct);
+        }
     }
 
     // --- internal tick paths (also exposed for tests via interface) ---
@@ -98,6 +104,9 @@ public sealed class CharMaintenanceService : ICharMaintenanceService
 
     public async Task<int> RunOnlineCleanupTickAsync(CancellationToken ct = default)
         => await TickOnlineCleanupAsync(ct);
+
+    public async Task<int> RunAuctionExpiryTickAsync(CancellationToken ct = default)
+        => await TickAuctionExpiryAsync(ct);
 
     private async Task<int> TickMailReturnAsync(CancellationToken ct)
     {
@@ -243,6 +252,46 @@ public sealed class CharMaintenanceService : ICharMaintenanceService
             rows.Count);
         return rows.Count;
     }
+
+    /// <summary>
+    /// GP-AUCTION — the auction expiry sweep (rAthena <c>auction_end_timer</c>, scheduled per-auction in
+    /// the original; a periodic sweep is the architectural equivalent here, alongside the mail timers).
+    /// For each auction whose end time has passed: if it has a high bidder, deliver the item (full
+    /// fidelity) to the winner + the winning bid to the seller; otherwise return the item to the seller.
+    /// The row is then removed. All payouts travel by mail.
+    /// </summary>
+    private async Task<int> TickAuctionExpiryAsync(CancellationToken ct)
+    {
+        using var scope = _scopes.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<GameDbContext>();
+        var nowUnix = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        var expired = await db.Auctions
+            .Where(a => a.Timestamp > 0 && a.Timestamp <= nowUnix)
+            .ToListAsync(ct);
+        if (expired.Count == 0) return 0;
+
+        foreach (var a in expired)
+        {
+            if (a.BuyerId > 0)
+            {
+                db.Mails.Add(AuctionDelivery.BuildMail(a, a.BuyerId, a.BuyerName, "Auction Winner",
+                    "Congratulations on your winning bid.", withItem: true, zeny: 0));
+                db.Mails.Add(AuctionDelivery.BuildMail(a, a.SellerId, a.SellerName, "Auction",
+                    "Your auctioned item has been sold.", withItem: false, zeny: a.Price));
+            }
+            else
+            {
+                db.Mails.Add(AuctionDelivery.BuildMail(a, a.SellerId, a.SellerName, "Auction",
+                    "Your auction expired with no bids. Your item has been returned.", withItem: true, zeny: 0));
+            }
+            db.Auctions.Remove(a);
+        }
+
+        await db.SaveChangesAsync(ct);
+        _logger.LogInformation("Auction expiry tick: ended {Count} expired auction(s)", expired.Count);
+        return expired.Count;
+    }
 }
 
 public interface ICharMaintenanceService
@@ -261,4 +310,7 @@ public interface ICharMaintenanceService
 
     /// <summary>Force an online-orphan pass regardless of deadline (tests).</summary>
     Task<int> RunOnlineCleanupTickAsync(CancellationToken ct = default);
+
+    /// <summary>Force an auction-expiry pass regardless of deadline (tests).</summary>
+    Task<int> RunAuctionExpiryTickAsync(CancellationToken ct = default);
 }

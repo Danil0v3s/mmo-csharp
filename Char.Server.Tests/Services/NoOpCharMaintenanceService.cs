@@ -15,4 +15,5 @@ internal sealed class NoOpCharMaintenanceService : ICharMaintenanceService
     public Task<int> RunMailDeleteTickAsync(CancellationToken ct = default) => Task.FromResult(0);
     public Task<int> RunClanCleanupTickAsync(CancellationToken ct = default) => Task.FromResult(0);
     public Task<int> RunOnlineCleanupTickAsync(CancellationToken ct = default) => Task.FromResult(0);
+    public Task<int> RunAuctionExpiryTickAsync(CancellationToken ct = default) => Task.FromResult(0);
 }

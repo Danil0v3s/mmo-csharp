@@ -74,7 +74,7 @@ this ticket already needed.** "Service landed, packets later" is not done.
 | GP-MAIL | ✅ RODEX mail end-to-end (open/list/read/claim/delete + compose/attach/send; rental→GP-MAIL-RENTAL, partial-claim→GP-MAIL-PARTIAL-CLAIM) | FEATURE-05/25, PACKET-06 |
 | GP-MAIL-RENTAL | Rental-item expiry on mail attachments (needs expire_time proto field) — split from GP-MAIL |
 | GP-MAIL-PARTIAL-CLAIM | Separated zeny-only/item-only mail claims (needs char partial-settle) — split from GP-MAIL |
-| GP-AUCTION | Auction house works end-to-end (register/bid/buy/cancel/search) | FEATURE-06/26, PACKET-07 |
+| GP-AUCTION | ✅ Auction house end-to-end (stage/register/escrow/search-by-category/bid/outbid-refund/buy-now/cancel + full-item-fidelity mail delivery to winner/seller + expiry-timer sweep) | FEATURE-06/26, PACKET-07 |
 | GP-PET | ✅ Pet end-to-end (tame/hatch-with-saved-state/feed/menu/rename/emote/loot/return/relog-rehatch) — auto-skill+loyalty→scripting, see follow-ups | FEATURE-07/27/28, PACKET-03 |
 | GP-PET-LOGIN-RESUMMON | Pet left out at logout re-appears on login (status.pet_id auto-hatch) — split from GP-PET |
 | GP-PET-LOYALTY-BONUS | Loyal pets grant their support bonus (pet script commands, SCR-DOMAIN) — split from GP-PET |

@@ -1,6 +1,6 @@
 # GP-AUCTION — Auction house works end-to-end
 
-> **Epic:** gameplay · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** ✅ Done (2026-06-04) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** none
 
 ## The deliverable
@@ -52,12 +52,14 @@ list — archive FEATURE-06), but no client packet reaches it, and full item fid
       item fidelity on the register RPC (`AuctionData.item` = cards/options/uniqueid/bound/grade,
       populated from the escrowed item) + search-type bucketing (armor/weapon/card/misc → `auction.Type`
       match) *(turn 2)*.
-- [~] **Persistence** *(turn 2)*: full-item auction rows (`ApplyAuctionItemFidelity` on register +
+- [x] **Persistence** *(turn 2+3)*: full-item auction rows (`ApplyAuctionItemFidelity` on register +
       `AuctionItemFidelity` back on browse); delivery by mail — item→winner + winning-bid→seller on
       close (seller-ends) and on instant buy-now-via-bid (buy-now price→seller), item→seller return on
-      cancel (`QueueAuctionMail`, full fidelity attachments); outbid → prior-bidder zeny refund (already
-      present). Also fixed the previously EF-untranslatable `AuctionRequestList` filter. **Remaining:**
-      the **expiry-timer sweep** (deliver expired auctions to winner / return to seller) — **turn 3**.
+      cancel (`QueueAuctionMail` → shared `AuctionDelivery`, full-fidelity attachments); outbid →
+      prior-bidder zeny refund (already present). Also fixed the previously EF-untranslatable
+      `AuctionRequestList` filter. **Expiry-timer sweep** *(turn 3)*: `CharMaintenanceService.TickAuctionExpiry`
+      (every 1 min, alongside the mail timers) ends auctions past their end time — item→winner +
+      bid→seller if there was a bidder, else item→seller return — via the same `AuctionDelivery` mail.
 - [x] **ZC emits** *(turn 1)*: status message (`ZC_AUCTION_RESULT` 0x0250), staged-item ack
       (`ZC_ACK_AUCTION_ADD_ITEM` 0x0256), browse/search + my-auctions results
       (`ZC_AUCTION_ITEM_REQ_SEARCH` 0x0252, 83-byte entries; shared by search + my-info), close ack
@@ -66,11 +68,13 @@ list — archive FEATURE-06), but no client packet reaches it, and full item fid
 
 ## Done criteria
 
-- Seller registers a carded item (fee paid, item escrowed) → another player searches by
+- ✅ Seller registers a carded item (fee paid, item escrowed) → another player searches by
   category, bids; a higher bid refunds the first bidder; at expiry the winner receives the
-  item (cards intact) + the seller receives the zeny, all by mail.
-- Buy-now ends the auction immediately.
-- Relog at any point → auction state intact.
+  item (cards intact) + the seller receives the zeny, all by mail. (`AuctionBridgeTests`,
+  `CharGrpcDataIntegrityTests`, `CharMaintenanceServiceTests` expiry sweep.)
+- ✅ Buy-now ends the auction immediately (seller-stop close + instant buy-now-via-bid, both deliver).
+- ✅ Relog at any point → auction state intact (the row + full item fidelity persist in `auction`;
+  the expiry sweep is server-side, independent of the seller/bidder being online).
 
 ## Test plan
 
@@ -106,9 +110,22 @@ list — archive FEATURE-06), but no client packet reaches it, and full item fid
   in memory). Tests: +4 char delivery/fidelity + 1 category-filter (`CharGrpcDataIntegrityTests`,
   172 char-suite green) + 1 map fidelity (`AuctionServiceTests`, 26 map auction-suite green); full
   Map suite 4526 pass (1 = standing replay-fixture).
-- **Remaining (turn 3 → done):** the **expiry-timer sweep** — a char-side background pass that closes
-  auctions past their end time, delivering the item to the high bidder (or returning it to the seller
-  if there were no bids) by mail. The loop resumes this card.
+- **2026-06-04 (turn 3 — DONE)** — The expiry-timer sweep. Extracted the turn-2 mail-delivery into a
+  shared static `AuctionDelivery.BuildMail` (used by both the gRPC completion paths and the sweep), then
+  added `CharMaintenanceService.TickAuctionExpiry` (1-min cadence, alongside the existing mail/clan/online
+  timers, driven by the char game loop's `TickAsync`): each auction whose `Timestamp` has passed is ended —
+  if it has a high bidder, the item (full fidelity) goes to the winner + the winning bid to the seller;
+  otherwise the item is returned to the seller — all by mail, then the row is removed. `RunAuctionExpiryTickAsync`
+  test seam + the `ICharMaintenanceService` interface + `NoOpCharMaintenanceService` updated. 3 expiry tests
+  (with-bidder delivery, no-bidder return, live-auction-untouched); 175 char-suite green, Map suite 4526
+  pass (1 = standing replay-fixture). All three done-criteria now hold → **DONE**.
+
+## History
+
+- 2026-06-04 — Turn 1: the auction client packet bridge (8 CZ + 5 ZC packets, handlers, staging state).
+  Turn 2: full-item fidelity (`AuctionData.item`) + mail delivery on close/buy-now/cancel + category
+  search buckets + the EF-untranslatable-filter fix. Turn 3 (DONE): the char-side expiry-timer sweep
+  (`CharMaintenanceService`) delivering expired auctions to the winner / returning to the seller.
 
 ## Notes / gotchas
 

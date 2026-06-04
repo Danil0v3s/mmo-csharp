@@ -51,6 +51,65 @@ public class CharMaintenanceServiceTests
         Assert.True(reloaded.Time > oldTime);
     }
 
+    // --- GP-AUCTION turn 3: expiry sweep ---
+
+    private static AuctionEntity ExpiredAuction(int seller, int buyer, uint price, uint nameId = 1201, uint card0 = 4001) => new()
+    {
+        SellerId = seller, SellerName = "Seller", BuyerId = buyer, BuyerName = buyer > 0 ? "Winner" : "",
+        NameId = nameId, ItemName = "Knife", Type = 1, Refine = 7, Card0 = card0, EnchantGrade = 2,
+        Price = price, Buynow = 100_000, Hours = 1,
+        Timestamp = (uint)DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeSeconds(), // already past
+    };
+
+    [Fact]
+    public async Task AuctionExpiry_WithBidder_DeliversItemToWinnerAndZenyToSeller()
+    {
+        await using var ctx = new Harness();
+        await ctx.SeedAuctionAsync(ExpiredAuction(seller: 200, buyer: 300, price: 5000));
+
+        var n = await ctx.Service.RunAuctionExpiryTickAsync();
+        Assert.Equal(1, n);
+
+        var (mails, auctions) = await ctx.SnapshotAsync();
+        Assert.Equal(0, auctions); // row removed
+        var winner = mails.Single(m => m.DestId == 300 && m.Attachments.Any());
+        Assert.Equal(1201u, winner.Attachments.First().NameId);
+        Assert.Equal(4001u, winner.Attachments.First().Card0); // cards intact
+        var seller = mails.Single(m => m.DestId == 200 && m.Zeny > 0);
+        Assert.Equal(5000u, seller.Zeny); // the winning bid
+    }
+
+    [Fact]
+    public async Task AuctionExpiry_NoBidder_ReturnsItemToSeller()
+    {
+        await using var ctx = new Harness();
+        await ctx.SeedAuctionAsync(ExpiredAuction(seller: 200, buyer: 0, price: 0, card0: 4002));
+
+        var n = await ctx.Service.RunAuctionExpiryTickAsync();
+        Assert.Equal(1, n);
+
+        var (mails, auctions) = await ctx.SnapshotAsync();
+        Assert.Equal(0, auctions);
+        var returned = mails.Single(m => m.DestId == 200 && m.Attachments.Any());
+        Assert.Equal(4002u, returned.Attachments.First().Card0);
+        Assert.DoesNotContain(mails, m => m.Zeny > 0); // no zeny payout when unsold
+    }
+
+    [Fact]
+    public async Task AuctionExpiry_LiveAuction_IsNotTouched()
+    {
+        await using var ctx = new Harness();
+        var live = ExpiredAuction(seller: 200, buyer: 0, price: 0);
+        live.Timestamp = (uint)DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds(); // future
+        await ctx.SeedAuctionAsync(live);
+
+        var n = await ctx.Service.RunAuctionExpiryTickAsync();
+        Assert.Equal(0, n);
+        var (mails, auctions) = await ctx.SnapshotAsync();
+        Assert.Equal(1, auctions);
+        Assert.Empty(mails);
+    }
+
     [Fact]
     public async Task MailReturn_EmptyMail_WithReturnEmptyZero_IsSkipped()
     {
@@ -267,6 +326,24 @@ public class CharMaintenanceServiceTests
             using var scope = Scopes.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<GameDbContext>();
             return await db.Characters.FindAsync(charId);
+        }
+
+        public async Task<AuctionEntity> SeedAuctionAsync(AuctionEntity a)
+        {
+            using var scope = Scopes.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<GameDbContext>();
+            db.Auctions.Add(a);
+            await db.SaveChangesAsync();
+            return a;
+        }
+
+        public async Task<(List<MailEntity> mails, int auctions)> SnapshotAsync()
+        {
+            using var scope = Scopes.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<GameDbContext>();
+            var mails = await db.Mails.Include(m => m.Attachments).ToListAsync();
+            var auctions = await db.Auctions.CountAsync();
+            return (mails, auctions);
         }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;

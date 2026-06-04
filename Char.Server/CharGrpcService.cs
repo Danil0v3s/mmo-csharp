@@ -3973,43 +3973,10 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
     };
 
     /// <summary>GP-AUCTION — queue an "Auction Manager" mail delivering the auctioned item (full
-    /// fidelity) and/or zeny to a character (rAthena <c>mail_sendmail</c> on auction completion).</summary>
+    /// fidelity) and/or zeny to a character (rAthena <c>mail_sendmail</c> on auction completion).
+    /// Shared with the expiry-timer sweep via <see cref="AuctionDelivery"/>.</summary>
     private void QueueAuctionMail(AuctionEntity a, int destId, string destName, string title, string body, bool withItem, uint zeny)
-    {
-        var mail = new MailEntity
-        {
-            SendId = 0,
-            SendName = "Auction Manager",
-            DestId = destId,
-            DestName = Truncate(destName ?? string.Empty, 30),
-            Title = Truncate(title, 40),
-            Message = Truncate(body, 200),
-            Zeny = zeny,
-            Time = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            Status = 0,
-            Type = 0,
-        };
-        _dbContext.Mails.Add(mail);
-        if (withItem && a.NameId > 0)
-            mail.Attachments.Add(new MailAttachmentEntity
-            {
-                Index = 0,
-                NameId = a.NameId,
-                Amount = 1,
-                Refine = a.Refine,
-                Attribute = a.Attribute,
-                Identify = 1,
-                Card0 = a.Card0, Card1 = a.Card1, Card2 = a.Card2, Card3 = a.Card3,
-                OptionId0 = a.OptionId0, OptionVal0 = a.OptionVal0, OptionParm0 = a.OptionParm0,
-                OptionId1 = a.OptionId1, OptionVal1 = a.OptionVal1, OptionParm1 = a.OptionParm1,
-                OptionId2 = a.OptionId2, OptionVal2 = a.OptionVal2, OptionParm2 = a.OptionParm2,
-                OptionId3 = a.OptionId3, OptionVal3 = a.OptionVal3, OptionParm3 = a.OptionParm3,
-                OptionId4 = a.OptionId4, OptionVal4 = a.OptionVal4, OptionParm4 = a.OptionParm4,
-                UniqueId = a.UniqueId,
-                Bound = 0,
-                EnchantGrade = a.EnchantGrade,
-            });
-    }
+        => _dbContext.Mails.Add(AuctionDelivery.BuildMail(a, destId, destName, title, body, withItem, zeny));
 
     private static bool MatchesAuctionRequest(AuctionEntity auction, AuctionRequestListRequest request)
     {
