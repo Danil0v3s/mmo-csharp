@@ -111,6 +111,12 @@ public class NotifyActorInitHandler(
             // recalc (no double-calc / HP-clamp glitch for a previously-died relogger).
             player.DieCounter = Map.Server.Persistence.DieCounterReg.Read(session.VarRegs);
 
+            // GP-CASHSHOP: hydrate the account-bound cash-shop currency from the
+            // #CASHPOINTS / #KAFRAPOINTS account registers (rAthena pc.cpp:2304-2305),
+            // so the balance survives logout and is shared across the account's chars.
+            player.CashPoints = Map.Server.Persistence.CashPointsReg.ReadCash(session.VarRegs);
+            player.KafraPoints = Map.Server.Persistence.CashPointsReg.ReadKafra(session.VarRegs);
+
             // COMBAT-16: resolve the right-hand weapon type from worn gear so the
             // size-fix penalty + renewal ASPD lookup are correct at login (not
             // stuck at 0/Fist).

@@ -1,6 +1,6 @@
 # GP-CASHSHOP — Cash shop works end-to-end
 
-> **Epic:** gameplay · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** ✅ Done (2026-06-04) · **Size:** M · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** none
 
 ## The deliverable
@@ -50,8 +50,11 @@ So a player sees an empty shop and can't buy anything.
       upstream `db/item_cash.yml` ships **empty** (admins fill `db/import/`), so the importer's
       `ItemCashRenormConverter` now emits a project default catalog of real items (7 tabs, 11 rows)
       when upstream is empty; upstream rows still override. `seed_item_cash.sql` regenerated.
-- [ ] **Persistence**: load/save `CashPoints`/`KafraPoints` (account-bound, via login/account
-      IPC + a proto field); debit persists across logout. **→ turn 2.**
+- [x] **Persistence**: `CashPoints`/`KafraPoints` are account-bound `#CASHPOINTS` / `#KAFRAPOINTS`
+      `acc_reg_num` registers (rAthena `pc_readaccountreg`/`pc_setaccountreg`) — `CashPointsReg`
+      hydrates them on map-enter (`NotifyActorInitHandler`) + mirrors the live balances into the
+      account scope on save (`PlayerStateService`), persisting through the existing var-reg pipeline.
+      No new proto/table needed (matches how rAthena stores them). **(turn 2)**
 - [x] **CZ handlers**: open (`CZ_SE_CASHSHOP_OPEN` 0x0b6d), list (`CZ_REQ_CASHSHOP_ITEMLIST` 0x08c9),
       close (`CZ_REQ_CLOSE_CASHSHOP` 0x084a), buy (`CZ_PC_BUY_CASHITEM_LIST` 0x0848, kafraPay split).
 - [x] **Service**: `BuyList` verified at HEAD; trading-state gate added in `BuyCashItemHandler`;
@@ -65,10 +68,15 @@ So a player sees an empty shop and can't buy anything.
 
 ## Done criteria
 
-- Player opens the cash shop → tabs populated → buys an affordable item → correct kafra/cash
+- ✅ Player opens the cash shop → tabs populated → buys an affordable item → correct kafra/cash
   split debited, item granted, success ack; a sale-tab item charges the discounted price.
-- Insufficient points / inventory-full / unknown item rejected with the matching fail code.
-- Relog → the **remaining** balance is intact (account-bound, persisted).
+  (`CashShopServiceTests` open/list/buy + `Active_sale_item_charged_the_sale_tab_price`.)
+- ✅ Insufficient points / inventory-full / unknown item rejected with the matching fail code
+  (`CASHSHOP_RESULT_*`); slot-vs-weight code refinement ➡️ **GP-CASHSHOP-SLOT-WEIGHT-CODE**.
+- ✅ Relog → the **remaining** balance is intact (account-bound `#CASHPOINTS`/`#KAFRAPOINTS`
+  acc_reg_num; `CashShopPersistenceTests.Full_login_spend_logout_relogin_cycle...`).
+- Timed limited-time-sale scheduling/banner (the `@sale` + sales-table subsystem) ➡️
+  **GP-CASHSHOP-SALE-BANNER** (the login sale-notify emit + discounted buy price are done here).
 
 ## Test plan
 
@@ -93,9 +101,25 @@ So a player sees an empty shop and can't buy anything.
   (open balances, per-tab list, sale banner, buy success + balances, insufficient→shortage, trading→pc_state,
   close-clears, CatalogTabs ordering, non-empty seed) + the 10 existing service tests = 19; full suite 4510
   pass (1 = standing replay-fixture). Filed GP-CASHSHOP-SLOT-WEIGHT-CODE + GP-CASHSHOP-SALE-BANNER.
-- **Remaining (turn 2 → done):** account-bound `#CASHPOINTS`/`#KAFRAPOINTS` persistence — load at
-  map-enter (login/char IPC + proto field), save on buy + logout; the relog-balance done-criterion.
-  The loop resumes this card.
+- **2026-06-04 (turn 2 — DONE)** — Account-bound point persistence. `#CASHPOINTS`/`#KAFRAPOINTS` are
+  `acc_reg_num` registers (rAthena `CASHPOINT_VAR`/`KAFRAPOINT_VAR`, `pc_readaccountreg`/
+  `pc_setaccountreg`, pc.cpp:2304/5766/5811) — so no new proto/table is needed; they ride the existing
+  account var-reg pipeline (`PlayerStateService` → `acc_reg_num`). New `CashPointsReg` helper
+  (mirrors `DieCounterReg`/COMBAT-52): `ReadCash`/`ReadKafra` from the loaded account scope,
+  `Persist` mirrors the live balances into the account scope (always for a loaded register so
+  spending to 0 persists; a brand-new 0 stays absent). Hydrate wired in `NotifyActorInitHandler`
+  (after the DieCounter read); save wired in `PlayerStateService.SaveAsync` (alongside
+  `DieCounterReg.Persist`). 6 persistence tests (read-absent/read/mirror/spend-to-zero/new-zero-absent
+  + the full login→spend→logout→relogin cycle); full suite 4516 pass (1 = standing replay-fixture).
+  All three done-criteria met → **DONE**. Slot-vs-weight code ➡️ GP-CASHSHOP-SLOT-WEIGHT-CODE; timed-sale
+  scheduler ➡️ GP-CASHSHOP-SALE-BANNER.
+
+## History
+
+- 2026-06-04 — Turn 1: representative catalog (importer default, upstream empty) + the full cash-shop
+  client packet bridge (open/list/close/buy + ZC open/scheduler-list/buy-result/sale-banner). Turn 2
+  (DONE): account-bound `#CASHPOINTS`/`#KAFRAPOINTS` persistence via the acc_reg_num var-reg pipeline.
+  Follow-ups: GP-CASHSHOP-SLOT-WEIGHT-CODE, GP-CASHSHOP-SALE-BANNER.
 
 ## Notes / gotchas
 

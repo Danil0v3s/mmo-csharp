@@ -100,7 +100,12 @@ public sealed class PlayerStateService : IPlayerStateService
             // (rAthena pc_setglobalreg): mirror the live entity into the perm bag so
             // the SavePermAsync diff writes it to char_reg_num.
             if (session.EntityId is { } eid && _entities.Get(eid) is PlayerEntity diePc)
+            {
                 DieCounterReg.Persist(regs, diePc.DieCounter);
+                // GP-CASHSHOP: mirror the live cash-shop balances into the account scope so the
+                // SaveAccount diff writes #CASHPOINTS / #KAFRAPOINTS to acc_reg_num.
+                CashPointsReg.Persist(regs, diePc.CashPoints, diePc.KafraPoints);
+            }
 
             await SavePermAsync(regs.Perm, charId, db, ct);
             await SaveAccountAsync(regs.Account, accountId, db, ct);
