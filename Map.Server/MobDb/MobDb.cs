@@ -48,22 +48,45 @@ public sealed class MobDb : IMobDb
     {
         using var scope = _scopeFactory.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IMobRepository>();
+        // Optional so unit tests that only stub IMobRepository keep loading (empty skill lists);
+        // the map server's AddGameDatabase always registers it, so production loads the real catalog.
+        var skillRepo = scope.ServiceProvider.GetService<IMobSkillDbRepository>();
         // Sync block here is intentional: this runs once at map-server boot
         // (and on /reloadmobdb), not on the hot tick, so blocking the
         // startup thread on ~2500 mob rows is fine.
         var rows = repository.GetAllAsync().GetAwaiter().GetResult();
 
+        // mob_skill_db → per-mob skill lists, preserving the seeded row order
+        // (rAthena's skill priority is the list order). This is what feeds
+        // MobSkillCastService — without it every mob's skill list is empty.
+        var skillsByMob = new Dictionary<int, List<MobSkillEntry>>();
+        var skillCount = 0;
+        if (skillRepo != null)
+        {
+            foreach (var sr in skillRepo.GetAllAsync().GetAwaiter().GetResult())
+            {
+                if (!skillsByMob.TryGetValue(sr.MobId, out var list))
+                    skillsByMob[sr.MobId] = list = new List<MobSkillEntry>();
+                list.Add(MobSkillRowMapper.Map(sr));
+                skillCount++;
+            }
+        }
+
         var byId = new Dictionary<int, MobDbEntry>(rows.Count);
         foreach (var row in rows)
         {
-            byId[(int)row.Id] = MobDbRowMapper.Map(row);
+            var entry = MobDbRowMapper.Map(row);
+            if (skillsByMob.TryGetValue((int)row.Id, out var skills))
+                entry = entry with { Skills = skills };
+            byId[(int)row.Id] = entry;
         }
         var byName = new Dictionary<string, MobDbEntry>(byId.Count, StringComparer.OrdinalIgnoreCase);
         foreach (var entry in byId.Values)
         {
             byName[entry.AegisName] = entry;
         }
-        _logger.LogInformation("MobDb loaded {Count} entries", byId.Count);
+        _logger.LogInformation("MobDb loaded {Count} entries, {Skills} skill rows across {Mobs} mobs",
+            byId.Count, skillCount, skillsByMob.Count);
         return new Snapshot(byId, byName);
     }
 
@@ -207,4 +230,105 @@ internal static class MobDbRowMapper
                 $"MobEntity is missing expected column property '{name}'");
         return (T)prop.GetValue(row)!;
     }
+}
+
+/// <summary>
+/// Translates a persisted <c>mob_skill_db</c> row into the runtime <see cref="MobSkillEntry"/> the
+/// <see cref="MobSkillCastService"/> picker consumes. Maps the rAthena state / condition / target
+/// strings onto the pinned enum values (e.g. <c>attack</c> → <see cref="MobSkillState.Berserk"/>,
+/// <c>chase</c> → <see cref="MobSkillState.Rush"/>, <c>randomtarget</c> → <see cref="MobSkillTarget.Random"/>).
+/// </summary>
+internal static class MobSkillRowMapper
+{
+    public static MobSkillEntry Map(Core.Database.Entities.MobSkillDbEntity r) => new()
+    {
+        SkillId = (ushort)Math.Max(0, (int)r.SkillId),
+        SkillLevel = (ushort)Math.Max(1, (int)r.SkillLv),
+        State = ParseState(r.State),
+        Condition = ParseCondition(r.Condition),
+        Permillage = Math.Clamp((int)r.Rate, 0, 10_000),
+        CastTimeMs = r.CastTime,
+        DelayMs = r.Delay,
+        Cancelable = string.Equals(r.Cancelable, "yes", StringComparison.OrdinalIgnoreCase),
+        Target = ParseTarget(r.Target),
+        Cond2 = ParseIntOrDefault(r.ConditionValue, 0),
+        Val1 = r.Val1 ?? 0,
+        Val2 = r.Val2 ?? 0,
+        Val3 = r.Val3 ?? 0,
+        Val4 = r.Val4 ?? 0,
+        Val5 = r.Val5 ?? 0,
+        Emotion = ParseIntOrDefault(r.Emotion, -1),
+        ChatId = ParseIntOrDefault(r.Chat, 0),
+    };
+
+    /// <summary>rAthena <c>e_mob_skill_state</c> string → enum (mob.cpp state name table).</summary>
+    private static MobSkillState ParseState(string? s) => (s ?? string.Empty).Trim().ToLowerInvariant() switch
+    {
+        "any" => MobSkillState.Any,
+        "idle" => MobSkillState.Idle,
+        "walk" => MobSkillState.Walk,
+        "loot" => MobSkillState.Loot,
+        "dead" => MobSkillState.Dead,
+        "attack" or "berserk" => MobSkillState.Berserk,
+        "angry" => MobSkillState.Angry,
+        "chase" or "rush" => MobSkillState.Rush,
+        "follow" => MobSkillState.Follow,
+        "anytarget" => MobSkillState.AnyTarget,
+        _ => MobSkillState.Any,
+    };
+
+    /// <summary>rAthena <c>e_mob_skill_condition</c> string → enum (mob.cpp condition name table).</summary>
+    private static MobSkillCondition ParseCondition(string? s) => (s ?? string.Empty).Trim().ToLowerInvariant() switch
+    {
+        "always" => MobSkillCondition.Always,
+        "myhpltmaxrate" => MobSkillCondition.MyHpLessThanRate,
+        "myhpinrate" => MobSkillCondition.MyHpInRate,
+        "friendhpltmaxrate" => MobSkillCondition.FriendHpLessThanRate,
+        "friendhpinrate" => MobSkillCondition.FriendHpInRate,
+        "mystatuson" => MobSkillCondition.MyStatusOn,
+        "mystatusoff" => MobSkillCondition.MyStatusOff,
+        "friendstatuson" => MobSkillCondition.FriendStatusOn,
+        "friendstatusoff" => MobSkillCondition.FriendStatusOff,
+        "attackpcgt" => MobSkillCondition.AttackerCountGreater,
+        "attackpcge" => MobSkillCondition.AttackerCountGreaterEq,
+        "slavelt" => MobSkillCondition.SlaveLessThan,
+        "slavele" => MobSkillCondition.SlaveLessEq,
+        "closedattacked" => MobSkillCondition.CloseAttacked,
+        "longrangeattacked" => MobSkillCondition.LongRangeAttacked,
+        "afterskill" => MobSkillCondition.AfterSkill,
+        "skillused" => MobSkillCondition.SkillUsed,
+        "casttargeted" => MobSkillCondition.CastTargeted,
+        "rudeattacked" => MobSkillCondition.RudeAttacked,
+        "masterhpltmaxrate" => MobSkillCondition.MasterHpLessThanRate,
+        "masterattacked" => MobSkillCondition.MasterAttacked,
+        "alchemist" => MobSkillCondition.Alchemist,
+        "onspawn" => MobSkillCondition.Spawn,
+        "mobnearbygt" => MobSkillCondition.MobNearbyGreater,
+        "groundattacked" => MobSkillCondition.GroundAttacked,
+        "damagedgt" => MobSkillCondition.DamagedGreater,
+        "trickcasting" => MobSkillCondition.TrickCasting,
+        _ => MobSkillCondition.Always,
+    };
+
+    /// <summary>rAthena <c>e_mob_skill_target</c> string → enum (MST_*). "around" aliases MST_AROUND4.</summary>
+    private static MobSkillTarget ParseTarget(string? s) => (s ?? string.Empty).Trim().ToLowerInvariant() switch
+    {
+        "target" => MobSkillTarget.Target,
+        "randomtarget" or "random" => MobSkillTarget.Random,
+        "self" => MobSkillTarget.Self,
+        "friend" => MobSkillTarget.Friend,
+        "master" => MobSkillTarget.Master,
+        "around1" => MobSkillTarget.Around1,
+        "around2" => MobSkillTarget.Around2,
+        "around3" => MobSkillTarget.Around3,
+        "around4" or "around" => MobSkillTarget.Around4,
+        "around5" => MobSkillTarget.Around5,
+        "around6" => MobSkillTarget.Around6,
+        "around7" => MobSkillTarget.Around7,
+        "around8" => MobSkillTarget.Around8,
+        _ => MobSkillTarget.Target,
+    };
+
+    private static int ParseIntOrDefault(string? s, int fallback)
+        => int.TryParse(s, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : fallback;
 }
