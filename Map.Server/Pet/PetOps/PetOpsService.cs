@@ -201,12 +201,12 @@ public sealed class PetOpsService : IPetOpsService
     /// <summary>rAthena <c>pet_select_egg</c> — the player chose an egg slot; hatch it.</summary>
     public int SelectEgg(PlayerEntity master, short eggSlot) => BirthProcess(master, eggSlot);
 
-    /// <summary>FEATURE-07 — rAthena <c>pet_birth_process</c>: hatch the egg at <paramref name="eggSlot"/>
-    /// into a live pet. Resolves the egg item → pet class (pet_db) → consumes the egg →
-    /// <see cref="IPetService.Summon"/> (which emits the pet panel). Returns 0 on hatch, -1 on failure.
-    /// NOTE: this interim path resolves the class from the egg item directly; binding the persisted
-    /// pet_id off the egg's card slots + the char-side petdata round-trip is the GP-PET persistence
-    /// scope item (FEATURE-27).</summary>
+    /// <summary>FEATURE-07/27 — rAthena <c>pet_birth_process</c> + <c>pet_select_egg</c>: hatch the egg
+    /// at <paramref name="eggSlot"/> into a live pet. If the egg carries a bound pet_id
+    /// (<c>CARD0_PET</c>) the saved pet is loaded char-side (<c>intif_request_petdata</c>) and hatched
+    /// with its persisted intimacy/hunger/name (the relog round-trip); otherwise a fresh pet is hatched
+    /// from the egg's class. The egg is consumed up-front (so a failed/duplicate hatch can't double).
+    /// Returns 0 on accept, -1 on failure.</summary>
     public int BirthProcess(PlayerEntity master, int eggSlot)
     {
         if (eggSlot < 0 || _pet == null) return -1;
@@ -217,25 +217,55 @@ public sealed class PetOpsService : IPetOpsService
 
         var egg = inv.FirstOrDefault(i => i.ServerIndex == eggSlot && i.Amount > 0);
         if (egg == null) return -1;
-        var classId = EggItemToClass(egg.NameId);
-        if (classId == 0) return -1;
+        var boundPetId = PetEggCard.ReadPetId(egg);
+        var fallbackClass = EggItemToClass(egg.NameId);
+        if (boundPetId is null && fallbackClass == 0) return -1; // not a pet egg
 
         // rAthena one-pet rule (pc_setpet): refuse to hatch — and don't consume the egg — if a pet is
         // already out. Pre-checked before the consume so a failed hatch never eats the egg.
         if (_pet.TryGetLivePetId(master, out _)) return -1;
 
-        // Consume the egg, then hatch the live pet (the hunger timer runs in PetService.Tick; the pet
-        // panel emits from PetService.Summon).
+        // Consume the egg now (the pet panel emits from PetService.Summon — synchronously for a fresh
+        // hatch, or after the char-side load for a bound egg).
+        var eggNameId = (int)egg.NameId;
         egg.Amount -= 1;
         if (egg.Amount == 0)
         {
             if (egg.Id > 0) session!.RemovedInventoryIds.Add(egg.Id);
             inv.Remove(egg);
         }
-        var mob = _mobDb?.Get(classId);
-        _pet.Summon(master, classId, mob?.Name ?? string.Empty, eggItemId: (int)egg.NameId);
-        _logger.LogInformation("pet_birth_process: {Master} hatched pet class {Class}", master.Name, classId);
+
+        if (boundPetId is int petId && petId > 0)
+            _ = HatchBoundAsync(master, petId, fallbackClass, eggNameId); // FEATURE-27: load the saved pet
+        else
+            HatchFresh(master, fallbackClass, eggNameId);                 // fresh hatch from the egg class
+        _logger.LogInformation("pet_birth_process: {Master} hatched egg {Egg} (pet {Pet})",
+            master.Name, eggNameId, boundPetId);
         return 0;
+    }
+
+    /// <summary>Hatch a fresh pet from the egg's class (no saved row).</summary>
+    private void HatchFresh(PlayerEntity master, int classId, int eggNameId)
+    {
+        if (classId == 0) return;
+        var mob = _mobDb?.Get(classId);
+        _pet?.Summon(master, classId, mob?.Name ?? string.Empty, eggItemId: eggNameId);
+    }
+
+    /// <summary>FEATURE-27 — rAthena <c>intif_request_petdata</c> → <c>pet_recv_petdata</c>: load the
+    /// saved pet row by its bound id and hatch with the persisted intimacy/hunger/name. Falls back to a
+    /// fresh hatch if the char server has no row (or the IPC is down).</summary>
+    private async Task HatchBoundAsync(PlayerEntity master, int petId, int fallbackClass, int eggNameId)
+    {
+        var data = _intif != null ? await _intif.PetLoadAsync(petId, master.AccountId, master.CharacterId) : null;
+        if (data == null)
+        {
+            HatchFresh(master, fallbackClass, eggNameId);
+            return;
+        }
+        _pet?.Summon(master, data.ClassId, data.Name ?? string.Empty,
+            eggItemId: data.EggItemId != 0 ? data.EggItemId : eggNameId,
+            petId: data.PetId, intimacy: data.Intimacy, hunger: data.Hungry, renamed: data.RenameFlag != 0);
     }
 
     public int RecvPetData(PlayerEntity master)

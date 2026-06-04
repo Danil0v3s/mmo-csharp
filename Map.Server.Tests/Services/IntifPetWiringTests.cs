@@ -107,7 +107,7 @@ public class IntifPetWiringTests
     {
         private readonly Core.Server.IPC.PetData? _snapshot;
         public RecordingPetService(Core.Server.IPC.PetData? snapshotFor) => _snapshot = snapshotFor;
-        public PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0) => throw new NotImplementedException();
+        public PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0, long petId = 0, int intimacy = -1, int hunger = -1, bool renamed = false) => throw new NotImplementedException();
         public void Recall(PlayerEntity owner) => throw new NotImplementedException();
         public void Tick(long nowTick) { }
         public Core.Server.IPC.PetData? SerializeSnapshot(int petId) => _snapshot;

@@ -166,7 +166,7 @@ public class PetMenuEmitTests
     private sealed class RecallTrackingPet(PetEntity pet) : IPetService
     {
         public bool Recalled;
-        public PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0) => pet;
+        public PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0, long petId = 0, int intimacy = -1, int hunger = -1, bool renamed = false) => pet;
         public void Recall(PlayerEntity owner) => Recalled = true;
         public void Tick(long nowTick) { }
         public Core.Server.IPC.PetData? SerializeSnapshot(int petId) => null;

@@ -95,7 +95,7 @@ public class CompanionSaveFanoutTests
             petId = _petId ?? 0;
             return _petId.HasValue;
         }
-        public PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0) => null;
+        public PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0, long petId = 0, int intimacy = -1, int hunger = -1, bool renamed = false) => null;
         public void Recall(PlayerEntity owner) { }
         public void Tick(long nowTick) { }
         public Core.Server.IPC.PetData? SerializeSnapshot(int petId) => null;

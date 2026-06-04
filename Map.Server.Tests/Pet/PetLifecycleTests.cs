@@ -123,7 +123,7 @@ public class PetLifecycleTests
     private sealed class FakePet : IPetService
     {
         public int SummonCalls; public int LastClass;
-        public PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0)
+        public PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0, long petId = 0, int intimacy = -1, int hunger = -1, bool renamed = false)
         { SummonCalls++; LastClass = petClassId; return null; }
         public void Recall(PlayerEntity owner) { }
         public void Tick(long nowTick) { }

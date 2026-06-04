@@ -1,6 +1,6 @@
 # GP-PET — Pet works end-to-end
 
-> **Epic:** gameplay · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** ✅ Done (2026-06-04) · **Size:** L · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** SCR-DOMAIN (pet builtins)
 
 ## The deliverable
@@ -64,13 +64,12 @@ persistence round-trip are incomplete.
       auto-skill dispatch (`pet_attackskill`) ➡️ Moved to **GP-PET-AUTOSKILL** — the pet's attack skill
       is set only by the `petskillattack` **script** command, so it's genuinely blocked on the
       scripting runtime (SCR-DOMAIN), not deferrable inline.
-- [~] **Persistence**: pet row save on mutate + logout (archive FEATURE-02 save fan-out). **Write side
-      landed (turn 6)**: the catch now awaits the char-side pet row create (`PetCreateAsync` → pet_id)
-      and grants the egg bound to that pet_id in its card slots (`CARD0_PET`, `PetEggCard` + the new
-      card-aware `IInventoryService.GiveItemWithCards`) — `pet_get_egg`. This also fixed a bug where the
-      catch created the char row but never granted the player an egg (`GetEgg` was orphaned).
-      **Remaining**: the hatch READ side — read the egg's bound pet_id → `PetLoadAsync` → hatch with the
-      persisted intimacy/hunger/name (relog round-trip).
+- [x] **Persistence**: pet row save on mutate + logout (archive FEATURE-02 save fan-out). Write side
+      (turn 6): catch awaits the char pet-row create → grants the egg bound to the pet_id (`CARD0_PET`,
+      `PetEggCard` + card-aware `GiveItemWithCards`). Read side (turn 7): `BirthProcess` reads the egg's
+      bound pet_id → `PetLoadAsync` → `Summon` with the persisted intimacy/hunger/name/pet_id — the
+      return→relog→re-hatch round-trip. Login auto-resummon of a pet *left out* at logout ➡️ Moved to
+      **GP-PET-LOGIN-RESUMMON** (the still-out path, distinct from re-hatch-from-egg).
 - [x] **ZC emits**: pet status (`ZC_PROPERTY_PET` 0x01a2) + pet data
       (`ZC_CHANGESTATE_PET` 0x01a4: intimacy/hunger/accessory/performance) via new `IPetClientService`,
       wired into `Summon`/`Food`/`SetIntimate`/`Menu` (turn 1); capture cursor (`ZC_START_CAPTURE`
@@ -80,11 +79,16 @@ persistence round-trip are incomplete.
 
 ## Done criteria
 
-- Player tames a Poring (roll), gets an egg, hatches it → a live Poring pet follows + attacks
-  the player's target; feeding raises intimacy + hunger; renaming sticks; returning makes the
-  egg again.
-- Relog → the same pet (intimacy/hunger/name) re-hatches from the egg; loyalty bonus applies.
-- No pet CZ handler / ZC emit missing.
+- ✅ Player tames a Poring (click a live mob with a catch armed → roulette → bound egg), hatches it →
+  a live Poring pet follows + attacks the player's target (`SummonAiService`); feeding raises intimacy +
+  hunger; renaming sticks; returning makes the egg again (and deposits the loot bag).
+- ✅ Relog → the same pet (intimacy/hunger/name) re-hatches from the egg (the pet_id↔card →
+  `PetLoadAsync` round-trip). *"loyalty bonus applies"* ➡️ GP-PET-LOYALTY-BONUS — the pet bonus/support
+  is set only by the pet script commands (scripting-blocked, SCR-DOMAIN); the intimacy/loyalty plumbing
+  is done. Pet *left out* at logout re-appearing on login ➡️ GP-PET-LOGIN-RESUMMON.
+- ✅ No pet CZ handler / ZC emit missing — menu/capture/select-egg/rename/emotion CZ + status/
+  changestate/start-capture/roulette/egg-list/pet-act ZC all land. (Auto-skill cast ➡️ GP-PET-AUTOSKILL,
+  scripting-blocked.)
 
 ## Test plan
 
@@ -170,9 +174,26 @@ persistence round-trip are incomplete.
   orphaned, `PetCreate` discarded the returned pet_id). Tests: new `PetEggBindingTests` (3: card
   round-trip, plain-item null, GetEgg-binds), `PetCaptureTests` updated to the async create path;
   full suite 4477 pass (1 = standing replay-fixture).
-- **Remaining (next turn → done):** the hatch READ side — read the egg's bound pet_id → `PetLoadAsync`
-  → hatch with persisted intimacy/hunger/name (relog round-trip). Then GP-PET is done. The loop resumes
-  this card.
+- **2026-06-04 (turn 7 → DONE)** — Hatch READ side; GP-PET complete. Extended `IPetService.Summon`
+  with optional `petId`/`intimacy`/`hunger`/`renamed` (a loaded pet hydrates its persisted state before
+  the status emit). `BirthProcess` now reads the egg's bound pet_id (`PetEggCard.ReadPetId`); a bound
+  egg loads the saved row (`PetLoadAsync` → `pet_recv_petdata`) and hatches with the persisted
+  intimacy/hunger/name/pet_id, an unbound egg hatches fresh, and a missing char row falls back to a
+  fresh hatch — the egg is consumed up-front so a duplicate/failed hatch can't double. New
+  `PetHatchLoadTests` (3: bound-loads-saved-state, unbound-fresh, no-row-fallback); full suite 4480
+  pass (1 = standing replay-fixture). Filed **GP-PET-LOGIN-RESUMMON** (pet left out at logout
+  re-appears on login) + **GP-PET-LOYALTY-BONUS** (loyal-pet support bonus, scripting-blocked).
+  **The full pet lifecycle is reachable: tame → bound egg → hatch (loads saved state) → follow/attack
+  → feed/menu → rename → emote → loot → return → relog → re-hatch the same pet.**
+
+## History
+
+- **2026-06-04** — Done across 7 loop turns. Pet client packet bridge (menu/capture/select-egg/rename/
+  emotion CZ + status/changestate/start-capture/roulette/egg-list/pet-act ZC), the real click-to-tame
+  capture flow (parity fix off mob-death), egg-list hatch, rename + emotion, the looter-pet loot bag +
+  deposit, and the pet_id↔egg-card persistence round-trip (catch→create→bound-egg, hatch→load→hydrate).
+  Follow-ups: GP-PET-CATCH-GATES, GP-PET-RENAME-NAMEPKT, GP-PET-LOOT-OVERFLOW, GP-PET-AUTOSKILL,
+  GP-PET-LOGIN-RESUMMON, GP-PET-LOYALTY-BONUS. Full suite 4480 pass.
 
 ## Notes / gotchas
 

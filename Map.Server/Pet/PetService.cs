@@ -47,7 +47,8 @@ public sealed class PetService : IPetService
         _logger = logger;
     }
 
-    public PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0)
+    public PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0,
+        long petId = 0, int intimacy = -1, int hunger = -1, bool renamed = false)
     {
         // Only one live pet at a time per owner (rAthena pc_setpet rule).
         if (_ownerToPet.ContainsKey(owner.CharacterId)) return null;
@@ -58,7 +59,14 @@ public sealed class PetService : IPetService
         {
             PetName = string.IsNullOrEmpty(petName) ? db.Name : petName,
             EggId = eggItemId,
+            PetId = petId,
+            RenameFlag = renamed,
         };
+        // FEATURE-27 — a pet hydrated from a saved row carries its persisted intimacy/hunger; a fresh
+        // hatch keeps the PetEntity defaults (250 / 80). Set before the status emit so the panel shows
+        // the loaded values.
+        if (intimacy >= 0) pet.Intimacy = (ushort)Math.Clamp(intimacy, 0, 1000);
+        if (hunger >= 0) pet.Hunger = (ushort)Math.Clamp(hunger, 0, 100);
         pet.MasterId = owner.Id;
         _statusCalc.CalcMob(pet);
         _entities.Add(pet);

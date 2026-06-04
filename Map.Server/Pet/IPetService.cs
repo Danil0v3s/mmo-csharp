@@ -20,7 +20,12 @@ public interface IPetService
     /// — written to <see cref="PetEntity.EggId"/> so item-script reads
     /// of <c>getpetinfo(PETINFO_EGGID)</c> resolve at recalc time.
     /// </summary>
-    PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0);
+    /// <para>FEATURE-27 — when hatching a saved pet, pass its <paramref name="petId"/> +
+    /// persisted <paramref name="intimacy"/>/<paramref name="hunger"/>/<paramref name="renamed"/> so the
+    /// live pet round-trips its loyalty/hunger/name (intimacy/hunger of -1 = use the fresh-hatch
+    /// defaults).</para>
+    PetEntity? Summon(PlayerEntity owner, int petClassId, string petName, int eggItemId = 0,
+        long petId = 0, int intimacy = -1, int hunger = -1, bool renamed = false);
 
     /// <summary>Recall the pet — removes the entity from the world.</summary>
     void Recall(PlayerEntity owner);
