@@ -159,7 +159,7 @@ this ticket already needed.** "Service landed, packets later" is not done.
 | AI-MVP | ✅ MVP bosses behave like MVPs — mob_skill_db loader feeds the skill picker (priority/hp-announce-chat/summon/heal/teleport) + MVP drop tier; this unblocks ALL mob skills, not just MVPs. Boss active-radius+HP-bar→AI-BOSS-ACTIVE-HP | MOBAI-02 |
 | AI-BOSS-ACTIVE-HP | ✅ Boss/mob active-window (mob_active_time/boss_active_time — stay hard after PC leaves view) + floating mob HP bar (ZC_HP_INFO) — split from AI-MVP |
 | AI-PERF | ✅ Cell-grid range scans (verified) + player-mastered slave target-inherit (any type) + changechase direct-set (no CanChangeTarget gate); visibility sub-gate→AI-CHANGECHASE-VIS | MOBAI-05/06/07 |
-| AI-CHANGECHASE-VIS | Changechase honours the target visibility (status_check_skilluse) gate — split from AI-PERF |
+| AI-CHANGECHASE-VIS | ✅ Changechase honours the target visibility (status_check_skilluse — hide/cloak + LOS) gate — split from AI-PERF |
 
 ## Selection order
 

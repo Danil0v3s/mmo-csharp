@@ -119,6 +119,40 @@ public class MobChangeTargetModeTests
     }
 
     [Fact]
+    public void ChangeChase_skips_a_hidden_enemy_in_reach()
+    {
+        // AI-CHANGECHASE-VIS — rAthena status_check_skilluse: a hidden/cloaked enemy isn't perceivable,
+        // so the mob doesn't changechase onto it even though it's standing in melee reach.
+        var ctx = Build();
+        var mob = ctx.AddMob(50, 50, level: 30, "CanAttack", "CanMove", "ChangeChase");
+        var far = ctx.AddPlayer(55, 50, 1, level: 30);
+        var nearHidden = ctx.AddPlayer(51, 50, 2, level: 30);
+        ctx.Sc.Start(nearHidden, StatusType.Hiding, val1: 1, 0, 0, 0, durationMs: 60_000, nearHidden);
+        mob.TargetId = far.Id.Value;
+        mob.SkillState = MobSkillState.Follow;
+
+        ctx.Ai.Tick(1000);
+
+        Assert.Equal(far.Id.Value, mob.TargetId); // hidden enemy ignored → keeps chasing the original
+    }
+
+    [Fact]
+    public void ChangeChase_switches_to_a_visible_enemy_in_reach()
+    {
+        // Control for the hide test: a non-hidden enemy in reach is still changechased onto.
+        var ctx = Build();
+        var mob = ctx.AddMob(50, 50, level: 30, "CanAttack", "CanMove", "ChangeChase");
+        var far = ctx.AddPlayer(55, 50, 1, level: 30);
+        var near = ctx.AddPlayer(51, 50, 2, level: 30); // visible
+        mob.TargetId = far.Id.Value;
+        mob.SkillState = MobSkillState.Follow;
+
+        ctx.Ai.Tick(1000);
+
+        Assert.Equal(near.Id.Value, mob.TargetId);
+    }
+
+    [Fact]
     public void ChangeChase_does_not_switch_outside_rush_or_follow()
     {
         var ctx = Build();
@@ -260,14 +294,15 @@ public class MobChangeTargetModeTests
         // Seeded rng → deterministic RANDOMTARGET re-aim.
         var ai = new MobAiService(entities, attack, NullLogger<MobAiService>.Instance,
             rng: new Random(0), movement: movement, sc: sc);
-        return new TestContext(ai, entities, ids, (uint)mapName.GetHashCode());
+        return new TestContext(ai, entities, ids, (uint)mapName.GetHashCode(), sc);
     }
 
     private sealed record TestContext(
         MobAiService Ai,
         EntityRegistry Entities,
         EntityIdAllocator Ids,
-        uint MapId)
+        uint MapId,
+        StatusChangeService Sc)
     {
         public PlayerEntity AddPlayer(short x, short y, int charId, int level)
         {

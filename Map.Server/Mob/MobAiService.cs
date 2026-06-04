@@ -341,7 +341,7 @@ public sealed class MobAiService : IMobAiService
                      && (mob.SkillState == MobSkillState.Rush || mob.SkillState == MobSkillState.Follow))
             {
                 var reach = (short)Math.Min(viewRange, Math.Max(1, (int)mob.Stats.AttackRange));
-                var newTarget = _changeTarget.TryChangeChase(mob, reach);
+                var newTarget = _changeTarget.TryChangeChase(mob, reach, t => Perceives(mob, t));
                 if (newTarget != null)
                     mob.TargetId = (int)newTarget.Id.Value;
             }
@@ -435,6 +435,19 @@ public sealed class MobAiService : IMobAiService
             && _lastPcNear.TryGetValue(mob.Id, out var nearAt)
             && nowTick - nearAt < activeTime;
         return !stayActive;
+    }
+
+    /// <summary>
+    /// AI-CHANGECHASE-VIS — rAthena <c>status_check_skilluse(src, target, 0, 0)</c>: can the mob
+    /// currently perceive + reach the target? Combines the hide/cloak gate (<see cref="Status.EntityActionGates.CanSee"/>,
+    /// the SC-based hiding set) with the line-of-sight path check the aggressive scan uses. Used to gate
+    /// the changechase retarget so a mob doesn't switch onto a hidden / wall-blocked enemy.
+    /// </summary>
+    private bool Perceives(MobEntity mob, Entity target)
+    {
+        if (_sc != null && !mob.CanSee(target, _sc)) return false;
+        if (_paths != null && !_paths.PathSearchLong(mob.MapId, mob.X, mob.Y, target.X, target.Y)) return false;
+        return true;
     }
 
     private void SpotPcsInView(MobEntity mob)

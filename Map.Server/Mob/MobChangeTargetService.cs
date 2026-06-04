@@ -82,7 +82,7 @@ public sealed class MobChangeTargetService : IMobChangeTargetService
         return switched;
     }
 
-    public Entity? TryChangeChase(MobEntity mob, short range)
+    public Entity? TryChangeChase(MobEntity mob, short range, System.Func<Entity, bool>? canPerceive = null)
     {
         if (_entities == null) return null;
         // rAthena mob_ai_sub_hard_changechase: the first enemy already within the mob's melee reach
@@ -92,6 +92,9 @@ public sealed class MobChangeTargetService : IMobChangeTargetService
         {
             if (e is not PlayerEntity pc || pc.Hp <= 0) continue;
             if (System.Math.Max(System.Math.Abs(pc.X - mob.X), System.Math.Abs(pc.Y - mob.Y)) > range) continue;
+            // AI-CHANGECHASE-VIS — rAthena status_check_skilluse: skip a candidate the mob can't perceive
+            // (hidden/cloaked or LOS-blocked).
+            if (canPerceive != null && !canPerceive(pc)) continue;
             return pc;
         }
         return null;

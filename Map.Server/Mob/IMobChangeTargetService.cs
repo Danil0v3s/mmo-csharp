@@ -50,8 +50,11 @@ public interface IMobChangeTargetService
     /// MOBAI-03 — rAthena <c>mob_ai_sub_hard_changechase</c> (mob.cpp:1348): the first live enemy
     /// PC already within <paramref name="range"/> (the mob's melee reach) of <paramref name="mob"/>,
     /// for the MD_CHANGECHASE mid-chase retarget. Null when none is in reach.
+    /// AI-CHANGECHASE-VIS — <paramref name="canPerceive"/> mirrors rAthena's <c>status_check_skilluse</c>
+    /// guard: a candidate the mob can't currently perceive (hidden/cloaked, or LOS-blocked) is skipped.
+    /// Null = no visibility filter (distance-only).
     /// </summary>
-    Entity? TryChangeChase(MobEntity mob, short range);
+    Entity? TryChangeChase(MobEntity mob, short range, System.Func<Entity, bool>? canPerceive = null);
 
     /// <summary>
     /// MOBAI-03 — rAthena <c>battle_getenemy</c> (a RANDOM in-range enemy, not the nearest) for the

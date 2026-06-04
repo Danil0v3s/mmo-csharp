@@ -1,6 +1,6 @@
 # AI-CHANGECHASE-VIS — changechase honours the target visibility gate
 
-> **Epic:** mobai · **Status:** 🚧 In progress · **Size:** S · **Player-visible:** partial
+> **Epic:** mobai · **Status:** ✅ Done (2026-06-04) · **Size:** S · **Player-visible:** partial
 > **Depends on:** none · **Unlocks:** none
 
 ## The deliverable
@@ -26,13 +26,22 @@ so a chasing mob could changechase onto a hidden player that just stepped adjace
 
 ## Scope
 
-- [ ] Add the visibility/skill-use gate to `MobChangeTargetService.TryChangeChase` (reuse the existing
-      hide/cloak SC checks + the LOS path the aggressive scan already uses).
+- [x] Added the visibility/skill-use gate to `MobChangeTargetService.TryChangeChase` (new optional
+      `canPerceive` predicate). `MobAiService` passes `Perceives(mob, target)` = the hide/cloak gate
+      (`EntityActionGates.CanSee` — the SC-based hiding set, with boss/detector pierce) + the
+      line-of-sight path check the aggressive scan already uses (`IPathService.PathSearchLong`).
 
 ## Done criteria
 
-- A hidden/cloaked player adjacent to a chasing MD_CHANGECHASE mob is NOT changechased onto; a visible
-  one still is. Test pins both.
+- ✅ A hidden/cloaked player adjacent to a chasing MD_CHANGECHASE mob is NOT changechased onto; a visible
+  one still is. (`MobChangeTargetModeTests.ChangeChase_skips_a_hidden_enemy_in_reach` +
+  `…switches_to_a_visible_enemy_in_reach`.)
+
+## History
+
+- 2026-06-04 — Done. `TryChangeChase` gained an optional `canPerceive` predicate; `MobAiService` supplies
+  the `status_check_skilluse` equivalent (`CanSee` hide/cloak + LOS) so the changechase retarget skips a
+  hidden / wall-blocked enemy. 2 tests; full Map.Server.Tests 4551 pass (1 = standing replay-fixture).
 
 ## Notes
 
