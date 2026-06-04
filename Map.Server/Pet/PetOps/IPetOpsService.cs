@@ -20,8 +20,11 @@ public interface IPetOpsService
     bool ReturnEgg(PlayerEntity master);
     /// <summary>rAthena <c>pet_egg_search</c>.</summary>
     int EggSearch(PlayerEntity master, int eggId);
-    /// <summary>rAthena <c>pet_select_egg</c>.</summary>
-    int SelectEgg(PlayerEntity master, short eggIndex);
+    /// <summary>rAthena <c>bpet</c> / <c>clif_sendegg</c> — list the hatchable eggs in the bag
+    /// (ZC_PETEGG_LIST). Invoked when the player uses a pet-egg item.</summary>
+    void OpenEggList(PlayerEntity master);
+    /// <summary>rAthena <c>pet_select_egg</c> — hatch the egg at the chosen inventory slot.</summary>
+    int SelectEgg(PlayerEntity master, short eggSlot);
     /// <summary>rAthena <c>pet_food</c>.</summary>
     int Food(PlayerEntity master);
     /// <summary>rAthena <c>pet_hungry_val</c>.</summary>
@@ -38,8 +41,9 @@ public interface IPetOpsService
     void Evolution(PlayerEntity master, int evoTo);
     /// <summary>rAthena <c>pet_evolution_requirements_check</c>.</summary>
     bool EvolutionRequirementsCheck(PlayerEntity master, int evoTo);
-    /// <summary>rAthena <c>pet_birth_process</c>.</summary>
-    int BirthProcess(PlayerEntity master);
+    /// <summary>rAthena <c>pet_birth_process</c> — hatch the egg at <paramref name="eggSlot"/> into a
+    /// live pet.</summary>
+    int BirthProcess(PlayerEntity master, int eggSlot);
     /// <summary>rAthena <c>pet_change_name</c>.</summary>
     int ChangeName(PlayerEntity master, string newName);
     /// <summary>rAthena <c>pet_change_name_ack</c>.</summary>

@@ -47,9 +47,10 @@ persistence round-trip are incomplete.
 ## Scope — every layer
 
 - [~] **CZ handlers**: pet-menu (`CZ_COMMAND_PET` 0x01a1 → `PetMenuHandler` → `Menu`, turn 1);
-      try-capture (`CZ_TRYCAPTURE_MONSTER` 0x019f → `PetCaptureHandler` → `CatchProcessEnd`, turn 2).
-      Remaining: hatch (egg-use → `BirthProcess`), rename (`CZ_RENAME_PET`), select-egg
-      (`CZ_SELECT_PETEGG`), pet emotion (`CZ_PET_ACT`).
+      try-capture (`CZ_TRYCAPTURE_MONSTER` 0x019f → `PetCaptureHandler` → `CatchProcessEnd`, turn 2);
+      hatch (egg item-use short-circuit → `OpenEggList`, select `CZ_SELECT_PETEGG` 0x01a7 →
+      `SelectPetEggHandler` → `BirthProcess`, turn 3). Remaining: rename (`CZ_RENAME_PET`), pet emotion
+      (`CZ_PET_ACT`).
 - [~] **Service**: feed → intimacy/hunger + emit (turn 1); `Menu` corrected to rAthena mapping
       (0=info/1=feed/2=performance/3=return/4=unequip — was wrong) + runaway gate. Remaining: verify
       catch/hatch at HEAD; bind the hatched pet to a pet_id stored on the egg card (archive FEATURE-27);
@@ -60,8 +61,8 @@ persistence round-trip are incomplete.
 - [~] **ZC emits**: pet status (`ZC_PROPERTY_PET` 0x01a2) + pet data
       (`ZC_CHANGESTATE_PET` 0x01a4: intimacy/hunger/accessory/performance) via new `IPetClientService`,
       wired into `Summon`/`Food`/`SetIntimate`/`Menu` (turn 1); capture cursor (`ZC_START_CAPTURE`
-      0x019e) + roulette (`ZC_TRYCAPTURE_MONSTER` 0x01a0) (turn 2). Remaining: send-egg, emotion
-      (`ZC_PET_ACT`).
+      0x019e) + roulette (`ZC_TRYCAPTURE_MONSTER` 0x01a0) (turn 2); egg list (`ZC_PETEGG_LIST` 0x01a6,
+      turn 3). Remaining: emotion (`ZC_PET_ACT`).
 
 ## Done criteria
 
@@ -109,9 +110,23 @@ persistence round-trip are incomplete.
   HP%-raises-rate, not-armed/wrong-class/out-of-range gates, handler routing); full suite 4456 pass
   (1 = standing replay-fixture). **Filed GP-PET-CATCH-GATES** (nopetcapture mapflag + hide-check +
   inventory-blank guards — needs subsystems not yet present).
-- **Remaining (next turns → done):** hatch (egg item-use → `BirthProcess` + status emit), rename
-  (`CZ_RENAME_PET` → char-side uniqueness), select-egg + emotion CZ/ZC, pet combat/loot (FEATURE-28),
-  persistence binding pet_id↔egg-card + round-trip (FEATURE-27). The loop resumes this card.
+- **2026-06-04 (turn 3)** — Hatch flow. New packets `ZC_PETEGG_LIST` (0x01a6, variable per-egg
+  client-index list = `clif_sendegg`/`bpet`), `CZ_SELECT_PETEGG` (0x01a7, `<index>.W`).
+  `IPetClientService.SendEggList`; `PetOpsService.OpenEggList` scans the bag for pet-egg items and
+  emits the list. **Item-use short-circuit**: `ItemUseService` now detects `IT_PETEGG`
+  (`ItemTypeCodes.PetEgg`) and routes to `OpenEggList` **without consuming the egg** (rAthena `bpet`).
+  New `SelectPetEggHandler` (`CZ_SELECT_PETEGG`) → `SelectEgg` → `BirthProcess(master, eggSlot)`
+  (refactored to take the slot directly — removed the `PetCatchTargetClass` overload that doubled as
+  the egg slot) → resolve egg→class→consume→`Summon` (one-pet rule pre-checked via `TryGetLivePetId`
+  before consuming, so a failed hatch never eats the egg) → the pet panel emits from turn 1's `Summon`
+  path. `PetHatchTests` (5: egg-list-by-client-index, skip-non-eggs, select-hatches-and-consumes,
+  handler-index-conversion, egg-use-opens-list-no-consume); full suite 4461 pass (1 = standing
+  replay-fixture). **Interim**: the hatch resolves the pet class from the egg item directly; binding the
+  persisted pet_id off the egg's card slots + the char-side petdata round-trip is the GP-PET
+  persistence scope item (FEATURE-27), still a remaining checkbox of this ticket.
+- **Remaining (next turns → done):** rename (`CZ_RENAME_PET` → char-side uniqueness), emotion CZ/ZC
+  (`CZ_PET_ACT`/`ZC_PET_ACT`), pet combat/loot (FEATURE-28), persistence binding pet_id↔egg-card +
+  round-trip (FEATURE-27). The loop resumes this card.
 
 ## Notes / gotchas
 

@@ -21,6 +21,7 @@ public sealed class ItemUseService : IItemUseService
     private readonly ItemEffectRegistry _effects;
     private readonly Status.ISessionManagerAccessor _sessions;
     private readonly IItemHookDispatcher? _hookDispatcher;
+    private readonly Pet.PetOps.IPetOpsService? _petOps;
     private readonly ILogger<ItemUseService> _logger;
 
     public ItemUseService(
@@ -28,12 +29,14 @@ public sealed class ItemUseService : IItemUseService
         ItemEffectRegistry effects,
         Status.ISessionManagerAccessor sessions,
         ILogger<ItemUseService> logger,
-        IItemHookDispatcher? hookDispatcher = null)
+        IItemHookDispatcher? hookDispatcher = null,
+        Pet.PetOps.IPetOpsService? petOps = null)
     {
         _catalog = catalog;
         _effects = effects;
         _sessions = sessions;
         _hookDispatcher = hookDispatcher;
+        _petOps = petOps;
         _logger = logger;
     }
 
@@ -47,6 +50,14 @@ public sealed class ItemUseService : IItemUseService
 
         var row = _catalog.Get(item.NameId);
         if (row == null) return false;
+
+        // Pet egg (rAthena IT_PETEGG): using an egg opens the incubator egg-list (bpet) — it does
+        // NOT consume the egg. Short-circuit before the consume path below.
+        if (ItemTypeCodes.FromDbString(row.Type) == ItemTypeCodes.PetEgg)
+        {
+            _petOps?.OpenEggList(user);
+            return true;
+        }
 
         // CONV-4: try the TS-registered onUse hook first. When a registration
         // exists, the dispatcher owns the invocation (sync stack decrement

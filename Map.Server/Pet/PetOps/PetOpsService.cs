@@ -178,34 +178,51 @@ public sealed class PetOpsService : IPetOpsService
         return -1;
     }
 
-    public int SelectEgg(PlayerEntity master, short eggIndex)
+    /// <summary>rAthena <c>bpet</c> → <c>clif_sendegg</c>: list every pet-egg item in the bag (by client
+    /// inventory index) so the incubator dialog opens. Triggered by using a pet-egg item.</summary>
+    public void OpenEggList(PlayerEntity master)
     {
-        // rAthena pet_select_egg — mark the selected egg index pending hatch.
-        if (eggIndex < 0) return -1;
-        master.PetCatchTargetClass = eggIndex; // reuse field as "selected egg slot"
-        return 0;
+        var inv = _sessions?.GetByEntityId(master.Id)?.Inventory;
+        if (inv == null) return;
+        var eggs = new List<short>();
+        foreach (var i in inv)
+        {
+            if (i.Amount <= 0) continue;
+            if (EggItemToClass(i.NameId) == 0) continue; // only pet eggs (pet_db EggItem)
+            eggs.Add((short)(i.ServerIndex + 2)); // client_index = server_index + 2
+        }
+        _client?.SendEggList(master, eggs);
+        _logger.LogInformation("pet egg list: {Master} has {N} hatchable egg(s)", master.Name, eggs.Count);
     }
 
-    /// <summary>FEATURE-07 — rAthena <c>pet_birth_process</c>: hatch the selected egg into a live pet.
-    /// Resolves the egg item at the selected inventory slot → pet class (pet_db) → consumes the egg →
-    /// <see cref="IPetService.Summon"/>. Returns 0 on hatch, -1 on any failure.</summary>
-    public int BirthProcess(PlayerEntity master)
+    /// <summary>rAthena <c>pet_select_egg</c> — the player chose an egg slot; hatch it.</summary>
+    public int SelectEgg(PlayerEntity master, short eggSlot) => BirthProcess(master, eggSlot);
+
+    /// <summary>FEATURE-07 — rAthena <c>pet_birth_process</c>: hatch the egg at <paramref name="eggSlot"/>
+    /// into a live pet. Resolves the egg item → pet class (pet_db) → consumes the egg →
+    /// <see cref="IPetService.Summon"/> (which emits the pet panel). Returns 0 on hatch, -1 on failure.
+    /// NOTE: this interim path resolves the class from the egg item directly; binding the persisted
+    /// pet_id off the egg's card slots + the char-side petdata round-trip is the GP-PET persistence
+    /// scope item (FEATURE-27).</summary>
+    public int BirthProcess(PlayerEntity master, int eggSlot)
     {
-        var slot = master.PetCatchTargetClass;
-        if (slot < 0 || _pet == null) return -1;
-        master.PetCatchTargetClass = -1;
+        if (eggSlot < 0 || _pet == null) return -1;
 
         var session = _sessions?.GetByEntityId(master.Id);
         var inv = session?.Inventory;
         if (inv == null) return -1;
 
-        var egg = inv.FirstOrDefault(i => i.ServerIndex == slot && i.Amount > 0);
+        var egg = inv.FirstOrDefault(i => i.ServerIndex == eggSlot && i.Amount > 0);
         if (egg == null) return -1;
         var classId = EggItemToClass(egg.NameId);
         if (classId == 0) return -1;
 
-        // Consume the egg item, then hatch the live pet (the hunger timer is already running in
-        // PetService.Tick). PACKET-03 owns clif_send_petdata — see the pet-UI follow-up.
+        // rAthena one-pet rule (pc_setpet): refuse to hatch — and don't consume the egg — if a pet is
+        // already out. Pre-checked before the consume so a failed hatch never eats the egg.
+        if (_pet.TryGetLivePetId(master, out _)) return -1;
+
+        // Consume the egg, then hatch the live pet (the hunger timer runs in PetService.Tick; the pet
+        // panel emits from PetService.Summon).
         egg.Amount -= 1;
         if (egg.Amount == 0)
         {

@@ -89,19 +89,18 @@ public class PetLifecycleTests
     public void BirthProcess_hatches_selected_egg_and_consumes_it()
     {
         var (svc, pc, session, _, _, pet) = Build(Egg(2));
-        svc.SelectEgg(pc, 2); // mark the egg slot
 
-        Assert.Equal(0, svc.BirthProcess(pc));
+        Assert.Equal(0, svc.SelectEgg(pc, 2)); // hatch the egg at slot 2
         Assert.Equal(1, pet.SummonCalls);
         Assert.Equal((int)PoringClass, pet.LastClass);
         Assert.Empty(session.Inventory!); // egg consumed
     }
 
     [Fact]
-    public void BirthProcess_without_selected_egg_returns_minus1()
+    public void BirthProcess_with_no_egg_at_slot_returns_minus1()
     {
         var (svc, pc, _, _, _, pet) = Build();
-        Assert.Equal(-1, svc.BirthProcess(pc)); // no egg selected
+        Assert.Equal(-1, svc.BirthProcess(pc, 2)); // no egg at that slot
         Assert.Equal(0, pet.SummonCalls);
     }
 

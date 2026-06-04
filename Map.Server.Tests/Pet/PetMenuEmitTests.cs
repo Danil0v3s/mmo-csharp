@@ -193,7 +193,8 @@ public class PetMenuEmitTests
         public void UnlockTarget(PlayerEntity master) { }
         public void Evolution(PlayerEntity master, int evoTo) { }
         public bool EvolutionRequirementsCheck(PlayerEntity master, int evoTo) => false;
-        public int BirthProcess(PlayerEntity master) => 0;
+        public void OpenEggList(PlayerEntity master) { }
+        public int BirthProcess(PlayerEntity master, int eggSlot) => 0;
         public int ChangeName(PlayerEntity master, string newName) => 0;
         public int ChangeNameAck(PlayerEntity master, byte flag) => 0;
         public int RecvPetData(PlayerEntity master) => 0;

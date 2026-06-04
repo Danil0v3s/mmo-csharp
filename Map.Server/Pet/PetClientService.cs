@@ -55,4 +55,7 @@ public sealed class PetClientService : IPetClientService
 
     public void SendPetRoulette(PlayerEntity master, bool success)
         => _sessions.GetByEntityId(master.Id)?.EnqueuePacket(new ZC_TRYCAPTURE_MONSTER { Success = success });
+
+    public void SendEggList(PlayerEntity master, IReadOnlyList<short> clientIndices)
+        => _sessions.GetByEntityId(master.Id)?.EnqueuePacket(new ZC_PETEGG_LIST { ClientIndices = clientIndices });
 }

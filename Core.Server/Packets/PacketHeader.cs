@@ -255,6 +255,8 @@ public enum PacketHeader : short
     CZ_TRYCAPTURE_MONSTER = 0x019f,        // clif_parse_CatchPet: <target id>.L, 6B (click the mob to tame).
     ZC_TRYCAPTURE_MONSTER = 0x01a0,        // clif_pet_roulette: <result>.B, 3B (1=caught, 0=failed).
     CZ_COMMAND_PET        = 0x01a1,        // clif_parse_PetMenu: <type>.B, 3B (0=info 1=feed 2=performance 3=return 4=unequip).
+    ZC_PETEGG_LIST        = 0x01a6,        // clif_sendegg: <len>.W then per-egg <client index>.W (hatchable eggs in the bag).
+    CZ_SELECT_PETEGG      = 0x01a7,        // clif_parse_SelectEgg: <index>.W, 4B (chosen egg to hatch).
     ZC_PROPERTY_PET       = 0x01a2,        // clif_send_petstatus: <name>.24 <renamed>.B <level>.W <hunger>.W <intimacy>.W <accessory>.W <class>.W, 37B.
     ZC_CHANGESTATE_PET    = 0x01a4,        // clif_send_petdata: <type>.B <GID>.L <data>.L, 11B (intimacy/hunger/accessory/... update).
     ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B

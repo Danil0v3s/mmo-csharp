@@ -26,4 +26,8 @@ public interface IPetClientService
     /// <summary>rAthena <c>clif_pet_roulette</c> (ZC_TRYCAPTURE_MONSTER) — the taming result
     /// (caught / failed) to the owner.</summary>
     void SendPetRoulette(PlayerEntity master, bool success);
+
+    /// <summary>rAthena <c>clif_sendegg</c> (ZC_PETEGG_LIST) — the hatchable eggs in the bag, by
+    /// client inventory index, opening the incubator dialog.</summary>
+    void SendEggList(PlayerEntity master, IReadOnlyList<short> clientIndices);
 }
