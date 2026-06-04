@@ -73,6 +73,11 @@ public class Combat53BespokeRefoldTests
     [InlineData(StatusType.Stripweapon, CalcStatField.Batk, 5)]
     [InlineData(StatusType.TinderBreaker, CalcStatField.Flee, 5)]
     [InlineData(StatusType.TinderBreaker2, CalcStatField.Flee, 5)]
+    // SC-DERIVED-RECALC batch 1 — bespoke handlers given a derived-field OnRecalc (clean flat
+    // reset-field re-application). Percent / primary-stat-coupled SCs (Truesight, Magicpower, …) are
+    // deferred to the rest of SC-DERIVED-RECALC — the strict idempotency assert here doesn't fit them.
+    [InlineData(StatusType.Fear, CalcStatField.Hit, 5)]
+    [InlineData(StatusType.Cloaking, CalcStatField.Cri, 5)]
     public void Bespoke_derived_mod_survives_recalc_and_is_idempotent(
         StatusType type, CalcStatField field, int val1)
     {

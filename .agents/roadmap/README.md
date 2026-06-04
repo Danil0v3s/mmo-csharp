@@ -116,6 +116,7 @@ this ticket already needed.** "Service landed, packets later" is not done.
 | SC-CONSUMERS | Starved SC consumer reads wired | SC-12/13/14/15 |
 | SC-FAMILIES | Sorcerer/Star-Emperor/Soul/Bard bespoke effects | SC-16/17 |
 | SC-INSPIRATION-RECALC | ✅ SC_INSPIRATION fixed: val2→Watk+Matk (was Batk), MaxHp→4*Val1% (was flat), +OnRecalc/OnRecalcPool | — |
+| SC-DERIVED-RECALC | 🚧 Bespoke handlers re-apply Def/Hit/Flee/Cri/Batk/… mods after a CalcPc recalc (batch 1: Fear/Cloaking; 43 remain) | — |
 | SC-IMMUNE | ✅ Effect-resist cards (bResEff in GetScDef) + weapon-swap status_change_refresh + cached nostatus map-id lookup; companion calc→SC-COMPANION-CALC | SC-21/22 |
 | SC-COMPANION-CALC | Homun/merc/elem recompute derived stats (MaxHp) on level-up — split from SC-IMMUNE, blocked on GP-HOMUN/MERC/ELEM |
 

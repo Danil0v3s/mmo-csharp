@@ -514,7 +514,14 @@ public sealed class StatusEffectRegistry
                 s.Hit = (short)Math.Min(short.MaxValue, s.Hit + s.Hit * 20 / 80);
                 s.Flee = (short)Math.Min(short.MaxValue, s.Flee + s.Flee * 20 / 80);
             },
-            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh,
+            // CalcPc rebuilds Hit+Flee each recalc — re-apply the −20% reduction.
+            OnRecalc: (target, sc) =>
+            {
+                var s = target.Stats;
+                s.Hit = (short)Math.Max(0, s.Hit - s.Hit * 20 / 100);
+                s.Flee = (short)Math.Max(0, s.Flee - s.Flee * 20 / 100);
+            }));
 
         // SC_DOUBLECAST (Sage SA_DOUBLECASTING) — 50 % chance per cast
         // to trigger an extra hit. Cast pipeline reads the SC presence.
@@ -4109,7 +4116,12 @@ public sealed class StatusEffectRegistry
                 target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val1);
                 target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // CalcPc rebuilds Cri each recalc — re-apply (AspdRate is NOT reset by CalcPc, so leave it).
+            OnRecalc: (target, sc) =>
+            {
+                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val1);
+            }));
 
         // SC_EDP (ASC_EDP — Enchant Deadly Poison) — rAthena status.cpp:
         // 10522-10535: val2 = (val1+1)/2 + 2 poison chance %; val3 =

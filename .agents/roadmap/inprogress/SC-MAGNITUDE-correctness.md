@@ -155,6 +155,17 @@
   s[i]) — so primary-stat handlers never need OnRecalc, and only the *reset* fields (Watk/Matk/Def/derived/
   pools) do. **This means the Watk/Matk missing-OnRecalc audit (turns 8-10) is now complete.** 3 tests;
   full suite 4592 pass (1 = standing replay-fixture).
+- **2026-06-04 (turn 11)** — Extended the missing-OnRecalc audit to the **generator-reapply-set fields**
+  (Def/Def2/Mdef/Mdef2/Hit/Flee/Flee2/Cri/Batk/Patk/Smatk/Res/Mres/Hplus/Crate). Established the root cause
+  precisely: `Register` fully replaces a handler (no OnRecalc merge, L6864-6871), and the generator only
+  attaches OnRecalc to handlers it *synthesizes* (skips existing real bespoke handlers) — so a bespoke
+  handler on a reset field with **no OnRecalc loses its bonus on recalc**. A final-registration scan found
+  **45** such handlers; confirmed the bug with `Combat53BespokeRefoldTests` (Truesight's Cri fails the
+  recalc-survival assert). Too large + too varied (percent-of-base, primary-stat coupling, MaxHp pools)
+  for one turn ➡️ filed **SC-DERIVED-RECALC** (→ inprogress) and did **batch 1** there: Fear (Hit/Flee −20%)
+  + Cloaking (Cri), both verified in the Combat53 theory. (Truesight/Magicpower attempted but reverted —
+  they fail the strict idempotency assert due to Luk→Cri coupling / percent-of-current, so they need the
+  per-field care the ticket specifies.) Full suite 4594 pass (1 = standing replay-fixture).
 
 ## Notes
 
