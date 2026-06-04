@@ -98,13 +98,13 @@ public sealed class StatusBroadcaster
         // Trailing status_calc_weight SP_WEIGHT update (status.cpp:3646).
         Par(session, SpId.SP_WEIGHT, RenewalFormulas.Weight(ch));
 
-        // Tail: mail / achievement / overweight tail. These fire from
-        // separate IPC replies in rAthena; for the capture's empty case
-        // we emit defaults so the wire structurally matches.
+        // Tail: mail / overweight tail. These fire from separate IPC replies in rAthena; for the
+        // capture's empty case we emit defaults so the wire structurally matches.
         session.EnqueuePacket(new ZC_NOTIFY_UNREADMAIL { Result = 0 });
-        for (var i = 0; i < 3; i++)
-            session.EnqueuePacket(new ZC_ACH_UPDATE());           // 3 default entries
-        session.EnqueuePacket(new ZC_ALL_ACH_LIST { Body = new byte[68] }); // 72B total (4B header + 68)
+        // GP-ACHIEVE — the achievement window packets (ZC_ACH_UPDATE header + ZC_ALL_ACH_LIST) are no
+        // longer faked here: they are emitted from the real achievement load path
+        // (IntifService.AchievementRequestAsync → IAchievementService.PcLogin) once the char-side log is
+        // hydrated, matching rAthena's pc_authok tail (intif.cpp:2218-2219).
         // ZC_OVERWEIGHT_PERCENT carries the *threshold* (not current
         // weight%) — rAthena `battle_config.natural_heal_weight_rate_renewal`
         // default 70 (clif.cpp:22005). It's the percentage at which the

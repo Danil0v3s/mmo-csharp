@@ -320,6 +320,10 @@ public enum PacketHeader : short
     ZC_NOTIFY_UNREADMAIL  = 0x09e7,        // mail load reply, 3B
     ZC_ALL_ACH_LIST       = 0x0a23,        // clif_achievement_list_all, variable
     ZC_ACH_UPDATE         = 0x0a24,        // clif_achievement_update, 66B
+    CZ_REQ_ACH_REWARD     = 0x0a25,        // clif_parse_AchievementCheckReward — claim reward, 6B
+    ZC_REQ_ACH_REWARD_ACK = 0x0a26,        // clif_achievement_reward_ack — result.B ach_id.L, 7B
+    CZ_REQ_CHANGE_TITLE   = 0x0a2e,        // clif_parse_change_title — set equipped title, 6B
+    ZC_ACK_CHANGE_TITLE   = 0x0a2f,        // clif_change_title_ack — result.B title_id.L, 7B
     ZC_EQUIPSWITCH_LIST   = 0x0a9b,        // clif_equipswitch_list, variable
     ZC_ACK_MAIL_LIST      = 0x0ac2,        // RODEX inbox list (clif_Mail_refreshinbox, PACKETVER ≥ 20170419), variable
     CZ_OPEN_MAILBOX       = 0x0ac0,        // RODEX open mailbox / request inbox (clif_parse_Mail_refreshinbox), 26B

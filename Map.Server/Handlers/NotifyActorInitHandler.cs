@@ -183,6 +183,10 @@ public class NotifyActorInitHandler(
             player.JobExp = (long)ch.JobExp;
             player.JobLevel = (int)ch.JobLevel;
             player.StatusPoints = (int)ch.StatusPoint;
+            // GP-ACHIEVE — restore the equipped achievement title (rAthena
+            // sd->status.title_id). The owned-title set is rederived from the
+            // rewarded achievements once the achievement log is hydrated below.
+            player.TitleId = (int)ch.TitleId;
             // Register the savepoint for pc_respawn. CharacterDataResponse
             // doesn't yet split save_point from last_point — use the last
             // map/pos as a proxy (first-slice; proto extension is queued).
@@ -229,6 +233,12 @@ public class NotifyActorInitHandler(
         // intif_request_questlog → mapif_parse_loadquestreq → clif_quest_send_list
         // chain that runs at the tail of pc_authok.
         await intif.QuestRequestAsync(player);
+
+        // GP-ACHIEVE — load the char-side achievement log onto the live entity and push the
+        // achievement window (rAthena intif_request_achievementlist → mapif_load_achievements →
+        // clif_achievement_list_all at the tail of pc_authok). The hydrated rewarded-achievement set
+        // also re-establishes the owned-title list used by the title-change gate.
+        await intif.AchievementRequestAsync(player);
 
         logger.LogInformation(
             "Player {Name} (char {CharId}) spawned at ({X},{Y}) on map 0x{MapId:X8}",

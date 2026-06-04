@@ -209,6 +209,9 @@ public sealed class PlayerStateService : IPlayerStateService
             // base stats unchanged (no /stat allocation packet yet).
             entity.LastX = (ushort)pc.X;
             entity.LastY = (ushort)pc.Y;
+            // GP-ACHIEVE — persist the equipped achievement title (rAthena saves
+            // sd->status.title_id on chrif_save). 0 = no title.
+            entity.TitleId = (uint)Math.Max(0, pc.TitleId);
         }
 
         await repo.UpdateAsync(entity, ct);

@@ -16,6 +16,20 @@ namespace Char.Server.Tests.Services;
 public class CharGrpcServiceParityTests
 {
     [Fact]
+    public void ToCharacterDataResponse_CarriesEquippedTitleId()
+    {
+        // GP-ACHIEVE — the equipped achievement title round-trips through CharacterDataResponse so a
+        // relog restores the displayed title (rAthena char title_id column → sd->status.title_id).
+        var character = new CharEntity { CharId = 42, AccountId = 7, Name = "Titled", TitleId = 1000 };
+
+        var method = typeof(CharGrpcService).GetMethod("ToCharacterDataResponse",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
+        var response = (CharacterDataResponse)method.Invoke(null, new object[] { character })!;
+
+        Assert.Equal(1000u, response.TitleId);
+    }
+
+    [Fact]
     public async Task GetCharacterList_ShouldFilterDeletedAndOrderBySlot()
     {
         var repo = new InMemoryCharacterRepository(

@@ -21,6 +21,7 @@ public sealed class AchievementService : IAchievementService
     private readonly Map.Server.Status.ISessionManagerAccessor? _sessions;
     private readonly Map.Server.Items.IItemCatalog? _items;
     private readonly Map.Server.Inventory.IInventoryService? _inventory;
+    private readonly Map.Server.Visibility.IVisibilityService? _visibility;
     private readonly ILogger<AchievementService> _logger;
 
     // FEATURE-04 — achievement-level XP curve (rAthena achievement_level_db), lazily loaded.
@@ -36,13 +37,15 @@ public sealed class AchievementService : IAchievementService
 
     public AchievementService(IServiceScopeFactory scopes, ILogger<AchievementService> logger,
         IMobDb? mobDb = null, Map.Server.Status.ISessionManagerAccessor? sessions = null,
-        Map.Server.Items.IItemCatalog? items = null, Map.Server.Inventory.IInventoryService? inventory = null)
+        Map.Server.Items.IItemCatalog? items = null, Map.Server.Inventory.IInventoryService? inventory = null,
+        Map.Server.Visibility.IVisibilityService? visibility = null)
     {
         _scopes = scopes;
         _mobDb = mobDb;
         _sessions = sessions;
         _items = items;
         _inventory = inventory;
+        _visibility = visibility;
         _logger = logger;
         ReloadDb();
     }
@@ -184,26 +187,43 @@ public sealed class AchievementService : IAchievementService
             {
                 entry.CompletedUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 if (_catalog.TryGetValue(achId, out var cat)) entry.Score = cat.Score;
-                CheckReward(pc, (int)achId); // auto-grant the completion reward
+                // rAthena achievement_update_achievement does NOT grant the reward on completion —
+                // it only flags the row + sends clif_achievement_update. The reward is claimed
+                // manually by the player (CZ_REQ_ACH_REWARD → achievement_check_reward).
             }
-            // The ZC_ACH_UPDATE client emit is owned by PACKET-10 (see ACH-UI follow-up); the
-            // count + completion state mutated here rides the existing AchievementSaveAsync fan-out.
+            // rAthena sends clif_achievement_update on every objective change (and on completion),
+            // carrying the live count + completion state so the window ticks. The count + completion
+            // state mutated here also rides the existing AchievementSaveAsync fan-out for persistence.
+            EmitUpdate(pc, (int)achId);
         }
     }
 
-    /// <summary>FEATURE-04 — rAthena <c>achievement_check_reward</c>: if the achievement is completed,
-    /// its dependents are satisfied, and it has not yet been rewarded, grant the reward.</summary>
+    /// <summary>FEATURE-04 — rAthena <c>achievement_check_reward</c> (achievement.cpp:701): the manual
+    /// reward-claim gate driven by <c>CZ_REQ_ACH_REWARD</c>. The achievement must exist in the catalog,
+    /// be in the PC's log, be completed, and not already rewarded; any failure emits
+    /// <c>ZC_REQ_ACH_REWARD_ACK result=0</c> (rAthena's per-branch failure ack). On success it grants
+    /// the reward (<see cref="GetReward"/>). The dependency chain is enforced by the completion path, so
+    /// a completed achievement is always claimable here (mirrors rAthena, which does not re-check
+    /// dependents at claim time).</summary>
     public void CheckReward(PlayerEntity pc, int achievementId)
     {
+        var cat = GetCatalogEntry((uint)achievementId);
         var entry = FindEntry(pc, achievementId);
-        if (entry == null || entry.CompletedUnix == 0 || entry.RewardedUnix != 0) return;
-        if (!CheckDependent(pc, achievementId)) return;
+        // rAthena: unknown achievement, not in log, not completed, or already rewarded → ack(0).
+        if (cat == null || entry == null || entry.CompletedUnix == 0 || entry.RewardedUnix != 0)
+        {
+            EmitRewardAck(pc, 0, achievementId);
+            return;
+        }
         GetReward(pc, achievementId);
     }
 
-    /// <summary>FEATURE-04 — rAthena <c>achievement_get_reward</c>: grant the completion reward (item +
-    /// title) once, stamping <c>RewardedUnix</c>. Idempotent — a second call no-ops. The bonus reward
-    /// <c>Script</c> is the scripting epic → FEATURE-23.</summary>
+    /// <summary>FEATURE-04 — rAthena <c>achievement_get_reward</c> (achievement.cpp:660): grant the
+    /// completion reward (item + title) once, stamping <c>RewardedUnix</c>. Idempotent — a second call
+    /// no-ops. Mirrors the rAthena client feedback: when the reward carries a title id the whole
+    /// <c>ZC_ALL_ACH_LIST</c> is re-sent (so the client learns the new owned title), otherwise a
+    /// <c>ZC_REQ_ACH_REWARD_ACK result=1</c> + a <c>ZC_ACH_UPDATE</c> are sent. The bonus reward
+    /// <c>Script</c> is the scripting epic → GP-ACHIEVE-REWARD-SCRIPT (SCR-PLAYER dependency).</summary>
     public void GetReward(PlayerEntity pc, int achievementId)
     {
         var cat = GetCatalogEntry((uint)achievementId);
@@ -218,7 +238,19 @@ public sealed class AchievementService : IAchievementService
                 _inventory.GiveItem(session, itemRow.Id, Math.Max(1, cat.RewardAmount));
         }
         entry.RewardedUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        // ZC_REQ_ACH_REWARD_ACK client emit owned by PACKET-10. The bonus reward Script → FEATURE-23.
+
+        // rAthena: title reward → re-send the full list (the client picks up the new owned title);
+        // otherwise → reward_ack(1) success + a single-achievement update. The bonus reward Script
+        // path needs the script runtime → GP-ACHIEVE-REWARD-SCRIPT.
+        if (cat.RewardTitleId > 0)
+        {
+            EmitListAll(pc);
+        }
+        else
+        {
+            EmitRewardAck(pc, 1, achievementId);
+            EmitUpdate(pc, achievementId);
+        }
     }
 
     /// <summary>FEATURE-04 — rAthena <c>achievement_get_titles</c>: the title ids the PC has earned
@@ -242,29 +274,193 @@ public sealed class AchievementService : IAchievementService
 
     /// <summary>FEATURE-04 — rAthena <c>achievement_level</c> (achievement.cpp:811): the PC's
     /// achievement level from their total completed score, walked against the level curve.</summary>
-    public int Level(PlayerEntity pc)
+    public int Level(PlayerEntity pc) => LevelInfo(pc).Level;
+
+    /// <summary>GP-ACHIEVE — rAthena <c>achievement_data.total_score</c>: the sum of every completed
+    /// achievement's score.</summary>
+    public int TotalScore(PlayerEntity pc)
     {
         var total = 0;
         foreach (var e in pc.AchievementLog) if (e.CompletedUnix != 0) total += e.Score;
+        return total;
+    }
 
+    /// <summary>GP-ACHIEVE — rAthena <c>achievement_level</c> (achievement.cpp): resolve the PC's
+    /// achievement <c>Level</c> (gold circle), the <c>Exp</c> into that level (bar left number) and the
+    /// <c>ExpNext</c> span to the next level (bar right number), all from the completed-score total. The
+    /// walk mirrors the rAthena loop exactly: advance while <c>total &gt; level.points</c>; when there is
+    /// no next level the display level is bumped +1 with <c>right=0</c>; otherwise left/right are framed
+    /// against the previous level's points.</summary>
+    public (int Level, int Exp, int ExpNext, int TotalScore) LevelInfo(PlayerEntity pc)
+    {
+        var total = TotalScore(pc);
         var curve = EnsureLevelCurve();
-        if (curve.Count == 0) return 0;
-        // rAthena: advance while total_score > the current level's points; cap at max+1 for display.
+        if (curve.Count == 0) return (0, total, 0, total);
+
+        int leftScore, rightScore;
         var level = 0;
         while (true)
         {
-            var row = curve.Find(r => r.Level == level);
-            if (row != null && total > row.RequiredPoints)
+            var cur = curve.Find(r => r.Level == level);
+            if (cur != null && total > cur.RequiredPoints)
             {
                 var next = curve.Find(r => r.Level == level + 1);
+                if (next == null)
+                {
+                    leftScore = total - (int)cur.RequiredPoints;
+                    rightScore = 0;
+                    level++; // client-side display bump
+                    break;
+                }
                 level++;
-                if (next == null) break;
-                continue;
+                continue; // enough for this level, check the next
             }
+
+            if (level == 0)
+            {
+                leftScore = total;
+                rightScore = (int)(cur?.RequiredPoints ?? 0);
+                break;
+            }
+
+            var prev = curve.Find(r => r.Level == level - 1);
+            var prevPoints = (int)(prev?.RequiredPoints ?? 0);
+            leftScore = total - prevPoints;
+            rightScore = (int)(cur?.RequiredPoints ?? prevPoints) - prevPoints;
             break;
         }
-        return level;
+        return (level, leftScore, rightScore, total);
     }
+
+    /// <summary>GP-ACHIEVE — rAthena pc_authok tail (intif.cpp:2218-2219): on login the server emits a
+    /// header-only <c>clif_achievement_update(nullptr)</c> (refreshes the summary bar) followed by the
+    /// full <c>clif_achievement_list_all</c>. <c>EmitListAll</c> is a no-op when the log is empty
+    /// (rAthena returns early on count == 0); the header-only update still fires so the bar shows level 0.</summary>
+    public void PcLogin(PlayerEntity pc)
+    {
+        var session = _sessions?.GetByEntityId(pc.Id);
+        if (session != null)
+        {
+            var info = LevelInfo(pc);
+            session.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_ACH_UPDATE
+            {
+                TotalScore = info.TotalScore,
+                Level = (short)info.Level,
+                Exp = info.Exp,
+                ExpNext = info.ExpNext,
+                Achievement = null, // rAthena passes nullptr → 40 trailing bytes zeroed
+            });
+        }
+        EmitListAll(pc);
+    }
+
+    /// <summary>GP-ACHIEVE — build + send <c>ZC_ALL_ACH_LIST</c> for the PC.</summary>
+    private void EmitListAll(PlayerEntity pc)
+    {
+        var session = _sessions?.GetByEntityId(pc.Id);
+        if (session == null) return;
+        if (pc.AchievementLog.Count == 0) return; // rAthena: count == 0 → no packet
+
+        var info = LevelInfo(pc);
+        var rows = new List<Core.Server.Packets.Out.ZC.AchListEntry>(pc.AchievementLog.Count);
+        foreach (var e in pc.AchievementLog)
+            rows.Add(ToWireEntry(e));
+
+        session.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_ALL_ACH_LIST
+        {
+            Achievements = rows,
+            TotalScore = info.TotalScore,
+            Level = (short)info.Level,
+            Exp = info.Exp,
+            ExpNext = info.ExpNext,
+        });
+    }
+
+    /// <summary>GP-ACHIEVE — rAthena <c>clif_achievement_update</c>: single-achievement progress
+    /// notification (+ the running summary header). Sent on every objective bump and on reward.</summary>
+    public void EmitUpdate(PlayerEntity pc, int achievementId)
+    {
+        var session = _sessions?.GetByEntityId(pc.Id);
+        if (session == null) return;
+        var info = LevelInfo(pc);
+        var entry = FindEntry(pc, achievementId);
+        session.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_ACH_UPDATE
+        {
+            TotalScore = info.TotalScore,
+            Level = (short)info.Level,
+            Exp = info.Exp,
+            ExpNext = info.ExpNext,
+            Achievement = entry == null ? null : ToWireEntry(entry),
+        });
+    }
+
+    /// <summary>GP-ACHIEVE — rAthena <c>clif_achievement_reward_ack</c>: send the reward-claim result.</summary>
+    private void EmitRewardAck(PlayerEntity pc, byte result, int achievementId)
+        => _sessions?.GetByEntityId(pc.Id)?.EnqueuePacket(
+            new Core.Server.Packets.Out.ZC.ZC_REQ_ACH_REWARD_ACK { Result = result, AchievementId = achievementId });
+
+    private static Core.Server.Packets.Out.ZC.AchListEntry ToWireEntry(AchievementEntry e)
+        => new()
+        {
+            AchievementId = (uint)e.AchievementId,
+            Completed = e.CompletedUnix != 0,
+            Counts = e.Counts ?? Array.Empty<int>(),
+            CompletedTime = (uint)Math.Max(0, e.CompletedUnix),
+            Rewarded = e.RewardedUnix != 0,
+        };
+
+    /// <summary>
+    /// GP-ACHIEVE — rAthena <c>clif_parse_change_title</c> (clif.cpp:20721): equip an achievement title.
+    /// <paramref name="titleId"/> &lt;= 0 clears the title (always allowed); a positive id must be one the
+    /// PC has earned (a rewarded achievement's <c>RewardTitleId</c>) or the change is rejected with
+    /// <c>ZC_ACK_CHANGE_TITLE result=1</c>. An unchanged id is a silent no-op (rAthena returns early).
+    /// On success the equipped id is stored on the entity (persisted at save) and the name-area refresh
+    /// is requested so onlookers see the new title. Returns true when the title was applied/cleared.
+    /// </summary>
+    public bool SetTitle(PlayerEntity pc, int titleId)
+    {
+        var session = _sessions?.GetByEntityId(pc.Id);
+        if (titleId == pc.TitleId) return false; // exactly the same — rAthena no-op
+
+        if (titleId <= 0)
+        {
+            pc.TitleId = 0;
+        }
+        else
+        {
+            var owned = false;
+            foreach (var t in GetTitles(pc)) if (t == titleId) { owned = true; break; }
+            if (!owned)
+            {
+                session?.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_ACK_CHANGE_TITLE { Result = 1, TitleId = titleId });
+                return false;
+            }
+            pc.TitleId = titleId;
+        }
+
+        // rAthena clif_name_area(&sd->bl) re-broadcasts the name block (carries title_id) to viewers
+        // (self + everyone in the AOI). Onlookers' clients then redraw the floating title.
+        RefreshNameArea(pc);
+        session?.EnqueuePacket(new Core.Server.Packets.Out.ZC.ZC_ACK_CHANGE_TITLE { Result = 0, TitleId = titleId });
+        return true;
+    }
+
+    /// <summary>GP-ACHIEVE — rAthena <c>clif_name_area</c>: re-broadcast the PC's name block (which now
+    /// carries the new <c>title_id</c>) to everyone in view, including the player. Falls back to the test
+    /// hook when no visibility service is wired (unit tests).</summary>
+    private void RefreshNameArea(PlayerEntity pc)
+    {
+        if (NameRefreshHook != null) { NameRefreshHook(pc); return; }
+        _visibility?.SendToArea(pc, new Core.Server.Packets.Out.ZC.ZC_ACK_REQNAMEALL
+        {
+            Gid = (uint)pc.Id.Value,
+            CharName = pc.Name,
+            TitleId = (uint)Math.Max(0, pc.TitleId),
+        }, Map.Server.Visibility.SendTarget.Area);
+    }
+
+    /// <summary>Test seam — observe the <c>clif_name_area</c> refresh without a visibility service.</summary>
+    internal Action<PlayerEntity>? NameRefreshHook { get; set; }
 
     /// <summary>
     /// FEATURE-01 — rAthena <c>AchievementDatabase::mobexists</c>: true when any AG_BATTLE / AG_TAMING
