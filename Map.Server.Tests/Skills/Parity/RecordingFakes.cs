@@ -233,7 +233,10 @@ public sealed class RecordingStatusChangeService : IStatusChangeService
     public int Spread(Entity source, Entity target) => 0;
     public int GetMaxStacks(StatusType type) => 1;
     public bool IsDisabledOnMap(uint mapId, StatusType type) => false;
-    public int Refresh(Entity target) => 0;
+
+    /// <summary>Number of <see cref="Refresh"/> calls (SC-IMMUNE — weapon-swap refresh wiring test).</summary>
+    public int RefreshCalls { get; private set; }
+    public int Refresh(Entity target) { RefreshCalls++; _rec.Record("sc-refresh", new() { ["target"] = (int)target.Id }); return 0; }
 }
 
 public sealed class RecordingSplashService : IMapForeachInRangeService

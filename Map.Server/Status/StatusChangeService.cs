@@ -486,13 +486,25 @@ public sealed class StatusChangeService : IStatusChangeService
         if (_mapFlags == null || _world == null) return false;
         var flags = _effects.Get(type)?.Flags ?? ScfFlag.None;
         if ((flags & ScfFlag.Permanent) != 0) return false;
-        // Hashed-name → MapData same as MovementService.
-        foreach (var map in _world.All)
+        // SC-IMMUNE — robust map-id → name resolution: a once-built cache instead of the per-call
+        // O(N) linear GetHashCode scan. (The hashed-name → id is the codebase-wide convention.)
+        var name = ResolveMapName(mapId);
+        return name != null && _mapFlags.IsSet(name, Map.Server.World.MapFlag.NoStatus);
+    }
+
+    // SC-IMMUNE — lazily-built mapId → name reverse index (maps are static after boot).
+    private Dictionary<uint, string>? _mapNameById;
+    private string? ResolveMapName(uint mapId)
+    {
+        var cache = _mapNameById;
+        if (cache == null || cache.Count == 0)
         {
-            if ((uint)map.Name.GetHashCode() != mapId) continue;
-            return _mapFlags.IsSet(map.Name, Map.Server.World.MapFlag.NoStatus);
+            cache = new Dictionary<uint, string>();
+            if (_world != null)
+                foreach (var map in _world.All) cache[(uint)map.Name.GetHashCode()] = map.Name;
+            _mapNameById = cache;
         }
-        return false;
+        return cache.TryGetValue(mapId, out var name) ? name : null;
     }
 
     // Weapon-element SC set — used by ST.7 Refresh to know which SCs

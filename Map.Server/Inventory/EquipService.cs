@@ -19,6 +19,8 @@ public sealed class EquipService : IEquipService
     private readonly IItemCatalog _catalog;
     private readonly IEntityRegistry _entities;
     private readonly IStatusCalcService _statusCalc;
+    // SC-IMMUNE — status_change_refresh on weapon swap (re-resolve the weapon-element endow SCs).
+    private readonly Map.Server.Status.IStatusChangeService? _statusChange;
     private readonly IComboDispatcher? _comboDispatcher;
     private readonly IItemHookDispatcher? _hookDispatcher;
     private readonly ILogger<EquipService> _logger;
@@ -29,13 +31,15 @@ public sealed class EquipService : IEquipService
         IStatusCalcService statusCalc,
         ILogger<EquipService> logger,
         IComboDispatcher? comboDispatcher = null,
-        IItemHookDispatcher? hookDispatcher = null)
+        IItemHookDispatcher? hookDispatcher = null,
+        Map.Server.Status.IStatusChangeService? statusChange = null)
     {
         _catalog = catalog;
         _entities = entities;
         _statusCalc = statusCalc;
         _comboDispatcher = comboDispatcher;
         _hookDispatcher = hookDispatcher;
+        _statusChange = statusChange;
         _logger = logger;
     }
 
@@ -274,6 +278,11 @@ public sealed class EquipService : IEquipService
             LeftWeaponType: summary.LeftWeaponType,
             LeftWeaponElement: summary.LeftWeaponElement,
             HasShield: summary.HasShield));
+
+        // SC-IMMUNE — rAthena status_change_refresh (called from pc_calcweapontype): a wear-state
+        // change re-resolves the weapon-element endow SC family (Fire/Earth/Wind/Waterweapon) so a
+        // weapon swap under an endow picks up the new weapon's element. No-op when none are active.
+        _statusChange?.Refresh(player);
     }
 
     /// <inheritdoc />

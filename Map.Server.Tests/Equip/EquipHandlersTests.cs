@@ -49,6 +49,23 @@ public class EquipHandlersTests
     }
 
     [Fact]
+    public async Task EquipWeapon_RefreshesWeaponElementStatuses()
+    {
+        // SC-IMMUNE — a wear-state change runs status_change_refresh (re-resolves the weapon-element
+        // endow SC family for the new weapon), so the equip recalc invokes IStatusChangeService.Refresh.
+        var ctx = New();
+        var pc = ctx.AddPc(charId: 100, accountId: 1000);
+        var s = ctx.SessionOf(pc);
+        ctx.Catalog.Set(1101, new ItemEntity { Id = 1101, NameAegis = "Sword", Type = "Weapon", LocationRightHand = 1, Attack = 100, View = 1 });
+        s.Inventory = new List<InventoryItem> { new() { ServerIndex = 0, NameId = 1101, Amount = 1, Identified = true } };
+
+        Assert.Equal(0, ctx.StatusChange.RefreshCalls);
+        await ctx.EquipHandler.HandleAsync(s, MakeEquip(clientIndex: 2, position: EquipBits.HandR));
+
+        Assert.True(ctx.StatusChange.RefreshCalls > 0); // refresh ran on the equip recalc
+    }
+
+    [Fact]
     public async Task EquipWeapon_ReplacesExistingRightHand()
     {
         var ctx = New();
@@ -216,12 +233,15 @@ public class EquipHandlersTests
         var sessions = new InMemorySessions();
         var catalog = new StubCatalog();
         var statusCalc = new RecalcOnlyStatusCalc();
-        var svc = new EquipService(catalog, entities, statusCalc, NullLogger<EquipService>.Instance);
+        var statusChange = new Map.Server.Tests.Skills.Parity.RecordingStatusChangeService(
+            new Map.Server.Tests.Skills.Parity.SkillTraceRecorder());
+        var svc = new EquipService(catalog, entities, statusCalc, NullLogger<EquipService>.Instance,
+            statusChange: statusChange);
         return new TestContext(
             svc, catalog, entities, sessions,
             new EquipItemHandler(entities, svc, catalog, NullLogger<EquipItemHandler>.Instance),
             new UnequipItemHandler(entities, svc, NullLogger<UnequipItemHandler>.Instance),
-            (uint)mapName.GetHashCode());
+            (uint)mapName.GetHashCode(), statusChange);
     }
 
     private sealed record TestContext(
@@ -231,7 +251,8 @@ public class EquipHandlersTests
         InMemorySessions Sessions,
         EquipItemHandler EquipHandler,
         UnequipItemHandler UnequipHandler,
-        uint MapId)
+        uint MapId,
+        Map.Server.Tests.Skills.Parity.RecordingStatusChangeService StatusChange)
     {
         public PlayerEntity AddPc(int charId, int accountId)
         {
