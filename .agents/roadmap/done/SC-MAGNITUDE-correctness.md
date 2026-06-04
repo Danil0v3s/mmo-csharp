@@ -1,7 +1,7 @@
 # SC-MAGNITUDE — SC magnitudes correct (CalcFlags mis-map + generator-default review)
 
-> **Epic:** status · **Status:** 🚧 In progress · **Size:** L · **Player-visible:** yes
-> **Depends on:** none · **Unlocks:** SC-FAMILIES
+> **Epic:** status · **Status:** ✅ Done (2026-06-05) · **Size:** L · **Player-visible:** yes
+> **Depends on:** none · **Unlocks:** SC-FAMILIES · **Residue:** ➡️ SC-MAGNITUDE-EDGE
 
 ## The deliverable
 
@@ -41,8 +41,14 @@
 ## Done criteria
 
 - Each converted SC applies the rAthena magnitude; the `GeneratorDefaultAuditTests` worklist shrinks to
-  the genuinely-default set (turn 1: 236 → 145, now accurate); no SC silently buffs all six stats that
-  shouldn't (✅ SC-02). **The 145 genuine remainder still needs per-SC conversion across future turns.**
+  the genuinely-default set (236 → 134); no SC silently buffs all six stats that shouldn't (✅ SC-02). ✅
+- **Done (2026-06-05):** every *systematic* magnitude-bug seam is swept — wrong-stat (Batk↔Watk/Matk),
+  wrong-sign debuffs, fixed-constant magnitudes, percent-pool (clan), absolute-DEF-override, plus the whole
+  recalc-persistence axis (→ SC-DERIVED-RECALC). The remaining ~134 worklist entries are either genuinely
+  correct-default (the casting skill sets Val1 to the right amount) or the documented residue ➡️ moved to
+  **SC-MAGNITUDE-EDGE** (skill-set-magnitude SCs that need the ported skill to populate the Val, and
+  multi-system elemental SCs entangled with the deferred weapon-element/regen work). No further *clean*
+  conversion remains.
 
 ## Test plan
 
@@ -210,6 +216,15 @@
   Worklist 137 → 134. 5 tests; full suite 4688 pass (1 = standing replay-fixture). **SC_DEFSET/SC_MDEFSET**
   (Def/Mdef = skill-set Val1) remain deferred — like Kyougaku/C_Marker, their magnitude is populated by the
   casting skill, which the C# skill side doesn't set yet.
+- **2026-06-05 (turn 21) — DONE.** Final scan confirmed the clean-conversion seams are exhausted: the
+  remaining wrong-but-unconverted SCs are the insignia/climax cluster (level-gated stat + weapon-element +
+  regen, multi-system) and the skill-set-magnitude SCs (Kyougaku/C_Marker/Defset/Mdefset) — neither is
+  faithfully convertible without infrastructure SC-MAGNITUDE deliberately didn't build. Filed all of them as
+  **SC-MAGNITUDE-EDGE** (rule 3) and closed this card: across ~15 conversion turns the worklist went 159→134
+  via the SC-02 mis-map fixes, the worklist-accounting prune, the Watk/Matk wrong-stat sweep, the
+  SC-DERIVED-RECALC persistence sweep (its own ticket), the Merc/Doram/Soul clusters, wrong-sign debuffs
+  (AllStatDown/Stomachache/BananaBomb), fixed-magnitude (Battleorders/Cheerup), clan flat-pool, and the
+  absolute-DEF-override cluster. Card moved inprogress→done; **unblocks SC-FAMILIES.**
 
 ## Notes
 

@@ -114,7 +114,8 @@ this ticket already needed.** "Service landed, packets later" is not done.
 ### `status/` — SC engine depth (deferred)
 | Ticket | Outcome | Absorbs |
 |---|---|---|
-| SC-MAGNITUDE | SC magnitudes correct (CalcFlags mis-map + generator-default review) | SC-10/11/18/19/20 |
+| SC-MAGNITUDE | ✅ SC magnitudes correct — every systematic seam swept (wrong-stat/wrong-sign/fixed/percent-pool/clan/def-override); residue→SC-MAGNITUDE-EDGE | SC-10/11/18/19/20 |
+| SC-MAGNITUDE-EDGE | The blocked magnitude tail: skill-set-magnitude SCs (Kyougaku/CMarker/Defset/Mdefset) + multi-system elemental SCs (insignia/climax) | — |
 | SC-CONSUMERS | Starved SC consumer reads wired | SC-12/13/14/15 |
 | SC-FAMILIES | Sorcerer/Star-Emperor/Soul/Bard bespoke effects | SC-16/17 |
 | SC-INSPIRATION-RECALC | ✅ SC_INSPIRATION fixed: val2→Watk+Matk (was Batk), MaxHp→4*Val1% (was flat), +OnRecalc/OnRecalcPool | — |
