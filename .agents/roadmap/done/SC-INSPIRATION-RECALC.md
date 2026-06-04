@@ -1,6 +1,6 @@
 # SC-INSPIRATION-RECALC — SC_INSPIRATION buffs survive a stat recalc
 
-> **Epic:** status · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** status · **Status:** ✅ Done (2026-06-04) · **Size:** S · **Player-visible:** yes
 > **Depends on:** none · **Unlocks:** none
 
 ## The deliverable (definition of done, in one sentence)
@@ -63,3 +63,12 @@ the generator's derived-reapply field set.)
   fixed the 7 element-spirit options + Sunstance inline, but Inspiration's multi-field mix
   (derived Batk/MATK + primary stats + MaxHp%) needs per-field recalc-persistence analysis
   beyond a one-line OnRecalc, so it's carved out here.
+- 2026-06-04 — **Done (SC-MAGNITUDE turn 10).** Investigation found the handler had **three** bugs,
+  not just the recalc one: (1) val2 was added to **Batk**, but status.cpp:7141/7224 + status.yml put it
+  on **Watk**+Matk; (2) MaxHp was a flat `+4*Val1` but status.cpp:3170 adds `4*Val1` as a **percent**;
+  (3) no OnRecalc/OnRecalcPool. Confirmed via StatusCalcService:113-122 that the **primary-stat** bonus
+  (+Val3) rides the COMBAT-10 param-base delta and survives recalc on its own — so OnRecalc re-applies
+  ONLY Watk+Matk (re-adding the stats would double-count), and OnRecalcPool re-folds the MaxHp %. Fixed
+  all three. Tests: `Inspiration_appliesWatkMatkStatsAndMaxHpPercent_notBatk`,
+  `Inspiration_watkMatkSurviveRecalc_maxHpViaPool` (SC02), and updated the pinned
+  `SC06StanceFormulaTests.Inspiration_AtkMatk_AndAllStat`. Full suite 4592 pass (1 = standing fixture).

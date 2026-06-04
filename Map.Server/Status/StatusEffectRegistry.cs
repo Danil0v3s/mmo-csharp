@@ -2985,44 +2985,69 @@ public sealed class StatusEffectRegistry
 
         // SC-06 — SC_INSPIRATION (Royal Guard): rAthena status.cpp:11806
         // val2 = 40*Val1 (ATK + MATK), val3 = 6*Val1 (flat all-stat),
-        // val4 = tick/5000 (HP/SP drain tick). Consumers: batk/watk/matk +=
-        // val2; str/agi/.../luk += val3 (status.cpp:6558+); MaxHp += 4*Val1
-        // (status.cpp:3170). NOT +Val1 everywhere. The on-start
-        // status_change_clear_buffs(SCCB_DEBUFFS) + the 5 s drain tick are SC-17
-        // (they need a StatusChangeService callback the OnStart hook lacks).
+        // val4 (here) = the MaxHp%-delta snapshot. Consumers (status.cpp):
+        //   watk += val2 (:7141), matk += val2 (:7224) — NOT batk;
+        //   str/agi/vit/int/dex/luk += val3 (:6558+);
+        //   MaxHp bonus += 4*Val1 as a PERCENT (:3170-3171).
+        // SC-MAGNITUDE turn 10 fixed three bugs: val2 went to Batk (should be Watk),
+        // MaxHp was a flat +4*Val1 (should be +4*Val1 %), and there was no recalc
+        // re-application (Watk/Matk are rebuilt by CalcPc; MaxHp pool likewise). The
+        // primary-stat bonus survives recalc via the COMBAT-10 param-base delta, so it
+        // is applied once in OnStart and NOT re-applied in OnRecalc (that would double).
+        // The on-start status_change_clear_buffs(SCCB_DEBUFFS) + 5 s drain tick are SC-17.
         Register(StatusType.Inspiration, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
             {
                 if (sc.Val2 == 0) sc.Val2 = 40 * sc.Val1;
                 if (sc.Val3 == 0) sc.Val3 = 6 * sc.Val1;
                 var s = target.Stats;
-                s.Batk = (ushort)Math.Min(ushort.MaxValue, s.Batk + sc.Val2);
-                s.MatkMin = (ushort)Math.Min(ushort.MaxValue, s.MatkMin + sc.Val2);
-                s.MatkMax = (ushort)Math.Min(ushort.MaxValue, s.MatkMax + sc.Val2);
+                s.WatkMin = ClampUShort(s.WatkMin + sc.Val2);
+                s.WatkMax = ClampUShort(s.WatkMax + sc.Val2);
+                s.MatkMin = ClampUShort(s.MatkMin + sc.Val2);
+                s.MatkMax = ClampUShort(s.MatkMax + sc.Val2);
                 s.Str = (short)Math.Min(short.MaxValue, s.Str + sc.Val3);
                 s.Agi = (short)Math.Min(short.MaxValue, s.Agi + sc.Val3);
                 s.Vit = (short)Math.Min(short.MaxValue, s.Vit + sc.Val3);
                 s.IntStat = (short)Math.Min(short.MaxValue, s.IntStat + sc.Val3);
                 s.Dex = (short)Math.Min(short.MaxValue, s.Dex + sc.Val3);
                 s.Luk = (short)Math.Min(short.MaxValue, s.Luk + sc.Val3);
-                s.MaxHp = Math.Min(int.MaxValue, s.MaxHp + 4 * sc.Val1);
+                sc.Val4 = s.MaxHp * (4 * sc.Val1) / 100;   // MaxHp% delta snapshot
+                s.MaxHp = Math.Min(int.MaxValue, s.MaxHp + sc.Val4);
             },
             OnEnd: (target, sc) =>
             {
                 var s = target.Stats;
-                s.Batk = (ushort)Math.Max(0, s.Batk - sc.Val2);
-                s.MatkMin = (ushort)Math.Max(0, s.MatkMin - sc.Val2);
-                s.MatkMax = (ushort)Math.Max(0, s.MatkMax - sc.Val2);
+                s.WatkMin = ClampUShort(s.WatkMin - sc.Val2);
+                s.WatkMax = ClampUShort(s.WatkMax - sc.Val2);
+                s.MatkMin = ClampUShort(s.MatkMin - sc.Val2);
+                s.MatkMax = ClampUShort(s.MatkMax - sc.Val2);
                 s.Str = (short)Math.Max(0, s.Str - sc.Val3);
                 s.Agi = (short)Math.Max(0, s.Agi - sc.Val3);
                 s.Vit = (short)Math.Max(0, s.Vit - sc.Val3);
                 s.IntStat = (short)Math.Max(0, s.IntStat - sc.Val3);
                 s.Dex = (short)Math.Max(0, s.Dex - sc.Val3);
                 s.Luk = (short)Math.Max(0, s.Luk - sc.Val3);
-                s.MaxHp = Math.Max(1, s.MaxHp - 4 * sc.Val1);
+                if (sc.Val4 > 0) s.MaxHp = Math.Max(1, s.MaxHp - sc.Val4);
                 if (s.Hp > s.MaxHp) s.Hp = s.MaxHp;
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // CalcPc rebuilds Watk + Matk each recalc — re-apply (primary stats ride the
+            // COMBAT-10 param-base delta and must NOT be re-added here).
+            OnRecalc: (target, sc) =>
+            {
+                var s = target.Stats;
+                s.WatkMin = ClampUShort(s.WatkMin + sc.Val2);
+                s.WatkMax = ClampUShort(s.WatkMax + sc.Val2);
+                s.MatkMin = ClampUShort(s.MatkMin + sc.Val2);
+                s.MatkMax = ClampUShort(s.MatkMax + sc.Val2);
+            },
+            // CalcPc rebuilds the MaxHp pool — re-fold the % on the rebuilt pool, re-snapshot.
+            OnRecalcPool: (target, sc) =>
+            {
+                var s = target.Stats;
+                sc.Val4 = s.MaxHp * (4 * sc.Val1) / 100;
+                s.MaxHp = Math.Min(int.MaxValue, s.MaxHp + sc.Val4);
+            }));
 
         // Wave 58 — SC_Madogear: +Val1 to listed CalcFlag fields.
         Register(StatusType.Madogear, new StatusEffectHandler(

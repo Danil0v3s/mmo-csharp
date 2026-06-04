@@ -84,18 +84,21 @@ public class SC06StanceFormulaTests
     public void Inspiration_AtkMatk_AndAllStat()
     {
         var pc = Pc();
-        pc.Stats.Batk = 100; pc.Stats.MatkMin = 50; pc.Stats.MatkMax = 50;
+        // val2 → Watk + Matk (NOT Batk); MaxHp += 4*Val1 PERCENT (status.cpp:7141/7224/3170).
+        pc.Stats.WatkMin = 100; pc.Stats.WatkMax = 100; pc.Stats.Batk = 100;
+        pc.Stats.MatkMin = 50; pc.Stats.MatkMax = 50;
         pc.Stats.Str = 10; pc.Stats.MaxHp = 1000;
         var sc = Apply(StatusType.Inspiration, pc);
         Assert.Equal(200, sc.Val2);                     // 40*5
         Assert.Equal(30, sc.Val3);                      // 6*5
-        Assert.Equal(300, pc.Stats.Batk);              // +Val2
+        Assert.Equal(300, pc.Stats.WatkMin);           // +Val2 to Watk
+        Assert.Equal(100, pc.Stats.Batk);              // Batk untouched
         Assert.Equal(250, pc.Stats.MatkMin);
         Assert.Equal(40, pc.Stats.Str);                // +Val3
-        Assert.Equal(1020, pc.Stats.MaxHp);            // +4*Val1
+        Assert.Equal(1200, pc.Stats.MaxHp);            // +20% (4*5), not flat +20
 
         Reg.Get(StatusType.Inspiration)!.OnEnd(pc, sc);
-        Assert.Equal(100, pc.Stats.Batk);
+        Assert.Equal(100, pc.Stats.WatkMin);
         Assert.Equal(10, pc.Stats.Str);
         Assert.Equal(1000, pc.Stats.MaxHp);
     }

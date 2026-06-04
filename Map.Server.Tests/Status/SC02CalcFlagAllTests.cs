@@ -383,6 +383,54 @@ public class SC02CalcFlagAllTests
     }
 
     [Fact]
+    public void Inspiration_appliesWatkMatkStatsAndMaxHpPercent_notBatk()
+    {
+        // status.cpp: watk += val2 (:7141), matk += val2 (:7224), stats += val3 (:6558+),
+        // MaxHp bonus += 4*Val1 % (:3170). Val2 = 40*Val1, Val3 = 6*Val1.
+        var mob = FreshMob();
+        mob.Stats.WatkMin = 300; mob.Stats.WatkMax = 340; mob.Stats.Batk = 100;
+        mob.Stats.MaxHp = 1000; mob.Stats.Hp = 1000;
+        var sc = new StatusChange { Type = StatusType.Inspiration, Val1 = 5 };
+
+        Apply(StatusType.Inspiration, sc, mob);
+        Assert.Equal(200, sc.Val2);                 // 40*5
+        Assert.Equal(30, sc.Val3);                  // 6*5
+        Assert.Equal(500, mob.Stats.WatkMin);       // +200 (Watk, NOT Batk)
+        Assert.Equal(540, mob.Stats.WatkMax);
+        Assert.Equal(100, mob.Stats.Batk);          // Batk untouched
+        Assert.Equal(400, mob.Stats.MatkMin);       // 200 + 200
+        Assert.Equal(80, mob.Stats.Str);            // 50 + 30
+        Assert.Equal(1200, mob.Stats.MaxHp);        // +20% (4*5) of 1000, not flat +20
+
+        _reg.Get(StatusType.Inspiration)!.OnEnd!(mob, sc);
+        Assert.Equal(300, mob.Stats.WatkMin);
+        Assert.Equal(200, mob.Stats.MatkMin);
+        Assert.Equal(50, mob.Stats.Str);
+        Assert.Equal(1000, mob.Stats.MaxHp);
+    }
+
+    [Fact]
+    public void Inspiration_watkMatkSurviveRecalc_maxHpViaPool()
+    {
+        var mob = FreshMob();
+        mob.Stats.WatkMin = 300; mob.Stats.WatkMax = 340; mob.Stats.MaxHp = 1000; mob.Stats.Hp = 1000;
+        var h = _reg.Get(StatusType.Inspiration)!;
+        var sc = new StatusChange { Type = StatusType.Inspiration, Val1 = 5 };
+        h.OnStart(mob, sc, null);
+
+        // CalcPc rebuilds Watk/Matk and the MaxHp pool from base…
+        mob.Stats.WatkMin = 300; mob.Stats.WatkMax = 340; mob.Stats.MatkMin = 200; mob.Stats.MatkMax = 240;
+        mob.Stats.MaxHp = 1000;
+        Assert.NotNull(h.OnRecalc);
+        h.OnRecalc!(mob, sc);
+        Assert.Equal(500, mob.Stats.WatkMin);       // Watk re-applied
+        Assert.Equal(400, mob.Stats.MatkMin);       // Matk re-applied
+        Assert.NotNull(h.OnRecalcPool);
+        h.OnRecalcPool!(mob, sc);
+        Assert.Equal(1200, mob.Stats.MaxHp);        // MaxHp% re-folded on rebuilt pool
+    }
+
+    [Fact]
     public void Sunstance_watkPercent_survivesRecalc_viaOnRecalc()
     {
         var mob = FreshMob();

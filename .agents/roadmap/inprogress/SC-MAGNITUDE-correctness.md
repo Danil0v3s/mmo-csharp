@@ -146,6 +146,15 @@
   Worklist unchanged (**138** — all off-worklist), but eight more Watk/Matk buffs now persist across recalc.
   8 tests (`MatkOption_/WatkOption_survivesRecalc_viaOnRecalc` theories + `Sunstance_watkPercent_…`); full
   suite 4590 pass (1 = standing replay-fixture).
+- **2026-06-04 (turn 10)** — Closed out the **SC-INSPIRATION-RECALC** follow-up (→ done/). Investigating it
+  revealed Inspiration had **three** bugs: val2 went to **Batk** (status.cpp:7141/7224 + status.yml say
+  **Watk**+Matk); MaxHp was a **flat** `+4*Val1` (status.cpp:3170 adds it as a **percent**); and it had no
+  recalc re-application. Fixed all three (OnRecalc re-applies Watk+Matk; OnRecalcPool re-folds the MaxHp %).
+  Also nailed down the recalc model definitively: StatusCalcService:113-122 shows **primary stats survive via
+  the COMBAT-10 param-base delta** (the recalc shifts by the param-base change, preserving the SC delta on
+  s[i]) — so primary-stat handlers never need OnRecalc, and only the *reset* fields (Watk/Matk/Def/derived/
+  pools) do. **This means the Watk/Matk missing-OnRecalc audit (turns 8-10) is now complete.** 3 tests;
+  full suite 4592 pass (1 = standing replay-fixture).
 
 ## Notes
 
