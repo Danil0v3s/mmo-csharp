@@ -46,11 +46,12 @@ persistence round-trip are incomplete.
 
 ## Scope — every layer
 
-- [~] **CZ handlers**: pet-menu (`CZ_COMMAND_PET` 0x01a1 → `PetMenuHandler` → `Menu`, turn 1);
+- [x] **CZ handlers**: pet-menu (`CZ_COMMAND_PET` 0x01a1 → `PetMenuHandler` → `Menu`, turn 1);
       try-capture (`CZ_TRYCAPTURE_MONSTER` 0x019f → `PetCaptureHandler` → `CatchProcessEnd`, turn 2);
       hatch (egg item-use short-circuit → `OpenEggList`, select `CZ_SELECT_PETEGG` 0x01a7 →
-      `SelectPetEggHandler` → `BirthProcess`, turn 3). Remaining: rename (`CZ_RENAME_PET`), pet emotion
-      (`CZ_PET_ACT`).
+      `SelectPetEggHandler` → `BirthProcess`, turn 3); rename (`CZ_RENAME_PET` 0x01a5 →
+      `RenamePetHandler` → `ChangeName`) + emotion (`CZ_PET_ACT` 0x01a9 → `PetActHandler` → `Emotion`)
+      (turn 4). *(Over-head name refresh on rename ➡️ GP-PET-RENAME-NAMEPKT — cosmetic.)*
 - [~] **Service**: feed → intimacy/hunger + emit (turn 1); `Menu` corrected to rAthena mapping
       (0=info/1=feed/2=performance/3=return/4=unequip — was wrong) + runaway gate. Remaining: verify
       catch/hatch at HEAD; bind the hatched pet to a pet_id stored on the egg card (archive FEATURE-27);
@@ -58,11 +59,12 @@ persistence round-trip are incomplete.
 - [ ] **Combat/loot**: pet AI auto-skill dispatch + loot pickup bag (archive FEATURE-28).
 - [ ] **Persistence**: pet row (class/name/intimacy/hunger/equip) load on hatch / save on
       mutate + logout; egg card carries pet_id across logout.
-- [~] **ZC emits**: pet status (`ZC_PROPERTY_PET` 0x01a2) + pet data
+- [x] **ZC emits**: pet status (`ZC_PROPERTY_PET` 0x01a2) + pet data
       (`ZC_CHANGESTATE_PET` 0x01a4: intimacy/hunger/accessory/performance) via new `IPetClientService`,
       wired into `Summon`/`Food`/`SetIntimate`/`Menu` (turn 1); capture cursor (`ZC_START_CAPTURE`
       0x019e) + roulette (`ZC_TRYCAPTURE_MONSTER` 0x01a0) (turn 2); egg list (`ZC_PETEGG_LIST` 0x01a6,
-      turn 3). Remaining: emotion (`ZC_PET_ACT`).
+      turn 3); emotion (`ZC_PET_ACT` 0x01aa, turn 4). *(Over-head BL_PET name packet on rename ➡️
+      GP-PET-RENAME-NAMEPKT.)*
 
 ## Done criteria
 
@@ -124,9 +126,18 @@ persistence round-trip are incomplete.
   replay-fixture). **Interim**: the hatch resolves the pet class from the egg item directly; binding the
   persisted pet_id off the egg's card slots + the char-side petdata round-trip is the GP-PET
   persistence scope item (FEATURE-27), still a remaining checkbox of this ticket.
-- **Remaining (next turns → done):** rename (`CZ_RENAME_PET` → char-side uniqueness), emotion CZ/ZC
-  (`CZ_PET_ACT`/`ZC_PET_ACT`), pet combat/loot (FEATURE-28), persistence binding pet_id↔egg-card +
-  round-trip (FEATURE-27). The loop resumes this card.
+- **2026-06-04 (turn 4)** — Rename + emotion. New packets `CZ_RENAME_PET` (0x01a5, `<name>.24`),
+  `CZ_PET_ACT` (0x01a9, `<data>.L`), `ZC_PET_ACT` (0x01aa, `<GID>.L <data>.L`). Rewrote `ChangeName`
+  to rAthena `pet_change_name` (pet.cpp:1460): gates (pet out, not already renamed, name ≤ NAME_LENGTH,
+  no control chars), applies the name + sets `RenameFlag` + re-emits `ZC_PROPERTY_PET` (`ApplyPetName`
+  helper; `ChangeNameAck` kept for the FEATURE-27 char-ack path). New `Emotion` broadcasts `ZC_PET_ACT`
+  to view via `IVisibilityService`. New `RenamePetHandler` + `PetActHandler`. `PetRenameEmoteTests`
+  (6: apply+flag+status, reject-second-rename, reject-control/empty, emotion-broadcast, both handlers);
+  full suite 4467 pass (1 = standing replay-fixture). **Filed GP-PET-RENAME-NAMEPKT** (over-head BL_PET
+  name refresh on rename — needs the 0x0095 short name packet; cosmetic). Rename persistence
+  (cross-relog) rides FEATURE-27.
+- **Remaining (next turns → done):** pet combat/loot (FEATURE-28: AI auto-skill + loot bag),
+  persistence binding pet_id↔egg-card + round-trip (FEATURE-27). The loop resumes this card.
 
 ## Notes / gotchas
 

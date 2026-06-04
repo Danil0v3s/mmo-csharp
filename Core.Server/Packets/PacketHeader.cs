@@ -257,6 +257,9 @@ public enum PacketHeader : short
     CZ_COMMAND_PET        = 0x01a1,        // clif_parse_PetMenu: <type>.B, 3B (0=info 1=feed 2=performance 3=return 4=unequip).
     ZC_PETEGG_LIST        = 0x01a6,        // clif_sendegg: <len>.W then per-egg <client index>.W (hatchable eggs in the bag).
     CZ_SELECT_PETEGG      = 0x01a7,        // clif_parse_SelectEgg: <index>.W, 4B (chosen egg to hatch).
+    CZ_RENAME_PET         = 0x01a5,        // clif_parse_ChangePetName: <name>.24B, 26B.
+    CZ_PET_ACT            = 0x01a9,        // clif_parse_SendEmotion: <data>.L, 6B (pet emotion/act request).
+    ZC_PET_ACT            = 0x01aa,        // clif_pet_emotion: <GID>.L <data>.L, 10B (broadcast pet emotion to area).
     ZC_PROPERTY_PET       = 0x01a2,        // clif_send_petstatus: <name>.24 <renamed>.B <level>.W <hunger>.W <intimacy>.W <accessory>.W <class>.W, 37B.
     ZC_CHANGESTATE_PET    = 0x01a4,        // clif_send_petdata: <type>.B <GID>.L <data>.L, 11B (intimacy/hunger/accessory/... update).
     ZC_MSG_STATE_CHANGE3  = 0x0983,        // clif_status_change3 (status icon w/ tick), 29B

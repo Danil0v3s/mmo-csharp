@@ -207,6 +207,7 @@ public class PetHatchTests
         public int BirthProcess(PlayerEntity master, int eggSlot) => 0;
         public int ChangeName(PlayerEntity master, string newName) => 0;
         public int ChangeNameAck(PlayerEntity master, byte flag) => 0;
+        public void Emotion(PlayerEntity master, int data) { }
         public int Menu(PlayerEntity master, int choice) => 0;
         public int RecvPetData(PlayerEntity master) => 0;
         public int EquipItem(PlayerEntity master, int inventoryIndex) => 0;

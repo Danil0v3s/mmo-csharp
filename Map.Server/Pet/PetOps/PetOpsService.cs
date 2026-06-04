@@ -348,30 +348,50 @@ public sealed class PetOpsService : IPetOpsService
 
     // ----- Name change -----
 
+    /// <summary>rAthena <c>pet_change_name</c> (pet.cpp:1460): rename the active pet. Gates: a pet must
+    /// be out, it can't already be renamed (battle_config.pet_rename off by default), and the name must
+    /// be valid (≤ NAME_LENGTH, no control chars). Returns 1 on any rejection (rAthena), 0 on success.
+    /// The new name is applied + the status panel re-emitted immediately; persisting it char-side rides
+    /// the GP-PET persistence work (FEATURE-27).</summary>
     public int ChangeName(PlayerEntity master, string newName)
     {
-        if (string.IsNullOrWhiteSpace(newName) || newName.Length > 24) return -1;
         var pet = GetLivePet(master);
-        if (pet == null) return -2;
-        // Bounce through char-server for persistence + uniqueness check.
-        master.PetPendingRename = newName;
+        if (pet == null) return 1;
+        if (pet.RenameFlag) return 1;                                   // already renamed
+        if (string.IsNullOrEmpty(newName) || newName.Length >= 24) return 1; // NAME_LENGTH
+        foreach (var ch in newName) if (ch < 0x20 || ch == 0x7f) return 1;   // rAthena char validity
+        ApplyPetName(master, pet, newName);
         return 0;
     }
 
+    /// <summary>rAthena <c>pet_change_name_ack</c>: the char server confirmed (flag != 0) the rename;
+    /// apply the pending name. Used once the rename persistence IPC is wired (FEATURE-27).</summary>
     public int ChangeNameAck(PlayerEntity master, byte flag)
     {
         if (flag == 0) { master.PetPendingRename = null; return -1; }
         var pet = GetLivePet(master);
         if (pet == null || master.PetPendingRename == null) return -2;
-        // PetName is init-only; the rename actually requires re-spawn.
-        // Stash on the entity by recalling + re-summoning with new name.
-        var className = pet.ClassId;
-        var carriedEgg = pet.EggId;
-        var newName = master.PetPendingRename;
+        ApplyPetName(master, pet, master.PetPendingRename);
         master.PetPendingRename = null;
-        _pet?.Recall(master);
-        _pet?.Summon(master, className, newName, carriedEgg);
         return 0;
+    }
+
+    /// <summary>Set the pet's name + rename flag and re-emit the status panel. The over-head BL_PET name
+    /// refresh (rAthena clif_name for the unit) is GP-PET-RENAME-NAMEPKT.</summary>
+    private void ApplyPetName(PlayerEntity master, Map.Server.Entities.PetEntity pet, string newName)
+    {
+        pet.PetName = newName;
+        pet.RenameFlag = true;
+        _client?.SendPetStatus(master, pet);
+    }
+
+    /// <summary>rAthena <c>clif_pet_emotion</c> (clif.cpp:8354): broadcast the pet's emotion / act to
+    /// everyone in view (ZC_PET_ACT). No-op when the player has no live pet.</summary>
+    public void Emotion(PlayerEntity master, int data)
+    {
+        var pet = GetLivePet(master);
+        if (pet == null) return;
+        _visibility?.SendToArea(pet, new Core.Server.Packets.Out.ZC.ZC_PET_ACT { Gid = pet.Id.Value, Data = data });
     }
 
     // ----- Menu / equip / status -----

@@ -48,6 +48,8 @@ public interface IPetOpsService
     int ChangeName(PlayerEntity master, string newName);
     /// <summary>rAthena <c>pet_change_name_ack</c>.</summary>
     int ChangeNameAck(PlayerEntity master, byte flag);
+    /// <summary>rAthena <c>clif_pet_emotion</c> — broadcast the pet's emotion / act to view.</summary>
+    void Emotion(PlayerEntity master, int data);
     /// <summary>rAthena <c>pet_menu</c>.</summary>
     int Menu(PlayerEntity master, int choice);
     /// <summary>rAthena <c>pet_recv_petdata</c>.</summary>
