@@ -1,6 +1,6 @@
 # GP-BUYSTORE — Buying store works end-to-end
 
-> **Epic:** gameplay · **Status:** ❌ Not started · **Size:** M · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** 🚧 In progress · **Size:** M · **Player-visible:** yes
 > **Depends on:** none (pairs with GP-VEND) · **Unlocks:** none
 
 ## The deliverable
