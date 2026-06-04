@@ -167,6 +167,17 @@
   they fail the strict idempotency assert due to Luk→Cri coupling / percent-of-current, so they need the
   per-field care the ticket specifies.) Full suite 4594 pass (1 = standing replay-fixture).
 
+- **2026-06-04 (turn 16)** — Assessed closing the card; instead found the ~146 generator-default remainder is
+  **not** all correct-default. A cross-check of `StatusCalcFlagDefaults` entries against the rAthena
+  `status_calc_*` consumers surfaced **sign/magnitude bugs**: **SC_BATTLEORDERS** (flat +5 Str/Int/Dex,
+  status.cpp:6530 — generator added +Val1) and **SC_ALL_STAT_DOWN** (all six base stats −= 20·Val1 [−10 if
+  Val1<5], status.cpp:6578-6927 — generator *added* +Val1, i.e. wrong SIGN: a buff instead of a debuff).
+  Converted both (primary stats survive recalc via the COMBAT-10 param-base delta, so no OnRecalc). Worklist
+  146 → 144. 3 tests; full suite 4669 pass (1 = standing replay-fixture). **So the card stays open** — the
+  remainder still hides wrong-sign debuffs and absolute-set SCs (SC_DEFSET/SC_ETERNALCHAOS set Def to an
+  absolute value, not +Val1 — a different bespoke axis); the StatusCalcFlagDefaults-vs-consumer audit is the
+  productive seam for future turns.
+
 ## Notes
 
 - Element-endow SCs set the weapon element the combat resolver reads — not an all-stat buff

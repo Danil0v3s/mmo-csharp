@@ -336,6 +336,48 @@ public class SC02CalcFlagAllTests
 
     // ---- SC-MAGNITUDE: flat-Matk handlers must survive a CalcPc recalc (re-apply via OnRecalc) ----
 
+    // ---- SC-MAGNITUDE: generator-default primary-stat fixes (wrong sign / wrong magnitude) ----
+
+    [Fact]
+    public void Battleorders_addsFlat5_toStrIntDex_only()
+    {
+        // status.cpp:6530 str += 5 (+ Int/Dex); status.yml CalcFlags Str/Int/Dex. NOT +Val1.
+        var mob = FreshMob();   // all base stats = 50
+        var sc = new StatusChange { Type = StatusType.Battleorders, Val1 = 1 };
+        Apply(StatusType.Battleorders, sc, mob);
+        Assert.Equal(55, mob.Stats.Str);
+        Assert.Equal(55, mob.Stats.IntStat);
+        Assert.Equal(55, mob.Stats.Dex);
+        Assert.Equal(50, mob.Stats.Agi);   // untouched
+        Assert.Equal(50, mob.Stats.Vit);
+        Assert.Equal(50, mob.Stats.Luk);
+
+        _reg.Get(StatusType.Battleorders)!.OnEnd!(mob, sc);
+        Assert.Equal(50, mob.Stats.Str);
+    }
+
+    [Fact]
+    public void AllStatDown_subtractsVal2_fromAllSix_notAdds()
+    {
+        // status.cpp: all six base stats −= val2; val2 = 20*Val1 (−10 if Val1 < max 5). A DEBUFF.
+        var mob = FreshMob();   // all = 50
+        var sc = new StatusChange { Type = StatusType.AllStatDown, Val1 = 2 };
+        Apply(StatusType.AllStatDown, sc, mob);
+        Assert.Equal(30, sc.Val2);          // 20*2 − 10
+        Assert.Equal(20, mob.Stats.Str);    // 50 − 30 (reduced, NOT +Val1)
+        Assert.Equal(20, mob.Stats.Agi);
+        Assert.Equal(20, mob.Stats.Luk);
+
+        _reg.Get(StatusType.AllStatDown)!.OnEnd!(mob, sc);
+        Assert.Equal(50, mob.Stats.Str);    // restored
+    }
+
+    [Theory]
+    [InlineData(StatusType.Battleorders)]
+    [InlineData(StatusType.AllStatDown)]
+    public void PrimaryStatFix_isConverted_notGeneratorDefault(StatusType t)
+        => Assert.DoesNotContain(t, _reg.GeneratedStatModDefaultTypes);
+
     // ---- SC-DERIVED-RECALC: the per-field-care handlers (percent / coupling / pool) survive recalc ----
 
     [Fact]

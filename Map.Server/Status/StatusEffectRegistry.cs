@@ -1271,6 +1271,56 @@ public sealed class StatusEffectRegistry
             OnRecalc: (target, sc) =>
                 target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val2)));
 
+        // SC_BATTLEORDERS (GD_BATTLEORDER) — flat +5 Str/Int/Dex (status.cpp:6530/6739/6817; status.yml
+        // CalcFlags Str/Int/Dex). The generator's +Val1 (=skill level) is the wrong magnitude. Primary
+        // stats survive recalc via the COMBAT-10 param-base delta, so no OnRecalc is needed.
+        Register(StatusType.Battleorders, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                target.Stats.Str = (short)Math.Min(short.MaxValue, target.Stats.Str + 5);
+                target.Stats.IntStat = (short)Math.Min(short.MaxValue, target.Stats.IntStat + 5);
+                target.Stats.Dex = (short)Math.Min(short.MaxValue, target.Stats.Dex + 5);
+            },
+            OnEnd: (target, sc) =>
+            {
+                target.Stats.Str = (short)Math.Max(0, target.Stats.Str - 5);
+                target.Stats.IntStat = (short)Math.Max(0, target.Stats.IntStat - 5);
+                target.Stats.Dex = (short)Math.Max(0, target.Stats.Dex - 5);
+            },
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+
+        // SC_ALL_STAT_DOWN (NPC_ALL_STAT_DOWN) — Val2 = 20*Val1 (−10 if Val1 < max level 5); all six base
+        // stats −= Val2 (status.cpp:6578-6927 str/agi/vit/int/dex/luk −= val2). The generator's +Val1 is
+        // both the wrong SIGN (a buff, not a debuff) and wrong magnitude. Primary stats survive recalc via
+        // the COMBAT-10 param-base delta, so no OnRecalc.
+        Register(StatusType.AllStatDown, new StatusEffectHandler(
+            OnStart: (target, sc, _) =>
+            {
+                if (sc.Val2 == 0)
+                {
+                    sc.Val2 = 20 * sc.Val1;
+                    if (sc.Val1 < 5) sc.Val2 -= 10;   // skill_get_max(NPC_ALL_STAT_DOWN) = 5
+                }
+                var s = target.Stats;
+                s.Str = (short)Math.Max(0, s.Str - sc.Val2);
+                s.Agi = (short)Math.Max(0, s.Agi - sc.Val2);
+                s.Vit = (short)Math.Max(0, s.Vit - sc.Val2);
+                s.IntStat = (short)Math.Max(0, s.IntStat - sc.Val2);
+                s.Dex = (short)Math.Max(0, s.Dex - sc.Val2);
+                s.Luk = (short)Math.Max(0, s.Luk - sc.Val2);
+            },
+            OnEnd: (target, sc) =>
+            {
+                var s = target.Stats;
+                s.Str = (short)Math.Min(short.MaxValue, s.Str + sc.Val2);
+                s.Agi = (short)Math.Min(short.MaxValue, s.Agi + sc.Val2);
+                s.Vit = (short)Math.Min(short.MaxValue, s.Vit + sc.Val2);
+                s.IntStat = (short)Math.Min(short.MaxValue, s.IntStat + sc.Val2);
+                s.Dex = (short)Math.Min(short.MaxValue, s.Dex + sc.Val2);
+                s.Luk = (short)Math.Min(short.MaxValue, s.Luk + sc.Val2);
+            },
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+
         // SC_GUARD_STANCE (IG_GUARD_STANCE) — Val2 = 50+50*Val1 (DEF increase), Val3 = 50*Val1
         // (Watk decrease). rAthena status.cpp:12445; status.yml CalcFlags: Watk + Def. The +Val1
         // generator default would add +Val1 to both Watk and Def (wrong sign + wrong magnitude).
