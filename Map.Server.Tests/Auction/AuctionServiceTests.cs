@@ -55,6 +55,29 @@ public class AuctionServiceTests
     }
 
     [Fact]
+    public async Task Register_carries_full_item_fidelity_on_the_rpc()
+    {
+        var carded = new InventoryItem
+        {
+            Id = 1, ServerIndex = 0, NameId = SwordId, Amount = 1, Identified = true,
+            Refine = 7, Card0 = 4001, Card1 = 4002, Card2 = 4003, Card3 = 4004, EnchantGrade = 3, UniqueId = 9999,
+            Options = new[] { new ItemOption { Id = 25, Value = 10, Param = 1 } },
+        };
+        var (svc, pc, _, ipc) = Build(zeny: 1_000_000, inv: carded);
+
+        await svc.RegisterAsync(pc, inventoryIndex: 0, amount: 1, startPrice: 100, buyNowPrice: 1000, hours: 2);
+
+        var item = ipc.LastRegistered!.Item;
+        Assert.Equal(4001u, item.Card0);
+        Assert.Equal(4004u, item.Card3);
+        Assert.Equal(7u, item.Refine);
+        Assert.Equal(3u, item.EnchantGrade);
+        Assert.Equal(9999u, item.UniqueId);
+        Assert.Equal(25, item.OptionId0);
+        Assert.Equal(10, item.OptionVal0);
+    }
+
+    [Fact]
     public async Task Register_rejects_bad_price_or_hours_without_escrow()
     {
         var (svc, pc, session, ipc) = Build(inv: Item(0, 1));
@@ -173,10 +196,12 @@ public class AuctionServiceTests
         public int RegisterCalls, BidCalls, CloseCalls, CancelCalls;
         public long NextAuctionId = 1; public bool FailRegister;
         public AuctionData? ListResult;
+        public AuctionData? LastRegistered;
 
         public Task<AuctionRegisterResponse?> AuctionRegisterAsync(AuctionData auction, CancellationToken ct = default)
         {
             RegisterCalls++;
+            LastRegistered = auction;
             if (FailRegister) return Task.FromResult<AuctionRegisterResponse?>(new AuctionRegisterResponse { Success = false });
             return Task.FromResult<AuctionRegisterResponse?>(new AuctionRegisterResponse
             { Success = true, Auction = new AuctionData { AuctionId = NextAuctionId } });

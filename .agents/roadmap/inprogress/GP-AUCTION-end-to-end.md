@@ -48,19 +48,21 @@ list — archive FEATURE-06), but no client packet reaches it, and full item fid
       (`CZ_AUCTION_CANCEL` 0x024e), bid (`CZ_AUCTION_BUY` 0x024f, zeny pre-gate), buy-now/close
       (`CZ_AUCTION_REQ_MY_SELL_STOP` 0x025d), search (`CZ_AUCTION_ITEM_SEARCH` 0x0251),
       request-my-info (`CZ_AUCTION_REQ_MY_INFO` 0x025c, type+6).
-- [~] **Service**: register/bid/buynow/cancel/list verified at HEAD + wired to the handlers *(turn 1)*.
-      Remaining: full item fidelity on escrow (cards/options into `item_payload`) + search-type
-      bucketing (armor/weapon/card/misc) — **turn 2**.
-- [ ] **Persistence**: full-item auction rows; expiry timer → deliver to winner (or return to
-      seller if no bids) via mail; outbid → refund the previous bidder. **(turn 2/3 — char-side.)**
-      The `AuctionEntity` already has card/option columns + the bid-side outbid-refund mail exists;
-      the gaps are (a) populating fidelity on register, (b) item→winner / zeny→seller delivery on
-      close/buy-now, (c) return-to-seller on cancel, (d) the expiry sweep.
+- [x] **Service**: register/bid/buynow/cancel/list verified + wired to the handlers *(turn 1)*; full
+      item fidelity on the register RPC (`AuctionData.item` = cards/options/uniqueid/bound/grade,
+      populated from the escrowed item) + search-type bucketing (armor/weapon/card/misc → `auction.Type`
+      match) *(turn 2)*.
+- [~] **Persistence** *(turn 2)*: full-item auction rows (`ApplyAuctionItemFidelity` on register +
+      `AuctionItemFidelity` back on browse); delivery by mail — item→winner + winning-bid→seller on
+      close (seller-ends) and on instant buy-now-via-bid (buy-now price→seller), item→seller return on
+      cancel (`QueueAuctionMail`, full fidelity attachments); outbid → prior-bidder zeny refund (already
+      present). Also fixed the previously EF-untranslatable `AuctionRequestList` filter. **Remaining:**
+      the **expiry-timer sweep** (deliver expired auctions to winner / return to seller) — **turn 3**.
 - [x] **ZC emits** *(turn 1)*: status message (`ZC_AUCTION_RESULT` 0x0250), staged-item ack
       (`ZC_ACK_AUCTION_ADD_ITEM` 0x0256), browse/search + my-auctions results
       (`ZC_AUCTION_ITEM_REQ_SEARCH` 0x0252, 83-byte entries; shared by search + my-info), close ack
-      (`ZC_AUCTION_ACK_MY_SELL_STOP` 0x025e), open-window (`ZC_AUCTION_OPENWINDOW` 0x025f). Result-row
-      card fidelity defaults to 0 until the char-side `item_payload` population lands (turn 2).
+      (`ZC_AUCTION_ACK_MY_SELL_STOP` 0x025e), open-window (`ZC_AUCTION_OPENWINDOW` 0x025f). Result rows
+      now carry the item's cards/identify from the char-side fidelity payload *(turn 2)*.
 
 ## Done criteria
 
@@ -92,9 +94,21 @@ list — archive FEATURE-06), but no client packet reaches it, and full item fid
   my-info share the results emit (my-info offsets type by 6 → my-selling/my-buying). 9 bridge tests
   (stage success/reject, register confirm + fee-gate, bid gate + confirm, close ack, search render,
   my-info type offset); full suite 4525 pass (1 = standing replay-fixture).
-- **Remaining (turn 2/3 → done):** char-side full-item fidelity (`item_payload` → cards/options on
-  register + result rows) + delivery (item→winner / zeny→seller on close/buy-now, return→seller on
-  cancel, all by mail) + the expiry-timer sweep + search-bucket types 0–3. The loop resumes this card.
+- **2026-06-04 (turn 2)** — Char-side full-item fidelity + delivery. Added `MailAttachmentItem item = 16`
+  to the `AuctionData` proto; the map `RegisterAsync` now populates it from the escrowed item
+  (`BuildItemData`) and the result mapper reads cards back into the 83-byte browse rows. Char side:
+  `ApplyAuctionItemFidelity` persists cards/options/uniqueid/grade onto the auction row on register,
+  `AuctionItemFidelity` carries them back on browse, and `QueueAuctionMail` delivers the auctioned
+  item (full-fidelity mail attachment) + zeny: on `AuctionClose` (seller ends → item→winner +
+  winning-bid→seller), on the instant buy-now-via-bid path (item→buyer + buy-now-price→seller, overage
+  refunded), and on `AuctionCancel` (item→seller return). Search-bucket types 0–3 now filter on
+  `auction.Type`. Fixed the previously EF-untranslatable `AuctionRequestList` predicate (now filtered
+  in memory). Tests: +4 char delivery/fidelity + 1 category-filter (`CharGrpcDataIntegrityTests`,
+  172 char-suite green) + 1 map fidelity (`AuctionServiceTests`, 26 map auction-suite green); full
+  Map suite 4526 pass (1 = standing replay-fixture).
+- **Remaining (turn 3 → done):** the **expiry-timer sweep** — a char-side background pass that closes
+  auctions past their end time, delivering the item to the high bidder (or returning it to the seller
+  if there were no bids) by mail. The loop resumes this card.
 
 ## Notes / gotchas
 

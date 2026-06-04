@@ -75,6 +75,7 @@ public sealed class AuctionService : IAuctionService
             Price = startPrice,
             BuyNow = buyNowPrice,
             Hours = hours,
+            Item = BuildItemData(escrowed, amount),
         };
 
         var resp = await _ipc.AuctionRegisterAsync(data, ct);
@@ -194,6 +195,32 @@ public sealed class AuctionService : IAuctionService
     {
         foreach (var i in inv) if (i.ServerIndex == serverIndex) return i;
         return null;
+    }
+
+    /// <summary>Full item fidelity carried on the register RPC (cards/options/uniqueid/bound/grade) so
+    /// the auctioned item round-trips with its enchantments through to mail delivery (GP-AUCTION turn 2).</summary>
+    private static MailAttachmentItem BuildItemData(InventoryItem i, int amount)
+    {
+        var a = new MailAttachmentItem
+        {
+            Index = (uint)i.ServerIndex,
+            NameId = i.NameId,
+            Amount = (uint)amount,
+            Refine = i.Refine,
+            Attribute = i.Attribute,
+            Identify = i.Identified ? 1 : 0,
+            Card0 = i.Card0, Card1 = i.Card1, Card2 = i.Card2, Card3 = i.Card3,
+            UniqueId = i.UniqueId,
+            Bound = i.Bound,
+            EnchantGrade = i.EnchantGrade,
+        };
+        var opt = i.Options;
+        if (opt.Length > 0) { a.OptionId0 = opt[0].Id; a.OptionVal0 = opt[0].Value; a.OptionParm0 = opt[0].Param; }
+        if (opt.Length > 1) { a.OptionId1 = opt[1].Id; a.OptionVal1 = opt[1].Value; a.OptionParm1 = opt[1].Param; }
+        if (opt.Length > 2) { a.OptionId2 = opt[2].Id; a.OptionVal2 = opt[2].Value; a.OptionParm2 = opt[2].Param; }
+        if (opt.Length > 3) { a.OptionId3 = opt[3].Id; a.OptionVal3 = opt[3].Value; a.OptionParm3 = opt[3].Param; }
+        if (opt.Length > 4) { a.OptionId4 = opt[4].Id; a.OptionVal4 = opt[4].Value; a.OptionParm4 = opt[4].Param; }
+        return a;
     }
 
     private static InventoryItem Clone(InventoryItem i, int amount) => new()

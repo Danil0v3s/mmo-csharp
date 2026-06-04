@@ -1260,6 +1260,9 @@ message AuctionData {
   int32 hours = 13;
   int64 end_time_unix = 14;
   bytes item_payload = 15;
+  // Full item fidelity (cards/options/uniqueid/bound/grade) carried on register + back on browse,
+  // so the auctioned item round-trips with its enchantments through to mail delivery (GP-AUCTION).
+  MailAttachmentItem item = 16;
 }
 
 message AuctionRequestListRequest {

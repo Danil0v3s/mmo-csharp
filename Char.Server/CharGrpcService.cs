@@ -2746,11 +2746,13 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         }
 
         var requestedPage = Math.Max(1, request.Page);
-        var filtered = await _dbContext.Auctions
+        // The search/my-info filter (name Contains, price/seller/buyer) is applied in memory — the
+        // auction table is small and the predicate isn't EF-translatable. (rAthena filters in SQL.)
+        var rows = await _dbContext.Auctions
             .AsNoTracking()
-            .Where(auction => MatchesAuctionRequest(auction, request))
             .OrderByDescending(auction => auction.AuctionId)
             .ToListAsync(context.CancellationToken);
+        var filtered = rows.Where(auction => MatchesAuctionRequest(auction, request)).ToList();
 
         var pages = Math.Max(1, (int)Math.Ceiling(filtered.Count / 5.0));
         var page = Math.Min(requestedPage, pages);
@@ -2804,6 +2806,7 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             Hours = (short)Math.Clamp(request.Auction.Hours, short.MinValue, short.MaxValue),
             Timestamp = SafeUIntFromLong(endTimeUnix)
         };
+        ApplyAuctionItemFidelity(auction, request.Auction.Item); // GP-AUCTION: cards/options/uniqueid/bound/grade
 
         _dbContext.Auctions.Add(auction);
         await _dbContext.SaveChangesAsync(context.CancellationToken);
@@ -2836,6 +2839,10 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             return new AuctionCancelResponse { Success = false, Result = 3 };
         }
 
+        // GP-AUCTION: return the (un-bid) item to the seller by mail (rAthena auction_delete → mail).
+        QueueAuctionMail(auction, auction.SellerId, auction.SellerName, "Auction",
+            "Auction canceled. Your item has been returned.", withItem: true, zeny: 0);
+
         _dbContext.Auctions.Remove(auction);
         await _dbContext.SaveChangesAsync(context.CancellationToken);
         return new AuctionCancelResponse { Success = true, Result = 0 };
@@ -2856,6 +2863,13 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
         {
             return new AuctionCloseResponse { Success = false, Result = 1 };
         }
+
+        // GP-AUCTION: the seller ends the auction → the high bidder gets the item, the seller gets the
+        // winning bid (rAthena auction_end_timer / intif close → mail to buyer + seller).
+        QueueAuctionMail(auction, auction.BuyerId, auction.BuyerName, "Auction Winner",
+            "Congratulations on your winning bid.", withItem: true, zeny: 0);
+        QueueAuctionMail(auction, auction.SellerId, auction.SellerName, "Auction",
+            "Your auctioned item has been sold.", withItem: false, zeny: auction.Price);
 
         _dbContext.Auctions.Remove(auction);
         await _dbContext.SaveChangesAsync(context.CancellationToken);
@@ -2919,7 +2933,13 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
 
         if (request.Bid >= auction.Buynow && auction.Buynow > 0)
         {
+            // GP-AUCTION: instant buy-now via bid — the buyer gets the item, the seller gets the
+            // buy-now price (rAthena auction_bid → end). The bidder is refunded the overage.
             var refund = request.Bid - (int)Math.Min(auction.Buynow, int.MaxValue);
+            QueueAuctionMail(auction, auction.BuyerId, auction.BuyerName, "Auction Winner",
+                "Congratulations on your purchase.", withItem: true, zeny: 0);
+            QueueAuctionMail(auction, auction.SellerId, auction.SellerName, "Auction",
+                "Your auctioned item has been sold.", withItem: false, zeny: auction.Buynow);
             _dbContext.Auctions.Remove(auction);
             await _dbContext.SaveChangesAsync(context.CancellationToken);
             return new AuctionBidResponse
@@ -3912,14 +3932,92 @@ public class CharGrpcService : CharacterService.CharacterServiceBase
             BuyNow = (int)Math.Min(auction.Buynow, int.MaxValue),
             Hours = auction.Hours,
             EndTimeUnix = auction.Timestamp,
-            ItemPayload = Google.Protobuf.ByteString.Empty
+            ItemPayload = Google.Protobuf.ByteString.Empty,
+            Item = AuctionItemFidelity(auction), // GP-AUCTION: carry cards/options back on browse + delivery
         };
+    }
+
+    /// <summary>GP-AUCTION — copy the request's item fidelity (cards/options/uniqueid/bound/grade)
+    /// onto the auction row so the auctioned item keeps its enchantments through to delivery.</summary>
+    private static void ApplyAuctionItemFidelity(AuctionEntity auction, MailAttachmentItem? item)
+    {
+        if (item == null) return;
+        auction.Refine = (byte)Math.Clamp(item.Refine, 0u, byte.MaxValue);
+        auction.Attribute = (byte)Math.Clamp(item.Attribute, 0u, byte.MaxValue);
+        auction.Card0 = item.Card0; auction.Card1 = item.Card1; auction.Card2 = item.Card2; auction.Card3 = item.Card3;
+        auction.OptionId0 = (short)item.OptionId0; auction.OptionVal0 = (short)item.OptionVal0; auction.OptionParm0 = (sbyte)item.OptionParm0;
+        auction.OptionId1 = (short)item.OptionId1; auction.OptionVal1 = (short)item.OptionVal1; auction.OptionParm1 = (sbyte)item.OptionParm1;
+        auction.OptionId2 = (short)item.OptionId2; auction.OptionVal2 = (short)item.OptionVal2; auction.OptionParm2 = (sbyte)item.OptionParm2;
+        auction.OptionId3 = (short)item.OptionId3; auction.OptionVal3 = (short)item.OptionVal3; auction.OptionParm3 = (sbyte)item.OptionParm3;
+        auction.OptionId4 = (short)item.OptionId4; auction.OptionVal4 = (short)item.OptionVal4; auction.OptionParm4 = (sbyte)item.OptionParm4;
+        auction.UniqueId = item.UniqueId;
+        auction.EnchantGrade = (byte)Math.Clamp(item.EnchantGrade, 0u, byte.MaxValue);
+    }
+
+    /// <summary>GP-AUCTION — read the auction row's item fidelity back into a transport payload.</summary>
+    private static MailAttachmentItem AuctionItemFidelity(AuctionEntity a) => new()
+    {
+        NameId = a.NameId,
+        Amount = 1,
+        Refine = a.Refine,
+        Attribute = a.Attribute,
+        Identify = 1,
+        Card0 = a.Card0, Card1 = a.Card1, Card2 = a.Card2, Card3 = a.Card3,
+        OptionId0 = a.OptionId0, OptionVal0 = a.OptionVal0, OptionParm0 = a.OptionParm0,
+        OptionId1 = a.OptionId1, OptionVal1 = a.OptionVal1, OptionParm1 = a.OptionParm1,
+        OptionId2 = a.OptionId2, OptionVal2 = a.OptionVal2, OptionParm2 = a.OptionParm2,
+        OptionId3 = a.OptionId3, OptionVal3 = a.OptionVal3, OptionParm3 = a.OptionParm3,
+        OptionId4 = a.OptionId4, OptionVal4 = a.OptionVal4, OptionParm4 = a.OptionParm4,
+        UniqueId = a.UniqueId,
+        EnchantGrade = a.EnchantGrade,
+    };
+
+    /// <summary>GP-AUCTION — queue an "Auction Manager" mail delivering the auctioned item (full
+    /// fidelity) and/or zeny to a character (rAthena <c>mail_sendmail</c> on auction completion).</summary>
+    private void QueueAuctionMail(AuctionEntity a, int destId, string destName, string title, string body, bool withItem, uint zeny)
+    {
+        var mail = new MailEntity
+        {
+            SendId = 0,
+            SendName = "Auction Manager",
+            DestId = destId,
+            DestName = Truncate(destName ?? string.Empty, 30),
+            Title = Truncate(title, 40),
+            Message = Truncate(body, 200),
+            Zeny = zeny,
+            Time = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            Status = 0,
+            Type = 0,
+        };
+        _dbContext.Mails.Add(mail);
+        if (withItem && a.NameId > 0)
+            mail.Attachments.Add(new MailAttachmentEntity
+            {
+                Index = 0,
+                NameId = a.NameId,
+                Amount = 1,
+                Refine = a.Refine,
+                Attribute = a.Attribute,
+                Identify = 1,
+                Card0 = a.Card0, Card1 = a.Card1, Card2 = a.Card2, Card3 = a.Card3,
+                OptionId0 = a.OptionId0, OptionVal0 = a.OptionVal0, OptionParm0 = a.OptionParm0,
+                OptionId1 = a.OptionId1, OptionVal1 = a.OptionVal1, OptionParm1 = a.OptionParm1,
+                OptionId2 = a.OptionId2, OptionVal2 = a.OptionVal2, OptionParm2 = a.OptionParm2,
+                OptionId3 = a.OptionId3, OptionVal3 = a.OptionVal3, OptionParm3 = a.OptionParm3,
+                OptionId4 = a.OptionId4, OptionVal4 = a.OptionVal4, OptionParm4 = a.OptionParm4,
+                UniqueId = a.UniqueId,
+                Bound = 0,
+                EnchantGrade = a.EnchantGrade,
+            });
     }
 
     private static bool MatchesAuctionRequest(AuctionEntity auction, AuctionRequestListRequest request)
     {
         return request.Type switch
         {
+            // 0..3 = the item-category buckets (armor / weapon / card / misc), keyed by the auction
+            // row's stored Type (rAthena auction.type). GP-AUCTION turn 2 — "search by category".
+            >= 0 and <= 3 => auction.Type == request.Type,
             4 => string.IsNullOrWhiteSpace(request.SearchText) ||
                  auction.ItemName.Contains(request.SearchText, StringComparison.OrdinalIgnoreCase),
             5 => auction.Price <= request.Price,

@@ -293,6 +293,101 @@ public class CharGrpcDataIntegrityTests
         Assert.Equal(3u, inbox.Mails[0].Items[0].Amount);
     }
 
+    // --- GP-AUCTION: full-item fidelity + delivery ---
+
+    private static AuctionData CardedListing(int seller = 200, int buyNow = 100_000) => new()
+    {
+        SellerCharacterId = seller, SellerName = "Seller", ItemId = 1201, ItemName = "Knife",
+        ItemType = 1, Refine = 7, Price = 100, BuyNow = buyNow, Hours = 2,
+        Item = new MailAttachmentItem
+        {
+            NameId = 1201, Amount = 1, Refine = 7, Identify = 1,
+            Card0 = 4001, Card1 = 4002, Card2 = 4003, Card3 = 4004,
+            OptionId0 = 25, OptionVal0 = 10, OptionParm0 = 1, EnchantGrade = 3, UniqueId = 9999,
+        },
+    };
+
+    [Fact]
+    public async Task AuctionRegister_persists_card_and_option_fidelity_and_browse_carries_it_back()
+    {
+        var (service, _) = CreateService();
+        var reg = await service.AuctionRegister(new AuctionRegisterRequest { Auction = CardedListing() }, TestServerCallContext.Instance);
+        Assert.True(reg.Success);
+
+        var list = await service.AuctionRequestList(new AuctionRequestListRequest { Type = 6, CharacterId = 200, Page = 1 }, TestServerCallContext.Instance);
+        var row = Assert.Single(list.Auctions);
+        Assert.Equal(4001u, row.Item.Card0);
+        Assert.Equal(4004u, row.Item.Card3);
+        Assert.Equal(25, row.Item.OptionId0);
+        Assert.Equal(7u, (uint)row.Refine);
+        Assert.Equal(3u, row.Item.EnchantGrade);
+    }
+
+    [Fact]
+    public async Task AuctionSearch_by_category_filters_on_item_type()
+    {
+        var (service, _) = CreateService();
+        await service.AuctionRegister(new AuctionRegisterRequest { Auction = CardedListing() }, TestServerCallContext.Instance); // ItemType 1 = weapon
+
+        var weapons = await service.AuctionRequestList(new AuctionRequestListRequest { Type = 1, CharacterId = 999, Page = 1 }, TestServerCallContext.Instance);
+        Assert.Single(weapons.Auctions);
+        var armor = await service.AuctionRequestList(new AuctionRequestListRequest { Type = 0, CharacterId = 999, Page = 1 }, TestServerCallContext.Instance);
+        Assert.Empty(armor.Auctions);
+    }
+
+    [Fact]
+    public async Task AuctionClose_delivers_carded_item_to_buyer_and_zeny_to_seller()
+    {
+        var (service, db) = CreateService();
+        var reg = await service.AuctionRegister(new AuctionRegisterRequest { Auction = CardedListing() }, TestServerCallContext.Instance);
+        var id = reg.Auction.AuctionId;
+        // a bidder is required for the seller to be able to close (sell to high bidder)
+        await service.AuctionBid(new AuctionBidRequest { AuctionId = id, CharacterId = 300, BidderName = "Bidder", Bid = 5000 }, TestServerCallContext.Instance);
+
+        var close = await service.AuctionClose(new AuctionCloseRequest { AuctionId = id, CharacterId = 200 }, TestServerCallContext.Instance);
+        Assert.True(close.Success);
+
+        var winnerMail = db.Mails.Include(m => m.Attachments).Single(m => m.DestId == 300 && m.Attachments.Any());
+        Assert.Equal(1201u, winnerMail.Attachments.First().NameId);
+        Assert.Equal(4001u, winnerMail.Attachments.First().Card0); // cards intact
+        var sellerMail = db.Mails.Single(m => m.DestId == 200 && m.Zeny > 0);
+        Assert.Equal(5000u, sellerMail.Zeny); // the winning bid
+        Assert.Empty(db.Auctions); // row removed
+    }
+
+    [Fact]
+    public async Task AuctionCancel_returns_the_item_to_the_seller()
+    {
+        var (service, db) = CreateService();
+        var reg = await service.AuctionRegister(new AuctionRegisterRequest { Auction = CardedListing() }, TestServerCallContext.Instance);
+
+        var cancel = await service.AuctionCancel(new AuctionCancelRequest { AuctionId = reg.Auction.AuctionId, CharacterId = 200 }, TestServerCallContext.Instance);
+        Assert.True(cancel.Success);
+
+        var returnMail = db.Mails.Include(m => m.Attachments).Single(m => m.DestId == 200 && m.Attachments.Any());
+        Assert.Equal(1201u, returnMail.Attachments.First().NameId);
+        Assert.Equal(4002u, returnMail.Attachments.First().Card1);
+        Assert.Empty(db.Auctions);
+    }
+
+    [Fact]
+    public async Task AuctionBid_buy_now_delivers_item_to_buyer_and_buynow_zeny_to_seller()
+    {
+        var (service, db) = CreateService();
+        var reg = await service.AuctionRegister(new AuctionRegisterRequest { Auction = CardedListing(buyNow: 100_000) }, TestServerCallContext.Instance);
+
+        // bid at/above buy-now → instant buy
+        var bid = await service.AuctionBid(new AuctionBidRequest { AuctionId = reg.Auction.AuctionId, CharacterId = 300, BidderName = "Buyer", Bid = 120_000 }, TestServerCallContext.Instance);
+        Assert.True(bid.Success);
+        Assert.Equal(20_000, bid.RefundZeny); // overage refunded
+
+        var winnerMail = db.Mails.Include(m => m.Attachments).Single(m => m.DestId == 300 && m.Attachments.Any());
+        Assert.Equal(4003u, winnerMail.Attachments.First().Card2);
+        var sellerMail = db.Mails.Single(m => m.DestId == 200 && m.Zeny > 0);
+        Assert.Equal(100_000u, sellerMail.Zeny); // buy-now price, not the 120k bid
+        Assert.Empty(db.Auctions);
+    }
+
     // --- Test infrastructure ---
 
     private static (CharGrpcService service, GameDbContext db) CreateService()
