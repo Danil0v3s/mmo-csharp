@@ -2381,7 +2381,10 @@ public sealed class StatusEffectRegistry
                 target.Stats.Flee = (short)Math.Max(0, target.Stats.Flee - sc.Val2);
                 target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val3);
             },
-            Flags: buff));
+            Flags: buff,
+            // CalcPc rebuilds Flee each recalc — re-apply (AspdRate is not reset).
+            OnRecalc: (target, sc) =>
+                target.Stats.Flee = (short)Math.Min(short.MaxValue, target.Stats.Flee + sc.Val2)));
 
         // SC_STONE_WALL — Val2 = 100*Val1 Def bonus, Val3 = 30*Val1 Mdef bonus.
         Register(StatusType.StoneWall, new StatusEffectHandler(
@@ -2519,7 +2522,8 @@ public sealed class StatusEffectRegistry
                 target.Stats.Patk = (short)Math.Min(short.MaxValue, target.Stats.Patk + sc.Val3);
             },
             OnEnd: (target, sc) => { target.Stats.Patk = (short)Math.Max(0, target.Stats.Patk - sc.Val3); },
-            Flags: buff));
+            Flags: buff,
+            OnRecalc: (target, sc) => { target.Stats.Patk = (short)Math.Min(short.MaxValue, target.Stats.Patk + sc.Val3); }));
 
         // SC_FIRM_FAITH — Val2 = 2*Val1 MaxHP%, Val3 = 8*Val1 Res.
         Register(StatusType.FirmFaith, new StatusEffectHandler(
@@ -2902,8 +2906,10 @@ public sealed class StatusEffectRegistry
                 target.Stats.MaxHp = (int)Math.Max(0, target.Stats.MaxHp - sc.Val1);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
-            // COMBAT-90 — re-add the flat MaxHp (Val1) on the rebuilt pool. (The Def2 derived
-            // re-fold is the COMBAT-111 axis.)
+            // SC-DERIVED-RECALC — the Def2 derived re-fold (CalcPc rebuilds Def2 each recalc).
+            OnRecalc: (target, sc) =>
+                target.Stats.Def2 = (short)Math.Min(short.MaxValue, target.Stats.Def2 + sc.Val1),
+            // COMBAT-90 — re-add the flat MaxHp (Val1) on the rebuilt pool.
             OnRecalcPool: (target, sc) =>
                 target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1)));
 
@@ -2917,7 +2923,9 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val1);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            OnRecalc: (target, sc) =>
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val1)));
 
         // Wave 58 — SC_HeatBarrel: +Val1 to listed CalcFlag fields.
         Register(StatusType.HeatBarrel, new StatusEffectHandler(
@@ -2931,7 +2939,10 @@ public sealed class StatusEffectRegistry
                 target.Stats.Hit = (short)Math.Max(0, target.Stats.Hit - sc.Val1);
                 target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
             },
-            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout));
+            Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
+            // CalcPc rebuilds Hit each recalc — re-apply (AspdRate is not reset).
+            OnRecalc: (target, sc) =>
+                target.Stats.Hit = (short)Math.Min(short.MaxValue, target.Stats.Hit + sc.Val1)));
 
         // SC-05 — SC_HEATER_OPTION: fixed Val2 = 120 equip-Atk (status.cpp:7160
         // watk += val2), NOT +Val1 Batk. Applied flat to WatkMin/Max. The
@@ -3197,8 +3208,10 @@ public sealed class StatusEffectRegistry
                 target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
-            // COMBAT-90 — re-add the flat MaxHp (Val1) on the rebuilt pool. (The Def derived
-            // re-fold is the COMBAT-111 axis; AspdRate is not reset by CalcPc.)
+            // SC-DERIVED-RECALC — the Def derived re-fold (AspdRate is not reset by CalcPc).
+            OnRecalc: (target, sc) =>
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1),
+            // COMBAT-90 — re-add the flat MaxHp (Val1) on the rebuilt pool.
             OnRecalcPool: (target, sc) =>
                 target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1)));
 
@@ -3361,8 +3374,10 @@ public sealed class StatusEffectRegistry
                 target.Stats.MaxHp = (int)Math.Max(0, target.Stats.MaxHp - sc.Val1);
             },
             Flags: ScfFlag.Buff | ScfFlag.RemoveOnLogout,
-            // COMBAT-90 — re-add the flat MaxHp (Val1) on the rebuilt pool. (The Def derived
-            // re-fold is the COMBAT-111 axis.)
+            // SC-DERIVED-RECALC — the Def derived re-fold (CalcPc rebuilds Def each recalc).
+            OnRecalc: (target, sc) =>
+                target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1),
+            // COMBAT-90 — re-add the flat MaxHp (Val1) on the rebuilt pool.
             OnRecalcPool: (target, sc) =>
                 target.Stats.MaxHp = (int)Math.Min(int.MaxValue, target.Stats.MaxHp + sc.Val1)));
 
@@ -4320,7 +4335,10 @@ public sealed class StatusEffectRegistry
                 target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val1);
                 target.Stats.Cri = (short)Math.Max(0, target.Stats.Cri - sc.Val1);
             },
-            Flags: soulLink2));
+            Flags: soulLink2,
+            // CalcPc rebuilds Cri each recalc — re-apply (AspdRate is not reset).
+            OnRecalc: (target, sc) =>
+                target.Stats.Cri = (short)Math.Min(short.MaxValue, target.Stats.Cri + sc.Val1)));
 
         Register(StatusType.Soulfalcon, new StatusEffectHandler(
             OnStart: (target, sc, _) =>
@@ -4886,7 +4904,9 @@ public sealed class StatusEffectRegistry
                 target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1);
             },
             OnEnd: (target, sc) => { target.Stats.Def = (short)Math.Min(short.MaxValue, target.Stats.Def + sc.Val1); },
-            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh));
+            Flags: ScfFlag.Debuff | ScfFlag.RemoveOnRefresh,
+            // CalcPc rebuilds Def each recalc — re-apply the −Val1 reduction.
+            OnRecalc: (target, sc) => { target.Stats.Def = (short)Math.Max(0, target.Stats.Def - sc.Val1); }));
 
         // SC_KAITE (KG_KAITE) — rAthena status.cpp:11149-11151.
         // val2 = 1 + val1/5 bounce count. Combat reads val2 on hit
@@ -5331,7 +5351,10 @@ public sealed class StatusEffectRegistry
                 target.Stats.AspdRate = (short)Math.Max(0, target.Stats.AspdRate - sc.Val2);
                 target.Stats.Batk = (ushort)Math.Max(0, target.Stats.Batk - sc.Val3);
             },
-            Flags: gsBuff));
+            Flags: gsBuff,
+            // CalcPc rebuilds Batk each recalc — re-apply (AspdRate is not reset).
+            OnRecalc: (target, sc) =>
+                target.Stats.Batk = (ushort)Math.Min(ushort.MaxValue, target.Stats.Batk + sc.Val3)));
 
         // SC_ADJUSTMENT (GS_ADJUSTMENT) — has CalcFlags (Hit + Flee).
         // NOT overridden here: generator's +Val1 default is correct
@@ -7492,7 +7515,9 @@ public sealed class StatusEffectRegistry
             {
                 target.Stats.Batk = (ushort)Math.Clamp(target.Stats.Batk - sc.Val2, 0, ushort.MaxValue);
             },
-            Flags: buff));
+            Flags: buff,
+            OnRecalc: (target, sc) =>
+                target.Stats.Batk = (ushort)Math.Clamp(target.Stats.Batk + sc.Val2, 0, ushort.MaxValue)));
 
         // SC_DELUGE (status.cpp:11021) — val2 = deluge_eff[(val1-1)%5] (HP %).
         Register(StatusType.Deluge, new StatusEffectHandler(

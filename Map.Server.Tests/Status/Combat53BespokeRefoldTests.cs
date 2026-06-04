@@ -78,6 +78,18 @@ public class Combat53BespokeRefoldTests
     // deferred to the rest of SC-DERIVED-RECALC — the strict idempotency assert here doesn't fit them.
     [InlineData(StatusType.Fear, CalcStatField.Hit, 5)]
     [InlineData(StatusType.Cloaking, CalcStatField.Cri, 5)]
+    // batch 2 — flat reset-field re-application
+    [InlineData(StatusType.Zangetsu, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.Madnesscancel, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.Signumcrucis, CalcStatField.Def, 5)]
+    [InlineData(StatusType.GoldeneFerse, CalcStatField.Flee, 5)]
+    [InlineData(StatusType.Flashcombo, CalcStatField.Batk, 5)]
+    [InlineData(StatusType.PowerfulFaith, CalcStatField.Patk, 5)]
+    [InlineData(StatusType.Soulshadow, CalcStatField.Cri, 5)]
+    [InlineData(StatusType.HeatBarrel, CalcStatField.Hit, 5)]
+    [InlineData(StatusType.Eqc, CalcStatField.Def2, 5)]
+    [InlineData(StatusType.PowerOfGaia, CalcStatField.Def, 5)]
+    [InlineData(StatusType.SolidSkinOption, CalcStatField.Def, 5)]
     public void Bespoke_derived_mod_survives_recalc_and_is_idempotent(
         StatusType type, CalcStatField field, int val1)
     {
@@ -247,6 +259,14 @@ public class Combat53BespokeRefoldTests
         CalcStatField.Cri => pc.Stats.Cri,
         CalcStatField.Mdef => pc.Stats.Mdef,
         CalcStatField.Def2 => pc.Stats.Def2,
+        CalcStatField.Mdef2 => pc.Stats.Mdef2,
+        CalcStatField.Flee2 => pc.Stats.Flee2,
+        CalcStatField.Patk => pc.Stats.Patk,
+        CalcStatField.Smatk => pc.Stats.Smatk,
+        CalcStatField.Res => pc.Stats.Res,
+        CalcStatField.Mres => pc.Stats.Mres,
+        CalcStatField.Hplus => pc.Stats.Hplus,
+        CalcStatField.Crate => pc.Stats.Crate,
         _ => throw new ArgumentOutOfRangeException(nameof(f)),
     };
 

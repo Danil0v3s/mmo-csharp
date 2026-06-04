@@ -28,21 +28,21 @@ ticket sweeps the generator-reapply-set fields (Def/Hit/Flee/Cri/Batk/…) for b
 
 | Layer | Exists? | Where / what's missing |
 |---|---|---|
-| Service logic | partial | `Map.Server/Status/StatusEffectRegistry.cs` — the handlers below modify a reset field in OnStart with no OnRecalc. **Batch 1 done** (SC-MAGNITUDE turn 11): `Fear` (Hit/Flee −20%), `Cloaking` (Cri). |
+| Service logic | partial | `Map.Server/Status/StatusEffectRegistry.cs` — the handlers below modify a reset field in OnStart with no OnRecalc. **Batch 1 done** (turn 11): Fear, Cloaking. **Batch 2 done** (turn 12): Zangetsu, Madnesscancel, Signumcrucis, GoldeneFerse, Flashcombo, PowerfulFaith, Soulshadow, HeatBarrel, Eqc, PowerOfGaia, SolidSkinOption. |
 
-### Remaining handlers (final registration, reset-field, no OnRecalc)
+### Remaining handlers (final registration, reset-field, no OnRecalc) — ~32 left
 
-Curse[Batk], Berserk[Batk,Flee+MaxHp pool], DragonicAura[Hit,Patk], GtChange[Batk],
-Fling[Def,Def2], Neutralbarrier[Def,Mdef], GoldeneFerse[Flee], StoneWall[Def,Mdef],
-PowerfulFaith[Patk], FirmFaith[Res], Bloodylust[Batk,Def,Def2], Eqc[Def2], Flashcombo[Batk],
-HeatBarrel[Hit], PowerOfGaia[Def], Rushwindmill[Batk], SolidSkinOption[Def],
-TelekinesisIntense[Batk], ToxinOfMandara[Res], WaterBarrier[Batk,Flee], Truesight[Cri,Hit],
-Fleet[Batk], Magicpower[Smatk], Steelbody[Def,Mdef], Saturdaynightfever[Flee,Hit],
-Soulshadow[Cri], Soulfalcon[Batk,Hit], Soulgolem[Def,Mdef], Soulenergy[Batk],
-Twohandquicken[Cri,Hit], Signumcrucis[Def], Stone[Def,Mdef], Freeze[Def,Mdef],
-Madnesscancel[Batk], DMachine[Def], AbyssSlayer[Hit], TemporaryCommunion[Hplus],
-SunComfort[Def2], MoonComfort[Flee], Gloomyday[Flee], Zangetsu[Batk], Armorchange[Def,Mdef],
-Stonehardskin[Def,Mdef].
+Flat reset-field (clean, do next): Curse[Batk], DragonicAura[Hit,Patk], Fling[Def,Def2],
+Neutralbarrier[Def,Mdef], StoneWall[Def,Mdef], FirmFaith[Res], Bloodylust[Batk,Def,Def2],
+Rushwindmill[Batk], TelekinesisIntense[Batk], ToxinOfMandara[Res], WaterBarrier[Batk,Flee],
+Steelbody[Def,Mdef], Saturdaynightfever[Flee,Hit], Soulfalcon[Batk,Hit], Soulgolem[Def,Mdef],
+Soulenergy[Batk], Twohandquicken[Cri,Hit], Stone[Def,Mdef], Freeze[Def,Mdef], DMachine[Def,Res],
+AbyssSlayer[Patk,Smatk,Hit], TemporaryCommunion[Patk,Smatk,Hplus], SunComfort[Def2],
+MoonComfort[Flee], Gloomyday[Flee], Armorchange[Def,Mdef], Stonehardskin[Def,Mdef].
+
+Need per-field care (percent / primary-stat coupling / MaxHp pool): GtChange[Batk %],
+Fleet[Batk %], Magicpower[Smatk %], Truesight[Cri,Hit — +5 Luk feeds Cri], Berserk[Batk + Flee/2
++ ×3 MaxHp pool].
 
 ## rAthena reference (source of truth)
 
@@ -79,3 +79,11 @@ Stonehardskin[Def,Mdef].
   fully replaces a handler (no OnRecalc merge), and the generator only attaches OnRecalc to handlers
   it *synthesizes* — so a bespoke handler on a reset field with no OnRecalc loses its bonus on recalc.
   Audited via a final-registration scan of every handler touching a reset field. 43 remain.
+- 2026-06-04 (turn 12) — **Batch 2**: gave OnRecalc to 11 flat reset-field handlers — Zangetsu/
+  Madnesscancel/Flashcombo (Batk), Signumcrucis (Def −), GoldeneFerse (Flee), PowerfulFaith (Patk),
+  Soulshadow (Cri), HeatBarrel (Hit), Eqc (Def2), PowerOfGaia/SolidSkinOption (Def). The last three
+  already had an `OnRecalcPool` for MaxHp but the derived re-fold (the noted-but-never-wired "COMBAT-111
+  axis") was missing — now wired. Each only re-applies the *reset* field (AspdRate/MaxHp left to their
+  own passes). Also extended the `Combat53BespokeRefoldTests.Read()` helper to cover Patk/Smatk/Res/Mres/
+  Hplus/Crate/Flee2/Mdef2 so these fields are testable. All 11 verified in the Combat53 theory; full suite
+  4605 pass (1 = standing replay-fixture). ~32 remain.
