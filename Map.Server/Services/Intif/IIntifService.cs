@@ -41,7 +41,9 @@ public interface IIntifService
     int AddPartyMember(int partyId, PlayerEntity pc);
     int ChangePartyLeader(int partyId, int accountId, int charId);
     int PartyChangeOption(int partyId, int accountId, int exp, int item, int flag);
-    int LeaveParty(int partyId, int accountId, int charId);
+    /// <param name="reason">Withdraw reason byte broadcast to the party — 0 = left voluntarily
+    /// (PARTY_MEMBER_WITHDRAW), 1 = expelled/kicked (PARTY_MEMBER_EXPEL). rAthena party.cpp.</param>
+    int LeaveParty(int partyId, int accountId, int charId, byte reason = 0);
     int PartyChangemap(PlayerEntity pc, bool online);
     int BreakParty(int partyId);
     int PartyMessage(int partyId, int accountId, string text);

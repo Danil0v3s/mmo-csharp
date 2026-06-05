@@ -35,7 +35,8 @@ public class PartyExpelHandler(
             .FirstOrDefault(m => m.AccountId == packet.AccountId);
         if (member == null || member.CharacterId == pc.CharacterId) return Task.CompletedTask;
 
-        intif.LeaveParty(pc.PartyId, packet.AccountId, member.CharacterId);
+        // reason 1 = PARTY_MEMBER_EXPEL: the withdraw broadcast announces "kicked", not "left".
+        intif.LeaveParty(pc.PartyId, packet.AccountId, member.CharacterId, reason: 1);
         if (registry.Get(new EntityId(member.CharacterId)) is PlayerEntity target) target.PartyId = 0;
         logger.LogInformation("ExpelParty: leader {Leader} expelled char {Target} from party {Party}",
             pc.CharacterId, member.CharacterId, pc.PartyId);

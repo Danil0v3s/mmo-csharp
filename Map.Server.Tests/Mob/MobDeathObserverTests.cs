@@ -315,7 +315,7 @@ public class MobDeathObserverTests
         public int RequestPartyInfo(int partyId, int charId) => 0;
         public int ChangePartyLeader(int partyId, int accountId, int charId) => 0;
         public int PartyChangeOption(int partyId, int accountId, int exp, int item, int flag) => 0;
-        public int LeaveParty(int partyId, int accountId, int charId) => 0;
+        public int LeaveParty(int partyId, int accountId, int charId, byte reason = 0) => 0;
         public int PartyChangemap(PlayerEntity pc, bool online) => 0;
         public int BreakParty(int partyId) => 0;
         public int PartyMessage(int partyId, int accountId, string text) => 0;

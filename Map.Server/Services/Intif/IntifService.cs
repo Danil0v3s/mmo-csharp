@@ -179,14 +179,14 @@ public sealed class IntifService : IIntifService
     /// Wave 92 — on success, drives the rAthena <c>party_member_withdraw</c>
     /// fan-out (ZC_DELETE_MEMBER_FROM_GROUP) via
     /// <see cref="Map.Server.Party.IPartyClientService.NotifyMemberWithdraw"/>.</summary>
-    public int LeaveParty(int partyId, int accountId, int charId)
+    public int LeaveParty(int partyId, int accountId, int charId, byte reason = 0)
     {
         if (_partyIpc == null) return 0;
-        _ = DispatchPartyLeaveAsync(partyId, accountId, charId);
+        _ = DispatchPartyLeaveAsync(partyId, accountId, charId, reason);
         return 1;
     }
 
-    private async Task DispatchPartyLeaveAsync(int partyId, int accountId, int charId)
+    private async Task DispatchPartyLeaveAsync(int partyId, int accountId, int charId, byte reason)
     {
         try
         {
@@ -205,8 +205,9 @@ public sealed class IntifService : IIntifService
                     // so the broadcast still walks the leaving member's
                     // PartyId for the same-map cleanup.
                     _partyClient.NotifyDotRemove(party, charId, accountId);
-                    // 0 = left voluntarily (rAthena e_party_member_withdraw).
-                    _partyClient.NotifyMemberWithdraw(party, accountId, memberName, reason: 0);
+                    // reason: 0 = left voluntarily (PARTY_MEMBER_WITHDRAW),
+                    // 1 = expelled (PARTY_MEMBER_EXPEL) — rAthena e_party_member_withdraw.
+                    _partyClient.NotifyMemberWithdraw(party, accountId, memberName, reason);
                 }
             }
         }

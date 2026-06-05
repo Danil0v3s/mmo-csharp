@@ -121,6 +121,8 @@ public class PartyJoinReqAckHandlerTests
 
         Assert.Equal((42, 100, 1), ctx.Intif.LastLeave);
         Assert.Equal(0, pc.PartyId);
+        // GP-PARTY-EXPEL-REASON — a voluntary leave broadcasts reason 0 (PARTY_MEMBER_WITHDRAW).
+        Assert.Equal(0, ctx.Intif.LastLeaveReason);
     }
 
     [Fact]
@@ -137,6 +139,8 @@ public class PartyJoinReqAckHandlerTests
 
         Assert.Equal((42, 200, 2), ctx.Intif.LastLeave);
         Assert.Equal(0, bob.PartyId); // online target cleared locally
+        // GP-PARTY-EXPEL-REASON — an expel broadcasts reason 1 (PARTY_MEMBER_EXPEL = "kicked").
+        Assert.Equal(1, ctx.Intif.LastLeaveReason);
     }
 
     [Fact]
@@ -289,9 +293,9 @@ public class PartyJoinReqAckHandlerTests
         public int RequestPartyInfo(int partyId, int charId) => 0;
         public int ChangePartyLeader(int partyId, int accountId, int charId) { LastLeader = (partyId, accountId, charId); return 1; }
         public int PartyChangeOption(int partyId, int accountId, int exp, int item, int flag) { LastOption = (partyId, accountId, exp, item); return 1; }
-        public int LeavePartyCalls; public (int, int, int) LastLeave;
+        public int LeavePartyCalls; public (int, int, int) LastLeave; public byte LastLeaveReason;
         public (int, int, int)? LastLeader; public (int, int, int, int)? LastOption;
-        public int LeaveParty(int partyId, int accountId, int charId) { LeavePartyCalls++; LastLeave = (partyId, accountId, charId); return 1; }
+        public int LeaveParty(int partyId, int accountId, int charId, byte reason = 0) { LeavePartyCalls++; LastLeave = (partyId, accountId, charId); LastLeaveReason = reason; return 1; }
         public int PartyChangemap(PlayerEntity pc, bool online) => 0;
         public int BreakParty(int partyId) => 0;
         public int PartyMessage(int partyId, int accountId, string text) => 0;

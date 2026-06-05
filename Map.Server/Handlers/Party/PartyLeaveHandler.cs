@@ -30,7 +30,8 @@ public class PartyLeaveHandler(
         if (pc.PartyId == 0) return Task.CompletedTask;
 
         var partyId = pc.PartyId;
-        intif.LeaveParty(partyId, pc.AccountId, pc.CharacterId);
+        // reason 0 = PARTY_MEMBER_WITHDRAW: voluntary leave (the default).
+        intif.LeaveParty(partyId, pc.AccountId, pc.CharacterId, reason: 0);
         pc.PartyId = 0; // the player left — solo again
         logger.LogInformation("LeaveParty: char {Char} left party {Party}", pc.CharacterId, partyId);
         return Task.CompletedTask;

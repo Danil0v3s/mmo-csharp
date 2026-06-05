@@ -1,6 +1,6 @@
 # GP-PARTY-EXPEL-REASON — Expelled-vs-left withdraw reason
 
-> **Epic:** gameplay · **Status:** ❌ Not started · **Size:** S · **Player-visible:** yes
+> **Epic:** gameplay · **Status:** ✅ Done (2026-06-05) · **Size:** S · **Player-visible:** yes
 > **Depends on:** GP-PARTY · **Unlocks:** none
 
 ## The deliverable
@@ -47,3 +47,7 @@ than being *kicked* — a UX/fidelity gap.
 
 - Split from GP-PARTY: the removal works; this is the kicked-vs-left message distinction, deferred to
   avoid churning the 4 `IIntifService` stubs in the same turn as the core handlers.
+
+## History
+
+- 2026-06-05 — Threaded a `byte reason` through `IIntifService.LeaveParty` → `DispatchPartyLeaveAsync` → `NotifyMemberWithdraw(reason)` (default 0). `PartyExpelHandler` passes reason 1 (PARTY_MEMBER_EXPEL = kicked), `PartyLeaveHandler` passes 0 (left). Updated the 5 IIntifService stubs (the capturing one records `LastLeaveReason`). 2 handler-test assertions added; full Map.Server.Tests 4688 pass (1 standing replay-fixture).
